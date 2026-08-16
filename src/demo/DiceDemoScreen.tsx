@@ -122,12 +122,13 @@ export function DiceDemoScreen() {
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
-      {/* HUD */}
-      <View pointerEvents="none" style={styles.hud}>
+      {/* Title — small, tucked at the very top so the arena gets the screen. */}
+      <View pointerEvents="none" style={styles.topBar}>
         <Text style={styles.title}>DICE BATTLES</Text>
-        <Text style={styles.rescueCount}>
-          {freedOrder.length} / {PRISONER_COLORS.length} RESCUED
-        </Text>
+      </View>
+
+      {/* Status HUD at the bottom, in the player's thumb zone. */}
+      <View pointerEvents="none" style={styles.bottomHud}>
         <View style={styles.resultRow}>
           {rolledFaces ? (
             <>
@@ -149,6 +150,9 @@ export function DiceDemoScreen() {
             </Text>
           )}
         </View>
+        <Text style={styles.rescueCount}>
+          {freedOrder.length} / {PRISONER_COLORS.length} RESCUED
+        </Text>
       </View>
 
       {/* Win overlay */}
@@ -170,30 +174,36 @@ const styles = StyleSheet.create({
   canvas: {
     flex: 1,
   },
-  hud: {
+  topBar: {
     position: 'absolute',
-    top: 60,
+    top: 58,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   title: {
-    color: '#ffffff',
-    fontSize: 24,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 4,
+    letterSpacing: 5,
+  },
+  bottomHud: {
+    position: 'absolute',
+    bottom: 34,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
   rescueCount: {
     color: '#ffd23d',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
-    marginTop: 4,
+    marginTop: 6,
   },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
     minHeight: 30,
   },
   swatch: {

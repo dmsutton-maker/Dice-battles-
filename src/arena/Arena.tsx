@@ -18,7 +18,14 @@ export function Arena() {
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
 
-  const floorTexture = useMemo(() => createFlagstoneTexture(), []);
+  const floorTexture = useMemo(() => {
+    const texture = createFlagstoneTexture();
+    // Keep the stones square on the non-square floor.
+    const floorW = innerWidth + wallThickness * 2;
+    const floorD = innerDepth + wallThickness * 2;
+    texture.repeat.set(1, floorD / floorW);
+    return texture;
+  }, [innerWidth, innerDepth, wallThickness]);
 
   const wallMaterial = useMemo(
     () => new THREE.MeshStandardMaterial({ color: STONE, roughness: 0.9 }),
@@ -106,10 +113,10 @@ export function Arena() {
       {towerPositions.map(([x, z], i) => (
         <group key={`tower-${i}`} position={[x, 0, z]}>
           <mesh material={wallMaterial} position={[0, wallHeight / 2 + 0.2, 0]}>
-            <cylinderGeometry args={[0.55, 0.62, wallHeight + 0.4, 12]} />
+            <cylinderGeometry args={[0.5, 0.56, wallHeight + 0.4, 12]} />
           </mesh>
           <mesh position={[0, wallHeight + 0.72, 0]}>
-            <coneGeometry args={[0.68, 0.85, 12]} />
+            <coneGeometry args={[0.6, 0.8, 12]} />
             <meshStandardMaterial color={ROOF} roughness={0.6} />
           </mesh>
         </group>

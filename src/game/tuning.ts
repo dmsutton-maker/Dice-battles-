@@ -33,9 +33,15 @@ export const TUNING = {
   },
 
   tray: {
-    /** Inner playable area (x = width, z = depth toward the player). */
-    innerWidth: 6,
-    innerDepth: 8,
+    /**
+     * Inner playable area (x = width, z = depth toward the player).
+     * Portrait-shaped on purpose: phone screens are tall and narrow, and the
+     * camera auto-fits the whole arena (see src/demo/cameraFit.ts), so the
+     * closer the arena's footprint matches a phone aspect, the bigger
+     * everything renders.
+     */
+    innerWidth: 4.6,
+    innerDepth: 9.2,
     wallHeight: 1.4,
     wallThickness: 0.5,
     /** Invisible ceiling so wild flicks never leave the camera view. */

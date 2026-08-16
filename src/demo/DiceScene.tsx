@@ -10,6 +10,8 @@ import { ColorDef, PrisonerColorId } from '../game/colors';
 import { Prisoners } from '../game/Prisoners';
 import { TUNING } from '../game/tuning';
 import { addTrayBodies, createPhysicsWorld } from '../physics/world';
+import { cameraBase } from './cameraFit';
+import { CameraRig } from './CameraRig';
 
 export interface SceneControls {
   /** Throw both dice. Pass a flick velocity for directional throws. */
@@ -28,11 +30,9 @@ interface DiceSceneProps {
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
-  [-1.1, TUNING.dieSize / 2, 2.2],
-  [1.1, TUNING.dieSize / 2, 2.4],
+  [-0.9, TUNING.dieSize / 2, 2.2],
+  [0.9, TUNING.dieSize / 2, 2.4],
 ];
-
-const CAMERA_BASE = new THREE.Vector3(0, 10.5, 5.6);
 
 /**
  * The full 3D scene: physics world, castle arena, two dice, prisoners,
@@ -150,17 +150,17 @@ export function DiceScene({
       if (speed > TUNING.settle.speedThreshold) allStill = false;
     });
 
-    // Camera shake with decay.
+    // Camera shake with decay, offset from the auto-fitted base position.
     if (shake.current > 0.01) {
       state.camera.position.set(
-        CAMERA_BASE.x + (Math.random() - 0.5) * 0.18 * shake.current,
-        CAMERA_BASE.y + (Math.random() - 0.5) * 0.12 * shake.current,
-        CAMERA_BASE.z + (Math.random() - 0.5) * 0.18 * shake.current,
+        cameraBase.x + (Math.random() - 0.5) * 0.18 * shake.current,
+        cameraBase.y + (Math.random() - 0.5) * 0.12 * shake.current,
+        cameraBase.z + (Math.random() - 0.5) * 0.18 * shake.current,
       );
       shake.current *= 0.88;
     } else if (shake.current !== 0) {
       shake.current = 0;
-      state.camera.position.copy(CAMERA_BASE);
+      state.camera.position.copy(cameraBase);
     }
 
     if (awaitingSettle.current) {
@@ -184,6 +184,7 @@ export function DiceScene({
 
   return (
     <>
+      <CameraRig />
       <hemisphereLight args={['#cfe4ff', '#6d5a3e', 0.9]} />
       <directionalLight position={[4, 12, 6]} intensity={2.4} />
       <directionalLight position={[-6, 8, -4]} intensity={0.7} color="#ffd9b0" />

@@ -30,13 +30,16 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
 
   const prisonSlots = useMemo<Slot[]>(() => {
     const z = -(innerDepth / 2 + wallThickness / 2);
+    // Spread the six figures across the far wall, whatever its width.
+    const usable = innerWidth - 0.5;
+    const step = usable / (PRISONER_COLORS.length - 1);
     return PRISONER_COLORS.map((_c, i) => ({
-      x: -2.75 + i * 1.1,
+      x: -usable / 2 + i * step,
       y: wallHeight + 0.24,
       z,
       facing: 0, // face the player
     }));
-  }, [innerDepth, wallHeight, wallThickness]);
+  }, [innerWidth, innerDepth, wallHeight, wallThickness]);
 
   const freeSlots = useMemo<Slot[]>(() => {
     const xLeft = -(innerWidth / 2 + wallThickness / 2);
