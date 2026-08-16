@@ -31,27 +31,30 @@ export const DieMesh = forwardRef<THREE.Group>(function DieMesh(_props, ref) {
     () => new RoundedBoxGeometry(size, size, size, 4, size * 0.12),
     [size],
   );
-  // Near-self-lit body: which sides face the key light is roll luck, so a
-  // mostly-lit body makes one die randomly settle beige while the other
-  // reads white. A high neutral emissive floor keeps every die white from
-  // every angle, leaving only a whisper of shading for depth.
+  // Bright ivory body under filmic tone mapping (the original good look),
+  // with a small neutral emissive floor so no face ever falls into beige
+  // half-shadow regardless of how the die lands relative to the key light.
   const bodyMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         color: '#ffffff',
-        roughness: 0.65,
+        roughness: 0.45,
         metalness: 0,
         emissive: '#ffffff',
-        emissiveIntensity: 0.72,
+        emissiveIntensity: 0.22,
       }),
     [],
   );
-  // Unlit stickers: the face color IS the game signal, so it must render as
-  // the exact palette hex from every angle. Lit materials hue-shift with the
-  // scene lighting (sky-tinted from above, warm from the side), which made
-  // purple read as green/blue on some faces.
+  // Unlit stickers with toneMapped:false — the face color IS the game
+  // signal, so it must render as the exact palette hex from every angle and
+  // must bypass the scene's tone mapping curve. This lets the rest of the
+  // scene keep filmic tone mapping (which makes the white bodies pop)
+  // without it muting or hue-shifting the sticker colors.
   const stickerMaterials = useMemo(
-    () => DIE_FACE_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c.hex })),
+    () =>
+      DIE_FACE_COLORS.map(
+        (c) => new THREE.MeshBasicMaterial({ color: c.hex, toneMapped: false }),
+      ),
     [],
   );
   const stickerGeometry = useMemo(

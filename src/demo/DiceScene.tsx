@@ -208,10 +208,11 @@ export function DiceScene({
   return (
     <>
       <CameraRig />
-      {/* Neutral lights only: any color tint here shifts material hues. */}
-      <hemisphereLight args={['#f4f6fa', '#9aa0a8', 0.9]} />
-      <directionalLight position={[4, 12, 6]} intensity={1.9} />
-      <directionalLight position={[-6, 8, -4]} intensity={0.5} color="#eef2f8" />
+      {/* Near-neutral lights (tints shift hues), back at the brighter
+          intensities that suited filmic tone mapping. */}
+      <hemisphereLight args={['#eef2fa', '#8f877b', 1.0]} />
+      <directionalLight position={[4, 12, 6]} intensity={2.4} />
+      <directionalLight position={[-6, 8, -4]} intensity={0.7} color="#f2f4f8" />
 
       <ArenaComponent />
       <Prisoners freedOrder={freedOrder} />
