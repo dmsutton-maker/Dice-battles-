@@ -1,80 +1,147 @@
 import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useRef, useState } from 'react';
-import { PanResponder, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
+import { initSounds, playCheer, playFanfare, playThrow } from '../audio/sounds';
+import {
+  AI_DIFFICULTIES,
+  AI_NAME,
+  AiDifficultyId,
+  rollAiDice,
+} from '../game/ai';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import { TUNING } from '../game/tuning';
-import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
-import { initSounds, playCheer, playFanfare } from '../audio/sounds';
 import { DiceScene, SceneControls } from './DiceScene';
 
 /**
- * Dice demo screen: full-screen castle arena with a gesture overlay.
+ * Classic mode vs one AI opponent.
  *
- * - Touch down anywhere = throw (instant, so rapid tapping = rolling frenzy).
- * - Release with speed = directional flick that steers the throw.
- * - Rolling both dice the same color rescues that prisoner from the far
- *   battlement. Rescue all six to win; the next tap starts a fresh battle.
+ * Round flow: pick screen -> "ARM YOUR DICE!" -> "BATTLE!" -> race. The
+ * player rolls real physics dice (touch down = throw, flick = aimed throw);
+ * the AI rolls fair virtual dice on a timer (difficulty = speed). First to
+ * free all six prisoners wins. Tap after the result to rematch instantly.
  */
+
+type Phase = 'pick' | 'arm' | 'go' | 'battle' | 'won' | 'lost';
+
 export function DiceDemoScreen() {
-  React.useEffect(() => {
+  useEffect(() => {
     initSounds();
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
+  const [phase, setPhase] = useState<Phase>('pick');
+  const [difficulty, setDifficulty] = useState<AiDifficultyId>('easy');
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
   const [freedOrder, setFreedOrder] = useState<PrisonerColorId[]>([]);
-  const [won, setWon] = useState(false);
+  const [aiFreed, setAiFreed] = useState<PrisonerColorId[]>([]);
+  const [aiLastRoll, setAiLastRoll] = useState<[ColorDef, ColorDef] | null>(null);
   const [shakeSignal, setShakeSignal] = useState(0);
 
-  // Refs mirroring state that gesture callbacks need synchronously.
-  const wonRef = useRef(false);
+  // Refs mirroring state that gesture/timer callbacks need synchronously.
+  const phaseRef = useRef<Phase>('pick');
   const freedRef = useRef<PrisonerColorId[]>([]);
+  const aiFreedRef = useRef<PrisonerColorId[]>([]);
+  const countdownTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const setPhaseBoth = useCallback((next: Phase) => {
+    phaseRef.current = next;
+    setPhase(next);
+  }, []);
+
+  useEffect(() => {
+    return () => countdownTimers.current.forEach(clearTimeout);
+  }, []);
+
+  const resetRace = useCallback(() => {
+    freedRef.current = [];
+    aiFreedRef.current = [];
+    setFreedOrder([]);
+    setAiFreed([]);
+    setRolledFaces(null);
+    setAiLastRoll(null);
+    setRolling(false);
+  }, []);
+
+  const startCountdown = useCallback(() => {
+    resetRace();
+    setPhaseBoth('arm');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    countdownTimers.current.forEach(clearTimeout);
+    countdownTimers.current = [
+      setTimeout(() => {
+        setPhaseBoth('go');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+        playThrow();
+      }, 1100),
+      setTimeout(() => {
+        setPhaseBoth('battle');
+      }, 1800),
+    ];
+  }, [resetRace, setPhaseBoth]);
+
+  // The AI opponent: fair virtual rolls on a fixed cadence while battling.
+  useEffect(() => {
+    if (phase !== 'battle') return;
+    const { rollIntervalMs } = AI_DIFFICULTIES[difficulty];
+    const id = setInterval(() => {
+      const roll = rollAiDice();
+      setAiLastRoll(roll);
+      const [a, b] = roll;
+      if (a.id !== b.id || aiFreedRef.current.includes(a.id)) return;
+      const next = [...aiFreedRef.current, a.id];
+      aiFreedRef.current = next;
+      setAiFreed(next);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      if (next.length === PRISONER_COLORS.length) {
+        setPhaseBoth('lost');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+          () => {},
+        );
+      }
+    }, rollIntervalMs);
+    return () => clearInterval(id);
+  }, [phase, difficulty, setPhaseBoth]);
 
   const handleThrow = useCallback(() => {
     setRolling(true);
     setRolledFaces(null);
   }, []);
 
-  const handleSettled = useCallback((faces: ColorDef[]) => {
-    setRolling(false);
-    setRolledFaces(faces);
-    const isMatch = faces.length === 2 && faces[0].id === faces[1].id;
-    if (!isMatch) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      return;
-    }
-    const color = faces[0].id;
-    if (freedRef.current.includes(color)) {
-      // Already rescued this color — Classic mode: nothing happens.
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      return;
-    }
-    const next = [...freedRef.current, color];
-    freedRef.current = next;
-    setFreedOrder(next);
-    setShakeSignal((s) => s + 1);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-      () => {},
-    );
-    if (next.length === PRISONER_COLORS.length) {
-      wonRef.current = true;
-      setWon(true);
-      playFanfare();
-    } else {
-      playCheer();
-    }
-  }, []);
-
-  const resetBattle = useCallback(() => {
-    wonRef.current = false;
-    freedRef.current = [];
-    setWon(false);
-    setFreedOrder([]);
-    setRolledFaces(null);
-  }, []);
+  const handleSettled = useCallback(
+    (faces: ColorDef[]) => {
+      setRolling(false);
+      setRolledFaces(faces);
+      if (phaseRef.current !== 'battle') return;
+      const isMatch = faces.length === 2 && faces[0].id === faces[1].id;
+      if (!isMatch) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        return;
+      }
+      const color = faces[0].id;
+      if (freedRef.current.includes(color)) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        return;
+      }
+      const next = [...freedRef.current, color];
+      freedRef.current = next;
+      setFreedOrder(next);
+      setShakeSignal((s) => s + 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      if (next.length === PRISONER_COLORS.length) {
+        setPhaseBoth('won');
+        playFanfare();
+      } else {
+        playCheer();
+      }
+    },
+    [setPhaseBoth],
+  );
 
   const panResponder = useRef(
     PanResponder.create({
@@ -82,13 +149,19 @@ export function DiceDemoScreen() {
       onMoveShouldSetPanResponder: () => true,
       // Throw on touch-down so rapid tapping feels instant.
       onPanResponderGrant: () => {
-        if (wonRef.current) {
-          resetBattle();
+        const current = phaseRef.current;
+        if (current === 'pick') {
+          startCountdown();
+        } else if (current === 'battle') {
+          controlsRef.current?.throwAll();
+        } else if (current === 'won' || current === 'lost') {
+          startCountdown();
         }
-        controlsRef.current?.throwAll();
+        // arm/go: inputs locked during the ritual.
       },
       // A fast release re-throws as a directional flick.
       onPanResponderRelease: (_event, gesture) => {
+        if (phaseRef.current !== 'battle') return;
         const speed = Math.hypot(gesture.vx, gesture.vy);
         if (speed < TUNING.throw.flickThreshold) return;
         const scale = TUNING.throw.flickScale;
@@ -107,6 +180,30 @@ export function DiceDemoScreen() {
     rolledFaces !== null &&
     rolledFaces.length === 2 &&
     rolledFaces[0].id === rolledFaces[1].id;
+
+  const difficultyRow = (
+    <View style={styles.difficultyRow}>
+      {Object.values(AI_DIFFICULTIES).map((d) => (
+        <Pressable
+          key={d.id}
+          onPress={() => setDifficulty(d.id)}
+          style={[
+            styles.difficultyButton,
+            difficulty === d.id && styles.difficultyButtonActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.difficultyText,
+              difficulty === d.id && styles.difficultyTextActive,
+            ]}
+          >
+            {d.label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -131,49 +228,123 @@ export function DiceDemoScreen() {
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
-      {/* Title — small, tucked at the very top so the arena gets the screen. */}
+      {/* Title */}
       <View pointerEvents="none" style={styles.topBar}>
         <Text style={styles.title}>DICE BATTLES</Text>
       </View>
 
-      {/* Status HUD at the bottom, in the player's thumb zone. */}
-      <View pointerEvents="none" style={styles.bottomHud}>
-        <View style={styles.resultRow}>
-          {rolledFaces ? (
-            <>
-              {rolledFaces.map((face, i) => (
+      {/* AI opponent panel */}
+      {(phase === 'battle' || phase === 'won' || phase === 'lost') && (
+        <View pointerEvents="none" style={styles.aiPanel}>
+          <Text style={styles.aiName}>⚔️ {AI_NAME}</Text>
+          <View style={styles.aiDots}>
+            {PRISONER_COLORS.map((c) => (
+              <View
+                key={c.id}
+                style={[
+                  styles.aiDot,
+                  { backgroundColor: c.hex },
+                  !aiFreed.includes(c.id) && styles.aiDotPending,
+                ]}
+              />
+            ))}
+          </View>
+          {aiLastRoll && (
+            <View style={styles.aiRoll}>
+              {aiLastRoll.map((c, i) => (
                 <View
                   key={i}
-                  style={[styles.swatch, { backgroundColor: face.hex }]}
+                  style={[styles.aiRollSwatch, { backgroundColor: c.hex }]}
                 />
               ))}
-              <Text style={[styles.resultText, isMatch && styles.matchText]}>
-                {isMatch
-                  ? `${rolledFaces[0].label.toUpperCase()} RESCUED!`
-                  : `${rolledFaces[0].label} · ${rolledFaces[1].label}`}
-              </Text>
-            </>
-          ) : (
-            <Text style={styles.hint}>
-              {rolling ? 'Rolling…' : 'Tap to roll · flick to throw'}
-            </Text>
+            </View>
           )}
         </View>
-        <Text style={styles.rescueCount}>
-          {freedOrder.length} / {PRISONER_COLORS.length} RESCUED
-        </Text>
-      </View>
+      )}
 
-      {/* Win overlay */}
-      {won && (
-        <View pointerEvents="none" style={styles.winOverlay}>
-          <Text style={styles.winTitle}>ALL PRISONERS FREED!</Text>
-          <Text style={styles.winSubtitle}>Tap to battle again</Text>
+      {/* Player status HUD at the bottom, in the thumb zone. */}
+      {phase === 'battle' && (
+        <View pointerEvents="none" style={styles.bottomHud}>
+          <View style={styles.resultRow}>
+            {rolledFaces ? (
+              <>
+                {rolledFaces.map((face, i) => (
+                  <View
+                    key={i}
+                    style={[styles.swatch, { backgroundColor: face.hex }]}
+                  />
+                ))}
+                <Text style={[styles.resultText, isMatch && styles.matchText]}>
+                  {isMatch
+                    ? `${rolledFaces[0].label.toUpperCase()} RESCUED!`
+                    : `${rolledFaces[0].label} · ${rolledFaces[1].label}`}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.hint}>
+                {rolling ? 'Rolling…' : 'Tap to roll · flick to throw'}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.rescueCount}>
+            {freedOrder.length} / {PRISONER_COLORS.length} RESCUED
+          </Text>
+        </View>
+      )}
+
+      {/* Pick / countdown / result overlays */}
+      {phase === 'pick' && (
+        <View style={styles.overlay}>
+          <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
+          <Text style={styles.overlayBody}>
+            Race {AI_NAME} to free your six prisoners!{'\n'}Roll both dice the
+            same color to rescue that prisoner.
+          </Text>
+          {difficultyRow}
+          <Text style={styles.overlayPrompt}>Tap anywhere to arm your dice</Text>
+        </View>
+      )}
+      {phase === 'arm' && (
+        <View pointerEvents="none" style={styles.overlayClear}>
+          <Text style={styles.countdownText}>ARM YOUR DICE!</Text>
+        </View>
+      )}
+      {phase === 'go' && (
+        <View pointerEvents="none" style={styles.overlayClear}>
+          <Text style={[styles.countdownText, styles.battleText]}>BATTLE!</Text>
+        </View>
+      )}
+      {phase === 'won' && (
+        <View style={styles.overlay}>
+          <Text style={styles.overlayTitle}>🏆 VICTORY!</Text>
+          <Text style={styles.overlayBody}>
+            All six prisoners rescued!{'\n'}
+            {AI_NAME} only managed {aiFreed.length}.
+          </Text>
+          {difficultyRow}
+          <Text style={styles.overlayPrompt}>Tap to battle again</Text>
+        </View>
+      )}
+      {phase === 'lost' && (
+        <View style={styles.overlay}>
+          <Text style={styles.overlayTitle}>😤 DEFEAT!</Text>
+          <Text style={styles.overlayBody}>
+            {AI_NAME} freed all six prisoners first.{'\n'}You rescued{' '}
+            {freedOrder.length} — avenge them!
+          </Text>
+          {difficultyRow}
+          <Text style={styles.overlayPrompt}>Tap to battle again</Text>
         </View>
       )}
     </View>
   );
 }
+
+const textShadow = {
+  textShadowColor: 'rgba(20,20,40,0.55)',
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 3,
+} as const;
 
 const styles = StyleSheet.create({
   container: {
@@ -195,9 +366,47 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 5,
-    textShadowColor: 'rgba(20,20,40,0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...textShadow,
+  },
+  aiPanel: {
+    position: 'absolute',
+    top: 82,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(20,16,40,0.55)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  aiName: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  aiDots: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  aiDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  aiDotPending: {
+    opacity: 0.22,
+  },
+  aiRoll: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  aiRollSwatch: {
+    width: 13,
+    height: 13,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.6)',
   },
   bottomHud: {
     position: 'absolute',
@@ -207,14 +416,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rescueCount: {
-    color: '#ffd23d',
+    color: '#ffe521',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
     marginTop: 6,
-    textShadowColor: 'rgba(20,20,40,0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...textShadow,
   },
   resultRow: {
     flexDirection: 'row',
@@ -234,40 +441,90 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
-    textShadowColor: 'rgba(20,20,40,0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...textShadow,
   },
   matchText: {
-    color: '#ffd23d',
+    color: '#ffe521',
     fontWeight: '900',
   },
   hint: {
     color: 'rgba(255,255,255,0.95)',
     fontSize: 15,
     fontWeight: '500',
-    textShadowColor: 'rgba(20,20,40,0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...textShadow,
   },
-  winOverlay: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(20,12,40,0.55)',
+    backgroundColor: 'rgba(20,12,40,0.6)',
+    paddingHorizontal: 28,
   },
-  winTitle: {
-    color: '#ffd23d',
-    fontSize: 32,
+  overlayClear: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overlayTitle: {
+    color: '#ffe521',
+    fontSize: 34,
     fontWeight: '900',
-    letterSpacing: 1,
     textAlign: 'center',
-    paddingHorizontal: 24,
+    ...textShadow,
   },
-  winSubtitle: {
+  overlayBody: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 12,
+    textAlign: 'center',
+    marginTop: 14,
+    lineHeight: 23,
+    ...textShadow,
+  },
+  overlayPrompt: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 26,
+    ...textShadow,
+  },
+  countdownText: {
+    color: '#ffffff',
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textAlign: 'center',
+    textShadowColor: 'rgba(20,20,40,0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  battleText: {
+    color: '#ffe521',
+    fontSize: 52,
+  },
+  difficultyRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 22,
+  },
+  difficultyButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  difficultyButtonActive: {
+    backgroundColor: '#ffe521',
+    borderColor: '#ffe521',
+  },
+  difficultyText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  difficultyTextActive: {
+    color: '#241c40',
   },
 });

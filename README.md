@@ -83,11 +83,11 @@ battle zone is a second `DiceScene` with its own physics world.
 ## Roadmap
 
 **v1**
-1. ✅ Dice-feel demo (this milestone — iterate until rolling feels great)
-2. Classic mode vs 1 AI opponent (roll both dice same color → free that
-   prisoner; first to free all six wins), with the "Arm your dice! …
-   Battle!" countdown, win celebration, instant rematch
-3. AI difficulty levels (1–3 opponents)
+1. ✅ Dice-feel demo (iterated on device until rolling felt right)
+2. ✅ Classic mode vs 1 AI opponent (Sir Rollsalot — fair virtual rolls on
+   a timer, difficulty = roll speed), with the "Arm your dice! … Battle!"
+   countdown, win/defeat overlays, instant rematch, Easy/Medium/Hard
+3. Multiple AI opponents (2–3 racing at once)
 4. Same-device 2-player: portrait split screen, mirrored zones
 5. One themed battlefield arena, built beautifully (arena system designed
    for drop-in additions)
