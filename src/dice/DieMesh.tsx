@@ -31,12 +31,18 @@ export const DieMesh = forwardRef<THREE.Group>(function DieMesh(_props, ref) {
     () => new RoundedBoxGeometry(size, size, size, 4, size * 0.12),
     [size],
   );
+  // Emissive floor keeps the body reading as bright ivory at every angle —
+  // pure lit white was rendering castle-tan under the flat pipeline, with
+  // specular glints flashing white mid-tumble. Higher roughness kills the
+  // glints; the emissive term guarantees a minimum brightness.
   const bodyMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#f6f1e6',
-        roughness: 0.35,
-        metalness: 0.02,
+        color: '#ffffff',
+        roughness: 0.6,
+        metalness: 0,
+        emissive: '#fff6e8',
+        emissiveIntensity: 0.42,
       }),
     [],
   );
