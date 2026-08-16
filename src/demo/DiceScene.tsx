@@ -131,6 +131,10 @@ export function DiceScene({
   useEffect(() => {
     controlsRef.current = {
       throwAll: (flick) => {
+        // Every roll is binding: no re-throwing while dice are still
+        // tumbling, or players could cancel bad rolls mid-air (which
+        // guts Ultimate's prisoner-exchange rule entirely).
+        if (awaitingSettle.current) return;
         awaitingSettle.current = true;
         stillFrames.current = 0;
         diceBodies.forEach((body) =>

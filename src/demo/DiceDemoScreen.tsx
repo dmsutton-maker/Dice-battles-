@@ -58,8 +58,8 @@ import { TwoPlayerScreen } from './TwoPlayerScreen';
  *
  * Round flow: pick screen -> "ARM YOUR DICE!" -> "BATTLE!" -> race. The
  * player rolls real physics dice (touch down = throw, flick = aimed throw);
- * the AI rolls fair virtual dice on a timer (difficulty = speed). First to
- * free all six prisoners wins. Tap after the result to rematch instantly.
+ * a new throw is LOCKED until the dice settle, so every roll is binding.
+ * The AI rolls fair virtual dice on a timer (difficulty = speed).
  */
 
 type Phase = 'pick' | 'arm' | 'go' | 'battle' | 'won' | 'lost' | 'tie';
