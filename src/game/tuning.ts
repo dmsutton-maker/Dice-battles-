@@ -12,7 +12,7 @@ export const TUNING = {
   dieSize: 0.9,
 
   /** Stronger-than-real gravity for snappy, weighty tumbles. */
-  gravity: -34,
+  gravity: -44,
 
   physics: {
     /** Fixed physics timestep (s). */
@@ -20,16 +20,24 @@ export const TUNING = {
     /** Max catch-up substeps per frame. */
     maxSubSteps: 4,
     dieMass: 1,
-    linearDamping: 0.08,
-    angularDamping: 0.1,
+    /**
+     * Damping and friction are deliberately high: the exciting part of a
+     * roll is the first ~0.4s of tumbling, while the slow creep at the end
+     * is dead time the player waits through (rolls are locked until the
+     * dice stop). These values kill the creep without flattening the
+     * tumble — verified by simulation, see settle timings in the README.
+     */
+    linearDamping: 0.2,
+    angularDamping: 0.4,
     /** Die vs tray contact. */
-    trayFriction: 0.24,
-    trayRestitution: 0.42,
+    trayFriction: 0.38,
+    trayRestitution: 0.34,
     /** Die vs die contact. */
     dieFriction: 0.1,
     dieRestitution: 0.5,
-    sleepSpeedLimit: 0.3,
-    sleepTimeLimit: 0.35,
+    /** Aggressive sleep thresholds so a resting die is detected fast. */
+    sleepSpeedLimit: 0.6,
+    sleepTimeLimit: 0.12,
   },
 
   tray: {
@@ -79,19 +87,41 @@ export const TUNING = {
     /** Gesture speed (pt/ms) above which a release counts as a flick. */
     flickThreshold: 0.35,
     /** Tumble: random angular speed per axis (rad/s). */
-    spinMin: 8,
-    spinMax: 24,
+    spinMin: 12,
+    spinMax: 28,
   },
 
   settle: {
     /** Both dice slower than this (linear + angular) counts as still. */
     speedThreshold: 0.28,
     /**
-     * FALLBACK ONLY: the primary settle signal is cannon's sleep state
-     * (immovable once asleep, so face reads can't go stale). This counter
-     * only fires if a body somehow never sleeps.
+     * Frames of stillness before a roll is called. Short because the dice
+     * are FROZEN the moment a roll is called, so the face read can never go
+     * stale — that safety used to cost a full extra second of waiting.
      */
-    stillFrames: 45,
+    stillFrames: 5,
+    /**
+     * Settle assist. A die that is down but still creeping gets its
+     * velocity bled off, gently at first and firmer the longer it refuses
+     * to stop, so it glides to rest instead of wandering the tray. Applied
+     * only to dice already on the floor — damping a falling die would make
+     * it float down.
+     */
+    assistAfterMs: 400,
+    assistStartFactor: 0.93,
+    assistEndFactor: 0.72,
+    assistRampMs: 700,
+    /**
+     * Soft ceiling on a roll: past this the assist clamps down hard so any
+     * stragglers glide to a stop within a few frames rather than being
+     * snapped still, and the roll is called as soon as they are slow.
+     */
+    maxRollMs: 1400,
+    hardStopFactor: 0.55,
+    /** Absolute backstop if a die is somehow still airborne at maxRollMs. */
+    hardMaxRollMs: 2600,
+    /** Delay before a tap queued mid-roll fires, so the result registers. */
+    queuedThrowDelayMs: 130,
   },
 
   haptics: {

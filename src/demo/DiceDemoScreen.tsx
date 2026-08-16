@@ -698,6 +698,7 @@ export function DiceDemoScreen() {
           onMoatSink={handleMoatSink}
           units={units}
           shakeSignal={shakeSignal}
+          throwsEnabled={phase === 'battle'}
         />
       </Canvas>
 

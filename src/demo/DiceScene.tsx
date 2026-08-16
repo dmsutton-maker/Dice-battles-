@@ -40,6 +40,12 @@ interface DiceSceneProps {
   /** Trophy unlocks that change the scene. */
   goldenDice: boolean;
   showTreasure: boolean;
+  /**
+   * Whether throws are currently allowed (true during a live round). A tap
+   * queued mid-roll is discarded rather than fired if the round ended while
+   * the dice were still tumbling.
+   */
+  throwsEnabled?: boolean;
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
@@ -62,6 +68,7 @@ export function DiceScene({
   arenaId,
   goldenDice,
   showTreasure,
+  throwsEnabled = true,
 }: DiceSceneProps) {
   const ArenaComponent = ARENAS[arenaId].Component;
   // The parent remounts this scene (key includes the round) whenever the
@@ -90,6 +97,22 @@ export function DiceScene({
   // Settle tracking (mutable, not state — updated every frame).
   const stillFrames = useRef(0);
   const awaitingSettle = useRef(false);
+  const throwStartedAt = useRef(0);
+  /**
+   * A tap made while the dice are still rolling is REMEMBERED and fired the
+   * moment they settle, instead of being swallowed. Frantic tapping is the
+   * whole feel of the game, but a roll must still be binding (you can't
+   * cancel a bad roll mid-air), so the queued throw always lands after the
+   * previous roll has been counted.
+   */
+  const queuedThrow = useRef<{ flick?: { x: number; z: number } } | null>(null);
+  const queuedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const launchRef = useRef<((flick?: { x: number; z: number }) => void) | null>(
+    null,
+  );
+  /** Mirrors the `throwsEnabled` prop for use inside the frame loop. */
+  const throwsEnabledRef = useRef(true);
+  throwsEnabledRef.current = throwsEnabled;
 
   // Moat sinking: timestamp until which each die stays underwater before
   // being fished out; 0 = not sinking. Splash ring animation progress.
@@ -129,25 +152,45 @@ export function DiceScene({
   }, [diceBodies]);
 
   useEffect(() => {
+    const launch = (flick?: { x: number; z: number }) => {
+      awaitingSettle.current = true;
+      stillFrames.current = 0;
+      throwStartedAt.current = Date.now();
+      diceBodies.forEach((body) =>
+        throwDie(body, flick ? { flickVelocity: flick } : {}),
+      );
+      playThrow();
+      onThrow();
+    };
+
     controlsRef.current = {
       throwAll: (flick) => {
         // Every roll is binding: no re-throwing while dice are still
         // tumbling, or players could cancel bad rolls mid-air (which
-        // guts Ultimate's prisoner-exchange rule entirely).
-        if (awaitingSettle.current) return;
-        awaitingSettle.current = true;
-        stillFrames.current = 0;
-        diceBodies.forEach((body) =>
-          throwDie(body, flick ? { flickVelocity: flick } : {}),
-        );
-        playThrow();
-        onThrow();
+        // guts Ultimate's prisoner-exchange rule entirely). The tap is
+        // queued rather than dropped so rapid tapping still feels alive.
+        if (awaitingSettle.current) {
+          queuedThrow.current = { flick };
+          return;
+        }
+        launch(flick);
       },
     };
+    launchRef.current = launch;
     return () => {
       controlsRef.current = null;
+      launchRef.current = null;
     };
   }, [controlsRef, diceBodies, onThrow]);
+
+  // Cancel any pending queued throw on unmount (round change, arena swap).
+  useEffect(
+    () => () => {
+      if (queuedTimer.current) clearTimeout(queuedTimer.current);
+      queuedThrow.current = null;
+    },
+    [],
+  );
 
   useFrame((state, delta) => {
     physics.world.step(
@@ -247,15 +290,58 @@ export function DiceScene({
     }
 
     if (awaitingSettle.current) {
-      // Primary settle signal: cannon's own sleep state — a SLEEPING body
-      // cannot move again, so the reported face can never go stale. The
-      // frame counter stays as a fallback in case a body never sleeps.
+      const settle = TUNING.settle;
+      const elapsed = Date.now() - throwStartedAt.current;
+
+      // Settle assist: bleed velocity off dice that are down but still
+      // creeping, firmer the longer they take, so they glide to rest. Only
+      // grounded dice — damping a falling die would make it float down.
+      if (elapsed > settle.assistAfterMs) {
+        const ramp = Math.min(
+          (elapsed - settle.assistAfterMs) / settle.assistRampMs,
+          1,
+        );
+        // Past the soft cap the assist clamps down hard, so a straggler
+        // glides to a stop in a few frames instead of being snapped still.
+        const factor =
+          elapsed >= settle.maxRollMs
+            ? settle.hardStopFactor
+            : settle.assistStartFactor -
+              (settle.assistStartFactor - settle.assistEndFactor) * ramp;
+        diceBodies.forEach((body) => {
+          if (body.position.y > TUNING.dieSize * 0.95) return;
+          body.velocity.scale(factor, body.velocity);
+          body.angularVelocity.scale(factor, body.angularVelocity);
+        });
+      }
+
+      // Release on the earliest of: cannon sleep, a short run of stillness,
+      // or the roll cap. Whichever fires, the dice are frozen immediately
+      // below, so the reported face can never go stale.
       const allSleeping = diceBodies.every(
         (body) => body.sleepState === CANNON.Body.SLEEPING,
       );
       stillFrames.current = allStill ? stillFrames.current + 1 : 0;
-      if (allSleeping || stillFrames.current >= TUNING.settle.stillFrames) {
+      const grounded = diceBodies.every(
+        (body) => body.position.y <= TUNING.dieSize * 1.1,
+      );
+      const slowEnough = diceBodies.every(
+        (body) =>
+          body.velocity.length() + body.angularVelocity.length() * 0.5 <= 1.2,
+      );
+      const capped =
+        (elapsed >= settle.maxRollMs && grounded && slowEnough) ||
+        elapsed >= settle.hardMaxRollMs;
+
+      if (allSleeping || stillFrames.current >= settle.stillFrames || capped) {
         awaitingSettle.current = false;
+        // Freeze the dice so they are immovable at the instant their faces
+        // are read — this is what makes the fast release safe.
+        diceBodies.forEach((body) => {
+          body.velocity.setZero();
+          body.angularVelocity.setZero();
+          body.sleep();
+        });
         // Report faces in ON-SCREEN left-to-right order, not spawn order:
         // the dice trade places while rolling, and the HUD swatches must
         // match what the player sees or a die looks like the wrong color.
@@ -273,6 +359,19 @@ export function DiceScene({
           }))
           .sort((a, b) => a.x - b.x);
         onSettled(settled.map((s) => s.color));
+
+        // Fire a tap that arrived mid-roll, just after the result lands so
+        // the player sees what they rolled. Dropped if the round ended.
+        const queued = queuedThrow.current;
+        queuedThrow.current = null;
+        if (queued) {
+          if (queuedTimer.current) clearTimeout(queuedTimer.current);
+          queuedTimer.current = setTimeout(() => {
+            if (throwsEnabledRef.current && !awaitingSettle.current) {
+              launchRef.current?.(queued.flick);
+            }
+          }, TUNING.settle.queuedThrowDelayMs);
+        }
       }
     }
   });

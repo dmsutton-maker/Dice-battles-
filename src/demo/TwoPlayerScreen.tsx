@@ -107,6 +107,7 @@ function ZoneView({
           arenaId={arenaId}
           goldenDice={goldenDice}
           showTreasure={false}
+          throwsEnabled={phase === 'battle'}
         />
       </Canvas>
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
