@@ -21,6 +21,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f5fb40f0-cb76-4fce-8094-1be129db1576"
+      }
+    },
+    "owner": "dmsutton",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
     }
   }
 }
