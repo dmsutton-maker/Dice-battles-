@@ -110,6 +110,20 @@ count normally underneath. Codes live in `src/game/progress.ts`.
 **v2:** ✅ Ultimate / Skirmish / Color War modes (vs AI; mode picker on the
 start screen). Remaining: nearby multi-device play.
 
+**Post-TestFlight plan (in order):**
+1. First TestFlight build ships (kids install via public link; JS updates
+   keep flowing to them instantly over the same `main` EAS Update channel —
+   a new build is only needed when native modules change).
+2. iPad polish pass: the build already installs natively on iPad
+   (`supportsTablet`), and the camera auto-fit was validated on iPad
+   aspect; the pass is UI scale (bigger touch targets/text on big screens)
+   and making the 2-player face-to-face split feel great on a table.
+3. Multi-device multiplayer: each kid on their own iPhone/iPad. Requires
+   native networking (Game Center matchmaking or local peer-to-peer), which
+   is exactly what TestFlight builds unlock — bundled with the Game Center
+   leaderboards milestone below. Local split-screen 2-player stays as the
+   no-setup option on every device.
+
 **v3:** rewarded ads at natural breaks, remove-ads IAP, cosmetic dice skins
 and battlefield themes. No ad SDK before v3.
 - **Custom soldier colors (paid):** let players re-color their six
