@@ -3,7 +3,7 @@ import * as CANNON from 'cannon-es';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { playClack } from '../audio/sounds';
+import { playClack, playThrow } from '../audio/sounds';
 import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
 import { createDieBody, throwDie, topFaceColor } from '../dice/die';
 import { DieMesh } from '../dice/DieMesh';
@@ -110,6 +110,7 @@ export function DiceScene({
         diceBodies.forEach((body) =>
           throwDie(body, flick ? { flickVelocity: flick } : {}),
         );
+        playThrow();
         onThrow();
       },
     };

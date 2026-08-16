@@ -5,13 +5,20 @@ import {
 } from 'expo-audio';
 
 /**
- * Tiny sound-effect engine. All sounds are procedurally synthesized WAVs
- * bundled with the app (see assets/sounds) — fully offline, no licensing.
+ * Sound-effect engine. All sounds are REAL recordings (see
+ * assets/sounds/CREDITS.md): Kenney's CC0 dice recordings, a real crowd
+ * cheer, and a victory fanfare — processed offline into small mono WAVs.
  *
- * Clacks use a round-robin pool of players per variant so rapid dice
- * impacts can overlap instead of cutting each other off.
+ * Design: each throw plays a full genuine dice-roll recording (rattle +
+ * tumble + land); hard mid-roll collisions add quiet click accents on top.
+ * Round-robin pools let rapid sounds overlap instead of cutting off.
  */
 
+const throwSources = [
+  require('../../assets/sounds/throw1.wav'),
+  require('../../assets/sounds/throw2.wav'),
+  require('../../assets/sounds/throw3.wav'),
+];
 const clackSources = [
   require('../../assets/sounds/clack1.wav'),
   require('../../assets/sounds/clack2.wav'),
@@ -20,9 +27,11 @@ const clackSources = [
 const cheerSource = require('../../assets/sounds/cheer.wav');
 const fanfareSource = require('../../assets/sounds/fanfare.wav');
 
+let throwPool: AudioPlayer[] = [];
 let clackPool: AudioPlayer[] = [];
 let cheerPlayer: AudioPlayer | null = null;
 let fanfarePlayer: AudioPlayer | null = null;
+let throwIndex = 0;
 let clackIndex = 0;
 let initialized = false;
 
@@ -38,10 +47,15 @@ export function initSounds(): void {
       interruptionMode: 'mixWithOthers',
     }).catch(() => {});
 
-    // Two players per clack variant so bursts of impacts can overlap.
+    throwPool = [...throwSources, ...throwSources].map((source) => {
+      const player = createAudioPlayer(source);
+      player.volume = 0.85;
+      return player;
+    });
+    // Collision accents are garnish under the throw sound — keep them quiet.
     clackPool = [...clackSources, ...clackSources].map((source) => {
       const player = createAudioPlayer(source);
-      player.volume = 0.55;
+      player.volume = 0.35;
       return player;
     });
     cheerPlayer = createAudioPlayer(cheerSource);
@@ -50,6 +64,7 @@ export function initSounds(): void {
     fanfarePlayer.volume = 1.0;
   } catch {
     // Sounds are garnish — never let audio failures break the game.
+    throwPool = [];
     clackPool = [];
     cheerPlayer = null;
     fanfarePlayer = null;
@@ -66,14 +81,21 @@ function replay(player: AudioPlayer | null): void {
   }
 }
 
-/** Short dice-impact tick. Cheap; call on every hard collision. */
+/** Full real dice-roll recording (rattle + tumble + land). Play per throw. */
+export function playThrow(): void {
+  if (throwPool.length === 0) return;
+  throwIndex = (throwIndex + 1) % throwPool.length;
+  replay(throwPool[throwIndex]);
+}
+
+/** Quiet single-impact click accent. Call on hard mid-roll collisions. */
 export function playClack(): void {
   if (clackPool.length === 0) return;
   clackIndex = (clackIndex + 1) % clackPool.length;
   replay(clackPool[clackIndex]);
 }
 
-/** Crowd cheer + rising plinks — a prisoner was rescued. */
+/** Real crowd cheer — a prisoner was rescued. */
 export function playCheer(): void {
   replay(cheerPlayer);
 }

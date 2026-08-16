@@ -95,9 +95,13 @@ export const TUNING = {
   },
 
   haptics: {
-    /** Min impact velocity along contact normal to fire a tick. */
-    collisionMinImpact: 2.2,
-    /** Min ms between collision haptic ticks. */
-    collisionCooldownMs: 90,
+    /**
+     * Min impact velocity along contact normal to fire a tick + click.
+     * Kept high so only meaty hits register — the full throw recording
+     * already carries the roll sound; accents should be occasional.
+     */
+    collisionMinImpact: 3.0,
+    /** Min ms between collision haptic ticks / click accents. */
+    collisionCooldownMs: 130,
   },
 } as const;
