@@ -122,13 +122,23 @@ battle zone is a second `DiceScene` with its own physics world.
    for drop-in additions)
 
 **Progression (in):** Clash-Royale-style trophy ladder — win/lose trophies
-(stakes scale with difficulty), persisted on device. Unlocks: Golden Dice
-(100 🏆), Sunset Castle arena (250 🏆), Jungle Clearing arena (400 🏆),
-Courtyard Treasure (550 🏆), and the Mystery Arena (700 🏆 — revealed as
-the Space Station only when earned). A battlefield picker on the start
-screen lets players fight in any arena they've unlocked. Future
-arenas/obstacles/treasures slot into `src/game/progress.ts` TIERS + the
-arena registry (`src/arena/arenas.tsx`).
+(stakes scale with difficulty), persisted on device. The ladder alternates
+battlefields and dice so a reward is always close: Gold Dice (100 🏆),
+Sunset Castle (250), Mint Dice (325), Jungle Clearing (400), Bubblegum Dice
+(475), Courtyard Treasure (550), the Mystery Arena (700 — revealed as the
+Space Station only once earned), Midnight Dice (850).
+
+Everything cosmetic is equipped in the **🎒 Inventory**
+(`src/demo/InventoryScreen.tsx`): battlefields and dice colours, with
+locked items shown alongside their price. Dice skins colour the die SHELL
+only — the six face colours are the game signal and never change, and the
+suite asserts every shell stays perceptually clear of all six faces.
+
+What is earned (`src/game/progress.ts`) and what is equipped
+(`src/game/loadout.ts`) are stored separately; equipping is validated on
+read, so a selection can never strand the player in an item they no longer
+own. New arenas/dice slot into TIERS + the arena registry
+(`src/arena/arenas.tsx`) or `src/game/diceSkins.ts`.
 
 **Family tester mode:** entering the secret code in Settings unlocks
 everything for playtesting (a second code re-locks it); trophies still

@@ -32,9 +32,12 @@ export type UnlockId =
   | 'castle'
   | 'golden-dice'
   | 'sunset-castle'
+  | 'mint-dice'
   | 'jungle'
+  | 'bubblegum-dice'
   | 'treasure'
-  | 'space';
+  | 'space'
+  | 'midnight-dice';
 
 export interface Tier {
   at: number;
@@ -49,13 +52,20 @@ export interface Tier {
 }
 
 /** The unlock ladder. */
+/**
+ * The unlock ladder, alternating battlefields and dice so there is always
+ * something close to earn. Everything cosmetic lands in the Inventory.
+ */
 export const TIERS: Tier[] = [
   { at: 0, name: 'Castle Courtyard', emoji: '🏰', id: 'castle' },
-  { at: 100, name: 'Golden Dice', emoji: '✨', id: 'golden-dice' },
+  { at: 100, name: 'Gold Dice', emoji: '✨', id: 'golden-dice' },
   { at: 250, name: 'Sunset Castle', emoji: '🌅', id: 'sunset-castle' },
+  { at: 325, name: 'Mint Dice', emoji: '🍃', id: 'mint-dice' },
   { at: 400, name: 'Jungle Clearing', emoji: '🌴', id: 'jungle' },
+  { at: 475, name: 'Bubblegum Dice', emoji: '🍬', id: 'bubblegum-dice' },
   { at: 550, name: 'Courtyard Treasure', emoji: '💰', id: 'treasure' },
   { at: 700, name: 'Space Station', emoji: '🚀', id: 'space', mystery: true },
+  { at: 850, name: 'Midnight Dice', emoji: '🌑', id: 'midnight-dice' },
 ];
 
 /** Picker/teaser label — mystery tiers stay hidden until earned. */

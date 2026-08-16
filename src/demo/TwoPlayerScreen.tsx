@@ -23,7 +23,7 @@ type Phase = 'ready' | 'arm' | 'go' | 'battle' | 'over';
 
 interface TwoPlayerScreenProps {
   arenaId: ArenaId;
-  goldenDice: boolean;
+  dieBodyColor: string;
   onExit: () => void;
 }
 
@@ -35,7 +35,7 @@ interface ZoneViewProps {
   oppScore: number;
   units: PrisonerUnit[];
   arenaId: ArenaId;
-  goldenDice: boolean;
+  dieBodyColor: string;
   controlsRef: React.MutableRefObject<SceneControls | null>;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
@@ -52,7 +52,7 @@ function ZoneView({
   oppScore,
   units,
   arenaId,
-  goldenDice,
+  dieBodyColor,
   controlsRef,
   onThrow,
   onSettled,
@@ -113,7 +113,7 @@ function ZoneView({
           shakeSignal={0}
           layout={EMPTY_LAYOUT}
           arenaId={arenaId}
-          goldenDice={goldenDice}
+          dieBodyColor={dieBodyColor}
           showTreasure={false}
           throwsEnabled={phase === 'battle'}
         />
@@ -155,7 +155,7 @@ function ZoneView({
   );
 }
 
-export function TwoPlayerScreen({ arenaId, goldenDice, onExit }: TwoPlayerScreenProps) {
+export function TwoPlayerScreen({ arenaId, dieBodyColor, onExit }: TwoPlayerScreenProps) {
   const [phase, setPhase] = useState<Phase>('ready');
   const phaseRef = useRef<Phase>('ready');
   const [winner, setWinner] = useState<0 | 1 | null>(null);
@@ -267,7 +267,7 @@ export function TwoPlayerScreen({ arenaId, goldenDice, onExit }: TwoPlayerScreen
         oppScore={scoreA}
         units={unitsB}
         arenaId={arenaId}
-        goldenDice={goldenDice}
+        dieBodyColor={dieBodyColor}
         controlsRef={controlsB}
         onThrow={noop}
         onSettled={settledB}
@@ -285,7 +285,7 @@ export function TwoPlayerScreen({ arenaId, goldenDice, onExit }: TwoPlayerScreen
         oppScore={scoreB}
         units={unitsA}
         arenaId={arenaId}
-        goldenDice={goldenDice}
+        dieBodyColor={dieBodyColor}
         controlsRef={controlsA}
         onThrow={noop}
         onSettled={settledA}

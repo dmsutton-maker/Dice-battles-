@@ -2,6 +2,16 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../src/arena/arenas';
+import { DICE_SKINS, DEFAULT_SKIN_ID, skinById } from '../src/game/diceSkins';
+import {
+  ARENA_ORDER,
+  ARENA_UNLOCKS,
+  activeArena,
+  activeDieBody,
+  isArenaUnlocked,
+  isSkinUnlocked,
+} from '../src/game/loadout';
+import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
 import {
   JAIL_SLOTS,
@@ -11,7 +21,7 @@ import {
 } from '../src/game/stations';
 import { TUNING } from '../src/game/tuning';
 import { cameraBase, fitCamera } from '../src/demo/cameraFit';
-import { assert, assertAtMost, note, suite, test } from './harness';
+import { assert, assertAtMost, assertEqual, note, suite, test } from './harness';
 
 /**
  * Everything about what actually reaches the screen: the arena registry,
@@ -100,26 +110,24 @@ suite('screen · arenas', () => {
   });
 
   test('every arena is reachable through the trophy ladder', () => {
-    // An arena with no unlock tier can never be played.
-    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    // An arena missing an unlock tier, or missing from the Inventory's
+    // display order, can never be played.
     const tierIds = new Set<UnlockId>(TIERS.map((t) => t.id));
     for (const id of Object.keys(ARENAS) as ArenaId[]) {
-      assert(
-        source.includes(`${id}:`),
-        `arena ${id} is not wired into the picker in DiceDemoScreen`,
-      );
+      const unlock = ARENA_UNLOCKS[id];
+      assert(unlock !== undefined, `arena ${id} has no unlock tier`);
+      assert(tierIds.has(unlock), `arena ${id} maps to unknown unlock '${unlock}'`);
+      assert(ARENA_ORDER.includes(id), `arena ${id} is missing from the Inventory`);
     }
-    // The unlock ids the picker maps arenas to must all exist as tiers.
-    const mapping = source.slice(
-      source.indexOf('ARENA_UNLOCKS'),
-      source.indexOf('};', source.indexOf('ARENA_UNLOCKS')),
+    assertEqual(
+      ARENA_ORDER.length,
+      Object.keys(ARENAS).length,
+      'Inventory lists a different number of arenas than exist',
     );
-    for (const match of mapping.matchAll(/:\s*'([a-z-]+)'/g)) {
-      assert(
-        tierIds.has(match[1] as UnlockId),
-        `picker maps an arena to unknown unlock '${match[1]}'`,
-      );
-    }
+  });
+
+  test('the starting battlefield is free', () => {
+    assert(isArenaUnlocked(ARENA_ORDER[0], 0), 'a new player has nowhere to battle');
   });
 
   test('arenas build their scenery on the shared station coordinates', () => {
@@ -152,6 +160,78 @@ suite('screen · arenas', () => {
         );
       }
     }
+  });
+});
+
+suite('screen · inventory', () => {
+  const toLab = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+      const c = v / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.9505;
+    const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+    const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.089;
+    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+  };
+
+  test('no dice colour swallows a face colour', () => {
+    // The shell surrounds the six face stickers. A shell too close to one
+    // of them hides that face, which breaks reading a roll at a glance.
+    for (const skin of DICE_SKINS) {
+      let worst = Infinity;
+      let nearest = '';
+      for (const face of PRISONER_COLORS) {
+        const a = toLab(skin.body);
+        const b = toLab(face.hex);
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        if (d < worst) {
+          worst = d;
+          nearest = face.label;
+        }
+      }
+      note(`dice ${skin.name}: nearest face ${nearest} at ΔLab ${worst.toFixed(0)}`);
+      assert(
+        worst > 28,
+        `${skin.name} dice are too close to the ${nearest} face (ΔLab ${worst.toFixed(1)})`,
+      );
+    }
+  });
+
+  test('every dice skin is earnable and uniquely named', () => {
+    const tierIds = new Set<UnlockId>(TIERS.map((t) => t.id));
+    assertEqual(
+      new Set(DICE_SKINS.map((s) => s.id)).size,
+      DICE_SKINS.length,
+      'duplicate dice skin ids',
+    );
+    for (const skin of DICE_SKINS) {
+      assert(/^#[0-9a-f]{6}$/i.test(skin.body), `${skin.name} has a malformed colour`);
+      if (skin.unlock !== null) {
+        assert(
+          tierIds.has(skin.unlock),
+          `${skin.name} maps to unknown unlock '${skin.unlock}'`,
+        );
+      }
+    }
+  });
+
+  test('a new player starts with dice and can never be left with none', () => {
+    assert(isSkinUnlocked(DEFAULT_SKIN_ID, 0), 'the starter dice are not free');
+    assertEqual(skinById(DEFAULT_SKIN_ID).unlock, null, 'starter dice cost trophies');
+    // Equipping is validated on read, so losing an unlock (tester mode off)
+    // falls back instead of leaving an item the player does not own.
+    assertEqual(activeDieBody(0), skinById(DEFAULT_SKIN_ID).body, 'fallback dice colour');
+    assert(isArenaUnlocked(activeArena(0), 0), 'fallback battlefield is locked');
+  });
+
+  test('the ladder alternates so something is always close to earn', () => {
+    const gaps = TIERS.slice(1).map((t, i) => t.at - TIERS[i].at);
+    const biggest = Math.max(...gaps);
+    note(`largest trophy gap between unlocks: ${biggest}`);
+    assertAtMost(biggest, 200, 'largest gap between unlocks');
   });
 });
 

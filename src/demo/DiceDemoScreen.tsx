@@ -12,6 +12,14 @@ import {
   View,
 } from 'react-native';
 import { ArenaId, ARENAS } from '../arena/arenas';
+import {
+  activeArena,
+  activeDieBody,
+  equipArena,
+  equipSkin,
+  getLoadout,
+  loadLoadout,
+} from '../game/loadout';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
   AudioSettings,
@@ -52,7 +60,6 @@ import {
   TIERS,
   tierLabel,
   TROPHY_STAKES,
-  UnlockId,
 } from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
@@ -65,6 +72,7 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { DiceScene, SceneControls } from './DiceScene';
+import { InventoryScreen } from './InventoryScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
 
 /**
@@ -78,15 +86,6 @@ import { TwoPlayerScreen } from './TwoPlayerScreen';
 
 type Phase = 'pick' | 'arm' | 'go' | 'battle' | 'won' | 'lost' | 'tie';
 
-/** Which trophy tier gates each arena, in picker display order. */
-const ARENA_ORDER: ArenaId[] = ['castle', 'castleSunset', 'jungle', 'space'];
-const ARENA_UNLOCKS: Record<ArenaId, UnlockId> = {
-  castle: 'castle',
-  castleSunset: 'sunset-castle',
-  jungle: 'jungle',
-  space: 'space',
-};
-
 export function DiceDemoScreen() {
   const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
 
@@ -94,6 +93,7 @@ export function DiceDemoScreen() {
     initSounds();
     initAnnouncer();
     loadAudioSettings().then(setAudioPrefs);
+    loadLoadout().then(setLoadout);
     loadProgress().then((p) => {
       setTrophies(p.trophies);
       setWins(p.wins);
@@ -107,7 +107,8 @@ export function DiceDemoScreen() {
   const [mode, setMode] = useState<ModeId>('classic');
   const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
   const [twoPlayer, setTwoPlayer] = useState(false);
-  const [selectedArena, setSelectedArena] = useState<ArenaId | null>(null);
+  const [loadout, setLoadout] = useState(getLoadout());
+  const [showInventory, setShowInventory] = useState(false);
   const [unlockAll, setUnlockAll] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
@@ -551,14 +552,10 @@ export function DiceDemoScreen() {
     }),
   ).current;
 
-  // Newest unlocked arena is the default; an explicit pick wins while valid.
-  const unlockedArenas = ARENA_ORDER.filter((id) =>
-    isUnlocked(ARENA_UNLOCKS[id], trophies),
-  );
-  const arenaId: ArenaId =
-    selectedArena && unlockedArenas.includes(selectedArena)
-      ? selectedArena
-      : unlockedArenas[unlockedArenas.length - 1] ?? 'castle';
+  // Equipped in the Inventory, falling back if it is no longer unlocked
+  // (which happens when family tester mode is switched back off).
+  const arenaId: ArenaId = activeArena(trophies);
+  const dieBodyColor = activeDieBody(trophies);
   const playerScore = units.filter((u) => u.station.kind === 'retreat').length;
   const aiScore =
     mode === 'skirmish' || mode === 'colorwar'
@@ -634,41 +631,12 @@ export function DiceDemoScreen() {
     </View>
   );
 
-  const arenaRow = (
-    <View style={styles.arenaBlock}>
-      <Text style={styles.arenaLabel}>BATTLEFIELD</Text>
-      <View style={styles.arenaRow}>
-        {ARENA_ORDER.map((id) => {
-          const tier = TIERS.find((t) => t.id === ARENA_UNLOCKS[id]);
-          const unlocked = unlockedArenas.includes(id);
-          const active = arenaId === id;
-          if (!unlocked && tier) {
-            // Locked chip: mystery tiers keep their secret, others tease.
-            const label = tier.mystery
-              ? `❓ ${tier.at} 🏆`
-              : `🔒 ${ARENAS[id].short} · ${tier.at} 🏆`;
-            return (
-              <View key={id} style={[styles.arenaChip, styles.arenaChipLocked]}>
-                <Text style={styles.arenaChipLockedText}>{label}</Text>
-              </View>
-            );
-          }
-          return (
-            <Pressable
-              key={id}
-              onPress={() => setSelectedArena(id)}
-              style={[styles.arenaChip, active && styles.difficultyButtonActive]}
-            >
-              <Text
-                style={[styles.arenaChipText, active && styles.difficultyTextActive]}
-              >
-                {ARENAS[id].emoji} {ARENAS[id].short}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
+  const inventoryButton = (
+    <Pressable style={styles.inventoryButton} onPress={() => setShowInventory(true)}>
+      <Text style={styles.inventoryText}>
+        🎒 INVENTORY · {ARENAS[arenaId].emoji} {ARENAS[arenaId].short}
+      </Text>
+    </Pressable>
   );
 
   // Every round ends with an explicit choice — one more battle, or back to
@@ -690,7 +658,7 @@ export function DiceDemoScreen() {
     return (
       <TwoPlayerScreen
         arenaId={arenaId}
-        goldenDice={isUnlocked('golden-dice', trophies)}
+        dieBodyColor={dieBodyColor}
         onExit={() => setTwoPlayer(false)}
       />
     );
@@ -711,7 +679,7 @@ export function DiceDemoScreen() {
           key={`${difficulty}-${round}-${arenaId}`}
           layout={layout}
           arenaId={arenaId}
-          goldenDice={isUnlocked('golden-dice', trophies)}
+          dieBodyColor={dieBodyColor}
           showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}
           onThrow={handleThrow}
@@ -853,7 +821,7 @@ export function DiceDemoScreen() {
             )}
             {modeRow}
             {difficultyRow}
-            {arenaRow}
+            {inventoryButton}
             <Pressable style={styles.startButton} onPress={startCountdown}>
               <Text style={styles.startText}>▶ START BATTLE</Text>
             </Pressable>
@@ -905,6 +873,16 @@ export function DiceDemoScreen() {
           {difficultyRow}
           {roundOverButtons}
         </View>
+      )}
+      {showInventory && (
+        <InventoryScreen
+          trophies={trophies}
+          arenaId={arenaId}
+          skinId={loadout.skinId}
+          onEquipArena={(id) => setLoadout({ ...equipArena(id) })}
+          onEquipSkin={(id) => setLoadout({ ...equipSkin(id) })}
+          onClose={() => setShowInventory(false)}
+        />
       )}
       {showSettings && (
         <View style={styles.settingsOverlay}>
@@ -1465,45 +1443,6 @@ const styles = StyleSheet.create({
   difficultyTextActive: {
     color: '#241c40',
   },
-  arenaBlock: {
-    alignItems: 'center',
-    marginTop: 22,
-  },
-  arenaLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  arenaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  arenaChip: {
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  arenaChipText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  arenaChipLocked: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  arenaChipLockedText: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 13,
-    fontWeight: '700',
-  },
   codeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1530,6 +1469,20 @@ const styles = StyleSheet.create({
   },
   codeGoText: {
     color: '#241c40',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  inventoryButton: {
+    marginTop: 22,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  inventoryText: {
+    color: '#ffffff',
     fontSize: 14,
     fontWeight: '800',
   },

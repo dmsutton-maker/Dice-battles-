@@ -50,8 +50,9 @@ interface DiceSceneProps {
   layout: ObstacleLayout;
   /** Which arena theme to draw (trophy unlocks switch this). */
   arenaId: ArenaId;
-  /** Trophy unlocks that change the scene. */
-  goldenDice: boolean;
+  /** Equipped dice skin's shell colour (src/game/diceSkins.ts). */
+  dieBodyColor: string;
+  /** Trophy unlock that adds the courtyard treasure. */
   showTreasure: boolean;
   /**
    * Whether throws are currently allowed (true during a live round). A tap
@@ -79,7 +80,7 @@ export function DiceScene({
   shakeSignal,
   layout,
   arenaId,
-  goldenDice,
+  dieBodyColor,
   showTreasure,
   throwsEnabled = true,
 }: DiceSceneProps) {
@@ -409,7 +410,7 @@ export function DiceScene({
       {DIE_START_POSITIONS.map((_pos, i) => (
         <DieMesh
           key={`die-${i}`}
-          golden={goldenDice}
+          bodyColor={dieBodyColor}
           ref={(mesh: THREE.Group | null) => {
             dieMeshRefs.current[i] = mesh;
           }}
