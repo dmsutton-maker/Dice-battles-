@@ -79,9 +79,14 @@ function buildFitPoints(): FitPoint[] {
   add(-outerX, 0, outerZ, 1.05, 0.8, -1.05);
   add(outerX, 0, outerZ, 1.05, 0.8, -1.05);
 
-  // Prison row on the far battlement — heads clear of the small top title.
-  add(-(halfW - 0.15), figureTop, -(halfD + wallThickness / 2), 0.94, 0.78);
-  add(halfW - 0.15, figureTop, -(halfD + wallThickness / 2), 0.94, 0.78);
+  // Jail pen behind the far wall — prisoners' heads and the far bars must be
+  // on screen, clear of the small top title.
+  const pen = TUNING.prison;
+  const penFarZ = -(halfD + wallThickness + pen.depth);
+  const penHeadTop = pen.floorThickness + 0.95;
+  add(-(pen.innerWidth / 2 - 0.3), penHeadTop, penFarZ + pen.depth / 2, 0.94, 0.78);
+  add(pen.innerWidth / 2 - 0.3, penHeadTop, penFarZ + pen.depth / 2, 0.94, 0.78);
+  add(0, pen.floorThickness + pen.barHeight + 0.15, penFarZ, 0.96, 0.82);
 
   // Celebration spots on the side walls.
   add(-(halfW + wallThickness / 2), figureTop, 2.2, 0.99, 0.88);

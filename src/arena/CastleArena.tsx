@@ -47,6 +47,81 @@ const TREES: { position: [number, number, number]; scale: number; leaf: string }
 ];
 
 /**
+ * Open-top jail pen attached behind the far castle wall: raised stone slab,
+ * iron bars on the three outer sides (the castle wall is the fourth), stone
+ * corner posts. The prisoners line up inside; a rescue leaps them over the
+ * castle wall. Open top keeps them visible to the near-overhead camera.
+ */
+function JailPen() {
+  const { innerDepth, wallThickness } = TUNING.tray;
+  const { innerWidth: penW, depth: penD, floorThickness, barHeight } = TUNING.prison;
+  const zNear = -(innerDepth / 2 + wallThickness); // shared with the far wall
+  const zFar = zNear - penD;
+  const zCenter = (zNear + zFar) / 2;
+  const halfW = penW / 2;
+
+  const bars: [number, number][] = [];
+  // Far side of the pen.
+  const farCount = 10;
+  for (let i = 0; i <= farCount; i++) {
+    bars.push([-halfW + (i * penW) / farCount, zFar]);
+  }
+  // Short ends.
+  const endCount = 3;
+  for (let i = 1; i <= endCount; i++) {
+    const z = zNear - (i * penD) / (endCount + 1);
+    bars.push([-halfW, z]);
+    bars.push([halfW, z]);
+  }
+
+  return (
+    <group>
+      {/* Raised stone floor slab */}
+      <mesh position={[0, floorThickness / 2, zCenter]}>
+        <boxGeometry args={[penW + 0.4, floorThickness, penD + 0.3]} />
+        <meshStandardMaterial color="#8f8371" roughness={0.95} />
+      </mesh>
+
+      {/* Iron bars */}
+      {bars.map(([x, z], i) => (
+        <mesh key={`bar-${i}`} position={[x, floorThickness + barHeight / 2, z]}>
+          <cylinderGeometry args={[0.045, 0.045, barHeight, 6]} />
+          <meshStandardMaterial color="#454a52" roughness={0.5} metalness={0.4} />
+        </mesh>
+      ))}
+
+      {/* Top rails */}
+      <mesh position={[0, floorThickness + barHeight, zFar]}>
+        <boxGeometry args={[penW + 0.2, 0.09, 0.09]} />
+        <meshStandardMaterial color="#3a3f46" roughness={0.5} metalness={0.4} />
+      </mesh>
+      {([-halfW, halfW] as const).map((x, i) => (
+        <mesh
+          key={`rail-${i}`}
+          position={[x, floorThickness + barHeight, zCenter]}
+        >
+          <boxGeometry args={[0.09, 0.09, penD + 0.1]} />
+          <meshStandardMaterial color="#3a3f46" roughness={0.5} metalness={0.4} />
+        </mesh>
+      ))}
+
+      {/* Stone corner posts */}
+      {(
+        [
+          [-halfW, zFar],
+          [halfW, zFar],
+        ] as const
+      ).map(([x, z], i) => (
+        <mesh key={`post-${i}`} position={[x, (floorThickness + barHeight + 0.15) / 2, z]}>
+          <boxGeometry args={[0.24, floorThickness + barHeight + 0.15, 0.24]} />
+          <meshStandardMaterial color={STONE_DARK} roughness={0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
  * The toy world around the castle: meadow, path to the gate, pond, trees,
  * rolling hills, distant mountains, and a few clouds. Everything procedural
  * and cheap — unlit clouds, low-poly cones and squashed spheres.
@@ -201,6 +276,7 @@ export function CastleArena() {
       </mesh>
 
       <Landscape />
+      <JailPen />
 
       {/* Walls */}
       <mesh

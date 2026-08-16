@@ -48,6 +48,18 @@ export const TUNING = {
     ceilingHeight: 6.5,
   },
 
+  /** The jail pen attached behind the far castle wall where prisoners wait. */
+  prison: {
+    /** Pen width (x). Prisoners line up across it. */
+    innerWidth: 4.4,
+    /** Pen depth (z), extending away from the far wall. */
+    depth: 1.6,
+    /** Raised stone floor slab height. */
+    floorThickness: 0.12,
+    /** Iron bar height around the pen. */
+    barHeight: 1.15,
+  },
+
   throw: {
     /** Tap: upward pop range. */
     tapUpMin: 7.5,

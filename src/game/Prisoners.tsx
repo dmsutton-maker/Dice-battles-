@@ -5,7 +5,8 @@ import { PRISONER_COLORS, PrisonerColorId } from './colors';
 import { TUNING } from './tuning';
 
 const FLIGHT_SECONDS = 1.1;
-const FLIGHT_PEAK = 2.6;
+/** High enough that the leap clears the far wall + merlons on the way out. */
+const FLIGHT_PEAK = 3.0;
 
 interface PrisonersProps {
   /** Colors freed so far, in rescue order. Empty array = everyone back in prison. */
@@ -29,17 +30,19 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
 
   const prisonSlots = useMemo<Slot[]>(() => {
-    const z = -(innerDepth / 2 + wallThickness / 2);
-    // Spread the six figures across the far wall, whatever its width.
-    const usable = innerWidth - 0.5;
+    // Lined up inside the jail pen behind the far wall (see JailPen in
+    // CastleArena), standing on its raised floor slab.
+    const pen = TUNING.prison;
+    const z = -(innerDepth / 2 + wallThickness + pen.depth / 2);
+    const usable = pen.innerWidth - 0.8;
     const step = usable / (PRISONER_COLORS.length - 1);
     return PRISONER_COLORS.map((_c, i) => ({
       x: -usable / 2 + i * step,
-      y: wallHeight + 0.24,
+      y: pen.floorThickness,
       z,
-      facing: 0, // face the player
+      facing: 0, // face the player through the castle
     }));
-  }, [innerWidth, innerDepth, wallHeight, wallThickness]);
+  }, [innerDepth, wallThickness]);
 
   const freeSlots = useMemo<Slot[]>(() => {
     const xLeft = -(innerWidth / 2 + wallThickness / 2);
