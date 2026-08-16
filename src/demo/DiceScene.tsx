@@ -3,10 +3,13 @@ import * as CANNON from 'cannon-es';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { addTrayBodies, createPhysicsWorld } from '../physics/world';
-import { createDieBody, createDieMaterials, throwDie, topFaceColor } from '../dice/die';
-import { ColorDef } from '../game/colors';
+import { Arena } from '../arena/Arena';
+import { createDieBody, throwDie, topFaceColor } from '../dice/die';
+import { DieMesh } from '../dice/DieMesh';
+import { ColorDef, PrisonerColorId } from '../game/colors';
+import { Prisoners } from '../game/Prisoners';
 import { TUNING } from '../game/tuning';
+import { addTrayBodies, createPhysicsWorld } from '../physics/world';
 
 export interface SceneControls {
   /** Throw both dice. Pass a flick velocity for directional throws. */
@@ -18,6 +21,10 @@ interface DiceSceneProps {
   controlsRef: React.MutableRefObject<SceneControls | null>;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
+  /** Colors freed so far, in rescue order (drives the prisoner figures). */
+  freedOrder: PrisonerColorId[];
+  /** Increment to fire a celebratory camera shake (e.g. on each rescue). */
+  shakeSignal: number;
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
@@ -25,11 +32,19 @@ const DIE_START_POSITIONS: [number, number, number][] = [
   [1.1, TUNING.dieSize / 2, 2.4],
 ];
 
+const CAMERA_BASE = new THREE.Vector3(0, 10.5, 5.6);
+
 /**
- * The full 3D demo scene: physics world, tray, two dice, blob shadows,
- * settle detection, and collision haptics. Lives inside the r3f Canvas.
+ * The full 3D scene: physics world, castle arena, two dice, prisoners,
+ * blob shadows, settle detection, collision haptics, and camera shake.
  */
-export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
+export function DiceScene({
+  controlsRef,
+  onThrow,
+  onSettled,
+  freedOrder,
+  shakeSignal,
+}: DiceSceneProps) {
   const physics = useMemo(() => {
     const p = createPhysicsWorld();
     addTrayBodies(p);
@@ -37,25 +52,31 @@ export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
   }, []);
 
   const diceBodies = useMemo(
-    () => DIE_START_POSITIONS.map((pos) => {
-      const body = createDieBody(physics.dieMaterial, pos);
-      physics.world.addBody(body);
-      return body;
-    }),
+    () =>
+      DIE_START_POSITIONS.map((pos) => {
+        const body = createDieBody(physics.dieMaterial, pos);
+        physics.world.addBody(body);
+        return body;
+      }),
     [physics],
   );
 
-  const dieMaterials = useMemo(
-    () => DIE_START_POSITIONS.map(() => createDieMaterials()),
-    [],
-  );
-
-  const dieMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const dieMeshRefs = useRef<(THREE.Group | null)[]>([]);
   const shadowRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   // Settle tracking (mutable, not state — updated every frame).
   const stillFrames = useRef(0);
   const awaitingSettle = useRef(false);
+
+  // Camera shake amount, decays every frame.
+  const shake = useRef(0);
+  const lastShakeSignal = useRef(shakeSignal);
+  useEffect(() => {
+    if (shakeSignal !== lastShakeSignal.current) {
+      lastShakeSignal.current = shakeSignal;
+      shake.current = 1;
+    }
+  }, [shakeSignal]);
 
   // Collision haptics: light tick on hard impacts, throttled.
   useEffect(() => {
@@ -93,7 +114,7 @@ export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
     };
   }, [controlsRef, diceBodies, onThrow]);
 
-  useFrame((_state, delta) => {
+  useFrame((state, delta) => {
     physics.world.step(
       TUNING.physics.timeStep,
       Math.min(delta, 0.05),
@@ -129,6 +150,19 @@ export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
       if (speed > TUNING.settle.speedThreshold) allStill = false;
     });
 
+    // Camera shake with decay.
+    if (shake.current > 0.01) {
+      state.camera.position.set(
+        CAMERA_BASE.x + (Math.random() - 0.5) * 0.18 * shake.current,
+        CAMERA_BASE.y + (Math.random() - 0.5) * 0.12 * shake.current,
+        CAMERA_BASE.z + (Math.random() - 0.5) * 0.18 * shake.current,
+      );
+      shake.current *= 0.88;
+    } else if (shake.current !== 0) {
+      shake.current = 0;
+      state.camera.position.copy(CAMERA_BASE);
+    }
+
     if (awaitingSettle.current) {
       stillFrames.current = allStill ? stillFrames.current + 1 : 0;
       if (stillFrames.current >= TUNING.settle.stillFrames) {
@@ -148,58 +182,23 @@ export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
     }
   });
 
-  const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
-
   return (
     <>
-      <ambientLight intensity={1.1} />
-      <directionalLight position={[4, 10, 6]} intensity={2.6} />
-      <directionalLight position={[-6, 8, -4]} intensity={0.8} color="#bcd4ff" />
+      <hemisphereLight args={['#cfe4ff', '#6d5a3e', 0.9]} />
+      <directionalLight position={[4, 12, 6]} intensity={2.4} />
+      <directionalLight position={[-6, 8, -4]} intensity={0.7} color="#ffd9b0" />
 
-      {/* Tray floor */}
-      <mesh position={[0, -0.25, 0]}>
-        <boxGeometry
-          args={[innerWidth + wallThickness * 2, 0.5, innerDepth + wallThickness * 2]}
-        />
-        <meshStandardMaterial color="#caa96e" roughness={0.9} />
-      </mesh>
-
-      {/* Tray walls */}
-      {(
-        [
-          [-(innerWidth / 2 + wallThickness / 2), 0, innerDepth + wallThickness * 2, wallThickness],
-          [innerWidth / 2 + wallThickness / 2, 0, innerDepth + wallThickness * 2, wallThickness],
-        ] as const
-      ).map(([x, z, depth, width], i) => (
-        <mesh key={`side-${i}`} position={[x, wallHeight / 2, z]}>
-          <boxGeometry args={[width, wallHeight, depth]} />
-          <meshStandardMaterial color="#8a6a3b" roughness={0.85} />
-        </mesh>
-      ))}
-      {(
-        [
-          [-(innerDepth / 2 + wallThickness / 2)],
-          [innerDepth / 2 + wallThickness / 2],
-        ] as const
-      ).map(([z], i) => (
-        <mesh key={`end-${i}`} position={[0, wallHeight / 2, z]}>
-          <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-          <meshStandardMaterial color="#8a6a3b" roughness={0.85} />
-        </mesh>
-      ))}
+      <Arena />
+      <Prisoners freedOrder={freedOrder} />
 
       {/* Dice */}
-      {DIE_START_POSITIONS.map((pos, i) => (
-        <mesh
+      {DIE_START_POSITIONS.map((_pos, i) => (
+        <DieMesh
           key={`die-${i}`}
-          ref={(mesh) => {
+          ref={(mesh: THREE.Group | null) => {
             dieMeshRefs.current[i] = mesh;
           }}
-          position={pos}
-          material={dieMaterials[i]}
-        >
-          <boxGeometry args={[TUNING.dieSize, TUNING.dieSize, TUNING.dieSize]} />
-        </mesh>
+        />
       ))}
 
       {/* Blob shadows */}

@@ -3,22 +3,29 @@ import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
-import { ColorDef } from '../game/colors';
+import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import { TUNING } from '../game/tuning';
 import { DiceScene, SceneControls } from './DiceScene';
 
 /**
- * Dice-feel demo screen: full-screen 3D tray with a gesture overlay.
+ * Dice demo screen: full-screen castle arena with a gesture overlay.
  *
  * - Touch down anywhere = throw (instant, so rapid tapping = rolling frenzy).
  * - Release with speed = directional flick that steers the throw.
- * - On settle: haptic + the two rolled colors shown at the top; a MATCH
- *   banner when both faces agree (the moment that will free a prisoner).
+ * - Rolling both dice the same color rescues that prisoner from the far
+ *   battlement. Rescue all six to win; the next tap starts a fresh battle.
  */
 export function DiceDemoScreen() {
   const controlsRef = useRef<SceneControls | null>(null);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
+  const [freedOrder, setFreedOrder] = useState<PrisonerColorId[]>([]);
+  const [won, setWon] = useState(false);
+  const [shakeSignal, setShakeSignal] = useState(0);
+
+  // Refs mirroring state that gesture callbacks need synchronously.
+  const wonRef = useRef(false);
+  const freedRef = useRef<PrisonerColorId[]>([]);
 
   const handleThrow = useCallback(() => {
     setRolling(true);
@@ -29,13 +36,35 @@ export function DiceDemoScreen() {
     setRolling(false);
     setRolledFaces(faces);
     const isMatch = faces.length === 2 && faces[0].id === faces[1].id;
-    if (isMatch) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
-      );
-    } else {
+    if (!isMatch) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      return;
     }
+    const color = faces[0].id;
+    if (freedRef.current.includes(color)) {
+      // Already rescued this color — Classic mode: nothing happens.
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      return;
+    }
+    const next = [...freedRef.current, color];
+    freedRef.current = next;
+    setFreedOrder(next);
+    setShakeSignal((s) => s + 1);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
+    if (next.length === PRISONER_COLORS.length) {
+      wonRef.current = true;
+      setWon(true);
+    }
+  }, []);
+
+  const resetBattle = useCallback(() => {
+    wonRef.current = false;
+    freedRef.current = [];
+    setWon(false);
+    setFreedOrder([]);
+    setRolledFaces(null);
   }, []);
 
   const panResponder = useRef(
@@ -44,6 +73,9 @@ export function DiceDemoScreen() {
       onMoveShouldSetPanResponder: () => true,
       // Throw on touch-down so rapid tapping feels instant.
       onPanResponderGrant: () => {
+        if (wonRef.current) {
+          resetBattle();
+        }
         controlsRef.current?.throwAll();
       },
       // A fast release re-throws as a directional flick.
@@ -77,11 +109,13 @@ export function DiceDemoScreen() {
           camera.lookAt(0, 0, -0.2);
         }}
       >
-        <color attach="background" args={['#1b1430']} />
+        <color attach="background" args={['#2a2145']} />
         <DiceScene
           controlsRef={controlsRef}
           onThrow={handleThrow}
           onSettled={handleSettled}
+          freedOrder={freedOrder}
+          shakeSignal={shakeSignal}
         />
       </Canvas>
 
@@ -91,6 +125,9 @@ export function DiceDemoScreen() {
       {/* HUD */}
       <View pointerEvents="none" style={styles.hud}>
         <Text style={styles.title}>DICE BATTLES</Text>
+        <Text style={styles.rescueCount}>
+          {freedOrder.length} / {PRISONER_COLORS.length} RESCUED
+        </Text>
         <View style={styles.resultRow}>
           {rolledFaces ? (
             <>
@@ -102,7 +139,7 @@ export function DiceDemoScreen() {
               ))}
               <Text style={[styles.resultText, isMatch && styles.matchText]}>
                 {isMatch
-                  ? `${rolledFaces[0].label.toUpperCase()} MATCH!`
+                  ? `${rolledFaces[0].label.toUpperCase()} RESCUED!`
                   : `${rolledFaces[0].label} · ${rolledFaces[1].label}`}
               </Text>
             </>
@@ -113,6 +150,14 @@ export function DiceDemoScreen() {
           )}
         </View>
       </View>
+
+      {/* Win overlay */}
+      {won && (
+        <View pointerEvents="none" style={styles.winOverlay}>
+          <Text style={styles.winTitle}>ALL PRISONERS FREED!</Text>
+          <Text style={styles.winSubtitle}>Tap to battle again</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -120,14 +165,14 @@ export function DiceDemoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1b1430',
+    backgroundColor: '#2a2145',
   },
   canvas: {
     flex: 1,
   },
   hud: {
     position: 'absolute',
-    top: 64,
+    top: 60,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -138,10 +183,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 4,
   },
+  rescueCount: {
+    color: '#ffd23d',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginTop: 4,
+  },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
+    marginTop: 10,
     minHeight: 30,
   },
   swatch: {
@@ -166,5 +218,25 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.55)',
     fontSize: 15,
     fontWeight: '500',
+  },
+  winOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(20,12,40,0.55)',
+  },
+  winTitle: {
+    color: '#ffd23d',
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  winSubtitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
   },
 });
