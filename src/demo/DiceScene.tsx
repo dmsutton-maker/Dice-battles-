@@ -18,8 +18,13 @@ import { cameraBase } from './cameraFit';
 import { CameraRig } from './CameraRig';
 
 export interface SceneControls {
-  /** Throw both dice. Pass a flick velocity for directional throws. */
-  throwAll: (flick?: { x: number; z: number }) => void;
+  /**
+   * Throw both dice. Pass a flick velocity for directional throws. Reports
+   * whether the throw went out now or was queued behind a roll in
+   * progress — the gesture layer needs to know, because a swipe's release
+   * must not turn into a second roll when its touch-down already threw.
+   */
+  throwAll: (flick?: { x: number; z: number }) => 'launched' | 'queued';
 }
 
 interface DiceSceneProps {
@@ -171,9 +176,10 @@ export function DiceScene({
         // queued rather than dropped so rapid tapping still feels alive.
         if (awaitingSettle.current) {
           queuedThrow.current = { flick };
-          return;
+          return 'queued';
         }
         launch(flick);
+        return 'launched';
       },
     };
     launchRef.current = launch;

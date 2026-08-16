@@ -58,19 +58,26 @@ function ZoneView({
   phaseRef,
   onRematch,
 }: ZoneViewProps) {
+  /** Did this gesture's touch-down actually launch a roll? */
+  const threwOnTouchDown = useRef(false);
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
+        threwOnTouchDown.current = false;
         if (phaseRef.current === 'battle') {
-          controlsRef.current?.throwAll();
+          threwOnTouchDown.current =
+            controlsRef.current?.throwAll() === 'launched';
         } else if (phaseRef.current === 'over') {
           onRematch();
         }
       },
+      // A swipe that already threw on touch-down must not throw again; the
+      // flick only aims a throw still queued behind a roll in progress.
       onPanResponderRelease: (_event, gesture) => {
         if (phaseRef.current !== 'battle') return;
+        if (threwOnTouchDown.current) return;
         const speed = Math.hypot(gesture.vx, gesture.vy);
         if (speed < TUNING.throw.flickThreshold) return;
         const scale = TUNING.throw.flickScale;

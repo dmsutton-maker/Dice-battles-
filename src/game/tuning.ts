@@ -86,6 +86,13 @@ export const TUNING = {
     flickUp: 6.5,
     /** Gesture speed (pt/ms) above which a release counts as a flick. */
     flickThreshold: 0.35,
+    /**
+     * NOTE: a swipe throws on touch-down and reports its direction only on
+     * release, so an aimed throw applies to the NEXT roll (the one queued
+     * behind the roll in flight), never to dice already tumbling — those
+     * are binding. Nudging airborne dice was tried and rejected: at flick
+     * strength it punched them out of the tray in ~4% of throws.
+     */
     /** Tumble: random angular speed per axis (rad/s). */
     spinMin: 12,
     spinMax: 28,

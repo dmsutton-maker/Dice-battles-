@@ -142,6 +142,8 @@ export function DiceDemoScreen() {
   const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const lastSplash = useRef(0);
+  /** Did this gesture's touch-down actually launch a roll? */
+  const threwOnTouchDown = useRef(false);
 
   const setPhaseBoth = useCallback((next: Phase) => {
     phaseRef.current = next;
@@ -519,18 +521,23 @@ export function DiceDemoScreen() {
       // Throw on touch-down so rapid tapping feels instant.
       onPanResponderGrant: () => {
         const current = phaseRef.current;
+        threwOnTouchDown.current = false;
         if (current === 'pick') {
           startCountdown();
         } else if (current === 'battle') {
-          controlsRef.current?.throwAll();
+          threwOnTouchDown.current =
+            controlsRef.current?.throwAll() === 'launched';
         } else if (current === 'won' || current === 'lost' || current === 'tie') {
           startCountdown();
         }
         // arm/go: inputs locked during the ritual.
       },
-      // A fast release re-throws as a directional flick.
+      // A swipe already threw on touch-down, so its release must NOT throw
+      // again — those dice are airborne and binding. The flick only aims a
+      // throw that is still waiting its turn behind a roll in progress.
       onPanResponderRelease: (_event, gesture) => {
         if (phaseRef.current !== 'battle') return;
+        if (threwOnTouchDown.current) return;
         const speed = Math.hypot(gesture.vx, gesture.vy);
         if (speed < TUNING.throw.flickThreshold) return;
         const scale = TUNING.throw.flickScale;
