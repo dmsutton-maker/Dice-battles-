@@ -98,7 +98,8 @@ battle zone is a second `DiceScene` with its own physics world.
 Mystery Arena teaser (700 🏆). Future arenas/obstacles/treasures slot into
 `src/game/progress.ts` TIERS + the arena registry.
 
-**v2:** Ultimate / Skirmish / Color War modes; nearby multi-device play.
+**v2:** ✅ Ultimate / Skirmish / Color War modes (vs AI; mode picker on the
+start screen). Remaining: nearby multi-device play.
 
 **v3:** rewarded ads at natural breaks, remove-ads IAP, cosmetic dice skins
 and battlefield themes. No ad SDK before v3.

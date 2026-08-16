@@ -1,17 +1,16 @@
 import { useFrame } from '@react-three/fiber/native';
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { PRISONER_COLORS, PrisonerColorId } from './colors';
+import { PrisonerUnit, Station } from './modes';
 import { TUNING } from './tuning';
 
-/** Long jailbreak leap: across the whole castle to the player's retreat. */
 const FLIGHT_SECONDS = 1.4;
 /** High enough to clear BOTH castle walls + merlons along the way. */
 const FLIGHT_PEAK = 3.4;
 
 interface PrisonersProps {
-  /** Colors freed so far, in rescue order. Empty array = everyone back in prison. */
-  freedOrder: PrisonerColorId[];
+  /** The full lineup with each figure's current station. */
+  units: PrisonerUnit[];
 }
 
 interface Slot {
@@ -21,116 +20,135 @@ interface Slot {
   facing: number;
 }
 
+function stationKey(s: Station): string {
+  return `${s.kind}:${s.index}`;
+}
+
 /**
- * The six prisoners. They wait on the far battlement (the "prison"), and a
- * rescued prisoner leaps off the wall in an arc to a celebration spot on a
- * side wall, where it bounces happily. Toy-soldier pawn look: round base,
- * capsule body, head — all in the prisoner's color.
+ * Generic prisoner-figure animator. Each unit stands at a station (jail pen,
+ * player retreat towel, or the far battlement where Sir Rollsalot parades
+ * his captures). When a unit's station changes, the figure leaps there in a
+ * spinning arc — including BACK to jail in Ultimate mode.
  */
-export function Prisoners({ freedOrder }: PrisonersProps) {
+export function Prisoners({ units }: PrisonersProps) {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
 
-  const prisonSlots = useMemo<Slot[]>(() => {
-    // Lined up inside the jail pen behind the far wall (see JailPen in
-    // CastleArena), standing on its raised floor slab.
+  const jailSlots = useMemo<Slot[]>(() => {
     const pen = TUNING.prison;
     const z = -(innerDepth / 2 + wallThickness + pen.depth / 2);
     const usable = pen.innerWidth - 0.8;
-    const step = usable / (PRISONER_COLORS.length - 1);
-    return PRISONER_COLORS.map((_c, i) => ({
+    const step = usable / 5;
+    return Array.from({ length: 6 }, (_v, i) => ({
       x: -usable / 2 + i * step,
       y: pen.platformHeight,
       z,
-      facing: 0, // face the player through the castle
+      facing: 0,
     }));
   }, [innerDepth, wallThickness]);
 
-  const freeSlots = useMemo<Slot[]>(() => {
-    // The freedom retreat on the player's side of the castle — freed
-    // prisoners leap the whole castle to reach their rescuer and celebrate
-    // on the beach towels (positions match RetreatGarden in CastleArena).
+  const retreatSlots = useMemo<Slot[]>(() => {
     const towelXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
-    return towelXs.map((x) => ({
-      x,
-      y: 0.03,
-      z: 6.4,
-      facing: 0, // face the castle they escaped (and the player's dice)
-    }));
+    return towelXs.map((x) => ({ x, y: 0.03, z: 6.4, facing: 0 }));
   }, []);
 
-  const groupRefs = useRef<(THREE.Group | null)[]>([]);
-  const balloonRefs = useRef<(THREE.Group | null)[]>([]);
-  // Flight start time (clock seconds) per color id; cleared on reset.
-  const flightStarts = useRef<Map<PrisonerColorId, number>>(new Map());
+  const wallSlots = useMemo<Slot[]>(() => {
+    // Sir Rollsalot parades captured prisoners along the far battlement.
+    const z = -(innerDepth / 2 + wallThickness / 2);
+    const xs = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5];
+    return xs.map((x) => ({ x, y: wallHeight + 0.26, z, facing: 0 }));
+  }, [innerDepth, wallHeight, wallThickness]);
+
+  const slotFor = (s: Station): Slot => {
+    const list =
+      s.kind === 'jail' ? jailSlots : s.kind === 'retreat' ? retreatSlots : wallSlots;
+    return list[Math.min(s.index, list.length - 1)];
+  };
+
+  const groupRefs = useRef<Map<string, THREE.Group>>(new Map());
+  const balloonRefs = useRef<Map<string, THREE.Group>>(new Map());
+  /** Last known station per unit key, to detect moves. */
+  const lastStation = useRef<Map<string, string>>(new Map());
+  /** In-progress flights: from-slot, to-station, start clock time. */
+  const flights = useRef<Map<string, { from: Slot; start: number }>>(new Map());
 
   useFrame(({ clock }) => {
     const now = clock.elapsedTime;
-    if (freedOrder.length === 0 && flightStarts.current.size > 0) {
-      flightStarts.current.clear();
-    }
 
-    PRISONER_COLORS.forEach((color, i) => {
-      const group = groupRefs.current[i];
+    units.forEach((unit, i) => {
+      const group = groupRefs.current.get(unit.key);
       if (!group) return;
+      const balloon = balloonRefs.current.get(unit.key);
+      const target = slotFor(unit.station);
+      const stKey = stationKey(unit.station);
+      const prev = lastStation.current.get(unit.key);
 
-      const freedIndex = freedOrder.indexOf(color.id);
-      const prison = prisonSlots[i];
+      if (prev !== undefined && prev !== stKey) {
+        // Station changed: launch a flight from wherever the figure is now.
+        flights.current.set(unit.key, {
+          from: { x: group.position.x, y: group.position.y, z: group.position.z, facing: 0 },
+          start: now,
+        });
+      }
+      lastStation.current.set(unit.key, stKey);
 
-      const balloon = balloonRefs.current[i];
-      if (freedIndex === -1) {
-        // Waiting in prison: subtle nervous sway.
-        group.position.set(prison.x, prison.y, prison.z);
-        group.rotation.set(0, prison.facing + Math.sin(now * 2 + i) * 0.1, 0);
+      const flight = flights.current.get(unit.key);
+      if (flight) {
+        const t = Math.min((now - flight.start) / FLIGHT_SECONDS, 1);
+        if (t < 1) {
+          const ease = t * t * (3 - 2 * t);
+          const x = flight.from.x + (target.x - flight.from.x) * ease;
+          const z = flight.from.z + (target.z - flight.from.z) * ease;
+          const y =
+            flight.from.y +
+            (target.y - flight.from.y) * ease +
+            Math.sin(Math.PI * t) * FLIGHT_PEAK;
+          group.position.set(x, y, z);
+          group.rotation.set(0, t * Math.PI * 2, 0);
+          group.scale.setScalar(1.1);
+          if (balloon) balloon.visible = false;
+          return;
+        }
+        flights.current.delete(unit.key);
+      }
+
+      // Settled at the station: idle animation per station kind.
+      if (unit.station.kind === 'jail') {
+        group.position.set(target.x, target.y, target.z);
+        group.rotation.set(0, Math.sin(now * 2 + i) * 0.1, 0);
         group.scale.setScalar(1);
         if (balloon) balloon.visible = false;
-        return;
-      }
-
-      const target = freeSlots[freedIndex % freeSlots.length];
-      let start = flightStarts.current.get(color.id);
-      if (start === undefined) {
-        start = now;
-        flightStarts.current.set(color.id, start);
-      }
-      const t = Math.min((now - start) / FLIGHT_SECONDS, 1);
-
-      if (t < 1) {
-        // Arc leap from prison battlement to the celebration wall.
-        const ease = t * t * (3 - 2 * t); // smoothstep
-        const x = prison.x + (target.x - prison.x) * ease;
-        const z = prison.z + (target.z - prison.z) * ease;
-        const y =
-          prison.y +
-          (target.y - prison.y) * ease +
-          Math.sin(Math.PI * t) * FLIGHT_PEAK;
-        group.position.set(x, y, z);
-        group.rotation.set(0, prison.facing + t * Math.PI * 2, 0);
-        group.scale.setScalar(1.1);
-        if (balloon) balloon.visible = false;
-      } else {
-        // Celebrate at the retreat: bigger figure, happy bouncing, and a
-        // floating balloon in the prisoner's color so rescues are easy to
-        // spot at the bottom of the screen.
+      } else if (unit.station.kind === 'retreat') {
         const bounce = Math.abs(Math.sin(now * 5 + i * 1.3)) * 0.22;
         group.position.set(target.x, target.y + bounce, target.z);
-        group.rotation.set(0, target.facing + Math.sin(now * 3 + i) * 0.25, 0);
+        group.rotation.set(0, Math.sin(now * 3 + i) * 0.25, 0);
         group.scale.setScalar(1.35);
         if (balloon) {
           balloon.visible = true;
           balloon.position.y = 1.35 + Math.sin(now * 1.8 + i * 2) * 0.08;
           balloon.rotation.z = Math.sin(now * 1.2 + i) * 0.08;
         }
+      } else {
+        // Captured on the battlement: droopy little march in place.
+        group.position.set(
+          target.x,
+          target.y + Math.abs(Math.sin(now * 2.4 + i)) * 0.05,
+          target.z,
+        );
+        group.rotation.set(0.12, Math.sin(now * 1.5 + i) * 0.12, 0);
+        group.scale.setScalar(1.05);
+        if (balloon) balloon.visible = false;
       }
     });
   });
 
   return (
     <>
-      {PRISONER_COLORS.map((color, i) => (
+      {units.map((unit) => (
         <group
-          key={color.id}
+          key={unit.key}
           ref={(g) => {
-            groupRefs.current[i] = g;
+            if (g) groupRefs.current.set(unit.key, g);
+            else groupRefs.current.delete(unit.key);
           }}
         >
           {/* Base */}
@@ -142,7 +160,7 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
               must match the die stickers and HUD swatches precisely. */}
           <mesh position={[0, 0.34, 0]}>
             <capsuleGeometry args={[0.15, 0.28, 6, 12]} />
-            <meshBasicMaterial color={color.hex} toneMapped={false} />
+            <meshBasicMaterial color={unit.hex} toneMapped={false} />
           </mesh>
           {/* Head */}
           <mesh position={[0, 0.66, 0]}>
@@ -152,12 +170,13 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
           {/* Helmet cap — unlit exact palette hex, same reason as the body */}
           <mesh position={[0, 0.73, 0]}>
             <sphereGeometry args={[0.135, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
-            <meshBasicMaterial color={color.hex} toneMapped={false} />
+            <meshBasicMaterial color={unit.hex} toneMapped={false} />
           </mesh>
-          {/* Celebration balloon (visible once rescued) */}
+          {/* Celebration balloon (visible once safely at the retreat) */}
           <group
             ref={(g) => {
-              balloonRefs.current[i] = g;
+              if (g) balloonRefs.current.set(unit.key, g);
+              else balloonRefs.current.delete(unit.key);
             }}
             visible={false}
             position={[0, 1.35, 0]}
@@ -168,7 +187,7 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
             </mesh>
             <mesh scale={[1, 1.15, 1]}>
               <sphereGeometry args={[0.16, 12, 10]} />
-              <meshBasicMaterial color={color.hex} toneMapped={false} />
+              <meshBasicMaterial color={unit.hex} toneMapped={false} />
             </mesh>
           </group>
         </group>

@@ -95,6 +95,10 @@ function buildFitPoints(): FitPoint[] {
   add(-2.4, 1.7, 5.55, 0.97, 0.9, -0.95);
   add(2.4, 1.7, 5.55, 0.97, 0.9, -0.95);
 
+  // Captured prisoners paraded on the far battlement (Skirmish/Color War).
+  add(-2.5, wallHeight + 1.2, -(halfD + wallThickness / 2), 0.94, 0.8);
+  add(2.5, wallHeight + 1.2, -(halfD + wallThickness / 2), 0.94, 0.8);
+
   // Near wall top edge — must clear the bottom of the screen.
   add(0, wallHeight + 0.3, outerZ, 0.97, 0.9, -0.96);
 

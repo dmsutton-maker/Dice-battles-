@@ -9,7 +9,8 @@ import { ARENAS, ArenaId } from '../arena/arenas';
 import { TreasureChest } from '../arena/TreasureChest';
 import { createDieBody, throwDie, topFaceColor } from '../dice/die';
 import { DieMesh } from '../dice/DieMesh';
-import { ColorDef, PrisonerColorId } from '../game/colors';
+import { ColorDef } from '../game/colors';
+import { PrisonerUnit } from '../game/modes';
 import { Prisoners } from '../game/Prisoners';
 import { TUNING } from '../game/tuning';
 import { addTrayBodies, createPhysicsWorld } from '../physics/world';
@@ -28,8 +29,8 @@ interface DiceSceneProps {
   onSettled: (faces: ColorDef[]) => void;
   /** A die just went under in the moat (Hard mode). */
   onMoatSink?: () => void;
-  /** Colors freed so far, in rescue order (drives the prisoner figures). */
-  freedOrder: PrisonerColorId[];
+  /** The prisoner lineup with current stations (drives the figures). */
+  units: PrisonerUnit[];
   /** Increment to fire a celebratory camera shake (e.g. on each rescue). */
   shakeSignal: number;
   /** This round's obstacle placements. Remount the scene when it changes. */
@@ -55,7 +56,7 @@ export function DiceScene({
   onThrow,
   onSettled,
   onMoatSink,
-  freedOrder,
+  units,
   shakeSignal,
   layout,
   arenaId,
@@ -283,7 +284,7 @@ export function DiceScene({
 
       <ArenaComponent />
       {showTreasure && <TreasureChest />}
-      <Prisoners freedOrder={freedOrder} />
+      <Prisoners units={units} />
 
       {/* Difficulty obstacles */}
       {obstacles.mound && (

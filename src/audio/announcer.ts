@@ -25,6 +25,8 @@ export type VoiceCue =
   | 'hurry'
   | 'win'
   | 'lose'
+  | 'tie'
+  | 'wrong'
   | 'congrats';
 
 const CUE_SOURCES: Record<VoiceCue, number> = {
@@ -41,6 +43,8 @@ const CUE_SOURCES: Record<VoiceCue, number> = {
   hurry: require('../../assets/voice/hurry_up.wav'),
   win: require('../../assets/voice/you_win.wav'),
   lose: require('../../assets/voice/you_lose.wav'),
+  tie: require('../../assets/voice/its_a_tie.wav'),
+  wrong: require('../../assets/voice/wrong.wav'),
   congrats: require('../../assets/voice/congratulations.wav'),
 };
 
