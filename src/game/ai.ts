@@ -40,14 +40,14 @@ export interface AiOpponent {
 }
 
 export const AI_ROSTER: AiOpponent[] = [
+  { name: 'David', short: 'DAVID', emoji: '🎲' },
+  { name: 'Debra', short: 'DEBRA', emoji: '👑' },
+  { name: 'Lilly', short: 'LILLY', emoji: '🌸' },
+  { name: 'Sophia', short: 'SOPHIA', emoji: '⭐' },
+  { name: 'Marc', short: 'MARC', emoji: '🛡️' },
+  { name: 'AJ', short: 'AJ', emoji: '⚡' },
   { name: 'Sir Rollsalot', short: 'SIR R.', emoji: '⚔️' },
   { name: 'Lady Luckabelle', short: 'LADY L.', emoji: '🍀' },
-  { name: 'Baron von Bounce', short: 'BARON', emoji: '🎩' },
-  { name: 'Duchess Doubles', short: 'DUCHESS', emoji: '👑' },
-  { name: 'King Tumble', short: 'KING T.', emoji: '🤴' },
-  { name: 'Wizard Wobbles', short: 'WIZARD', emoji: '🧙' },
-  { name: 'Squire Shakes', short: 'SQUIRE', emoji: '🛡️' },
-  { name: 'Countess Clatter', short: 'COUNTESS', emoji: '💃' },
 ];
 
 export function pickOpponent(previous?: AiOpponent): AiOpponent {
