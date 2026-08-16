@@ -5,6 +5,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import { TUNING } from '../game/tuning';
+import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
 import { DiceScene, SceneControls } from './DiceScene';
 
 /**
@@ -110,7 +111,7 @@ export function DiceDemoScreen() {
           camera.lookAt(0, 0, -0.2);
         }}
       >
-        <color attach="background" args={['#2a2145']} />
+        <color attach="background" args={[ARENAS[CURRENT_ARENA].skyColor]} />
         <DiceScene
           controlsRef={controlsRef}
           onThrow={handleThrow}
@@ -170,7 +171,7 @@ export function DiceDemoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2a2145',
+    backgroundColor: '#8ec8f7',
   },
   canvas: {
     flex: 1,
@@ -183,10 +184,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    color: 'rgba(255,255,255,0.85)',
+    color: '#ffffff',
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 5,
+    textShadowColor: 'rgba(20,20,40,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   bottomHud: {
     position: 'absolute',
@@ -201,6 +205,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 2,
     marginTop: 6,
+    textShadowColor: 'rgba(20,20,40,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   resultRow: {
     flexDirection: 'row',
@@ -216,19 +223,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.7)',
   },
   resultText: {
-    color: 'rgba(255,255,255,0.9)',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
+    textShadowColor: 'rgba(20,20,40,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   matchText: {
     color: '#ffd23d',
     fontWeight: '900',
   },
   hint: {
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(255,255,255,0.95)',
     fontSize: 15,
     fontWeight: '500',
+    textShadowColor: 'rgba(20,20,40,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   winOverlay: {
     ...StyleSheet.absoluteFillObject,

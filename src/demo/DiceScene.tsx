@@ -3,7 +3,7 @@ import * as CANNON from 'cannon-es';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { Arena } from '../arena/Arena';
+import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
 import { createDieBody, throwDie, topFaceColor } from '../dice/die';
 import { DieMesh } from '../dice/DieMesh';
 import { ColorDef, PrisonerColorId } from '../game/colors';
@@ -33,6 +33,8 @@ const DIE_START_POSITIONS: [number, number, number][] = [
   [-0.9, TUNING.dieSize / 2, 2.2],
   [0.9, TUNING.dieSize / 2, 2.4],
 ];
+
+const ArenaComponent = ARENAS[CURRENT_ARENA].Component;
 
 /**
  * The full 3D scene: physics world, castle arena, two dice, prisoners,
@@ -204,7 +206,7 @@ export function DiceScene({
       <directionalLight position={[4, 12, 6]} intensity={1.9} />
       <directionalLight position={[-6, 8, -4]} intensity={0.6} color="#ffe4c4" />
 
-      <Arena />
+      <ArenaComponent />
       <Prisoners freedOrder={freedOrder} />
 
       {/* Dice */}
