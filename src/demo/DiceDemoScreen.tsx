@@ -25,7 +25,12 @@ import {
   AiDifficultyId,
   rollAiDice,
 } from '../game/ai';
-import { OBSTACLE_HINTS } from '../game/obstacles';
+import {
+  EMPTY_LAYOUT,
+  generateObstacleLayout,
+  OBSTACLE_HINTS,
+  ObstacleLayout,
+} from '../game/obstacles';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import { TUNING } from '../game/tuning';
 import { DiceScene, SceneControls } from './DiceScene';
@@ -60,11 +65,14 @@ export function DiceDemoScreen() {
   const [aiLastRoll, setAiLastRoll] = useState<[ColorDef, ColorDef] | null>(null);
   const [shakeSignal, setShakeSignal] = useState(0);
   const [callout, setCallout] = useState<{ key: number; text: string } | null>(null);
+  const [layout, setLayout] = useState<ObstacleLayout>(EMPTY_LAYOUT);
+  const [round, setRound] = useState(0);
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
 
   // Refs mirroring state that gesture/timer callbacks need synchronously.
   const phaseRef = useRef<Phase>('pick');
+  const difficultyRef = useRef<AiDifficultyId>('easy');
   const freedRef = useRef<PrisonerColorId[]>([]);
   const aiFreedRef = useRef<PrisonerColorId[]>([]);
   const countdownTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -121,6 +129,9 @@ export function DiceDemoScreen() {
 
   const startCountdown = useCallback(() => {
     resetRace();
+    // Fresh obstacle spots every battle.
+    setLayout(generateObstacleLayout(difficultyRef.current));
+    setRound((r) => r + 1);
     setCallout(null);
     setPhaseBoth('arm');
     playCue('ready');
@@ -279,7 +290,10 @@ export function DiceDemoScreen() {
       {Object.values(AI_DIFFICULTIES).map((d) => (
         <Pressable
           key={d.id}
-          onPress={() => setDifficulty(d.id)}
+          onPress={() => {
+            difficultyRef.current = d.id;
+            setDifficulty(d.id);
+          }}
           style={[
             styles.difficultyButton,
             difficulty === d.id && styles.difficultyButtonActive,
@@ -331,8 +345,8 @@ export function DiceDemoScreen() {
       >
         <color attach="background" args={[ARENAS[CURRENT_ARENA].skyColor]} />
         <DiceScene
-          key={difficulty}
-          difficulty={difficulty}
+          key={`${difficulty}-${round}`}
+          layout={layout}
           controlsRef={controlsRef}
           onThrow={handleThrow}
           onSettled={handleSettled}

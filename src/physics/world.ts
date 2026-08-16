@@ -1,5 +1,5 @@
 import * as CANNON from 'cannon-es';
-import { MOAT, MOUND, ObstacleConfig } from '../game/obstacles';
+import { EMPTY_LAYOUT, MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { TUNING } from '../game/tuning';
 
 export interface PhysicsWorld {
@@ -46,7 +46,7 @@ export function createPhysicsWorld(): PhysicsWorld {
  */
 export function addTrayBodies(
   physics: PhysicsWorld,
-  obstacles: ObstacleConfig = { mound: false, moat: false },
+  obstacles: ObstacleLayout = EMPTY_LAYOUT,
 ): void {
   const { world, trayMaterial } = physics;
   const { innerWidth, innerDepth, wallHeight, wallThickness, ceilingHeight } =
@@ -77,10 +77,11 @@ export function addTrayBodies(
   } else {
     // Floor with a square hole for the moat.
     const h = MOAT.size / 2;
-    const west = { from: -floorHalfW, to: MOAT.x - h };
-    const east = { from: MOAT.x + h, to: floorHalfW };
-    const north = { from: -floorHalfD, to: MOAT.z - h };
-    const south = { from: MOAT.z + h, to: floorHalfD };
+    const moat = obstacles.moat!;
+    const west = { from: -floorHalfW, to: moat.x - h };
+    const east = { from: moat.x + h, to: floorHalfW };
+    const north = { from: -floorHalfD, to: moat.z - h };
+    const south = { from: moat.z + h, to: floorHalfD };
     const strip = (
       x0: number,
       x1: number,
@@ -112,7 +113,11 @@ export function addTrayBodies(
       type: CANNON.Body.STATIC,
       material: moundMaterial,
       shape: new CANNON.Sphere(MOUND.radius),
-      position: new CANNON.Vec3(MOUND.x, -MOUND.buried, MOUND.z),
+      position: new CANNON.Vec3(
+        obstacles.mound!.x,
+        -MOUND.buried,
+        obstacles.mound!.z,
+      ),
     });
     world.addBody(mound);
   }

@@ -4,8 +4,7 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { playClack, playThrow } from '../audio/sounds';
-import { AiDifficultyId } from '../game/ai';
-import { MOAT, MOUND, OBSTACLES_BY_DIFFICULTY } from '../game/obstacles';
+import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
 import { createDieBody, throwDie, topFaceColor } from '../dice/die';
 import { DieMesh } from '../dice/DieMesh';
@@ -32,8 +31,8 @@ interface DiceSceneProps {
   freedOrder: PrisonerColorId[];
   /** Increment to fire a celebratory camera shake (e.g. on each rescue). */
   shakeSignal: number;
-  /** Difficulty decides the courtyard obstacles. Remount scene on change. */
-  difficulty: AiDifficultyId;
+  /** This round's obstacle placements. Remount the scene when it changes. */
+  layout: ObstacleLayout;
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
@@ -54,11 +53,11 @@ export function DiceScene({
   onMoatSink,
   freedOrder,
   shakeSignal,
-  difficulty,
+  layout,
 }: DiceSceneProps) {
-  // The parent remounts this scene (key=difficulty) when difficulty
-  // changes, so building the world once per mount is correct.
-  const obstacles = OBSTACLES_BY_DIFFICULTY[difficulty];
+  // The parent remounts this scene (key includes the round) whenever the
+  // layout changes, so building the world once per mount is correct.
+  const obstacles = layout;
   const physics = useMemo(() => {
     const p = createPhysicsWorld();
     addTrayBodies(p, obstacles);
@@ -173,9 +172,9 @@ export function DiceScene({
       // ~0.9s before being fished back out — so the player sees it drown.
       const now = Date.now();
       const inMoatZone =
-        obstacles.moat &&
-        Math.abs(body.position.x - MOAT.x) < MOAT.size / 2 + 0.15 &&
-        Math.abs(body.position.z - MOAT.z) < MOAT.size / 2 + 0.15;
+        obstacles.moat !== null &&
+        Math.abs(body.position.x - obstacles.moat.x) < MOAT.size / 2 + 0.15 &&
+        Math.abs(body.position.z - obstacles.moat.z) < MOAT.size / 2 + 0.15;
       const sinking = sinkUntil.current[i] > 0;
       if (!sinking && inMoatZone && body.position.y < 0.12) {
         sinkUntil.current[i] = now + 900;
@@ -279,13 +278,13 @@ export function DiceScene({
 
       {/* Difficulty obstacles */}
       {obstacles.mound && (
-        <mesh position={[MOUND.x, -MOUND.buried, MOUND.z]}>
+        <mesh position={[obstacles.mound.x, -MOUND.buried, obstacles.mound.z]}>
           <sphereGeometry args={[MOUND.radius, 20, 14]} />
           <meshStandardMaterial color="#7fae66" roughness={0.85} />
         </mesh>
       )}
       {obstacles.moat && (
-        <group position={[MOAT.x, 0, MOAT.z]}>
+        <group position={[obstacles.moat.x, 0, obstacles.moat.z]}>
           {/* Dark depths below, so a sinking die silhouettes against it */}
           <mesh position={[0, -1.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[MOAT.size + 0.3, MOAT.size + 0.3]} />
