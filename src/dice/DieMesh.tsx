@@ -31,18 +31,18 @@ export const DieMesh = forwardRef<THREE.Group>(function DieMesh(_props, ref) {
     () => new RoundedBoxGeometry(size, size, size, 4, size * 0.12),
     [size],
   );
-  // Emissive floor keeps the body reading as bright ivory at every angle —
-  // pure lit white was rendering castle-tan under the flat pipeline, with
-  // specular glints flashing white mid-tumble. Higher roughness kills the
-  // glints; the emissive term guarantees a minimum brightness.
+  // Near-self-lit body: which sides face the key light is roll luck, so a
+  // mostly-lit body makes one die randomly settle beige while the other
+  // reads white. A high neutral emissive floor keeps every die white from
+  // every angle, leaving only a whisper of shading for depth.
   const bodyMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         color: '#ffffff',
-        roughness: 0.6,
+        roughness: 0.65,
         metalness: 0,
-        emissive: '#fff6e8',
-        emissiveIntensity: 0.42,
+        emissive: '#ffffff',
+        emissiveIntensity: 0.72,
       }),
     [],
   );
