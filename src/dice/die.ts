@@ -1,0 +1,98 @@
+import * as CANNON from 'cannon-es';
+import * as THREE from 'three';
+import { ColorDef, DIE_FACE_COLORS } from '../game/colors';
+import { TUNING } from '../game/tuning';
+
+/** Local-space outward normals in BoxGeometry material-group order. */
+const FACE_NORMALS: readonly THREE.Vector3[] = [
+  new THREE.Vector3(1, 0, 0),
+  new THREE.Vector3(-1, 0, 0),
+  new THREE.Vector3(0, 1, 0),
+  new THREE.Vector3(0, -1, 0),
+  new THREE.Vector3(0, 0, 1),
+  new THREE.Vector3(0, 0, -1),
+];
+
+const scratchNormal = new THREE.Vector3();
+
+/** Which color face is pointing up for the given body orientation. */
+export function topFaceColor(quaternion: THREE.Quaternion): ColorDef {
+  let bestIndex = 0;
+  let bestDot = -Infinity;
+  for (let i = 0; i < FACE_NORMALS.length; i++) {
+    const dot = scratchNormal.copy(FACE_NORMALS[i]).applyQuaternion(quaternion).y;
+    if (dot > bestDot) {
+      bestDot = dot;
+      bestIndex = i;
+    }
+  }
+  return DIE_FACE_COLORS[bestIndex];
+}
+
+/** One material per face, in BoxGeometry group order. Shared per die. */
+export function createDieMaterials(): THREE.MeshStandardMaterial[] {
+  return DIE_FACE_COLORS.map(
+    (color) =>
+      new THREE.MeshStandardMaterial({
+        color: color.hex,
+        roughness: 0.32,
+        metalness: 0.04,
+      }),
+  );
+}
+
+export function createDieBody(
+  material: CANNON.Material,
+  position: [number, number, number],
+): CANNON.Body {
+  const half = TUNING.dieSize / 2;
+  const body = new CANNON.Body({
+    mass: TUNING.physics.dieMass,
+    material,
+    shape: new CANNON.Box(new CANNON.Vec3(half, half, half)),
+    position: new CANNON.Vec3(...position),
+    linearDamping: TUNING.physics.linearDamping,
+    angularDamping: TUNING.physics.angularDamping,
+    allowSleep: true,
+    sleepSpeedLimit: TUNING.physics.sleepSpeedLimit,
+    sleepTimeLimit: TUNING.physics.sleepTimeLimit,
+  });
+  return body;
+}
+
+const rand = (min: number, max: number) => min + Math.random() * (max - min);
+const randSign = () => (Math.random() < 0.5 ? -1 : 1);
+
+export interface ThrowInput {
+  /** World-space horizontal velocity from a flick; omitted for a plain tap. */
+  flickVelocity?: { x: number; z: number };
+}
+
+/**
+ * Launch a die: a tap pops it up with random scatter and spin; a flick adds
+ * directional velocity so every roll looks hand-thrown and different.
+ */
+export function throwDie(body: CANNON.Body, input: ThrowInput = {}): void {
+  const t = TUNING.throw;
+  body.wakeUp();
+
+  if (input.flickVelocity) {
+    body.velocity.set(
+      input.flickVelocity.x + rand(-1, 1),
+      t.flickUp + rand(0, 2),
+      input.flickVelocity.z + rand(-1, 1),
+    );
+  } else {
+    body.velocity.set(
+      rand(-t.tapLateral, t.tapLateral),
+      rand(t.tapUpMin, t.tapUpMax),
+      rand(-t.tapLateral, t.tapLateral),
+    );
+  }
+
+  body.angularVelocity.set(
+    randSign() * rand(t.spinMin, t.spinMax),
+    randSign() * rand(t.spinMin, t.spinMax),
+    randSign() * rand(t.spinMin, t.spinMax),
+  );
+}

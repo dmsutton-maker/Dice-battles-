@@ -1,0 +1,77 @@
+/**
+ * Every knob that affects how the dice FEEL, in one place.
+ *
+ * This file is the iteration surface for the dice-feel milestone: tweak,
+ * reload in Expo Go, re-roll. Units are world units (1 die ≈ 0.9 units).
+ * Gravity is deliberately much stronger than 9.82 — at dice scale, real
+ * gravity feels floaty; snappy arcade gravity is what makes rolls read as
+ * quick and physical.
+ */
+export const TUNING = {
+  /** World-units size of a die cube. */
+  dieSize: 0.9,
+
+  /** Stronger-than-real gravity for snappy, weighty tumbles. */
+  gravity: -34,
+
+  physics: {
+    /** Fixed physics timestep (s). */
+    timeStep: 1 / 60,
+    /** Max catch-up substeps per frame. */
+    maxSubSteps: 4,
+    dieMass: 1,
+    linearDamping: 0.08,
+    angularDamping: 0.1,
+    /** Die vs tray contact. */
+    trayFriction: 0.24,
+    trayRestitution: 0.42,
+    /** Die vs die contact. */
+    dieFriction: 0.1,
+    dieRestitution: 0.5,
+    sleepSpeedLimit: 0.3,
+    sleepTimeLimit: 0.35,
+  },
+
+  tray: {
+    /** Inner playable area (x = width, z = depth toward the player). */
+    innerWidth: 6,
+    innerDepth: 8,
+    wallHeight: 1.4,
+    wallThickness: 0.5,
+    /** Invisible ceiling so wild flicks never leave the camera view. */
+    ceilingHeight: 6.5,
+  },
+
+  throw: {
+    /** Tap: upward pop range. */
+    tapUpMin: 7.5,
+    tapUpMax: 10.5,
+    /** Tap: random sideways scatter. */
+    tapLateral: 3.2,
+    /** Flick: gesture velocity (pt/ms) -> world velocity multiplier. */
+    flickScale: 9,
+    /** Flick: max horizontal world speed. */
+    flickMaxSpeed: 14,
+    /** Flick: fixed upward pop added to any flick. */
+    flickUp: 6.5,
+    /** Gesture speed (pt/ms) above which a release counts as a flick. */
+    flickThreshold: 0.35,
+    /** Tumble: random angular speed per axis (rad/s). */
+    spinMin: 8,
+    spinMax: 24,
+  },
+
+  settle: {
+    /** Both dice slower than this (linear + angular) counts as still. */
+    speedThreshold: 0.28,
+    /** Consecutive still frames before we call the roll settled. */
+    stillFrames: 14,
+  },
+
+  haptics: {
+    /** Min impact velocity along contact normal to fire a tick. */
+    collisionMinImpact: 2.2,
+    /** Min ms between collision haptic ticks. */
+    collisionCooldownMs: 90,
+  },
+} as const;
