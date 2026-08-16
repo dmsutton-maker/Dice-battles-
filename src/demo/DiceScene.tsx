@@ -26,6 +26,8 @@ interface DiceSceneProps {
   controlsRef: React.MutableRefObject<SceneControls | null>;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
+  /** A die just went under in the moat (Hard mode). */
+  onMoatSink?: () => void;
   /** Colors freed so far, in rescue order (drives the prisoner figures). */
   freedOrder: PrisonerColorId[];
   /** Increment to fire a celebratory camera shake (e.g. on each rescue). */
@@ -49,6 +51,7 @@ export function DiceScene({
   controlsRef,
   onThrow,
   onSettled,
+  onMoatSink,
   freedOrder,
   shakeSignal,
   difficulty,
@@ -79,6 +82,12 @@ export function DiceScene({
   // Settle tracking (mutable, not state — updated every frame).
   const stillFrames = useRef(0);
   const awaitingSettle = useRef(false);
+
+  // Moat sinking: timestamp until which each die stays underwater before
+  // being fished out; 0 = not sinking. Splash ring animation progress.
+  const sinkUntil = useRef<number[]>([0, 0]);
+  const splashRef = useRef<THREE.Mesh | null>(null);
+  const splashT = useRef(1); // >= 1 means idle
 
   // Camera shake amount, decays every frame.
   const shake = useRef(0);
@@ -159,26 +168,39 @@ export function DiceScene({
         material.opacity = 0.28 * Math.max(1 - height * 0.18, 0.25);
       }
 
-      // Moat capture: the instant a die dips under the water surface it is
-      // "swallowed" — otherwise frenzied re-throws can pop it back out of
-      // the hole before it sinks. Plus the general out-of-bounds safety net.
-      const sankInMoat =
+      // Moat sinking: when a die dips under the surface it is marked as
+      // sinking and left to fall VISIBLY through the translucent water for
+      // ~0.9s before being fished back out — so the player sees it drown.
+      const now = Date.now();
+      const inMoatZone =
         obstacles.moat &&
-        body.position.y < 0.12 &&
         Math.abs(body.position.x - MOAT.x) < MOAT.size / 2 + 0.15 &&
         Math.abs(body.position.z - MOAT.z) < MOAT.size / 2 + 0.15;
-      if (
-        sankInMoat ||
-        body.position.y < -1 ||
-        Math.abs(body.position.x) > TUNING.tray.innerWidth / 2 + 0.8 ||
-        Math.abs(body.position.z) > TUNING.tray.innerDepth / 2 + 0.8
-      ) {
+      const sinking = sinkUntil.current[i] > 0;
+      if (!sinking && inMoatZone && body.position.y < 0.12) {
+        sinkUntil.current[i] = now + 900;
+        splashT.current = 0; // kick off the splash ring
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+        onMoatSink?.();
+      }
+      const respawn = () => {
         const [startX, startY, startZ] = DIE_START_POSITIONS[i];
         body.position.set(startX, startY + 1.5, startZ);
         body.velocity.set(0, 0, 0);
         body.angularVelocity.set(0, 0, 0);
         body.wakeUp();
-        // Fell in the moat (or escaped): splash-thunk feedback.
+        sinkUntil.current[i] = 0;
+      };
+      if (sinking) {
+        // Slow the fall so the die lingers visibly under the water.
+        body.velocity.y = Math.max(body.velocity.y, -1.6);
+        if (now >= sinkUntil.current[i] || body.position.y < -3) respawn();
+      } else if (
+        body.position.y < -1 ||
+        Math.abs(body.position.x) > TUNING.tray.innerWidth / 2 + 0.8 ||
+        Math.abs(body.position.z) > TUNING.tray.innerDepth / 2 + 0.8
+      ) {
+        respawn();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       }
 
@@ -186,6 +208,18 @@ export function DiceScene({
         body.velocity.length() + body.angularVelocity.length() * 0.5;
       if (speed > TUNING.settle.speedThreshold) allStill = false;
     });
+
+    // Splash ring animation over the moat.
+    if (splashRef.current && splashT.current < 1) {
+      splashT.current = Math.min(splashT.current + delta / 0.7, 1);
+      const t = splashT.current;
+      splashRef.current.visible = true;
+      splashRef.current.scale.setScalar(0.4 + t * 1.5);
+      (splashRef.current.material as THREE.MeshBasicMaterial).opacity =
+        0.85 * (1 - t);
+    } else if (splashRef.current) {
+      splashRef.current.visible = false;
+    }
 
     // Camera shake with decay, offset from the auto-fitted base position.
     if (shake.current > 0.01) {
@@ -252,10 +286,37 @@ export function DiceScene({
       )}
       {obstacles.moat && (
         <group position={[MOAT.x, 0, MOAT.z]}>
-          {/* Water surface hiding the real hole in the physics floor */}
+          {/* Dark depths below, so a sinking die silhouettes against it */}
+          <mesh position={[0, -1.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[MOAT.size + 0.3, MOAT.size + 0.3]} />
+            <meshBasicMaterial color="#0a2c4a" />
+          </mesh>
+          {/* Translucent water surface — the die is visible sinking under */}
           <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[MOAT.size + 0.25, MOAT.size + 0.25]} />
-            <meshStandardMaterial color="#3f9adf" roughness={0.15} />
+            <meshStandardMaterial
+              color="#2f9be2"
+              roughness={0.12}
+              transparent
+              opacity={0.62}
+            />
+          </mesh>
+          {/* Foam ring marks it unmistakably as water */}
+          <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[MOAT.size / 2 - 0.06, MOAT.size / 2 + 0.06, 4, 1]} />
+            <meshBasicMaterial color="#dff2ff" transparent opacity={0.85} />
+          </mesh>
+          {/* Splash ring (animated on sink) */}
+          <mesh
+            ref={(m) => {
+              splashRef.current = m;
+            }}
+            visible={false}
+            position={[0, 0.06, 0]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <ringGeometry args={[0.42, 0.55, 24]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0} />
           </mesh>
           {/* Stone rim */}
           {(

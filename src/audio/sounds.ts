@@ -3,6 +3,7 @@ import {
   createAudioPlayer,
   setAudioModeAsync,
 } from 'expo-audio';
+import { getAudioSettings } from './settings';
 
 /**
  * Sound-effect engine. All sounds are REAL recordings (see
@@ -26,11 +27,13 @@ const clackSources = [
 ];
 const cheerSource = require('../../assets/sounds/cheer.wav');
 const fanfareSource = require('../../assets/sounds/fanfare.wav');
+const musicSource = require('../../assets/sounds/music.m4a');
 
 let throwPool: AudioPlayer[] = [];
 let clackPool: AudioPlayer[] = [];
 let cheerPlayer: AudioPlayer | null = null;
 let fanfarePlayer: AudioPlayer | null = null;
+let musicPlayer: AudioPlayer | null = null;
 let throwIndex = 0;
 let clackIndex = 0;
 let initialized = false;
@@ -62,17 +65,21 @@ export function initSounds(): void {
     cheerPlayer.volume = 0.9;
     fanfarePlayer = createAudioPlayer(fanfareSource);
     fanfarePlayer.volume = 1.0;
+    musicPlayer = createAudioPlayer(musicSource);
+    musicPlayer.loop = true;
+    musicPlayer.volume = 0.4;
   } catch {
     // Sounds are garnish — never let audio failures break the game.
     throwPool = [];
     clackPool = [];
     cheerPlayer = null;
     fanfarePlayer = null;
+    musicPlayer = null;
   }
 }
 
 function replay(player: AudioPlayer | null): void {
-  if (!player) return;
+  if (!player || !getAudioSettings().sfx) return;
   try {
     player.seekTo(0).catch(() => {});
     player.play();
@@ -103,4 +110,25 @@ export function playCheer(): void {
 /** Victory fanfare — all prisoners freed. */
 export function playFanfare(): void {
   replay(fanfarePlayer);
+}
+
+/** Start (or resume) the background music loop, if enabled in settings. */
+export function startMusic(): void {
+  if (!musicPlayer || !getAudioSettings().music) return;
+  try {
+    musicPlayer.play();
+  } catch {
+    // ignore — see initSounds
+  }
+}
+
+/** Stop the background music loop. */
+export function stopMusic(): void {
+  if (!musicPlayer) return;
+  try {
+    musicPlayer.pause();
+    musicPlayer.seekTo(0).catch(() => {});
+  } catch {
+    // ignore
+  }
 }

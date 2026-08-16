@@ -59,6 +59,7 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
   }, []);
 
   const groupRefs = useRef<(THREE.Group | null)[]>([]);
+  const balloonRefs = useRef<(THREE.Group | null)[]>([]);
   // Flight start time (clock seconds) per color id; cleared on reset.
   const flightStarts = useRef<Map<PrisonerColorId, number>>(new Map());
 
@@ -75,11 +76,13 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
       const freedIndex = freedOrder.indexOf(color.id);
       const prison = prisonSlots[i];
 
+      const balloon = balloonRefs.current[i];
       if (freedIndex === -1) {
         // Waiting in prison: subtle nervous sway.
         group.position.set(prison.x, prison.y, prison.z);
         group.rotation.set(0, prison.facing + Math.sin(now * 2 + i) * 0.1, 0);
         group.scale.setScalar(1);
+        if (balloon) balloon.visible = false;
         return;
       }
 
@@ -102,11 +105,21 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
           Math.sin(Math.PI * t) * FLIGHT_PEAK;
         group.position.set(x, y, z);
         group.rotation.set(0, prison.facing + t * Math.PI * 2, 0);
+        group.scale.setScalar(1.1);
+        if (balloon) balloon.visible = false;
       } else {
-        // Celebrate: happy bouncing on the wall.
+        // Celebrate at the retreat: bigger figure, happy bouncing, and a
+        // floating balloon in the prisoner's color so rescues are easy to
+        // spot at the bottom of the screen.
         const bounce = Math.abs(Math.sin(now * 5 + i * 1.3)) * 0.22;
         group.position.set(target.x, target.y + bounce, target.z);
         group.rotation.set(0, target.facing + Math.sin(now * 3 + i) * 0.25, 0);
+        group.scale.setScalar(1.35);
+        if (balloon) {
+          balloon.visible = true;
+          balloon.position.y = 1.35 + Math.sin(now * 1.8 + i * 2) * 0.08;
+          balloon.rotation.z = Math.sin(now * 1.2 + i) * 0.08;
+        }
       }
     });
   });
@@ -141,6 +154,23 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
             <sphereGeometry args={[0.135, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
             <meshBasicMaterial color={color.hex} toneMapped={false} />
           </mesh>
+          {/* Celebration balloon (visible once rescued) */}
+          <group
+            ref={(g) => {
+              balloonRefs.current[i] = g;
+            }}
+            visible={false}
+            position={[0, 1.35, 0]}
+          >
+            <mesh position={[0, -0.28, 0]}>
+              <cylinderGeometry args={[0.008, 0.008, 0.55, 4]} />
+              <meshBasicMaterial color="#f5f5f5" />
+            </mesh>
+            <mesh scale={[1, 1.15, 1]}>
+              <sphereGeometry args={[0.16, 12, 10]} />
+              <meshBasicMaterial color={color.hex} toneMapped={false} />
+            </mesh>
+          </group>
         </group>
       ))}
     </>

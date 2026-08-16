@@ -4,7 +4,21 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
-import { initSounds, playCheer, playFanfare, playThrow } from '../audio/sounds';
+import { announce, stopAnnouncer } from '../audio/announcer';
+import {
+  AudioSettings,
+  getAudioSettings,
+  loadAudioSettings,
+  setAudioSetting,
+} from '../audio/settings';
+import {
+  initSounds,
+  playCheer,
+  playFanfare,
+  playThrow,
+  startMusic,
+  stopMusic,
+} from '../audio/sounds';
 import {
   AI_DIFFICULTIES,
   AI_NAME,
@@ -28,8 +42,11 @@ import { DiceScene, SceneControls } from './DiceScene';
 type Phase = 'pick' | 'arm' | 'go' | 'battle' | 'won' | 'lost';
 
 export function DiceDemoScreen() {
+  const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
+
   useEffect(() => {
     initSounds();
+    loadAudioSettings().then(setAudioPrefs);
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
@@ -41,12 +58,18 @@ export function DiceDemoScreen() {
   const [aiFreed, setAiFreed] = useState<PrisonerColorId[]>([]);
   const [aiLastRoll, setAiLastRoll] = useState<[ColorDef, ColorDef] | null>(null);
   const [shakeSignal, setShakeSignal] = useState(0);
+  const [callout, setCallout] = useState<{ key: number; text: string } | null>(null);
+  const [aiFlash, setAiFlash] = useState(false);
+  const [playerFlash, setPlayerFlash] = useState(false);
 
   // Refs mirroring state that gesture/timer callbacks need synchronously.
   const phaseRef = useRef<Phase>('pick');
   const freedRef = useRef<PrisonerColorId[]>([]);
   const aiFreedRef = useRef<PrisonerColorId[]>([]);
   const countdownTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const lastSplash = useRef(0);
 
   const setPhaseBoth = useCallback((next: Phase) => {
     phaseRef.current = next;
@@ -54,7 +77,13 @@ export function DiceDemoScreen() {
   }, []);
 
   useEffect(() => {
-    return () => countdownTimers.current.forEach(clearTimeout);
+    return () => {
+      countdownTimers.current.forEach(clearTimeout);
+      flashTimers.current.forEach(clearTimeout);
+      if (calloutTimer.current) clearTimeout(calloutTimer.current);
+      stopAnnouncer();
+      stopMusic();
+    };
   }, []);
 
   const resetRace = useCallback(() => {
@@ -67,14 +96,39 @@ export function DiceDemoScreen() {
     setRolling(false);
   }, []);
 
+  const showCallout = useCallback((text: string, spoken = true) => {
+    setCallout({ key: Date.now(), text });
+    if (calloutTimer.current) clearTimeout(calloutTimer.current);
+    calloutTimer.current = setTimeout(() => setCallout(null), 2300);
+    if (spoken) announce(text);
+  }, []);
+
+  const handleMoatSink = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSplash.current < 2500 || phaseRef.current !== 'battle') return;
+    lastSplash.current = now;
+    showCallout('Splash! A die fell in the moat!');
+  }, [showCallout]);
+
+  const quitToMenu = useCallback(() => {
+    countdownTimers.current.forEach(clearTimeout);
+    stopAnnouncer();
+    resetRace();
+    setCallout(null);
+    setPhaseBoth('pick');
+  }, [resetRace, setPhaseBoth]);
+
   const startCountdown = useCallback(() => {
     resetRace();
+    setCallout(null);
     setPhaseBoth('arm');
+    announce('Arm your dice!');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     countdownTimers.current.forEach(clearTimeout);
     countdownTimers.current = [
       setTimeout(() => {
         setPhaseBoth('go');
+        announce('Battle!');
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
         playThrow();
       }, 1100),
@@ -83,6 +137,15 @@ export function DiceDemoScreen() {
       }, 1800),
     ];
   }, [resetRace, setPhaseBoth]);
+
+  // Background music plays through the countdown and the race.
+  useEffect(() => {
+    if (phase === 'arm' || phase === 'go' || phase === 'battle') {
+      startMusic();
+    } else {
+      stopMusic();
+    }
+  }, [phase, audioPrefs.music]);
 
   // The AI opponent: fair virtual rolls on a fixed cadence while battling.
   useEffect(() => {
@@ -97,11 +160,24 @@ export function DiceDemoScreen() {
       aiFreedRef.current = next;
       setAiFreed(next);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      if (next.length === PRISONER_COLORS.length) {
+      setAiFlash(true);
+      flashTimers.current.push(setTimeout(() => setAiFlash(false), 650));
+      const m = next.length;
+      const n = freedRef.current.length;
+      if (m === PRISONER_COLORS.length) {
         setPhaseBoth('lost');
+        showCallout('Oh no — Sir Rollsalot wins!');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
           () => {},
         );
+      } else if (m === PRISONER_COLORS.length - 1) {
+        showCallout('He needs only ONE more — hurry!');
+      } else if (m === n && n > 0) {
+        showCallout(`Sir Rollsalot ties it up ${m}–${n}!`);
+      } else if (m === n + 1) {
+        showCallout(`Sir Rollsalot freed ${a.label} — you're falling behind!`);
+      } else {
+        showCallout(`Sir Rollsalot freed ${a.label}!`);
       }
     }, rollIntervalMs);
     return () => clearInterval(id);
@@ -131,17 +207,31 @@ export function DiceDemoScreen() {
       freedRef.current = next;
       setFreedOrder(next);
       setShakeSignal((s) => s + 1);
+      setPlayerFlash(true);
+      flashTimers.current.push(setTimeout(() => setPlayerFlash(false), 650));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
-      if (next.length === PRISONER_COLORS.length) {
+      const n = next.length;
+      const m = aiFreedRef.current.length;
+      if (n === PRISONER_COLORS.length) {
         setPhaseBoth('won');
         playFanfare();
+        showCallout('Victory! All prisoners freed!');
       } else {
         playCheer();
+        if (n === PRISONER_COLORS.length - 1) {
+          showCallout(`${faces[0].label} rescued — one more to win!`);
+        } else if (n === m && m > 0) {
+          showCallout(`${faces[0].label} rescued — you're tied ${n}–${m}!`);
+        } else if (n === m + 1) {
+          showCallout(`${faces[0].label} rescued — you take the lead!`);
+        } else {
+          showCallout(`${faces[0].label} rescued!`);
+        }
       }
     },
-    [setPhaseBoth],
+    [setPhaseBoth, showCallout],
   );
 
   const panResponder = useRef(
@@ -206,6 +296,25 @@ export function DiceDemoScreen() {
       ))}
       </View>
       <Text style={styles.difficultyHint}>{OBSTACLE_HINTS[difficulty]}</Text>
+      <View style={styles.audioRow}>
+        {(
+          [
+            ['sfx', '🔊 Sound'],
+            ['music', '🎵 Music'],
+            ['voice', '🎙️ Announcer'],
+          ] as const
+        ).map(([key, label]) => (
+          <Pressable
+            key={key}
+            onPress={() => setAudioPrefs({ ...setAudioSetting(key, !audioPrefs[key]) })}
+            style={[styles.audioButton, !audioPrefs[key] && styles.audioButtonOff]}
+          >
+            <Text style={[styles.audioText, !audioPrefs[key] && styles.audioTextOff]}>
+              {label} {audioPrefs[key] ? 'ON' : 'OFF'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 
@@ -226,6 +335,7 @@ export function DiceDemoScreen() {
           controlsRef={controlsRef}
           onThrow={handleThrow}
           onSettled={handleSettled}
+          onMoatSink={handleMoatSink}
           freedOrder={freedOrder}
           shakeSignal={shakeSignal}
         />
@@ -239,32 +349,56 @@ export function DiceDemoScreen() {
         <Text style={styles.title}>DICE BATTLES</Text>
       </View>
 
-      {/* AI opponent panel */}
+      {/* Scoreboard */}
       {(phase === 'battle' || phase === 'won' || phase === 'lost') && (
-        <View pointerEvents="none" style={styles.aiPanel}>
-          <Text style={styles.aiName}>⚔️ {AI_NAME}</Text>
-          <View style={styles.aiDots}>
-            {PRISONER_COLORS.map((c) => (
-              <View
-                key={c.id}
-                style={[
-                  styles.aiDot,
-                  { backgroundColor: c.hex },
-                  !aiFreed.includes(c.id) && styles.aiDotPending,
-                ]}
-              />
-            ))}
+        <View pointerEvents="none" style={styles.scoreboard}>
+          <View style={[styles.scoreSide, playerFlash && styles.scoreFlashYou]}>
+            <Text style={styles.scoreLabel}>YOU</Text>
+            <Text style={styles.scoreNumber}>{freedOrder.length}</Text>
           </View>
-          {aiLastRoll && (
-            <View style={styles.aiRoll}>
-              {aiLastRoll.map((c, i) => (
+          <Text style={styles.scoreVs}>⚔️</Text>
+          <View style={[styles.scoreSide, aiFlash && styles.scoreFlashAi]}>
+            <Text style={styles.scoreNumber}>{aiFreed.length}</Text>
+            <Text style={styles.scoreLabel}>SIR R.</Text>
+          </View>
+          <View style={styles.aiMeta}>
+            <View style={styles.aiDots}>
+              {PRISONER_COLORS.map((c) => (
                 <View
-                  key={i}
-                  style={[styles.aiRollSwatch, { backgroundColor: c.hex }]}
+                  key={c.id}
+                  style={[
+                    styles.aiDot,
+                    { backgroundColor: c.hex },
+                    !aiFreed.includes(c.id) && styles.aiDotPending,
+                  ]}
                 />
               ))}
             </View>
-          )}
+            {aiLastRoll && (
+              <View style={styles.aiRoll}>
+                {aiLastRoll.map((c, i) => (
+                  <View
+                    key={i}
+                    style={[styles.aiRollSwatch, { backgroundColor: c.hex }]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Restart (quit to menu) during a round */}
+      {(phase === 'battle' || phase === 'arm' || phase === 'go') && (
+        <Pressable style={styles.quitButton} onPress={quitToMenu}>
+          <Text style={styles.quitText}>↺</Text>
+        </Pressable>
+      )}
+
+      {/* Announcer callout banner */}
+      {callout && (
+        <View pointerEvents="none" style={styles.calloutWrap} key={callout.key}>
+          <Text style={styles.calloutText}>{callout.text}</Text>
         </View>
       )}
 
@@ -374,22 +508,105 @@ const styles = StyleSheet.create({
     letterSpacing: 5,
     ...textShadow,
   },
-  aiPanel: {
+  scoreboard: {
     position: 'absolute',
-    top: 82,
+    top: 80,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(20,16,40,0.55)',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 8,
+    backgroundColor: 'rgba(20,16,40,0.6)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    gap: 10,
   },
-  aiName: {
+  scoreSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  scoreFlashYou: {
+    backgroundColor: 'rgba(51,204,107,0.55)',
+  },
+  scoreFlashAi: {
+    backgroundColor: 'rgba(204,37,51,0.6)',
+  },
+  scoreLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  scoreNumber: {
     color: '#ffffff',
-    fontSize: 13,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  scoreVs: {
+    fontSize: 16,
+  },
+  aiMeta: {
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 2,
+  },
+  calloutWrap: {
+    position: 'absolute',
+    top: 150,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+  },
+  calloutText: {
+    color: '#ffe521',
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+    textShadowColor: 'rgba(20,20,40,0.85)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 5,
+  },
+  audioRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  audioButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  audioButtonOff: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  audioText: {
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '700',
+  },
+  audioTextOff: {
+    color: 'rgba(255,255,255,0.45)',
+  },
+  quitButton: {
+    position: 'absolute',
+    top: 52,
+    left: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(20,16,40,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quitText: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: -2,
   },
   aiDots: {
     flexDirection: 'row',

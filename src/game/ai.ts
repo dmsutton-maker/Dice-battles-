@@ -6,9 +6,12 @@ import { ColorDef, PRISONER_COLORS } from './colors';
  * match frees that color from ITS OWN prison — first to six wins. There is
  * no cheating and no luck bias; difficulty is purely how fast it rolls.
  *
- * For reference, freeing all six takes ~88 rolls on average, so the roll
- * interval maps directly to an expected race time: a frantic human taps
- * roughly 2-3 rolls/second and finishes in ~35-45s.
+ * Intervals are tuned to what a HUMAN roll cycle actually takes on device:
+ * throw flight (~0.8s) + settle + sleep detection (~0.6s) + reaction
+ * (~0.3s) ≈ 1.8-2.2s per counted roll. Freeing all six takes ~88 rolls on
+ * average, so: Easy rolls slower than a steady human (you should usually
+ * win), Medium matches a good frantic pace (coin flip), Hard outrolls most
+ * fingers (you need luck and clean throws).
  */
 export type AiDifficultyId = 'easy' | 'medium' | 'hard';
 
@@ -20,9 +23,9 @@ export interface AiDifficulty {
 }
 
 export const AI_DIFFICULTIES: Record<AiDifficultyId, AiDifficulty> = {
-  easy: { id: 'easy', label: 'Easy', rollIntervalMs: 1500 },
-  medium: { id: 'medium', label: 'Medium', rollIntervalMs: 950 },
-  hard: { id: 'hard', label: 'Hard', rollIntervalMs: 600 },
+  easy: { id: 'easy', label: 'Easy', rollIntervalMs: 2800 },
+  medium: { id: 'medium', label: 'Medium', rollIntervalMs: 2000 },
+  hard: { id: 'hard', label: 'Hard', rollIntervalMs: 1400 },
 };
 
 export const AI_NAME = 'Sir Rollsalot';
