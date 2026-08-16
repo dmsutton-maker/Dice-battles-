@@ -86,8 +86,12 @@ export const TUNING = {
   settle: {
     /** Both dice slower than this (linear + angular) counts as still. */
     speedThreshold: 0.28,
-    /** Consecutive still frames before we call the roll settled. */
-    stillFrames: 14,
+    /**
+     * FALLBACK ONLY: the primary settle signal is cannon's sleep state
+     * (immovable once asleep, so face reads can't go stale). This counter
+     * only fires if a body somehow never sleeps.
+     */
+    stillFrames: 45,
   },
 
   haptics: {

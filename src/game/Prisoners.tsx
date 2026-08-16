@@ -125,20 +125,21 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
             <cylinderGeometry args={[0.2, 0.23, 0.08, 16]} />
             <meshStandardMaterial color="#4b4238" roughness={0.8} />
           </mesh>
-          {/* Body */}
+          {/* Body — unlit exact palette hex: this color is a game signal and
+              must match the die stickers and HUD swatches precisely. */}
           <mesh position={[0, 0.34, 0]}>
             <capsuleGeometry args={[0.15, 0.28, 6, 12]} />
-            <meshStandardMaterial color={color.hex} roughness={0.5} />
+            <meshBasicMaterial color={color.hex} toneMapped={false} />
           </mesh>
           {/* Head */}
           <mesh position={[0, 0.66, 0]}>
             <sphereGeometry args={[0.13, 16, 12]} />
             <meshStandardMaterial color="#ffe3c2" roughness={0.6} />
           </mesh>
-          {/* Helmet cap in the prisoner's color */}
+          {/* Helmet cap — unlit exact palette hex, same reason as the body */}
           <mesh position={[0, 0.73, 0]}>
             <sphereGeometry args={[0.135, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
-            <meshStandardMaterial color={color.hex} roughness={0.45} />
+            <meshBasicMaterial color={color.hex} toneMapped={false} />
           </mesh>
         </group>
       ))}

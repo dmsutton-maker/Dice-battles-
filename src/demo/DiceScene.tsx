@@ -181,8 +181,14 @@ export function DiceScene({
     }
 
     if (awaitingSettle.current) {
+      // Primary settle signal: cannon's own sleep state — a SLEEPING body
+      // cannot move again, so the reported face can never go stale. The
+      // frame counter stays as a fallback in case a body never sleeps.
+      const allSleeping = diceBodies.every(
+        (body) => body.sleepState === CANNON.Body.SLEEPING,
+      );
       stillFrames.current = allStill ? stillFrames.current + 1 : 0;
-      if (stillFrames.current >= TUNING.settle.stillFrames) {
+      if (allSleeping || stillFrames.current >= TUNING.settle.stillFrames) {
         awaitingSettle.current = false;
         // Report faces in ON-SCREEN left-to-right order, not spawn order:
         // the dice trade places while rolling, and the HUD swatches must
