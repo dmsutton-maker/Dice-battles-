@@ -33,6 +33,7 @@ import {
 } from '../game/obstacles';
 import {
   applyMatchResult,
+  getProgress,
   isUnlocked,
   loadProgress,
   nextTier,
@@ -60,7 +61,10 @@ export function DiceDemoScreen() {
     initSounds();
     initAnnouncer();
     loadAudioSettings().then(setAudioPrefs);
-    loadProgress().then((p) => setTrophies(p.trophies));
+    loadProgress().then((p) => {
+      setTrophies(p.trophies);
+      setWins(p.wins);
+    });
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
@@ -76,6 +80,7 @@ export function DiceDemoScreen() {
   const [layout, setLayout] = useState<ObstacleLayout>(EMPTY_LAYOUT);
   const [round, setRound] = useState(0);
   const [trophies, setTrophies] = useState(0);
+  const [wins, setWins] = useState({ easy: 0, medium: 0, hard: 0 });
   const [lastDelta, setLastDelta] = useState<number | null>(null);
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
@@ -245,6 +250,7 @@ export function DiceDemoScreen() {
         showCallout('Victory! All prisoners freed!', 'win');
         const result = applyMatchResult(true, difficultyRef.current);
         setTrophies(result.trophies);
+        setWins(getProgress().wins);
         setLastDelta(result.delta);
         if (result.newUnlocks.length > 0) {
           const unlock = result.newUnlocks[result.newUnlocks.length - 1];
@@ -487,6 +493,9 @@ export function DiceDemoScreen() {
         <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
           <Text style={styles.trophyLine}>🏆 {trophies}</Text>
+          <Text style={styles.medalLine}>
+            🥉 Easy ×{wins.easy}   🥈 Medium ×{wins.medium}   🥇 Hard ×{wins.hard}
+          </Text>
           {upNext && (
             <Text style={styles.trophyNext}>
               Next unlock: {upNext.emoji} {upNext.name} at {upNext.at} 🏆
@@ -678,6 +687,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '900',
     marginTop: 10,
+    ...textShadow,
+  },
+  medalLine: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 6,
     ...textShadow,
   },
   trophyNext: {

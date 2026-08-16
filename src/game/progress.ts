@@ -8,13 +8,18 @@ import { AiDifficultyId } from './ai';
  */
 export interface Progress {
   trophies: number;
+  /** Lifetime wins per difficulty — the per-difficulty medal counters. */
+  wins: Record<AiDifficultyId, number>;
 }
 
-/** Higher difficulties risk and reward more. */
+/**
+ * Higher difficulties risk and reward MUCH more — Hard pays nearly 5x Easy,
+ * so climbing the ladder fast means daring the moat.
+ */
 export const TROPHY_STAKES: Record<AiDifficultyId, { win: number; loss: number }> = {
-  easy: { win: 20, loss: 10 },
-  medium: { win: 30, loss: 15 },
-  hard: { win: 45, loss: 20 },
+  easy: { win: 15, loss: 10 },
+  medium: { win: 35, loss: 15 },
+  hard: { win: 70, loss: 25 },
 };
 
 export type UnlockId =
@@ -45,7 +50,9 @@ export const TIERS: Tier[] = [
 
 const STORAGE_KEY = 'dice-battles:progress';
 
-let current: Progress = { trophies: 0 };
+const EMPTY_WINS: Record<AiDifficultyId, number> = { easy: 0, medium: 0, hard: 0 };
+
+let current: Progress = { trophies: 0, wins: { ...EMPTY_WINS } };
 
 export function getProgress(): Progress {
   return current;
@@ -54,7 +61,14 @@ export function getProgress(): Progress {
 export async function loadProgress(): Promise<Progress> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw) current = { ...current, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      current = {
+        ...current,
+        ...parsed,
+        wins: { ...EMPTY_WINS, ...(parsed.wins ?? {}) },
+      };
+    }
   } catch {
     // Defaults are fine if storage is unavailable.
   }
@@ -86,7 +100,10 @@ export function applyMatchResult(
   const before = current.trophies;
   const delta = won ? stakes.win : -stakes.loss;
   const after = Math.max(0, before + delta);
-  current = { ...current, trophies: after };
+  const wins = won
+    ? { ...current.wins, [difficulty]: current.wins[difficulty] + 1 }
+    : current.wins;
+  current = { ...current, trophies: after, wins };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
   const newUnlocks = won
     ? TIERS.filter((t) => t.at > before && t.at <= after)
