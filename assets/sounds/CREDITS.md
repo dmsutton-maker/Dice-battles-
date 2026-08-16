@@ -9,8 +9,10 @@ All sounds are real recordings sourced from OpenGameArt.org and processed
 | `cheer.wav` | [Free Crowd Cheering Sounds](https://opengameart.org/content/free-crowd-cheering-sounds) — "Strong cheering II (short)" | Gregor Quendel | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) — **attribution required**: credit "Gregor Quendel" in the app credits |
 | `fanfare.wav` | [Hyper-Ultra-Fanfare](https://opengameart.org/content/hyper-ultra-fanfare) | Zane Little Music | CC0 (public domain) |
 | `music.m4a` | [Happy Clappy Loop](https://opengameart.org/content/happy-clappy-loop) | OwlishMedia | CC0 (public domain) |
+| `music-monkeys.m4a`, `music-sneaky.m4a`, `music-polka.m4a` | "Monkeys Spinning Monkeys", "Sneaky Snitch", "Pixel Peeker Polka (faster)" — [incompetech.com](https://incompetech.com) | Kevin MacLeod | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) — **attribution required**: credit 'Music by Kevin MacLeod (incompetech.com)' in the app credits |
 | `../voice/*.wav` | [Voiceover Pack (40+ lines)](https://opengameart.org/content/voiceover-pack-40-lines) — announcer voice | [Kenney](https://kenney.nl) | CC0 (public domain) |
 
-**Action item for release:** the CC-BY cheer requires a visible credit
-("Crowd cheering by Gregor Quendel") in the app's credits/about screen.
+**Action items for release:** the app's credits/about screen must include:
+- "Music by Kevin MacLeod (incompetech.com), licensed under CC-BY 4.0"
+- "Crowd cheering by Gregor Quendel" (CC-BY 4.0)
 CC0 sounds need no attribution (crediting Kenney is a nice courtesy).

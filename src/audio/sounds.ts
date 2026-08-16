@@ -27,12 +27,22 @@ const clackSources = [
 ];
 const cheerSource = require('../../assets/sounds/cheer.wav');
 const fanfareSource = require('../../assets/sounds/fanfare.wav');
-const musicSource = require('../../assets/sounds/music.m4a');
+/**
+ * Battle music rotation — Kevin MacLeod (incompetech.com), CC-BY 4.0.
+ * A different track is picked each time music starts from silence.
+ */
+const musicSources = [
+  require('../../assets/sounds/music-monkeys.m4a'),
+  require('../../assets/sounds/music-sneaky.m4a'),
+  require('../../assets/sounds/music-polka.m4a'),
+  require('../../assets/sounds/music.m4a'),
+];
 
 let throwPool: AudioPlayer[] = [];
 let clackPool: AudioPlayer[] = [];
 let cheerPlayer: AudioPlayer | null = null;
 let fanfarePlayer: AudioPlayer | null = null;
+let musicPlayers: AudioPlayer[] = [];
 let musicPlayer: AudioPlayer | null = null;
 let throwIndex = 0;
 let clackIndex = 0;
@@ -65,15 +75,19 @@ export function initSounds(): void {
     cheerPlayer.volume = 0.9;
     fanfarePlayer = createAudioPlayer(fanfareSource);
     fanfarePlayer.volume = 1.0;
-    musicPlayer = createAudioPlayer(musicSource);
-    musicPlayer.loop = true;
-    musicPlayer.volume = 0.4;
+    musicPlayers = musicSources.map((source) => {
+      const player = createAudioPlayer(source);
+      player.loop = true;
+      player.volume = 0.4;
+      return player;
+    });
   } catch {
     // Sounds are garnish — never let audio failures break the game.
     throwPool = [];
     clackPool = [];
     cheerPlayer = null;
     fanfarePlayer = null;
+    musicPlayers = [];
     musicPlayer = null;
   }
 }
@@ -112,17 +126,24 @@ export function playFanfare(): void {
   replay(fanfarePlayer);
 }
 
-/** Start (or resume) the background music loop, if enabled in settings. */
+/**
+ * Start the background music if enabled: resumes the current track, or
+ * picks a random one from the rotation when starting from silence.
+ */
 export function startMusic(): void {
-  if (!musicPlayer || !getAudioSettings().music) return;
+  if (musicPlayers.length === 0 || !getAudioSettings().music) return;
   try {
+    if (!musicPlayer) {
+      musicPlayer = musicPlayers[Math.floor(Math.random() * musicPlayers.length)];
+      musicPlayer.seekTo(0).catch(() => {});
+    }
     musicPlayer.play();
   } catch {
     // ignore — see initSounds
   }
 }
 
-/** Stop the background music loop. */
+/** Stop the music; the next start draws a fresh track. */
 export function stopMusic(): void {
   if (!musicPlayer) return;
   try {
@@ -131,4 +152,5 @@ export function stopMusic(): void {
   } catch {
     // ignore
   }
+  musicPlayer = null;
 }
