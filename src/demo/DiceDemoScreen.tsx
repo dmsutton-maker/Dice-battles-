@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ARENAS } from '../arena/arenas';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
@@ -83,6 +83,7 @@ export function DiceDemoScreen() {
   const [mode, setMode] = useState<ModeId>('classic');
   const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
   const [twoPlayer, setTwoPlayer] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
   const [units, setUnits] = useState<PrisonerUnit[]>(() =>
@@ -516,7 +517,7 @@ export function DiceDemoScreen() {
 
   const modeRow = (
     <View style={styles.modeBlock}>
-      <View style={styles.difficultyRow}>
+      <View style={styles.modeGrid}>
         {MODE_ORDER.map((id) => (
           <Pressable
             key={id}
@@ -571,25 +572,6 @@ export function DiceDemoScreen() {
       <Text style={styles.stakesText}>
         Win +{stakes.win} 🏆 · Lose −{stakes.loss} 🏆
       </Text>
-      <View style={styles.audioRow}>
-        {(
-          [
-            ['sfx', '🔊 Sound'],
-            ['music', '🎵 Music'],
-            ['voice', '🎙️ Announcer'],
-          ] as const
-        ).map(([key, label]) => (
-          <Pressable
-            key={key}
-            onPress={() => setAudioPrefs({ ...setAudioSetting(key, !audioPrefs[key]) })}
-            style={[styles.audioButton, !audioPrefs[key] && styles.audioButtonOff]}
-          >
-            <Text style={[styles.audioText, !audioPrefs[key] && styles.audioTextOff]}>
-              {label} {audioPrefs[key] ? 'ON' : 'OFF'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
     </View>
   );
 
@@ -730,30 +712,40 @@ export function DiceDemoScreen() {
 
       {/* Pick / countdown / result overlays */}
       {phase === 'pick' && (
-        <Pressable style={styles.overlay} onPress={startCountdown}>
-          <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
-          <Text style={styles.tagline}>
-            Race other players to free your prisoners!
-          </Text>
-          <Text style={styles.trophyLine}>🏆 {trophies}</Text>
-          <Text style={styles.medalLine}>
-            🥉 Easy ×{wins.easy}   🥈 Medium ×{wins.medium}   🥇 Hard ×{wins.hard}
-          </Text>
-          {upNext && (
-            <Text style={styles.trophyNext}>
-              Next unlock: {upNext.emoji} {upNext.name} at {upNext.at} 🏆
-            </Text>
-          )}
-          {modeRow}
-          {difficultyRow}
-          <Text style={styles.overlayPrompt}>Tap anywhere to arm your dice</Text>
+        <View style={styles.overlay}>
           <Pressable
-            style={styles.twoPlayerButton}
-            onPress={() => setTwoPlayer(true)}
+            style={styles.gearButton}
+            onPress={() => setShowSettings(true)}
           >
-            <Text style={styles.twoPlayerText}>👥 2 Players — Pass & Play</Text>
+            <Text style={styles.gearText}>⚙️</Text>
           </Pressable>
-        </Pressable>
+          <ScrollView
+            contentContainerStyle={styles.pickScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
+            <Text style={styles.tagline}>
+              Race other players to free your prisoners!
+            </Text>
+            <Text style={styles.trophyLine}>🏆 {trophies}</Text>
+            {upNext && (
+              <Text style={styles.trophyNext}>
+                Next unlock: {upNext.emoji} {upNext.name} at {upNext.at} 🏆
+              </Text>
+            )}
+            {modeRow}
+            {difficultyRow}
+            <Pressable style={styles.startButton} onPress={startCountdown}>
+              <Text style={styles.startText}>▶ START BATTLE</Text>
+            </Pressable>
+            <Pressable
+              style={styles.twoPlayerButton}
+              onPress={() => setTwoPlayer(true)}
+            >
+              <Text style={styles.twoPlayerText}>👥 2 Players — Pass & Play</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
       )}
       {phase === 'arm' && (
         <View pointerEvents="none" style={styles.overlayClear}>
@@ -794,6 +786,51 @@ export function DiceDemoScreen() {
           {difficultyRow}
           <Text style={styles.overlayPrompt}>Tap to battle again</Text>
         </Pressable>
+      )}
+      {showSettings && (
+        <View style={styles.settingsOverlay}>
+          <View style={styles.settingsPanel}>
+            <Text style={styles.settingsTitle}>⚙️ Settings</Text>
+            {(
+              [
+                ['sfx', '🔊 Sound effects'],
+                ['music', '🎵 Music'],
+                ['voice', '🎙️ Announcer'],
+              ] as const
+            ).map(([key, label]) => (
+              <Pressable
+                key={key}
+                onPress={() =>
+                  setAudioPrefs({ ...setAudioSetting(key, !audioPrefs[key]) })
+                }
+                style={styles.settingsRow}
+              >
+                <Text style={styles.settingsLabel}>{label}</Text>
+                <View
+                  style={[
+                    styles.settingsPill,
+                    !audioPrefs[key] && styles.settingsPillOff,
+                  ]}
+                >
+                  <Text style={styles.settingsPillText}>
+                    {audioPrefs[key] ? 'ON' : 'OFF'}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+            <View style={styles.settingsDividerLine} />
+            <Text style={styles.settingsStats}>
+              🏆 {trophies} trophies{'\n'}🥉 Easy ×{wins.easy}   🥈 Medium ×
+              {wins.medium}   🥇 Hard ×{wins.hard}
+            </Text>
+            <Pressable
+              style={styles.settingsDone}
+              onPress={() => setShowSettings(false)}
+            >
+              <Text style={styles.settingsDoneText}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
       )}
       {phase === 'lost' && (
         <Pressable style={styles.overlay} onPress={startCountdown}>
@@ -940,7 +977,9 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   twoPlayerButton: {
-    marginTop: 18,
+    marginTop: 12,
+    alignSelf: 'stretch',
+    alignItems: 'center',
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
@@ -1063,6 +1102,114 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,12,40,0.6)',
     paddingHorizontal: 28,
   },
+  pickScroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+    paddingHorizontal: 4,
+  },
+  gearButton: {
+    position: 'absolute',
+    top: 54,
+    right: 18,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  gearText: {
+    fontSize: 21,
+  },
+  startButton: {
+    marginTop: 24,
+    alignSelf: 'stretch',
+    backgroundColor: '#ffe521',
+    borderRadius: 26,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  startText: {
+    color: '#241c40',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  settingsOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10,8,24,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    zIndex: 10,
+  },
+  settingsPanel: {
+    alignSelf: 'stretch',
+    backgroundColor: '#2c2450',
+    borderRadius: 22,
+    padding: 22,
+  },
+  settingsTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 11,
+  },
+  settingsLabel: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  settingsPill: {
+    backgroundColor: '#33cc6b',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    minWidth: 56,
+    alignItems: 'center',
+  },
+  settingsPillOff: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  settingsPillText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  settingsDividerLine: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginVertical: 12,
+  },
+  settingsStats: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  settingsDone: {
+    marginTop: 16,
+    backgroundColor: '#ffe521',
+    borderRadius: 20,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  settingsDoneText: {
+    color: '#241c40',
+    fontSize: 16,
+    fontWeight: '900',
+  },
   overlayClear: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -1107,19 +1254,28 @@ const styles = StyleSheet.create({
   },
   modeBlock: {
     alignItems: 'center',
-    marginTop: 18,
+    marginTop: 16,
+    alignSelf: 'stretch',
+  },
+  modeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    alignSelf: 'stretch',
   },
   modeButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    width: '46%',
+    paddingVertical: 10,
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.4)',
+    alignItems: 'center',
   },
   modeText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '800',
   },
   modeRules: {

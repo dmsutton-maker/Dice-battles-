@@ -118,5 +118,10 @@ deferred so quick exits stay easy during testing):**
 - Quitting mid-round counts as a forfeit (trophy loss applies)
 - In-round pause menu: sound/music/announcer toggles + confirm-exit button
 
+**Apple milestone (needs the $99 Apple Developer account + a custom EAS
+build — not possible inside Expo Go):**
+- TestFlight distribution (one-tap installs for testers)
+- Game Center: trophy leaderboards + achievements across devices
+
 **Constraints:** family-friendly (ages 5+), rounds 1–2 minutes, fully
 offline, no accounts, no data collection.
