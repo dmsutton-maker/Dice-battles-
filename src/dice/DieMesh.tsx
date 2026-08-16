@@ -40,16 +40,12 @@ export const DieMesh = forwardRef<THREE.Group>(function DieMesh(_props, ref) {
       }),
     [],
   );
+  // Unlit stickers: the face color IS the game signal, so it must render as
+  // the exact palette hex from every angle. Lit materials hue-shift with the
+  // scene lighting (sky-tinted from above, warm from the side), which made
+  // purple read as green/blue on some faces.
   const stickerMaterials = useMemo(
-    () =>
-      DIE_FACE_COLORS.map(
-        (c) =>
-          new THREE.MeshStandardMaterial({
-            color: c.hex,
-            roughness: 0.4,
-            metalness: 0.02,
-          }),
-      ),
+    () => DIE_FACE_COLORS.map((c) => new THREE.MeshBasicMaterial({ color: c.hex })),
     [],
   );
   const stickerGeometry = useMemo(

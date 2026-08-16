@@ -202,7 +202,8 @@ export function DiceScene({
   return (
     <>
       <CameraRig />
-      <hemisphereLight args={['#dfe9ff', '#7a6a4c', 0.9]} />
+      {/* Near-neutral hemisphere: strong color tints here hue-shift materials. */}
+      <hemisphereLight args={['#f2f5ff', '#8a8175', 0.9]} />
       <directionalLight position={[4, 12, 6]} intensity={1.9} />
       <directionalLight position={[-6, 8, -4]} intensity={0.6} color="#ffe4c4" />
 
