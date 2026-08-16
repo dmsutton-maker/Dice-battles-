@@ -6,6 +6,7 @@ import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import { TUNING } from '../game/tuning';
 import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
+import { initSounds, playCheer, playFanfare } from '../audio/sounds';
 import { DiceScene, SceneControls } from './DiceScene';
 
 /**
@@ -17,6 +18,10 @@ import { DiceScene, SceneControls } from './DiceScene';
  *   battlement. Rescue all six to win; the next tap starts a fresh battle.
  */
 export function DiceDemoScreen() {
+  React.useEffect(() => {
+    initSounds();
+  }, []);
+
   const controlsRef = useRef<SceneControls | null>(null);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -57,6 +62,9 @@ export function DiceDemoScreen() {
     if (next.length === PRISONER_COLORS.length) {
       wonRef.current = true;
       setWon(true);
+      playFanfare();
+    } else {
+      playCheer();
     }
   }, []);
 

@@ -4,9 +4,10 @@ import * as THREE from 'three';
 import { PRISONER_COLORS, PrisonerColorId } from './colors';
 import { TUNING } from './tuning';
 
-const FLIGHT_SECONDS = 1.1;
-/** High enough that the leap clears the far wall + merlons on the way out. */
-const FLIGHT_PEAK = 3.0;
+/** Long jailbreak leap: across the whole castle to the player's retreat. */
+const FLIGHT_SECONDS = 1.4;
+/** High enough to clear BOTH castle walls + merlons along the way. */
+const FLIGHT_PEAK = 3.4;
 
 interface PrisonersProps {
   /** Colors freed so far, in rescue order. Empty array = everyone back in prison. */
@@ -45,18 +46,17 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
   }, [innerDepth, wallThickness]);
 
   const freeSlots = useMemo<Slot[]>(() => {
-    const xLeft = -(innerWidth / 2 + wallThickness / 2);
-    const xRight = innerWidth / 2 + wallThickness / 2;
-    const zs = [-2.2, 0, 2.2];
-    const slots: Slot[] = [];
-    zs.forEach((z) =>
-      slots.push({ x: xLeft, y: wallHeight + 0.24, z, facing: Math.PI / 2 }),
-    );
-    zs.forEach((z) =>
-      slots.push({ x: xRight, y: wallHeight + 0.24, z, facing: -Math.PI / 2 }),
-    );
-    return slots;
-  }, [innerWidth, wallHeight, wallThickness]);
+    // The freedom retreat on the player's side of the castle — freed
+    // prisoners leap the whole castle to reach their rescuer and celebrate
+    // on the beach towels (positions match RetreatGarden in CastleArena).
+    const towelXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
+    return towelXs.map((x) => ({
+      x,
+      y: 0.03,
+      z: 6.4,
+      facing: 0, // face the castle they escaped (and the player's dice)
+    }));
+  }, []);
 
   const groupRefs = useRef<(THREE.Group | null)[]>([]);
   // Flight start time (clock seconds) per color id; cleared on reset.

@@ -88,11 +88,12 @@ function buildFitPoints(): FitPoint[] {
   add(pen.innerWidth / 2 - 0.3, penHeadTop, penFarZ + pen.depth / 2, 0.94, 0.78);
   add(0, pen.platformHeight + pen.barHeight + 0.15, penFarZ, 0.96, 0.82);
 
-  // Celebration spots on the side walls.
-  add(-(halfW + wallThickness / 2), figureTop, 2.2, 0.99, 0.88);
-  add(halfW + wallThickness / 2, figureTop, 2.2, 0.99, 0.88);
-  add(-(halfW + wallThickness / 2), figureTop, -2.2, 0.99, 0.82);
-  add(halfW + wallThickness / 2, figureTop, -2.2, 0.99, 0.82);
+  // Freedom retreat on the player's side: outer towels (with a standing,
+  // bouncing figure) and the umbrella tops must be on screen.
+  add(-3.3, 1.05, 6.4, 0.95, 0.9, -0.93);
+  add(3.3, 1.05, 6.4, 0.95, 0.9, -0.93);
+  add(-2.4, 1.7, 5.55, 0.97, 0.9, -0.95);
+  add(2.4, 1.7, 5.55, 0.97, 0.9, -0.95);
 
   // Near wall top edge — must clear the bottom of the screen.
   add(0, wallHeight + 0.3, outerZ, 0.97, 0.9, -0.96);

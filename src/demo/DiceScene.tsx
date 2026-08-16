@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { playClack } from '../audio/sounds';
 import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
 import { createDieBody, throwDie, topFaceColor } from '../dice/die';
 import { DieMesh } from '../dice/DieMesh';
@@ -92,6 +93,7 @@ export function DiceScene({
       ) {
         lastTick.t = now;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        playClack();
       }
     };
     diceBodies.forEach((body) => body.addEventListener('collide', onCollide));

@@ -120,6 +120,87 @@ function JailPen() {
 }
 
 /**
+ * The freedom retreat on the player's side of the castle — the rescuer's
+ * camp where freed prisoners come to relax: beach towels to land on, two
+ * sun umbrellas, a little pool, and flowering bushes. Slot positions must
+ * stay in sync with the free slots in src/game/Prisoners.tsx.
+ */
+function RetreatGarden() {
+  const towelXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
+  const towelColors = ['#ffe08a', '#9be0ff', '#ffc4d6', '#c9f0b8', '#e8d5ff', '#ffd7b0'];
+  return (
+    <group>
+      {/* Beach towels the freed prisoners celebrate on */}
+      {towelXs.map((x, i) => (
+        <mesh key={`towel-${i}`} position={[x, 0.015, 6.4]}>
+          <boxGeometry args={[0.6, 0.03, 0.95]} />
+          <meshStandardMaterial color={towelColors[i]} roughness={0.9} />
+        </mesh>
+      ))}
+
+      {/* Sun umbrellas */}
+      {(
+        [
+          [-2.4, 5.55, '#ff7f66'],
+          [2.4, 5.55, '#5bc8e8'],
+        ] as const
+      ).map(([x, z, color], i) => (
+        <group key={`umbrella-${i}`} position={[x, 0, z]}>
+          <mesh position={[0, 0.7, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 1.4, 8]} />
+            <meshStandardMaterial color="#e8e0d0" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 1.42, 0]}>
+            <coneGeometry args={[0.85, 0.42, 10]} />
+            <meshStandardMaterial color={color} roughness={0.7} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Little pool */}
+      <group position={[-2.9, 0, 7.6]}>
+        <mesh position={[0, 0.09, 0]}>
+          <cylinderGeometry args={[1.05, 1.1, 0.18, 20]} />
+          <meshStandardMaterial color="#bcae94" roughness={0.9} />
+        </mesh>
+        <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.92, 20]} />
+          <meshStandardMaterial color="#57b0e8" roughness={0.2} />
+        </mesh>
+      </group>
+
+      {/* Flowering bushes */}
+      {(
+        [
+          [3.1, 7.5],
+          [0.1, 7.9],
+        ] as const
+      ).map(([x, z], i) => (
+        <group key={`bush-${i}`} position={[x, 0, z]}>
+          <mesh position={[0, 0.28, 0]} scale={[1, 0.72, 1]}>
+            <sphereGeometry args={[0.42, 12, 8]} />
+            <meshStandardMaterial color="#48a457" roughness={0.9} />
+          </mesh>
+          {[0, 1, 2].map((k) => (
+            <mesh
+              key={k}
+              position={[
+                Math.cos(k * 2.1) * 0.3,
+                0.42 + Math.sin(k * 1.7) * 0.12,
+                Math.sin(k * 2.1) * 0.3,
+              ]}
+            >
+              <sphereGeometry args={[0.07, 8, 6]} />
+              <meshStandardMaterial color={['#ff8ab0', '#ffe521', '#ff7f66'][k]} roughness={0.6} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/**
  * The toy world around the castle: meadow, path to the gate, pond, trees,
  * rolling hills, distant mountains, and a few clouds. Everything procedural
  * and cheap — unlit clouds, low-poly cones and squashed spheres.
@@ -275,6 +356,7 @@ export function CastleArena() {
 
       <Landscape />
       <JailPen />
+      <RetreatGarden />
 
       {/* Walls */}
       <mesh
