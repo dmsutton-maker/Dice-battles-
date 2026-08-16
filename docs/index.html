@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play Dice Battles</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, #7fbdf2 0%, #5ea7e8 100%);
+    min-height: 100vh;
+    font-family: ui-rounded, -apple-system, "SF Pro Rounded", system-ui, "Segoe UI", sans-serif;
+    color: #22304f;
+    display: flex;
+    justify-content: center;
+    padding: 26px 16px 44px;
+  }
+  .page { width: 100%; max-width: 430px; display: flex; flex-direction: column; gap: 16px; }
+  .dice { display: flex; justify-content: center; gap: 18px; }
+  .die { width: 66px; height: 66px; background: #fff; border-radius: 16px; display: grid; place-items: center; box-shadow: 0 5px 0 rgba(34,48,79,0.18); }
+  .die:first-child { transform: rotate(-8deg); }
+  .die:last-child { transform: rotate(7deg); }
+  .dot { width: 30px; height: 30px; border-radius: 50%; }
+  h1 { margin: 0; text-align: center; font-size: 38px; font-weight: 900; letter-spacing: 1px; color: #fff; text-shadow: 0 3px 0 rgba(34,48,79,0.28); }
+  .tagline { margin: 0; text-align: center; font-size: 16px; font-weight: 600; color: #eaf4ff; }
+  .bigbtn {
+    display: block; text-align: center; text-decoration: none;
+    font-size: 21px; font-weight: 900; letter-spacing: 0.5px;
+    border-radius: 999px; padding: 17px 12px;
+    box-shadow: 0 6px 0 rgba(34,48,79,0.22); border: none; width: 100%;
+    font-family: inherit; cursor: pointer;
+  }
+  .bigbtn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(34,48,79,0.22); }
+  .btn-store { background: #ffffff; color: #1d6fd6; }
+  .btn-play { background: #ffd829; color: #4a3a00; font-size: 25px; }
+  .btn-copy { background: rgba(255,255,255,0.22); color: #ffffff; font-size: 15px; font-weight: 700; box-shadow: none; padding: 12px; }
+  .note { text-align: center; font-size: 13.5px; color: #eaf4ff; font-weight: 600; margin: -6px 0 0; }
+  .card { background: #fff; border-radius: 20px; padding: 16px 18px; box-shadow: 0 5px 0 rgba(34,48,79,0.16); text-align: center; }
+  .card h2 { margin: 0 0 6px; font-size: 15.5px; font-weight: 800; }
+  .card p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.45; }
+  .card img { width: 180px; max-width: 100%; border-radius: 12px; }
+  .linkbox {
+    background: rgba(34,48,79,0.25); color: #fff; border-radius: 12px;
+    font-size: 11.5px; padding: 10px; word-break: break-all;
+    user-select: all; -webkit-user-select: all; font-family: ui-monospace, Menlo, monospace;
+  }
+  .copied { background: #4e9a58 !important; color: #fff !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="dice" aria-hidden="true">
+    <div class="die"><div class="dot" style="background:#c04cff"></div></div>
+    <div class="die"><div class="dot" style="background:#33cc6b"></div></div>
+  </div>
+  <h1>DICE BATTLES</h1>
+  <p class="tagline">Race Sir Rollsalot. Free your prisoners. 🏰</p>
+
+  <a class="bigbtn btn-store" href="https://apps.apple.com/app/expo-go/id982107779">1️⃣ &nbsp;Get the Expo Go app</a>
+  <p class="note">Free · you only do this once</p>
+
+  <a class="bigbtn btn-play" id="play" href="exp://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576?channel-name=main&runtime-version=exposdk:54.0.0">2️⃣ &nbsp;▶ PLAY DICE BATTLES</a>
+  <p class="note">Tap "Open" when your phone asks</p>
+
+  <button class="bigbtn btn-copy" id="copy">Button not working? Tap here to COPY the game link,<br>then paste it into Safari's address bar</button>
+  <div class="linkbox" id="linkbox">exp://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576?channel-name=main&runtime-version=exposdk:54.0.0</div>
+
+  <div class="card">
+    <h2>Or scan from another screen</h2>
+    <p>In Expo Go, tap <b>“Scan QR code”</b> and point at this:</p>
+    <img alt="QR code that opens Dice Battles in Expo Go" src="qr.png">
+  </div>
+
+  <p class="note">Always the newest version · made by Dad 🎲</p>
+</div>
+<script>
+  var GAME_URL = 'exp://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576?channel-name=main&runtime-version=exposdk:54.0.0';
+  // Belt and braces: some browsers ignore the anchor default for custom
+  // schemes but honor a scripted navigation on user tap.
+  document.getElementById('play').addEventListener('click', function (e) {
+    e.preventDefault();
+    window.location.href = GAME_URL;
+  });
+  document.getElementById('copy').addEventListener('click', function () {
+    var done = function () {
+      var b = document.getElementById('copy');
+      b.classList.add('copied');
+      b.textContent = '✅ Copied! Now open Safari, tap the address bar, and Paste';
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(GAME_URL).then(done, function () {
+        selectBox(); done();
+      });
+    } else {
+      selectBox(); done();
+    }
+  });
+  function selectBox() {
+    var box = document.getElementById('linkbox');
+    var range = document.createRange();
+    range.selectNodeContents(box);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    try { document.execCommand('copy'); } catch (e) {}
+  }
+</script>
+</body>
+</html>
