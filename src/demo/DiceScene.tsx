@@ -145,6 +145,21 @@ export function DiceScene({
         material.opacity = 0.28 * Math.max(1 - height * 0.18, 0.25);
       }
 
+      // Safety net: if a die somehow leaves the sealed tray (e.g. tunneling
+      // through a corner at extreme speed), teleport it back instead of
+      // letting it fall forever and soft-lock settle detection.
+      if (
+        body.position.y < -1 ||
+        Math.abs(body.position.x) > TUNING.tray.innerWidth / 2 + 0.8 ||
+        Math.abs(body.position.z) > TUNING.tray.innerDepth / 2 + 0.8
+      ) {
+        const [startX, startY, startZ] = DIE_START_POSITIONS[i];
+        body.position.set(startX, startY + 1.5, startZ);
+        body.velocity.set(0, 0, 0);
+        body.angularVelocity.set(0, 0, 0);
+        body.wakeUp();
+      }
+
       const speed =
         body.velocity.length() + body.angularVelocity.length() * 0.5;
       if (speed > TUNING.settle.speedThreshold) allStill = false;

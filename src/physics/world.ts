@@ -63,12 +63,18 @@ export function addTrayBodies(physics: PhysicsWorld): void {
 
   // Floor (top surface at y = 0).
   addStaticBox([halfW + wallThickness, 0.5, halfD + wallThickness], [0, -0.5, 0]);
+  // Walls. The VISIBLE walls are only `wallHeight` tall, but the colliders
+  // extend all the way up to the ceiling: rapid mid-air re-throws stack
+  // altitude (throwDie resets velocity at the die's current height), and any
+  // gap between wall top and ceiling lets a pumped die escape the tray,
+  // fall into the void, and soft-lock settle detection forever.
+  const wallColliderHalfH = (ceilingHeight + 1) / 2;
   // Left / right walls.
-  addStaticBox([halfT, wallHeight, halfD + wallThickness], [-(halfW + halfT), wallHeight, 0]);
-  addStaticBox([halfT, wallHeight, halfD + wallThickness], [halfW + halfT, wallHeight, 0]);
+  addStaticBox([halfT, wallColliderHalfH, halfD + wallThickness], [-(halfW + halfT), wallColliderHalfH, 0]);
+  addStaticBox([halfT, wallColliderHalfH, halfD + wallThickness], [halfW + halfT, wallColliderHalfH, 0]);
   // Far / near walls.
-  addStaticBox([halfW + wallThickness, wallHeight, halfT], [0, wallHeight, -(halfD + halfT)]);
-  addStaticBox([halfW + wallThickness, wallHeight, halfT], [0, wallHeight, halfD + halfT]);
-  // Ceiling (invisible).
+  addStaticBox([halfW + wallThickness, wallColliderHalfH, halfT], [0, wallColliderHalfH, -(halfD + halfT)]);
+  addStaticBox([halfW + wallThickness, wallColliderHalfH, halfT], [0, wallColliderHalfH, halfD + halfT]);
+  // Ceiling (invisible; overlaps the wall tops so there is no seam).
   addStaticBox([halfW + wallThickness, 0.5, halfD + wallThickness], [0, ceilingHeight + 0.5, 0]);
 }
