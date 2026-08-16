@@ -92,6 +92,12 @@ battle zone is a second `DiceScene` with its own physics world.
 5. One themed battlefield arena, built beautifully (arena system designed
    for drop-in additions)
 
+**Progression (in):** Clash-Royale-style trophy ladder — win/lose trophies
+(stakes scale with difficulty), persisted on device. Unlocks: Golden Dice
+(100 🏆), Sunset Castle arena (250 🏆), Courtyard Treasure (450 🏆),
+Mystery Arena teaser (700 🏆). Future arenas/obstacles/treasures slot into
+`src/game/progress.ts` TIERS + the arena registry.
+
 **v2:** Ultimate / Skirmish / Color War modes; nearby multi-device play.
 
 **v3:** rewarded ads at natural breaks, remove-ads IAP, cosmetic dice skins

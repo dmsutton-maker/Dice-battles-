@@ -23,7 +23,10 @@ const STICKER_TRANSFORMS: {
   { position: [0, 0, -1], rotation: [0, Math.PI, 0] },
 ];
 
-export const DieMesh = forwardRef<THREE.Group>(function DieMesh(_props, ref) {
+export const DieMesh = forwardRef<THREE.Group, { golden?: boolean }>(function DieMesh(
+  { golden = false },
+  ref,
+) {
   const size = TUNING.dieSize;
   const half = size / 2 + 0.004; // stickers float a hair above the surface
 
@@ -36,9 +39,14 @@ export const DieMesh = forwardRef<THREE.Group>(function DieMesh(_props, ref) {
   // materials, the dice no longer participate in lighting or tone mapping at
   // all. Every pixel is a constant color, so both dice are identical by
   // construction. Depth comes from the silhouette and the blob shadow.
+  // Golden Dice is the 100-trophy unlock; both skins stay fully unlit.
   const bodyMaterial = useMemo(
-    () => new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }),
-    [],
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: golden ? '#ffd76a' : '#ffffff',
+        toneMapped: false,
+      }),
+    [golden],
   );
   // Unlit stickers with toneMapped:false — the face color IS the game
   // signal, so it must render as the exact palette hex from every angle and

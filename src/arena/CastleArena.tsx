@@ -5,7 +5,29 @@ import { createFlagstoneTexture } from './flagstoneTexture';
 
 const STONE = '#9a8a72';
 const STONE_DARK = '#7d6e58';
-const ROOF = '#e2574c';
+
+/** Palette knobs that differ between the day and sunset variants. */
+const VARIANTS = {
+  day: {
+    roof: '#e2574c',
+    meadow: '#6a9a58',
+    hill: '#5c8c4c',
+    water: '#57b0e8',
+    cloud: '#ffffff',
+    umbrellaA: '#ff7f66',
+    umbrellaB: '#5bc8e8',
+  },
+  sunset: {
+    roof: '#b84fa0',
+    meadow: '#7d9150',
+    hill: '#6b7f45',
+    water: '#e8955c',
+    cloud: '#ffd9b8',
+    umbrellaA: '#ff9d5c',
+    umbrellaB: '#c084e8',
+  },
+} as const;
+export type CastleVariant = keyof typeof VARIANTS;
 
 /** Simple toy tree: trunk + cone of leaves. */
 function Tree({
@@ -125,7 +147,7 @@ function JailPen() {
  * sun umbrellas, a little pool, and flowering bushes. Slot positions must
  * stay in sync with the free slots in src/game/Prisoners.tsx.
  */
-function RetreatGarden() {
+function RetreatGarden({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
   const towelXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
   const towelColors = ['#ffe08a', '#9be0ff', '#ffc4d6', '#c9f0b8', '#e8d5ff', '#ffd7b0'];
   return (
@@ -141,8 +163,8 @@ function RetreatGarden() {
       {/* Sun umbrellas */}
       {(
         [
-          [-2.4, 5.55, '#ff7f66'],
-          [2.4, 5.55, '#5bc8e8'],
+          [-2.4, 5.55, palette.umbrellaA],
+          [2.4, 5.55, palette.umbrellaB],
         ] as const
       ).map(([x, z, color], i) => (
         <group key={`umbrella-${i}`} position={[x, 0, z]}>
@@ -165,7 +187,7 @@ function RetreatGarden() {
         </mesh>
         <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.92, 20]} />
-          <meshStandardMaterial color="#57b0e8" roughness={0.2} />
+          <meshStandardMaterial color={palette.water} roughness={0.2} />
         </mesh>
       </group>
 
@@ -205,13 +227,13 @@ function RetreatGarden() {
  * rolling hills, distant mountains, and a few clouds. Everything procedural
  * and cheap — unlit clouds, low-poly cones and squashed spheres.
  */
-function Landscape() {
+function Landscape({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
   return (
     <group>
       {/* Meadow */}
       <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[34, 40]} />
-        <meshStandardMaterial color="#6a9a58" roughness={1} />
+        <meshStandardMaterial color={palette.meadow} roughness={1} />
       </mesh>
 
       {/* Dirt path from the near gate out toward the player */}
@@ -223,7 +245,7 @@ function Landscape() {
       {/* Pond */}
       <mesh position={[-6.6, -0.05, 2.6]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[2.1, 24]} />
-        <meshStandardMaterial color="#57b0e8" roughness={0.25} />
+        <meshStandardMaterial color={palette.water} roughness={0.25} />
       </mesh>
 
       {/* Trees */}
@@ -243,7 +265,7 @@ function Landscape() {
       ).map(([x, y, z, r], i) => (
         <mesh key={`hill-${i}`} position={[x, y, z]} scale={[1, 0.45, 1]}>
           <sphereGeometry args={[r, 16, 12]} />
-          <meshStandardMaterial color="#5c8c4c" roughness={1} />
+          <meshStandardMaterial color={palette.hill} roughness={1} />
         </mesh>
       ))}
 
@@ -273,15 +295,15 @@ function Landscape() {
         <group key={`cloud-${i}`} position={[x, y, z]} scale={[s, s * 0.5, s]}>
           <mesh>
             <sphereGeometry args={[1, 12, 8]} />
-            <meshBasicMaterial color="#ffffff" />
+            <meshBasicMaterial color={palette.cloud} />
           </mesh>
           <mesh position={[1.1, -0.1, 0.2]} scale={0.7}>
             <sphereGeometry args={[1, 12, 8]} />
-            <meshBasicMaterial color="#ffffff" />
+            <meshBasicMaterial color={palette.cloud} />
           </mesh>
           <mesh position={[-1.1, -0.15, -0.1]} scale={0.6}>
             <sphereGeometry args={[1, 12, 8]} />
-            <meshBasicMaterial color="#ffffff" />
+            <meshBasicMaterial color={palette.cloud} />
           </mesh>
         </group>
       ))}
@@ -297,7 +319,8 @@ function Landscape() {
  * mountains, clouds) so it reads as a playset diorama in a world rather
  * than a box floating in space.
  */
-export function CastleArena() {
+export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
+  const palette = VARIANTS[variant];
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
@@ -354,9 +377,9 @@ export function CastleArena() {
         <meshStandardMaterial map={floorTexture} roughness={0.95} />
       </mesh>
 
-      <Landscape />
+      <Landscape palette={palette} />
       <JailPen />
-      <RetreatGarden />
+      <RetreatGarden palette={palette} />
 
       {/* Walls */}
       <mesh
@@ -399,10 +422,16 @@ export function CastleArena() {
           </mesh>
           <mesh position={[0, wallHeight + 0.72, 0]}>
             <coneGeometry args={[0.6, 0.8, 12]} />
-            <meshStandardMaterial color={ROOF} roughness={0.6} />
+            <meshStandardMaterial color={palette.roof} roughness={0.6} />
           </mesh>
         </group>
       ))}
     </group>
   );
+}
+
+
+/** Sunset variant used by the arena registry (trophy unlock). */
+export function SunsetCastleArena() {
+  return <CastleArena variant="sunset" />;
 }

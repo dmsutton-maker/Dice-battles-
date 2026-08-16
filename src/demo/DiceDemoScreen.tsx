@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
+import { ARENAS } from '../arena/arenas';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
   AudioSettings,
@@ -31,6 +31,13 @@ import {
   OBSTACLE_HINTS,
   ObstacleLayout,
 } from '../game/obstacles';
+import {
+  applyMatchResult,
+  isUnlocked,
+  loadProgress,
+  nextTier,
+  TROPHY_STAKES,
+} from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import { TUNING } from '../game/tuning';
 import { DiceScene, SceneControls } from './DiceScene';
@@ -53,6 +60,7 @@ export function DiceDemoScreen() {
     initSounds();
     initAnnouncer();
     loadAudioSettings().then(setAudioPrefs);
+    loadProgress().then((p) => setTrophies(p.trophies));
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
@@ -67,6 +75,8 @@ export function DiceDemoScreen() {
   const [callout, setCallout] = useState<{ key: number; text: string } | null>(null);
   const [layout, setLayout] = useState<ObstacleLayout>(EMPTY_LAYOUT);
   const [round, setRound] = useState(0);
+  const [trophies, setTrophies] = useState(0);
+  const [lastDelta, setLastDelta] = useState<number | null>(null);
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
 
@@ -179,6 +189,9 @@ export function DiceDemoScreen() {
       if (m === PRISONER_COLORS.length) {
         setPhaseBoth('lost');
         showCallout('Oh no — Sir Rollsalot wins!', 'lose');
+        const result = applyMatchResult(false, difficultyRef.current);
+        setTrophies(result.trophies);
+        setLastDelta(result.delta);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
           () => {},
         );
@@ -230,6 +243,18 @@ export function DiceDemoScreen() {
         setPhaseBoth('won');
         playFanfare();
         showCallout('Victory! All prisoners freed!', 'win');
+        const result = applyMatchResult(true, difficultyRef.current);
+        setTrophies(result.trophies);
+        setLastDelta(result.delta);
+        if (result.newUnlocks.length > 0) {
+          const unlock = result.newUnlocks[result.newUnlocks.length - 1];
+          flashTimers.current.push(
+            setTimeout(
+              () => showCallout(`UNLOCKED: ${unlock.emoji} ${unlock.name}!`, 'congrats'),
+              1900,
+            ),
+          );
+        }
       } else {
         playCheer();
         if (n === PRISONER_COLORS.length - 1) {
@@ -279,6 +304,10 @@ export function DiceDemoScreen() {
     }),
   ).current;
 
+  const arenaId = isUnlocked('sunset-castle', trophies) ? 'castleSunset' : 'castle';
+  const upNext = nextTier(trophies);
+  const stakes = TROPHY_STAKES[difficulty];
+
   const isMatch =
     rolledFaces !== null &&
     rolledFaces.length === 2 &&
@@ -311,6 +340,9 @@ export function DiceDemoScreen() {
       ))}
       </View>
       <Text style={styles.difficultyHint}>{OBSTACLE_HINTS[difficulty]}</Text>
+      <Text style={styles.stakesText}>
+        Win +{stakes.win} 🏆 · Lose −{stakes.loss} 🏆
+      </Text>
       <View style={styles.audioRow}>
         {(
           [
@@ -343,10 +375,13 @@ export function DiceDemoScreen() {
           camera.lookAt(0, 0, -0.2);
         }}
       >
-        <color attach="background" args={[ARENAS[CURRENT_ARENA].skyColor]} />
+        <color attach="background" args={[ARENAS[arenaId].skyColor]} />
         <DiceScene
-          key={`${difficulty}-${round}`}
+          key={`${difficulty}-${round}-${arenaId}`}
           layout={layout}
+          arenaId={arenaId}
+          goldenDice={isUnlocked('golden-dice', trophies)}
+          showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}
           onThrow={handleThrow}
           onSettled={handleSettled}
@@ -451,6 +486,12 @@ export function DiceDemoScreen() {
       {phase === 'pick' && (
         <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
+          <Text style={styles.trophyLine}>🏆 {trophies}</Text>
+          {upNext && (
+            <Text style={styles.trophyNext}>
+              Next unlock: {upNext.emoji} {upNext.name} at {upNext.at} 🏆
+            </Text>
+          )}
           <Text style={styles.overlayBody}>
             Race {AI_NAME} to free your six prisoners!{'\n'}Roll both dice the
             same color to rescue that prisoner.
@@ -472,6 +513,14 @@ export function DiceDemoScreen() {
       {phase === 'won' && (
         <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>🏆 VICTORY!</Text>
+          <Text style={styles.trophyLine}>
+            {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} 🏆 → {trophies}
+          </Text>
+          {upNext && (
+            <Text style={styles.trophyNext}>
+              Next unlock: {upNext.emoji} {upNext.name} at {upNext.at} 🏆
+            </Text>
+          )}
           <Text style={styles.overlayBody}>
             All six prisoners rescued!{'\n'}
             {AI_NAME} only managed {aiFreed.length}.
@@ -483,6 +532,7 @@ export function DiceDemoScreen() {
       {phase === 'lost' && (
         <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>😤 DEFEAT!</Text>
+          <Text style={styles.trophyLine}>{lastDelta} 🏆 → {trophies}</Text>
           <Text style={styles.overlayBody}>
             {AI_NAME} freed all six prisoners first.{'\n'}You rescued{' '}
             {freedOrder.length} — avenge them!
@@ -622,6 +672,26 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     marginTop: -2,
+  },
+  trophyLine: {
+    color: '#ffe521',
+    fontSize: 24,
+    fontWeight: '900',
+    marginTop: 10,
+    ...textShadow,
+  },
+  trophyNext: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13.5,
+    fontWeight: '700',
+    marginTop: 4,
+    ...textShadow,
+  },
+  stakesText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12.5,
+    fontWeight: '700',
+    marginTop: 6,
   },
   aiDots: {
     flexDirection: 'row',

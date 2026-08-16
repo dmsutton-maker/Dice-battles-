@@ -5,7 +5,8 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { playClack, playThrow } from '../audio/sounds';
 import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
-import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
+import { ARENAS, ArenaId } from '../arena/arenas';
+import { TreasureChest } from '../arena/TreasureChest';
 import { createDieBody, throwDie, topFaceColor } from '../dice/die';
 import { DieMesh } from '../dice/DieMesh';
 import { ColorDef, PrisonerColorId } from '../game/colors';
@@ -33,14 +34,17 @@ interface DiceSceneProps {
   shakeSignal: number;
   /** This round's obstacle placements. Remount the scene when it changes. */
   layout: ObstacleLayout;
+  /** Which arena theme to draw (trophy unlocks switch this). */
+  arenaId: ArenaId;
+  /** Trophy unlocks that change the scene. */
+  goldenDice: boolean;
+  showTreasure: boolean;
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
   [-0.9, TUNING.dieSize / 2, 2.2],
   [0.9, TUNING.dieSize / 2, 2.4],
 ];
-
-const ArenaComponent = ARENAS[CURRENT_ARENA].Component;
 
 /**
  * The full 3D scene: physics world, castle arena, two dice, prisoners,
@@ -54,7 +58,11 @@ export function DiceScene({
   freedOrder,
   shakeSignal,
   layout,
+  arenaId,
+  goldenDice,
+  showTreasure,
 }: DiceSceneProps) {
+  const ArenaComponent = ARENAS[arenaId].Component;
   // The parent remounts this scene (key includes the round) whenever the
   // layout changes, so building the world once per mount is correct.
   const obstacles = layout;
@@ -274,6 +282,7 @@ export function DiceScene({
       <directionalLight position={[-6, 8, -4]} intensity={0.7} color="#f2f4f8" />
 
       <ArenaComponent />
+      {showTreasure && <TreasureChest />}
       <Prisoners freedOrder={freedOrder} />
 
       {/* Difficulty obstacles */}
@@ -347,6 +356,7 @@ export function DiceScene({
       {DIE_START_POSITIONS.map((_pos, i) => (
         <DieMesh
           key={`die-${i}`}
+          golden={goldenDice}
           ref={(mesh: THREE.Group | null) => {
             dieMeshRefs.current[i] = mesh;
           }}
