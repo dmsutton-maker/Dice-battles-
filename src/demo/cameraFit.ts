@@ -83,10 +83,10 @@ function buildFitPoints(): FitPoint[] {
   // on screen, clear of the small top title.
   const pen = TUNING.prison;
   const penFarZ = -(halfD + wallThickness + pen.depth);
-  const penHeadTop = pen.floorThickness + 0.95;
+  const penHeadTop = pen.platformHeight + 0.95;
   add(-(pen.innerWidth / 2 - 0.3), penHeadTop, penFarZ + pen.depth / 2, 0.94, 0.78);
   add(pen.innerWidth / 2 - 0.3, penHeadTop, penFarZ + pen.depth / 2, 0.94, 0.78);
-  add(0, pen.floorThickness + pen.barHeight + 0.15, penFarZ, 0.96, 0.82);
+  add(0, pen.platformHeight + pen.barHeight + 0.15, penFarZ, 0.96, 0.82);
 
   // Celebration spots on the side walls.
   add(-(halfW + wallThickness / 2), figureTop, 2.2, 0.99, 0.88);

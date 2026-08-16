@@ -38,7 +38,7 @@ export function Prisoners({ freedOrder }: PrisonersProps) {
     const step = usable / (PRISONER_COLORS.length - 1);
     return PRISONER_COLORS.map((_c, i) => ({
       x: -usable / 2 + i * step,
-      y: pen.floorThickness,
+      y: pen.platformHeight,
       z,
       facing: 0, // face the player through the castle
     }));

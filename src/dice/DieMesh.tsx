@@ -31,18 +31,13 @@ export const DieMesh = forwardRef<THREE.Group>(function DieMesh(_props, ref) {
     () => new RoundedBoxGeometry(size, size, size, 4, size * 0.12),
     [size],
   );
-  // Bright ivory body under filmic tone mapping (the original good look),
-  // with a small neutral emissive floor so no face ever falls into beige
-  // half-shadow regardless of how the die lands relative to the key light.
+  // Fully unlit body, like the stickers: after repeated on-device reports of
+  // one die rendering beige while the other stayed white under identical
+  // materials, the dice no longer participate in lighting or tone mapping at
+  // all. Every pixel is a constant color, so both dice are identical by
+  // construction. Depth comes from the silhouette and the blob shadow.
   const bodyMaterial = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#ffffff',
-        roughness: 0.45,
-        metalness: 0,
-        emissive: '#ffffff',
-        emissiveIntensity: 0.22,
-      }),
+    () => new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }),
     [],
   );
   // Unlit stickers with toneMapped:false — the face color IS the game

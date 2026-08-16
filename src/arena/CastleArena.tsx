@@ -54,11 +54,12 @@ const TREES: { position: [number, number, number]; scale: number; leaf: string }
  */
 function JailPen() {
   const { innerDepth, wallThickness } = TUNING.tray;
-  const { innerWidth: penW, depth: penD, floorThickness, barHeight } = TUNING.prison;
+  const { innerWidth: penW, depth: penD, platformHeight, barHeight } = TUNING.prison;
   const zNear = -(innerDepth / 2 + wallThickness); // shared with the far wall
   const zFar = zNear - penD;
   const zCenter = (zNear + zFar) / 2;
   const halfW = penW / 2;
+  const floorY = platformHeight; // top of the platform = pen floor
 
   const bars: [number, number][] = [];
   // Far side of the pen.
@@ -76,30 +77,27 @@ function JailPen() {
 
   return (
     <group>
-      {/* Raised stone floor slab */}
-      <mesh position={[0, floorThickness / 2, zCenter]}>
-        <boxGeometry args={[penW + 0.4, floorThickness, penD + 0.3]} />
+      {/* Solid stone platform lifting the pen above the castle wall's cover */}
+      <mesh position={[0, floorY / 2, zCenter]}>
+        <boxGeometry args={[penW + 0.4, floorY, penD + 0.3]} />
         <meshStandardMaterial color="#8f8371" roughness={0.95} />
       </mesh>
 
       {/* Iron bars */}
       {bars.map(([x, z], i) => (
-        <mesh key={`bar-${i}`} position={[x, floorThickness + barHeight / 2, z]}>
+        <mesh key={`bar-${i}`} position={[x, floorY + barHeight / 2, z]}>
           <cylinderGeometry args={[0.045, 0.045, barHeight, 6]} />
           <meshStandardMaterial color="#454a52" roughness={0.5} metalness={0.4} />
         </mesh>
       ))}
 
       {/* Top rails */}
-      <mesh position={[0, floorThickness + barHeight, zFar]}>
+      <mesh position={[0, floorY + barHeight, zFar]}>
         <boxGeometry args={[penW + 0.2, 0.09, 0.09]} />
         <meshStandardMaterial color="#3a3f46" roughness={0.5} metalness={0.4} />
       </mesh>
       {([-halfW, halfW] as const).map((x, i) => (
-        <mesh
-          key={`rail-${i}`}
-          position={[x, floorThickness + barHeight, zCenter]}
-        >
+        <mesh key={`rail-${i}`} position={[x, floorY + barHeight, zCenter]}>
           <boxGeometry args={[0.09, 0.09, penD + 0.1]} />
           <meshStandardMaterial color="#3a3f46" roughness={0.5} metalness={0.4} />
         </mesh>
@@ -112,8 +110,8 @@ function JailPen() {
           [halfW, zFar],
         ] as const
       ).map(([x, z], i) => (
-        <mesh key={`post-${i}`} position={[x, (floorThickness + barHeight + 0.15) / 2, z]}>
-          <boxGeometry args={[0.24, floorThickness + barHeight + 0.15, 0.24]} />
+        <mesh key={`post-${i}`} position={[x, (floorY + barHeight + 0.15) / 2, z]}>
+          <boxGeometry args={[0.24, floorY + barHeight + 0.15, 0.24]} />
           <meshStandardMaterial color={STONE_DARK} roughness={0.9} />
         </mesh>
       ))}

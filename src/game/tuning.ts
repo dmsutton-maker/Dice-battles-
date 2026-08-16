@@ -54,8 +54,12 @@ export const TUNING = {
     innerWidth: 4.4,
     /** Pen depth (z), extending away from the far wall. */
     depth: 1.6,
-    /** Raised stone floor slab height. */
-    floorThickness: 0.12,
+    /**
+     * Height of the stone platform the pen sits on. Raised so the whole
+     * prisoner figure is visible over the castle's far wall from the
+     * near-top-down camera — at ground level the wall hid their bodies.
+     */
+    platformHeight: 1.15,
     /** Iron bar height around the pen. */
     barHeight: 1.15,
   },
