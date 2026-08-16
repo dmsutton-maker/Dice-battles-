@@ -184,17 +184,23 @@ export function DiceScene({
       stillFrames.current = allStill ? stillFrames.current + 1 : 0;
       if (stillFrames.current >= TUNING.settle.stillFrames) {
         awaitingSettle.current = false;
-        const faces = diceBodies.map((body) =>
-          topFaceColor(
-            new THREE.Quaternion(
-              body.quaternion.x,
-              body.quaternion.y,
-              body.quaternion.z,
-              body.quaternion.w,
+        // Report faces in ON-SCREEN left-to-right order, not spawn order:
+        // the dice trade places while rolling, and the HUD swatches must
+        // match what the player sees or a die looks like the wrong color.
+        const settled = diceBodies
+          .map((body) => ({
+            x: body.position.x,
+            color: topFaceColor(
+              new THREE.Quaternion(
+                body.quaternion.x,
+                body.quaternion.y,
+                body.quaternion.z,
+                body.quaternion.w,
+              ),
             ),
-          ),
-        );
-        onSettled(faces);
+          }))
+          .sort((a, b) => a.x - b.x);
+        onSettled(settled.map((s) => s.color));
       }
     }
   });
