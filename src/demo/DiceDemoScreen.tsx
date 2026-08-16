@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
-import { announce, stopAnnouncer } from '../audio/announcer';
+import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
   AudioSettings,
   getAudioSettings,
@@ -46,6 +46,7 @@ export function DiceDemoScreen() {
 
   useEffect(() => {
     initSounds();
+    initAnnouncer();
     loadAudioSettings().then(setAudioPrefs);
   }, []);
 
@@ -96,11 +97,11 @@ export function DiceDemoScreen() {
     setRolling(false);
   }, []);
 
-  const showCallout = useCallback((text: string, spoken = true) => {
+  const showCallout = useCallback((text: string, cue?: VoiceCue | null) => {
     setCallout({ key: Date.now(), text });
     if (calloutTimer.current) clearTimeout(calloutTimer.current);
     calloutTimer.current = setTimeout(() => setCallout(null), 2300);
-    if (spoken) announce(text);
+    if (cue) playCue(cue);
   }, []);
 
   const handleMoatSink = useCallback(() => {
@@ -122,13 +123,13 @@ export function DiceDemoScreen() {
     resetRace();
     setCallout(null);
     setPhaseBoth('arm');
-    announce('Arm your dice!');
+    playCue('ready');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     countdownTimers.current.forEach(clearTimeout);
     countdownTimers.current = [
       setTimeout(() => {
         setPhaseBoth('go');
-        announce('Battle!');
+        playCue('go');
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
         playThrow();
       }, 1100),
@@ -166,18 +167,18 @@ export function DiceDemoScreen() {
       const n = freedRef.current.length;
       if (m === PRISONER_COLORS.length) {
         setPhaseBoth('lost');
-        showCallout('Oh no — Sir Rollsalot wins!');
+        showCallout('Oh no — Sir Rollsalot wins!', 'lose');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
           () => {},
         );
       } else if (m === PRISONER_COLORS.length - 1) {
-        showCallout('He needs only ONE more — hurry!');
+        showCallout('He needs only ONE more — hurry!', 'hurry');
       } else if (m === n && n > 0) {
-        showCallout(`Sir Rollsalot ties it up ${m}–${n}!`);
+        showCallout(`Sir Rollsalot ties it up ${m}–${n}!`, 'lookout');
       } else if (m === n + 1) {
-        showCallout(`Sir Rollsalot freed ${a.label} — you're falling behind!`);
+        showCallout(`Sir Rollsalot freed ${a.label} — you're falling behind!`, 'lookout');
       } else {
-        showCallout(`Sir Rollsalot freed ${a.label}!`);
+        showCallout(`Sir Rollsalot freed ${a.label}!`, 'lookout');
       }
     }, rollIntervalMs);
     return () => clearInterval(id);
@@ -217,17 +218,17 @@ export function DiceDemoScreen() {
       if (n === PRISONER_COLORS.length) {
         setPhaseBoth('won');
         playFanfare();
-        showCallout('Victory! All prisoners freed!');
+        showCallout('Victory! All prisoners freed!', 'win');
       } else {
         playCheer();
         if (n === PRISONER_COLORS.length - 1) {
-          showCallout(`${faces[0].label} rescued — one more to win!`);
+          showCallout(`${faces[0].label} rescued — one more to win!`, 'gogogo');
         } else if (n === m && m > 0) {
-          showCallout(`${faces[0].label} rescued — you're tied ${n}–${m}!`);
+          showCallout(`${faces[0].label} rescued — you're tied ${n}–${m}!`, countCue(n));
         } else if (n === m + 1) {
-          showCallout(`${faces[0].label} rescued — you take the lead!`);
+          showCallout(`${faces[0].label} rescued — you take the lead!`, countCue(n));
         } else {
-          showCallout(`${faces[0].label} rescued!`);
+          showCallout(`${faces[0].label} rescued!`, countCue(n));
         }
       }
     },
