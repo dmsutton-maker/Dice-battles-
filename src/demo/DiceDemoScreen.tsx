@@ -11,6 +11,7 @@ import {
   AiDifficultyId,
   rollAiDice,
 } from '../game/ai';
+import { OBSTACLE_HINTS } from '../game/obstacles';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import { TUNING } from '../game/tuning';
 import { DiceScene, SceneControls } from './DiceScene';
@@ -182,7 +183,8 @@ export function DiceDemoScreen() {
     rolledFaces[0].id === rolledFaces[1].id;
 
   const difficultyRow = (
-    <View style={styles.difficultyRow}>
+    <View style={styles.difficultyBlock}>
+      <View style={styles.difficultyRow}>
       {Object.values(AI_DIFFICULTIES).map((d) => (
         <Pressable
           key={d.id}
@@ -202,6 +204,8 @@ export function DiceDemoScreen() {
           </Text>
         </Pressable>
       ))}
+      </View>
+      <Text style={styles.difficultyHint}>{OBSTACLE_HINTS[difficulty]}</Text>
     </View>
   );
 
@@ -217,6 +221,8 @@ export function DiceDemoScreen() {
       >
         <color attach="background" args={[ARENAS[CURRENT_ARENA].skyColor]} />
         <DiceScene
+          key={difficulty}
+          difficulty={difficulty}
           controlsRef={controlsRef}
           onThrow={handleThrow}
           onSettled={handleSettled}
@@ -502,10 +508,20 @@ const styles = StyleSheet.create({
     color: '#ffe521',
     fontSize: 52,
   },
+  difficultyBlock: {
+    alignItems: 'center',
+    marginTop: 22,
+  },
   difficultyRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 22,
+  },
+  difficultyHint: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 10,
+    textAlign: 'center',
   },
   difficultyButton: {
     paddingHorizontal: 18,

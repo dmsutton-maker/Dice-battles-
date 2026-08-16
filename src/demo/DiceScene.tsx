@@ -4,6 +4,8 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { playClack, playThrow } from '../audio/sounds';
+import { AiDifficultyId } from '../game/ai';
+import { MOAT, MOUND, OBSTACLES_BY_DIFFICULTY } from '../game/obstacles';
 import { ARENAS, CURRENT_ARENA } from '../arena/arenas';
 import { createDieBody, throwDie, topFaceColor } from '../dice/die';
 import { DieMesh } from '../dice/DieMesh';
@@ -28,6 +30,8 @@ interface DiceSceneProps {
   freedOrder: PrisonerColorId[];
   /** Increment to fire a celebratory camera shake (e.g. on each rescue). */
   shakeSignal: number;
+  /** Difficulty decides the courtyard obstacles. Remount scene on change. */
+  difficulty: AiDifficultyId;
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
@@ -47,11 +51,16 @@ export function DiceScene({
   onSettled,
   freedOrder,
   shakeSignal,
+  difficulty,
 }: DiceSceneProps) {
+  // The parent remounts this scene (key=difficulty) when difficulty
+  // changes, so building the world once per mount is correct.
+  const obstacles = OBSTACLES_BY_DIFFICULTY[difficulty];
   const physics = useMemo(() => {
     const p = createPhysicsWorld();
-    addTrayBodies(p);
+    addTrayBodies(p, obstacles);
     return p;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const diceBodies = useMemo(
@@ -150,10 +159,16 @@ export function DiceScene({
         material.opacity = 0.28 * Math.max(1 - height * 0.18, 0.25);
       }
 
-      // Safety net: if a die somehow leaves the sealed tray (e.g. tunneling
-      // through a corner at extreme speed), teleport it back instead of
-      // letting it fall forever and soft-lock settle detection.
+      // Moat capture: the instant a die dips under the water surface it is
+      // "swallowed" — otherwise frenzied re-throws can pop it back out of
+      // the hole before it sinks. Plus the general out-of-bounds safety net.
+      const sankInMoat =
+        obstacles.moat &&
+        body.position.y < 0.12 &&
+        Math.abs(body.position.x - MOAT.x) < MOAT.size / 2 + 0.15 &&
+        Math.abs(body.position.z - MOAT.z) < MOAT.size / 2 + 0.15;
       if (
+        sankInMoat ||
         body.position.y < -1 ||
         Math.abs(body.position.x) > TUNING.tray.innerWidth / 2 + 0.8 ||
         Math.abs(body.position.z) > TUNING.tray.innerDepth / 2 + 0.8
@@ -163,6 +178,8 @@ export function DiceScene({
         body.velocity.set(0, 0, 0);
         body.angularVelocity.set(0, 0, 0);
         body.wakeUp();
+        // Fell in the moat (or escaped): splash-thunk feedback.
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       }
 
       const speed =
@@ -225,6 +242,46 @@ export function DiceScene({
 
       <ArenaComponent />
       <Prisoners freedOrder={freedOrder} />
+
+      {/* Difficulty obstacles */}
+      {obstacles.mound && (
+        <mesh position={[MOUND.x, -MOUND.buried, MOUND.z]}>
+          <sphereGeometry args={[MOUND.radius, 20, 14]} />
+          <meshStandardMaterial color="#7fae66" roughness={0.85} />
+        </mesh>
+      )}
+      {obstacles.moat && (
+        <group position={[MOAT.x, 0, MOAT.z]}>
+          {/* Water surface hiding the real hole in the physics floor */}
+          <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[MOAT.size + 0.25, MOAT.size + 0.25]} />
+            <meshStandardMaterial color="#3f9adf" roughness={0.15} />
+          </mesh>
+          {/* Stone rim */}
+          {(
+            [
+              [0, -(MOAT.size / 2 + 0.2), MOAT.size + 0.55, 0.16],
+              [0, MOAT.size / 2 + 0.2, MOAT.size + 0.55, 0.16],
+            ] as const
+          ).map(([x, z, w, d], i) => (
+            <mesh key={`rimz-${i}`} position={[x, 0.06, z]}>
+              <boxGeometry args={[w, 0.12, d]} />
+              <meshStandardMaterial color="#8a7c66" roughness={0.9} />
+            </mesh>
+          ))}
+          {(
+            [
+              [-(MOAT.size / 2 + 0.2), 0],
+              [MOAT.size / 2 + 0.2, 0],
+            ] as const
+          ).map(([x, z], i) => (
+            <mesh key={`rimx-${i}`} position={[x, 0.06, z]}>
+              <boxGeometry args={[0.16, 0.12, MOAT.size + 0.25]} />
+              <meshStandardMaterial color="#8a7c66" roughness={0.9} />
+            </mesh>
+          ))}
+        </group>
+      )}
 
       {/* Dice */}
       {DIE_START_POSITIONS.map((_pos, i) => (

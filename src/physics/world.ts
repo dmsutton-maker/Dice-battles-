@@ -1,4 +1,5 @@
 import * as CANNON from 'cannon-es';
+import { MOAT, MOUND, ObstacleConfig } from '../game/obstacles';
 import { TUNING } from '../game/tuning';
 
 export interface PhysicsWorld {
@@ -35,11 +36,18 @@ export function createPhysicsWorld(): PhysicsWorld {
 }
 
 /**
- * Add the static tray collision bodies: floor, four walls, and an invisible
- * ceiling that keeps wild flicks inside the camera frame. The visual arena
- * is drawn separately (see src/arena) — these are physics-only.
+ * Add the static tray collision bodies: floor, four walls, an invisible
+ * ceiling that keeps wild flicks inside the camera frame, and optional
+ * difficulty obstacles. The visual arena is drawn separately — physics only.
+ *
+ * With the moat enabled, the floor is built as four boxes leaving a real
+ * square hole; the water plane drawn above it is visual-only, so a die that
+ * rolls in genuinely sinks (the out-of-bounds respawn fishes it out).
  */
-export function addTrayBodies(physics: PhysicsWorld): void {
+export function addTrayBodies(
+  physics: PhysicsWorld,
+  obstacles: ObstacleConfig = { mound: false, moat: false },
+): void {
   const { world, trayMaterial } = physics;
   const { innerWidth, innerDepth, wallHeight, wallThickness, ceilingHeight } =
     TUNING.tray;
@@ -61,8 +69,53 @@ export function addTrayBodies(physics: PhysicsWorld): void {
     world.addBody(body);
   };
 
-  // Floor (top surface at y = 0).
-  addStaticBox([halfW + wallThickness, 0.5, halfD + wallThickness], [0, -0.5, 0]);
+  const floorHalfW = halfW + wallThickness;
+  const floorHalfD = halfD + wallThickness;
+  if (!obstacles.moat) {
+    // Solid floor (top surface at y = 0).
+    addStaticBox([floorHalfW, 0.5, floorHalfD], [0, -0.5, 0]);
+  } else {
+    // Floor with a square hole for the moat.
+    const h = MOAT.size / 2;
+    const west = { from: -floorHalfW, to: MOAT.x - h };
+    const east = { from: MOAT.x + h, to: floorHalfW };
+    const north = { from: -floorHalfD, to: MOAT.z - h };
+    const south = { from: MOAT.z + h, to: floorHalfD };
+    const strip = (
+      x0: number,
+      x1: number,
+      z0: number,
+      z1: number,
+    ) =>
+      addStaticBox(
+        [(x1 - x0) / 2, 0.5, (z1 - z0) / 2],
+        [(x0 + x1) / 2, -0.5, (z0 + z1) / 2],
+      );
+    strip(west.from, west.to, -floorHalfD, floorHalfD);
+    strip(east.from, east.to, -floorHalfD, floorHalfD);
+    strip(west.to, east.from, north.from, north.to);
+    strip(west.to, east.from, south.from, south.to);
+  }
+
+  if (obstacles.mound) {
+    // Slick dome: dice skid off instead of resting tilted on top.
+    const moundMaterial = new CANNON.Material('mound');
+    world.addContactMaterial(
+      new CANNON.ContactMaterial(physics.dieMaterial, moundMaterial, {
+        friction: 0.04,
+        restitution: 0.35,
+      }),
+    );
+    // Center below floor level so only a bump of height (radius - buried)
+    // pokes through: sphere top = -buried + radius.
+    const mound = new CANNON.Body({
+      type: CANNON.Body.STATIC,
+      material: moundMaterial,
+      shape: new CANNON.Sphere(MOUND.radius),
+      position: new CANNON.Vec3(MOUND.x, -MOUND.buried, MOUND.z),
+    });
+    world.addBody(mound);
+  }
   // Walls. The VISIBLE walls are only `wallHeight` tall, but the colliders
   // extend all the way up to the ceiling: rapid mid-air re-throws stack
   // altitude (throwDie resets velocity at the die's current height), and any
