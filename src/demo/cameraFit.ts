@@ -16,8 +16,12 @@ import { TUNING } from '../game/tuning';
  */
 export const cameraBase = new THREE.Vector3(0, 10.5, 5.6);
 
-/** Viewing direction: mostly top-down, tilted toward the player. */
-const TILT_DEGREES = 29;
+/**
+ * Viewing direction: near top-down with a slight tilt toward the player.
+ * Kept small on purpose — a stronger tilt makes the near wall loom large in
+ * perspective and eat the bottom of the screen.
+ */
+const TILT_DEGREES = 17;
 const DIR = new THREE.Vector3(
   0,
   Math.cos(THREE.MathUtils.degToRad(TILT_DEGREES)),
@@ -111,8 +115,8 @@ const scratch = new THREE.Vector3();
  * viewport aspect ratio. Call on mount and whenever the viewport changes.
  */
 export function fitCamera(camera: THREE.PerspectiveCamera, aspect: number): void {
-  // Wider lens on narrow screens so the arena doesn't recede into the distance.
-  camera.fov = aspect < 0.65 ? 58 : 46;
+  // Longer lens = flatter, board-game look; slightly wider on narrow screens.
+  camera.fov = aspect < 0.65 ? 46 : 40;
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
 

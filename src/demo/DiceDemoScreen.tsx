@@ -104,6 +104,7 @@ export function DiceDemoScreen() {
       <StatusBar style="light" />
       <Canvas
         style={styles.canvas}
+        flat
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
           camera.lookAt(0, 0, -0.2);

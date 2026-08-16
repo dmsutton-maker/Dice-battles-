@@ -23,7 +23,7 @@ export const PRISONER_COLORS: ColorDef[] = [
   { id: 'blue', label: 'Blue', hex: '#3d8bff' },
   { id: 'green', label: 'Green', hex: '#3ecf5a' },
   { id: 'yellow', label: 'Yellow', hex: '#ffd23d' },
-  { id: 'purple', label: 'Purple', hex: '#a55eea' },
+  { id: 'purple', label: 'Purple', hex: '#c04cff' },
   { id: 'orange', label: 'Orange', hex: '#ff8c2e' },
 ];
 

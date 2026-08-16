@@ -200,9 +200,9 @@ export function DiceScene({
   return (
     <>
       <CameraRig />
-      <hemisphereLight args={['#cfe4ff', '#6d5a3e', 0.9]} />
-      <directionalLight position={[4, 12, 6]} intensity={2.4} />
-      <directionalLight position={[-6, 8, -4]} intensity={0.7} color="#ffd9b0" />
+      <hemisphereLight args={['#dfe9ff', '#7a6a4c', 0.9]} />
+      <directionalLight position={[4, 12, 6]} intensity={1.9} />
+      <directionalLight position={[-6, 8, -4]} intensity={0.6} color="#ffe4c4" />
 
       <Arena />
       <Prisoners freedOrder={freedOrder} />
