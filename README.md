@@ -96,6 +96,13 @@ battle zone is a second `DiceScene` with its own physics world.
 
 **v3:** rewarded ads at natural breaks, remove-ads IAP, cosmetic dice skins
 and battlefield themes. No ad SDK before v3.
+- **Custom soldier colors (paid):** let players re-color their six
+  soldiers/prisoners from a color palette. Constraint: the six colors are
+  gameplay signals (dice faces must match soldiers at a glance), so any
+  custom set has to stay mutually distinct — enforce a minimum perceptual
+  distance between choices rather than free-form pick-anything. Palette
+  plumbing already supports this: every color reference flows through
+  `src/game/colors.ts`, so a custom palette is a data swap, not a refactor.
 
 **Constraints:** family-friendly (ages 5+), rounds 1–2 minutes, fully
 offline, no accounts, no data collection.
