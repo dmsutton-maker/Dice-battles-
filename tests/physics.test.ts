@@ -256,7 +256,16 @@ suite('physics · obstacles', () => {
           layout.mound.x - layout.moat.x,
           layout.mound.z - layout.moat.z,
         );
-        assert(d >= 2.4, `hill and moat overlap (distance ${d.toFixed(2)})`);
+        // Below the sum of their radii the moat's hole is cut through the
+        // hill, and a die landing there behaves nonsensically. The
+        // generator aims for a visible gap on top of that; both are
+        // asserted so a placement change cannot quietly erode the margin.
+        const touching = MOUND.radius + MOAT.size / 2;
+        assert(d > touching, `hill and moat overlap (${d.toFixed(2)} < ${touching})`);
+        assert(
+          d >= touching + 0.45,
+          `hill and moat are closer than the generator targets (${d.toFixed(2)})`,
+        );
       }
     }
   });

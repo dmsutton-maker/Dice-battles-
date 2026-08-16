@@ -67,19 +67,31 @@ export function generateObstacleLayout(difficulty: AiDifficultyId): ObstacleLayo
     clearances: { x: number; z: number; radius: number }[],
     attempts = 120,
   ): ObstaclePlacement => {
-    let best: ObstaclePlacement = { x: xRange[0], z: zRange[0] };
-    let bestSlack = -Infinity;
+    const slackAt = (x: number, z: number) =>
+      Math.min(...clearances.map((c) => Math.hypot(x - c.x, z - c.z) - c.radius));
+
     for (let i = 0; i < attempts; i++) {
       const x = rand(xRange[0], xRange[1]);
       const z = rand(zRange[0], zRange[1]);
-      // Slack = how much room to spare against the tightest constraint.
-      const slack = Math.min(
-        ...clearances.map((c) => Math.hypot(x - c.x, z - c.z) - c.radius),
-      );
-      if (slack > 0) return { x, z };
-      if (slack > bestSlack) {
-        bestSlack = slack;
-        best = { x, z };
+      if (slackAt(x, z) > 0) return { x, z };
+    }
+
+    // Random sampling missed. Sweep the range instead of keeping the best
+    // random guess: on a crowded battlefield the roomiest spot is a small
+    // target, and a near-miss guess is what let the moat sit too close to
+    // the hill. A grid sweep finds it whenever one exists.
+    let best: ObstaclePlacement = { x: xRange[0], z: zRange[0] };
+    let bestSlack = -Infinity;
+    const STEPS = 24;
+    for (let ix = 0; ix <= STEPS; ix++) {
+      for (let iz = 0; iz <= STEPS; iz++) {
+        const x = xRange[0] + ((xRange[1] - xRange[0]) * ix) / STEPS;
+        const z = zRange[0] + ((zRange[1] - zRange[0]) * iz) / STEPS;
+        const slack = slackAt(x, z);
+        if (slack > bestSlack) {
+          bestSlack = slack;
+          best = { x, z };
+        }
       }
     }
     return best;
