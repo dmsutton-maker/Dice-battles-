@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Dimensions,
   PanResponder,
   Pressable,
   ScrollView,
@@ -71,6 +72,7 @@ import {
   Station,
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
+import { aimFromTouch } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
@@ -92,13 +94,21 @@ export function DiceDemoScreen() {
   useEffect(() => {
     initSounds();
     initAnnouncer();
-    loadAudioSettings().then(setAudioPrefs);
-    loadLoadout().then(setLoadout);
-    loadProgress().then((p) => {
-      setTrophies(p.trophies);
-      setWins(p.wins);
-      setUnlockAll(!!p.unlockAll);
-    });
+    // Nothing is drawn until the saved loadout and progress are in hand:
+    // rendering first would show the default castle for a frame before
+    // swapping to the battlefield the player actually left equipped.
+    Promise.all([loadAudioSettings(), loadLoadout(), loadProgress()])
+      .then(([audio, saved, progress]) => {
+        setAudioPrefs(audio);
+        setLoadout(saved);
+        setTrophies(progress.trophies);
+        setWins(progress.wins);
+        setUnlockAll(!!progress.unlockAll);
+      })
+      .catch(() => {
+        // Defaults are fine if storage is unavailable.
+      })
+      .finally(() => setHydrated(true));
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
@@ -109,6 +119,7 @@ export function DiceDemoScreen() {
   const [twoPlayer, setTwoPlayer] = useState(false);
   const [loadout, setLoadout] = useState(getLoadout());
   const [showInventory, setShowInventory] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [unlockAll, setUnlockAll] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
@@ -532,22 +543,13 @@ export function DiceDemoScreen() {
         // arm/go: inputs locked during the ritual. won/lost/tie: the result
         // screen's own buttons decide what happens next.
       },
-      // A swipe already threw on touch-down, so its release must NOT throw
-      // again — those dice are airborne and binding. The flick only aims a
-      // throw that is still waiting its turn behind a roll in progress.
-      onPanResponderRelease: (_event, gesture) => {
+      // A drag re-aims a throw that is still queued behind a roll in
+      // progress; it must never throw again itself, because the touch-down
+      // already did and those dice are binding.
+      onPanResponderRelease: (event) => {
         if (phaseRef.current !== 'battle') return;
         if (threwOnTouchDown.current) return;
-        const speed = Math.hypot(gesture.vx, gesture.vy);
-        if (speed < TUNING.throw.flickThreshold) return;
-        const scale = TUNING.throw.flickScale;
-        const max = TUNING.throw.flickMaxSpeed;
-        const clamp = (v: number) => Math.max(-max, Math.min(max, v));
-        controlsRef.current?.throwAll({
-          x: clamp(gesture.vx * scale),
-          // Screen up (negative vy) throws away from the player (-z).
-          z: clamp(gesture.vy * scale),
-        });
+        controlsRef.current?.throwAll(aimFromTouch(event));
       },
     }),
   ).current;
@@ -653,6 +655,11 @@ export function DiceDemoScreen() {
       </Pressable>
     </View>
   );
+
+  if (!hydrated) {
+    // One or two frames on a cold start, in the app's own background.
+    return <View style={styles.hydrating} />;
+  }
 
   if (twoPlayer) {
     return (
@@ -980,6 +987,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#8ec8f7',
+  },
+  hydrating: {
+    flex: 1,
+    backgroundColor: '#1b1430',
   },
   canvas: {
     flex: 1,

@@ -25,14 +25,20 @@ import { addTrayBodies, createPhysicsWorld } from '../physics/world';
 import { cameraBase } from './cameraFit';
 import { CameraRig } from './CameraRig';
 
+/** Where on the screen the player touched, as -1..1 across and 0..1 up. */
+export interface ThrowAim {
+  aim: number;
+  power: number;
+}
+
 export interface SceneControls {
   /**
-   * Throw both dice. Pass a flick velocity for directional throws. Reports
-   * whether the throw went out now or was queued behind a roll in
-   * progress — the gesture layer needs to know, because a swipe's release
-   * must not turn into a second roll when its touch-down already threw.
+   * Throw both dice toward where the player touched. Reports whether the
+   * throw went out now or was queued behind a roll in progress — the
+   * gesture layer needs to know, because a swipe's release must not turn
+   * into a second roll when its touch-down already threw.
    */
-  throwAll: (flick?: { x: number; z: number }) => 'launched' | 'queued';
+  throwAll: (aim?: ThrowAim) => 'launched' | 'queued';
 }
 
 interface DiceSceneProps {
@@ -119,11 +125,9 @@ export function DiceScene({
    * cancel a bad roll mid-air), so the queued throw always lands after the
    * previous roll has been counted.
    */
-  const queuedThrow = useRef<{ flick?: { x: number; z: number } } | null>(null);
+  const queuedThrow = useRef<{ aim?: ThrowAim } | null>(null);
   const queuedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const launchRef = useRef<((flick?: { x: number; z: number }) => void) | null>(
-    null,
-  );
+  const launchRef = useRef<((aim?: ThrowAim) => void) | null>(null);
   /** Mirrors the `throwsEnabled` prop for use inside the frame loop. */
   const throwsEnabledRef = useRef(true);
   throwsEnabledRef.current = throwsEnabled;
@@ -166,28 +170,28 @@ export function DiceScene({
   }, [diceBodies]);
 
   useEffect(() => {
-    const launch = (flick?: { x: number; z: number }) => {
+    const launch = (aim?: ThrowAim) => {
       awaitingSettle.current = true;
       stillFrames.current = 0;
       throwStartedAt.current = Date.now();
-      diceBodies.forEach((body) =>
-        throwDie(body, flick ? { flickVelocity: flick } : {}),
+      diceBodies.forEach((body, index) =>
+        throwDie(body, { index, aim: aim?.aim, power: aim?.power }),
       );
       playThrow();
       onThrow();
     };
 
     controlsRef.current = {
-      throwAll: (flick) => {
+      throwAll: (aim) => {
         // Every roll is binding: no re-throwing while dice are still
         // tumbling, or players could cancel bad rolls mid-air (which
         // guts Ultimate's prisoner-exchange rule entirely). The tap is
         // queued rather than dropped so rapid tapping still feels alive.
         if (awaitingSettle.current) {
-          queuedThrow.current = { flick };
+          queuedThrow.current = { aim };
           return 'queued';
         }
-        launch(flick);
+        launch(aim);
         return 'launched';
       },
     };
@@ -318,7 +322,7 @@ export function DiceScene({
           if (queuedTimer.current) clearTimeout(queuedTimer.current);
           queuedTimer.current = setTimeout(() => {
             if (throwsEnabledRef.current && !awaitingSettle.current) {
-              launchRef.current?.(queued.flick);
+              launchRef.current?.(queued.aim);
             }
           }, TUNING.settle.queuedThrowDelayMs);
         }

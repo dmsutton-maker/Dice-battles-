@@ -64,31 +64,45 @@ const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const randSign = () => (Math.random() < 0.5 ? -1 : 1);
 
 export interface ThrowInput {
-  /** World-space horizontal velocity from a flick; omitted for a plain tap. */
-  flickVelocity?: { x: number; z: number };
+  /** Which die this is, so the pair leaves the hand side by side. */
+  index?: number;
+  /** Where across the screen the player touched: -1 left .. +1 right. */
+  aim?: number;
+  /** How far up the screen they touched: 0 near the player .. 1 far. */
+  power?: number;
 }
 
 /**
- * Launch a die: a tap pops it up with random scatter and spin; a flick adds
- * directional velocity so every roll looks hand-thrown and different.
+ * Tip a die out of the hand at the player's edge and send it down the
+ * board. Position is reset on every throw so a roll always starts from the
+ * same place — picking the dice up is part of what makes it read as a
+ * throw rather than the dice twitching where they lie.
  */
 export function throwDie(body: CANNON.Body, input: ThrowInput = {}): void {
   const t = TUNING.throw;
+  const index = input.index ?? 0;
+  const aim = Math.max(-1, Math.min(1, input.aim ?? 0));
+  const power =
+    t.powerMin + (t.powerMax - t.powerMin) * Math.max(0, Math.min(1, input.power ?? 0.5));
+
+  const side = index === 0 ? -1 : 1;
+  body.position.set(
+    side * t.handSpread + rand(-0.12, 0.12),
+    t.handY + rand(0, 0.18),
+    t.handZ + rand(-0.15, 0.15),
+  );
+  body.quaternion.setFromEuler(
+    rand(0, Math.PI * 2),
+    rand(0, Math.PI * 2),
+    rand(0, Math.PI * 2),
+  );
   body.wakeUp();
 
-  if (input.flickVelocity) {
-    body.velocity.set(
-      input.flickVelocity.x + rand(-1, 1),
-      t.flickUp + rand(0, 2),
-      input.flickVelocity.z + rand(-1, 1),
-    );
-  } else {
-    body.velocity.set(
-      rand(-t.tapLateral, t.tapLateral),
-      rand(t.tapUpMin, t.tapUpMax),
-      rand(-t.tapLateral, t.tapLateral),
-    );
-  }
+  body.velocity.set(
+    aim * t.aimScale + rand(-t.lateralJitter, t.lateralJitter),
+    rand(t.upMin, t.upMax) * power,
+    -rand(t.forwardMin, t.forwardMax) * power,
+  );
 
   body.angularVelocity.set(
     randSign() * rand(t.spinMin, t.spinMax),

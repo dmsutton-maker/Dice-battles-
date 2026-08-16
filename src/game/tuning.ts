@@ -72,27 +72,49 @@ export const TUNING = {
     barHeight: 1.15,
   },
 
+  /**
+   * The throw is modelled on tipping dice out of a cup at the near edge of
+   * the board and sending them AWAY from you.
+   *
+   * The old model popped them straight up from wherever they happened to be
+   * lying, scattering randomly in both directions — as likely to fly at the
+   * player as away — which read as the dice jiggling in place rather than
+   * being thrown, and left the player's touch with no influence at all.
+   * Now every throw starts from the same spot in front of the player and
+   * travels the length of the board, aimed by where the screen was touched.
+   */
   throw: {
-    /** Tap: upward pop range. */
-    tapUpMin: 7.5,
-    tapUpMax: 10.5,
-    /** Tap: random sideways scatter. */
-    tapLateral: 3.2,
-    /** Flick: gesture velocity (pt/ms) -> world velocity multiplier. */
-    flickScale: 9,
-    /** Flick: max horizontal world speed. */
-    flickMaxSpeed: 14,
-    /** Flick: fixed upward pop added to any flick. */
-    flickUp: 6.5,
-    /** Gesture speed (pt/ms) above which a release counts as a flick. */
-    flickThreshold: 0.35,
+    /** Where the dice are tipped from: player's edge, slightly raised. */
+    handZ: 3.4,
+    handY: 1.0,
+    /** Sideways offset of each die at the hand, so they don't start fused. */
+    handSpread: 0.75,
+    /** Speed away from the player (-z). */
+    forwardMin: 7.6,
+    forwardMax: 9.4,
     /**
-     * NOTE: a swipe throws on touch-down and reports its direction only on
-     * release, so an aimed throw applies to the NEXT roll (the one queued
-     * behind the roll in flight), never to dice already tumbling — those
-     * are binding. Nudging airborne dice was tried and rejected: at flick
-     * strength it punched them out of the tray in ~4% of throws.
+     * Lift. Kept low on purpose: thrown dice skitter along a table rather
+     * than lob through the air, and airtime is dead time the player waits
+     * out (measured: dropping lift here cut the worst median roll from
+     * 1383ms to 1117ms without shortening the throw).
      */
+    upMin: 3.4,
+    upMax: 4.6,
+    /**
+     * Aim: touch position across the screen (-1 left .. +1 right) becomes
+     * sideways velocity. Taken at touch-down, so aiming costs no latency —
+     * the throw still fires the instant a finger lands.
+     */
+    aimScale: 3.4,
+    /** Randomness on top of the aim, so no two throws are identical. */
+    lateralJitter: 0.8,
+    /**
+     * Power from how far up the screen the touch is: a touch near the
+     * player is a gentle roll, near the far wall a hard one. Bounded so
+     * every throw still crosses the board.
+     */
+    powerMin: 0.86,
+    powerMax: 1.16,
     /** Tumble: random angular speed per axis (rad/s). */
     spinMin: 12,
     spinMax: 28,
@@ -112,9 +134,11 @@ export const TUNING = {
      * velocity bled off, gently at first and firmer the longer it refuses
      * to stop, so it glides to rest instead of wandering the tray. Applied
      * only to dice already on the floor — damping a falling die would make
-     * it float down.
+     * it float down. Starts shortly after the dice land: with the hand
+     * throw they travel before settling, and waiting longer left a heavy
+     * tail of slow rolls on Hard, where obstacles keep them moving.
      */
-    assistAfterMs: 400,
+    assistAfterMs: 320,
     assistStartFactor: 0.93,
     assistEndFactor: 0.72,
     assistRampMs: 700,

@@ -10,6 +10,7 @@ async function main(): Promise<void> {
   await import('./physics.test');
   await import('./game.test');
   await import('./screen.test');
+  await import('./persistence.test');
   process.exit(await runAll());
 }
 

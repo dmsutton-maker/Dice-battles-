@@ -8,7 +8,7 @@ import { playCheer, playFanfare, playThrow, startMusic, stopMusic } from '../aud
 import { ColorDef, PRISONER_COLORS } from '../game/colors';
 import { makeUnits, PrisonerUnit } from '../game/modes';
 import { EMPTY_LAYOUT } from '../game/obstacles';
-import { TUNING } from '../game/tuning';
+import { aimFromTouch } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
 
 /**
@@ -66,31 +66,21 @@ function ZoneView({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
+      onPanResponderGrant: (event) => {
         threwOnTouchDown.current = false;
         if (phaseRef.current === 'battle') {
           threwOnTouchDown.current =
-            controlsRef.current?.throwAll() === 'launched';
+            controlsRef.current?.throwAll(aimFromTouch(event, { rotated })) ===
+            'launched';
         }
         // 'over': the round-over buttons decide what happens next.
       },
-      // A swipe that already threw on touch-down must not throw again; the
-      // flick only aims a throw still queued behind a roll in progress.
-      onPanResponderRelease: (_event, gesture) => {
+      // A drag only re-aims a throw still queued behind a roll in
+      // progress; the touch-down already threw and that roll is binding.
+      onPanResponderRelease: (event) => {
         if (phaseRef.current !== 'battle') return;
         if (threwOnTouchDown.current) return;
-        const speed = Math.hypot(gesture.vx, gesture.vy);
-        if (speed < TUNING.throw.flickThreshold) return;
-        const scale = TUNING.throw.flickScale;
-        const max = TUNING.throw.flickMaxSpeed;
-        const clamp = (v: number) => Math.max(-max, Math.min(max, v));
-        // Screen-space gesture velocity: flip for the rotated zone so a
-        // flick "away from me" always throws into the castle.
-        const sign = rotated ? -1 : 1;
-        controlsRef.current?.throwAll({
-          x: clamp(gesture.vx * scale * sign),
-          z: clamp(gesture.vy * scale * sign),
-        });
+        controlsRef.current?.throwAll(aimFromTouch(event, { rotated }));
       },
     }),
   ).current;

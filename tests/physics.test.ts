@@ -11,6 +11,7 @@ import {
 import { AiDifficultyId } from '../src/game/ai';
 import { PRISONER_COLORS } from '../src/game/colors';
 import {
+  EMPTY_LAYOUT,
   generateObstacleLayout,
   MOAT,
   MOUND,
@@ -36,12 +37,15 @@ interface RollOutcome {
   movingWhenCalled: boolean;
   escaped: boolean;
   faces: string[];
+  /** Where the dice came to rest, to check a throw actually travels. */
+  restZ: number[];
+  restX: number[];
 }
 
 /** Simulates one throw through the shipping settle rule. */
 function simulateRoll(
   layout: ObstacleLayout,
-  options: { flick?: { x: number; z: number } } = {},
+  options: { aim?: number; power?: number } = {},
 ): RollOutcome {
   const physics = createPhysicsWorld();
   addTrayBodies(physics, layout);
@@ -51,8 +55,8 @@ function simulateRoll(
     return body;
   });
 
-  bodies.forEach((body) =>
-    throwDie(body, options.flick ? { flickVelocity: options.flick } : {}),
+  bodies.forEach((body, index) =>
+    throwDie(body, { index, aim: options.aim, power: options.power }),
   );
 
   let stillFrames = 0;
@@ -88,10 +92,19 @@ function simulateRoll(
         movingWhenCalled,
         escaped,
         faces: readFaces(bodies).map((c) => c.id),
+        restZ: bodies.map((b) => b.position.z),
+        restX: bodies.map((b) => b.position.x),
       };
     }
   }
-  return { ms: (maxFrames / 60) * 1000, movingWhenCalled: true, escaped, faces: [] };
+  return {
+    ms: (maxFrames / 60) * 1000,
+    movingWhenCalled: true,
+    escaped,
+    faces: [],
+    restZ: bodies.map((b) => b.position.z),
+    restX: bodies.map((b) => b.position.x),
+  };
 }
 
 const DIFFICULTIES: AiDifficultyId[] = ['easy', 'medium', 'hard'];
@@ -144,31 +157,75 @@ suite('physics · rolling', () => {
     }
   });
 
-  test('hard flicks in every direction stay in the tray', () => {
-    const max = TUNING.throw.flickMaxSpeed;
-    const dirs: [number, number][] = [
-      [max, 0],
-      [-max, 0],
-      [0, max],
-      [0, -max],
-      [max, max],
-      [-max, -max],
-      [max, -max],
-      [-max, max],
-    ];
+  test('every aim and power stays in the tray', () => {
     for (const difficulty of DIFFICULTIES) {
-      for (const [x, z] of dirs) {
-        for (let trial = 0; trial < 4; trial++) {
-          const roll = simulateRoll(generateObstacleLayout(difficulty), {
-            flick: { x, z },
-          });
-          assert(
-            !roll.escaped,
-            `flick (${x},${z}) on ${difficulty} drove a die out of the tray`,
-          );
+      for (const aim of [-1, -0.5, 0, 0.5, 1]) {
+        for (const power of [0, 0.5, 1]) {
+          for (let trial = 0; trial < 4; trial++) {
+            const roll = simulateRoll(generateObstacleLayout(difficulty), {
+              aim,
+              power,
+            });
+            assert(
+              !roll.escaped,
+              `aim ${aim} at power ${power} on ${difficulty} drove a die out of the tray`,
+            );
+          }
         }
       }
     }
+  });
+
+  test('a throw travels down the board instead of jiggling in place', () => {
+    // The dice leave the hand at the player's edge; if they barely move,
+    // the throw reads as the dice twitching where they lie.
+    const rolls = Array.from({ length: 200 }, () =>
+      simulateRoll(EMPTY_LAYOUT, { power: 0.5 }),
+    );
+    const travelled = rolls.flatMap((r) => r.restZ.map((z) => TUNING.throw.handZ - z));
+    const mean = travelled.reduce((a, b) => a + b, 0) / travelled.length;
+    const stalled = travelled.filter((d) => d < 1.5).length;
+    note(`throw travels ${mean.toFixed(1)} units down the board on average`);
+    // The hand sits at z=handZ and the board runs to -innerDepth/2, so this
+    // asks that an average throw carries the dice past the middle of the
+    // board. Reverting to a pop-in-place throw collapses this toward zero.
+    assert(
+      mean > TUNING.throw.handZ - 0.8,
+      `throws only travel ${mean.toFixed(1)} units — they are not leaving the hand`,
+    );
+    assertAtMost(stalled / travelled.length, 0.05, 'share of throws that stall');
+  });
+
+  test('the dice never fly back at the player', () => {
+    // The old model scattered randomly in both directions, so dice were as
+    // likely to come at the player as go away — the core of why it did not
+    // read as a throw.
+    for (let i = 0; i < 300; i++) {
+      const roll = simulateRoll(EMPTY_LAYOUT);
+      for (const z of roll.restZ) {
+        assertAtMost(
+          z,
+          TUNING.throw.handZ + 0.6,
+          'a die finished behind where it was thrown from',
+        );
+      }
+    }
+  });
+
+  test('aiming left and right actually lands the dice there', () => {
+    const meanX = (aim: number) => {
+      const xs = Array.from({ length: 120 }, () =>
+        simulateRoll(EMPTY_LAYOUT, { aim, power: 0.5 }),
+      ).flatMap((r) => r.restX);
+      return xs.reduce((a, b) => a + b, 0) / xs.length;
+    };
+    const left = meanX(-1);
+    const right = meanX(1);
+    note(`aim left lands at x ${left.toFixed(2)}, aim right at x ${right.toFixed(2)}`);
+    assert(
+      right - left > 0.8,
+      `aiming barely moves the dice (left ${left.toFixed(2)} vs right ${right.toFixed(2)})`,
+    );
   });
 
   test('frozen dice cannot move after a roll is called', () => {
