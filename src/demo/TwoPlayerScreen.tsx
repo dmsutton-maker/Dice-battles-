@@ -41,6 +41,7 @@ interface ZoneViewProps {
   onSettled: (faces: ColorDef[]) => void;
   phaseRef: React.MutableRefObject<Phase>;
   onRematch: () => void;
+  onExitToMenu: () => void;
 }
 
 function ZoneView({
@@ -57,6 +58,7 @@ function ZoneView({
   onSettled,
   phaseRef,
   onRematch,
+  onExitToMenu,
 }: ZoneViewProps) {
   /** Did this gesture's touch-down actually launch a roll? */
   const threwOnTouchDown = useRef(false);
@@ -69,9 +71,8 @@ function ZoneView({
         if (phaseRef.current === 'battle') {
           threwOnTouchDown.current =
             controlsRef.current?.throwAll() === 'launched';
-        } else if (phaseRef.current === 'over') {
-          onRematch();
         }
+        // 'over': the round-over buttons decide what happens next.
       },
       // A swipe that already threw on touch-down must not throw again; the
       // flick only aims a throw still queued behind a roll in progress.
@@ -135,11 +136,19 @@ function ZoneView({
         </View>
       )}
       {phase === 'over' && (
-        <View pointerEvents="none" style={styles.zoneOverlay}>
+        <View style={styles.zoneOverlay}>
           <Text style={styles.zoneBig}>
             {won ? '🏆 YOU WIN!' : '😤 DEFEAT'}
           </Text>
-          <Text style={styles.zoneSmall}>Tap to battle again</Text>
+          {/* One set per zone, so each player has upright buttons. */}
+          <View style={styles.endButtons}>
+            <Pressable style={styles.playAgainButton} onPress={onRematch}>
+              <Text style={styles.playAgainText}>▶ PLAY AGAIN</Text>
+            </Pressable>
+            <Pressable style={styles.homeButton} onPress={onExitToMenu}>
+              <Text style={styles.homeText}>🏠 HOME</Text>
+            </Pressable>
+          </View>
         </View>
       )}
     </View>
@@ -264,6 +273,7 @@ export function TwoPlayerScreen({ arenaId, goldenDice, onExit }: TwoPlayerScreen
         onSettled={settledB}
         phaseRef={phaseRef}
         onRematch={startMatch}
+        onExitToMenu={onExit}
       />
       <View style={styles.divider} />
       {/* Player 1 zone (bottom) */}
@@ -281,6 +291,7 @@ export function TwoPlayerScreen({ arenaId, goldenDice, onExit }: TwoPlayerScreen
         onSettled={settledA}
         phaseRef={phaseRef}
         onRematch={startMatch}
+        onExitToMenu={onExit}
       />
 
       {/* Center controls: exit always available, start prompt when ready */}
@@ -361,6 +372,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginTop: 8,
+  },
+  endButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    alignItems: 'center',
+  },
+  playAgainButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 20,
+    backgroundColor: '#ffe521',
+  },
+  playAgainText: {
+    color: '#241c40',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  homeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
+  homeText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
   },
   exitButton: {
     position: 'absolute',

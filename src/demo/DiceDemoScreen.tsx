@@ -527,10 +527,9 @@ export function DiceDemoScreen() {
         } else if (current === 'battle') {
           threwOnTouchDown.current =
             controlsRef.current?.throwAll() === 'launched';
-        } else if (current === 'won' || current === 'lost' || current === 'tie') {
-          startCountdown();
         }
-        // arm/go: inputs locked during the ritual.
+        // arm/go: inputs locked during the ritual. won/lost/tie: the result
+        // screen's own buttons decide what happens next.
       },
       // A swipe already threw on touch-down, so its release must NOT throw
       // again — those dice are airborne and binding. The flick only aims a
@@ -669,6 +668,21 @@ export function DiceDemoScreen() {
           );
         })}
       </View>
+    </View>
+  );
+
+  // Every round ends with an explicit choice — one more battle, or back to
+  // the menu to change mode, difficulty or arena. Tapping the result screen
+  // used to restart instantly, which meant a stray tap started a fresh
+  // round (and on Hard, put 25 trophies back on the line).
+  const roundOverButtons = (
+    <View style={styles.endButtons}>
+      <Pressable style={styles.playAgainButton} onPress={startCountdown}>
+        <Text style={styles.playAgainText}>▶ PLAY AGAIN</Text>
+      </Pressable>
+      <Pressable style={styles.homeButton} onPress={quitToMenu}>
+        <Text style={styles.homeText}>🏠 HOME</Text>
+      </Pressable>
     </View>
   );
 
@@ -863,7 +877,7 @@ export function DiceDemoScreen() {
         </View>
       )}
       {phase === 'won' && (
-        <Pressable style={styles.overlay} onPress={startCountdown}>
+        <View style={styles.overlay}>
           <Text style={styles.overlayTitle}>🏆 VICTORY!</Text>
           <Text style={styles.trophyLine}>
             {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} 🏆 → {trophies}
@@ -878,19 +892,19 @@ export function DiceDemoScreen() {
             You {playerScore} — {opponent.name} {aiScore}.
           </Text>
           {difficultyRow}
-          <Text style={styles.overlayPrompt}>Tap to battle again</Text>
-        </Pressable>
+          {roundOverButtons}
+        </View>
       )}
       {phase === 'tie' && (
-        <Pressable style={styles.overlay} onPress={startCountdown}>
+        <View style={styles.overlay}>
           <Text style={styles.overlayTitle}>🤝 IT'S A TIE!</Text>
           <Text style={styles.overlayBody}>
             {playerScore}–{aiScore} — nobody loses trophies.{'\n'}Settle it in a
             rematch!
           </Text>
           {difficultyRow}
-          <Text style={styles.overlayPrompt}>Tap to battle again</Text>
-        </Pressable>
+          {roundOverButtons}
+        </View>
       )}
       {showSettings && (
         <View style={styles.settingsOverlay}>
@@ -963,7 +977,7 @@ export function DiceDemoScreen() {
         </View>
       )}
       {phase === 'lost' && (
-        <Pressable style={styles.overlay} onPress={startCountdown}>
+        <View style={styles.overlay}>
           <Text style={styles.overlayTitle}>😤 DEFEAT!</Text>
           <Text style={styles.trophyLine}>{lastDelta} 🏆 → {trophies}</Text>
           <Text style={styles.overlayBody}>
@@ -971,8 +985,8 @@ export function DiceDemoScreen() {
             Avenge your prisoners!
           </Text>
           {difficultyRow}
-          <Text style={styles.overlayPrompt}>Tap to battle again</Text>
-        </Pressable>
+          {roundOverButtons}
+        </View>
       )}
     </View>
   );
@@ -1517,6 +1531,37 @@ const styles = StyleSheet.create({
   codeGoText: {
     color: '#241c40',
     fontSize: 14,
+    fontWeight: '800',
+  },
+  endButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 26,
+    alignItems: 'center',
+  },
+  playAgainButton: {
+    paddingHorizontal: 26,
+    paddingVertical: 14,
+    borderRadius: 24,
+    backgroundColor: '#ffe521',
+  },
+  playAgainText: {
+    color: '#241c40',
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  homeButton: {
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
+  homeText: {
+    color: '#ffffff',
+    fontSize: 16,
     fontWeight: '800',
   },
   codeStatus: {

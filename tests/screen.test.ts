@@ -155,6 +155,32 @@ suite('screen · arenas', () => {
   });
 });
 
+suite('screen · round flow', () => {
+  test('every round ends with both play-again and home offered', () => {
+    for (const file of ['src/demo/DiceDemoScreen.tsx', 'src/demo/TwoPlayerScreen.tsx']) {
+      const source = readFileSync(file, 'utf8');
+      assert(source.includes('PLAY AGAIN'), `${file} offers no rematch button`);
+      assert(source.includes('HOME'), `${file} offers no way back to the menu`);
+    }
+  });
+
+  test('a stray tap on the result screen cannot start a new round', () => {
+    // Restarting on any tap once cost a Hard round's trophies to a
+    // misplaced finger; the result screen must require a real button.
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    const grant = source.slice(
+      source.indexOf('onPanResponderGrant'),
+      source.indexOf('onPanResponderRelease'),
+    );
+    for (const phase of ['won', 'lost', 'tie']) {
+      assert(
+        !grant.includes(`'${phase}'`),
+        `tapping anywhere restarts the round from the ${phase} screen`,
+      );
+    }
+  });
+});
+
 suite('screen · assets', () => {
   test('every sound and voice clip the app loads exists', () => {
     const sources = [
