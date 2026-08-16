@@ -294,7 +294,7 @@ export function DiceDemoScreen() {
 
       {/* Pick / countdown / result overlays */}
       {phase === 'pick' && (
-        <View style={styles.overlay}>
+        <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
           <Text style={styles.overlayBody}>
             Race {AI_NAME} to free your six prisoners!{'\n'}Roll both dice the
@@ -302,7 +302,7 @@ export function DiceDemoScreen() {
           </Text>
           {difficultyRow}
           <Text style={styles.overlayPrompt}>Tap anywhere to arm your dice</Text>
-        </View>
+        </Pressable>
       )}
       {phase === 'arm' && (
         <View pointerEvents="none" style={styles.overlayClear}>
@@ -315,7 +315,7 @@ export function DiceDemoScreen() {
         </View>
       )}
       {phase === 'won' && (
-        <View style={styles.overlay}>
+        <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>🏆 VICTORY!</Text>
           <Text style={styles.overlayBody}>
             All six prisoners rescued!{'\n'}
@@ -323,10 +323,10 @@ export function DiceDemoScreen() {
           </Text>
           {difficultyRow}
           <Text style={styles.overlayPrompt}>Tap to battle again</Text>
-        </View>
+        </Pressable>
       )}
       {phase === 'lost' && (
-        <View style={styles.overlay}>
+        <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>😤 DEFEAT!</Text>
           <Text style={styles.overlayBody}>
             {AI_NAME} freed all six prisoners first.{'\n'}You rescued{' '}
@@ -334,7 +334,7 @@ export function DiceDemoScreen() {
           </Text>
           {difficultyRow}
           <Text style={styles.overlayPrompt}>Tap to battle again</Text>
-        </View>
+        </Pressable>
       )}
     </View>
   );
