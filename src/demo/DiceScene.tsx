@@ -7,7 +7,15 @@ import { playClack, playThrow } from '../audio/sounds';
 import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { TreasureChest } from '../arena/TreasureChest';
-import { createDieBody, throwDie, topFaceColor } from '../dice/die';
+import { createDieBody, throwDie } from '../dice/die';
+import {
+  applySettleAssist,
+  dieSpeed,
+  freezeDice,
+  isOutOfBounds,
+  readFaces,
+  shouldCallRoll,
+} from '../dice/settle';
 import { DieMesh } from '../dice/DieMesh';
 import { ColorDef } from '../game/colors';
 import { PrisonerUnit } from '../game/modes';
@@ -205,7 +213,7 @@ export function DiceScene({
       TUNING.physics.maxSubSteps,
     );
 
-    let allStill = true;
+    let stillNow = true;
     diceBodies.forEach((body, i) => {
       const mesh = dieMeshRefs.current[i];
       if (mesh) {
@@ -256,18 +264,12 @@ export function DiceScene({
         // Slow the fall so the die lingers visibly under the water.
         body.velocity.y = Math.max(body.velocity.y, -1.6);
         if (now >= sinkUntil.current[i] || body.position.y < -3) respawn();
-      } else if (
-        body.position.y < -1 ||
-        Math.abs(body.position.x) > TUNING.tray.innerWidth / 2 + 0.8 ||
-        Math.abs(body.position.z) > TUNING.tray.innerDepth / 2 + 0.8
-      ) {
+      } else if (isOutOfBounds(body)) {
         respawn();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       }
 
-      const speed =
-        body.velocity.length() + body.angularVelocity.length() * 0.5;
-      if (speed > TUNING.settle.speedThreshold) allStill = false;
+      if (dieSpeed(body) > TUNING.settle.speedThreshold) stillNow = false;
     });
 
     // Splash ring animation over the moat.
@@ -296,75 +298,16 @@ export function DiceScene({
     }
 
     if (awaitingSettle.current) {
-      const settle = TUNING.settle;
+      // The settle rule itself lives in src/dice/settle.ts so the headless
+      // test suite can exercise exactly this logic (see tests/physics).
       const elapsed = Date.now() - throwStartedAt.current;
+      applySettleAssist(diceBodies, elapsed);
+      stillFrames.current = stillNow ? stillFrames.current + 1 : 0;
 
-      // Settle assist: bleed velocity off dice that are down but still
-      // creeping, firmer the longer they take, so they glide to rest. Only
-      // grounded dice — damping a falling die would make it float down.
-      if (elapsed > settle.assistAfterMs) {
-        const ramp = Math.min(
-          (elapsed - settle.assistAfterMs) / settle.assistRampMs,
-          1,
-        );
-        // Past the soft cap the assist clamps down hard, so a straggler
-        // glides to a stop in a few frames instead of being snapped still.
-        const factor =
-          elapsed >= settle.maxRollMs
-            ? settle.hardStopFactor
-            : settle.assistStartFactor -
-              (settle.assistStartFactor - settle.assistEndFactor) * ramp;
-        diceBodies.forEach((body) => {
-          if (body.position.y > TUNING.dieSize * 0.95) return;
-          body.velocity.scale(factor, body.velocity);
-          body.angularVelocity.scale(factor, body.angularVelocity);
-        });
-      }
-
-      // Release on the earliest of: cannon sleep, a short run of stillness,
-      // or the roll cap. Whichever fires, the dice are frozen immediately
-      // below, so the reported face can never go stale.
-      const allSleeping = diceBodies.every(
-        (body) => body.sleepState === CANNON.Body.SLEEPING,
-      );
-      stillFrames.current = allStill ? stillFrames.current + 1 : 0;
-      const grounded = diceBodies.every(
-        (body) => body.position.y <= TUNING.dieSize * 1.1,
-      );
-      const slowEnough = diceBodies.every(
-        (body) =>
-          body.velocity.length() + body.angularVelocity.length() * 0.5 <= 1.2,
-      );
-      const capped =
-        (elapsed >= settle.maxRollMs && grounded && slowEnough) ||
-        elapsed >= settle.hardMaxRollMs;
-
-      if (allSleeping || stillFrames.current >= settle.stillFrames || capped) {
+      if (shouldCallRoll(diceBodies, elapsed, stillFrames.current)) {
         awaitingSettle.current = false;
-        // Freeze the dice so they are immovable at the instant their faces
-        // are read — this is what makes the fast release safe.
-        diceBodies.forEach((body) => {
-          body.velocity.setZero();
-          body.angularVelocity.setZero();
-          body.sleep();
-        });
-        // Report faces in ON-SCREEN left-to-right order, not spawn order:
-        // the dice trade places while rolling, and the HUD swatches must
-        // match what the player sees or a die looks like the wrong color.
-        const settled = diceBodies
-          .map((body) => ({
-            x: body.position.x,
-            color: topFaceColor(
-              new THREE.Quaternion(
-                body.quaternion.x,
-                body.quaternion.y,
-                body.quaternion.z,
-                body.quaternion.w,
-              ),
-            ),
-          }))
-          .sort((a, b) => a.x - b.x);
-        onSettled(settled.map((s) => s.color));
+        freezeDice(diceBodies);
+        onSettled(readFaces(diceBodies));
 
         // Fire a tap that arrived mid-roll, just after the result lands so
         // the player sees what they rolled. Dropped if the round ended.

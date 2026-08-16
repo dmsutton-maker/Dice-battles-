@@ -37,6 +37,33 @@ npx expo start
 
 Scan the QR code with the iPhone camera and open in **Expo Go**.
 
+### Testing
+
+There is no device and no CI here, so correctness is checked headlessly:
+
+```bash
+npm test        # ~3s: physics simulation, rules, camera fit, assets
+npm run typecheck
+npm run bundle  # Metro/Hermes bundle check (slow; catches device-only import breaks)
+npm run check   # typecheck + tests
+```
+
+`tests/` runs the **real** modules, not copies: rolls are simulated through
+`src/dice/settle.ts` and `src/physics/world.ts`, so a tuning change that
+makes rolls slow, lets dice escape the tray, or calls a roll mid-tumble
+fails here. Assertions are phrased as the player-facing rule they protect,
+and measured values (roll times, camera pull-back) print after each run.
+
+Two things run this automatically:
+
+- **`.claude/hooks/verify.sh`** — a Stop hook that runs the typecheck and
+  suite whenever Claude finishes writing code, and blocks with the failure
+  output if anything broke.
+- **the `game-tester` agent** (`.claude/agents/game-tester.md`) — runs the
+  full ladder including the bundle check, then reviews the diff for the
+  regressions the suite can't catch (dead input, invisible scenery,
+  unlicensed audio) and adds tests for gaps it finds.
+
 ### Tuning the feel
 
 Every knob that affects dice feel lives in one file:

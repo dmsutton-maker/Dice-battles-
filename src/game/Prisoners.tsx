@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber/native';
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { PrisonerUnit, Station } from './modes';
+import { Slot, slotFor as sharedSlotFor } from './stations';
 import { TUNING } from './tuning';
 
 const FLIGHT_SECONDS = 1.4;
@@ -11,13 +12,6 @@ const FLIGHT_PEAK = 3.4;
 interface PrisonersProps {
   /** The full lineup with each figure's current station. */
   units: PrisonerUnit[];
-}
-
-interface Slot {
-  x: number;
-  y: number;
-  z: number;
-  facing: number;
 }
 
 function stationKey(s: Station): string {
@@ -33,36 +27,10 @@ function stationKey(s: Station): string {
 export function Prisoners({ units }: PrisonersProps) {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
 
-  const jailSlots = useMemo<Slot[]>(() => {
-    const pen = TUNING.prison;
-    const z = -(innerDepth / 2 + wallThickness + pen.depth / 2);
-    const usable = pen.innerWidth - 0.8;
-    const step = usable / 5;
-    return Array.from({ length: 6 }, (_v, i) => ({
-      x: -usable / 2 + i * step,
-      y: pen.platformHeight,
-      z,
-      facing: 0,
-    }));
-  }, [innerDepth, wallThickness]);
-
-  const retreatSlots = useMemo<Slot[]>(() => {
-    const towelXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
-    return towelXs.map((x) => ({ x, y: 0.03, z: 6.4, facing: 0 }));
-  }, []);
-
-  const wallSlots = useMemo<Slot[]>(() => {
-    // Sir Rollsalot parades captured prisoners along the far battlement.
-    const z = -(innerDepth / 2 + wallThickness / 2);
-    const xs = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5];
-    return xs.map((x) => ({ x, y: wallHeight + 0.26, z, facing: 0 }));
-  }, [innerDepth, wallHeight, wallThickness]);
-
-  const slotFor = (s: Station): Slot => {
-    const list =
-      s.kind === 'jail' ? jailSlots : s.kind === 'retreat' ? retreatSlots : wallSlots;
-    return list[Math.min(s.index, list.length - 1)];
-  };
+  // Slot coordinates are shared with the arenas (src/game/stations.ts) so
+  // every battlefield builds its jail, retreat and battlement around the
+  // same positions these figures stand on.
+  const slotFor = (s: Station): Slot => sharedSlotFor(s);
 
   const groupRefs = useRef<Map<string, THREE.Group>>(new Map());
   const balloonRefs = useRef<Map<string, THREE.Group>>(new Map());

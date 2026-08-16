@@ -53,33 +53,58 @@ const DIE_SPAWNS: ObstaclePlacement[] = [
 export function generateObstacleLayout(difficulty: AiDifficultyId): ObstacleLayout {
   const config = OBSTACLES_BY_DIFFICULTY[difficulty];
   const rand = (min: number, max: number) => min + Math.random() * (max - min);
-  const clearOfSpawns = (x: number, z: number, radius: number) =>
-    DIE_SPAWNS.every((s) => Math.hypot(x - s.x, z - s.z) > radius);
+
+  /**
+   * Rejection-sample a spot, keeping the roomiest candidate seen. Every
+   * sample can miss on a crowded battlefield, and falling back to a fixed
+   * position would ignore what is already placed — that is how the moat
+   * once ended up cut through the hill. Returning the best candidate keeps
+   * the fallback as far clear as the tray allows.
+   */
+  const place = (
+    xRange: [number, number],
+    zRange: [number, number],
+    clearances: { x: number; z: number; radius: number }[],
+    attempts = 120,
+  ): ObstaclePlacement => {
+    let best: ObstaclePlacement = { x: xRange[0], z: zRange[0] };
+    let bestSlack = -Infinity;
+    for (let i = 0; i < attempts; i++) {
+      const x = rand(xRange[0], xRange[1]);
+      const z = rand(zRange[0], zRange[1]);
+      // Slack = how much room to spare against the tightest constraint.
+      const slack = Math.min(
+        ...clearances.map((c) => Math.hypot(x - c.x, z - c.z) - c.radius),
+      );
+      if (slack > 0) return { x, z };
+      if (slack > bestSlack) {
+        bestSlack = slack;
+        best = { x, z };
+      }
+    }
+    return best;
+  };
+
+  const spawnClearances = (radius: number) =>
+    DIE_SPAWNS.map((s) => ({ x: s.x, z: s.z, radius }));
 
   let mound: ObstaclePlacement | null = null;
   if (config.mound) {
-    for (let i = 0; i < 40; i++) {
-      const x = rand(-1.2, 1.2);
-      const z = rand(-3.4, 1.4);
-      if (clearOfSpawns(x, z, 1.7)) {
-        mound = { x, z };
-        break;
-      }
-    }
-    mound = mound ?? { x: -1.0, z: -1.6 };
+    mound = place([-1.2, 1.2], [-3.4, 1.4], spawnClearances(1.7));
   }
 
   let moat: ObstaclePlacement | null = null;
   if (config.moat) {
-    for (let i = 0; i < 60; i++) {
-      const x = rand(-1.6, 1.6);
-      const z = rand(-3.8, 1.6);
-      if (!clearOfSpawns(x, z, 1.9)) continue;
-      if (mound && Math.hypot(x - mound.x, z - mound.z) < 2.5) continue;
-      moat = { x, z };
-      break;
-    }
-    moat = moat ?? { x: 1.3, z: 0.3 };
+    moat = place(
+      [-1.6, 1.6],
+      [-3.8, 1.6],
+      [
+        ...spawnClearances(1.9),
+        // The hill and the moat must never intersect: a sphere sitting
+        // over the hole in the floor makes dice behave nonsensically.
+        ...(mound ? [{ x: mound.x, z: mound.z, radius: MOUND.radius + MOAT.size / 2 + 0.45 }] : []),
+      ],
+    );
   }
 
   return { mound, moat };

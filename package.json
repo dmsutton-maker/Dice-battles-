@@ -26,7 +26,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "tsx tests/run.ts",
+    "typecheck": "tsc --noEmit",
+    "bundle": "expo export --platform ios --output-dir /tmp/dice-battles-bundle-check",
+    "check": "npm run typecheck && npm test"
   },
   "private": true
 }
