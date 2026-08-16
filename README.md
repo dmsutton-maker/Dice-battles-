@@ -87,8 +87,10 @@ battle zone is a second `DiceScene` with its own physics world.
 2. ✅ Classic mode vs 1 AI opponent (Sir Rollsalot — fair virtual rolls on
    a timer, difficulty = roll speed), with the "Arm your dice! … Battle!"
    countdown, win/defeat overlays, instant rematch, Easy/Medium/Hard
-3. Multiple AI opponents (2–3 racing at once)
-4. Same-device 2-player: portrait split screen, mirrored zones
+3. ✅ AI opponent roster (8 named rivals, fresh one drawn each round;
+   copy says "other players" ahead of eventual online play)
+4. ✅ Same-device 2-player: portrait split screen, mirrored zones, each
+   with its own physics world (Classic, no trophies at stake)
 5. One themed battlefield arena, built beautifully (arena system designed
    for drop-in additions)
 
@@ -110,6 +112,11 @@ and battlefield themes. No ad SDK before v3.
   distance between choices rather than free-form pick-anything. Palette
   plumbing already supports this: every color reference flows through
   `src/game/colors.ts`, so a custom palette is a data swap, not a refactor.
+
+**Planned for when the game is near-final (user-requested, deliberately
+deferred so quick exits stay easy during testing):**
+- Quitting mid-round counts as a forfeit (trophy loss applies)
+- In-round pause menu: sound/music/announcer toggles + confirm-exit button
 
 **Constraints:** family-friendly (ages 5+), rounds 1–2 minutes, fully
 offline, no accounts, no data collection.

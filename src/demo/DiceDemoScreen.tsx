@@ -21,8 +21,9 @@ import {
 } from '../audio/sounds';
 import {
   AI_DIFFICULTIES,
-  AI_NAME,
   AiDifficultyId,
+  AiOpponent,
+  pickOpponent,
   rollAiDice,
 } from '../game/ai';
 import {
@@ -50,6 +51,7 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { DiceScene, SceneControls } from './DiceScene';
+import { TwoPlayerScreen } from './TwoPlayerScreen';
 
 /**
  * Classic mode vs one AI opponent.
@@ -79,6 +81,8 @@ export function DiceDemoScreen() {
   const [phase, setPhase] = useState<Phase>('pick');
   const [difficulty, setDifficulty] = useState<AiDifficultyId>('easy');
   const [mode, setMode] = useState<ModeId>('classic');
+  const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
+  const [twoPlayer, setTwoPlayer] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
   const [units, setUnits] = useState<PrisonerUnit[]>(() =>
@@ -101,6 +105,7 @@ export function DiceDemoScreen() {
   const phaseRef = useRef<Phase>('pick');
   const difficultyRef = useRef<AiDifficultyId>('easy');
   const modeRef = useRef<ModeId>('classic');
+  const opponentRef = useRef<AiOpponent | null>(null);
   const unitsRef = useRef<PrisonerUnit[]>([]);
   const warRef = useRef<{ player: ColorDef; ai: ColorDef } | null>(null);
   const aiFreedRef = useRef<PrisonerColorId[]>([]);
@@ -211,7 +216,7 @@ export function DiceDemoScreen() {
           );
         }
       } else {
-        showCallout('Oh no — Sir Rollsalot wins!', 'lose');
+        showCallout(`Oh no — ${opponentRef.current?.name ?? 'your rival'} wins!`, 'lose');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
           () => {},
         );
@@ -221,6 +226,9 @@ export function DiceDemoScreen() {
   );
 
   const startCountdown = useCallback(() => {
+    const rival = pickOpponent(opponentRef.current ?? undefined);
+    opponentRef.current = rival;
+    setOpponent(rival);
     resetRace();
     // Fresh obstacle spots every battle.
     setLayout(generateObstacleLayout(difficultyRef.current));
@@ -277,7 +285,7 @@ export function DiceDemoScreen() {
             const next = aiFreedRef.current.filter((c) => c !== a.id);
             aiFreedRef.current = next;
             setAiFreed(next);
-            showCallout(`Ha! Sir Rollsalot's ${a.label} was captured again!`);
+            showCallout(`Ha! ${opponentRef.current?.name}'s ${a.label} was captured again!`);
           }
           return;
         }
@@ -292,11 +300,11 @@ export function DiceDemoScreen() {
         } else if (ac === PRISONER_COLORS.length - 1) {
           showCallout('He needs only ONE more — hurry!', 'hurry');
         } else if (ac === pc && pc > 0) {
-          showCallout(`Sir Rollsalot ties it up ${ac}–${pc}!`, 'lookout');
+          showCallout(`${opponentRef.current?.name} ties it up ${ac}–${pc}!`, 'lookout');
         } else if (ac === pc + 1) {
-          showCallout(`Sir Rollsalot freed ${a.label} — you're falling behind!`, 'lookout');
+          showCallout(`${opponentRef.current?.name} freed ${a.label} — you're falling behind!`, 'lookout');
         } else {
-          showCallout(`Sir Rollsalot freed ${a.label}!`, 'lookout');
+          showCallout(`${opponentRef.current?.name} freed ${a.label}!`, 'lookout');
         }
         return;
       }
@@ -314,7 +322,7 @@ export function DiceDemoScreen() {
         if (jailCount() === 0) {
           finishRound(pc > ac ? 'won' : pc < ac ? 'lost' : 'tie');
         } else {
-          showCallout(`Sir Rollsalot GRABBED ${a.label}! ${pc}–${ac}`, 'lookout');
+          showCallout(`${opponentRef.current?.name} GRABBED ${a.label}! ${pc}–${ac}`, 'lookout');
         }
         return;
       }
@@ -332,9 +340,9 @@ export function DiceDemoScreen() {
       if (ac >= 3) {
         finishRound('lost');
       } else if (ac === 2) {
-        showCallout(`Sir Rollsalot has 2 of 3 — hurry!`, 'hurry');
+        showCallout(`${opponentRef.current?.name} has 2 of 3 — hurry!`, 'hurry');
       } else {
-        showCallout(`Sir Rollsalot rescued a ${war.ai.label}!`, 'lookout');
+        showCallout(`${opponentRef.current?.name} rescued a ${war.ai.label}!`, 'lookout');
       }
     }, rollIntervalMs);
     return () => clearInterval(id);
@@ -585,6 +593,16 @@ export function DiceDemoScreen() {
     </View>
   );
 
+  if (twoPlayer) {
+    return (
+      <TwoPlayerScreen
+        arenaId={arenaId}
+        goldenDice={isUnlocked('golden-dice', trophies)}
+        onExit={() => setTwoPlayer(false)}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -635,7 +653,7 @@ export function DiceDemoScreen() {
             {warColors && (
               <View style={[styles.aiRollSwatch, { backgroundColor: warColors.ai.hex }]} />
             )}
-            <Text style={styles.scoreLabel}>SIR R.</Text>
+            <Text style={styles.scoreLabel}>{opponent.short}</Text>
           </View>
           <View style={styles.aiMeta}>
             {(mode === 'classic' || mode === 'ultimate') && (
@@ -714,6 +732,9 @@ export function DiceDemoScreen() {
       {phase === 'pick' && (
         <Pressable style={styles.overlay} onPress={startCountdown}>
           <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
+          <Text style={styles.tagline}>
+            Race other players to free your prisoners!
+          </Text>
           <Text style={styles.trophyLine}>🏆 {trophies}</Text>
           <Text style={styles.medalLine}>
             🥉 Easy ×{wins.easy}   🥈 Medium ×{wins.medium}   🥇 Hard ×{wins.hard}
@@ -726,6 +747,12 @@ export function DiceDemoScreen() {
           {modeRow}
           {difficultyRow}
           <Text style={styles.overlayPrompt}>Tap anywhere to arm your dice</Text>
+          <Pressable
+            style={styles.twoPlayerButton}
+            onPress={() => setTwoPlayer(true)}
+          >
+            <Text style={styles.twoPlayerText}>👥 2 Players — Pass & Play</Text>
+          </Pressable>
         </Pressable>
       )}
       {phase === 'arm' && (
@@ -751,7 +778,7 @@ export function DiceDemoScreen() {
           )}
           <Text style={styles.overlayBody}>
             {MODES[mode].name} victory!{'\n'}
-            You {playerScore} — {AI_NAME} {aiScore}.
+            You {playerScore} — {opponent.name} {aiScore}.
           </Text>
           {difficultyRow}
           <Text style={styles.overlayPrompt}>Tap to battle again</Text>
@@ -773,7 +800,7 @@ export function DiceDemoScreen() {
           <Text style={styles.overlayTitle}>😤 DEFEAT!</Text>
           <Text style={styles.trophyLine}>{lastDelta} 🏆 → {trophies}</Text>
           <Text style={styles.overlayBody}>
-            {AI_NAME} wins this {MODES[mode].name} battle {aiScore}–{playerScore}.{'\n'}
+            {opponent.name} wins this {MODES[mode].name} battle {aiScore}–{playerScore}.{'\n'}
             Avenge your prisoners!
           </Text>
           {difficultyRow}
@@ -911,6 +938,28 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     marginTop: -2,
+  },
+  twoPlayerButton: {
+    marginTop: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
+  twoPlayerText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  tagline: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14.5,
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+    ...textShadow,
   },
   trophyLine: {
     color: '#ffe521',

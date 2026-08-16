@@ -28,7 +28,34 @@ export const AI_DIFFICULTIES: Record<AiDifficultyId, AiDifficulty> = {
   hard: { id: 'hard', label: 'Hard', rollIntervalMs: 1400 },
 };
 
-export const AI_NAME = 'Sir Rollsalot';
+/**
+ * The AI opponent roster — a different rival (name + scoreboard tag) is
+ * drawn each round so every battle feels fresh. All family-friendly
+ * castle-silly names; eventually these become online players.
+ */
+export interface AiOpponent {
+  name: string;
+  short: string;
+  emoji: string;
+}
+
+export const AI_ROSTER: AiOpponent[] = [
+  { name: 'Sir Rollsalot', short: 'SIR R.', emoji: '⚔️' },
+  { name: 'Lady Luckabelle', short: 'LADY L.', emoji: '🍀' },
+  { name: 'Baron von Bounce', short: 'BARON', emoji: '🎩' },
+  { name: 'Duchess Doubles', short: 'DUCHESS', emoji: '👑' },
+  { name: 'King Tumble', short: 'KING T.', emoji: '🤴' },
+  { name: 'Wizard Wobbles', short: 'WIZARD', emoji: '🧙' },
+  { name: 'Squire Shakes', short: 'SQUIRE', emoji: '🛡️' },
+  { name: 'Countess Clatter', short: 'COUNTESS', emoji: '💃' },
+];
+
+export function pickOpponent(previous?: AiOpponent): AiOpponent {
+  const pool = previous
+    ? AI_ROSTER.filter((o) => o.name !== previous.name)
+    : AI_ROSTER;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 export function rollAiDice(): [ColorDef, ColorDef] {
   const pick = () =>
