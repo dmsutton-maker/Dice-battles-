@@ -2,8 +2,16 @@ import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ARENAS } from '../arena/arenas';
+import {
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { ArenaId, ARENAS } from '../arena/arenas';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
   AudioSettings,
@@ -38,7 +46,13 @@ import {
   isUnlocked,
   loadProgress,
   nextTier,
+  setUnlockAll as persistUnlockAll,
+  TESTER_CODE,
+  TESTER_LOCK_CODE,
+  TIERS,
+  tierLabel,
   TROPHY_STAKES,
+  UnlockId,
 } from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
@@ -64,6 +78,15 @@ import { TwoPlayerScreen } from './TwoPlayerScreen';
 
 type Phase = 'pick' | 'arm' | 'go' | 'battle' | 'won' | 'lost' | 'tie';
 
+/** Which trophy tier gates each arena, in picker display order. */
+const ARENA_ORDER: ArenaId[] = ['castle', 'castleSunset', 'jungle', 'space'];
+const ARENA_UNLOCKS: Record<ArenaId, UnlockId> = {
+  castle: 'castle',
+  castleSunset: 'sunset-castle',
+  jungle: 'jungle',
+  space: 'space',
+};
+
 export function DiceDemoScreen() {
   const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
 
@@ -74,6 +97,7 @@ export function DiceDemoScreen() {
     loadProgress().then((p) => {
       setTrophies(p.trophies);
       setWins(p.wins);
+      setUnlockAll(!!p.unlockAll);
     });
   }, []);
 
@@ -83,6 +107,10 @@ export function DiceDemoScreen() {
   const [mode, setMode] = useState<ModeId>('classic');
   const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
   const [twoPlayer, setTwoPlayer] = useState(false);
+  const [selectedArena, setSelectedArena] = useState<ArenaId | null>(null);
+  const [unlockAll, setUnlockAll] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -176,6 +204,23 @@ export function DiceDemoScreen() {
     calloutTimer.current = setTimeout(() => setCallout(null), 2300);
     if (cue) playCue(cue);
   }, []);
+
+  const submitCode = useCallback(() => {
+    const code = codeInput.trim().toUpperCase();
+    setCodeInput('');
+    if (code === TESTER_CODE) {
+      persistUnlockAll(true);
+      setUnlockAll(true);
+      setCodeFeedback('🔓 Everything unlocked — have fun testing!');
+      playFanfare();
+    } else if (code === TESTER_LOCK_CODE) {
+      persistUnlockAll(false);
+      setUnlockAll(false);
+      setCodeFeedback('🔒 Tester mode off — back to earning unlocks.');
+    } else if (code) {
+      setCodeFeedback("Hmm, that's not the secret code…");
+    }
+  }, [codeInput]);
 
   const handleMoatSink = useCallback(() => {
     const now = Date.now();
@@ -500,7 +545,14 @@ export function DiceDemoScreen() {
     }),
   ).current;
 
-  const arenaId = isUnlocked('sunset-castle', trophies) ? 'castleSunset' : 'castle';
+  // Newest unlocked arena is the default; an explicit pick wins while valid.
+  const unlockedArenas = ARENA_ORDER.filter((id) =>
+    isUnlocked(ARENA_UNLOCKS[id], trophies),
+  );
+  const arenaId: ArenaId =
+    selectedArena && unlockedArenas.includes(selectedArena)
+      ? selectedArena
+      : unlockedArenas[unlockedArenas.length - 1] ?? 'castle';
   const playerScore = units.filter((u) => u.station.kind === 'retreat').length;
   const aiScore =
     mode === 'skirmish' || mode === 'colorwar'
@@ -508,6 +560,7 @@ export function DiceDemoScreen() {
       : aiFreed.length;
   const target = mode === 'colorwar' ? 3 : 6;
   const upNext = nextTier(trophies);
+  const upNextLabel = upNext ? tierLabel(upNext, trophies) : null;
   const stakes = TROPHY_STAKES[difficulty];
 
   const isMatch =
@@ -572,6 +625,43 @@ export function DiceDemoScreen() {
       <Text style={styles.stakesText}>
         Win +{stakes.win} 🏆 · Lose −{stakes.loss} 🏆
       </Text>
+    </View>
+  );
+
+  const arenaRow = (
+    <View style={styles.arenaBlock}>
+      <Text style={styles.arenaLabel}>BATTLEFIELD</Text>
+      <View style={styles.arenaRow}>
+        {ARENA_ORDER.map((id) => {
+          const tier = TIERS.find((t) => t.id === ARENA_UNLOCKS[id]);
+          const unlocked = unlockedArenas.includes(id);
+          const active = arenaId === id;
+          if (!unlocked && tier) {
+            // Locked chip: mystery tiers keep their secret, others tease.
+            const label = tier.mystery
+              ? `❓ ${tier.at} 🏆`
+              : `🔒 ${ARENAS[id].short} · ${tier.at} 🏆`;
+            return (
+              <View key={id} style={[styles.arenaChip, styles.arenaChipLocked]}>
+                <Text style={styles.arenaChipLockedText}>{label}</Text>
+              </View>
+            );
+          }
+          return (
+            <Pressable
+              key={id}
+              onPress={() => setSelectedArena(id)}
+              style={[styles.arenaChip, active && styles.difficultyButtonActive]}
+            >
+              <Text
+                style={[styles.arenaChipText, active && styles.difficultyTextActive]}
+              >
+                {ARENAS[id].emoji} {ARENAS[id].short}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 
@@ -728,13 +818,20 @@ export function DiceDemoScreen() {
               Race other players to free your prisoners!
             </Text>
             <Text style={styles.trophyLine}>🏆 {trophies}</Text>
-            {upNext && (
+            {unlockAll ? (
               <Text style={styles.trophyNext}>
-                Next unlock: {upNext.emoji} {upNext.name} at {upNext.at} 🏆
+                🔓 Family tester mode — everything unlocked
               </Text>
+            ) : (
+              upNext && (
+                <Text style={styles.trophyNext}>
+                  Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} 🏆
+                </Text>
+              )
             )}
             {modeRow}
             {difficultyRow}
+            {arenaRow}
             <Pressable style={styles.startButton} onPress={startCountdown}>
               <Text style={styles.startText}>▶ START BATTLE</Text>
             </Pressable>
@@ -765,7 +862,7 @@ export function DiceDemoScreen() {
           </Text>
           {upNext && (
             <Text style={styles.trophyNext}>
-              Next unlock: {upNext.emoji} {upNext.name} at {upNext.at} 🏆
+              Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} 🏆
             </Text>
           )}
           <Text style={styles.overlayBody}>
@@ -823,9 +920,34 @@ export function DiceDemoScreen() {
               🏆 {trophies} trophies{'\n'}🥉 Easy ×{wins.easy}   🥈 Medium ×
               {wins.medium}   🥇 Hard ×{wins.hard}
             </Text>
+            <View style={styles.settingsDividerLine} />
+            <View style={styles.codeRow}>
+              <TextInput
+                style={styles.codeInput}
+                value={codeInput}
+                onChangeText={setCodeInput}
+                onSubmitEditing={submitCode}
+                placeholder="Secret code…"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="go"
+              />
+              <Pressable style={styles.codeGo} onPress={submitCode}>
+                <Text style={styles.codeGoText}>OK</Text>
+              </Pressable>
+            </View>
+            {(codeFeedback ?? (unlockAll ? '🔓 Tester mode ON' : null)) && (
+              <Text style={styles.codeStatus}>
+                {codeFeedback ?? '🔓 Tester mode ON'}
+              </Text>
+            )}
             <Pressable
               style={styles.settingsDone}
-              onPress={() => setShowSettings(false)}
+              onPress={() => {
+                setShowSettings(false);
+                setCodeFeedback(null);
+              }}
             >
               <Text style={styles.settingsDoneText}>Done</Text>
             </Pressable>
@@ -1320,5 +1442,80 @@ const styles = StyleSheet.create({
   },
   difficultyTextActive: {
     color: '#241c40',
+  },
+  arenaBlock: {
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  arenaLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  arenaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  arenaChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  arenaChipText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  arenaChipLocked: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  arenaChipLockedText: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  codeInput: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  codeGo: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#ffe521',
+  },
+  codeGoText: {
+    color: '#241c40',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  codeStatus: {
+    color: '#ffe521',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

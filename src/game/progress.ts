@@ -10,6 +10,12 @@ export interface Progress {
   trophies: number;
   /** Lifetime wins per difficulty — the per-difficulty medal counters. */
   wins: Record<AiDifficultyId, number>;
+  /**
+   * Family tester mode: every unlock available regardless of trophies, so
+   * playtesters can try all arenas/modes immediately. Toggled by the secret
+   * code in Settings; trophies still count normally underneath.
+   */
+  unlockAll?: boolean;
 }
 
 /**
@@ -26,27 +32,56 @@ export type UnlockId =
   | 'castle'
   | 'golden-dice'
   | 'sunset-castle'
+  | 'jungle'
   | 'treasure'
-  | 'mystery';
+  | 'space';
 
 export interface Tier {
   at: number;
   name: string;
   emoji: string;
   id: UnlockId;
+  /**
+   * Shown as "❓ Mystery Arena" everywhere until unlocked — the surprise is
+   * the reward. Only trophies persist, so renaming ids is safe.
+   */
+  mystery?: boolean;
 }
 
-/**
- * The unlock ladder. 'mystery' is a teaser for future content (new arenas,
- * obstacles, treasures) — it announces but unlocks nothing yet.
- */
+/** The unlock ladder. */
 export const TIERS: Tier[] = [
   { at: 0, name: 'Castle Courtyard', emoji: '🏰', id: 'castle' },
   { at: 100, name: 'Golden Dice', emoji: '✨', id: 'golden-dice' },
   { at: 250, name: 'Sunset Castle', emoji: '🌅', id: 'sunset-castle' },
-  { at: 450, name: 'Courtyard Treasure', emoji: '💰', id: 'treasure' },
-  { at: 700, name: 'Mystery Arena', emoji: '❓', id: 'mystery' },
+  { at: 400, name: 'Jungle Clearing', emoji: '🌴', id: 'jungle' },
+  { at: 550, name: 'Courtyard Treasure', emoji: '💰', id: 'treasure' },
+  { at: 700, name: 'Space Station', emoji: '🚀', id: 'space', mystery: true },
 ];
+
+/** Picker/teaser label — mystery tiers stay hidden until earned. */
+export function tierLabel(tier: Tier, trophies: number): { name: string; emoji: string } {
+  if (tier.mystery && trophies < tier.at && !current.unlockAll) {
+    return { name: 'Mystery Arena', emoji: '❓' };
+  }
+  return { name: tier.name, emoji: tier.emoji };
+}
+
+/**
+ * The secret family code, entered in Settings. Unlocks everything for
+ * playtesting ("LOCK" turns tester mode back off to test real progression).
+ */
+export const TESTER_CODE = 'FAMILY';
+export const TESTER_LOCK_CODE = 'LOCK';
+
+export function setUnlockAll(on: boolean): Progress {
+  current = { ...current, unlockAll: on };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  return current;
+}
+
+export function hasUnlockAll(): boolean {
+  return !!current.unlockAll;
+}
 
 const STORAGE_KEY = 'dice-battles:progress';
 
@@ -76,6 +111,7 @@ export async function loadProgress(): Promise<Progress> {
 }
 
 export function isUnlocked(id: UnlockId, trophies: number): boolean {
+  if (current.unlockAll) return true;
   const tier = TIERS.find((t) => t.id === id);
   return tier !== undefined && trophies >= tier.at;
 }

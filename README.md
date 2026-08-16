@@ -96,9 +96,16 @@ battle zone is a second `DiceScene` with its own physics world.
 
 **Progression (in):** Clash-Royale-style trophy ladder — win/lose trophies
 (stakes scale with difficulty), persisted on device. Unlocks: Golden Dice
-(100 🏆), Sunset Castle arena (250 🏆), Courtyard Treasure (450 🏆),
-Mystery Arena teaser (700 🏆). Future arenas/obstacles/treasures slot into
-`src/game/progress.ts` TIERS + the arena registry.
+(100 🏆), Sunset Castle arena (250 🏆), Jungle Clearing arena (400 🏆),
+Courtyard Treasure (550 🏆), and the Mystery Arena (700 🏆 — revealed as
+the Space Station only when earned). A battlefield picker on the start
+screen lets players fight in any arena they've unlocked. Future
+arenas/obstacles/treasures slot into `src/game/progress.ts` TIERS + the
+arena registry (`src/arena/arenas.tsx`).
+
+**Family tester mode:** entering the secret code in Settings unlocks
+everything for playtesting (a second code re-locks it); trophies still
+count normally underneath. Codes live in `src/game/progress.ts`.
 
 **v2:** ✅ Ultimate / Skirmish / Color War modes (vs AI; mode picker on the
 start screen). Remaining: nearby multi-device play.
@@ -118,9 +125,13 @@ deferred so quick exits stay easy during testing):**
 - Quitting mid-round counts as a forfeit (trophy loss applies)
 - In-round pause menu: sound/music/announcer toggles + confirm-exit button
 
-**Apple milestone (needs the $99 Apple Developer account + a custom EAS
-build — not possible inside Expo Go):**
-- TestFlight distribution (one-tap installs for testers)
+**Apple milestone (Apple Developer membership active; custom EAS build —
+not possible inside Expo Go):**
+- TestFlight distribution (one-tap installs for testers) — in progress:
+  `eas.json` production profile + iOS bundle id `com.dmsutton.dicebattles`
+  are configured; the EAS build/submit pipeline needs an App Store Connect
+  API key. The build pulls OTA updates from the same `main` channel, so
+  testers keep getting every update automatically.
 - Game Center: trophy leaderboards + achievements across devices
 
 **Constraints:** family-friendly (ages 5+), rounds 1–2 minutes, fully

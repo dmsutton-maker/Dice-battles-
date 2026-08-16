@@ -4,7 +4,10 @@ import * as THREE from 'three';
  * Procedural flagstone floor texture (no canvas API on React Native, so we
  * build the pixels by hand). Power-of-two size for mipmaps.
  */
-export function createFlagstoneTexture(): THREE.DataTexture {
+export function createFlagstoneTexture(
+  base: { r: number; g: number; b: number } = { r: 208, g: 184, b: 144 },
+  groutFactor = 0.7,
+): THREE.DataTexture {
   const TILES = 8;
   const PX = 16;
   const size = TILES * PX; // 128 — power of two
@@ -19,8 +22,6 @@ export function createFlagstoneTexture(): THREE.DataTexture {
     }
   }
 
-  const base = { r: 208, g: 184, b: 144 }; // warm sandstone
-
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const tx = Math.floor(x / PX);
@@ -30,7 +31,7 @@ export function createFlagstoneTexture(): THREE.DataTexture {
       const isGrout = inX === 0 || inY === 0 || inX === PX - 1 || inY === PX - 1;
 
       let shade = shades[ty][tx] * (0.97 + Math.random() * 0.05);
-      if (isGrout) shade *= 0.7;
+      if (isGrout) shade *= groutFactor;
 
       const i = (y * size + x) * 4;
       data[i] = Math.min(255, base.r * shade);
