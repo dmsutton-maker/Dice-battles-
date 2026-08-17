@@ -22,6 +22,23 @@ nothing else. It cannot approve anything, ever: that is David's alone,
 from a signed-in browser. A build token that could approve its own work
 would make the board pointless.
 
+## It is live
+
+**https://dice-battles-hq.vercel.app**
+
+- Public site at `/`, with `/privacy` and `/support` — the two URLs Apple
+  requires for the App Store listing.
+- The board at `/hq`, invitation only.
+
+Hosting is David's personal Vercel (`suttonsteam`, Hobby plan) and
+personal Supabase (org "Dice Battles"). The setup steps below are kept
+for reference, and for anyone rebuilding this from scratch.
+
+**Redeploying:** the Vercel GitHub app is not installed, so pushing does
+not redeploy. From `hq/`, run `npx vercel deploy --prod`. To make pushes
+deploy automatically, install https://github.com/apps/vercel, connect the
+repo in the project's Git settings, and set **Root Directory** to `hq`.
+
 ## Setting it up
 
 Everything below happens in **personal** accounts — never an

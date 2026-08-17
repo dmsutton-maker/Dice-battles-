@@ -33,6 +33,19 @@ before writing any code — Expo APIs change between SDK versions.
 
 ## Where the work comes from
 
+**Live at https://dice-battles-hq.vercel.app** — public site at `/`, the
+private board at `/hq`. Hosted on David's personal accounts: Vercel team
+`suttonsteam` (project `dice-battles-hq`, Hobby) and Supabase project
+`eqdbvpnckriscvzalwix` in his personal "Dice Battles" org.
+
+Deploys are run from a session with `npx vercel deploy --prod` inside
+`hq/` — the Vercel GitHub app is not installed, so a push does NOT
+redeploy the site on its own. Installing it (and setting Root Directory
+to `hq`) would switch that on.
+
+The `HQ_API_TOKEN` needed to read the queue lives in the project's Vercel
+environment variables. It is never in this repo, which is public.
+
 `hq/` is a separate Next.js app (public website + private planning HQ).
 It is NOT part of the game and never gets imported by it — Metro is told
 to ignore the folder, and the game stays native-only.
