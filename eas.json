@@ -6,10 +6,15 @@
     "production": {
       "channel": "main",
       "autoIncrement": true,
-      "environment": "production"
+      "environment": "production",
+      "credentialsSource": "local"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleTeamId": "K3N9FG8NKD"
+      }
+    }
   }
 }

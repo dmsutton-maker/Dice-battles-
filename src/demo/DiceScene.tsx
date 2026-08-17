@@ -9,7 +9,6 @@ import { ARENAS, ArenaId } from '../arena/arenas';
 import { TreasureChest } from '../arena/TreasureChest';
 import { createDieBody, throwDie } from '../dice/die';
 import {
-  applySettleAssist,
   dieSpeed,
   freezeDice,
   isOutOfBounds,
@@ -173,7 +172,7 @@ export function DiceScene({
       awaitingSettle.current = true;
       stillFrames.current = 0;
       throwStartedAt.current = Date.now();
-      diceBodies.forEach((body, index) => throwDie(body, { index, flick }));
+      diceBodies.forEach((body) => throwDie(body, { flick }));
       playThrow();
       onThrow();
     };
@@ -303,7 +302,6 @@ export function DiceScene({
       // The settle rule itself lives in src/dice/settle.ts so the headless
       // test suite can exercise exactly this logic (see tests/physics).
       const elapsed = Date.now() - throwStartedAt.current;
-      applySettleAssist(diceBodies, elapsed);
       stillFrames.current = stillNow ? stillFrames.current + 1 : 0;
 
       if (shouldCallRoll(diceBodies, elapsed, stillFrames.current)) {

@@ -12,7 +12,7 @@ export const TUNING = {
   dieSize: 0.9,
 
   /** Stronger-than-real gravity for snappy, weighty tumbles. */
-  gravity: -44,
+  gravity: -34,
 
   physics: {
     /** Fixed physics timestep (s). */
@@ -21,23 +21,21 @@ export const TUNING = {
     maxSubSteps: 4,
     dieMass: 1,
     /**
-     * Damping and friction are deliberately high: the exciting part of a
-     * roll is the first ~0.4s of tumbling, while the slow creep at the end
-     * is dead time the player waits through (rolls are locked until the
-     * dice stop). These values kill the creep without flattening the
-     * tumble — verified by simulation, see settle timings in the README.
+     * Low damping and a lively bounce: these are what make a roll look
+     * like real dice. Raising them shortens rolls but the dice read as
+     * tumbling through syrup, which is exactly how this drifted away from
+     * feeling natural. Feel wins over the extra fraction of a second.
      */
-    linearDamping: 0.2,
-    angularDamping: 0.4,
+    linearDamping: 0.08,
+    angularDamping: 0.1,
     /** Die vs tray contact. */
-    trayFriction: 0.38,
-    trayRestitution: 0.34,
+    trayFriction: 0.24,
+    trayRestitution: 0.42,
     /** Die vs die contact. */
     dieFriction: 0.1,
     dieRestitution: 0.5,
-    /** Aggressive sleep thresholds so a resting die is detected fast. */
-    sleepSpeedLimit: 0.6,
-    sleepTimeLimit: 0.12,
+    sleepSpeedLimit: 0.3,
+    sleepTimeLimit: 0.35,
   },
 
   tray: {
@@ -73,50 +71,31 @@ export const TUNING = {
   },
 
   /**
-   * The throw follows the player's hand: you flick, and the dice leave your
-   * edge of the board carrying the speed and direction you flicked.
+   * The throw is the original one: the dice are picked up from wherever
+   * they lie and tossed, and a flick sends them with the speed and
+   * direction of your hand.
    *
-   * This requires throwing on RELEASE rather than touch-down, because a
-   * gesture's velocity is not knowable until the finger lifts. Throwing on
-   * touch-down predates the roll lock, and once rolls became binding for
-   * about a second it bought nothing — while making a real flick
-   * impossible, since every throw left before the hand had moved.
+   * Later versions launched every throw from a fixed spot at the player's
+   * edge and metered its power. That is tidier and it is not how throwing
+   * dice feels — the tidiness is what made it feel mechanical.
    */
   throw: {
-    /** Where the dice leave the hand: player's edge, slightly raised. */
-    handZ: 3.4,
-    handY: 1.0,
-    /** Sideways offset of each die at the hand, so they don't start fused. */
-    handSpread: 0.75,
-
-    /** Gesture velocity (points/ms) -> world speed. */
-    flickScale: 11,
-    /** Ceiling on flick speed, so a violent swipe cannot break the tray. */
-    flickMaxSpeed: 15,
-    /** A gesture slower than this counts as a tap, not a flick. */
-    flickThreshold: 0.28,
-    /** Lift added to a flick, scaled a little by how hard it was thrown. */
-    flickUpMin: 3.2,
-    flickUpMax: 5.0,
-    /** Smallest forward speed a flick gets, so a weak one still travels. */
-    flickMinForward: 5.5,
-
-    /**
-     * A plain tap: a solid roll away from the player. Tapping is the
-     * frantic-race input, so it still has to carry the dice down the board
-     * — a limp tap reads as the dice barely leaving your hand.
-     */
-    tapForwardMin: 7.4,
-    tapForwardMax: 9.2,
-    tapUpMin: 3.2,
-    tapUpMax: 4.4,
-    tapLateral: 1.6,
-
-    /** Randomness on every throw, so no two rolls are identical. */
-    lateralJitter: 0.7,
+    /** Tap: upward pop range. */
+    tapUpMin: 7.5,
+    tapUpMax: 10.5,
+    /** Tap: random sideways scatter. */
+    tapLateral: 3.2,
+    /** Flick: gesture velocity (pt/ms) -> world velocity multiplier. */
+    flickScale: 9,
+    /** Flick: max horizontal world speed. */
+    flickMaxSpeed: 14,
+    /** Flick: fixed upward pop added to any flick. */
+    flickUp: 6.5,
+    /** Gesture speed (pt/ms) above which a release counts as a flick. */
+    flickThreshold: 0.35,
     /** Tumble: random angular speed per axis (rad/s). */
-    spinMin: 12,
-    spinMax: 28,
+    spinMin: 8,
+    spinMax: 24,
   },
 
   settle: {
@@ -129,27 +108,17 @@ export const TUNING = {
      */
     stillFrames: 5,
     /**
-     * Settle assist. A die that is down but still creeping gets its
-     * velocity bled off, gently at first and firmer the longer it refuses
-     * to stop, so it glides to rest instead of wandering the tray. Applied
-     * only to dice already on the floor — damping a falling die would make
-     * it float down. Starts shortly after the dice land: with the hand
-     * throw they travel before settling, and waiting longer left a heavy
-     * tail of slow rolls on Hard, where obstacles keep them moving.
+     * A roll is called as soon as the dice are still, and they are FROZEN
+     * at that instant so the face cannot change afterwards. That freeze is
+     * what makes an early call safe, and it costs nothing in feel.
+     *
+     * There is no artificial damping here any more: bleeding velocity off
+     * a rolling die to end the roll sooner is felt immediately as the dice
+     * being grabbed.
      */
-    assistAfterMs: 285,
-    assistStartFactor: 0.93,
-    assistEndFactor: 0.72,
-    assistRampMs: 700,
-    /**
-     * Soft ceiling on a roll: past this the assist clamps down hard so any
-     * stragglers glide to a stop within a few frames rather than being
-     * snapped still, and the roll is called as soon as they are slow.
-     */
-    maxRollMs: 1400,
-    hardStopFactor: 0.55,
-    /** Absolute backstop if a die is somehow still airborne at maxRollMs. */
-    hardMaxRollMs: 2600,
+    maxRollMs: 2200,
+    /** Absolute backstop if a die is somehow still moving at maxRollMs. */
+    hardMaxRollMs: 3200,
     /** Delay before a tap queued mid-roll fires, so the result registers. */
     queuedThrowDelayMs: 130,
   },

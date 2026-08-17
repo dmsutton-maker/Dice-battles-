@@ -12,45 +12,16 @@ import { topFaceColor } from './die';
  * than a copy of it (this logic drifting from its tests is how the "roll
  * lock felt like dead input" regression slipped through).
  *
- * The shape of the rule: dice tumble freely for a moment, then a settle
- * assist bleeds off any straggler's velocity so it glides to rest, and the
- * roll is called as soon as the dice are asleep, still, or out of time —
- * at which point they are FROZEN, which is what makes calling it early
- * safe (a frozen die cannot move, so its face can never go stale).
+ * The dice are never interfered with while they roll. The roll is called
+ * as soon as they are asleep, still, or out of time, and they are FROZEN
+ * at that instant — which is what makes calling it early safe, since a
+ * frozen die cannot move and its face can never go stale.
  */
-
-/** Is this die resting/creeping rather than in free flight? */
-function isGrounded(body: CANNON.Body): boolean {
-  return body.position.y <= TUNING.dieSize * 0.95;
-}
 
 export function dieSpeed(body: CANNON.Body): number {
   return body.velocity.length() + body.angularVelocity.length() * 0.5;
 }
 
-/**
- * Bleed velocity off grounded-but-creeping dice, gently at first and firmer
- * the longer they take. Airborne dice are untouched — damping a falling die
- * makes it float down.
- */
-export function applySettleAssist(bodies: CANNON.Body[], elapsedMs: number): void {
-  const s = TUNING.settle;
-  if (elapsedMs <= s.assistAfterMs) return;
-
-  const ramp = Math.min((elapsedMs - s.assistAfterMs) / s.assistRampMs, 1);
-  const factor =
-    elapsedMs >= s.maxRollMs
-      ? s.hardStopFactor
-      : s.assistStartFactor - (s.assistStartFactor - s.assistEndFactor) * ramp;
-
-  bodies.forEach((body) => {
-    if (!isGrounded(body)) return;
-    body.velocity.scale(factor, body.velocity);
-    body.angularVelocity.scale(factor, body.angularVelocity);
-  });
-}
-
-/** Are all dice below the settle speed threshold this frame? */
 export function allStill(bodies: CANNON.Body[]): boolean {
   return bodies.every((body) => dieSpeed(body) <= TUNING.settle.speedThreshold);
 }
@@ -68,6 +39,8 @@ export function shouldCallRoll(
   if (bodies.every((body) => body.sleepState === CANNON.Body.SLEEPING)) return true;
   if (stillFrames >= s.stillFrames) return true;
 
+  // Past the cap a roll is called where it lies, but only once the dice
+  // are down and slow, so it is never snapped still mid-tumble.
   const grounded = bodies.every(
     (body) => body.position.y <= TUNING.dieSize * 1.1,
   );
