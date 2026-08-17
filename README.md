@@ -164,8 +164,35 @@ start screen). Remaining: nearby multi-device play.
    leaderboards milestone below. Local split-screen 2-player stays as the
    no-setup option on every device.
 
-**v3:** rewarded ads at natural breaks, remove-ads IAP, cosmetic dice skins
-and battlefield themes. No ad SDK before v3.
+**Revenue work (planned, in rough order):**
+
+1. **In-game currency** (asked for by the author's son). Coins earned by
+   winning, spent in the Inventory on skins and arenas. Design rules from
+   the market research: coins buy items DIRECTLY — never a randomised
+   crate, which is both the fastest-monetising and most regulated
+   mechanic, and the wrong thing to sell a five-year-old. Everything
+   purchasable with coins stays earnable by playing, the way Crossy Road
+   does it.
+2. **Many more dice skins — patterns, not just colours.** Stripes, spots,
+   stars, wood grain, marble, glitter. The shell is a single unlit colour
+   today; patterns need a generated texture per skin (the flagstone
+   generator in `src/arena/flagstoneTexture.ts` is the model). The suite's
+   rule still applies: whatever the shell does, the six face colours stay
+   untouched and clearly readable.
+3. **Season pass / monthly content drops.** A themed arena plus a dice set
+   each month, with several price points and offers. This is the one that
+   needs a content pipeline — a pass with nothing new in it is worse than
+   no pass — so it lands after the store basics work. Benchmarks: a pass
+   brings ~11% of revenue in casual games, and only 62% of the top 100
+   run one.
+4. **Remove-ads / family pack IAP.** See the revenue research: ads to a
+   5+ audience are heavily restricted (Apple's Kids Category forbids
+   third-party ads outright; outside it, COPPA allows only
+   non-personalised ads through certified SDKs). The recommendation is to
+   sell the unlock and skip ads entirely.
+
+Any of these that add a native module (ads SDK, in-app purchase library)
+need a fresh EAS build — they cannot ship as an over-the-air update.
 - **Custom soldier colors (paid):** let players re-color their six
   soldiers/prisoners from a color palette. Constraint: the six colors are
   gameplay signals (dice faces must match soldiers at a glance), so any
