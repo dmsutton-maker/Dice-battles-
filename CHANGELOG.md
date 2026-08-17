@@ -16,6 +16,22 @@ restored.
 
 ---
 
+## v1.7.0 — 2026-08-17 · *requested by Marc*
+
+Native build: 1.0.0 (build 1)
+
+- **Freed prisoners no longer run off the sides of the screen.** The
+  retreat row was 6.6 units wide and framed by the figures' centres, so
+  the outermost two hung over the edge. The row is narrower now and the
+  camera frames the figures by their EDGES.
+- **Nothing stands on top of the freed prisoners any more.** The parasols
+  sat directly over the figures at x ±2.4 with a canopy wide enough to
+  swallow them, and the pool rim clipped the outermost one. Posts now
+  flank the row from further out and back, and the pool moved clear.
+- All three battlefields (Castle, Jungle, Space) now read the retreat
+  positions from one shared source instead of repeating the numbers,
+  which is what let them drift out of alignment in the first place.
+
 ## v1.6.0 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)

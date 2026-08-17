@@ -33,14 +33,43 @@ export const JAIL_SLOTS: Slot[] = (() => {
   }));
 })();
 
-/** X positions of the six retreat spots on the player's side. */
-export const RETREAT_XS = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
-/** Z of the retreat row, and of the two parasol/beacon posts behind it. */
+/**
+ * How wide a standing figure is, including the bounce it does when it
+ * arrives. Used both to keep the outermost figures on screen and to keep
+ * scenery from intersecting them.
+ */
+export const FIGURE_RADIUS = 0.3;
+
+/**
+ * X positions of the six retreat spots on the player's side.
+ *
+ * Pulled in from ±3.3: the outermost figures were clipping off the sides
+ * of the screen on a phone. The gap in the middle is the walkway.
+ */
+export const RETREAT_XS = [-2.75, -1.85, -0.95, 0.95, 1.85, 2.75];
+/** Z of the retreat row. */
 export const RETREAT_Z = 6.4;
-export const RETREAT_POST_XS = [-2.4, 2.4];
-export const RETREAT_POST_Z = 5.55;
-/** Centre of the retreat's pool feature. */
-export const RETREAT_POOL: [number, number] = [-2.9, 7.6];
+
+/**
+ * The two parasol/beacon posts. They used to stand at x ±2.4, z 5.55 —
+ * directly over the figures at x ±2.4, with a canopy wide enough to
+ * swallow them. Now they flank the row from further out and further back.
+ */
+export const RETREAT_POST_XS = [-3.3, 3.3];
+export const RETREAT_POST_Z = 5.35;
+/** Radius of the parasol canopy / beacon head at the top of each post. */
+export const RETREAT_POST_RADIUS = 0.85;
+
+/** Centre and rim radius of the retreat's pool feature. */
+export const RETREAT_POOL: [number, number] = [-3.3, 7.9];
+export const RETREAT_POOL_RADIUS = 1.1;
+
+/** Decorative planting/crates beside the pool, kept clear of the figures. */
+export const RETREAT_PROPS: [number, number][] = [
+  [3.3, 7.9],
+  [0, 8.0],
+];
+export const RETREAT_PROP_RADIUS = 0.45;
 
 export const RETREAT_SLOTS: Slot[] = RETREAT_XS.map((x) => ({
   x,

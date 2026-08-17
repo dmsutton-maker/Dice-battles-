@@ -14,8 +14,15 @@ import {
 import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
 import {
+  FIGURE_RADIUS,
   JAIL_SLOTS,
+  RETREAT_POOL,
+  RETREAT_POOL_RADIUS,
+  RETREAT_POST_RADIUS,
   RETREAT_POST_XS,
+  RETREAT_POST_Z,
+  RETREAT_PROP_RADIUS,
+  RETREAT_PROPS,
   RETREAT_SLOTS,
   WALL_SLOTS,
 } from '../src/game/stations';
@@ -48,7 +55,12 @@ suite('screen · camera framing', () => {
       // emptying, and the retreat their rescued figures run to.
       const mustSee: THREE.Vector3[] = [
         ...JAIL_SLOTS.map((s) => new THREE.Vector3(s.x, s.y + 0.9, s.z)),
-        ...RETREAT_SLOTS.map((s) => new THREE.Vector3(s.x, s.y + 0.9, s.z)),
+        // Both EDGES of every freed figure, not just its centre: the
+        // outermost ones used to hang off the sides of the screen.
+        ...RETREAT_SLOTS.flatMap((s) => [
+          new THREE.Vector3(s.x - FIGURE_RADIUS, s.y + 0.9, s.z),
+          new THREE.Vector3(s.x + FIGURE_RADIUS, s.y + 0.9, s.z),
+        ]),
         ...WALL_SLOTS.map((s) => new THREE.Vector3(s.x, s.y + 0.6, s.z)),
         new THREE.Vector3(-TUNING.tray.innerWidth / 2, 0, -TUNING.tray.innerDepth / 2),
         new THREE.Vector3(TUNING.tray.innerWidth / 2, 0, -TUNING.tray.innerDepth / 2),
@@ -130,27 +142,69 @@ suite('screen · arenas', () => {
     assert(isArenaUnlocked(ARENA_ORDER[0], 0), 'a new player has nowhere to battle');
   });
 
+  test('nothing in the retreat overlaps a freed prisoner', () => {
+    // Freed figures celebrate on the retreat row. Scenery placed on top of
+    // them looks broken — the parasols used to stand directly over the
+    // figures at x ±2.4 with a canopy wide enough to swallow them.
+    const scenery: { name: string; x: number; z: number; radius: number }[] = [
+      ...RETREAT_POST_XS.map((x) => ({
+        name: 'parasol/beacon post',
+        x,
+        z: RETREAT_POST_Z,
+        radius: RETREAT_POST_RADIUS,
+      })),
+      {
+        name: 'pool',
+        x: RETREAT_POOL[0],
+        z: RETREAT_POOL[1],
+        radius: RETREAT_POOL_RADIUS,
+      },
+      ...RETREAT_PROPS.map(([x, z]) => ({
+        name: 'planting/crates',
+        x,
+        z,
+        radius: RETREAT_PROP_RADIUS,
+      })),
+    ];
+
+    for (const slot of RETREAT_SLOTS) {
+      for (const prop of scenery) {
+        const gap =
+          Math.hypot(prop.x - slot.x, prop.z - slot.z) - prop.radius - FIGURE_RADIUS;
+        assert(
+          gap > 0,
+          `the ${prop.name} overlaps the freed prisoner at x ${slot.x} by ${(-gap).toFixed(2)}`,
+        );
+      }
+    }
+  });
+
+  test('freed prisoners never stand inside each other', () => {
+    for (let i = 0; i < RETREAT_SLOTS.length; i++) {
+      for (let j = i + 1; j < RETREAT_SLOTS.length; j++) {
+        const d = Math.hypot(
+          RETREAT_SLOTS[i].x - RETREAT_SLOTS[j].x,
+          RETREAT_SLOTS[i].z - RETREAT_SLOTS[j].z,
+        );
+        assert(d > FIGURE_RADIUS * 2, `retreat spots ${i} and ${j} overlap`);
+      }
+    }
+  });
+
   test('arenas build their scenery on the shared station coordinates', () => {
     // Each arena hand-places its jail, retreat and posts. If one drifts
     // from src/game/stations.ts the figures float or sink into scenery.
     const arenaFiles = readdirSync('src/arena').filter((f) => f.endsWith('.tsx'));
-    const retreatZ = RETREAT_SLOTS[0].z;
     for (const file of arenaFiles) {
       const source = readFileSync(join('src/arena', file), 'utf8');
-      const isBattlefield =
-        source.includes('JailPen') || source.includes('JAIL') || source.includes('Retreat');
-      if (!isBattlefield) continue;
+      if (!source.includes('Retreat')) continue;
 
-      if (source.includes('Retreat')) {
+      // Repeating the numbers is how the arenas drifted out of alignment
+      // with the figures; they must read them from the shared source.
+      for (const name of ['RETREAT_XS', 'RETREAT_Z', 'RETREAT_POST_XS']) {
         assert(
-          source.includes(String(retreatZ)),
-          `${file} draws a retreat that is not at z=${retreatZ}`,
-        );
-        RETREAT_POST_XS.forEach((x) =>
-          assert(
-            source.includes(String(x)),
-            `${file} is missing the retreat post at x=${x}`,
-          ),
+          source.includes(name),
+          `${file} does not use ${name} — it is hardcoding retreat positions`,
         );
       }
       if (source.includes('platformHeight')) {

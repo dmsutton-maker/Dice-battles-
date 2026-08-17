@@ -1,6 +1,15 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
+import {
+  RETREAT_POOL,
+  RETREAT_POST_XS,
+  RETREAT_POST_Z,
+  RETREAT_PROPS,
+  RETREAT_XS,
+  RETREAT_Z,
+} from '../game/stations';
+
 import { createFlagstoneTexture } from './flagstoneTexture';
 
 /**
@@ -178,13 +187,13 @@ function SpaceJailPen() {
  * bay — glowing landing pads, beacon masts, a cryo-pool, and crate stacks.
  */
 function SpaceRetreat() {
-  const padXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
+  const padXs = RETREAT_XS;
   const padColors = ['#3ff2ff', '#7fff9e', '#ffd93f', '#ff9e5f', '#c98aff', '#ff5fd0'];
   return (
     <group>
       {/* Glowing landing pads where freed prisoners celebrate */}
       {padXs.map((x, i) => (
-        <group key={`pad-${i}`} position={[x, 0, 6.4]}>
+        <group key={`pad-${i}`} position={[x, 0, RETREAT_Z]}>
           <mesh position={[0, 0.015, 0]}>
             <boxGeometry args={[0.62, 0.03, 0.97]} />
             <meshStandardMaterial color={HULL_DARK} roughness={0.5} metalness={0.5} />
@@ -197,13 +206,11 @@ function SpaceRetreat() {
       ))}
 
       {/* Beacon masts at the umbrella slots */}
-      {(
-        [
-          [-2.4, 5.55, GLOW_CYAN],
-          [2.4, 5.55, GLOW_MAGENTA],
-        ] as const
-      ).map(([x, z, color], i) => (
-        <group key={`beacon-${i}`} position={[x, 0, z]}>
+      {[GLOW_CYAN, GLOW_MAGENTA].map((color, i) => (
+        <group
+          key={`beacon-${i}`}
+          position={[RETREAT_POST_XS[i], 0, RETREAT_POST_Z]}
+        >
           <mesh position={[0, 0.7, 0]}>
             <cylinderGeometry args={[0.04, 0.05, 1.4, 8]} />
             <meshStandardMaterial color={HULL} roughness={0.4} metalness={0.6} />
@@ -220,7 +227,7 @@ function SpaceRetreat() {
       ))}
 
       {/* Cryo-pool (same spot as the castle pool) */}
-      <group position={[-2.9, 0, 7.6]}>
+      <group position={[RETREAT_POOL[0], 0, RETREAT_POOL[1]]}>
         <mesh position={[0, 0.09, 0]}>
           <cylinderGeometry args={[1.05, 1.1, 0.18, 20]} />
           <meshStandardMaterial color={HULL_DARK} roughness={0.5} metalness={0.5} />
@@ -232,12 +239,7 @@ function SpaceRetreat() {
       </group>
 
       {/* Supply crate stacks where the castle bushes were */}
-      {(
-        [
-          [3.1, 7.5],
-          [0.1, 7.9],
-        ] as const
-      ).map(([x, z], i) => (
+      {RETREAT_PROPS.map(([x, z], i) => (
         <group key={`crates-${i}`} position={[x, 0, z]}>
           <mesh position={[0, 0.2, 0]}>
             <boxGeometry args={[0.5, 0.4, 0.5]} />

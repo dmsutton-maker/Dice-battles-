@@ -1,6 +1,15 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
+import {
+  RETREAT_POOL,
+  RETREAT_POST_XS,
+  RETREAT_POST_Z,
+  RETREAT_PROPS,
+  RETREAT_XS,
+  RETREAT_Z,
+} from '../game/stations';
+
 import { createFlagstoneTexture } from './flagstoneTexture';
 
 const STONE = '#9a8a72';
@@ -148,26 +157,24 @@ function JailPen() {
  * stay in sync with the free slots in src/game/Prisoners.tsx.
  */
 function RetreatGarden({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
-  const towelXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
+  const towelXs = RETREAT_XS;
   const towelColors = ['#ffe08a', '#9be0ff', '#ffc4d6', '#c9f0b8', '#e8d5ff', '#ffd7b0'];
   return (
     <group>
       {/* Beach towels the freed prisoners celebrate on */}
       {towelXs.map((x, i) => (
-        <mesh key={`towel-${i}`} position={[x, 0.015, 6.4]}>
+        <mesh key={`towel-${i}`} position={[x, 0.015, RETREAT_Z]}>
           <boxGeometry args={[0.6, 0.03, 0.95]} />
           <meshStandardMaterial color={towelColors[i]} roughness={0.9} />
         </mesh>
       ))}
 
       {/* Sun umbrellas */}
-      {(
-        [
-          [-2.4, 5.55, palette.umbrellaA],
-          [2.4, 5.55, palette.umbrellaB],
-        ] as const
-      ).map(([x, z, color], i) => (
-        <group key={`umbrella-${i}`} position={[x, 0, z]}>
+      {[palette.umbrellaA, palette.umbrellaB].map((color, i) => (
+        <group
+          key={`umbrella-${i}`}
+          position={[RETREAT_POST_XS[i], 0, RETREAT_POST_Z]}
+        >
           <mesh position={[0, 0.7, 0]}>
             <cylinderGeometry args={[0.04, 0.04, 1.4, 8]} />
             <meshStandardMaterial color="#e8e0d0" roughness={0.7} />
@@ -180,7 +187,7 @@ function RetreatGarden({ palette }: { palette: (typeof VARIANTS)[CastleVariant] 
       ))}
 
       {/* Little pool */}
-      <group position={[-2.9, 0, 7.6]}>
+      <group position={[RETREAT_POOL[0], 0, RETREAT_POOL[1]]}>
         <mesh position={[0, 0.09, 0]}>
           <cylinderGeometry args={[1.05, 1.1, 0.18, 20]} />
           <meshStandardMaterial color="#bcae94" roughness={0.9} />
@@ -192,12 +199,7 @@ function RetreatGarden({ palette }: { palette: (typeof VARIANTS)[CastleVariant] 
       </group>
 
       {/* Flowering bushes */}
-      {(
-        [
-          [3.1, 7.5],
-          [0.1, 7.9],
-        ] as const
-      ).map(([x, z], i) => (
+      {RETREAT_PROPS.map(([x, z], i) => (
         <group key={`bush-${i}`} position={[x, 0, z]}>
           <mesh position={[0, 0.28, 0]} scale={[1, 0.72, 1]}>
             <sphereGeometry args={[0.42, 12, 8]} />

@@ -1,4 +1,11 @@
 import * as THREE from 'three';
+import {
+  FIGURE_RADIUS,
+  RETREAT_POST_XS,
+  RETREAT_POST_Z,
+  RETREAT_XS,
+  RETREAT_Z,
+} from '../game/stations';
 import { TUNING } from '../game/tuning';
 
 /**
@@ -88,12 +95,19 @@ function buildFitPoints(): FitPoint[] {
   add(pen.innerWidth / 2 - 0.3, penHeadTop, penFarZ + pen.depth / 2, 0.94, 0.78);
   add(0, pen.platformHeight + pen.barHeight + 0.15, penFarZ, 0.96, 0.82);
 
-  // Freedom retreat on the player's side: outer towels (with a standing,
-  // bouncing figure) and the umbrella tops must be on screen.
-  add(-3.3, 1.05, 6.4, 0.95, 0.9, -0.93);
-  add(3.3, 1.05, 6.4, 0.95, 0.9, -0.93);
-  add(-2.4, 1.7, 5.55, 0.97, 0.9, -0.95);
-  add(2.4, 1.7, 5.55, 0.97, 0.9, -0.95);
+  // Freedom retreat on the player's side. The figures are what matter, so
+  // each outermost one is framed by its EDGES, not its centre — framing the
+  // centre let the outer figures clip off the sides of the screen.
+  const outerRetreat = RETREAT_XS[RETREAT_XS.length - 1];
+  for (const side of [-1, 1]) {
+    const centre = side * outerRetreat;
+    add(centre - FIGURE_RADIUS, 1.05, RETREAT_Z, 0.95, 0.9, -0.93);
+    add(centre + FIGURE_RADIUS, 1.05, RETREAT_Z, 0.95, 0.9, -0.93);
+  }
+  // Parasol / beacon tops, allowed a little bleed at the sides.
+  for (const x of RETREAT_POST_XS) {
+    add(x, 1.9, RETREAT_POST_Z, 1.02, 0.9, -0.95);
+  }
 
   // Captured prisoners paraded on the far battlement (Skirmish/Color War).
   add(-2.5, wallHeight + 1.2, -(halfD + wallThickness / 2), 0.94, 0.8);

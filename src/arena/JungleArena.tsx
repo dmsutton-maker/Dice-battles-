@@ -1,6 +1,15 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
+import {
+  RETREAT_POOL,
+  RETREAT_POST_XS,
+  RETREAT_POST_Z,
+  RETREAT_PROPS,
+  RETREAT_XS,
+  RETREAT_Z,
+} from '../game/stations';
+
 import { createFlagstoneTexture } from './flagstoneTexture';
 
 /**
@@ -184,26 +193,21 @@ function JungleJailPen() {
  * jungle explorer camp — leaf mats, tiki parasols, a lagoon pool, ferns.
  */
 function JungleRetreat() {
-  const towelXs = [-3.3, -2.4, -1.5, 1.5, 2.4, 3.3];
+  const towelXs = RETREAT_XS;
   const matColors = ['#c9e07a', '#8fd6a8', '#e0d07a', '#a8d67f', '#7fceb0', '#d6c96b'];
   return (
     <group>
       {/* Woven leaf mats the freed prisoners celebrate on */}
       {towelXs.map((x, i) => (
-        <mesh key={`mat-${i}`} position={[x, 0.015, 6.4]}>
+        <mesh key={`mat-${i}`} position={[x, 0.015, RETREAT_Z]}>
           <boxGeometry args={[0.6, 0.03, 0.95]} />
           <meshStandardMaterial color={matColors[i]} roughness={0.95} />
         </mesh>
       ))}
 
       {/* Tiki-thatch parasols at the umbrella slots */}
-      {(
-        [
-          [-2.4, 5.55],
-          [2.4, 5.55],
-        ] as const
-      ).map(([x, z], i) => (
-        <group key={`tiki-${i}`} position={[x, 0, z]}>
+      {RETREAT_POST_XS.map((x, i) => (
+        <group key={`tiki-${i}`} position={[x, 0, RETREAT_POST_Z]}>
           <mesh position={[0, 0.7, 0]}>
             <cylinderGeometry args={[0.05, 0.05, 1.4, 7]} />
             <meshStandardMaterial color={TRUNK} roughness={0.9} />
@@ -216,7 +220,7 @@ function JungleRetreat() {
       ))}
 
       {/* Lagoon pool */}
-      <group position={[-2.9, 0, 7.6]}>
+      <group position={[RETREAT_POOL[0], 0, RETREAT_POOL[1]]}>
         <mesh position={[0, 0.09, 0]}>
           <cylinderGeometry args={[1.05, 1.1, 0.18, 20]} />
           <meshStandardMaterial color={MOSS_STONE_DARK} roughness={0.9} />
@@ -228,9 +232,9 @@ function JungleRetreat() {
       </group>
 
       {/* Ferns and a jungle flower */}
-      <Fern position={[3.1, 0, 7.5]} scale={1.2} />
-      <Fern position={[0.1, 0, 7.9]} />
-      <mesh position={[0.1, 0.55, 7.9]}>
+      <Fern position={[RETREAT_PROPS[0][0], 0, RETREAT_PROPS[0][1]]} scale={1.2} />
+      <Fern position={[RETREAT_PROPS[1][0], 0, RETREAT_PROPS[1][1]]} />
+      <mesh position={[RETREAT_PROPS[1][0], 0.55, RETREAT_PROPS[1][1]]}>
         <sphereGeometry args={[0.09, 8, 6]} />
         <meshStandardMaterial color="#ff5f9e" roughness={0.6} />
       </mesh>
