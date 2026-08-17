@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { currentMember, supabaseServer } from '@/lib/supabase/server';
+import { currentMember, supabaseAdmin, supabaseServer } from '@/lib/supabase/server';
 import type { IdeaCategory, IdeaStatus } from '@/lib/types';
 
 /**
@@ -324,6 +324,75 @@ export async function markHandled(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath('/hq/inbox');
+}
+
+/**
+ * Change your own password.
+ *
+ * Runs as you, so Supabase itself checks it is really your account being
+ * changed — nothing here trusts the page.
+ */
+export async function changeMyPassword(formData: FormData) {
+  await requireMember();
+  const supabase = await supabaseServer();
+
+  const password = String(formData.get('password') ?? '');
+  if (password.length < 8) {
+    throw new Error('Passwords need to be at least 8 characters.');
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw new Error(error.message);
+  revalidatePath('/hq/people');
+}
+
+/**
+ * David setting someone else's password — because a ten year old WILL
+ * forget theirs, and the alternative is a password-reset email, which is
+ * the same fragile link that failed on a phone in the first place.
+ */
+export async function setSomeonesPassword(formData: FormData) {
+  const member = await requireMember();
+  if (member.role !== 'owner') {
+    throw new Error('Only an owner can set someone else’s password.');
+  }
+
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const password = String(formData.get('password') ?? '');
+  if (password.length < 8) {
+    throw new Error('Passwords need to be at least 8 characters.');
+  }
+
+  const admin = supabaseAdmin();
+
+  // Find the login, or make one if this person has never signed in.
+  const { data: list, error: listError } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+  });
+  if (listError) throw new Error(listError.message);
+
+  const existing = list.users.find(
+    (u) => (u.email ?? '').toLowerCase() === email,
+  );
+
+  if (existing) {
+    const { error } = await admin.auth.admin.updateUserById(existing.id, {
+      password,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  await log(null, member.display_name, 'set a password for someone');
+  revalidatePath('/hq/people');
 }
 
 export async function invitePerson(formData: FormData) {

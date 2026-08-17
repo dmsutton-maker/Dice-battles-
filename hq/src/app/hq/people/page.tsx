@@ -1,6 +1,10 @@
 import { currentMember, supabaseServer } from '@/lib/supabase/server';
 import type { Member } from '@/lib/types';
-import { invitePerson } from '../actions';
+import {
+  changeMyPassword,
+  invitePerson,
+  setSomeonesPassword,
+} from '../actions';
 
 interface Invite {
   email: string;
@@ -55,12 +59,75 @@ export default async function PeoplePage() {
         </table>
       </div>
 
+      <div className="card">
+        <h3>Your password</h3>
+        <p className="faint" style={{ marginTop: -4 }}>
+          Change it to something you will remember. At least 8 characters.
+        </p>
+        <form action={changeMyPassword}>
+          <label htmlFor="my-password">NEW PASSWORD</label>
+          <input
+            id="my-password"
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+          <div style={{ marginTop: 14 }}>
+            <button className="button-quiet" type="submit">
+              Change my password
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {isOwner && (
+        <div className="card">
+          <h3>Set someone else&apos;s password</h3>
+          <p className="faint" style={{ marginTop: -4 }}>
+            For when one of the boys forgets theirs. Type their email and a
+            new password, tell them what it is, and they are back in. If
+            they have never signed in before, this creates their login.
+          </p>
+          <form action={setSomeonesPassword}>
+            <div className="grid">
+              <div>
+                <label htmlFor="their-email">THEIR EMAIL</label>
+                <input
+                  id="their-email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="marcsutton2010@gmail.com"
+                />
+              </div>
+              <div>
+                <label htmlFor="their-password">NEW PASSWORD</label>
+                <input
+                  id="their-password"
+                  name="password"
+                  type="text"
+                  required
+                  minLength={8}
+                  placeholder="at least 8 characters"
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <button type="submit">Set their password</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {isOwner ? (
         <div className="card">
           <h3>Invite someone</h3>
           <p className="faint" style={{ marginTop: -4 }}>
-            They can then go to the sign-in page, type this address, and get
-            a link emailed to them. No password to set or forget.
+            Add them here first, then set them a password above — the
+            database refuses to create a login for an address that is not
+            on this list.
           </p>
           <form action={invitePerson}>
             <div className="grid">
