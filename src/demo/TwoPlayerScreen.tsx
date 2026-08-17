@@ -284,14 +284,14 @@ export function TwoPlayerScreen({ arenaId, dieBodyColor, onExit }: TwoPlayerScre
       {phase === 'ready' && (
         <Pressable style={styles.readyOverlay} onPress={startMatch}>
           <View style={styles.readyCardFlipped}>
-            <Text style={styles.readyTitle}>⚔️ PASS & PLAY</Text>
+            <Text style={styles.readyTitle}>⚔️ split screen</Text>
             <Text style={styles.readyBody}>This side is yours, Player 2!</Text>
           </View>
           <Text style={styles.readyPrompt}>
             Lay the phone flat between you.{'\n'}Tap anywhere to battle!
           </Text>
           <View style={styles.readyCard}>
-            <Text style={styles.readyTitle}>⚔️ PASS & PLAY</Text>
+            <Text style={styles.readyTitle}>⚔️ split screen</Text>
             <Text style={styles.readyBody}>
               First to rescue all six prisoners wins.{'\n'}Tap fast. No mercy.
             </Text>

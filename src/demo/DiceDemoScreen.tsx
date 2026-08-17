@@ -826,7 +826,7 @@ export function DiceDemoScreen() {
               style={styles.twoPlayerButton}
               onPress={() => setTwoPlayer(true)}
             >
-              <Text style={styles.twoPlayerText}>👥 2 Players — Pass & Play</Text>
+              <Text style={styles.twoPlayerText}>👥 2 Players — Split Screen</Text>
             </Pressable>
           </ScrollView>
         </View>

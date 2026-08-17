@@ -119,8 +119,10 @@ battle zone is a second `DiceScene` with its own physics world.
    countdown, win/defeat overlays, instant rematch, Easy/Medium/Hard
 3. ✅ AI opponent roster (8 named rivals, fresh one drawn each round;
    copy says "other players" ahead of eventual online play)
-4. ✅ Same-device 2-player: portrait split screen, mirrored zones, each
-   with its own physics world (Classic, no trophies at stake)
+4. ✅ Same-device 2-player split screen: both players roll at the SAME
+   time on one phone, facing each other — the top zone is rotated 180°
+   and each half has its own physics world (Classic, no trophies at
+   stake). Not pass-and-play; nobody waits for a turn.
 5. One themed battlefield arena, built beautifully (arena system designed
    for drop-in additions)
 
