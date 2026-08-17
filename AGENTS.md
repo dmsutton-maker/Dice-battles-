@@ -31,6 +31,25 @@ before writing any code — Expo APIs change between SDK versions.
 - Marc (David's son) is directing the work from v1.5.0 onward; David owns
   the game and made every request before that.
 
+## Where the work comes from
+
+`hq/` is a separate Next.js app (public website + private planning HQ).
+It is NOT part of the game and never gets imported by it — Metro is told
+to ignore the folder, and the game stays native-only.
+
+From now on the family puts ideas on the HQ board, David approves them,
+and approved items are the work queue:
+
+- `GET /api/queue` with the `x-hq-token` header returns what is approved,
+  in priority order, plus anything already being built.
+- Mark an item `building` when starting it and `shipped` with the version
+  number when it goes out — the same version written in `CHANGELOG.md`.
+- Approval is David's alone. The token deliberately cannot approve
+  anything; if something needed is not approved, ask rather than build it.
+
+A direct request in chat still outranks the board — the board is for work
+queued up in advance, not a gate on David or Marc asking for something.
+
 ## The App Store record
 
 - Listing name is **Dice Battles: Color Rush** — plain "Dice Battles" was

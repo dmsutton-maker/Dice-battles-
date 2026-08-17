@@ -16,6 +16,25 @@ restored.
 
 ---
 
+## Website and HQ — 2026-08-17 · *requested by David*
+
+Not a game change — the game itself is untouched, and still has no web
+build target.
+
+- **A public website** in `hq/`: what the game is, plus the Privacy
+  Policy, Terms of Use and Support pages Apple requires live URLs for.
+  The privacy policy says the true thing — the game collects nothing —
+  and commits to being rewritten *before* anything like ads ships.
+- **A private HQ** at `/hq` for the family: put up ideas, David approves
+  or parks them, approved ones get sorted into phases, and that is the
+  timeline. Sign-in is a link emailed to invited addresses only — no
+  passwords, which matters when half the team are children.
+- **The approved list is the work queue.** Claude reads it, builds the
+  top item, and marks it shipped with the version it went out in, so the
+  board and this changelog always agree. Claude cannot approve anything.
+- Deliberately built on personal accounts, never the employer-linked
+  Supabase or Vercel accounts that were already connected.
+
 ## App Store setup — 2026-08-17 · *requested by David*
 
 Not a game change — nothing players have installed is different.

@@ -1,0 +1,6 @@
+# The website/HQ is deployed from Vercel, not built into the app. Keeping
+# it out of the EAS upload saves shipping a whole second dependency tree
+# to the build servers.
+hq/
+docs/
+tests/
