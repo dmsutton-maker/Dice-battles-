@@ -16,6 +16,13 @@ restored.
 
 ---
 
+## v1.5.1 — 2026-08-17 · *requested by Marc*
+
+Native build: 1.0.0 (build 1)
+
+- Home screen button now reads just **🎒 INVENTORY**; the equipped
+  battlefield name no longer trails after it.
+
 ## v1.5.0 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)

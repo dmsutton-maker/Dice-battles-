@@ -625,9 +625,7 @@ export function DiceDemoScreen() {
 
   const inventoryButton = (
     <Pressable style={styles.inventoryButton} onPress={() => setShowInventory(true)}>
-      <Text style={styles.inventoryText}>
-        🎒 INVENTORY · {ARENAS[arenaId].emoji} {ARENAS[arenaId].short}
-      </Text>
+      <Text style={styles.inventoryText}>🎒 INVENTORY</Text>
     </Pressable>
   );
 
