@@ -39,7 +39,8 @@
       "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
     },
     "plugins": [
-      "expo-audio"
+      "expo-audio",
+      "expo-asset"
     ]
   }
 }
