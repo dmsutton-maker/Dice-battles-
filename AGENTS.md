@@ -50,6 +50,12 @@ and approved items are the work queue:
 A direct request in chat still outranks the board — the board is for work
 queued up in advance, not a gate on David or Marc asking for something.
 
+Questions with no right answer — which icon, which name, which colour —
+go up as a **proposal** via `POST /api/proposals` for the family to vote
+on, rather than being decided alone. Read the outcome from
+`GET /api/proposals`. The token can raise a question and read the result;
+it can neither vote nor settle a vote.
+
 ## The App Store record
 
 - Listing name is **Dice Battles: Color Rush** — plain "Dice Battles" was

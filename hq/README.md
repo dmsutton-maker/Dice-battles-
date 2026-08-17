@@ -64,6 +64,19 @@ Sign in as David, go to **People**, add each person's name and email.
 They can then sign in with a link emailed to them — no passwords, which
 matters when half the team are children.
 
+## Votes
+
+Some questions have no right answer to look up — which app icon, which
+name, which colour. Those go in **Vote** instead of on the ideas board:
+Claude puts up the options, everybody votes, David settles it.
+
+Everyone sees who voted for what, on purpose — the point is to argue
+about it, not to run a secret ballot. You can change your vote until it
+is settled.
+
+The token can raise a question and read the result. It cannot vote and it
+cannot settle one.
+
 ## The queue endpoint
 
 ```bash
@@ -79,6 +92,16 @@ curl -X POST https://YOUR-SITE/api/queue \
 curl -X POST https://YOUR-SITE/api/queue \
   -H "x-hq-token: $HQ_API_TOKEN" -H 'content-type: application/json' \
   -d '{"id":"<idea id>","status":"shipped","version":"v2.1.0"}'
+
+# Put a question up for a family vote
+curl -X POST https://YOUR-SITE/api/proposals \
+  -H "x-hq-token: $HQ_API_TOKEN" -H 'content-type: application/json' \
+  -d '{"title":"Which colour for the win screen?",
+       "question":"Pick one.",
+       "options":[{"label":"Gold"},{"label":"Green"}]}'
+
+# Read the tallies and what was chosen
+curl -H "x-hq-token: $HQ_API_TOKEN" https://YOUR-SITE/api/proposals
 ```
 
 ## Rules this app follows

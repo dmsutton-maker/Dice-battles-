@@ -193,6 +193,83 @@ create trigger ideas_touch_updated_at
   for each row execute function public.touch_updated_at();
 
 -- ---------------------------------------------------------------------
+-- Proposals — the things Claude puts up for the family to vote on
+--
+-- Different from ideas on purpose. An idea is something one person WANTS
+-- and David says yes or no to. A proposal is a question with several
+-- answers where the right one is a matter of taste, so everybody gets a
+-- say: which app icon, which name, which colour. Claude raises these;
+-- the family votes; David closes it by picking one.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.proposals (
+  id           uuid primary key default gen_random_uuid(),
+  title        text not null,
+  question     text not null default '',
+  detail       text not null default '',
+  raised_by    text not null default 'Claude',
+  status       text not null default 'open'
+               check (status in ('open', 'decided')),
+  chosen_option uuid,
+  decided_note text not null default '',
+  decided_at   timestamptz,
+  created_at   timestamptz not null default now()
+);
+
+create table if not exists public.proposal_options (
+  id          uuid primary key default gen_random_uuid(),
+  proposal_id uuid not null references public.proposals (id) on delete cascade,
+  label       text not null,
+  detail      text not null default '',
+  -- A picture where there is one (an app icon), otherwise just words.
+  image_url   text,
+  position    integer not null default 0
+);
+
+create index if not exists proposal_options_proposal_idx
+  on public.proposal_options (proposal_id);
+
+create table if not exists public.votes (
+  id          uuid primary key default gen_random_uuid(),
+  proposal_id uuid not null references public.proposals (id) on delete cascade,
+  option_id   uuid not null references public.proposal_options (id) on delete cascade,
+  member_id   uuid not null references public.members (id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  -- One vote each. Changing your mind replaces your vote rather than
+  -- adding a second one.
+  unique (proposal_id, member_id)
+);
+
+alter table public.proposals        enable row level security;
+alter table public.proposal_options enable row level security;
+alter table public.votes            enable row level security;
+
+drop policy if exists proposals_read on public.proposals;
+create policy proposals_read on public.proposals
+  for select using (public.is_member());
+
+drop policy if exists proposals_write on public.proposals;
+create policy proposals_write on public.proposals
+  for all using (public.is_owner()) with check (public.is_owner());
+
+drop policy if exists proposal_options_read on public.proposal_options;
+create policy proposal_options_read on public.proposal_options
+  for select using (public.is_member());
+
+drop policy if exists proposal_options_write on public.proposal_options;
+create policy proposal_options_write on public.proposal_options
+  for all using (public.is_owner()) with check (public.is_owner());
+
+drop policy if exists votes_read on public.votes;
+create policy votes_read on public.votes
+  for select using (public.is_member());
+
+-- You may cast, change and withdraw your OWN vote, and nobody else's.
+drop policy if exists votes_own on public.votes;
+create policy votes_own on public.votes
+  for all using (member_id = auth.uid()) with check (member_id = auth.uid());
+
+-- ---------------------------------------------------------------------
 -- Row level security
 --
 -- Everything is closed by default. Members read everything; members add
@@ -293,3 +370,48 @@ select * from (values
    'planned', 4)
 ) as seed(name, summary, status, position)
 where not exists (select 1 from public.phases);
+
+-- The first thing to vote on: which app icon the game ships with. The
+-- four pictures are real files in this site's own /icons folder, so they
+-- show up the moment the site is deployed.
+with new_proposal as (
+  insert into public.proposals (title, question, detail, raised_by)
+  select
+    'Which app icon should we ship?',
+    'This is the picture on the home screen — for most people it is the '
+    'first thing they ever see of the game, at about the size of a '
+    'fingernail. Pick the one you would tap.',
+    'Look at the small versions as well as the big ones. An icon that is '
+    'beautiful at full size and mush at thumbnail size is the wrong icon. '
+    'Nothing here is final — whichever wins can still be recoloured or '
+    'adjusted.',
+    'Claude'
+  where not exists (select 1 from public.proposals)
+  returning id
+)
+insert into public.proposal_options (proposal_id, label, detail, image_url, position)
+select
+  new_proposal.id,
+  option.label,
+  option.detail,
+  option.image_url,
+  option.position
+from new_proposal
+cross join (values
+  ('Perfect Match',
+   'Two dice that have both landed on red — the exact moment you are '
+   'playing for. The six game colours run along the bottom.',
+   '/icons/a-perfect-match.svg', 1),
+  ('Colour Cube',
+   'One big die showing three faces in three different colours. The '
+   'boldest of the four and the easiest to recognise when it is tiny.',
+   '/icons/b-colour-cube.svg', 2),
+  ('Crossed Swords',
+   'Swords behind a die, matching the ⚔️ DICE BATTLES ⚔️ title on the '
+   'home screen. Says "battle" loudest; the busiest of the four.',
+   '/icons/c-crossed-swords.svg', 3),
+  ('Colour Rush',
+   'A die hurled across the frame trailing all six colours behind it. '
+   'Leans into the new name and the speed of a round.',
+   '/icons/d-colour-rush.svg', 4)
+) as option(label, detail, image_url, position);

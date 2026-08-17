@@ -155,6 +155,72 @@ export async function setPhaseStatus(formData: FormData) {
   revalidatePath('/hq/timeline');
 }
 
+/**
+ * Cast or change your vote. One per person per proposal — voting again
+ * replaces what you said before rather than stacking up.
+ */
+export async function castVote(formData: FormData) {
+  const member = await requireMember();
+  const supabase = await supabaseServer();
+
+  const proposalId = String(formData.get('proposal_id'));
+  const optionId = String(formData.get('option_id'));
+
+  const { error } = await supabase.from('votes').upsert(
+    {
+      proposal_id: proposalId,
+      option_id: optionId,
+      member_id: member.id,
+    },
+    { onConflict: 'proposal_id,member_id' },
+  );
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/hq/vote/${proposalId}`);
+  revalidatePath('/hq/vote');
+}
+
+/** David closes a vote by picking the winner. Only he can. */
+export async function decideProposal(formData: FormData) {
+  const member = await requireMember();
+  const supabase = await supabaseServer();
+
+  const proposalId = String(formData.get('proposal_id'));
+  const optionId = String(formData.get('option_id'));
+
+  const { error } = await supabase
+    .from('proposals')
+    .update({
+      status: 'decided',
+      chosen_option: optionId,
+      decided_note: String(formData.get('decided_note') ?? '').trim(),
+      decided_at: new Date().toISOString(),
+    })
+    .eq('id', proposalId);
+
+  if (error) throw new Error(error.message);
+  await log(null, member.display_name, 'settled a vote');
+  revalidatePath(`/hq/vote/${proposalId}`);
+  revalidatePath('/hq/vote');
+}
+
+/** Reopen a vote that was closed too early. */
+export async function reopenProposal(formData: FormData) {
+  const member = await requireMember();
+  const supabase = await supabaseServer();
+
+  const proposalId = String(formData.get('proposal_id'));
+  const { error } = await supabase
+    .from('proposals')
+    .update({ status: 'open', chosen_option: null, decided_at: null })
+    .eq('id', proposalId);
+
+  if (error) throw new Error(error.message);
+  await log(null, member.display_name, 'reopened a vote');
+  revalidatePath(`/hq/vote/${proposalId}`);
+  revalidatePath('/hq/vote');
+}
+
 export async function invitePerson(formData: FormData) {
   const member = await requireMember();
   const supabase = await supabaseServer();

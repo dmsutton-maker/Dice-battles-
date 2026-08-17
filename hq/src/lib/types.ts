@@ -102,6 +102,36 @@ export const PRIORITY_LABELS: Record<number, string> = {
   5: 'Someday',
 };
 
+export interface Proposal {
+  id: string;
+  title: string;
+  question: string;
+  detail: string;
+  raised_by: string;
+  status: 'open' | 'decided';
+  chosen_option: string | null;
+  decided_note: string;
+  decided_at: string | null;
+  created_at: string;
+}
+
+export interface ProposalOption {
+  id: string;
+  proposal_id: string;
+  label: string;
+  detail: string;
+  image_url: string | null;
+  position: number;
+}
+
+export interface Vote {
+  id: string;
+  proposal_id: string;
+  option_id: string;
+  member_id: string;
+  created_at: string;
+}
+
 export const STATUS_ORDER: IdeaStatus[] = [
   'building',
   'approved',

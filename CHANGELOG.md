@@ -16,6 +16,20 @@ restored.
 
 ---
 
+## HQ voting — 2026-08-17 · *requested by David*
+
+Not a game change.
+
+- **🗳️ Vote** in the HQ. Where the ideas board is one person wanting
+  something and David saying yes or no, this is for questions with more
+  than one good answer — everybody votes, David settles it. Votes are
+  open, not secret: you can see who picked what, which is the point.
+- Claude raises the questions and reads the result, and deliberately
+  cannot vote or settle one.
+- **First vote up: four app icons** — Perfect Match, Colour Cube, Crossed
+  Swords, Colour Rush. Each is shown large and again at 56px, because the
+  small one is the honest test for an icon.
+
 ## Website and HQ — 2026-08-17 · *requested by David*
 
 Not a game change — the game itself is untouched, and still has no web
