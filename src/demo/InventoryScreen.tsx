@@ -52,6 +52,11 @@ export function InventoryScreen({
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.sectionTitle}>BATTLEFIELDS</Text>
+        <Text style={styles.sectionNote}>
+          Where your battles are fought. Every battlefield plays exactly the
+          same — only the view changes. Hills and moats come from the
+          difficulty you pick, not from the arena.
+        </Text>
         <View style={styles.grid}>
           {ARENA_ORDER.map((id) => {
             const arena = ARENAS[id];

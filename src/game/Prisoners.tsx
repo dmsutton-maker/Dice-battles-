@@ -20,7 +20,7 @@ function stationKey(s: Station): string {
 
 /**
  * Generic prisoner-figure animator. Each unit stands at a station (jail pen,
- * player retreat towel, or the far battlement where Sir Rollsalot parades
+ * player retreat towel, or the far battlement where the opponent parades
  * his captures). When a unit's station changes, the figure leaps there in a
  * spinning arc — including BACK to jail in Ultimate mode.
  */

@@ -32,7 +32,7 @@ export const MODES: Record<ModeId, ModeDef> = {
     id: 'skirmish',
     name: 'Skirmish',
     emoji: '🤼',
-    rules: 'ONE shared jail! Grab prisoners before Sir Rollsalot — most wins!',
+    rules: 'ONE shared jail! Grab prisoners before your opponent — most wins!',
   },
   colorwar: {
     id: 'colorwar',

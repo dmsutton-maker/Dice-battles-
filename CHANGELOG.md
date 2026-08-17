@@ -16,6 +16,16 @@ restored.
 
 ---
 
+## v1.7.1 — 2026-08-17 · *requested by Marc*
+
+Native build: 1.0.0 (build 1)
+
+- Skirmish rules said "before Sir Rollsalot", who is only one of eight
+  opponents. Now reads "before your opponent".
+- The Battlefields section of the Inventory has a description, like the
+  Dice section does: it explains that every battlefield plays the same and
+  that hazards come from the difficulty, not the arena.
+
 ## v1.7.0 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)
