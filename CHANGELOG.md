@@ -16,6 +16,16 @@ restored.
 
 ---
 
+## v1.5.2 — 2026-08-17 · *requested by Marc*
+
+Native build: 1.0.0 (build 1)
+
+- Home screen no longer scrolls when everything already fits — it used to
+  rubber-band with nothing to scroll to. Scrolling still switches on
+  automatically on smaller screens where the content genuinely overflows,
+  so the START button stays reachable.
+- Title reads **⚔️ DICE BATTLES ⚔️**, swords on both sides.
+
 ## v1.5.1 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)

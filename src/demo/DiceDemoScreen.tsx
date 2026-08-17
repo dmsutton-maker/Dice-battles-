@@ -155,6 +155,18 @@ export function DiceDemoScreen() {
   const flashTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const lastSplash = useRef(0);
 
+  // Whether the start screen's content is taller than the screen itself.
+  const pickHeights = useRef({ viewport: 0, content: 0 });
+  const [pickOverflows, setPickOverflows] = useState(false);
+  const measurePick = useCallback(
+    (next: { viewport?: number; content?: number }) => {
+      pickHeights.current = { ...pickHeights.current, ...next };
+      const { viewport, content } = pickHeights.current;
+      setPickOverflows(viewport > 0 && content > viewport + 1);
+    },
+    [],
+  );
+
   const setPhaseBoth = useCallback((next: Phase) => {
     phaseRef.current = next;
     setPhase(next);
@@ -794,11 +806,21 @@ export function DiceDemoScreen() {
           >
             <Text style={styles.gearText}>⚙️</Text>
           </Pressable>
+          {/*
+            Scrolling is enabled only when the content genuinely overflows.
+            On most phones everything fits, and a screen that rubber-bands
+            with nothing to scroll to feels broken — but a small screen
+            (iPhone SE) still has to be able to reach the START button.
+          */}
           <ScrollView
             contentContainerStyle={styles.pickScroll}
             showsVerticalScrollIndicator={false}
+            bounces={false}
+            scrollEnabled={pickOverflows}
+            onLayout={(e) => measurePick({ viewport: e.nativeEvent.layout.height })}
+            onContentSizeChange={(_w, h) => measurePick({ content: h })}
           >
-            <Text style={styles.overlayTitle}>⚔️ DICE BATTLES</Text>
+            <Text style={styles.overlayTitle}>⚔️ DICE BATTLES ⚔️</Text>
             <Text style={styles.tagline}>
               Race other players to free your prisoners!
             </Text>
