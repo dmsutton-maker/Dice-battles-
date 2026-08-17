@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { currentMember, supabaseServer } from '@/lib/supabase/server';
 import type { Member, Proposal, ProposalOption, Vote } from '@/lib/types';
-import { castVote, decideProposal, reopenProposal } from '../../actions';
+import {
+  castVote,
+  decideProposal,
+  deleteProposal,
+  reopenProposal,
+} from '../../actions';
 
 /**
  * One vote, in full.
@@ -65,6 +70,14 @@ export default async function VotePage({
           Raised by {item.raised_by} · {cast.length}{' '}
           {cast.length === 1 ? 'vote' : 'votes'} so far
         </p>
+        {(isOwner || (item.raised_by_id === member?.id && cast.length === 0)) && (
+          <form action={deleteProposal}>
+            <input type="hidden" name="proposal_id" value={item.id} />
+            <button className="button-quiet button-small" type="submit">
+              🗑️ Delete this vote
+            </button>
+          </form>
+        )}
         {!open && item.decided_note && (
           <div className="notice">{item.decided_note}</div>
         )}

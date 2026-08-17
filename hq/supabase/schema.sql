@@ -263,6 +263,9 @@ create table if not exists public.proposals (
   question     text not null default '',
   detail       text not null default '',
   raised_by    text not null default 'Claude',
+  -- Set when a person raises the question rather than Claude, so they can
+  -- keep editing their own options while it is still open.
+  raised_by_id uuid references public.members (id) on delete set null,
   status       text not null default 'open'
                check (status in ('open', 'decided')),
   chosen_option uuid,
@@ -303,16 +306,49 @@ drop policy if exists proposals_read on public.proposals;
 create policy proposals_read on public.proposals
   for select using (public.is_member());
 
+-- Anyone in the family can PUT a question up. Settling it stays David's,
+-- same as approving an idea: asking is open, deciding is not.
+alter table public.proposals add column if not exists raised_by_id uuid
+  references public.members (id) on delete set null;
+
 drop policy if exists proposals_write on public.proposals;
-create policy proposals_write on public.proposals
-  for all using (public.is_owner()) with check (public.is_owner());
+drop policy if exists proposals_insert on public.proposals;
+create policy proposals_insert on public.proposals
+  for insert with check (public.is_member() and raised_by_id = auth.uid());
+
+drop policy if exists proposals_update on public.proposals;
+create policy proposals_update on public.proposals
+  for update using (public.is_owner()) with check (public.is_owner());
+
+drop policy if exists proposals_delete on public.proposals;
+create policy proposals_delete on public.proposals
+  for delete using (
+    public.is_owner()
+    -- Or your own question, as long as nobody has voted on it yet.
+    or (raised_by_id = auth.uid()
+        and not exists (select 1 from public.votes v where v.proposal_id = id))
+  );
 
 drop policy if exists proposal_options_read on public.proposal_options;
 create policy proposal_options_read on public.proposal_options
   for select using (public.is_member());
 
 drop policy if exists proposal_options_write on public.proposal_options;
-create policy proposal_options_write on public.proposal_options
+drop policy if exists proposal_options_insert on public.proposal_options;
+-- Options may only be added to a question you raised, and only while it
+-- is still open — otherwise a new choice could appear after voting began.
+create policy proposal_options_insert on public.proposal_options
+  for insert with check (
+    exists (
+      select 1 from public.proposals p
+      where p.id = proposal_id
+        and p.status = 'open'
+        and (p.raised_by_id = auth.uid() or public.is_owner())
+    )
+  );
+
+drop policy if exists proposal_options_modify on public.proposal_options;
+create policy proposal_options_modify on public.proposal_options
   for all using (public.is_owner()) with check (public.is_owner());
 
 drop policy if exists votes_read on public.votes;

@@ -153,6 +153,7 @@ export interface Proposal {
   question: string;
   detail: string;
   raised_by: string;
+  raised_by_id: string | null;
   status: 'open' | 'decided';
   chosen_option: string | null;
   decided_note: string;

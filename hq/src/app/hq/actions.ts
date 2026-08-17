@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { currentMember, supabaseServer } from '@/lib/supabase/server';
 import type { IdeaCategory, IdeaStatus } from '@/lib/types';
 
@@ -193,6 +194,81 @@ export async function castVote(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath(`/hq/vote/${proposalId}`);
   revalidatePath('/hq/vote');
+}
+
+/**
+ * Put a question to the family.
+ *
+ * Anyone can raise one — asking is open, the same way anyone can put an
+ * idea on the board. Only David settles it. Blank option slots are
+ * ignored so the form can offer more boxes than most questions need.
+ */
+export async function addProposal(formData: FormData) {
+  const member = await requireMember();
+  const supabase = await supabaseServer();
+
+  const title = String(formData.get('title') ?? '').trim();
+  if (!title) throw new Error('A vote needs a question to answer.');
+
+  const options = [0, 1, 2, 3, 4, 5]
+    .map((i) => ({
+      label: String(formData.get(`option_${i}`) ?? '').trim(),
+      detail: String(formData.get(`option_detail_${i}`) ?? '').trim(),
+    }))
+    .filter((option) => option.label !== '');
+
+  if (options.length < 2) {
+    throw new Error('A vote needs at least two things to choose between.');
+  }
+
+  const { data: proposal, error } = await supabase
+    .from('proposals')
+    .insert({
+      title,
+      question: String(formData.get('question') ?? '').trim(),
+      detail: String(formData.get('detail') ?? '').trim(),
+      raised_by: member.display_name,
+      raised_by_id: member.id,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  const { error: optionError } = await supabase.from('proposal_options').insert(
+    options.map((option, index) => ({
+      proposal_id: proposal.id,
+      label: option.label,
+      detail: option.detail,
+      position: index + 1,
+    })),
+  );
+
+  if (optionError) {
+    // Never leave a question standing with nothing to vote on.
+    await supabase.from('proposals').delete().eq('id', proposal.id);
+    throw new Error(optionError.message);
+  }
+
+  await log(null, member.display_name, 'put something up for a vote', title);
+  revalidatePath('/hq/vote');
+  redirect(`/hq/vote/${proposal.id}`);
+}
+
+/** Remove a vote entirely. Owner always; your own only before anyone votes. */
+export async function deleteProposal(formData: FormData) {
+  const member = await requireMember();
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase
+    .from('proposals')
+    .delete()
+    .eq('id', String(formData.get('proposal_id')));
+
+  if (error) throw new Error(error.message);
+  await log(null, member.display_name, 'deleted a vote');
+  revalidatePath('/hq/vote');
+  redirect('/hq/vote');
 }
 
 /** David closes a vote by picking the winner. Only he can. */
