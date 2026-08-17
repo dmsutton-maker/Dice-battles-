@@ -30,3 +30,29 @@ before writing any code — Expo APIs change between SDK versions.
   `eas update --message "v1.5.0 — what changed"`.
 - Marc (David's son) is directing the work from v1.5.0 onward; David owns
   the game and made every request before that.
+
+## The App Store record
+
+- Listing name is **Dice Battles: Color Rush** — plain "Dice Battles" was
+  already taken by another app. The name under the icon on the phone is
+  separate and still reads **Dice Battles** (`expo.name` in `app.json`);
+  keep them apart on purpose.
+- App Store Connect app ID `6802287913`, SKU `DICEBATTLES001`, bundle
+  `com.dmsutton.dicebattles`, Apple team `K3N9FG8NKD`.
+- Submitting a build:
+  `eas submit --platform ios --id <buildId> --profile production`.
+
+## This repository is PUBLIC
+
+Anyone can read every file and every commit here.
+
+- Never commit credentials of any kind — not the App Store Connect `.p8`,
+  its Key ID or Issuer ID, not the Expo token, not the signing `.p12` or
+  its password. The `.p8` lives at
+  `~/.appstoreconnect/private_keys/` and the signing files in
+  `~/.dice-battles-credentials/`, both outside the repo.
+- `eas.json` therefore holds only public identifiers (team ID, ASC app
+  ID). API-key fields are added to it temporarily for a submission and
+  taken out again before committing — or passed on the command line.
+- A secret that does reach a commit is public the moment it is pushed:
+  rotate it in App Store Connect or Expo rather than just deleting it.

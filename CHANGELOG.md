@@ -16,6 +16,21 @@ restored.
 
 ---
 
+## App Store setup — 2026-08-17 · *requested by David*
+
+Not a game change — nothing players have installed is different.
+
+- The game is registered with Apple as **Dice Battles: Color Rush**.
+  Plain "Dice Battles" was already taken by another app, and David picked
+  the new name from a list of options.
+- The name under the icon on the phone is unchanged: **Dice Battles**.
+  Apple only requires the *listing* name to be unique, so the two are
+  deliberately different.
+- App Store Connect ID `6802287913`, SKU `DICEBATTLES001`. The bundle ID
+  did not change, so no signing or code changes were needed.
+- Build 1.0.0 (2) was uploaded to TestFlight — the first time the game has
+  reached Apple rather than Expo Go.
+
 ## v1.9.0 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)
