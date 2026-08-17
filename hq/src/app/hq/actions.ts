@@ -221,6 +221,20 @@ export async function reopenProposal(formData: FormData) {
   revalidatePath('/hq/vote');
 }
 
+/** Tick a player's message off, or put it back in the pile. */
+export async function markHandled(formData: FormData) {
+  await requireMember();
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase
+    .from('messages')
+    .update({ handled: String(formData.get('handled')) === 'true' })
+    .eq('id', String(formData.get('id')));
+
+  if (error) throw new Error(error.message);
+  revalidatePath('/hq/inbox');
+}
+
 export async function invitePerson(formData: FormData) {
   const member = await requireMember();
   const supabase = await supabaseServer();

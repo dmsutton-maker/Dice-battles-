@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ContactForm } from './ContactForm';
 
 export const metadata: Metadata = {
   title: 'Support — Dice Battles: Color Rush',
@@ -7,27 +8,26 @@ export const metadata: Metadata = {
     'Help with Dice Battles: Color Rush, and how to reach a real person about it.',
 };
 
-const CONTACT = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'dmsutton@gmail.com';
-
 /**
  * The support page. Apple requires a working support URL on every App
- * Store listing, and it has to be a page a player can actually get help
- * from — not a placeholder.
+ * Store listing, and it has to be a page a player can genuinely get help
+ * from.
+ *
+ * The way to reach us is the form, not an address: this game is made by
+ * one family on their own accounts, and an email address printed on a
+ * public page is scraped within days.
  */
 export default function SupportPage() {
   return (
     <main className="wrap wrap-narrow policy">
       <h1>Support</h1>
       <p>
-        Something wrong, or an idea for the game? Write to{' '}
-        <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. A person reads every
-        message — this game is made by one family, so it may take a day or
-        two, but you will get a reply.
+        Something wrong, or an idea for the game? Send it here. A person
+        reads every message — this game is made by one family, so it may
+        take a day or two, but you will get a reply.
       </p>
-      <p className="muted">
-        It helps enormously if you say which device you are on (iPhone 13,
-        iPad, and so on), what happened, and what you expected instead.
-      </p>
+
+      <ContactForm />
 
       <h2>Common questions</h2>
 
@@ -43,8 +43,8 @@ export default function SupportPage() {
       <p>
         Rolls are real physics, so a die can occasionally end up somewhere
         odd. The game gives up on a stuck roll after a few seconds and
-        calls it. If you are seeing it often, please write in with your
-        device model.
+        calls it. If you are seeing it often, please write in and say which
+        device you are on.
       </p>
 
       <h3>Is there a way to play against my friend?</h3>
@@ -68,19 +68,18 @@ export default function SupportPage() {
         the way down switches that sound off completely.
       </p>
 
+      <h3>The game will not start / it closes straight away.</h3>
+      <p>
+        If the game shows a screen saying it could not start, send us what
+        it says using the form above — that text names the fault exactly
+        and is the fastest way to get it fixed.
+      </p>
+
       <h3>Does the game collect anything about my child?</h3>
       <p>
         No. There is no account, no login, no analytics, no advertising and
         no chat. The details are on the{' '}
         <Link href="/privacy">privacy policy</Link>.
-      </p>
-
-      <h2>Report a problem</h2>
-      <p>
-        Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. If it is a bug,
-        it goes on the board and gets fixed in a numbered update, and every
-        update is recorded so a change can be undone if it makes things
-        worse.
       </p>
     </main>
   );

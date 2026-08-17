@@ -50,6 +50,9 @@ export default async function HqLayout({
         <Link className="button button-quiet button-small" href="/hq/people">
           👪 People
         </Link>
+        <Link className="button button-quiet button-small" href="/hq/inbox">
+          ✉️ Inbox
+        </Link>
         <Link className="button button-quiet button-small" href="/hq/activity">
           📜 History
         </Link>

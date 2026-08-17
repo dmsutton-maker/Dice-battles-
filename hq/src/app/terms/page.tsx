@@ -7,7 +7,6 @@ export const metadata: Metadata = {
 };
 
 const UPDATED = '17 August 2026';
-const CONTACT = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'dmsutton@gmail.com';
 
 /**
  * Terms of use.
@@ -108,7 +107,7 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        David Sutton — <a href={`mailto:${CONTACT}`}>{CONTACT}</a>
+        David Sutton — <Link href="/support">the contact form</Link>
       </p>
     </main>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Dice Battles: Color Rush',
@@ -7,7 +8,6 @@ export const metadata: Metadata = {
 };
 
 const UPDATED = '17 August 2026';
-const CONTACT = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'dmsutton@gmail.com';
 
 /**
  * The privacy policy. Apple requires a public URL for this before the app
@@ -25,18 +25,20 @@ export default function PrivacyPage() {
       <p className="faint">Last updated: {UPDATED}</p>
 
       <div className="notice">
-        <strong>The short version:</strong> Dice Battles: Color Rush does not
-        collect, store, or share any personal information. There is no
-        account to create and no login. Everything the game remembers —
-        your trophies, coins, dice and settings — is saved on your own
-        device and never sent anywhere.
+        <strong>The short version:</strong> the game does not collect,
+        store, or share any personal information. There is no account to
+        create and no login. Everything the game remembers — your
+        trophies, coins, dice and settings — is saved on your own device
+        and never sent anywhere. The only information we ever hold is what
+        you choose to type into the contact form on this website, and that
+        is only so we can write back.
       </div>
 
       <h2>Who this is from</h2>
       <p>
         Dice Battles: Color Rush is made by David Sutton, an individual
         developer, as a personal project. If you have any question about
-        privacy, write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and a
+        privacy, write to <Link href="/support">the contact form</Link> and a
         person will read it.
       </p>
 
@@ -93,8 +95,32 @@ export default function PrivacyPage() {
         under 13 (or the equivalent minimum age in your country), and we
         have nothing to delete if asked, because nothing is collected. If
         you believe that has somehow changed, please write to{' '}
-        <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and it will be
+        <Link href="/support">the contact form</Link> and it will be
         investigated.
+      </p>
+
+      <h2>This website, and the contact form</h2>
+      <p>
+        The website has no advertising, no analytics, and no tracking
+        cookies. Reading these pages is not recorded or profiled.
+      </p>
+      <p>
+        The one place information is collected is the contact form on the{' '}
+        <Link href="/support">support page</Link>. If you use it, we store
+        exactly what you typed — your message, and the name, email address
+        and device you chose to give — in a private database, so that a
+        person can read it and reply. It is used for nothing else: not a
+        mailing list, not advertising, and never passed or sold to anyone.
+      </p>
+      <p>
+        Only the family who make the game can read those messages. Ask us
+        to delete yours and we will, and you do not have to give a reason.
+        The form works without an email address if you would rather not
+        leave one — we simply cannot reply then.
+      </p>
+      <p>
+        The site is hosted by Vercel and the messages are stored with
+        Supabase, both acting on our behalf under their own privacy terms.
       </p>
 
       <h2>Other companies</h2>
@@ -146,15 +172,17 @@ export default function PrivacyPage() {
       <h2>Your rights</h2>
       <p>
         Laws such as the GDPR and the CCPA give you rights to see, correct,
-        export, or delete personal data a company holds about you. We hold
-        none, so there is nothing to produce or erase. You can still write
-        to <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with any request and
-        you will get a straight answer.
+        export, or delete personal data a company holds about you. From the
+        game itself we hold nothing at all, so there is nothing to produce
+        or erase. The only thing we can hold about you is a message you
+        sent us through the contact form — ask, and we will send you a copy
+        of it or delete it. Either way you will get a straight answer, from
+        a person.
       </p>
 
       <h2>Contact</h2>
       <p>
-        David Sutton — <a href={`mailto:${CONTACT}`}>{CONTACT}</a>
+        David Sutton — <Link href="/support">the contact form</Link>
       </p>
     </main>
   );

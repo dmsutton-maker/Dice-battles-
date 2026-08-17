@@ -193,6 +193,43 @@ create trigger ideas_touch_updated_at
   for each row execute function public.touch_updated_at();
 
 -- ---------------------------------------------------------------------
+-- Messages — what players send through the contact form
+--
+-- The public pages carry no email address on purpose: an address printed
+-- on a privacy policy gets harvested within days, and it would be a
+-- personal one. Players write through a form instead, it lands here, and
+-- the family reads it in the HQ.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.messages (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null default '',
+  email      text not null default '',
+  subject    text not null default '',
+  body       text not null,
+  device     text not null default '',
+  handled    boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists messages_created_idx
+  on public.messages (created_at desc);
+
+alter table public.messages enable row level security;
+
+-- Nobody reaches this table with a browser key. Members read it once
+-- signed in; the form itself writes through the server, which uses the
+-- service role. There is deliberately no public insert policy — an open
+-- insert policy on a public table is an open invitation to fill it.
+drop policy if exists messages_read on public.messages;
+create policy messages_read on public.messages
+  for select using (public.is_member());
+
+drop policy if exists messages_update on public.messages;
+create policy messages_update on public.messages
+  for update using (public.is_member()) with check (public.is_member());
+
+-- ---------------------------------------------------------------------
 -- Proposals — the things Claude puts up for the family to vote on
 --
 -- Different from ideas on purpose. An idea is something one person WANTS
