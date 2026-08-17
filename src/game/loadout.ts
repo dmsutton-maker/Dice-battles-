@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { DEFAULT_SKIN_ID, DICE_SKINS, skinById } from './diceSkins';
+import { owns } from './currency';
 import { isUnlocked, UnlockId } from './progress';
 
 /**
@@ -75,9 +76,16 @@ export function isArenaUnlocked(arenaId: ArenaId, trophies: number): boolean {
   return isUnlocked(ARENA_UNLOCKS[arenaId], trophies);
 }
 
+/**
+ * A skin is available if it is free, earned on the ladder, or bought in
+ * the Store. The two routes never overlap: a skin has an unlock tier or a
+ * coin price, not both.
+ */
 export function isSkinUnlocked(skinId: string, trophies: number): boolean {
   const skin = skinById(skinId);
-  return skin.unlock === null || isUnlocked(skin.unlock, trophies);
+  if (skin.price !== undefined) return owns(skin.id);
+  if (skin.unlock === null || skin.unlock === undefined) return true;
+  return isUnlocked(skin.unlock, trophies);
 }
 
 /**

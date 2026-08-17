@@ -16,6 +16,25 @@ restored.
 
 ---
 
+## v1.8.0 — 2026-08-17 · *requested by Marc*
+
+Native build: 1.0.0 (build 1)
+
+- **🪙 Coins.** Earned every battle — 20/40/75 for a win on
+  Easy/Medium/Hard, and 5/10/15 even for a loss, so a losing streak still
+  builds toward something. Coins only ever go up; trophies remain the
+  thing that rises and falls with your rank.
+- **🛒 Store.** Spend coins on five new PATTERNED dice: Zebra, Bubbles,
+  Starry, Timber and Frost, drawn with generated stripe/spot/star/grain
+  textures. Patterns paint the shell only — the six face colours are
+  untouched, and the suite checks each pattern colour stays clear of all
+  six so a face can never be crowded.
+- **🏅 Standings.** Your league on the trophy ladder, your record per
+  difficulty, coins, and the full ladder with your position marked.
+- Real-money purchases and world rankings are shown as not-yet-available
+  rather than faked. Both need the app installed properly (not through
+  Expo Go) plus, for money, the App Store payment setup.
+
 ## v1.7.1 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)

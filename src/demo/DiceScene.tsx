@@ -16,6 +16,7 @@ import {
   shouldCallRoll,
 } from '../dice/settle';
 import { DieMesh } from '../dice/DieMesh';
+import { PatternId } from '../dice/patterns';
 import { ColorDef } from '../game/colors';
 import { PrisonerUnit } from '../game/modes';
 import { Prisoners } from '../game/Prisoners';
@@ -54,8 +55,10 @@ interface DiceSceneProps {
   layout: ObstacleLayout;
   /** Which arena theme to draw (trophy unlocks switch this). */
   arenaId: ArenaId;
-  /** Equipped dice skin's shell colour (src/game/diceSkins.ts). */
+  /** Equipped dice skin's shell colour and pattern (src/game/diceSkins.ts). */
   dieBodyColor: string;
+  diePattern?: PatternId;
+  diePatternInk?: string;
   /** Trophy unlock that adds the courtyard treasure. */
   showTreasure: boolean;
   /**
@@ -85,6 +88,8 @@ export function DiceScene({
   layout,
   arenaId,
   dieBodyColor,
+  diePattern = 'plain',
+  diePatternInk,
   showTreasure,
   throwsEnabled = true,
 }: DiceSceneProps) {
@@ -427,6 +432,8 @@ export function DiceScene({
         <DieMesh
           key={`die-${i}`}
           bodyColor={dieBodyColor}
+            pattern={diePattern}
+            patternInk={diePatternInk}
           ref={(mesh: THREE.Group | null) => {
             dieMeshRefs.current[i] = mesh;
           }}

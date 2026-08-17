@@ -11,6 +11,7 @@ async function main(): Promise<void> {
   await import('./game.test');
   await import('./screen.test');
   await import('./persistence.test');
+  await import('./currency.test');
   process.exit(await runAll());
 }
 

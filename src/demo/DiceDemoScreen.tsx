@@ -73,8 +73,12 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { flickFromGesture } from '../game/aim';
+import { awardCoins, getWallet, loadWallet } from '../game/currency';
+import { skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
+import { LeaderboardScreen } from './LeaderboardScreen';
+import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
 
 /**
@@ -97,10 +101,11 @@ export function DiceDemoScreen() {
     // Nothing is drawn until the saved loadout and progress are in hand:
     // rendering first would show the default castle for a frame before
     // swapping to the battlefield the player actually left equipped.
-    Promise.all([loadAudioSettings(), loadLoadout(), loadProgress()])
-      .then(([audio, saved, progress]) => {
+    Promise.all([loadAudioSettings(), loadLoadout(), loadProgress(), loadWallet()])
+      .then(([audio, saved, progress, purse]) => {
         setAudioPrefs(audio);
         setLoadout(saved);
+        setWallet(purse);
         setTrophies(progress.trophies);
         setWins(progress.wins);
         setUnlockAll(!!progress.unlockAll);
@@ -119,6 +124,9 @@ export function DiceDemoScreen() {
   const [twoPlayer, setTwoPlayer] = useState(false);
   const [loadout, setLoadout] = useState(getLoadout());
   const [showInventory, setShowInventory] = useState(false);
+  const [showStore, setShowStore] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
   const [unlockAll, setUnlockAll] = useState(false);
   const [codeInput, setCodeInput] = useState('');
@@ -139,6 +147,7 @@ export function DiceDemoScreen() {
   const [trophies, setTrophies] = useState(0);
   const [wins, setWins] = useState({ easy: 0, medium: 0, hard: 0 });
   const [lastDelta, setLastDelta] = useState<number | null>(null);
+  const [lastCoins, setLastCoins] = useState(0);
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
 
@@ -264,6 +273,9 @@ export function DiceDemoScreen() {
   const finishRound = useCallback(
     (outcome: 'won' | 'lost' | 'tie') => {
       setPhaseBoth(outcome);
+      const coins = awardCoins(outcome, difficultyRef.current);
+      setWallet({ ...getWallet() });
+      setLastCoins(coins);
       if (outcome === 'tie') {
         showCallout("It's a tie!", 'tie');
         setLastDelta(0);
@@ -560,6 +572,7 @@ export function DiceDemoScreen() {
   // (which happens when family tester mode is switched back off).
   const arenaId: ArenaId = activeArena(trophies);
   const dieBodyColor = activeDieBody(trophies);
+  const equippedSkin = skinById(loadout.skinId);
   const playerScore = units.filter((u) => u.station.kind === 'retreat').length;
   const aiScore =
     mode === 'skirmish' || mode === 'colorwar'
@@ -687,6 +700,8 @@ export function DiceDemoScreen() {
           layout={layout}
           arenaId={arenaId}
           dieBodyColor={dieBodyColor}
+          diePattern={equippedSkin.pattern}
+          diePatternInk={equippedSkin.ink}
           showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}
           onThrow={handleThrow}
@@ -824,7 +839,9 @@ export function DiceDemoScreen() {
             <Text style={styles.tagline}>
               Race other players to free your prisoners!
             </Text>
-            <Text style={styles.trophyLine}>🏆 {trophies}</Text>
+            <Text style={styles.trophyLine}>
+              🏆 {trophies}   🪙 {wallet.coins}
+            </Text>
             {unlockAll ? (
               <Text style={styles.trophyNext}>
                 🔓 Family tester mode — everything unlocked
@@ -839,6 +856,20 @@ export function DiceDemoScreen() {
             {modeRow}
             {difficultyRow}
             {inventoryButton}
+            <View style={styles.navRow}>
+              <Pressable
+                style={styles.navButton}
+                onPress={() => setShowStore(true)}
+              >
+                <Text style={styles.navText}>🛒 STORE</Text>
+              </Pressable>
+              <Pressable
+                style={styles.navButton}
+                onPress={() => setShowLeaderboard(true)}
+              >
+                <Text style={styles.navText}>🏅 STANDINGS</Text>
+              </Pressable>
+            </View>
             <Pressable style={styles.startButton} onPress={startCountdown}>
               <Text style={styles.startText}>▶ START BATTLE</Text>
             </Pressable>
@@ -890,6 +921,19 @@ export function DiceDemoScreen() {
           {difficultyRow}
           {roundOverButtons}
         </View>
+      )}
+      {showStore && (
+        <StoreScreen
+          onClose={() => setShowStore(false)}
+          onPurchase={() => setWallet({ ...getWallet() })}
+        />
+      )}
+      {showLeaderboard && (
+        <LeaderboardScreen
+          trophies={trophies}
+          wins={wins}
+          onClose={() => setShowLeaderboard(false)}
+        />
       )}
       {showInventory && (
         <InventoryScreen
@@ -1491,6 +1535,24 @@ const styles = StyleSheet.create({
   codeGoText: {
     color: '#241c40',
     fontSize: 14,
+    fontWeight: '800',
+  },
+  navRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  navButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  navText: {
+    color: '#ffffff',
+    fontSize: 13,
     fontWeight: '800',
   },
   inventoryButton: {

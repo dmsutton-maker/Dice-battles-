@@ -217,8 +217,7 @@ suite('screen · arenas', () => {
   });
 });
 
-suite('screen · inventory', () => {
-  const toLab = (hex: string) => {
+const toLab = (hex: string) => {
     const n = parseInt(hex.slice(1), 16);
     const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
       const c = v / 255;
@@ -228,9 +227,10 @@ suite('screen · inventory', () => {
     const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
     const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.089;
     const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
-  };
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+};
 
+suite('screen · inventory', () => {
   test('no dice colour swallows a face colour', () => {
     // The shell surrounds the six face stickers. A shell too close to one
     // of them hides that face, which breaks reading a roll at a glance.
@@ -254,7 +254,9 @@ suite('screen · inventory', () => {
     }
   });
 
-  test('every dice skin is earnable and uniquely named', () => {
+  test('every dice skin is obtainable exactly one way', () => {
+    // A skin is earned on the trophy ladder OR bought with coins, never
+    // both — two routes to the same item makes its price meaningless.
     const tierIds = new Set<UnlockId>(TIERS.map((t) => t.id));
     assertEqual(
       new Set(DICE_SKINS.map((s) => s.id)).size,
@@ -263,18 +265,56 @@ suite('screen · inventory', () => {
     );
     for (const skin of DICE_SKINS) {
       assert(/^#[0-9a-f]{6}$/i.test(skin.body), `${skin.name} has a malformed colour`);
-      if (skin.unlock !== null) {
+      const onLadder = skin.unlock !== undefined && skin.unlock !== null;
+      const inStore = skin.price !== undefined;
+      assert(
+        !(onLadder && inStore),
+        `${skin.name} is both earnable and purchasable`,
+      );
+      if (onLadder) {
         assert(
-          tierIds.has(skin.unlock),
+          tierIds.has(skin.unlock as UnlockId),
           `${skin.name} maps to unknown unlock '${skin.unlock}'`,
+        );
+      }
+      if (inStore) {
+        assert(skin.price! > 0, `${skin.name} is in the Store but free`);
+      }
+      if (skin.pattern !== 'plain') {
+        assert(
+          skin.ink !== undefined,
+          `${skin.name} has a pattern but no pattern colour`,
         );
       }
     }
   });
 
+  test('patterned dice still show their faces clearly', () => {
+    // The pattern paints the shell that surrounds the six face stickers.
+    // Pattern ink too close to a face colour crowds that face.
+    for (const skin of DICE_SKINS.filter((s) => s.ink)) {
+      let worst = Infinity;
+      let nearest = '';
+      for (const face of PRISONER_COLORS) {
+        const a = toLab(skin.ink!);
+        const b = toLab(face.hex);
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        if (d < worst) {
+          worst = d;
+          nearest = face.label;
+        }
+      }
+      note(`${skin.name} ink: nearest face ${nearest} at ΔLab ${worst.toFixed(0)}`);
+      assert(
+        worst > 28,
+        `${skin.name}'s pattern is too close to the ${nearest} face (ΔLab ${worst.toFixed(1)})`,
+      );
+    }
+  });
+
   test('a new player starts with dice and can never be left with none', () => {
     assert(isSkinUnlocked(DEFAULT_SKIN_ID, 0), 'the starter dice are not free');
-    assertEqual(skinById(DEFAULT_SKIN_ID).unlock, null, 'starter dice cost trophies');
+    assertEqual(skinById(DEFAULT_SKIN_ID).price, undefined, 'starter dice cost coins');
     // Equipping is validated on read, so losing an unlock (tester mode off)
     // falls back instead of leaving an item the player does not own.
     assertEqual(activeDieBody(0), skinById(DEFAULT_SKIN_ID).body, 'fallback dice colour');

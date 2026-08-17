@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { DIE_FACE_COLORS } from '../game/colors';
 import { TUNING } from '../game/tuning';
+import { createPatternTexture, PatternId } from './patterns';
 
 /**
  * Visual die: an ivory rounded cube with a colored circular sticker inset on
@@ -23,8 +24,13 @@ const STICKER_TRANSFORMS: {
   { position: [0, 0, -1], rotation: [0, Math.PI, 0] },
 ];
 
-export const DieMesh = forwardRef<THREE.Group, { bodyColor?: string }>(
-  function DieMesh({ bodyColor = '#ffffff' }, ref) {
+export const DieMesh = forwardRef<
+  THREE.Group,
+  { bodyColor?: string; pattern?: PatternId; patternInk?: string }
+>(function DieMesh(
+  { bodyColor = '#ffffff', pattern = 'plain', patternInk },
+  ref,
+) {
   const size = TUNING.dieSize;
   const half = size / 2 + 0.004; // stickers float a hair above the surface
 
@@ -37,12 +43,18 @@ export const DieMesh = forwardRef<THREE.Group, { bodyColor?: string }>(
   // materials, the dice no longer participate in lighting or tone mapping at
   // all. Every pixel is a constant color, so both dice are identical by
   // construction. Depth comes from the silhouette and the blob shadow.
-  // The shell colour is the equipped dice skin (src/game/diceSkins.ts).
-  // Skins never touch the sticker colours, which are the game signal.
-  const bodyMaterial = useMemo(
-    () => new THREE.MeshBasicMaterial({ color: bodyColor, toneMapped: false }),
-    [bodyColor],
-  );
+  // The shell colour and pattern are the equipped dice skin
+  // (src/game/diceSkins.ts). Skins never touch the sticker colours, which
+  // are the game signal.
+  const bodyMaterial = useMemo(() => {
+    if (pattern === 'plain' || !patternInk) {
+      return new THREE.MeshBasicMaterial({ color: bodyColor, toneMapped: false });
+    }
+    return new THREE.MeshBasicMaterial({
+      map: createPatternTexture(pattern, bodyColor, patternInk),
+      toneMapped: false,
+    });
+  }, [bodyColor, pattern, patternInk]);
   // Unlit stickers with toneMapped:false — the face color IS the game
   // signal, so it must render as the exact palette hex from every angle and
   // must bypass the scene's tone mapping curve. This lets the rest of the
@@ -74,5 +86,4 @@ export const DieMesh = forwardRef<THREE.Group, { bodyColor?: string }>(
       ))}
     </group>
   );
-  },
-);
+});

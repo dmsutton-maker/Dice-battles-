@@ -107,8 +107,9 @@ export function InventoryScreen({
 
         <Text style={styles.sectionTitle}>DICE</Text>
         <Text style={styles.sectionNote}>
-          Only the dice colour changes — the six face colours always stay the
-          same, so a match is always a match.
+          Only the shell changes — the six face colours always stay the same,
+          so a match is always a match. Plain colours are earned with
+          trophies; patterned ones are bought in the Store with coins.
         </Text>
         <View style={styles.grid}>
           {DICE_SKINS.map((skin) => {
@@ -139,6 +140,8 @@ export function InventoryScreen({
                   <Text style={styles.equippedTag}>EQUIPPED</Text>
                 ) : unlocked ? (
                   <Text style={styles.tapTag}>Tap to use</Text>
+                ) : skin.price !== undefined ? (
+                  <Text style={styles.priceTag}>🛒 {skin.price} 🪙</Text>
                 ) : (
                   <Text style={styles.priceTag}>
                     🔒 {priceFor(skin.unlock!)} 🏆
