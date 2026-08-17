@@ -69,9 +69,40 @@ export default async function IdeasPage() {
 
       <details className="card">
         <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
-          ➕ Add an idea
+          ➕ Report a bug or add an idea
         </summary>
         <form action={addIdea}>
+          <label>WHICH IS IT?</label>
+          <div className="row" style={{ marginBottom: 6 }}>
+            <label
+              style={{
+                display: 'flex', gap: 8, alignItems: 'center',
+                margin: 0, flex: '1 1 45%', color: 'var(--text)',
+                fontWeight: 700, textTransform: 'none', fontSize: 15,
+              }}
+            >
+              <input type="radio" name="kind" value="bug" style={{ width: 18, height: 18 }} />
+              <span>🐞 Something is broken</span>
+            </label>
+            <label
+              style={{
+                display: 'flex', gap: 8, alignItems: 'center',
+                margin: 0, flex: '1 1 45%', color: 'var(--text)',
+                fontWeight: 700, textTransform: 'none', fontSize: 15,
+              }}
+            >
+              <input
+                type="radio" name="kind" value="feature" defaultChecked
+                style={{ width: 18, height: 18 }}
+              />
+              <span>💡 A new idea</span>
+            </label>
+          </div>
+          <p className="faint" style={{ marginTop: 0 }}>
+            Bugs get fixed without waiting — they go straight onto the work
+            list. New ideas wait for David to say yes.
+          </p>
+
           <label htmlFor="title">WHAT IS THE IDEA?</label>
           <input
             id="title"
@@ -180,7 +211,7 @@ export default async function IdeasPage() {
                   <div className="spread">
                     <h3>{idea.title}</h3>
                     <span className="pill pill-outline">
-                      {CATEGORY_LABELS[idea.category]}
+                      {idea.kind === 'bug' ? '🐞 Bug' : CATEGORY_LABELS[idea.category]}
                     </span>
                   </div>
                   {idea.detail && (

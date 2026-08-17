@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
     title: idea.title,
     detail: idea.detail,
     category: idea.category,
+    kind: idea.kind,
     priority: idea.priority,
     phase: idea.phase_id ? (phaseName.get(idea.phase_id) ?? null) : null,
     decision_note: idea.decision_note,

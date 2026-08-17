@@ -65,6 +65,11 @@ and approved items are the work queue:
   be finished by a date, and being past it is a problem to raise.
 - Approval is David's alone. The token deliberately cannot approve
   anything; if something needed is not approved, ask rather than build it.
+- **Bugs versus features.** An item has a `kind`. A `bug` is something
+  already broken and arrives already approved — fix it without waiting,
+  because an approval queue in front of a repair only leaves it broken
+  longer. A `feature` changes what the game is and waits for David. Never
+  quietly reclassify a feature as a bug to skip the approval.
 
 A direct request in chat still outranks the board — the board is for work
 queued up in advance, not a gate on David or Marc asking for something.

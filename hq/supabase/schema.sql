@@ -135,6 +135,12 @@ create table if not exists public.ideas (
   category      text not null default 'game'
                 check (category in
                   ('game', 'revenue', 'art', 'sound', 'website', 'other')),
+  -- A BUG is something already broken, and fixing it needs nobody's
+  -- permission — waiting on an approval to repair what is meant to work
+  -- already only leaves it broken longer. A FEATURE changes what the
+  -- game is, so it waits for David.
+  kind          text not null default 'feature'
+                check (kind in ('bug', 'feature')),
   -- pending  : waiting on David
   -- approved : Claude may pick this up
   -- building : Claude is on it now
@@ -168,6 +174,8 @@ create table if not exists public.ideas (
 );
 
 -- Older databases predate the scheduling columns.
+alter table public.ideas add column if not exists kind text not null
+  default 'feature' check (kind in ('bug', 'feature'));
 alter table public.ideas add column if not exists scheduled_for date;
 alter table public.ideas add column if not exists deadline date;
 alter table public.ideas

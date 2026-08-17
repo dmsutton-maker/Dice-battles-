@@ -45,26 +45,43 @@ export async function addIdea(formData: FormData) {
     return value === '' ? null : value;
   };
 
+  const kind = formData.get('kind') === 'bug' ? 'bug' : 'feature';
+
+  // A BUG is something already broken. Making a repair wait on an
+  // approval only leaves it broken longer, so bugs go straight into the
+  // work queue. A FEATURE changes what the game IS, so it waits for
+  // David — including David's own, so the board shows what was actually
+  // decided rather than who happened to type it.
+  const status = kind === 'bug' ? 'approved' : 'pending';
+
   const { data, error } = await supabase
     .from('ideas')
     .insert({
       title,
       detail: String(formData.get('detail') ?? '').trim(),
       category: (formData.get('category') as IdeaCategory) ?? 'game',
+      kind,
       priority: Number(formData.get('priority') ?? 3),
       scheduled_for: dateOrNull('scheduled_for'),
       deadline: dateOrNull('deadline'),
       repeats_yearly: formData.get('repeats_yearly') === 'on',
       submitted_by: member.id,
-      // Everything starts as pending, including David's own ideas — the
-      // board should show what has actually been decided, not who typed it.
-      status: 'pending',
+      status,
+      decision_note:
+        kind === 'bug'
+          ? 'Reported as broken — bugs are fixed without waiting for approval.'
+          : '',
     })
     .select('id')
     .single();
 
   if (error) throw new Error(error.message);
-  await log(data.id, member.display_name, 'added the idea', title);
+  await log(
+    data.id,
+    member.display_name,
+    kind === 'bug' ? 'reported a bug' : 'added an idea',
+    title,
+  );
   revalidatePath('/hq');
 }
 
@@ -344,12 +361,23 @@ export async function changeMyPassword(formData: FormData) {
   const { error } = await supabase.auth.updateUser({ password });
   if (error) throw new Error(error.message);
 
-  // It is theirs now, so the wall comes down.
+  // The wall comes down — but through the SERVICE ROLE, not as the
+  // signed-in person. Members deliberately have no update policy on their
+  // own row: giving them one to flip this flag would also let them set
+  // their own role to owner. So the server does it on their behalf.
   const wasForced = member.must_change_password;
-  await supabase
+  const { error: clearError } = await supabaseAdmin()
     .from('members')
     .update({ must_change_password: false })
     .eq('id', member.id);
+
+  // If the flag could not be cleared, do NOT send them onward: /hq would
+  // bounce them straight back here, forever. Say so instead.
+  if (clearError) {
+    throw new Error(
+      `Your password was changed, but the account could not be unlocked: ${clearError.message}`,
+    );
+  }
 
   revalidatePath('/hq/people');
   revalidatePath('/hq');

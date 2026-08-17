@@ -19,6 +19,9 @@ export type IdeaCategory =
   | 'website'
   | 'other';
 
+/** A bug is already broken; a feature changes what the game is. */
+export type IdeaKind = 'bug' | 'feature';
+
 export type PhaseStatus = 'planned' | 'active' | 'done';
 
 export interface Member {
@@ -47,6 +50,7 @@ export interface Idea {
   title: string;
   detail: string;
   category: IdeaCategory;
+  kind: IdeaKind;
   status: IdeaStatus;
   priority: number;
   phase_id: string | null;
@@ -179,6 +183,11 @@ export interface Vote {
   member_id: string;
   created_at: string;
 }
+
+export const KIND_LABELS: Record<IdeaKind, string> = {
+  bug: '🐞 Something is broken',
+  feature: '💡 A new idea',
+};
 
 export const STATUS_ORDER: IdeaStatus[] = [
   'building',

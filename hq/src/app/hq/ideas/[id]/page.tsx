@@ -67,6 +67,7 @@ export default async function IdeaPage({
           </span>
         </div>
         <p className="faint" style={{ marginTop: 6 }}>
+          {item.kind === 'bug' ? '🐞 Bug' : '💡 Feature'} ·{' '}
           {CATEGORY_LABELS[item.category]} · {PRIORITY_LABELS[item.priority]}
           {author ? ` · from ${author.display_name}` : ''}
           {item.shipped_version ? ` · shipped in ${item.shipped_version}` : ''}
