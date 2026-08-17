@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { store } from './storageMock';
 import {
   activeArena,
   activeDieBody,
@@ -15,16 +15,6 @@ import { assert, assertEqual, suite, test } from './harness';
  * this game has — no accounts, no server — so a broken round trip silently
  * resets a player's choices every time they open the app.
  */
-const store = new Map<string, string>();
-(AsyncStorage as unknown as Record<string, unknown>).setItem = async (
-  key: string,
-  value: string,
-) => {
-  store.set(key, value);
-};
-(AsyncStorage as unknown as Record<string, unknown>).getItem = async (key: string) =>
-  store.get(key) ?? null;
-
 suite('persistence · loadout', () => {
   test('the battlefield you picked is still there next launch', async () => {
     equipArena('jungle');

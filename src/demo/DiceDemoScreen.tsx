@@ -23,10 +23,11 @@ import {
 } from '../game/loadout';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
+  AudioLevelKey,
   AudioSettings,
   getAudioSettings,
   loadAudioSettings,
-  setAudioSetting,
+  setAudioVolume,
 } from '../audio/settings';
 import {
   initSounds,
@@ -80,6 +81,7 @@ import { InventoryScreen } from './InventoryScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
 import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
+import { VolumeSlider } from './VolumeSlider';
 
 /**
  * Classic mode vs one AI opponent.
@@ -333,14 +335,16 @@ export function DiceDemoScreen() {
     ];
   }, [resetRace, setPhaseBoth]);
 
-  // Background music plays through the countdown and the race.
+  // Background music plays through the countdown and the race. The music
+  // level is not a dependency: the player can move that slider mid-battle
+  // and the loop follows it without being restarted (see syncMusic).
   useEffect(() => {
     if (phase === 'arm' || phase === 'go' || phase === 'battle') {
       startMusic();
     } else {
       stopMusic();
     }
-  }, [phase, audioPrefs.music]);
+  }, [phase]);
 
   // The AI opponent: fair virtual rolls on a fixed cadence while battling.
   // What a match DOES depends on the mode.
@@ -949,32 +953,36 @@ export function DiceDemoScreen() {
         <View style={styles.settingsOverlay}>
           <View style={styles.settingsPanel}>
             <Text style={styles.settingsTitle}>⚙️ Settings</Text>
+            {/*
+              Four sliders make this panel taller than a small phone, so the
+              middle scrolls and the Done button stays put — no scrolling
+              yourself off the only way out. It only scrolls when it has to:
+              `bounces={false}` means no rubber-band on a panel that fits.
+            */}
+            <ScrollView
+              style={styles.settingsScroll}
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+            <Text style={styles.settingsSectionTitle}>VOLUME</Text>
             {(
               [
-                ['sfx', '🔊 Sound effects'],
-                ['music', '🎵 Music'],
-                ['voice', '🎙️ Announcer'],
-              ] as const
-            ).map(([key, label]) => (
-              <Pressable
+                ['master', 'Everything', true],
+                ['sfx', 'Sound effects', false],
+                ['music', 'Music', false],
+                ['voice', 'Announcer', false],
+              ] as [AudioLevelKey, string, boolean][]
+            ).map(([key, label, emphasis]) => (
+              <VolumeSlider
                 key={key}
-                onPress={() =>
-                  setAudioPrefs({ ...setAudioSetting(key, !audioPrefs[key]) })
+                label={label}
+                emphasis={emphasis}
+                value={audioPrefs[key]}
+                onChange={(value) =>
+                  setAudioPrefs({ ...setAudioVolume(key, value) })
                 }
-                style={styles.settingsRow}
-              >
-                <Text style={styles.settingsLabel}>{label}</Text>
-                <View
-                  style={[
-                    styles.settingsPill,
-                    !audioPrefs[key] && styles.settingsPillOff,
-                  ]}
-                >
-                  <Text style={styles.settingsPillText}>
-                    {audioPrefs[key] ? 'ON' : 'OFF'}
-                  </Text>
-                </View>
-              </Pressable>
+              />
             ))}
             <View style={styles.settingsDividerLine} />
             <Text style={styles.settingsStats}>
@@ -1003,6 +1011,7 @@ export function DiceDemoScreen() {
                 {codeFeedback ?? '🔓 Tester mode ON'}
               </Text>
             )}
+            </ScrollView>
             <Pressable
               style={styles.settingsDone}
               onPress={() => {
@@ -1338,6 +1347,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c2450',
     borderRadius: 22,
     padding: 22,
+    // Never taller than the screen, so Done is always on it.
+    maxHeight: '88%',
+  },
+  settingsScroll: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
   settingsTitle: {
     color: '#ffffff',
@@ -1346,32 +1361,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 11,
-  },
-  settingsLabel: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  settingsPill: {
-    backgroundColor: '#33cc6b',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    minWidth: 56,
-    alignItems: 'center',
-  },
-  settingsPillOff: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  settingsPillText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '900',
+  settingsSectionTitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 8,
   },
   settingsDividerLine: {
     height: 1,

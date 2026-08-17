@@ -1,5 +1,5 @@
 import { AudioPlayer, createAudioPlayer } from 'expo-audio';
-import { getAudioSettings } from './settings';
+import { effectiveVolume } from './settings';
 
 /**
  * The announcer: REAL recorded human voice clips (Kenney's CC0 voiceover
@@ -9,7 +9,8 @@ import { getAudioSettings } from './settings';
  * "Look out!" when the opponent scores — "Hurry up!" when he's close —
  * "You win!" / "You lose!" at the end.
  *
- * Gated by the 'voice' audio setting.
+ * Level comes from the 'voice' slider, read at the moment each cue plays;
+ * at zero the announcer says nothing at all.
  */
 export type VoiceCue =
   | 'ready'
@@ -70,13 +71,15 @@ export function initAnnouncer(): void {
 
 /** Speak a cue, cutting off whatever the announcer was saying before. */
 export function playCue(cue: VoiceCue): void {
-  if (!getAudioSettings().voice) return;
+  const volume = effectiveVolume('voice');
+  if (volume <= 0) return;
   const player = players[cue];
   if (!player) return;
   try {
     if (lastPlayed && lastPlayed !== player) {
       lastPlayed.pause();
     }
+    player.volume = volume;
     player.seekTo(0).catch(() => {});
     player.play();
     lastPlayed = player;

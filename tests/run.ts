@@ -12,6 +12,7 @@ async function main(): Promise<void> {
   await import('./screen.test');
   await import('./persistence.test');
   await import('./currency.test');
+  await import('./audio.test');
   process.exit(await runAll());
 }
 

@@ -16,6 +16,26 @@ restored.
 
 ---
 
+## v1.9.0 — 2026-08-17 · *requested by Marc*
+
+Native build: 1.0.0 (build 1)
+
+- **🔊 Volume sliders.** Settings had three ON/OFF switches; it now has four
+  sliders — Everything, Sound effects, Music and Announcer — each from OFF
+  to 100%. "Everything" scales the other three, so one drag quietens the
+  whole game without losing the balance you set underneath it.
+- All the way down is genuinely off: a muted channel loads nothing, plays
+  nothing, and the music loop is paused rather than played silently.
+- Move the music slider mid-battle and the loop follows it immediately —
+  it does not wait for the next track or restart the one playing.
+- Anyone who had a sound switched off before this update keeps it off; the
+  old switches become the two ends of the new sliders.
+- The sliders are drawn in the game's own code rather than pulled from a
+  package with native code in it, so they reach players as an ordinary
+  update instead of waiting for a new App Store build.
+- Settings scrolls if the panel is taller than the phone, with Done pinned
+  so it is always reachable.
+
 ## v1.8.0 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)
