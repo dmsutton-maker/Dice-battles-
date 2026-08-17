@@ -133,6 +133,13 @@ export function DiceScene({
   // Moat sinking: timestamp until which each die stays underwater before
   // being fished out; 0 = not sinking. Splash ring animation progress.
   const sinkUntil = useRef<number[]>([0, 0]);
+  /**
+   * A die can be swallowed by the moat at most once per roll. Without this
+   * the same die can be knocked back in again and again, and each capture
+   * restarts the settle clock — a roll that drags on for many seconds and
+   * is tedious rather than dramatic.
+   */
+  const sankThisRoll = useRef<boolean[]>([false, false]);
   const splashRef = useRef<THREE.Mesh | null>(null);
   const splashT = useRef(1); // >= 1 means idle
 
@@ -172,6 +179,7 @@ export function DiceScene({
       awaitingSettle.current = true;
       stillFrames.current = 0;
       throwStartedAt.current = Date.now();
+      sankThisRoll.current = [false, false];
       diceBodies.forEach((body) => throwDie(body, { flick }));
       playThrow();
       onThrow();
@@ -247,7 +255,7 @@ export function DiceScene({
         Math.abs(body.position.x - obstacles.moat.x) < MOAT.size / 2 + 0.15 &&
         Math.abs(body.position.z - obstacles.moat.z) < MOAT.size / 2 + 0.15;
       const sinking = sinkUntil.current[i] > 0;
-      if (!sinking && inMoatZone && body.position.y < 0.12) {
+      if (!sinking && !sankThisRoll.current[i] && inMoatZone && body.position.y < 0.12) {
         sinkUntil.current[i] = now + 900;
         splashT.current = 0; // kick off the splash ring
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
@@ -255,11 +263,20 @@ export function DiceScene({
       }
       const respawn = () => {
         const [startX, startY, startZ] = DIE_START_POSITIONS[i];
-        body.position.set(startX, startY + 1.5, startZ);
+        // Placed back on the board rather than dropped: a die fished out
+        // of the moat has already cost the player the sinking animation, so
+        // it settles almost at once instead of bouncing around again.
+        body.position.set(startX, startY + 0.15, startZ);
         body.velocity.set(0, 0, 0);
         body.angularVelocity.set(0, 0, 0);
         body.wakeUp();
         sinkUntil.current[i] = 0;
+        sankThisRoll.current[i] = true;
+        // A die fished out of the moat is dropped back in and rolls again,
+        // so the settle deadline restarts here. Measuring from the original
+        // throw charged it for the time it spent underwater and left it
+        // being snapped still mid-bounce when the backstop fired.
+        throwStartedAt.current = Date.now();
       };
       if (sinking) {
         // Slow the fall so the die lingers visibly under the water.

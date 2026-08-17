@@ -55,11 +55,15 @@ function simulateRoll(
 
   let stillFrames = 0;
   let escaped = false;
+  /** Mirrors DiceScene: a respawn restarts the settle deadline. */
+  let clockStart = 0;
   const maxFrames = 600;
   const halfW = TUNING.tray.innerWidth / 2;
   const halfD = TUNING.tray.innerDepth / 2;
   /** Mirrors DiceScene: a die swallowed by the moat is fished back out. */
   const sunkUntil = [0, 0];
+  /** A die can be swallowed at most once per roll (mirrors DiceScene). */
+  const sankThisRoll = [false, false];
 
   for (let frame = 1; frame <= maxFrames; frame++) {
     physics.world.step(TUNING.physics.timeStep, TUNING.physics.timeStep, 4);
@@ -70,15 +74,17 @@ function simulateRoll(
         layout.moat !== null &&
         Math.abs(body.position.x - layout.moat.x) < MOAT.size / 2 + 0.15 &&
         Math.abs(body.position.z - layout.moat.z) < MOAT.size / 2 + 0.15;
-      if (!sunkUntil[i] && inMoatZone && body.position.y < 0.12) {
+      if (!sunkUntil[i] && !sankThisRoll[i] && inMoatZone && body.position.y < 0.12) {
         sunkUntil[i] = elapsed + 900;
       }
       const respawn = () => {
-        body.position.set(DIE_START[i][0], DIE_START[i][1] + 1.5, DIE_START[i][2]);
+        body.position.set(DIE_START[i][0], DIE_START[i][1] + 0.15, DIE_START[i][2]);
         body.velocity.setZero();
         body.angularVelocity.setZero();
         body.wakeUp();
         sunkUntil[i] = 0;
+        sankThisRoll[i] = true;
+        clockStart = elapsed;
       };
       if (sunkUntil[i]) {
         body.velocity.y = Math.max(body.velocity.y, -1.6);
@@ -107,7 +113,7 @@ function simulateRoll(
 
     stillFrames = allStill(bodies) ? stillFrames + 1 : 0;
 
-    if (shouldCallRoll(bodies, elapsed, stillFrames)) {
+    if (shouldCallRoll(bodies, elapsed - clockStart, stillFrames)) {
       const movingWhenCalled = bodies.some(
         (b) => b.velocity.length() + b.angularVelocity.length() * 0.5 > 1.2,
       );
@@ -152,7 +158,16 @@ suite('physics · rolling', () => {
       // rolling through syrup, so the livelier original physics came back
       // and this moved with it. Feel over speed was the explicit trade.
       assertAtMost(median, 1700, `${difficulty} median roll time`);
-      assertAtMost(worst, TUNING.settle.hardMaxRollMs, `${difficulty} worst roll time`);
+      // Hard has the moat, and a roll there can legitimately include one
+      // capture per die: the die visibly sinks, is fished out, and rolls
+      // on. That is the mechanic playing out on screen, not the game
+      // stalling, so it gets an allowance on top of the settle deadline.
+      const moatAllowance = difficulty === 'hard' ? 1400 : 0;
+      assertAtMost(
+        worst,
+        TUNING.settle.hardMaxRollMs + moatAllowance,
+        `${difficulty} worst roll time`,
+      );
     });
 
     test(`${difficulty}: dice never get out of the tray`, () => {
