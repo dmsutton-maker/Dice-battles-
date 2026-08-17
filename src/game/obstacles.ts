@@ -1,9 +1,9 @@
 import { AiDifficultyId } from './ai';
 
 /**
- * Physical obstacles in the player's courtyard, tied to difficulty. The AI
- * rolls virtual dice, so obstacles pressure the PLAYER side of the race —
- * Medium/Hard change your battlefield as well as Sir Rollsalot's speed.
+ * Physical obstacles in the player's courtyard. These ARE the difficulty:
+ * every opponent rolls at the same human pace (see src/game/ai.ts), so what
+ * separates Easy from Hard is the battlefield you have to roll on.
  *
  * - Mound: a slick grassy bump that deflects rolls unpredictably.
  * - Moat: a water pool in the courtyard floor; a die that rolls in SINKS
@@ -129,7 +129,7 @@ export const OBSTACLES_BY_DIFFICULTY: Record<AiDifficultyId, ObstacleConfig> = {
 };
 
 export const OBSTACLE_HINTS: Record<AiDifficultyId, string> = {
-  easy: 'A calm courtyard — just outroll him!',
-  medium: 'He rolls faster… and a hill in a new spot every battle!',
-  hard: 'Fastest rolls, the hill, AND a wandering moat that swallows dice!',
+  easy: 'A clear courtyard — nothing in your way. Just outroll them!',
+  medium: 'A hill in a new spot every battle — dice bounce off it.',
+  hard: 'The hill AND a wandering moat that swallows dice whole.',
 };

@@ -1,4 +1,5 @@
 import { AI_DIFFICULTIES, AI_ROSTER, pickOpponent, rollAiDice } from '../src/game/ai';
+import { OBSTACLES_BY_DIFFICULTY } from '../src/game/obstacles';
 import { DIE_FACE_COLORS, PRISONER_COLORS } from '../src/game/colors';
 import { makeUnits, MODE_ORDER, MODES, ModeId } from '../src/game/modes';
 import {
@@ -113,16 +114,31 @@ suite('game · modes', () => {
 });
 
 suite('game · opponents', () => {
-  test('harder opponents roll faster', () => {
-    const { easy, medium, hard } = AI_DIFFICULTIES;
-    assert(
-      easy.rollIntervalMs > medium.rollIntervalMs &&
-        medium.rollIntervalMs > hard.rollIntervalMs,
-      'difficulty should increase roll speed',
+  test('every opponent rolls at the same human pace', () => {
+    // Difficulty used to be the opponent's roll speed. That cannot survive
+    // online play — a real opponent rolls at whatever pace they roll — so
+    // difficulty moved to the battlefield and the pace was equalised.
+    const intervals = Object.values(AI_DIFFICULTIES).map((d) => d.rollIntervalMs);
+    assertEqual(
+      new Set(intervals).size,
+      1,
+      'difficulties should no longer differ by opponent speed',
     );
-    // A human roll cycle is roughly 1.3-2s including the settle, so an AI
-    // faster than this is unbeatable rather than hard.
-    assert(hard.rollIntervalMs >= 1200, 'Hard rolls faster than a human can');
+    // A human roll cycle is roughly 1.5-2s including the settle, so a
+    // faster opponent would be unbeatable rather than challenging.
+    assert(intervals[0] >= 1500, 'the opponent rolls faster than a human can');
+  });
+
+  test('difficulty comes from the battlefield instead', () => {
+    // With speed equalised, the hazards are the only thing left to make
+    // Hard hard — so each step up must actually add one.
+    const count = (d: 'easy' | 'medium' | 'hard') =>
+      Object.values(OBSTACLES_BY_DIFFICULTY[d]).filter(Boolean).length;
+    assert(
+      count('easy') < count('medium') && count('medium') < count('hard'),
+      'each difficulty should add a hazard',
+    );
+    assertEqual(count('easy'), 0, 'Easy should be a clear courtyard');
   });
 
   test('the roster is unique and never repeats an opponent back to back', () => {

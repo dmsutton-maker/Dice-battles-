@@ -512,7 +512,7 @@ export function DiceDemoScreen() {
       if (color.id !== war.player.id) {
         showCallout(
           color.id === war.ai.id
-            ? `That's HIS color — hands off!`
+            ? `That's your opponent's color — hands off!`
             : `${color.label} isn't your color!`,
         );
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});

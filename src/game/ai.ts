@@ -1,31 +1,35 @@
 import { ColorDef, PRISONER_COLORS } from './colors';
 
 /**
- * The AI opponent for Classic mode. It plays by the same rules as the
- * player: every "roll" is two fair virtual dice (1/6 match chance), and a
- * match frees that color from ITS OWN prison — first to six wins. There is
- * no cheating and no luck bias; difficulty is purely how fast it rolls.
+ * The AI opponent. It plays by the same rules as the player: every "roll"
+ * is two fair virtual dice (1/6 match chance), and a match frees that color
+ * from ITS OWN prison — first to six wins. No cheating, no luck bias.
  *
- * Intervals are tuned to what a HUMAN roll cycle actually takes on device:
- * throw flight (~0.8s) + settle + sleep detection (~0.6s) + reaction
- * (~0.3s) ≈ 1.8-2.2s per counted roll. Freeing all six takes ~88 rolls on
- * average, so: Easy rolls slower than a steady human (you should usually
- * win), Medium matches a good frantic pace (coin flip), Hard outrolls most
- * fingers (you need luck and clean throws).
+ * Every opponent rolls at the same human pace. Difficulty is the
+ * BATTLEFIELD — the hill and the moat (see src/game/obstacles.ts) — not
+ * how fast the opponent's hands are. Speed used to scale with difficulty,
+ * which cannot survive online play: a real opponent rolls at whatever pace
+ * they roll, so a difficulty built on their speed would mean nothing.
+ *
+ * The pace is what a human roll cycle actually takes on device: throw
+ * flight, settle, and reaction ≈ 2s per counted roll.
  */
 export type AiDifficultyId = 'easy' | 'medium' | 'hard';
 
 export interface AiDifficulty {
   id: AiDifficultyId;
   label: string;
-  /** ms between AI rolls. */
+  /** ms between AI rolls — the same at every difficulty. */
   rollIntervalMs: number;
 }
 
+/** One human-matched pace for every opponent, at every difficulty. */
+export const AI_ROLL_INTERVAL_MS = 2000;
+
 export const AI_DIFFICULTIES: Record<AiDifficultyId, AiDifficulty> = {
-  easy: { id: 'easy', label: 'Easy', rollIntervalMs: 2800 },
-  medium: { id: 'medium', label: 'Medium', rollIntervalMs: 2000 },
-  hard: { id: 'hard', label: 'Hard', rollIntervalMs: 1400 },
+  easy: { id: 'easy', label: 'Easy', rollIntervalMs: AI_ROLL_INTERVAL_MS },
+  medium: { id: 'medium', label: 'Medium', rollIntervalMs: AI_ROLL_INTERVAL_MS },
+  hard: { id: 'hard', label: 'Hard', rollIntervalMs: AI_ROLL_INTERVAL_MS },
 };
 
 /**

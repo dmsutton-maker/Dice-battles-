@@ -16,6 +16,20 @@ restored.
 
 ---
 
+## v1.6.0 — 2026-08-17 · *requested by Marc*
+
+Native build: 1.0.0 (build 1)
+
+- **No gendered language.** Opponents are "your opponent" or "them"
+  everywhere — the Color War callout, the Color War rules, and the Easy
+  battlefield hint all referred to the opponent as "he"/"him".
+- **Difficulty is the battlefield now, not the opponent's speed.** Every
+  opponent rolls at the same human pace (2s per roll). Easy is a clear
+  courtyard, Medium adds the hill, Hard adds the moat as well. Speed-based
+  difficulty could not survive online play — a real opponent rolls at
+  whatever pace they roll, so a difficulty built on their speed would mean
+  nothing. Trophy stakes still scale with difficulty.
+
 ## v1.5.2 — 2026-08-17 · *requested by Marc*
 
 Native build: 1.0.0 (build 1)

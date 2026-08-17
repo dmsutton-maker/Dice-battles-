@@ -38,7 +38,7 @@ export const MODES: Record<ModeId, ModeDef> = {
     id: 'colorwar',
     name: 'Color War',
     emoji: '🎯',
-    rules: 'You each get ONE color. Rescue your three before he rescues his!',
+    rules: 'You each get ONE color. Rescue your three first!',
   },
 };
 
