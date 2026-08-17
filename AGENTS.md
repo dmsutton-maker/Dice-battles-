@@ -21,3 +21,12 @@ before writing any code — Expo APIs change between SDK versions.
 - Validate changes with `npx tsc --noEmit` and
   `npx expo export --platform ios --output-dir /tmp/export-test`
   (Metro bundle check) — there is no device in CI.
+
+## Releasing
+
+- Every published update gets a version in `CHANGELOG.md`, recording
+  **who requested it**, so any change can be traced and rolled back.
+- Put the version in the EAS update message too:
+  `eas update --message "v1.5.0 — what changed"`.
+- Marc (David's son) is directing the work from v1.5.0 onward; David owns
+  the game and made every request before that.
