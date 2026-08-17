@@ -57,6 +57,12 @@ and approved items are the work queue:
   in priority order, plus anything already being built.
 - Mark an item `building` when starting it and `shipped` with the version
   number when it goes out — the same version written in `CHANGELOG.md`.
+- **Respect the dates.** The queue returns `approved` (work whose time has
+  come) and `scheduled` (approved, but dated for later). Only ever take
+  from `approved`. Something dated for November is not "ready early" — it
+  is deliberately parked, and building it in August ships months of dead
+  code and misses the moment. `deadline` is the other end: work that must
+  be finished by a date, and being past it is a problem to raise.
 - Approval is David's alone. The token deliberately cannot approve
   anything; if something needed is not approved, ask rather than build it.
 

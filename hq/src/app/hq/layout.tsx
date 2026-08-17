@@ -44,6 +44,9 @@ export default async function HqLayout({
         <Link className="button button-quiet button-small" href="/hq/vote">
           🗳️ Vote
         </Link>
+        <Link className="button button-quiet button-small" href="/hq/schedule">
+          🗓️ Schedule
+        </Link>
         <Link className="button button-quiet button-small" href="/hq/timeline">
           🗓️ Timeline
         </Link>

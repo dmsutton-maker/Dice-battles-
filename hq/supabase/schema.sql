@@ -146,9 +146,27 @@ create table if not exists public.ideas (
   decided_at    timestamptz,
   decision_note text not null default '',
   shipped_version text not null default '',
+  -- WHEN to do it, as opposed to whether. An idea can be approved months
+  -- early and still sit untouched until its date: "holiday themes" is
+  -- approved in August and started in November. Null means "any time".
+  scheduled_for date,
+  -- When it has to be finished. Christmas content shipped on 26 December
+  -- is worthless, so the deadline matters separately from the start.
+  deadline      date,
+  -- Seasonal work comes round again every year rather than being done
+  -- once and closed.
+  repeats_yearly boolean not null default false,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
+
+-- Older databases predate the scheduling columns.
+alter table public.ideas add column if not exists scheduled_for date;
+alter table public.ideas add column if not exists deadline date;
+alter table public.ideas
+  add column if not exists repeats_yearly boolean not null default false;
+
+create index if not exists ideas_scheduled_idx on public.ideas (scheduled_for);
 
 create index if not exists ideas_status_idx on public.ideas (status);
 create index if not exists ideas_phase_idx on public.ideas (phase_id);

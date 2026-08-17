@@ -39,6 +39,11 @@ export async function addIdea(formData: FormData) {
   const title = String(formData.get('title') ?? '').trim();
   if (!title) throw new Error('An idea needs a title.');
 
+  const dateOrNull = (key: string) => {
+    const value = String(formData.get(key) ?? '').trim();
+    return value === '' ? null : value;
+  };
+
   const { data, error } = await supabase
     .from('ideas')
     .insert({
@@ -46,6 +51,9 @@ export async function addIdea(formData: FormData) {
       detail: String(formData.get('detail') ?? '').trim(),
       category: (formData.get('category') as IdeaCategory) ?? 'game',
       priority: Number(formData.get('priority') ?? 3),
+      scheduled_for: dateOrNull('scheduled_for'),
+      deadline: dateOrNull('deadline'),
+      repeats_yearly: formData.get('repeats_yearly') === 'on',
       submitted_by: member.id,
       // Everything starts as pending, including David's own ideas — the
       // board should show what has actually been decided, not who typed it.
@@ -89,6 +97,10 @@ export async function updateIdea(formData: FormData) {
 
   const id = String(formData.get('id'));
   const phaseValue = String(formData.get('phase_id') ?? '');
+  const dateOrNull = (key: string) => {
+    const value = String(formData.get(key) ?? '').trim();
+    return value === '' ? null : value;
+  };
 
   const { error } = await supabase
     .from('ideas')
@@ -98,6 +110,9 @@ export async function updateIdea(formData: FormData) {
       category: formData.get('category') as IdeaCategory,
       priority: Number(formData.get('priority') ?? 3),
       phase_id: phaseValue === '' ? null : phaseValue,
+      scheduled_for: dateOrNull('scheduled_for'),
+      deadline: dateOrNull('deadline'),
+      repeats_yearly: formData.get('repeats_yearly') === 'on',
     })
     .eq('id', id);
 

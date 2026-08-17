@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import type { Idea } from '@/lib/types';
+import { isDue, whenPhrase, type Idea } from '@/lib/types';
 
 /**
  * The hand-off between the board and whoever builds from it.
@@ -78,12 +78,27 @@ export async function GET(request: NextRequest) {
     phase: idea.phase_id ? (phaseName.get(idea.phase_id) ?? null) : null,
     decision_note: idea.decision_note,
     approved_at: idea.decided_at,
+    scheduled_for: idea.scheduled_for,
+    deadline: idea.deadline,
+    repeats_yearly: idea.repeats_yearly,
+    ...(idea.scheduled_for ? { starts: whenPhrase(idea.scheduled_for) } : {}),
+    ...(idea.deadline ? { due: whenPhrase(idea.deadline) } : {}),
   });
 
   const all = (ideas ?? []) as Idea[];
+  const approved = all.filter((i) => i.status === 'approved');
+
   return NextResponse.json({
+    // Read this first: approved work whose time has come. Anything with
+    // no date is always here; anything dated appears on its date.
     building: all.filter((i) => i.status === 'building').map(shape),
-    approved: all.filter((i) => i.status === 'approved').map(shape),
+    approved: approved.filter((i) => isDue(i)).map(shape),
+    // Approved but NOT yet — do not start these early. A November idea
+    // built in August ships months of dead code and misses the point.
+    scheduled: approved
+      .filter((i) => !isDue(i))
+      .sort((a, b) => (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? ''))
+      .map(shape),
     phases: (phases ?? []).map(
       (p: { name: string; status: string; summary: string }) => ({
         name: p.name,

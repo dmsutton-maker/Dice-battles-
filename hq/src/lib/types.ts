@@ -53,8 +53,53 @@ export interface Idea {
   decided_at: string | null;
   decision_note: string;
   shipped_version: string;
+  /** Do not start before this date. Null means any time. */
+  scheduled_for: string | null;
+  /** Has to be finished by this date. */
+  deadline: string | null;
+  /** Seasonal work that comes round again every year. */
+  repeats_yearly: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** Today, as a plain YYYY-MM-DD date with no timezone games. */
+export function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Whether an idea's turn has come. Anything with no date is always due;
+ * anything dated is due once that date arrives.
+ */
+export function isDue(idea: Pick<Idea, 'scheduled_for'>, now = today()): boolean {
+  return !idea.scheduled_for || idea.scheduled_for <= now;
+}
+
+/** "in 3 months", "next week", "overdue by 2 days" — for humans. */
+export function whenPhrase(date: string | null, now = today()): string {
+  if (!date) return '';
+  const days = Math.round(
+    (new Date(`${date}T00:00:00Z`).getTime() - new Date(`${now}T00:00:00Z`).getTime()) /
+      86_400_000,
+  );
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  if (days === -1) return 'yesterday';
+  if (days < 0) return `${Math.abs(days)} days ago`;
+  if (days < 14) return `in ${days} days`;
+  if (days < 60) return `in ${Math.round(days / 7)} weeks`;
+  return `in ${Math.round(days / 30)} months`;
+}
+
+/** "November 2026" — the heading a scheduled idea is filed under. */
+export function monthLabel(date: string): string {
+  const [year, month] = date.split('-');
+  const names = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  return `${names[Number(month) - 1]} ${year}`;
 }
 
 export interface Comment {

@@ -3,7 +3,9 @@ import { currentMember, supabaseServer } from '@/lib/supabase/server';
 import {
   CATEGORY_LABELS,
   Idea,
+  isDue,
   Member,
+  monthLabel,
   Phase,
   PRIORITY_LABELS,
   STATUS_COLORS,
@@ -111,6 +113,30 @@ export default async function IdeasPage() {
             </div>
           </div>
 
+          <div className="grid">
+            <div>
+              <label htmlFor="scheduled_for">START IT ON — leave empty for any time</label>
+              <input id="scheduled_for" name="scheduled_for" type="date" />
+            </div>
+            <div>
+              <label htmlFor="deadline">HAS TO BE DONE BY</label>
+              <input id="deadline" name="deadline" type="date" />
+            </div>
+          </div>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              name="repeats_yearly"
+              style={{ width: 18, height: 18 }}
+            />
+            <span>Comes round every year (holidays, seasons)</span>
+          </label>
+          <p className="faint" style={{ marginTop: 4 }}>
+            A date means it waits its turn. Put &quot;holiday themes&quot; on
+            1 November and it sits quietly until November, then shows up as
+            work to do.
+          </p>
+
           <div style={{ marginTop: 16 }}>
             <button type="submit">Put it on the board</button>
           </div>
@@ -178,6 +204,34 @@ export default async function IdeasPage() {
                     {phase ? ` · ${phase.name}` : ''}
                     {idea.shipped_version ? ` · ${idea.shipped_version}` : ''}
                   </div>
+                  {(idea.scheduled_for || idea.deadline) && (
+                    <div style={{ marginTop: 5 }}>
+                      {idea.scheduled_for && (
+                        <span
+                          className="pill"
+                          style={{
+                            background: isDue(idea) ? '#33cc6b' : '#4b7bff',
+                            color: isDue(idea) ? '#0d2417' : '#ffffff',
+                            marginRight: 6,
+                          }}
+                        >
+                          {isDue(idea)
+                            ? '🗓️ its turn now'
+                            : `🗓️ ${monthLabel(idea.scheduled_for)}`}
+                        </span>
+                      )}
+                      {idea.deadline && (
+                        <span className="pill pill-outline">
+                          ⏰ by {idea.deadline}
+                        </span>
+                      )}
+                      {idea.repeats_yearly && (
+                        <span className="pill pill-outline" style={{ marginLeft: 6 }}>
+                          🔁 yearly
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </Link>
               );
             })}

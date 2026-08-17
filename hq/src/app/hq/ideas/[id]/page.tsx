@@ -5,11 +5,14 @@ import {
   CATEGORY_LABELS,
   Comment,
   Idea,
+  isDue,
   Member,
+  monthLabel,
   Phase,
   PRIORITY_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
+  whenPhrase,
 } from '@/lib/types';
 import { addComment, decideIdea, updateIdea } from '../../actions';
 
@@ -68,6 +71,25 @@ export default async function IdeaPage({
           {author ? ` · from ${author.display_name}` : ''}
           {item.shipped_version ? ` · shipped in ${item.shipped_version}` : ''}
         </p>
+
+        {(item.scheduled_for || item.deadline) && (
+          <div className="notice" style={{ marginTop: 10 }}>
+            {item.scheduled_for && (
+              <div>
+                🗓️ <strong>Starts {monthLabel(item.scheduled_for)}</strong> —{' '}
+                {item.scheduled_for} ({whenPhrase(item.scheduled_for)}).
+                {!isDue(item) &&
+                  ' Approved, but deliberately not started until then.'}
+              </div>
+            )}
+            {item.deadline && (
+              <div>
+                ⏰ Has to be done by {item.deadline} ({whenPhrase(item.deadline)}).
+              </div>
+            )}
+            {item.repeats_yearly && <div>🔁 Comes round again every year.</div>}
+          </div>
+        )}
         {item.detail && (
           <p style={{ whiteSpace: 'pre-wrap' }}>{item.detail}</p>
         )}
@@ -190,6 +212,36 @@ export default async function IdeaPage({
                 </select>
               </div>
             </div>
+            <div className="grid">
+              <div>
+                <label htmlFor="scheduled_for">START IT ON</label>
+                <input
+                  id="scheduled_for"
+                  name="scheduled_for"
+                  type="date"
+                  defaultValue={item.scheduled_for ?? ''}
+                />
+              </div>
+              <div>
+                <label htmlFor="deadline">DONE BY</label>
+                <input
+                  id="deadline"
+                  name="deadline"
+                  type="date"
+                  defaultValue={item.deadline ?? ''}
+                />
+              </div>
+            </div>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                name="repeats_yearly"
+                defaultChecked={item.repeats_yearly}
+                style={{ width: 18, height: 18 }}
+              />
+              <span>Comes round every year</span>
+            </label>
+
             <div style={{ marginTop: 16 }}>
               <button type="submit">Save changes</button>
             </div>
