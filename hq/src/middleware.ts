@@ -35,7 +35,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && request.nextUrl.pathname.startsWith('/hq')) {
+  const path = request.nextUrl.pathname;
+  if (!user && (path.startsWith('/hq') || path === '/password')) {
     const login = request.nextUrl.clone();
     login.pathname = '/login';
     login.searchParams.set('next', request.nextUrl.pathname);
@@ -46,5 +47,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/hq/:path*', '/login', '/auth/:path*'],
+  matcher: ['/hq/:path*', '/password', '/login', '/auth/:path*'],
 };

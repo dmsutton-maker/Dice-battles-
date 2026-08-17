@@ -26,6 +26,8 @@ export interface Member {
   email: string;
   display_name: string;
   role: Role;
+  /** True while still using a password someone else chose. */
+  must_change_password: boolean;
   created_at: string;
 }
 

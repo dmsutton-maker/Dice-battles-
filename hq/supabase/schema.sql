@@ -36,8 +36,15 @@ create table if not exists public.members (
   display_name text not null,
   role         text not null default 'contributor'
                check (role in ('owner', 'contributor')),
+  -- True while someone is still using a password that was handed to
+  -- them. A password another person knows is not really a password, so
+  -- the HQ will not open until they have set their own.
+  must_change_password boolean not null default false,
   created_at   timestamptz not null default now()
 );
+
+alter table public.members
+  add column if not exists must_change_password boolean not null default false;
 
 -- Convenience: is the person making this request the owner?
 create or replace function public.is_owner()

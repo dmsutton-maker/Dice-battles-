@@ -19,6 +19,9 @@ export default async function HqLayout({
 }) {
   const member = await currentMember();
   if (!member) redirect('/login?next=/hq');
+  // Still on a password somebody else chose — nothing here opens until
+  // they have picked their own.
+  if (member.must_change_password) redirect('/password');
 
   return (
     <div className="wrap">

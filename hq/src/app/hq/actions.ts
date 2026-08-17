@@ -333,7 +333,7 @@ export async function markHandled(formData: FormData) {
  * changed — nothing here trusts the page.
  */
 export async function changeMyPassword(formData: FormData) {
-  await requireMember();
+  const member = await requireMember();
   const supabase = await supabaseServer();
 
   const password = String(formData.get('password') ?? '');
@@ -343,7 +343,17 @@ export async function changeMyPassword(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) throw new Error(error.message);
+
+  // It is theirs now, so the wall comes down.
+  const wasForced = member.must_change_password;
+  await supabase
+    .from('members')
+    .update({ must_change_password: false })
+    .eq('id', member.id);
+
   revalidatePath('/hq/people');
+  revalidatePath('/hq');
+  if (wasForced) redirect('/hq');
 }
 
 /**
@@ -391,7 +401,14 @@ export async function setSomeonesPassword(formData: FormData) {
     if (error) throw new Error(error.message);
   }
 
-  await log(null, member.display_name, 'set a password for someone');
+  // A password handed to someone is temporary by definition: they have
+  // to choose their own before the HQ opens for them.
+  await admin
+    .from('members')
+    .update({ must_change_password: true })
+    .eq('email', email);
+
+  await log(null, member.display_name, 'set a temporary password for someone');
   revalidatePath('/hq/people');
 }
 
