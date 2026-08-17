@@ -36,10 +36,11 @@ export default function PrivacyPage() {
 
       <h2>Who this is from</h2>
       <p>
-        Dice Battles: Color Rush is made by David Sutton, an individual
-        developer, as a personal project. If you have any question about
-        privacy, write to <Link href="/support">the contact form</Link> and a
-        person will read it.
+        Dice Battles: Color Rush is made by <strong>Paper Ship Studio</strong>
+        — David Sutton, an individual developer, as a personal project. If
+        you have any question about privacy, write to{' '}
+        <Link href="/support">the contact form</Link> and a person will
+        read it.
       </p>
 
       <h2>What the app collects</h2>
@@ -182,7 +183,7 @@ export default function PrivacyPage() {
 
       <h2>Contact</h2>
       <p>
-        David Sutton — <Link href="/support">the contact form</Link>
+        Paper Ship Studio — <Link href="/support">the contact form</Link>
       </p>
     </main>
   );

@@ -25,10 +25,10 @@ export default function TermsPage() {
 
       <h2>The deal</h2>
       <p>
-        Dice Battles: Color Rush is made by David Sutton. Downloading it
-        gives you a personal, non-exclusive licence to play it on devices
-        you own or control. It does not transfer ownership of the game to
-        you.
+        Dice Battles: Color Rush is made by <strong>Paper Ship Studio</strong>,
+        David Sutton&apos;s studio. Downloading it gives you a personal,
+        non-exclusive licence to play it on devices you own or control. It
+        does not transfer ownership of the game to you.
       </p>
       <p>
         Because the app comes from the App Store, Apple&apos;s standard{' '}
@@ -47,8 +47,9 @@ export default function TermsPage() {
       <p>
         The game, its rules, its name, its artwork, its music arrangement
         and its code belong to David Sutton, who invented the original
-        physical game this is based on. You may not copy it, sell it, take
-        it apart to rebuild it, or publish your own version of it.
+        physical game this is based on and makes it under the name Paper
+        Ship Studio. You may not copy it, sell it, take it apart to rebuild
+        it, or publish your own version of it.
       </p>
       <p>
         Recording or streaming your own play — videos, screenshots, showing
@@ -107,7 +108,7 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        David Sutton — <Link href="/support">the contact form</Link>
+        Paper Ship Studio — <Link href="/support">the contact form</Link>
       </p>
     </main>
   );

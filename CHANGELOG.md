@@ -16,6 +16,25 @@ restored.
 
 ---
 
+## The family settled two votes — 2026-08-17 · *requested by David*
+
+- **Company name: Paper Ship Studio.** Settled by family vote over Sutton
+  & Sons Studio, Good Noise Studio, Three Suttons Studio and Wild Table
+  Studio. The website now names it as who makes the game, alongside
+  David Sutton as the actual legal party — no company is incorporated
+  yet, so the legal pages still name him, with Paper Ship Studio
+  introduced as the name he makes it under.
+- **App icon: Perfect Match** — two dice, both landed on red, the six
+  game colours along the bottom. Settled over Colour Cube, Crossed
+  Swords and Colour Rush. `assets/icon.png` is updated and committed,
+  but an app icon is baked into the compiled app rather than delivered
+  over the air, so it will not reach a phone until the next native
+  build. That build is deliberately being held: Apple only reviews one
+  TestFlight build per version at a time, and build 5 — the one Marc and
+  AJ are waiting on — is still in that queue. Shipping the icon now
+  would mean expiring build 5 and restarting their wait from zero, so
+  the icon goes out in whichever build follows once build 5 clears.
+
 ## HQ voting — 2026-08-17 · *requested by David*
 
 Not a game change.

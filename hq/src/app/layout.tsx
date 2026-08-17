@@ -33,8 +33,9 @@ export default function RootLayout({
         {children}
         <footer className="site">
           <div>
-            © {new Date().getFullYear()} David Sutton. Dice Battles: Color
-            Rush is an independent game, made by one family.
+            © {new Date().getFullYear()} David Sutton, operating as{' '}
+            <strong>Paper Ship Studio</strong>. Dice Battles: Color Rush is
+            an independent game, made by one family.
           </div>
           <div style={{ marginTop: 8 }}>
             <Link href="/privacy">Privacy</Link>

@@ -80,6 +80,16 @@ on, rather than being decided alone. Read the outcome from
 `GET /api/proposals`. The token can raise a question and read the result;
 it can neither vote nor settle a vote.
 
+## The company
+
+The family voted and settled on **Paper Ship Studio** as the name to
+carry more than just this one game — David Sutton's studio, not
+incorporated yet. Use it wherever the game's website names who makes it
+(it already does, in the footer and the legal pages), and use it as the
+Organization name whenever the Apple account is converted from Individual
+and whenever a legal entity is formed. `papershipstudio.com` was free
+when checked (17 Aug 2026) but has not been purchased.
+
 ## The App Store record
 
 - Listing name is **Dice Battles: Color Rush** — plain "Dice Battles" was
