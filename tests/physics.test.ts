@@ -45,7 +45,7 @@ interface RollOutcome {
 /** Simulates one throw through the shipping settle rule. */
 function simulateRoll(
   layout: ObstacleLayout,
-  options: { aim?: number; power?: number } = {},
+  options: { flick?: { x: number; z: number } } = {},
 ): RollOutcome {
   const physics = createPhysicsWorld();
   addTrayBodies(physics, layout);
@@ -56,7 +56,7 @@ function simulateRoll(
   });
 
   bodies.forEach((body, index) =>
-    throwDie(body, { index, aim: options.aim, power: options.power }),
+    throwDie(body, { index, flick: options.flick }),
   );
 
   let stillFrames = 0;
@@ -157,18 +157,23 @@ suite('physics · rolling', () => {
     }
   });
 
-  test('every aim and power stays in the tray', () => {
+  test('a flick in any direction, at any strength, stays in the tray', () => {
+    // The player can flick anywhere, including sideways and back at
+    // themselves. Every one of those has to stay inside a sealed tray.
+    const max = TUNING.throw.flickMaxSpeed;
     for (const difficulty of DIFFICULTIES) {
-      for (const aim of [-1, -0.5, 0, 0.5, 1]) {
-        for (const power of [0, 0.5, 1]) {
-          for (let trial = 0; trial < 4; trial++) {
-            const roll = simulateRoll(generateObstacleLayout(difficulty), {
-              aim,
-              power,
-            });
+      for (let angle = 0; angle < 360; angle += 30) {
+        for (const strength of [0.35, 0.7, 1]) {
+          const radians = (angle * Math.PI) / 180;
+          const flick = {
+            x: Math.cos(radians) * max * strength,
+            z: Math.sin(radians) * max * strength,
+          };
+          for (let trial = 0; trial < 3; trial++) {
+            const roll = simulateRoll(generateObstacleLayout(difficulty), { flick });
             assert(
               !roll.escaped,
-              `aim ${aim} at power ${power} on ${difficulty} drove a die out of the tray`,
+              `a ${angle}° flick at ${strength} strength on ${difficulty} drove a die out of the tray`,
             );
           }
         }
@@ -176,12 +181,46 @@ suite('physics · rolling', () => {
     }
   });
 
+  test('flicking harder throws the dice further', () => {
+    // The whole point of a flick: your hand decides how far they go.
+    const travelAt = (strength: number) => {
+      const rolls = Array.from({ length: 120 }, () =>
+        simulateRoll(EMPTY_LAYOUT, {
+          flick: { x: 0, z: -TUNING.throw.flickMaxSpeed * strength },
+        }),
+      );
+      const all = rolls.flatMap((r) => r.restZ.map((z) => TUNING.throw.handZ - z));
+      return all.reduce((a, b) => a + b, 0) / all.length;
+    };
+    const gentle = travelAt(0.4);
+    const hard = travelAt(1);
+    note(`gentle flick travels ${gentle.toFixed(1)}, hard flick ${hard.toFixed(1)}`);
+    assert(
+      hard - gentle > 0.8,
+      `flick strength barely matters (gentle ${gentle.toFixed(1)} vs hard ${hard.toFixed(1)})`,
+    );
+  });
+
+  test('flicking left and right throws the dice that way', () => {
+    const meanX = (x: number) => {
+      const xs = Array.from({ length: 120 }, () =>
+        simulateRoll(EMPTY_LAYOUT, { flick: { x, z: -8 } }),
+      ).flatMap((r) => r.restX);
+      return xs.reduce((a, b) => a + b, 0) / xs.length;
+    };
+    const left = meanX(-TUNING.throw.flickMaxSpeed * 0.7);
+    const right = meanX(TUNING.throw.flickMaxSpeed * 0.7);
+    note(`flick left lands at x ${left.toFixed(2)}, right at x ${right.toFixed(2)}`);
+    assert(
+      right - left > 0.8,
+      `flicking sideways barely moves the dice (${left.toFixed(2)} vs ${right.toFixed(2)})`,
+    );
+  });
+
   test('a throw travels down the board instead of jiggling in place', () => {
     // The dice leave the hand at the player's edge; if they barely move,
     // the throw reads as the dice twitching where they lie.
-    const rolls = Array.from({ length: 200 }, () =>
-      simulateRoll(EMPTY_LAYOUT, { power: 0.5 }),
-    );
+    const rolls = Array.from({ length: 200 }, () => simulateRoll(EMPTY_LAYOUT));
     const travelled = rolls.flatMap((r) => r.restZ.map((z) => TUNING.throw.handZ - z));
     const mean = travelled.reduce((a, b) => a + b, 0) / travelled.length;
     const stalled = travelled.filter((d) => d < 1.5).length;
@@ -196,36 +235,19 @@ suite('physics · rolling', () => {
     assertAtMost(stalled / travelled.length, 0.05, 'share of throws that stall');
   });
 
-  test('the dice never fly back at the player', () => {
-    // The old model scattered randomly in both directions, so dice were as
-    // likely to come at the player as go away — the core of why it did not
-    // read as a throw.
+  test('a plain tap still rolls the dice forward', () => {
+    // Tapping is the frantic-race input; it must never fire the dice back
+    // at the player the way the old random-scatter throw could.
     for (let i = 0; i < 300; i++) {
       const roll = simulateRoll(EMPTY_LAYOUT);
       for (const z of roll.restZ) {
         assertAtMost(
           z,
           TUNING.throw.handZ + 0.6,
-          'a die finished behind where it was thrown from',
+          'a tapped die finished behind where it was thrown from',
         );
       }
     }
-  });
-
-  test('aiming left and right actually lands the dice there', () => {
-    const meanX = (aim: number) => {
-      const xs = Array.from({ length: 120 }, () =>
-        simulateRoll(EMPTY_LAYOUT, { aim, power: 0.5 }),
-      ).flatMap((r) => r.restX);
-      return xs.reduce((a, b) => a + b, 0) / xs.length;
-    };
-    const left = meanX(-1);
-    const right = meanX(1);
-    note(`aim left lands at x ${left.toFixed(2)}, aim right at x ${right.toFixed(2)}`);
-    assert(
-      right - left > 0.8,
-      `aiming barely moves the dice (left ${left.toFixed(2)} vs right ${right.toFixed(2)})`,
-    );
   });
 
   test('frozen dice cannot move after a roll is called', () => {

@@ -1,24 +1,28 @@
-import { Dimensions, GestureResponderEvent } from 'react-native';
-import { ThrowAim } from '../demo/DiceScene';
+import { GestureResponderEvent, PanResponderGestureState } from 'react-native';
+import { TUNING } from './tuning';
 
 /**
- * Turn a touch into a throw aim. Taken from WHERE the screen is touched
- * rather than from a swipe's velocity, because the throw fires on
- * touch-down: velocity is only known on release, by which time the dice
- * are already in the air and binding. Touching across the screen aims the
- * throw; touching further up the board throws harder.
+ * Turn a finished gesture into a throw.
+ *
+ * Read on RELEASE, because a flick's speed and direction only exist once
+ * the finger lifts — that is the whole reason the throw waits for release
+ * rather than firing on touch-down. A slow gesture is a tap, and a tap is
+ * thrown as a gentle roll (returns null: the caller throws with defaults).
  */
-export function aimFromTouch(
-  event: GestureResponderEvent,
+export function flickFromGesture(
+  gesture: PanResponderGestureState,
   options: { rotated?: boolean } = {},
-): ThrowAim {
-  const { width, height } = Dimensions.get('window');
-  const x = event.nativeEvent.pageX;
-  const y = event.nativeEvent.pageY;
-  const across = (x / Math.max(width, 1)) * 2 - 1;
-  // Screen y grows downward: the top of the screen is the far wall.
-  const up = 1 - y / Math.max(height, 1);
-  return options.rotated
-    ? { aim: -across, power: 1 - up }
-    : { aim: across, power: up };
+): { x: number; z: number } | null {
+  const speed = Math.hypot(gesture.vx, gesture.vy);
+  if (speed < TUNING.throw.flickThreshold) return null;
+
+  const { flickScale, flickMaxSpeed } = TUNING.throw;
+  const clamp = (v: number) => Math.max(-flickMaxSpeed, Math.min(flickMaxSpeed, v));
+  // Screen up (negative vy) throws away from the player (-z). The top zone
+  // of a split screen is rotated 180°, so its axes flip.
+  const sign = options.rotated ? -1 : 1;
+  return {
+    x: clamp(gesture.vx * flickScale * sign),
+    z: clamp(gesture.vy * flickScale * sign),
+  };
 }

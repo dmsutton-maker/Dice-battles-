@@ -73,48 +73,47 @@ export const TUNING = {
   },
 
   /**
-   * The throw is modelled on tipping dice out of a cup at the near edge of
-   * the board and sending them AWAY from you.
+   * The throw follows the player's hand: you flick, and the dice leave your
+   * edge of the board carrying the speed and direction you flicked.
    *
-   * The old model popped them straight up from wherever they happened to be
-   * lying, scattering randomly in both directions — as likely to fly at the
-   * player as away — which read as the dice jiggling in place rather than
-   * being thrown, and left the player's touch with no influence at all.
-   * Now every throw starts from the same spot in front of the player and
-   * travels the length of the board, aimed by where the screen was touched.
+   * This requires throwing on RELEASE rather than touch-down, because a
+   * gesture's velocity is not knowable until the finger lifts. Throwing on
+   * touch-down predates the roll lock, and once rolls became binding for
+   * about a second it bought nothing — while making a real flick
+   * impossible, since every throw left before the hand had moved.
    */
   throw: {
-    /** Where the dice are tipped from: player's edge, slightly raised. */
+    /** Where the dice leave the hand: player's edge, slightly raised. */
     handZ: 3.4,
     handY: 1.0,
     /** Sideways offset of each die at the hand, so they don't start fused. */
     handSpread: 0.75,
-    /** Speed away from the player (-z). */
-    forwardMin: 7.6,
-    forwardMax: 9.4,
+
+    /** Gesture velocity (points/ms) -> world speed. */
+    flickScale: 11,
+    /** Ceiling on flick speed, so a violent swipe cannot break the tray. */
+    flickMaxSpeed: 15,
+    /** A gesture slower than this counts as a tap, not a flick. */
+    flickThreshold: 0.28,
+    /** Lift added to a flick, scaled a little by how hard it was thrown. */
+    flickUpMin: 3.2,
+    flickUpMax: 5.0,
+    /** Smallest forward speed a flick gets, so a weak one still travels. */
+    flickMinForward: 5.5,
+
     /**
-     * Lift. Kept low on purpose: thrown dice skitter along a table rather
-     * than lob through the air, and airtime is dead time the player waits
-     * out (measured: dropping lift here cut the worst median roll from
-     * 1383ms to 1117ms without shortening the throw).
+     * A plain tap: a solid roll away from the player. Tapping is the
+     * frantic-race input, so it still has to carry the dice down the board
+     * — a limp tap reads as the dice barely leaving your hand.
      */
-    upMin: 3.4,
-    upMax: 4.6,
-    /**
-     * Aim: touch position across the screen (-1 left .. +1 right) becomes
-     * sideways velocity. Taken at touch-down, so aiming costs no latency —
-     * the throw still fires the instant a finger lands.
-     */
-    aimScale: 3.4,
-    /** Randomness on top of the aim, so no two throws are identical. */
-    lateralJitter: 0.8,
-    /**
-     * Power from how far up the screen the touch is: a touch near the
-     * player is a gentle roll, near the far wall a hard one. Bounded so
-     * every throw still crosses the board.
-     */
-    powerMin: 0.86,
-    powerMax: 1.16,
+    tapForwardMin: 7.4,
+    tapForwardMax: 9.2,
+    tapUpMin: 3.2,
+    tapUpMax: 4.4,
+    tapLateral: 1.6,
+
+    /** Randomness on every throw, so no two rolls are identical. */
+    lateralJitter: 0.7,
     /** Tumble: random angular speed per axis (rad/s). */
     spinMin: 12,
     spinMax: 28,
@@ -138,7 +137,7 @@ export const TUNING = {
      * throw they travel before settling, and waiting longer left a heavy
      * tail of slow rolls on Hard, where obstacles keep them moving.
      */
-    assistAfterMs: 320,
+    assistAfterMs: 285,
     assistStartFactor: 0.93,
     assistEndFactor: 0.72,
     assistRampMs: 700,

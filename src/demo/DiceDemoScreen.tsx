@@ -72,7 +72,7 @@ import {
   Station,
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
-import { aimFromTouch } from '../game/aim';
+import { flickFromGesture } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
@@ -81,7 +81,7 @@ import { TwoPlayerScreen } from './TwoPlayerScreen';
  * Classic mode vs one AI opponent.
  *
  * Round flow: pick screen -> "ARM YOUR DICE!" -> "BATTLE!" -> race. The
- * player rolls real physics dice (touch down = throw, flick = aimed throw);
+ * player rolls real physics dice (flick to throw, tap for a straight roll);
  * a new throw is LOCKED until the dice settle, so every roll is binding.
  * The AI rolls fair virtual dice on a timer (difficulty = speed).
  */
@@ -154,8 +154,6 @@ export function DiceDemoScreen() {
   const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const lastSplash = useRef(0);
-  /** Did this gesture's touch-down actually launch a roll? */
-  const threwOnTouchDown = useRef(false);
 
   const setPhaseBoth = useCallback((next: Phase) => {
     phaseRef.current = next;
@@ -530,26 +528,18 @@ export function DiceDemoScreen() {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      // Throw on touch-down so rapid tapping feels instant.
       onPanResponderGrant: () => {
-        const current = phaseRef.current;
-        threwOnTouchDown.current = false;
-        if (current === 'pick') {
-          startCountdown();
-        } else if (current === 'battle') {
-          threwOnTouchDown.current =
-            controlsRef.current?.throwAll() === 'launched';
-        }
-        // arm/go: inputs locked during the ritual. won/lost/tie: the result
-        // screen's own buttons decide what happens next.
+        if (phaseRef.current === 'pick') startCountdown();
+        // battle: the throw waits for release, so a flick can carry the
+        // player's own direction and speed into the dice. arm/go: inputs
+        // locked during the ritual. won/lost/tie: the buttons decide.
       },
-      // A drag re-aims a throw that is still queued behind a roll in
-      // progress; it must never throw again itself, because the touch-down
-      // already did and those dice are binding.
-      onPanResponderRelease: (event) => {
+      // Lifting the finger throws: a fast gesture is a flick, carrying its
+      // direction and speed into the dice; a slow one is a tap and rolls
+      // them gently forward.
+      onPanResponderRelease: (_event, gesture) => {
         if (phaseRef.current !== 'battle') return;
-        if (threwOnTouchDown.current) return;
-        controlsRef.current?.throwAll(aimFromTouch(event));
+        controlsRef.current?.throwAll(flickFromGesture(gesture) ?? undefined);
       },
     }),
   ).current;

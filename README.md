@@ -19,11 +19,11 @@ What's in the demo:
   collisions) via **cannon-es**, rendered with **react-three-fiber + three.js**
   on **expo-gl**.
 - Colored faces (six prisoner colors), not pips — readable on settle.
-- **Tap anywhere** to throw — the dice are tipped out of a hand at your edge
-  of the board and travel away from you, aimed by WHERE you touch (across
-  the screen aims, further up throws harder). Aim is read on touch-down, so
-  throws still fire the instant a finger lands and rapid tapping is a
-  rolling frenzy.
+- **Flick to throw.** The dice leave your edge of the board carrying the
+  direction and speed of your gesture — flick harder and they travel
+  further, flick sideways and they go that way. A plain tap is a solid roll
+  forward, so rapid tapping is still a frenzy. Throws fire on RELEASE,
+  because a flick's velocity does not exist until the finger lifts.
 - Haptics: light ticks on hard dice impacts, a medium thump on settle, and a
   success buzz on a color match.
 - Cheap blob shadows under the dice (real shadow maps are overkill for two

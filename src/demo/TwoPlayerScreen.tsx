@@ -8,7 +8,7 @@ import { playCheer, playFanfare, playThrow, startMusic, stopMusic } from '../aud
 import { ColorDef, PRISONER_COLORS } from '../game/colors';
 import { makeUnits, PrisonerUnit } from '../game/modes';
 import { EMPTY_LAYOUT } from '../game/obstacles';
-import { aimFromTouch } from '../game/aim';
+import { flickFromGesture } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
 
 /**
@@ -60,27 +60,20 @@ function ZoneView({
   onRematch,
   onExitToMenu,
 }: ZoneViewProps) {
-  /** Did this gesture's touch-down actually launch a roll? */
-  const threwOnTouchDown = useRef(false);
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (event) => {
-        threwOnTouchDown.current = false;
-        if (phaseRef.current === 'battle') {
-          threwOnTouchDown.current =
-            controlsRef.current?.throwAll(aimFromTouch(event, { rotated })) ===
-            'launched';
-        }
+      onPanResponderGrant: () => {
+        // The throw waits for release so the flick carries the gesture.
         // 'over': the round-over buttons decide what happens next.
       },
-      // A drag only re-aims a throw still queued behind a roll in
-      // progress; the touch-down already threw and that roll is binding.
-      onPanResponderRelease: (event) => {
+      // Lifting the finger throws, carrying the flick.
+      onPanResponderRelease: (_event, gesture) => {
         if (phaseRef.current !== 'battle') return;
-        if (threwOnTouchDown.current) return;
-        controlsRef.current?.throwAll(aimFromTouch(event, { rotated }));
+        controlsRef.current?.throwAll(
+          flickFromGesture(gesture, { rotated }) ?? undefined,
+        );
       },
     }),
   ).current;

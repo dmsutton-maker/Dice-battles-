@@ -66,26 +66,26 @@ const randSign = () => (Math.random() < 0.5 ? -1 : 1);
 export interface ThrowInput {
   /** Which die this is, so the pair leaves the hand side by side. */
   index?: number;
-  /** Where across the screen the player touched: -1 left .. +1 right. */
-  aim?: number;
-  /** How far up the screen they touched: 0 near the player .. 1 far. */
-  power?: number;
+  /**
+   * World-space flick from the player's gesture. Omitted for a plain tap,
+   * which becomes a gentle roll away from the player.
+   */
+  flick?: { x: number; z: number };
 }
 
 /**
- * Tip a die out of the hand at the player's edge and send it down the
- * board. Position is reset on every throw so a roll always starts from the
- * same place — picking the dice up is part of what makes it read as a
- * throw rather than the dice twitching where they lie.
+ * Throw a die from the player's edge of the board.
+ *
+ * A flick carries the player's own speed and direction — that is what makes
+ * throwing feel like throwing. A tap is a soft roll forward. Either way the
+ * die is picked up first: starting every throw from the hand is what reads
+ * as a throw rather than the die twitching where it lies.
  */
 export function throwDie(body: CANNON.Body, input: ThrowInput = {}): void {
   const t = TUNING.throw;
   const index = input.index ?? 0;
-  const aim = Math.max(-1, Math.min(1, input.aim ?? 0));
-  const power =
-    t.powerMin + (t.powerMax - t.powerMin) * Math.max(0, Math.min(1, input.power ?? 0.5));
-
   const side = index === 0 ? -1 : 1;
+
   body.position.set(
     side * t.handSpread + rand(-0.12, 0.12),
     t.handY + rand(0, 0.18),
@@ -98,11 +98,24 @@ export function throwDie(body: CANNON.Body, input: ThrowInput = {}): void {
   );
   body.wakeUp();
 
-  body.velocity.set(
-    aim * t.aimScale + rand(-t.lateralJitter, t.lateralJitter),
-    rand(t.upMin, t.upMax) * power,
-    -rand(t.forwardMin, t.forwardMax) * power,
-  );
+  const jitter = () => rand(-t.lateralJitter, t.lateralJitter);
+
+  if (input.flick) {
+    const { x, z } = input.flick;
+    // Hard flicks fly flatter and faster; gentle ones arc more.
+    const strength = Math.min(Math.hypot(x, z) / t.flickMaxSpeed, 1);
+    const lift = t.flickUpMax - (t.flickUpMax - t.flickUpMin) * strength;
+    // A gentle forward flick still needs enough pace to leave the hand and
+    // travel; a sideways or backward flick is honoured exactly as thrown.
+    const forward = z < 0 ? Math.min(z, -t.flickMinForward) : z;
+    body.velocity.set(x + jitter(), lift, forward);
+  } else {
+    body.velocity.set(
+      rand(-t.tapLateral, t.tapLateral),
+      rand(t.tapUpMin, t.tapUpMax),
+      -rand(t.tapForwardMin, t.tapForwardMax),
+    );
+  }
 
   body.angularVelocity.set(
     randSign() * rand(t.spinMin, t.spinMax),
