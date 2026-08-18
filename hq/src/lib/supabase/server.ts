@@ -9,9 +9,12 @@ import { cookies } from 'next/headers';
  *  - `supabaseServer()` acts AS THE SIGNED-IN PERSON, so the database's
  *    own row-level rules decide what they can see and change. A kid
  *    cannot approve their own idea even if the page let them click it.
- *  - `supabaseAdmin()` bypasses those rules and is used only by the
- *    machine-to-machine queue endpoint, which authenticates with its own
- *    token instead of a login.
+ *  - `supabaseAdmin()` bypasses those rules — for the machine-to-machine
+ *    queue and bug-report endpoints, which authenticate their own way
+ *    instead of a login; for public pages reading editable site content,
+ *    which have no signed-in user to act as; and for the few admin
+ *    actions (password resets, email changes) that a member's own row
+ *    deliberately has no permission to do to itself.
  */
 
 function required(name: string): string {

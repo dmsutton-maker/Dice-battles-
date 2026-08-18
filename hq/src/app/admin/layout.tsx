@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { currentMember } from '@/lib/supabase/server';
 
 export const metadata = {
-  title: 'HQ — Dice Battles',
+  title: 'Admin — Paper Ship Studio',
   robots: { index: false, follow: false },
 };
 
@@ -12,7 +12,7 @@ export const metadata = {
  * signed in but not on the guest list gets a plain explanation rather
  * than a broken page.
  */
-export default async function HqLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export default async function HqLayout({
     <div className="wrap">
       <div className="spread" style={{ marginBottom: 18 }}>
         <div>
-          <h1 style={{ marginBottom: 2 }}>🛠️ HQ</h1>
+          <h1 style={{ marginBottom: 2 }}>🛠️ Paper Ship Studio Admin</h1>
           <p className="faint" style={{ margin: 0 }}>
             Signed in as {member.display_name}
             {member.role === 'owner' ? ' · owner' : ''}
@@ -47,6 +47,9 @@ export default async function HqLayout({
         <Link className="button button-quiet button-small" href="/admin/vote">
           🗳️ Vote
         </Link>
+        <Link className="button button-quiet button-small" href="/admin/content">
+          ✏️ Website
+        </Link>
         <Link className="button button-quiet button-small" href="/admin/schedule">
           🗓️ Schedule
         </Link>
@@ -56,8 +59,8 @@ export default async function HqLayout({
         <Link className="button button-quiet button-small" href="/admin/people">
           👪 People
         </Link>
-        <Link className="button button-quiet button-small" href="/admin/inbox">
-          ✉️ Inbox
+        <Link className="button button-quiet button-small" href="/admin/support">
+          🎫 Support
         </Link>
         <Link className="button button-quiet button-small" href="/admin/activity">
           📜 History

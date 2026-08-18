@@ -5,13 +5,16 @@ import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
 import styles from '../site.module.css';
 import { ContactForm } from './ContactForm';
+import { faqList, getSiteContent, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Support — Paper Ship Studio',
   description: "We're a small studio, so support is just us — reading every message ourselves.",
 };
 
-const GAME_FAQS = [
+export const dynamic = 'force-dynamic';
+
+const DEFAULT_GAME_FAQS = [
   { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
   { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
   {
@@ -20,7 +23,15 @@ const GAME_FAQS = [
   },
 ];
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  const content = await getSiteContent();
+  const intro = text(
+    content,
+    'support.intro',
+    "We're a small studio, so support is just us — reading every message ourselves.",
+  );
+  const gameFaqs = faqList(content, 'support.game_faq', DEFAULT_GAME_FAQS);
+
   return (
     <SitePage active="Support">
       <main>
@@ -30,7 +41,7 @@ export default function SupportPage() {
         >
           <h1 style={{ font: `800 36px/1.2 ${fonts.heading}`, margin: 0, color: colors.ink }}>Support</h1>
           <p style={{ font: `600 15.5px/1.6 ${fonts.body}`, color: colors.secondary, margin: '12px 0 0' }}>
-            We&apos;re a small studio, so support is just us — reading every message ourselves.
+            {intro}
           </p>
         </section>
 
@@ -60,7 +71,7 @@ export default function SupportPage() {
                 />
                 <span style={{ font: `800 17px ${fonts.heading}`, color: colors.ink }}>Dice Battles: Color Rush</span>
               </div>
-              {GAME_FAQS.map((item) => (
+              {gameFaqs.map((item) => (
                 <details
                   key={item.q}
                   className={styles.details}

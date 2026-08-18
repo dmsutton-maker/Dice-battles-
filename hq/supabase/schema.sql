@@ -132,6 +132,10 @@ create table if not exists public.ideas (
   id            uuid primary key default gen_random_uuid(),
   title         text not null check (char_length(trim(title)) > 0),
   detail        text not null default '',
+  -- Which app this is about. 'Studio-wide' for the website, the
+  -- backend, or anything not tied to one game. Every row before this
+  -- column existed was about Dice Battles — nothing else had shipped yet.
+  app           text not null default 'Dice Battles: Color Rush',
   category      text not null default 'game'
                 check (category in
                   ('game', 'revenue', 'art', 'sound', 'website', 'other')),
@@ -180,6 +184,8 @@ alter table public.ideas add column if not exists scheduled_for date;
 alter table public.ideas add column if not exists deadline date;
 alter table public.ideas
   add column if not exists repeats_yearly boolean not null default false;
+alter table public.ideas
+  add column if not exists app text not null default 'Dice Battles: Color Rush';
 
 create index if not exists ideas_scheduled_idx on public.ideas (scheduled_for);
 
@@ -263,6 +269,66 @@ create policy messages_read on public.messages
 drop policy if exists messages_update on public.messages;
 create policy messages_update on public.messages
   for update using (public.is_member()) with check (public.is_member());
+
+-- ---------------------------------------------------------------------
+-- Message replies — a real ticket thread, typed and sent from the admin
+-- itself instead of leaving for a personal mail app. `delivered` records
+-- whether it actually reached the player's inbox (an outbound email
+-- service has to be connected for that) or only saved here for the
+-- family to see.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.message_replies (
+  id           uuid primary key default gen_random_uuid(),
+  message_id   uuid not null references public.messages (id) on delete cascade,
+  member_id    uuid references public.members (id) on delete set null,
+  body         text not null check (char_length(trim(body)) > 0),
+  delivered    boolean not null default false,
+  delivery_note text not null default '',
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists message_replies_message_idx
+  on public.message_replies (message_id, created_at);
+
+alter table public.message_replies enable row level security;
+
+drop policy if exists message_replies_read on public.message_replies;
+create policy message_replies_read on public.message_replies
+  for select using (public.is_member());
+
+drop policy if exists message_replies_write on public.message_replies;
+create policy message_replies_write on public.message_replies
+  for insert with check (public.is_member());
+
+-- ---------------------------------------------------------------------
+-- Site content — the editable text on the public pages (taglines, FAQ
+-- entries, legal-page sections, and so on). A page reads its copy from
+-- here at request time, falling back to the copy baked into the page's
+-- own code if a key is missing, so a typo here can never take a page
+-- fully blank.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.site_content (
+  key         text primary key,
+  value       jsonb not null,
+  updated_by  uuid references public.members (id) on delete set null,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.site_content enable row level security;
+
+drop policy if exists site_content_read on public.site_content;
+create policy site_content_read on public.site_content
+  for select using (public.is_member());
+
+drop policy if exists site_content_write on public.site_content;
+create policy site_content_write on public.site_content
+  for all using (public.is_member()) with check (public.is_member());
+
+-- The public pages themselves read through the service role (same
+-- pattern as the queue API and the bug-report endpoint) — never as an
+-- anonymous browser key — so no anon policy is needed here.
 
 -- ---------------------------------------------------------------------
 -- Proposals — the things Claude puts up for the family to vote on

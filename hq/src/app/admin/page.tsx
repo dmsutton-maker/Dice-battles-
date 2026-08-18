@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { currentMember, supabaseServer } from '@/lib/supabase/server';
 import {
+  APP_OPTIONS,
   CATEGORY_LABELS,
   Idea,
   isDue,
@@ -102,6 +103,15 @@ export default async function IdeasPage() {
             Bugs get fixed without waiting — they go straight onto the work
             list. New ideas wait for David to say yes.
           </p>
+
+          <label htmlFor="app">WHICH APP IS THIS ABOUT?</label>
+          <select id="app" name="app" defaultValue={APP_OPTIONS[0]}>
+            {APP_OPTIONS.map((app) => (
+              <option key={app} value={app}>
+                {app}
+              </option>
+            ))}
+          </select>
 
           <label htmlFor="title">WHAT IS THE IDEA?</label>
           <input
@@ -214,6 +224,7 @@ export default async function IdeasPage() {
                       {idea.kind === 'bug' ? '🐞 Bug' : CATEGORY_LABELS[idea.category]}
                     </span>
                   </div>
+                  <div className="faint" style={{ marginBottom: 2 }}>{idea.app}</div>
                   {idea.detail && (
                     <p
                       className="muted"

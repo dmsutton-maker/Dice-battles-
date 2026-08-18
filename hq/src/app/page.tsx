@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { SitePage } from '@/components/site/SitePage';
 import styles from './site.module.css';
 import { colors, fonts, heroGradient } from '@/components/site/tokens';
+import { getSiteContent, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Paper Ship Studio — Games your whole family will actually love',
@@ -11,7 +12,26 @@ export const metadata: Metadata = {
     'Paper Ship Studio is an independent studio building simple, well-made games for players of any age — starting with Dice Battles: Color Rush.',
 };
 
-export default function HomePage() {
+// Reads editable copy from the database on every request, so a save in
+// the admin shows up on the next load — never frozen from a past build.
+export const dynamic = 'force-dynamic';
+
+export default async function HomePage() {
+  const content = await getSiteContent();
+  const heroTagline = text(content, 'home.hero_tagline', 'Games your whole family will actually love.');
+  const heroSubhead = text(
+    content,
+    'home.hero_subhead',
+    'Paper Ship Studio is an independent studio building simple, well-made games for players of any age.',
+  );
+  const aboutBody = text(
+    content,
+    'home.about_body',
+    "We're a small, independent studio making colorful, considered games for every age — friendly enough that kids as young as five can jump in on their own. No ads, no accounts, no analytics. Nothing to sign up for, nothing tracked.",
+  );
+  const appsCardTagline = text(content, 'home.apps_card_tagline', 'Colors, not numbers — quick to learn, fun at any age');
+  const appsCardNote = text(content, 'home.apps_card_note', 'Our first game. More battles are already in the works.');
+
   return (
     <SitePage active="Home">
       <main>
@@ -74,7 +94,7 @@ export default function HomePage() {
                   textWrap: 'pretty',
                 }}
               >
-                Games your whole family will actually love.
+                {heroTagline}
               </h1>
               <p
                 style={{
@@ -84,8 +104,7 @@ export default function HomePage() {
                   maxWidth: 440,
                 }}
               >
-                Paper Ship Studio is an independent studio building simple, well-made games for
-                players of any age.
+                {heroSubhead}
               </p>
               <Link
                 href="/apps"
@@ -138,9 +157,7 @@ export default function HomePage() {
                 textWrap: 'pretty',
               }}
             >
-              We&apos;re a small, independent studio making colorful, considered games for every
-              age — friendly enough that kids as young as five can jump in on their own. No ads,
-              no accounts, no analytics. Nothing to sign up for, nothing tracked.
+              {aboutBody}
             </p>
           </div>
         </section>
@@ -196,7 +213,7 @@ export default function HomePage() {
                   Dice Battles: Color Rush
                 </span>
                 <span style={{ font: `700 14.5px ${fonts.body}`, color: colors.yellowDeepText }}>
-                  Colors, not numbers — quick to learn, fun at any age
+                  {appsCardTagline}
                 </span>
                 <span
                   style={{
@@ -205,7 +222,7 @@ export default function HomePage() {
                     marginTop: 4,
                   }}
                 >
-                  Our first game. More battles are already in the works.
+                  {appsCardNote}
                 </span>
               </div>
               <Link

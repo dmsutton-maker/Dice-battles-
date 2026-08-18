@@ -14,6 +14,7 @@ const fieldInput: React.CSSProperties = {
   border: `1px solid ${colors.fieldBorder}`,
   font: `600 14px ${fonts.body}`,
   background: '#fff',
+  color: colors.ink,
 };
 
 /**

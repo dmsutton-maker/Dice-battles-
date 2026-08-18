@@ -1,17 +1,24 @@
-/* Dice Battles palette, so the site and the game look like one thing. */
+/*
+ * Paper Ship Studio palette — the same tokens the public site uses
+ * (hq/src/components/site/tokens.ts), so the admin and the auth pages
+ * (/login, /password) read as the same product as everything else,
+ * not a leftover dark tool bolted onto a light site.
+ */
 :root {
-  --ink: #1b1430;
-  --panel: #2c2450;
-  --panel-2: #362c62;
-  --line: rgba(255, 255, 255, 0.16);
-  --text: #ffffff;
-  --muted: rgba(255, 255, 255, 0.68);
-  --faint: rgba(255, 255, 255, 0.45);
-  --yellow: #ffe521;
+  --bg: #ffffff;
+  --panel: #f7f5f2;
+  --panel-2: #fef6ee;
+  --line: #ece9e5;
+  --text: #201e1d;
+  --muted: #6b6763;
+  --faint: #a6a29d;
+  --accent: #0088b0;
+  --accent-dark: #006d8c;
+  --yellow: #f2c53d;
   --green: #33cc6b;
   --red: #cc2533;
   --blue: #4b7bff;
-  --orange: #fc8403;
+  --orange: #e0503f;
   --purple: #cc79fc;
   --radius: 16px;
 }
@@ -24,7 +31,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--ink);
+  background: var(--bg);
   color: var(--text);
   font-family: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system,
     'Segoe UI', Roboto, sans-serif;
@@ -33,7 +40,7 @@ body {
 }
 
 a {
-  color: var(--yellow);
+  color: var(--accent);
 }
 
 h1,
@@ -72,7 +79,7 @@ h3 {
 /* --- top bar --- */
 .topbar {
   border-bottom: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--panel);
 }
 
 .topbar-inner {
@@ -108,7 +115,7 @@ h3 {
 
 .topbar nav a:hover,
 .topbar nav a.active {
-  color: var(--yellow);
+  color: var(--accent);
 }
 
 /* --- blocks --- */
@@ -174,7 +181,7 @@ h3 {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.3px;
-  color: #12102a;
+  color: #ffffff;
   white-space: nowrap;
 }
 
@@ -198,7 +205,7 @@ input,
 textarea,
 select {
   width: 100%;
-  background: rgba(0, 0, 0, 0.28);
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 12px;
   color: var(--text);
@@ -210,7 +217,7 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid var(--yellow);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -220,14 +227,14 @@ textarea {
 }
 
 select option {
-  background: var(--panel);
+  background: #ffffff;
 }
 
 button,
 .button {
   display: inline-block;
-  background: var(--yellow);
-  color: #241c40;
+  background: var(--accent);
+  color: #ffffff;
   border: none;
   border-radius: 999px;
   padding: 11px 22px;
@@ -318,8 +325,8 @@ button:disabled {
 
 .notice {
   border: 1px solid var(--line);
-  border-left: 4px solid var(--yellow);
-  background: rgba(255, 229, 33, 0.08);
+  border-left: 4px solid var(--accent);
+  background: rgba(0, 136, 176, 0.08);
   border-radius: 12px;
   padding: 13px 15px;
   margin-bottom: 14px;
@@ -327,7 +334,7 @@ button:disabled {
 
 .notice-bad {
   border-left-color: var(--red);
-  background: rgba(204, 37, 51, 0.12);
+  background: rgba(204, 37, 51, 0.08);
 }
 
 footer.site {

@@ -59,6 +59,7 @@ export async function addIdea(formData: FormData) {
     .insert({
       title,
       detail: String(formData.get('detail') ?? '').trim(),
+      app: String(formData.get('app') ?? 'Dice Battles: Color Rush').trim(),
       category: (formData.get('category') as IdeaCategory) ?? 'game',
       kind,
       priority: Number(formData.get('priority') ?? 3),
@@ -125,6 +126,7 @@ export async function updateIdea(formData: FormData) {
     .update({
       title: String(formData.get('title') ?? '').trim(),
       detail: String(formData.get('detail') ?? '').trim(),
+      app: String(formData.get('app') ?? 'Dice Battles: Color Rush').trim(),
       category: formData.get('category') as IdeaCategory,
       priority: Number(formData.get('priority') ?? 3),
       phase_id: phaseValue === '' ? null : phaseValue,
@@ -340,7 +342,89 @@ export async function markHandled(formData: FormData) {
     .eq('id', String(formData.get('id')));
 
   if (error) throw new Error(error.message);
-  revalidatePath('/admin/inbox');
+  revalidatePath('/admin/support');
+}
+
+/**
+ * Reply to a support message from right here — a real ticket thread,
+ * not "open your own mail app and hope you remember what it was about."
+ *
+ * If the player left an email and an outbound mail service is
+ * connected (RESEND_API_KEY), the reply actually goes out. If not, it's
+ * still saved and visible to the family — just not delivered — and says
+ * so honestly rather than pretending to have sent something it didn't.
+ */
+export async function replyToMessage(formData: FormData) {
+  const member = await requireMember();
+  const admin = supabaseAdmin();
+
+  const messageId = String(formData.get('message_id') ?? '');
+  const body = String(formData.get('body') ?? '').trim();
+  if (!body) throw new Error('Write something before sending.');
+
+  const { data: original, error: fetchError } = await admin
+    .from('messages')
+    .select('*')
+    .eq('id', messageId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!original) throw new Error('That message no longer exists.');
+
+  let delivered = false;
+  let deliveryNote = 'No reply address was given, so this stays here for the family to see.';
+
+  if (original.email) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      deliveryNote = 'Saved here, but not emailed — no outbound email service is connected yet.';
+    } else {
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Paper Ship Studio <support@papershipstudio.com>',
+            to: original.email,
+            subject: `Re: ${original.subject || 'Your message to Paper Ship Studio'}`,
+            text: body,
+          }),
+        });
+        if (res.ok) {
+          delivered = true;
+          deliveryNote = '';
+        } else {
+          const errText = await res.text().catch(() => '');
+          deliveryNote = `Saved here, but the email did not send: ${errText || res.status}`;
+        }
+      } catch (err) {
+        deliveryNote = `Saved here, but the email did not send: ${
+          err instanceof Error ? err.message : 'unknown error'
+        }`;
+      }
+    }
+  }
+
+  const { error: insertError } = await admin.from('message_replies').insert({
+    message_id: messageId,
+    member_id: member.id,
+    body,
+    delivered,
+    delivery_note: deliveryNote,
+  });
+  if (insertError) throw new Error(insertError.message);
+
+  await admin.from('messages').update({ handled: true }).eq('id', messageId);
+
+  await log(
+    null,
+    member.display_name,
+    delivered ? 'replied to a support message and emailed the player' : 'replied to a support message',
+  );
+  revalidatePath(`/admin/support/${messageId}`);
+  revalidatePath('/admin/support');
 }
 
 /**
@@ -453,4 +537,152 @@ export async function invitePerson(formData: FormData) {
   if (error) throw new Error(error.message);
   await log(null, member.display_name, 'invited someone');
   revalidatePath('/admin/people');
+}
+
+/**
+ * Move someone's login to a new address — e.g. switching the family from
+ * personal Gmail addresses to @papershipstudio.com ones. Owner-only,
+ * same as setting someone's password: this changes what someone signs
+ * in with, not something to hand to a form a kid could submit by mistake.
+ *
+ * Three places know an email and all three have to agree: the actual
+ * login (Supabase Auth), the members row, and the allowed_emails gate
+ * that decides who is even allowed to sign in. Their password is not
+ * touched — only the address they use to enter it.
+ */
+export async function updatePersonEmail(formData: FormData) {
+  const member = await requireMember();
+  if (member.role !== 'owner') {
+    throw new Error('Only an owner can change someone’s email.');
+  }
+
+  const oldEmail = String(formData.get('old_email') ?? '').trim().toLowerCase();
+  const newEmail = String(formData.get('new_email') ?? '').trim().toLowerCase();
+  if (!oldEmail || !newEmail) {
+    throw new Error('Both the current and the new email are needed.');
+  }
+  if (oldEmail === newEmail) return;
+
+  const admin = supabaseAdmin();
+
+  const { data: list, error: listError } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+  });
+  if (listError) throw new Error(listError.message);
+
+  const existingAuthUser = list.users.find(
+    (u) => (u.email ?? '').toLowerCase() === oldEmail,
+  );
+  if (existingAuthUser) {
+    const { error } = await admin.auth.admin.updateUserById(existingAuthUser.id, {
+      email: newEmail,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  const { error: memberError } = await admin
+    .from('members')
+    .update({ email: newEmail })
+    .eq('email', oldEmail);
+  if (memberError) throw new Error(memberError.message);
+
+  const { error: allowedError } = await admin
+    .from('allowed_emails')
+    .update({ email: newEmail })
+    .eq('email', oldEmail);
+  if (allowedError) throw new Error(allowedError.message);
+
+  await log(null, member.display_name, 'changed someone’s email', `${oldEmail} → ${newEmail}`);
+  revalidatePath('/admin/people');
+}
+
+/**
+ * The editable text on the public pages — every field here is a row in
+ * site_content, upserted by key. Anyone signed in can edit copy (it is
+ * words, not a decision), same as anyone can add an idea; only actually
+ * approving work stays owner-only.
+ */
+async function setContent(key: string, value: unknown, editor: string) {
+  const admin = supabaseAdmin();
+  const { error } = await admin
+    .from('site_content')
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) throw new Error(error.message);
+  await log(null, editor, 'edited the website copy', key);
+}
+
+/** Blank rows in a repeatable field (a 6th FAQ slot nobody filled in) are dropped, not saved as empty. */
+function collectRows<T extends Record<string, string>>(
+  formData: FormData,
+  count: number,
+  fields: Record<keyof T, string>,
+  requiredField: keyof T,
+): T[] {
+  const rows: T[] = [];
+  for (let i = 0; i < count; i++) {
+    const row = {} as T;
+    for (const key of Object.keys(fields) as (keyof T)[]) {
+      row[key] = String(formData.get(`${fields[key]}_${i}`) ?? '').trim() as T[typeof key];
+    }
+    if (row[requiredField] !== '') rows.push(row);
+  }
+  return rows;
+}
+
+export async function updateHomeContent(formData: FormData) {
+  const member = await requireMember();
+  await Promise.all([
+    setContent('home.hero_tagline', String(formData.get('hero_tagline') ?? '').trim(), member.display_name),
+    setContent('home.hero_subhead', String(formData.get('hero_subhead') ?? '').trim(), member.display_name),
+    setContent('home.about_body', String(formData.get('about_body') ?? '').trim(), member.display_name),
+    setContent('home.apps_card_tagline', String(formData.get('apps_card_tagline') ?? '').trim(), member.display_name),
+    setContent('home.apps_card_note', String(formData.get('apps_card_note') ?? '').trim(), member.display_name),
+  ]);
+  revalidatePath('/');
+  revalidatePath('/admin/content');
+}
+
+export async function updateDiceBattlesContent(formData: FormData) {
+  const member = await requireMember();
+  const highlights = collectRows(formData, 4, { title: 'highlight_title', body: 'highlight_body' }, 'title');
+  const faq = collectRows(formData, 6, { q: 'faq_q', a: 'faq_a' }, 'q');
+
+  await Promise.all([
+    setContent('dice_battles.description', String(formData.get('description') ?? '').trim(), member.display_name),
+    setContent('dice_battles.cta_subhead', String(formData.get('cta_subhead') ?? '').trim(), member.display_name),
+    setContent('dice_battles.highlights', highlights, member.display_name),
+    setContent('dice_battles.faq', faq, member.display_name),
+  ]);
+  revalidatePath('/apps/dice-battles-color-rush');
+  revalidatePath('/admin/content');
+}
+
+export async function updateSupportContent(formData: FormData) {
+  const member = await requireMember();
+  const gameFaq = collectRows(formData, 5, { q: 'game_faq_q', a: 'game_faq_a' }, 'q');
+
+  await Promise.all([
+    setContent('support.intro', String(formData.get('intro') ?? '').trim(), member.display_name),
+    setContent('support.game_faq', gameFaq, member.display_name),
+  ]);
+  revalidatePath('/support');
+  revalidatePath('/admin/content');
+}
+
+export async function updatePrivacyContent(formData: FormData) {
+  const member = await requireMember();
+  const sections = collectRows(formData, 8, { heading: 'section_heading', body: 'section_body' }, 'heading');
+  await setContent('privacy.sections', sections, member.display_name);
+  revalidatePath('/privacy');
+  revalidatePath('/admin/content');
+}
+
+export async function updateTermsContent(formData: FormData) {
+  const member = await requireMember();
+  const sections = collectRows(formData, 8, { heading: 'section_heading', body: 'section_body' }, 'heading');
+  await setContent('terms.sections', sections, member.display_name);
+  revalidatePath('/terms');
+  revalidatePath('/admin/content');
 }

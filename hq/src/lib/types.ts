@@ -49,6 +49,8 @@ export interface Idea {
   id: string;
   title: string;
   detail: string;
+  /** Which app this is about. 'Studio-wide' for the website, the backend, or anything not tied to one game. */
+  app: string;
   category: IdeaCategory;
   kind: IdeaKind;
   status: IdeaStatus;
@@ -188,6 +190,14 @@ export const KIND_LABELS: Record<IdeaKind, string> = {
   bug: '🐞 Something is broken',
   feature: '💡 A new idea',
 };
+
+/**
+ * Every app the studio makes, plus a catch-all for work that isn't
+ * about one game (the website, the backend, the studio itself). Add a
+ * name here the day a second game actually ships — not before, so the
+ * dropdown never lists a game that doesn't exist yet.
+ */
+export const APP_OPTIONS: string[] = ['Dice Battles: Color Rush', 'Studio-wide'];
 
 export const STATUS_ORDER: IdeaStatus[] = [
   'building',

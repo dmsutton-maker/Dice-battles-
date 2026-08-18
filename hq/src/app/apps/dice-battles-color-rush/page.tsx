@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
 import styles from '../../site.module.css';
+import { faqList, getSiteContent, highlightList, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Dice Battles: Color Rush — Paper Ship Studio',
@@ -11,43 +12,35 @@ export const metadata: Metadata = {
     'Roll color dice, march your army across the board, and take the other castle. Fast, colorful, and simple enough that a five-year-old can jump right in.',
 };
 
-const HIGHLIGHTS = [
+export const dynamic = 'force-dynamic';
+
+const HIGHLIGHT_TINTS = [colors.cyanTint, colors.cream, colors.orangeTint, colors.yellowTint];
+
+const DEFAULT_HIGHLIGHTS = [
   {
-    bg: colors.cyanTint,
     title: 'Colors, not numbers',
     body: "Dice faces are colors, so kids who can't read numbers yet can still play — and win — on their own.",
   },
   {
-    bg: colors.cream,
     title: 'Pass-and-play battles',
     body: 'Two players share one phone — the board flips so each side always faces its own castle. No wifi, no second device.',
   },
   {
-    bg: colors.orangeTint,
     title: 'Quick castle battles',
     body: 'Roll, march, and clash — a full battle wraps up in a few minutes, perfect for a quick round or three in a row.',
   },
   {
-    bg: colors.yellowTint,
     title: 'Nothing to sign up for',
     body: 'No ads, no accounts, and no analytics — you download it, and that’s the whole relationship.',
   },
 ];
 
-const FAQS = [
+const DEFAULT_FAQS = [
   { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
   { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
   {
     q: 'Is any data collected about my child?',
-    a: (
-      <>
-        No analytics or tracking of any kind. See our{' '}
-        <Link href="/privacy" style={{ color: colors.cyan }}>
-          Privacy Policy
-        </Link>{' '}
-        for the full picture.
-      </>
-    ),
+    a: 'No analytics or tracking of any kind. See our Privacy Policy for the full picture.',
   },
   {
     q: 'Can my child play before they can read?',
@@ -59,7 +52,21 @@ const FAQS = [
   },
 ];
 
-export default function DiceBattlesAppPage() {
+export default async function DiceBattlesAppPage() {
+  const content = await getSiteContent();
+  const description = text(
+    content,
+    'dice_battles.description',
+    'Roll color dice, march your army across the board, and take the other castle. Fast, colorful, and simple enough that a five-year-old can jump right in.',
+  );
+  const ctaSubhead = text(
+    content,
+    'dice_battles.cta_subhead',
+    'We read every message ourselves — usually pretty quickly.',
+  );
+  const highlights = highlightList(content, 'dice_battles.highlights', DEFAULT_HIGHLIGHTS);
+  const faqs = faqList(content, 'dice_battles.faq', DEFAULT_FAQS);
+
   return (
     <SitePage active="Apps">
       <main>
@@ -97,8 +104,7 @@ export default function DiceBattlesAppPage() {
                   textWrap: 'pretty',
                 }}
               >
-                Roll color dice, march your army across the board, and take the other castle. Fast,
-                colorful, and simple enough that a five-year-old can jump right in.
+                {description}
               </p>
               <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
                 <span style={{ padding: '8px 16px', background: colors.cyanTint, color: colors.cyan, font: `700 12.5px ${fonts.body}`, borderRadius: 999 }}>
@@ -145,8 +151,8 @@ export default function DiceBattlesAppPage() {
             Highlights
           </span>
           <div className="psg-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20, marginTop: 20 }}>
-            {HIGHLIGHTS.map((h) => (
-              <div key={h.title} style={{ padding: 26, borderRadius: 18, background: h.bg, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {highlights.map((h, i) => (
+              <div key={h.title} style={{ padding: 26, borderRadius: 18, background: HIGHLIGHT_TINTS[i % HIGHLIGHT_TINTS.length], display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span style={{ font: `800 17px ${fonts.heading}`, color: colors.ink }}>{h.title}</span>
                 <span style={{ font: `600 14px/1.55 ${fonts.body}`, color: colors.body }}>{h.body}</span>
               </div>
@@ -162,7 +168,7 @@ export default function DiceBattlesAppPage() {
             FAQ
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20, maxWidth: 720 }}>
-            {FAQS.map((item) => (
+            {faqs.map((item) => (
               <details key={item.q} className={styles.details} style={{ padding: '18px 22px', borderRadius: 14, background: colors.offWhite }}>
                 <summary style={{ font: `700 15px ${fonts.body}`, color: colors.ink, cursor: 'pointer' }}>{item.q}</summary>
                 <p style={{ font: `600 14px/1.6 ${fonts.body}`, color: colors.secondary, margin: '10px 0 0' }}>{item.a}</p>
@@ -191,7 +197,7 @@ export default function DiceBattlesAppPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ font: `800 18px ${fonts.heading}`, color: '#fff' }}>Report a problem, or just say hi</span>
               <span style={{ font: `600 14px/1.5 ${fonts.body}`, color: 'rgba(255,255,255,0.7)' }}>
-                We read every message ourselves — usually pretty quickly.
+                {ctaSubhead}
               </span>
             </div>
             <a

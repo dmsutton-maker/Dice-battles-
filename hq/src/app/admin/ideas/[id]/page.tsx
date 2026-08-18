@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { currentMember, supabaseServer } from '@/lib/supabase/server';
 import {
+  APP_OPTIONS,
   CATEGORY_LABELS,
   Comment,
   Idea,
@@ -67,7 +68,7 @@ export default async function IdeaPage({
           </span>
         </div>
         <p className="faint" style={{ marginTop: 6 }}>
-          {item.kind === 'bug' ? '🐞 Bug' : '💡 Feature'} ·{' '}
+          {item.app} · {item.kind === 'bug' ? '🐞 Bug' : '💡 Feature'} ·{' '}
           {CATEGORY_LABELS[item.category]} · {PRIORITY_LABELS[item.priority]}
           {author ? ` · from ${author.display_name}` : ''}
           {item.shipped_version ? ` · shipped in ${item.shipped_version}` : ''}
@@ -171,6 +172,14 @@ export default async function IdeaPage({
             <input id="title" name="title" defaultValue={item.title} required />
             <label htmlFor="detail">DETAIL</label>
             <textarea id="detail" name="detail" defaultValue={item.detail} />
+            <label htmlFor="app">WHICH APP</label>
+            <select id="app" name="app" defaultValue={item.app}>
+              {APP_OPTIONS.map((app) => (
+                <option key={app} value={app}>
+                  {app}
+                </option>
+              ))}
+            </select>
             <div className="grid">
               <div>
                 <label htmlFor="category">KIND</label>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
+import { getSiteContent, sectionList } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Paper Ship Studio',
@@ -8,7 +9,9 @@ export const metadata: Metadata = {
     "Paper Ship Studio doesn't collect personal information, show ads, or use analytics or tracking tools of any kind, across every app we publish.",
 };
 
-const SECTIONS: { heading: string; body: React.ReactNode }[] = [
+export const dynamic = 'force-dynamic';
+
+const DEFAULT_SECTIONS = [
   {
     heading: 'The short version',
     body: "We don't collect personal information, we don't show ads, and we don't use analytics or tracking tools of any kind. There are no accounts to create and no data leaves your device because of our apps.",
@@ -31,19 +34,14 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
   },
   {
     heading: 'Contact us',
-    body: (
-      <>
-        Questions about this policy or how a specific app works can go to{' '}
-        <a href="mailto:hello@papershipstudio.com" style={{ color: colors.cyan }}>
-          hello@papershipstudio.com
-        </a>
-        .
-      </>
-    ),
+    body: 'Questions about this policy or how a specific app works can go to hello@papershipstudio.com.',
   },
 ];
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const content = await getSiteContent();
+  const sections = sectionList(content, 'privacy.sections', DEFAULT_SECTIONS);
+
   return (
     <SitePage active="none">
       <section
@@ -65,7 +63,7 @@ export default function PrivacyPage() {
             including Dice Battles: Color Rush.
           </p>
 
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <div key={s.heading}>
               <h2 style={{ font: `700 19px ${fonts.heading}`, color: colors.ink, margin: '0 0 8px' }}>{s.heading}</h2>
               <p style={{ margin: 0 }}>{s.body}</p>

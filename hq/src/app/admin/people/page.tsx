@@ -4,6 +4,7 @@ import {
   changeMyPassword,
   invitePerson,
   setSomeonesPassword,
+  updatePersonEmail,
 } from '../actions';
 
 interface Invite {
@@ -116,6 +117,47 @@ export default async function PeoplePage() {
             </div>
             <div style={{ marginTop: 14 }}>
               <button type="submit">Set their password</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="card">
+          <h3>Change someone&apos;s email</h3>
+          <p className="faint" style={{ marginTop: -4 }}>
+            Moves their login to a new address — for switching the family
+            from personal addresses to @papershipstudio.com ones. Their
+            password stays the same; only what they sign in with changes.
+          </p>
+          <form action={updatePersonEmail}>
+            <div className="grid">
+              <div>
+                <label htmlFor="old_email">WHO</label>
+                <select id="old_email" name="old_email" required defaultValue="">
+                  <option value="" disabled>
+                    — choose someone —
+                  </option>
+                  {((invites ?? []) as Invite[]).map((invite) => (
+                    <option key={invite.email} value={invite.email}>
+                      {invite.display_name} — {invite.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="new_email">NEW EMAIL</label>
+                <input
+                  id="new_email"
+                  name="new_email"
+                  type="email"
+                  required
+                  placeholder="marc@papershipstudio.com"
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <button type="submit">Change their email</button>
             </div>
           </form>
         </div>
