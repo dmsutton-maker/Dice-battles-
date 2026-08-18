@@ -1,13 +1,20 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Dice Battles: Color Rush',
+  title: 'Paper Ship Studio',
   description:
-    'A frantic two-dice colour race for iPhone. Match both dice to a colour, free that prisoner, first to six wins.',
+    'Paper Ship Studio is an independent studio building simple, well-made games for players of any age — starting with Dice Battles: Color Rush.',
 };
 
+/**
+ * Deliberately bare: the public marketing pages (/, /apps, /support,
+ * /privacy, /terms) bring their own header and footer via SitePage, and
+ * the private board under /hq brings its own nav via hq/layout.tsx. This
+ * root layout only owns the one thing every route needs — globals.css,
+ * which the internal board and the auth pages (/login, /password) still
+ * depend on for their dark theme.
+ */
 export default function RootLayout({
   children,
 }: {
@@ -15,35 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <header className="topbar">
-          <div className="topbar-inner">
-            <Link href="/" className="brand">
-              ⚔️ DICE BATTLES
-            </Link>
-            <nav>
-              <Link href="/">Home</Link>
-              <Link href="/support">Support</Link>
-              <Link href="/privacy">Privacy</Link>
-              <Link href="/terms">Terms</Link>
-              <Link href="/hq">HQ</Link>
-            </nav>
-          </div>
-        </header>
-        {children}
-        <footer className="site">
-          <div>
-            © {new Date().getFullYear()} David Sutton, operating as{' '}
-            <strong>Paper Ship Studio</strong>. Dice Battles: Color Rush is
-            an independent game, made by one family.
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/support">Support</Link>
-          </div>
-        </footer>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

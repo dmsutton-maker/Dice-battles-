@@ -1,115 +1,96 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SitePage } from '@/components/site/SitePage';
+import { colors, fonts } from '@/components/site/tokens';
 
 export const metadata: Metadata = {
-  title: 'Terms of Use — Dice Battles: Color Rush',
-  description: 'The terms you agree to by playing Dice Battles: Color Rush.',
+  title: 'Terms of Use — Paper Ship Studio',
+  description: 'The terms that cover your use of any app published by Paper Ship Studio.',
 };
 
-const UPDATED = '17 August 2026';
-
-/**
- * Terms of use.
- *
- * Apple's own standard licence (the "Licensed Application End User
- * Licence Agreement") applies to every App Store app unless the developer
- * supplies their own. This page is the plain-English version of the
- * arrangement plus the parts specific to this game — mainly that David
- * owns it, and what in-game coins are and are not.
- */
 export default function TermsPage() {
   return (
-    <main className="wrap wrap-narrow policy">
-      <h1>Terms of Use</h1>
-      <p className="faint">Last updated: {UPDATED}</p>
+    <SitePage active="none">
+      <section
+        className="psg-wrap"
+        style={{ padding: '32px 56px 90px', maxWidth: 720, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
+      >
+        <h1 style={{ font: `800 34px/1.2 ${fonts.heading}`, margin: '0 0 6px', color: colors.ink }}>
+          Terms of Use
+        </h1>
+        <p style={{ font: `600 13px ${fonts.body}`, color: colors.muted, margin: '0 0 32px' }}>
+          Last updated August 2026 · Applies to all Paper Ship Studio apps
+        </p>
 
-      <h2>The deal</h2>
-      <p>
-        Dice Battles: Color Rush is made by <strong>Paper Ship Studio</strong>,
-        David Sutton&apos;s studio. Downloading it gives you a personal,
-        non-exclusive licence to play it on devices you own or control. It
-        does not transfer ownership of the game to you.
-      </p>
-      <p>
-        Because the app comes from the App Store, Apple&apos;s standard{' '}
-        <a
-          href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          Licensed Application End User Licence Agreement
-        </a>{' '}
-        also applies. Where these terms and Apple&apos;s conflict on a
-        point Apple&apos;s covers, Apple&apos;s wins.
-      </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, font: `400 15.5px/1.7 ${fonts.body}`, color: colors.body }}>
+          <p>
+            These terms cover your use of any app published by Paper Ship Studio, including Dice
+            Battles: Color Rush. Paper Ship Studio is currently operated by its owner as an
+            individual, trading under the Paper Ship Studio name, and is not yet a registered
+            company. By downloading or using our apps, you agree to these terms.
+          </p>
 
-      <h2>Who owns the game</h2>
-      <p>
-        The game, its rules, its name, its artwork, its music arrangement
-        and its code belong to David Sutton, who invented the original
-        physical game this is based on and makes it under the name Paper
-        Ship Studio. You may not copy it, sell it, take it apart to rebuild
-        it, or publish your own version of it.
-      </p>
-      <p>
-        Recording or streaming your own play — videos, screenshots, showing
-        friends — is welcome and needs no permission.
-      </p>
+          <div>
+            <h2 style={{ font: `700 19px ${fonts.heading}`, color: colors.ink, margin: '0 0 8px' }}>Using our apps</h2>
+            <p style={{ margin: 0 }}>
+              Our apps are provided for personal, non-commercial entertainment. You&apos;re
+              welcome to play, and to let your family and friends play, for as long as you like.
+            </p>
+          </div>
 
-      <h2>Coins, trophies and anything you unlock</h2>
-      <p>
-        Coins and trophies are part of the game, not property and not
-        money. They have no cash value, cannot be exchanged for money, and
-        cannot be transferred to another player or another device. They
-        live in the app&apos;s storage on your device, so deleting the app
-        deletes them, and there is no way to restore them afterwards.
-      </p>
-      <p>
-        If paid items are ever offered, purchases will go through
-        Apple&apos;s App Store and Apple&apos;s refund rules apply — refund
-        requests go to Apple, not to us, because we never see your payment
-        details.
-      </p>
+          <div>
+            <h2 style={{ font: `700 19px ${fonts.heading}`, color: colors.ink, margin: '0 0 8px' }}>
+              No accounts, your device, your data
+            </h2>
+            <p style={{ margin: 0 }}>
+              Our apps don&apos;t require an account and don&apos;t collect personal data (see our{' '}
+              <Link href="/privacy" style={{ color: colors.cyan }}>
+                Privacy Policy
+              </Link>
+              ). Any game progress is stored on your own device and is yours to keep or delete.
+            </p>
+          </div>
 
-      <h2>Fair use of the game</h2>
-      <p>Please do not:</p>
-      <ul>
-        <li>modify the app or use it with tools intended to cheat;</li>
-        <li>
-          try to break, overload, or gain unauthorised access to any part of
-          the game or this website;
-        </li>
-        <li>redistribute the app or its files.</li>
-      </ul>
+          <div>
+            <h2 style={{ font: `700 19px ${fonts.heading}`, color: colors.ink, margin: '0 0 8px' }}>
+              Intellectual property
+            </h2>
+            <p style={{ margin: 0 }}>
+              The Paper Ship Studio name, logo, and the design, artwork, and code of our apps
+              belong to Paper Ship Studio. You may not copy, redistribute, or resell any part of
+              our apps without our permission.
+            </p>
+          </div>
 
-      <h2>No promises we cannot keep</h2>
-      <p>
-        This is a game made by one family, provided as it is. We cannot
-        promise it is free of bugs, that it will run on every device, or
-        that it will stay available forever. To the fullest extent the law
-        allows, we are not liable for any loss arising from using it — and
-        nothing here removes rights the law gives you that cannot be
-        removed by agreement.
-      </p>
+          <div>
+            <h2 style={{ font: `700 19px ${fonts.heading}`, color: colors.ink, margin: '0 0 8px' }}>No warranty</h2>
+            <p style={{ margin: 0 }}>
+              We build our apps carefully, but they&apos;re provided &quot;as is,&quot; without
+              warranties of any kind. We&apos;re not liable for any issues arising from your use
+              of them, to the extent permitted by law.
+            </p>
+          </div>
 
-      <h2>Changes</h2>
-      <p>
-        These terms may change as the game grows. The date at the top will
-        change with them. Continuing to play after a change means the new
-        terms apply.
-      </p>
+          <div>
+            <h2 style={{ font: `700 19px ${fonts.heading}`, color: colors.ink, margin: '0 0 8px' }}>Changes</h2>
+            <p style={{ margin: 0 }}>
+              We may update these terms as the studio grows — for example, if we incorporate or
+              add new apps. We&apos;ll update the date at the top when we do.
+            </p>
+          </div>
 
-      <h2>Privacy</h2>
-      <p>
-        Handled separately and in more detail on the{' '}
-        <Link href="/privacy">privacy policy</Link>. In short: the game
-        collects nothing.
-      </p>
-
-      <h2>Contact</h2>
-      <p>
-        Paper Ship Studio — <Link href="/support">the contact form</Link>
-      </p>
-    </main>
+          <div>
+            <h2 style={{ font: `700 19px ${fonts.heading}`, color: colors.ink, margin: '0 0 8px' }}>Contact us</h2>
+            <p style={{ margin: 0 }}>
+              Questions about these terms can go to{' '}
+              <a href="mailto:hello@papershipstudio.com" style={{ color: colors.cyan }}>
+                hello@papershipstudio.com
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+      </section>
+    </SitePage>
   );
 }

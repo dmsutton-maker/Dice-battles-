@@ -1,86 +1,129 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
+import { SitePage } from '@/components/site/SitePage';
+import { colors, fonts } from '@/components/site/tokens';
+import styles from '../site.module.css';
 import { ContactForm } from './ContactForm';
 
 export const metadata: Metadata = {
-  title: 'Support — Dice Battles: Color Rush',
-  description:
-    'Help with Dice Battles: Color Rush, and how to reach a real person about it.',
+  title: 'Support — Paper Ship Studio',
+  description: "We're a small studio, so support is just us — reading every message ourselves.",
 };
 
-/**
- * The support page. Apple requires a working support URL on every App
- * Store listing, and it has to be a page a player can genuinely get help
- * from.
- *
- * The way to reach us is the form, not an address: this game is made by
- * one family on their own accounts, and an email address printed on a
- * public page is scraped within days.
- */
+const GAME_FAQS = [
+  { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
+  { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
+  {
+    q: 'Can my child play before they can read?',
+    a: 'Yes — every dice face is a color, not a number, so pre-readers can play the whole game on their own.',
+  },
+];
+
 export default function SupportPage() {
   return (
-    <main className="wrap wrap-narrow policy">
-      <h1>Support</h1>
-      <p>
-        Something wrong, or an idea for the game? Send it here. A person
-        reads every message — this game is made by one family, so it may
-        take a day or two, but you will get a reply.
-      </p>
+    <SitePage active="Support">
+      <main>
+        <section
+          className="psg-wrap"
+          style={{ padding: '32px 56px 0', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
+        >
+          <h1 style={{ font: `800 36px/1.2 ${fonts.heading}`, margin: 0, color: colors.ink }}>Support</h1>
+          <p style={{ font: `600 15.5px/1.6 ${fonts.body}`, color: colors.secondary, margin: '12px 0 0' }}>
+            We&apos;re a small studio, so support is just us — reading every message ourselves.
+          </p>
+        </section>
 
-      <ContactForm />
+        <section
+          className="psg-wrap"
+          style={{ padding: '32px 56px 0', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
+        >
+          <ContactForm />
+        </section>
 
-      <h2>Common questions</h2>
+        <section
+          className="psg-wrap"
+          style={{ padding: '56px 56px 0', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
+        >
+          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orange }}>
+            FAQ by game
+          </span>
+          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Image
+                  src="/images/dice-battles-icon.png"
+                  alt="Dice Battles: Color Rush icon"
+                  width={36}
+                  height={36}
+                  style={{ borderRadius: 9, objectFit: 'cover' }}
+                />
+                <span style={{ font: `800 17px ${fonts.heading}`, color: colors.ink }}>Dice Battles: Color Rush</span>
+              </div>
+              {GAME_FAQS.map((item) => (
+                <details
+                  key={item.q}
+                  className={styles.details}
+                  style={{ padding: '16px 20px', borderRadius: 14, background: colors.offWhite }}
+                >
+                  <summary style={{ font: `700 14.5px ${fonts.body}`, color: colors.ink, cursor: 'pointer' }}>
+                    {item.q}
+                  </summary>
+                  <p style={{ font: `600 13.5px/1.6 ${fonts.body}`, color: colors.secondary, margin: '10px 0 0' }}>
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+              <Link
+                href="/apps/dice-battles-color-rush"
+                className={styles.link}
+                style={{ font: `700 13px ${fonts.body}`, color: colors.cyan, alignSelf: 'flex-start' }}
+              >
+                Full FAQ on the app page &rarr;
+              </Link>
+            </div>
+            <div
+              style={{
+                padding: 20,
+                borderRadius: 14,
+                border: `2px dashed ${colors.hairline}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <span style={{ font: `600 13.5px ${fonts.body}`, color: colors.muted }}>
+                Future games will get their own section here.
+              </span>
+            </div>
+          </div>
+        </section>
 
-      <h3>My trophies and coins disappeared.</h3>
-      <p>
-        Everything the game remembers is stored on the device itself and
-        never sent to a server. Deleting the app, or moving to a new phone,
-        starts you fresh — there is no account to restore from. This is the
-        cost of the game collecting nothing about you.
-      </p>
-
-      <h3>The dice feel wrong / a roll got stuck.</h3>
-      <p>
-        Rolls are real physics, so a die can occasionally end up somewhere
-        odd. The game gives up on a stuck roll after a few seconds and
-        calls it. If you are seeing it often, please write in and say which
-        device you are on.
-      </p>
-
-      <h3>Is there a way to play against my friend?</h3>
-      <p>
-        Two of you can play right now on one device — pick{' '}
-        <strong>Split Screen</strong> on the home screen. Playing against
-        someone on a different phone is planned, not built.
-      </p>
-
-      <h3>Can my colour-blind child play?</h3>
-      <p>
-        Yes. The six dice colours were chosen and checked to stay
-        distinguishable under the common forms of colour blindness, and
-        every colour is also named out loud by the announcer.
-      </p>
-
-      <h3>How do I turn the sound down?</h3>
-      <p>
-        The ⚙️ Settings button on the home screen has separate sliders for
-        everything, music, sound effects and the announcer. Sliding one all
-        the way down switches that sound off completely.
-      </p>
-
-      <h3>The game will not start / it closes straight away.</h3>
-      <p>
-        If the game shows a screen saying it could not start, send us what
-        it says using the form above — that text names the fault exactly
-        and is the fastest way to get it fixed.
-      </p>
-
-      <h3>Does the game collect anything about my child?</h3>
-      <p>
-        No. There is no account, no login, no analytics, no advertising and
-        no chat. The details are on the{' '}
-        <Link href="/privacy">privacy policy</Link>.
-      </p>
-    </main>
+        <section
+          className="psg-wrap"
+          style={{ padding: '56px 56px 90px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
+        >
+          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orange }}>
+            Policies
+          </span>
+          <div style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            <Link
+              href="/privacy"
+              className={styles.link}
+              style={{ padding: '12px 20px', borderRadius: 999, background: colors.cyanTint, color: colors.cyan, font: `800 13.5px ${fonts.body}` }}
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              className={styles.link}
+              style={{ padding: '12px 20px', borderRadius: 999, background: colors.cream, color: colors.yellowDeepText2, font: `800 13.5px ${fonts.body}` }}
+            >
+              Terms of Use
+            </Link>
+          </div>
+        </section>
+      </main>
+    </SitePage>
   );
 }

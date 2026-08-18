@@ -1,7 +1,20 @@
 'use client';
 
 import { useActionState } from 'react';
+import { colors, fonts } from '@/components/site/tokens';
+import siteStyles from '../site.module.css';
 import { sendMessage, type ContactResult } from './actions';
+
+const TOPICS = ['Report a problem', 'Question about a game', 'Feedback or idea', 'Something else'];
+
+const fieldLabel: React.CSSProperties = { font: `700 13px ${fonts.body}`, color: colors.ink };
+const fieldInput: React.CSSProperties = {
+  padding: '12px 14px',
+  borderRadius: 10,
+  border: `1px solid ${colors.fieldBorder}`,
+  font: `600 14px ${fonts.body}`,
+  background: '#fff',
+};
 
 /**
  * The contact form. No email address appears anywhere on the public site
@@ -16,58 +29,68 @@ export function ContactForm() {
 
   if (result?.ok) {
     return (
-      <div className="notice">
-        <strong>Message sent.</strong>
-        <p style={{ margin: '6px 0 0' }}>{result.message}</p>
+      <div style={{ padding: 32, borderRadius: 20, background: colors.offWhite }}>
+        <p style={{ font: `800 15px ${fonts.body}`, color: colors.ink, margin: 0 }}>Message sent.</p>
+        <p style={{ font: `600 14px/1.6 ${fonts.body}`, color: colors.secondary, margin: '6px 0 0' }}>
+          {result.message}
+        </p>
       </div>
     );
   }
 
   return (
-    <form action={action} className="card">
-      <div className="grid">
-        <div>
-          <label htmlFor="name">YOUR NAME</label>
-          <input id="name" name="name" maxLength={80} placeholder="Optional" />
-        </div>
-        <div>
-          <label htmlFor="email">EMAIL — so we can reply</label>
+    <form
+      action={action}
+      style={{ padding: 32, borderRadius: 20, background: colors.offWhite, display: 'flex', flexDirection: 'column', gap: 16 }}
+    >
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <label style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={fieldLabel}>Name</span>
           <input
-            id="email"
-            name="email"
+            className={siteStyles.field}
+            type="text"
+            name="name"
+            maxLength={80}
+            placeholder="Your name"
+            style={fieldInput}
+          />
+        </label>
+        <label style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={fieldLabel}>Email</span>
+          <input
+            className={siteStyles.field}
             type="email"
+            name="email"
             maxLength={160}
             placeholder="you@example.com"
+            style={fieldInput}
           />
-        </div>
-        <div>
-          <label htmlFor="device">WHICH DEVICE?</label>
-          <input
-            id="device"
-            name="device"
-            maxLength={80}
-            placeholder="iPhone 15, iPad…"
-          />
-        </div>
+        </label>
       </div>
 
-      <label htmlFor="subject">WHAT IS IT ABOUT?</label>
-      <input
-        id="subject"
-        name="subject"
-        maxLength={120}
-        placeholder="A bug, an idea, a question…"
-      />
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span style={fieldLabel}>What&apos;s this about?</span>
+        <select className={siteStyles.field} name="subject" style={fieldInput} defaultValue={TOPICS[0]}>
+          {TOPICS.map((topic) => (
+            <option key={topic} value={topic}>
+              {topic}
+            </option>
+          ))}
+        </select>
+      </label>
 
-      <label htmlFor="body">YOUR MESSAGE</label>
-      <textarea
-        id="body"
-        name="body"
-        required
-        maxLength={4000}
-        style={{ minHeight: 130 }}
-        placeholder="What happened, and what you expected instead. The more detail the better."
-      />
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span style={fieldLabel}>Message</span>
+        <textarea
+          className={siteStyles.field}
+          name="body"
+          required
+          rows={5}
+          maxLength={4000}
+          placeholder="Tell us what's going on..."
+          style={{ ...fieldInput, resize: 'vertical' }}
+        />
+      </label>
 
       {/* Hidden from people, catnip to bots. Anything typed here is a bot. */}
       <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px' }}>
@@ -76,22 +99,33 @@ export function ContactForm() {
       </div>
 
       {result && !result.ok && (
-        <div className="notice notice-bad" style={{ marginTop: 14 }}>
-          {result.message}
-        </div>
+        <p style={{ font: `700 13.5px ${fonts.body}`, color: colors.orangeDeep, margin: 0 }}>{result.message}</p>
       )}
 
-      <div style={{ marginTop: 16 }}>
-        <button type="submit" disabled={pending}>
-          {pending ? 'Sending…' : 'Send message'}
-        </button>
-      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className={siteStyles.pillButton}
+        style={{
+          alignSelf: 'flex-start',
+          padding: '13px 26px',
+          background: colors.ink,
+          color: '#fff',
+          font: `800 14px ${fonts.body}`,
+          borderRadius: 999,
+          border: 'none',
+          cursor: pending ? 'default' : 'pointer',
+          opacity: pending ? 0.6 : 1,
+        }}
+      >
+        {pending ? 'Sending…' : 'Send message'}
+      </button>
 
-      <p className="faint" style={{ marginTop: 12, marginBottom: 0 }}>
-        Your message and, if you give one, your email address are stored so
-        we can read and reply. Nothing else, and nothing is passed on to
-        anyone.
-      </p>
+      <span style={{ font: `600 12.5px ${fonts.body}`, color: colors.muted }}>
+        We read every message ourselves — usually pretty quickly. Your message and, if you give
+        one, your email address are stored so we can read and reply. Nothing else, and nothing
+        is passed on to anyone.
+      </span>
     </form>
   );
 }
