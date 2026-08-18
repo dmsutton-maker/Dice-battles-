@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { currentMember } from '@/lib/supabase/server';
-import { changeMyPassword } from '../hq/actions';
+import { changeMyPassword } from '../admin/actions';
 
 export const metadata = {
   title: 'Choose a password — Dice Battles HQ',
@@ -11,8 +11,8 @@ export const metadata = {
  * The wall in front of the HQ for anyone still using a password somebody
  * else chose for them.
  *
- * Deliberately its own route rather than a page inside /hq: the HQ
- * layout redirects here, so if this lived under /hq it would redirect to
+ * Deliberately its own route rather than a page inside /admin: the HQ
+ * layout redirects here, so if this lived under /admin it would redirect to
  * itself forever. There is no navigation and no way past it except
  * setting a password.
  */
@@ -20,7 +20,7 @@ export default async function PasswordPage() {
   const member = await currentMember();
   if (!member) redirect('/login?next=/password');
   // Already sorted — nothing to do here.
-  if (!member.must_change_password) redirect('/hq');
+  if (!member.must_change_password) redirect('/admin');
 
   return (
     <main className="wrap wrap-narrow">

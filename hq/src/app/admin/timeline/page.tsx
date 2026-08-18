@@ -75,7 +75,7 @@ export default async function TimelinePage() {
             {inPhase.map((idea) => (
               <Link
                 key={idea.id}
-                href={`/hq/ideas/${idea.id}`}
+                href={`/admin/ideas/${idea.id}`}
                 className="idea"
                 style={{ borderLeftColor: STATUS_COLORS[idea.status] }}
               >
@@ -129,7 +129,7 @@ export default async function TimelinePage() {
           {unscheduled.map((idea) => (
             <Link
               key={idea.id}
-              href={`/hq/ideas/${idea.id}`}
+              href={`/admin/ideas/${idea.id}`}
               className="idea"
               style={{ borderLeftColor: STATUS_COLORS[idea.status] }}
             >

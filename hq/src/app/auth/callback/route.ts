@@ -9,7 +9,7 @@ import { supabaseServer } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/hq';
+  const next = searchParams.get('next') ?? '/admin';
 
   if (code) {
     const supabase = await supabaseServer();
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       // Only ever redirect inside this site — an open redirect here would
       // turn our own login email into a link to anywhere.
-      const target = next.startsWith('/') ? next : '/hq';
+      const target = next.startsWith('/') ? next : '/admin';
       return NextResponse.redirect(`${origin}${target}`);
     }
     return NextResponse.redirect(

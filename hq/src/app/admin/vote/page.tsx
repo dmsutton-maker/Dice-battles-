@@ -111,7 +111,7 @@ export default async function VotesPage() {
         return (
           <Link
             key={proposal.id}
-            href={`/hq/vote/${proposal.id}`}
+            href={`/admin/vote/${proposal.id}`}
             className="idea"
             style={{
               borderLeftColor:

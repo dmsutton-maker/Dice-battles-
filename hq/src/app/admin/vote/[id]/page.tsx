@@ -53,7 +53,7 @@ export default async function VotePage({
 
   return (
     <>
-      <Link href="/hq/vote" className="faint">
+      <Link href="/admin/vote" className="faint">
         ← back to the votes
       </Link>
 

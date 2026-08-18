@@ -46,7 +46,7 @@ export default async function SchedulePage() {
   const row = (idea: Idea, note?: string) => (
     <Link
       key={idea.id}
-      href={`/hq/ideas/${idea.id}`}
+      href={`/admin/ideas/${idea.id}`}
       className="idea"
       style={{ borderLeftColor: STATUS_COLORS[idea.status] }}
     >

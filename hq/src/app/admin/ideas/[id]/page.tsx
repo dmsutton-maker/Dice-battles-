@@ -55,7 +55,7 @@ export default async function IdeaPage({
 
   return (
     <>
-      <Link href="/hq" className="faint">
+      <Link href="/admin" className="faint">
         ← back to the board
       </Link>
 

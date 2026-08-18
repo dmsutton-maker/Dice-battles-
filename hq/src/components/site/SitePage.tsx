@@ -5,7 +5,7 @@ import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
 import { fonts } from './tokens';
 
-/** Shared chrome + fonts for every public Paper Ship Studio page. Never used by /hq. */
+/** Shared chrome + fonts for every public Paper Ship Studio page. Never used by /admin. */
 export function SitePage({
   active,
   children,

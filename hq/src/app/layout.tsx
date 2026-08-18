@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 /**
  * Deliberately bare: the public marketing pages (/, /apps, /support,
  * /privacy, /terms) bring their own header and footer via SitePage, and
- * the private board under /hq brings its own nav via hq/layout.tsx. This
+ * the private board under /admin brings its own nav via admin/layout.tsx. This
  * root layout only owns the one thing every route needs — globals.css,
  * which the internal board and the auth pages (/login, /password) still
  * depend on for their dark theme.

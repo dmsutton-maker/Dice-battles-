@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * Keeps the login session fresh on every request, and turns anyone
- * without one away from /hq before the page renders.
+ * without one away from /admin before the page renders.
  *
  * The database's row-level rules are the real lock — this is the door
  * sign. Both are needed: the sign stops a stranger seeing an empty board
@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  if (!user && (path.startsWith('/hq') || path === '/password')) {
+  if (!user && (path.startsWith('/admin') || path === '/password')) {
     const login = request.nextUrl.clone();
     login.pathname = '/login';
     login.searchParams.set('next', request.nextUrl.pathname);
@@ -47,5 +47,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/hq/:path*', '/password', '/login', '/auth/:path*'],
+  matcher: ['/admin/:path*', '/password', '/login', '/auth/:path*'],
 };

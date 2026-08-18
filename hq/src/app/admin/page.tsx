@@ -204,7 +204,7 @@ export default async function IdeasPage() {
               return (
                 <Link
                   key={idea.id}
-                  href={`/hq/ideas/${idea.id}`}
+                  href={`/admin/ideas/${idea.id}`}
                   className="idea"
                   style={{ borderLeftColor: STATUS_COLORS[idea.status] }}
                 >

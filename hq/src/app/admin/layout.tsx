@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 /**
- * The gate. Everything under /hq needs a signed-in member; someone who is
+ * The gate. Everything under /admin needs a signed-in member; someone who is
  * signed in but not on the guest list gets a plain explanation rather
  * than a broken page.
  */
@@ -18,7 +18,7 @@ export default async function HqLayout({
   children: React.ReactNode;
 }) {
   const member = await currentMember();
-  if (!member) redirect('/login?next=/hq');
+  if (!member) redirect('/login?next=/admin');
   // Still on a password somebody else chose — nothing here opens until
   // they have picked their own.
   if (member.must_change_password) redirect('/password');
@@ -41,25 +41,25 @@ export default async function HqLayout({
       </div>
 
       <div className="row" style={{ marginBottom: 20 }}>
-        <Link className="button button-quiet button-small" href="/hq">
+        <Link className="button button-quiet button-small" href="/admin">
           💡 Ideas
         </Link>
-        <Link className="button button-quiet button-small" href="/hq/vote">
+        <Link className="button button-quiet button-small" href="/admin/vote">
           🗳️ Vote
         </Link>
-        <Link className="button button-quiet button-small" href="/hq/schedule">
+        <Link className="button button-quiet button-small" href="/admin/schedule">
           🗓️ Schedule
         </Link>
-        <Link className="button button-quiet button-small" href="/hq/timeline">
+        <Link className="button button-quiet button-small" href="/admin/timeline">
           🗓️ Timeline
         </Link>
-        <Link className="button button-quiet button-small" href="/hq/people">
+        <Link className="button button-quiet button-small" href="/admin/people">
           👪 People
         </Link>
-        <Link className="button button-quiet button-small" href="/hq/inbox">
+        <Link className="button button-quiet button-small" href="/admin/inbox">
           ✉️ Inbox
         </Link>
-        <Link className="button button-quiet button-small" href="/hq/activity">
+        <Link className="button button-quiet button-small" href="/admin/activity">
           📜 History
         </Link>
       </div>

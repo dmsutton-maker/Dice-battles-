@@ -82,7 +82,7 @@ export async function addIdea(formData: FormData) {
     kind === 'bug' ? 'reported a bug' : 'added an idea',
     title,
   );
-  revalidatePath('/hq');
+  revalidatePath('/admin');
 }
 
 export async function decideIdea(formData: FormData) {
@@ -105,8 +105,8 @@ export async function decideIdea(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(id, member.display_name, `marked it ${status}`, note);
-  revalidatePath('/hq');
-  revalidatePath(`/hq/ideas/${id}`);
+  revalidatePath('/admin');
+  revalidatePath(`/admin/ideas/${id}`);
 }
 
 export async function updateIdea(formData: FormData) {
@@ -136,8 +136,8 @@ export async function updateIdea(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(id, member.display_name, 'edited the idea');
-  revalidatePath('/hq');
-  revalidatePath(`/hq/ideas/${id}`);
+  revalidatePath('/admin');
+  revalidatePath(`/admin/ideas/${id}`);
 }
 
 export async function addComment(formData: FormData) {
@@ -153,7 +153,7 @@ export async function addComment(formData: FormData) {
     .insert({ idea_id: ideaId, member_id: member.id, body });
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/hq/ideas/${ideaId}`);
+  revalidatePath(`/admin/ideas/${ideaId}`);
 }
 
 export async function addPhase(formData: FormData) {
@@ -170,7 +170,7 @@ export async function addPhase(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(null, member.display_name, 'added a phase');
-  revalidatePath('/hq/timeline');
+  revalidatePath('/admin/timeline');
 }
 
 export async function setPhaseStatus(formData: FormData) {
@@ -185,7 +185,7 @@ export async function setPhaseStatus(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(null, member.display_name, 'moved a phase along');
-  revalidatePath('/hq/timeline');
+  revalidatePath('/admin/timeline');
 }
 
 /**
@@ -209,8 +209,8 @@ export async function castVote(formData: FormData) {
   );
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/hq/vote/${proposalId}`);
-  revalidatePath('/hq/vote');
+  revalidatePath(`/admin/vote/${proposalId}`);
+  revalidatePath('/admin/vote');
 }
 
 /**
@@ -268,8 +268,8 @@ export async function addProposal(formData: FormData) {
   }
 
   await log(null, member.display_name, 'put something up for a vote', title);
-  revalidatePath('/hq/vote');
-  redirect(`/hq/vote/${proposal.id}`);
+  revalidatePath('/admin/vote');
+  redirect(`/admin/vote/${proposal.id}`);
 }
 
 /** Remove a vote entirely. Owner always; your own only before anyone votes. */
@@ -284,8 +284,8 @@ export async function deleteProposal(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(null, member.display_name, 'deleted a vote');
-  revalidatePath('/hq/vote');
-  redirect('/hq/vote');
+  revalidatePath('/admin/vote');
+  redirect('/admin/vote');
 }
 
 /** David closes a vote by picking the winner. Only he can. */
@@ -308,8 +308,8 @@ export async function decideProposal(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(null, member.display_name, 'settled a vote');
-  revalidatePath(`/hq/vote/${proposalId}`);
-  revalidatePath('/hq/vote');
+  revalidatePath(`/admin/vote/${proposalId}`);
+  revalidatePath('/admin/vote');
 }
 
 /** Reopen a vote that was closed too early. */
@@ -325,8 +325,8 @@ export async function reopenProposal(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(null, member.display_name, 'reopened a vote');
-  revalidatePath(`/hq/vote/${proposalId}`);
-  revalidatePath('/hq/vote');
+  revalidatePath(`/admin/vote/${proposalId}`);
+  revalidatePath('/admin/vote');
 }
 
 /** Tick a player's message off, or put it back in the pile. */
@@ -340,7 +340,7 @@ export async function markHandled(formData: FormData) {
     .eq('id', String(formData.get('id')));
 
   if (error) throw new Error(error.message);
-  revalidatePath('/hq/inbox');
+  revalidatePath('/admin/inbox');
 }
 
 /**
@@ -371,7 +371,7 @@ export async function changeMyPassword(formData: FormData) {
     .update({ must_change_password: false })
     .eq('id', member.id);
 
-  // If the flag could not be cleared, do NOT send them onward: /hq would
+  // If the flag could not be cleared, do NOT send them onward: /admin would
   // bounce them straight back here, forever. Say so instead.
   if (clearError) {
     throw new Error(
@@ -379,9 +379,9 @@ export async function changeMyPassword(formData: FormData) {
     );
   }
 
-  revalidatePath('/hq/people');
-  revalidatePath('/hq');
-  if (wasForced) redirect('/hq');
+  revalidatePath('/admin/people');
+  revalidatePath('/admin');
+  if (wasForced) redirect('/admin');
 }
 
 /**
@@ -437,7 +437,7 @@ export async function setSomeonesPassword(formData: FormData) {
     .eq('email', email);
 
   await log(null, member.display_name, 'set a temporary password for someone');
-  revalidatePath('/hq/people');
+  revalidatePath('/admin/people');
 }
 
 export async function invitePerson(formData: FormData) {
@@ -452,5 +452,5 @@ export async function invitePerson(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await log(null, member.display_name, 'invited someone');
-  revalidatePath('/hq/people');
+  revalidatePath('/admin/people');
 }
