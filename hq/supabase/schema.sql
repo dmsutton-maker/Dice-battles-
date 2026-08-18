@@ -185,6 +185,8 @@ create index if not exists ideas_scheduled_idx on public.ideas (scheduled_for);
 
 create index if not exists ideas_status_idx on public.ideas (status);
 create index if not exists ideas_phase_idx on public.ideas (phase_id);
+-- Used by /api/bug-report's flood check: bugs reported in the last minute.
+create index if not exists ideas_kind_created_idx on public.ideas (kind, created_at);
 
 create table if not exists public.comments (
   id         uuid primary key default gen_random_uuid(),

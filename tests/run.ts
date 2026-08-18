@@ -13,6 +13,7 @@ async function main(): Promise<void> {
   await import('./persistence.test');
   await import('./currency.test');
   await import('./audio.test');
+  await import('./bugReport.test');
   process.exit(await runAll());
 }
 

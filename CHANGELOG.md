@@ -16,6 +16,25 @@ restored.
 
 ---
 
+## v1.10.0 — 2026-08-19 · *requested by David*
+
+Native build: 1.0.0 (build 5)
+
+- **🐞 Report a Bug**, in Settings. One box, one Send button — your
+  device, OS, and app version are attached automatically so nobody has
+  to type them. A report lands straight on the work board as an
+  already-approved bug, the same way a repair reported in the HQ does,
+  so it can be looked at without waiting on anyone's approval.
+- This is the game's first network call outside its own update
+  mechanism — the privacy policy was rewritten in this same update to
+  say exactly that, before it shipped rather than after: what a bug
+  report sends, that it only sends when you tap Send, and that nothing
+  in one can be tied back to a person unless you put your name in the
+  message yourself.
+- 94 tests now (6 new) covering what a report is allowed to say — too
+  short is rejected, too long is capped rather than dropped, and the
+  title shown on the board never cuts a message off mid-word.
+
 ## The family settled two votes — 2026-08-17 · *requested by David*
 
 - **Company name: Paper Ship Studio.** Settled by family vote over Sutton

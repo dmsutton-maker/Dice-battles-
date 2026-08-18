@@ -4,19 +4,21 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'Privacy Policy — Dice Battles: Color Rush',
   description:
-    'What Dice Battles: Color Rush collects: nothing. Everything the game remembers stays on your device.',
+    'What Dice Battles: Color Rush collects: nothing, unless you choose to report a bug. Everything else stays on your device.',
 };
 
-const UPDATED = '17 August 2026';
+const UPDATED = '19 August 2026';
 
 /**
  * The privacy policy. Apple requires a public URL for this before the app
  * can be released, and it has to match what the app actually does.
  *
- * Right now that is easy, because the game genuinely collects nothing:
- * there is no account system, no analytics SDK, no advertising SDK, and
- * no network call that sends anything about a player anywhere. If that
- * ever changes, this page changes FIRST — and the date at the top with it.
+ * The game makes exactly one network call that is not Expo's own update
+ * mechanism: the optional "Report a Bug" button in Settings. This page
+ * was rewritten to disclose it in the same release that shipped it —
+ * the promise made below, under "If this ever changes", is that this
+ * page changes FIRST, not after. There is still no account system, no
+ * analytics SDK, no advertising SDK, and no tracking of any kind.
  */
 export default function PrivacyPage() {
   return (
@@ -29,9 +31,10 @@ export default function PrivacyPage() {
         store, or share any personal information. There is no account to
         create and no login. Everything the game remembers — your
         trophies, coins, dice and settings — is saved on your own device
-        and never sent anywhere. The only information we ever hold is what
-        you choose to type into the contact form on this website, and that
-        is only so we can write back.
+        and never sent anywhere. The only two things we ever hold are what
+        you choose to type into the contact form on this website, and what
+        you choose to type into the in-app &quot;Report a Bug&quot; button
+        — both entirely optional, both only so we can read and fix things.
       </div>
 
       <h2>Who this is from</h2>
@@ -45,7 +48,9 @@ export default function PrivacyPage() {
 
       <h2>What the app collects</h2>
       <p>
-        Nothing. Specifically, the app does not collect or transmit:
+        Nothing, unless you choose to use the <strong>Report a Bug</strong>{' '}
+        button in Settings — that is the one exception, covered on its own
+        below. Outside of that, the app does not collect or transmit:
       </p>
       <ul>
         <li>your name, email address, phone number, or date of birth;</li>
@@ -57,12 +62,37 @@ export default function PrivacyPage() {
         </li>
         <li>
           analytics about how you play — no session recording, no
-          crash-reporting service, no usage statistics.
+          background crash-reporting service, no usage statistics. Nothing
+          is sent unless you tap Report a Bug yourself.
         </li>
       </ul>
       <p>
         The app asks for no permissions beyond what is needed to draw the
         game and make sound.
+      </p>
+
+      <h2>Reporting a bug in the app</h2>
+      <p>
+        Settings has a <strong>🐞 Report a Bug</strong> button. It is the
+        only thing in the app that sends anything, anywhere, and it only
+        does so when you tap Send after typing a report — never in the
+        background, never automatically.
+      </p>
+      <p>What it sends, every time:</p>
+      <ul>
+        <li>the message you typed, exactly as written;</li>
+        <li>
+          basic technical facts about your device and the app, attached
+          automatically so you do not have to type them: your phone or
+          iPad&apos;s operating system and version, the screen size, the
+          app version, and which update is currently running.
+        </li>
+      </ul>
+      <p>
+        That is all. There is no name, no email address, and no account —
+        a bug report cannot be tied back to a person, only to a message and
+        a device description. It lands in the same private list the family
+        uses to track and fix bugs, and nowhere else.
       </p>
 
       <h2>What the app saves on your device</h2>
@@ -173,12 +203,12 @@ export default function PrivacyPage() {
       <h2>Your rights</h2>
       <p>
         Laws such as the GDPR and the CCPA give you rights to see, correct,
-        export, or delete personal data a company holds about you. From the
-        game itself we hold nothing at all, so there is nothing to produce
-        or erase. The only thing we can hold about you is a message you
-        sent us through the contact form — ask, and we will send you a copy
-        of it or delete it. Either way you will get a straight answer, from
-        a person.
+        export, or delete personal data a company holds about you. We hold
+        none of that about you to begin with — nothing we keep, from either
+        the contact form or a bug report, can be tied to a person unless you
+        put your own name or email in the message. Ask about anything you
+        sent us and we will show you what we have or delete it. Either way
+        you will get a straight answer, from a person.
       </p>
 
       <h2>Contact</h2>

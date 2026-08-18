@@ -82,6 +82,7 @@ import { LeaderboardScreen } from './LeaderboardScreen';
 import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
 import { VolumeSlider } from './VolumeSlider';
+import { BugReportModal } from '../debug/BugReportModal';
 
 /**
  * Classic mode vs one AI opponent.
@@ -134,6 +135,7 @@ export function DiceDemoScreen() {
   const [codeInput, setCodeInput] = useState('');
   const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
   const [units, setUnits] = useState<PrisonerUnit[]>(() =>
@@ -1011,6 +1013,13 @@ export function DiceDemoScreen() {
                 {codeFeedback ?? '🔓 Tester mode ON'}
               </Text>
             )}
+            <View style={styles.settingsDividerLine} />
+            <Pressable
+              style={styles.bugReportButton}
+              onPress={() => setShowBugReport(true)}
+            >
+              <Text style={styles.bugReportButtonText}>🐞 Report a Bug</Text>
+            </Pressable>
             </ScrollView>
             <Pressable
               style={styles.settingsDone}
@@ -1024,6 +1033,10 @@ export function DiceDemoScreen() {
           </View>
         </View>
       )}
+      <BugReportModal
+        visible={showBugReport}
+        onClose={() => setShowBugReport(false)}
+      />
       {phase === 'lost' && (
         <View style={styles.overlay}>
           <Text style={styles.overlayTitle}>😤 DEFEAT!</Text>
@@ -1379,6 +1392,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  bugReportButton: {
+    marginTop: 4,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+  },
+  bugReportButtonText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 14,
+    fontWeight: '800',
   },
   settingsDone: {
     marginTop: 16,
