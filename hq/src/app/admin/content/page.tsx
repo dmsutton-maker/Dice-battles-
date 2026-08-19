@@ -51,6 +51,8 @@ export default async function ContentPage() {
       <p className="faint">
         What's on the public site — the home page, the Dice Battles app page,
         Support, Privacy and Terms. Save a section and it's live right away.
+        There's room to grow every list below — leave a box blank to remove
+        that item, or fill in an empty one to add a new one.
       </p>
 
       <details className="card" open>
@@ -82,8 +84,8 @@ export default async function ContentPage() {
           <label htmlFor="description">DESCRIPTION</label>
           <textarea id="description" name="description" defaultValue={text('dice_battles.description')} />
 
-          <label>HIGHLIGHTS (the 4 tiles)</label>
-          {highlightRows('dice_battles.highlights', 4).map((h, i) => (
+          <label>HIGHLIGHTS (the tiles)</label>
+          {highlightRows('dice_battles.highlights', 10).map((h, i) => (
             <div key={i} className="grid" style={{ marginBottom: 6 }}>
               <input
                 name={`highlight_title_${i}`}
@@ -99,7 +101,7 @@ export default async function ContentPage() {
           ))}
 
           <label>FAQ</label>
-          {faqRows('dice_battles.faq', 6).map((item, i) => (
+          {faqRows('dice_battles.faq', 20).map((item, i) => (
             <div key={i} style={{ marginBottom: 6 }}>
               <input
                 name={`faq_q_${i}`}
@@ -108,6 +110,25 @@ export default async function ContentPage() {
                 style={{ marginBottom: 4 }}
               />
               <textarea name={`faq_a_${i}`} defaultValue={item.a} placeholder="Answer" />
+            </div>
+          ))}
+
+          <label>EXTRA SECTIONS — a place for whole new categories, not just FAQ</label>
+          <p className="faint" style={{ marginTop: -4 }}>
+            Each one gets its own heading and text, shown between the FAQ and
+            the contact box. Use this for anything that doesn't fit the
+            Highlights or FAQ shape — a "What's new" note, a how-to-play
+            section, whatever the page needs next.
+          </p>
+          {sectionRows('dice_battles.extra_sections', 12).map((s, i) => (
+            <div key={i} style={{ marginBottom: 6 }}>
+              <input
+                name={`extra_heading_${i}`}
+                defaultValue={s.heading}
+                placeholder={`Section ${i + 1} heading`}
+                style={{ marginBottom: 4, fontWeight: 800 }}
+              />
+              <textarea name={`extra_body_${i}`} defaultValue={s.body} placeholder="Section text" />
             </div>
           ))}
 
@@ -126,7 +147,7 @@ export default async function ContentPage() {
           <input id="intro" name="intro" defaultValue={text('support.intro')} />
 
           <label>FAQ BY GAME — Dice Battles</label>
-          {faqRows('support.game_faq', 5).map((item, i) => (
+          {faqRows('support.game_faq', 15).map((item, i) => (
             <div key={i} style={{ marginBottom: 6 }}>
               <input
                 name={`game_faq_q_${i}`}
@@ -150,7 +171,7 @@ export default async function ContentPage() {
           it, but make sure it stays true.
         </p>
         <form action={updatePrivacyContent}>
-          {sectionRows('privacy.sections', 8).map((s, i) => (
+          {sectionRows('privacy.sections', 16).map((s, i) => (
             <div key={i} style={{ marginBottom: 6 }}>
               <input
                 name={`section_heading_${i}`}
@@ -170,7 +191,7 @@ export default async function ContentPage() {
       <details className="card">
         <summary style={{ cursor: 'pointer', fontWeight: 800 }}>📜 Terms of Use</summary>
         <form action={updateTermsContent}>
-          {sectionRows('terms.sections', 8).map((s, i) => (
+          {sectionRows('terms.sections', 16).map((s, i) => (
             <div key={i} style={{ marginBottom: 6 }}>
               <input
                 name={`section_heading_${i}`}

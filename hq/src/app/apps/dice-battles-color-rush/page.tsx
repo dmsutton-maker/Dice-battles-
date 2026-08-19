@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
 import styles from '../../site.module.css';
-import { faqList, getSiteContent, highlightList, text } from '@/lib/content';
+import { faqList, getSiteContent, highlightList, sectionList, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Dice Battles: Color Rush — Paper Ship Studio',
@@ -66,6 +66,7 @@ export default async function DiceBattlesAppPage() {
   );
   const highlights = highlightList(content, 'dice_battles.highlights', DEFAULT_HIGHLIGHTS);
   const faqs = faqList(content, 'dice_battles.faq', DEFAULT_FAQS);
+  const extraSections = sectionList(content, 'dice_battles.extra_sections', []);
 
   return (
     <SitePage active="Apps">
@@ -176,6 +177,19 @@ export default async function DiceBattlesAppPage() {
             ))}
           </div>
         </section>
+
+        {extraSections.map((s) => (
+          <section
+            key={s.heading}
+            className="psg-wrap"
+            style={{ padding: '56px 56px 0', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
+          >
+            <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <h2 style={{ font: `800 20px ${fonts.heading}`, color: colors.ink, margin: 0 }}>{s.heading}</h2>
+              <p style={{ font: `600 15px/1.6 ${fonts.body}`, color: colors.body, margin: 0 }}>{s.body}</p>
+            </div>
+          </section>
+        ))}
 
         <section
           className="psg-wrap"

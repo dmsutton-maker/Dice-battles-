@@ -646,14 +646,21 @@ export async function updateHomeContent(formData: FormData) {
 
 export async function updateDiceBattlesContent(formData: FormData) {
   const member = await requireMember();
-  const highlights = collectRows(formData, 4, { title: 'highlight_title', body: 'highlight_body' }, 'title');
-  const faq = collectRows(formData, 6, { q: 'faq_q', a: 'faq_a' }, 'q');
+  const highlights = collectRows(formData, 10, { title: 'highlight_title', body: 'highlight_body' }, 'title');
+  const faq = collectRows(formData, 20, { q: 'faq_q', a: 'faq_a' }, 'q');
+  const extraSections = collectRows(
+    formData,
+    12,
+    { heading: 'extra_heading', body: 'extra_body' },
+    'heading',
+  );
 
   await Promise.all([
     setContent('dice_battles.description', String(formData.get('description') ?? '').trim(), member.display_name),
     setContent('dice_battles.cta_subhead', String(formData.get('cta_subhead') ?? '').trim(), member.display_name),
     setContent('dice_battles.highlights', highlights, member.display_name),
     setContent('dice_battles.faq', faq, member.display_name),
+    setContent('dice_battles.extra_sections', extraSections, member.display_name),
   ]);
   revalidatePath('/apps/dice-battles-color-rush');
   revalidatePath('/admin/content');
@@ -661,7 +668,7 @@ export async function updateDiceBattlesContent(formData: FormData) {
 
 export async function updateSupportContent(formData: FormData) {
   const member = await requireMember();
-  const gameFaq = collectRows(formData, 5, { q: 'game_faq_q', a: 'game_faq_a' }, 'q');
+  const gameFaq = collectRows(formData, 15, { q: 'game_faq_q', a: 'game_faq_a' }, 'q');
 
   await Promise.all([
     setContent('support.intro', String(formData.get('intro') ?? '').trim(), member.display_name),
@@ -673,7 +680,7 @@ export async function updateSupportContent(formData: FormData) {
 
 export async function updatePrivacyContent(formData: FormData) {
   const member = await requireMember();
-  const sections = collectRows(formData, 8, { heading: 'section_heading', body: 'section_body' }, 'heading');
+  const sections = collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading');
   await setContent('privacy.sections', sections, member.display_name);
   revalidatePath('/privacy');
   revalidatePath('/admin/content');
@@ -681,7 +688,7 @@ export async function updatePrivacyContent(formData: FormData) {
 
 export async function updateTermsContent(formData: FormData) {
   const member = await requireMember();
-  const sections = collectRows(formData, 8, { heading: 'section_heading', body: 'section_body' }, 'heading');
+  const sections = collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading');
   await setContent('terms.sections', sections, member.display_name);
   revalidatePath('/terms');
   revalidatePath('/admin/content');
