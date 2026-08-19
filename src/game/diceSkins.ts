@@ -76,8 +76,9 @@ export const DICE_SKINS: DiceSkin[] = [
     name: 'Bubbles',
     emoji: '🫧',
     body: '#cfe9ff',
-    pattern: 'spots',
-    ink: '#7fb6e8',
+    pattern: 'bubbles',
+    // Near-white so the rims and glints read as light on glass.
+    ink: '#f4fbff',
     price: 300,
   },
   {
@@ -105,7 +106,7 @@ export const DICE_SKINS: DiceSkin[] = [
     name: 'Frost',
     emoji: '❄️',
     body: '#e8f6ff',
-    pattern: 'stars',
+    pattern: 'frost',
     ink: '#9fd3f0',
     price: 350,
   },

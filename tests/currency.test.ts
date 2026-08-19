@@ -182,3 +182,48 @@ suite('currency · store shelf', () => {
     );
   });
 });
+
+suite('currency · items are telling apart-able', () => {
+  test('no two dice skins are the same picture', () => {
+    // Frost and Starry both used to draw the `stars` pattern, so they were
+    // one picture in two tints — indistinguishable in the Inventory and on
+    // the table. A skin has to differ in SHAPE, not just colour.
+    const patterned = DICE_SKINS.filter((s) => s.pattern !== 'plain');
+    const patterns = patterned.map((s) => s.pattern);
+    assertEqual(
+      new Set(patterns).size,
+      patterns.length,
+      `two skins share a pattern: ${patterns.join(', ')}`,
+    );
+  });
+
+  test('every plain skin is a clearly different colour', () => {
+    // Plain skins have only their body colour to tell them apart, so that
+    // colour has to carry the whole job.
+    const plain = DICE_SKINS.filter((s) => s.pattern === 'plain');
+    const rgb = (hex: string) => [
+      parseInt(hex.slice(1, 3), 16),
+      parseInt(hex.slice(3, 5), 16),
+      parseInt(hex.slice(5, 7), 16),
+    ];
+    for (let i = 0; i < plain.length; i++) {
+      for (let j = i + 1; j < plain.length; j++) {
+        const [a, b] = [rgb(plain[i].body), rgb(plain[j].body)];
+        const distance = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        assert(
+          distance > 40,
+          `${plain[i].name} and ${plain[j].name} are nearly the same colour (${distance.toFixed(0)})`,
+        );
+      }
+    }
+  });
+
+  test('every skin has a distinct emoji for the Inventory tile', () => {
+    const emojis = DICE_SKINS.map((s) => s.emoji);
+    assertEqual(
+      new Set(emojis).size,
+      emojis.length,
+      `two skins share an emoji: ${emojis.join(' ')}`,
+    );
+  });
+});
