@@ -19,15 +19,15 @@ const HIGHLIGHT_TINTS = [colors.cyanTint, colors.cream, colors.orangeTint, color
 const DEFAULT_HIGHLIGHTS = [
   {
     title: 'Colors, not numbers',
-    body: "Dice faces are colors, so kids who can't read numbers yet can still play — and win — on their own.",
+    body: 'Every dice face is a color, so there are no pips to squint at and no numbers to read. Anyone can play from the first roll.',
   },
   {
-    title: 'Pass-and-play battles',
-    body: 'Two players share one phone — the board flips so each side always faces its own castle. No wifi, no second device.',
+    title: 'Two players, one phone',
+    body: 'Pass and play on a single device — the board flips so each side always faces its own castle. No wifi, no second phone, nobody left out.',
   },
   {
-    title: 'Quick castle battles',
-    body: 'Roll, march, and clash — a full battle wraps up in a few minutes, perfect for a quick round or three in a row.',
+    title: 'A battle in a few minutes',
+    body: 'Roll, march, and clash. A full game wraps up fast, which makes it easy to say yes to one more.',
   },
   {
     title: 'Nothing to sign up for',
@@ -39,16 +39,16 @@ const DEFAULT_FAQS = [
   { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
   { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
   {
-    q: 'Is any data collected about my child?',
+    q: 'Is any data collected about me or my family?',
     a: 'No analytics or tracking of any kind. See our Privacy Policy for the full picture.',
   },
   {
-    q: 'Can my child play before they can read?',
-    a: 'Yes — every dice face is a color, not a number, so pre-readers can play the whole game on their own.',
+    q: 'Do I need to be able to read to play?',
+    a: 'No. Every dice face is a color rather than a number or a pattern of pips, so nothing on the board needs reading — which suits pre-readers and anyone who would rather not squint.',
   },
   {
-    q: 'What ages is it good for?',
-    a: 'Simple enough for kids around age 5 and up, and quick fun for older kids and adults too.',
+    q: 'Who is it for?',
+    a: 'Anyone from about five upward. It was invented at a family kitchen table and it plays best that way — grandparents and grandchildren on the same board, nobody at a disadvantage.',
   },
 ];
 

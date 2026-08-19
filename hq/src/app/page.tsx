@@ -27,9 +27,9 @@ export default async function HomePage() {
   const aboutBody = text(
     content,
     'home.about_body',
-    "We're a small, independent studio making colorful, considered games for every age — friendly enough that kids as young as five can jump in on their own. No ads, no accounts, no analytics. Nothing to sign up for, nothing tracked.",
+    "We're a small, independent studio making colorful, considered games built to be played together — across a kitchen table, a couch, or a video call. Easy enough to pick up in a minute, whether you're five or eighty-five. No ads, no accounts, no analytics. Nothing to sign up for, nothing tracked.",
   );
-  const appsCardTagline = text(content, 'home.apps_card_tagline', 'Colors, not numbers — quick to learn, fun at any age');
+  const appsCardTagline = text(content, 'home.apps_card_tagline', 'Colors, not numbers — learn it in a minute, at any age');
   const appsCardNote = text(content, 'home.apps_card_note', 'Our first game. More battles are already in the works.');
 
   return (

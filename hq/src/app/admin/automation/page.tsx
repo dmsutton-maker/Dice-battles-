@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { supabaseServer } from '@/lib/supabase/server';
 import type { Idea } from '@/lib/types';
+import { Office, type Worker } from './Office';
 
 /**
  * What runs on its own, and what it has actually done.
@@ -68,8 +69,65 @@ export default async function AutomationPage() {
   const dropEverything = openBugs.filter((b) => b.priority === 1);
   const draftCount = (drafts ?? []).length;
 
+  // Everyone in the room, and why they are in the state they are in.
+  const workers: Worker[] = [
+    {
+      id: 'bugs',
+      name: 'Bug watch',
+      emoji: '🐞',
+      role: 'Finds and fixes what is broken',
+      x: 20,
+      y: 52,
+      state:
+        dropEverything.length > 0 ? 'alert' : openBugs.length > 0 ? 'waiting' : 'idle',
+      note:
+        dropEverything.length > 0
+          ? `${dropEverything.length} drop-everything ${dropEverything.length === 1 ? 'bug' : 'bugs'} — fixing without waiting`
+          : openBugs.length > 0
+            ? `${openBugs.length} open ${openBugs.length === 1 ? 'bug' : 'bugs'} — asked, waiting on your yes`
+            : 'No open bugs',
+    },
+    {
+      id: 'support',
+      name: 'Support',
+      emoji: '✍️',
+      role: 'Drafts replies for you to send',
+      x: 50,
+      y: 60,
+      state: draftCount > 0 ? 'waiting' : 'idle',
+      note:
+        draftCount > 0
+          ? `${draftCount} suggested ${draftCount === 1 ? 'reply' : 'replies'} for you to check`
+          : 'No messages needing a reply',
+    },
+    {
+      id: 'tests',
+      name: 'Build checks',
+      emoji: '🧪',
+      role: 'Runs the tests before anything ships',
+      x: 80,
+      y: 52,
+      state: 'idle',
+      note: 'Runs on every change, not on a clock',
+    },
+  ];
+
   return (
     <>
+      <Office workers={workers} />
+
+      <div className="grid" style={{ marginBottom: 18 }}>
+        {workers.map((w) => (
+          <div className="card card-tight" key={`note-${w.id}`}>
+            <strong>
+              {w.emoji} {w.name}
+            </strong>
+            <div className="faint">{w.role}</div>
+            <div className="muted" style={{ marginTop: 4 }}>{w.note}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="grid" style={{ marginBottom: 18 }}>
         <div className="card card-tight">
           <h3 style={{ color: dropEverything.length > 0 ? 'var(--red)' : 'var(--text)' }}>

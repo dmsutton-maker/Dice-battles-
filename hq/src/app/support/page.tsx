@@ -18,8 +18,8 @@ const DEFAULT_GAME_FAQS = [
   { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
   { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
   {
-    q: 'Can my child play before they can read?',
-    a: 'Yes — every dice face is a color, not a number, so pre-readers can play the whole game on their own.',
+    q: 'Do I need to be able to read to play?',
+    a: 'No. Every dice face is a color rather than a number, so nothing on the board needs reading.',
   },
 ];
 
