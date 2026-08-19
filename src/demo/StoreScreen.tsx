@@ -4,6 +4,7 @@ import { STORE_SKINS } from '../game/diceSkins';
 import { buyWithCoins, COIN_REWARDS, getWallet, owns } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
 import { Reward } from './RewardPopup';
+import { playClick } from '../audio/sounds';
 
 /**
  * The Store: spend coins earned by playing.
@@ -71,7 +72,10 @@ export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
               <Pressable
                 key={skin.id}
                 disabled={bought}
-                onPress={() => buy(skin.id, skin.price!, skin.name, skin.emoji)}
+                onPress={() => {
+                  playClick();
+                  buy(skin.id, skin.price!, skin.name, skin.emoji);
+                }}
                 style={[
                   styles.card,
                   bought && styles.cardOwned,
@@ -107,7 +111,13 @@ export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
 
       {message && <Text style={styles.message}>{message}</Text>}
 
-      <Pressable style={styles.doneButton} onPress={onClose}>
+      <Pressable
+        style={styles.doneButton}
+        onPress={() => {
+          playClick();
+          onClose();
+        }}
+      >
         <Text style={styles.doneText}>Done</Text>
       </Pressable>
     </View>

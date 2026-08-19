@@ -4,6 +4,7 @@ import { AiDifficultyId } from '../game/ai';
 import { getWallet } from '../game/currency';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
+import { playClick } from '../audio/sounds';
 
 /**
  * The Leaderboard.
@@ -163,7 +164,13 @@ export function LeaderboardScreen({
         </View>
       </ScrollView>
 
-      <Pressable style={styles.doneButton} onPress={onClose}>
+      <Pressable
+        style={styles.doneButton}
+        onPress={() => {
+          playClick();
+          onClose();
+        }}
+      >
         <Text style={styles.doneText}>Done</Text>
       </Pressable>
     </View>

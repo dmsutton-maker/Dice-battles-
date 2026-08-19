@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
+import { playClick, playEquip } from '../audio/sounds';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { DICE_SKINS } from '../game/diceSkins';
 import {
@@ -69,7 +70,10 @@ export function InventoryScreen({
               <Pressable
                 key={id}
                 disabled={!unlocked}
-                onPress={() => onEquipArena(id)}
+                onPress={() => {
+                  playEquip();
+                  onEquipArena(id);
+                }}
                 style={[
                   styles.card,
                   equipped && styles.cardEquipped,
@@ -115,7 +119,10 @@ export function InventoryScreen({
               <Pressable
                 key={skin.id}
                 disabled={!unlocked}
-                onPress={() => onEquipSkin(skin.id)}
+                onPress={() => {
+                  playEquip();
+                  onEquipSkin(skin.id);
+                }}
                 style={[
                   styles.card,
                   equipped && styles.cardEquipped,
@@ -149,7 +156,13 @@ export function InventoryScreen({
         </View>
       </ScrollView>
 
-      <Pressable style={styles.doneButton} onPress={onClose}>
+      <Pressable
+        style={styles.doneButton}
+        onPress={() => {
+          playClick();
+          onClose();
+        }}
+      >
         <Text style={styles.doneText}>Done</Text>
       </Pressable>
     </View>

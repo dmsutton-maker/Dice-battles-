@@ -32,6 +32,7 @@ import {
 import {
   initSounds,
   playCheer,
+  playClick,
   playFanfare,
   playThrow,
   startMusic,
@@ -661,6 +662,7 @@ export function DiceDemoScreen() {
             key={id}
             onPress={() => {
               modeRef.current = id;
+              playClick();
               setMode(id);
             }}
             style={[styles.modeButton, mode === id && styles.difficultyButtonActive]}
@@ -696,6 +698,7 @@ export function DiceDemoScreen() {
           key={d.id}
           onPress={() => {
             difficultyRef.current = d.id;
+            playClick();
             setDifficulty(d.id);
           }}
           style={[
@@ -722,7 +725,10 @@ export function DiceDemoScreen() {
   );
 
   const inventoryButton = (
-    <Pressable style={styles.inventoryButton} onPress={() => setShowInventory(true)}>
+    <Pressable style={styles.inventoryButton} onPress={() => {
+      playClick();
+      setShowInventory(true);
+    }}>
       <Text style={styles.inventoryText}>🎒 INVENTORY</Text>
     </Pressable>
   );
@@ -896,7 +902,10 @@ export function DiceDemoScreen() {
         <View style={styles.overlay}>
           <Pressable
             style={styles.gearButton}
-            onPress={() => setShowSettings(true)}
+            onPress={() => {
+              playClick();
+              setShowSettings(true);
+            }}
           >
             <Text style={styles.gearText}>⚙️</Text>
           </Pressable>
@@ -935,13 +944,19 @@ export function DiceDemoScreen() {
             <View style={styles.navRow}>
               <Pressable
                 style={styles.navButton}
-                onPress={() => setShowStore(true)}
+                onPress={() => {
+                  playClick();
+                  setShowStore(true);
+                }}
               >
                 <Text style={styles.navText}>🛒 STORE</Text>
               </Pressable>
               <Pressable
                 style={styles.navButton}
-                onPress={() => setShowLeaderboard(true)}
+                onPress={() => {
+                  playClick();
+                  setShowLeaderboard(true);
+                }}
               >
                 <Text style={styles.navText}>🏅 LEADERBOARD</Text>
               </Pressable>
@@ -951,7 +966,10 @@ export function DiceDemoScreen() {
             </Pressable>
             <Pressable
               style={styles.twoPlayerButton}
-              onPress={() => setTwoPlayer(true)}
+              onPress={() => {
+                playClick();
+                setTwoPlayer(true);
+              }}
             >
               <Text style={styles.twoPlayerText}>👥 2 Players — Split Screen</Text>
             </Pressable>

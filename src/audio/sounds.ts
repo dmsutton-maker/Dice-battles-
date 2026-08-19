@@ -26,6 +26,13 @@ const clackSources = [
   require('../../assets/sounds/clack3.wav'),
 ];
 const cheerSource = require('../../assets/sounds/cheer.wav');
+/**
+ * UI sounds, synthesised rather than recorded — a 55ms tick and a rising
+ * fifth. Written by this project (see assets/sounds/CREDITS.md), so there
+ * is no third-party licence attached to either.
+ */
+const clickSource = require('../../assets/sounds/click.wav');
+const equipSource = require('../../assets/sounds/equip.wav');
 const fanfareSource = require('../../assets/sounds/fanfare.wav');
 /**
  * Battle music rotation — Kevin MacLeod (incompetech.com), CC-BY 4.0.
@@ -49,6 +56,9 @@ export const MIX = {
   clack: 0.35,
   cheer: 0.9,
   fanfare: 1.0,
+  /** UI sounds sit under everything — heard once, never noticed twice. */
+  click: 0.3,
+  equip: 0.55,
   music: 0.4,
 } as const;
 
@@ -62,12 +72,15 @@ let throwPool: Voice[] = [];
 let clackPool: Voice[] = [];
 let cheerVoice: Voice | null = null;
 let fanfareVoice: Voice | null = null;
+let clickPool: Voice[] = [];
+let equipVoice: Voice | null = null;
 let musicPlayers: AudioPlayer[] = [];
 let musicPlayer: AudioPlayer | null = null;
 /** Whether the game WANTS music — separate from whether it is audible. */
 let musicWanted = false;
 let throwIndex = 0;
 let clackIndex = 0;
+let clickIndex = 0;
 let initialized = false;
 
 /** Call once at app start. Safe to call again (no-op). */
@@ -91,6 +104,12 @@ export function initSounds(): void {
     clackPool = [...clackSources, ...clackSources].map((s) => voice(s, MIX.clack));
     cheerVoice = voice(cheerSource, MIX.cheer);
     fanfareVoice = voice(fanfareSource, MIX.fanfare);
+    // Four clicks round-robin: tapping quickly through a menu should not
+    // cut the previous tap off mid-tick.
+    clickPool = [clickSource, clickSource, clickSource, clickSource].map((s) =>
+      voice(s, MIX.click),
+    );
+    equipVoice = voice(equipSource, MIX.equip);
     musicPlayers = musicSources.map((source) => {
       const player = createAudioPlayer(source);
       player.loop = true;
@@ -107,6 +126,8 @@ export function initSounds(): void {
     clackPool = [];
     cheerVoice = null;
     fanfareVoice = null;
+    clickPool = [];
+    equipVoice = null;
     musicPlayers = [];
     musicPlayer = null;
   }
@@ -128,6 +149,18 @@ function replay(voice: Voice | null): void {
   } catch {
     // ignore — see initSounds
   }
+}
+
+/** A button meeting a finger. Every tappable control in a menu plays it. */
+export function playClick(): void {
+  if (clickPool.length === 0) return;
+  replay(clickPool[clickIndex]);
+  clickIndex = (clickIndex + 1) % clickPool.length;
+}
+
+/** Something snapping into place — putting on a skin or an arena. */
+export function playEquip(): void {
+  replay(equipVoice);
 }
 
 /** Full real dice-roll recording (rattle + tumble + land). Play per throw. */
