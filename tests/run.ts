@@ -14,6 +14,7 @@ async function main(): Promise<void> {
   await import('./currency.test');
   await import('./audio.test');
   await import('./bugReport.test');
+  await import('./flight.test');
   process.exit(await runAll());
 }
 

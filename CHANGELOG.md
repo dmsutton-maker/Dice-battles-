@@ -16,6 +16,32 @@ restored.
 
 ---
 
+## v1.10.1 — 2026-08-19 · *requested by David*
+
+Native build: 1.0.0 (build 5)
+
+- **A prisoner sent back to jail mid-rescue no longer rockets off the
+  top of the screen.** In Ultimate mode a rescued prisoner can be
+  matched again and sent straight back while still in the air. Each leap
+  arcs 3.4 above wherever the figure IS, so the second one stacked on top
+  of the first and threw the figure to y 6.2 — brushing the invisible
+  ceiling at 6.5 and well outside the camera's framing. A leap now only
+  gets whatever headroom is left below an apex of 4.6, so interrupting
+  one can never send a figure higher than an ordinary leap does. Ordinary
+  leaps are untouched: still 4.0.
+- A leap can no longer be handed a nonsense time by the render clock. If
+  a backgrounded app or a re-mounted canvas produced a negative or wild
+  value, the smoothstep turned it into a figure flung far outside the
+  arena; the position is now clamped to the two ends of the leap.
+- 103 tests now (9 new), including one that walks the whole flight path
+  and asserts a figure never dips into the dice while crossing the tray —
+  interrupted at any of twenty moments, in either direction.
+- What the screenshot showed is most likely the animation working
+  normally: an ordinary leap clears the dice by 2.5 units, but from the
+  near-top-down camera a figure passing overhead sits right on top of
+  them on screen. That is not a collision, and this release does not
+  claim to have fixed it — see the note on the board.
+
 ## v1.10.0 — 2026-08-19 · *requested by David*
 
 Native build: 1.0.0 (build 5)

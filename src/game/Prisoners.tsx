@@ -1,13 +1,10 @@
 import { useFrame } from '@react-three/fiber/native';
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { FLIGHT_SECONDS, flightAt, type FlightPoint } from './flight';
 import { PrisonerUnit, Station } from './modes';
 import { Slot, slotFor as sharedSlotFor } from './stations';
 import { TUNING } from './tuning';
-
-const FLIGHT_SECONDS = 1.4;
-/** High enough to clear BOTH castle walls + merlons along the way. */
-const FLIGHT_PEAK = 3.4;
 
 interface PrisonersProps {
   /** The full lineup with each figure's current station. */
@@ -36,8 +33,8 @@ export function Prisoners({ units }: PrisonersProps) {
   const balloonRefs = useRef<Map<string, THREE.Group>>(new Map());
   /** Last known station per unit key, to detect moves. */
   const lastStation = useRef<Map<string, string>>(new Map());
-  /** In-progress flights: from-slot, to-station, start clock time. */
-  const flights = useRef<Map<string, { from: Slot; start: number }>>(new Map());
+  /** In-progress flights: where the leap began, and when. */
+  const flights = useRef<Map<string, { from: FlightPoint; start: number }>>(new Map());
 
   useFrame(({ clock }) => {
     const now = clock.elapsedTime;
@@ -51,9 +48,11 @@ export function Prisoners({ units }: PrisonersProps) {
       const prev = lastStation.current.get(unit.key);
 
       if (prev !== undefined && prev !== stKey) {
-        // Station changed: launch a flight from wherever the figure is now.
+        // Station changed: launch a flight from wherever the figure is now,
+        // which in Ultimate mode may well be mid-air — a rescued prisoner
+        // can be sent straight back to jail before it has landed.
         flights.current.set(unit.key, {
-          from: { x: group.position.x, y: group.position.y, z: group.position.z, facing: 0 },
+          from: { x: group.position.x, y: group.position.y, z: group.position.z },
           start: now,
         });
       }
@@ -61,17 +60,11 @@ export function Prisoners({ units }: PrisonersProps) {
 
       const flight = flights.current.get(unit.key);
       if (flight) {
-        const t = Math.min((now - flight.start) / FLIGHT_SECONDS, 1);
+        const t = (now - flight.start) / FLIGHT_SECONDS;
         if (t < 1) {
-          const ease = t * t * (3 - 2 * t);
-          const x = flight.from.x + (target.x - flight.from.x) * ease;
-          const z = flight.from.z + (target.z - flight.from.z) * ease;
-          const y =
-            flight.from.y +
-            (target.y - flight.from.y) * ease +
-            Math.sin(Math.PI * t) * FLIGHT_PEAK;
-          group.position.set(x, y, z);
-          group.rotation.set(0, t * Math.PI * 2, 0);
+          const p = flightAt(flight.from, target, t);
+          group.position.set(p.x, p.y, p.z);
+          group.rotation.set(0, Math.min(1, Math.max(0, t)) * Math.PI * 2, 0);
           group.scale.setScalar(1.1);
           if (balloon) balloon.visible = false;
           return;
