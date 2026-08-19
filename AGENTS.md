@@ -1,5 +1,11 @@
 # Dice Battles — agent notes
 
+**Read `STATE.md` first.** It maps where the project actually stands —
+live URLs, accounts, what is built, what is known-broken — so a session
+gets oriented in one read instead of reconstructing it from conversation
+history. This file holds the *rules*; that one holds the *facts*, and it
+is the one to update when something ships or changes.
+
 Read the exact versioned Expo docs at https://docs.expo.dev/versions/v54.0.0/
 before writing any code — Expo APIs change between SDK versions.
 
