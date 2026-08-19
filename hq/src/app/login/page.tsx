@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
+import { PasswordField } from '@/components/PasswordField';
 
 /**
  * Sign in with an email address and a password.
@@ -97,14 +98,11 @@ function LoginForm() {
             placeholder="you@example.com"
           />
 
-          <label htmlFor="password">PASSWORD</label>
-          <input
+          <PasswordField
             id="password"
-            type="password"
-            required
-            autoComplete="current-password"
+            label="PASSWORD"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
           />
 
           {error && (

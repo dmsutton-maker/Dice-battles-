@@ -1,3 +1,4 @@
+import { PasswordField } from '@/components/PasswordField';
 import { currentMember, supabaseServer } from '@/lib/supabase/server';
 import type { Member } from '@/lib/types';
 import {
@@ -66,14 +67,12 @@ export default async function PeoplePage() {
           Change it to something you will remember. At least 8 characters.
         </p>
         <form action={changeMyPassword}>
-          <label htmlFor="my-password">NEW PASSWORD</label>
-          <input
+          <PasswordField
             id="my-password"
             name="password"
-            type="password"
-            required
-            minLength={8}
+            label="NEW PASSWORD"
             autoComplete="new-password"
+            minLength={8}
           />
           <div style={{ marginTop: 14 }}>
             <button className="button-quiet" type="submit">

@@ -27,6 +27,42 @@
   box-sizing: border-box;
 }
 
+/*
+ * Long unbroken text — an email address, a pasted URL, a bug report typed
+ * without spaces — used to run straight out through the side of whatever
+ * card it was in. It wraps to the next line now instead.
+ *
+ * `min-width: 0` on the flex/grid children is the other half of it: a flex
+ * item defaults to min-width:auto, which refuses to shrink below its
+ * longest word, so the wrap alone would not have been enough inside a row.
+ */
+body {
+  overflow-wrap: break-word;
+}
+
+p,
+li,
+td,
+th,
+dd,
+dt,
+h1,
+h2,
+h3,
+h4,
+label,
+summary,
+blockquote,
+figcaption {
+  overflow-wrap: anywhere;
+}
+
+.row > *,
+.card > *,
+.idea > * {
+  min-width: 0;
+}
+
 html,
 body {
   margin: 0;

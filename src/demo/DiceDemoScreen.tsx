@@ -676,7 +676,15 @@ export function DiceDemoScreen() {
           </Pressable>
         ))}
       </View>
-      <Text style={styles.modeRules}>{MODES[mode].rules}</Text>
+      {/*
+        Two lines' worth of height is always reserved. Color War's rules
+        fit on one line where the others take two, so picking it used to
+        pull the whole screen up by a line and push it back down again on
+        the next tap.
+      */}
+      <Text style={styles.modeRules} numberOfLines={2}>
+        {MODES[mode].rules}
+      </Text>
     </View>
   );
 
@@ -781,10 +789,16 @@ export function DiceDemoScreen() {
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
-      {/* Title */}
-      <View pointerEvents="none" style={styles.topBar}>
-        <Text style={styles.title}>DICE BATTLES</Text>
-      </View>
+      {/*
+        The title steps aside once a battle starts. It and the scoreboard
+        used to stack, pushing the score down onto the jail row — you know
+        which game you are in by then, and the prisoners matter more.
+      */}
+      {phase !== 'battle' && phase !== 'won' && phase !== 'lost' && phase !== 'tie' && (
+        <View pointerEvents="none" style={styles.topBar}>
+          <Text style={styles.title}>DICE BATTLES</Text>
+        </View>
+      )}
 
       {/* Scoreboard */}
       {(phase === 'battle' || phase === 'won' || phase === 'lost' || phase === 'tie') && (
@@ -1164,7 +1178,9 @@ const styles = StyleSheet.create({
   },
   scoreboard: {
     position: 'absolute',
-    top: 80,
+    // Up where the title used to sit, which is above the jail rather than
+    // on top of it.
+    top: 54,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
@@ -1567,6 +1583,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
+    // Exactly two lines, always — see the note at the usage site.
+    height: 36,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 10,

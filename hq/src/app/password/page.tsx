@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { currentMember } from '@/lib/supabase/server';
 import { changeMyPassword } from '../admin/actions';
+import { PasswordField } from '@/components/PasswordField';
 
 export const metadata = {
   title: 'Choose a password — Dice Battles HQ',
@@ -32,14 +33,12 @@ export default async function PasswordPage() {
       </p>
 
       <form className="card" action={changeMyPassword}>
-        <label htmlFor="password">YOUR NEW PASSWORD</label>
-        <input
+        <PasswordField
           id="password"
           name="password"
-          type="password"
-          required
-          minLength={8}
+          label="YOUR NEW PASSWORD"
           autoComplete="new-password"
+          minLength={8}
           autoFocus
         />
         <p className="faint" style={{ marginTop: 6 }}>
