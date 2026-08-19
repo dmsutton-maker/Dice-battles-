@@ -6,7 +6,15 @@ import { ARENAS, ArenaId } from '../arena/arenas';
 import { playCue } from '../audio/announcer';
 import { playCheer, playFanfare, playThrow, startMusic, stopMusic } from '../audio/sounds';
 import { ColorDef, PRISONER_COLORS } from '../game/colors';
-import { makeUnits, PrisonerUnit } from '../game/modes';
+import { makeUnits, MODES, ModeId, PrisonerUnit } from '../game/modes';
+import { PrisonerColorId } from '../game/colors';
+import {
+  applySplitMatch,
+  scoreOf,
+  SplitBoards,
+  targetFor,
+  Zone,
+} from '../game/splitRules';
 import { EMPTY_LAYOUT } from '../game/obstacles';
 import { flickFromGesture } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
@@ -15,8 +23,13 @@ import { DiceScene, SceneControls } from './DiceScene';
  * Same-device 2-player split screen — the original tabletop face-off.
  * Phone flat on the table between two players: the top zone is rotated
  * 180° to face player 2, each zone has its own physics world and dice,
- * and both players roll simultaneously. Classic rules, first to six.
- * No trophies at stake — this is a head-to-head grudge match.
+ * and both players roll simultaneously. No trophies at stake — this is a
+ * head-to-head grudge match.
+ *
+ * All four modes play here, not just Color Rush. The rules themselves live
+ * in src/game/splitRules.ts so they can be tested without a renderer;
+ * Skirmish is the interesting one — it is defined by a single shared jail,
+ * so the two boards are kept in step as views of the same six prisoners.
  */
 
 type Phase = 'ready' | 'arm' | 'go' | 'battle' | 'over';
@@ -24,15 +37,19 @@ type Phase = 'ready' | 'arm' | 'go' | 'battle' | 'over';
 interface TwoPlayerScreenProps {
   arenaId: ArenaId;
   dieBodyColor: string;
+  mode: ModeId;
   onExit: () => void;
 }
 
 interface ZoneViewProps {
   rotated: boolean;
   phase: Phase;
+  /** true won, false lost, null a draw (Skirmish can end level). */
   won: boolean | null;
   score: number;
   oppScore: number;
+  target: number;
+  modeName: string;
   units: PrisonerUnit[];
   arenaId: ArenaId;
   dieBodyColor: string;
@@ -50,6 +67,8 @@ function ZoneView({
   won,
   score,
   oppScore,
+  target,
+  modeName,
   units,
   arenaId,
   dieBodyColor,
@@ -106,7 +125,8 @@ function ZoneView({
       {/* Zone score strip */}
       <View pointerEvents="none" style={styles.zoneHud}>
         <Text style={styles.zoneScore}>
-          {score} / 6{oppScore > score ? '  — catch up!' : ''}
+          {modeName} · {score} / {target}
+          {oppScore > score ? '  — catch up!' : ''}
         </Text>
       </View>
 
@@ -121,7 +141,7 @@ function ZoneView({
       {phase === 'over' && (
         <View style={styles.zoneOverlay}>
           <Text style={styles.zoneBig}>
-            {won ? '🏆 YOU WIN!' : '😤 DEFEAT'}
+            {won === null ? "🤝 IT'S A DRAW" : won ? '🏆 YOU WIN!' : '😤 DEFEAT'}
           </Text>
           {/* One set per zone, so each player has upright buttons. */}
           <View style={styles.endButtons}>
@@ -138,17 +158,43 @@ function ZoneView({
   );
 }
 
-export function TwoPlayerScreen({ arenaId, dieBodyColor, onExit }: TwoPlayerScreenProps) {
+export function TwoPlayerScreen({
+  arenaId,
+  dieBodyColor,
+  mode,
+  onExit,
+}: TwoPlayerScreenProps) {
+  // Color War gives each player one colour to rescue. Fixed for the match
+  // so both boards agree on whose is whose.
+  const zoneColors = useRef<[PrisonerColorId, PrisonerColorId]>([
+    PRISONER_COLORS[0].id,
+    PRISONER_COLORS[1].id,
+  ]).current;
+  const buildBoards = useCallback((): SplitBoards => {
+    if (mode === 'colorwar') {
+      const [one, two] = zoneColors.map(
+        (id) => PRISONER_COLORS.find((c) => c.id === id)!,
+      );
+      return {
+        a: makeUnits('colorwar', PRISONER_COLORS, one, two),
+        b: makeUnits('colorwar', PRISONER_COLORS, two, one),
+      };
+    }
+    return {
+      a: makeUnits(mode, PRISONER_COLORS, null, null),
+      b: makeUnits(mode, PRISONER_COLORS, null, null),
+    };
+  }, [mode, zoneColors]);
   const [phase, setPhase] = useState<Phase>('ready');
   const phaseRef = useRef<Phase>('ready');
   const [winner, setWinner] = useState<0 | 1 | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const [unitsA, setUnitsA] = useState<PrisonerUnit[]>(() =>
-    makeUnits('classic', PRISONER_COLORS, null, null),
+  const [unitsA, setUnitsA] = useState<PrisonerUnit[]>(
+    () => buildBoards().a,
   );
-  const [unitsB, setUnitsB] = useState<PrisonerUnit[]>(() =>
-    makeUnits('classic', PRISONER_COLORS, null, null),
+  const [unitsB, setUnitsB] = useState<PrisonerUnit[]>(
+    () => buildBoards().b,
   );
   const unitsRefA = useRef<PrisonerUnit[]>([]);
   const unitsRefB = useRef<PrisonerUnit[]>([]);
@@ -176,12 +222,11 @@ export function TwoPlayerScreen({ arenaId, dieBodyColor, onExit }: TwoPlayerScre
   }, [phase]);
 
   const startMatch = useCallback(() => {
-    const freshA = makeUnits('classic', PRISONER_COLORS, null, null);
-    const freshB = makeUnits('classic', PRISONER_COLORS, null, null);
-    unitsRefA.current = freshA;
-    unitsRefB.current = freshB;
-    setUnitsA(freshA);
-    setUnitsB(freshB);
+    const fresh = buildBoards();
+    unitsRefA.current = fresh.a;
+    unitsRefB.current = fresh.b;
+    setUnitsA(fresh.a);
+    setUnitsB(fresh.b);
     setWinner(null);
     setPhaseBoth('arm');
     playCue('ready');
@@ -196,48 +241,63 @@ export function TwoPlayerScreen({ arenaId, dieBodyColor, onExit }: TwoPlayerScre
       }, 1100),
       setTimeout(() => setPhaseBoth('battle'), 1800),
     ];
-  }, [setPhaseBoth]);
+  }, [setPhaseBoth, buildBoards]);
 
   const makeSettleHandler = useCallback(
-    (zone: 0 | 1) => (faces: ColorDef[]) => {
+    (zone: Zone) => (faces: ColorDef[]) => {
       if (phaseRef.current !== 'battle') return;
       if (faces.length !== 2 || faces[0].id !== faces[1].id) return;
-      const unitsRef = zone === 0 ? unitsRefA : unitsRefB;
-      const setUnitsState = zone === 0 ? setUnitsA : setUnitsB;
-      const jailUnit = unitsRef.current.find(
-        (u) => u.colorId === faces[0].id && u.station.kind === 'jail',
+
+      const outcome = applySplitMatch(
+        mode,
+        { a: unitsRefA.current, b: unitsRefB.current },
+        zone,
+        faces[0].id,
+        zoneColors,
       );
-      if (!jailUnit) return;
-      const rescued = unitsRef.current.filter(
-        (u) => u.station.kind === 'retreat',
-      ).length;
-      const next = unitsRef.current.map((u) =>
-        u.key === jailUnit.key
-          ? { ...u, station: { kind: 'retreat' as const, index: rescued } }
-          : u,
-      );
-      unitsRef.current = next;
-      setUnitsState(next);
-      playCheer();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
-      );
-      if (rescued + 1 === PRISONER_COLORS.length) {
-        setWinner(zone);
+      if (outcome.effect === 'none') return;
+
+      unitsRefA.current = outcome.boards.a;
+      unitsRefB.current = outcome.boards.b;
+      setUnitsA(outcome.boards.a);
+      setUnitsB(outcome.boards.b);
+
+      if (outcome.effect === 'returned') {
+        // Ultimate: that one went backwards. A cheer would be a lie.
+        playCue('wrong');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+          () => {},
+        );
+      } else {
+        playCheer();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+          () => {},
+        );
+      }
+
+      // Skirmish ends when the shared jail empties, which can finish on a
+      // draw — the other modes only ever end on someone reaching the target.
+      const jailEmpty =
+        mode === 'skirmish' &&
+        outcome.boards.a.every((u) => u.station.kind !== 'jail');
+
+      if (outcome.winner !== null || jailEmpty) {
+        setWinner(outcome.winner);
         setPhaseBoth('over');
         playFanfare();
-        playCue('win');
+        if (outcome.winner !== null) playCue('win');
+        else playCue('tie');
       }
     },
-    [setPhaseBoth],
+    [setPhaseBoth, mode, zoneColors],
   );
 
   const settledA = useRef(makeSettleHandler(0)).current;
   const settledB = useRef(makeSettleHandler(1)).current;
   const noop = useCallback(() => {}, []);
 
-  const scoreA = unitsA.filter((u) => u.station.kind === 'retreat').length;
-  const scoreB = unitsB.filter((u) => u.station.kind === 'retreat').length;
+  const scoreA = scoreOf(unitsA);
+  const scoreB = scoreOf(unitsB);
 
   return (
     <View style={styles.container}>
@@ -248,6 +308,8 @@ export function TwoPlayerScreen({ arenaId, dieBodyColor, onExit }: TwoPlayerScre
         won={winner === null ? null : winner === 1}
         score={scoreB}
         oppScore={scoreA}
+        target={targetFor(mode)}
+        modeName={MODES[mode].name}
         units={unitsB}
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
@@ -266,6 +328,8 @@ export function TwoPlayerScreen({ arenaId, dieBodyColor, onExit }: TwoPlayerScre
         won={winner === null ? null : winner === 0}
         score={scoreA}
         oppScore={scoreB}
+        target={targetFor(mode)}
+        modeName={MODES[mode].name}
         units={unitsA}
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}

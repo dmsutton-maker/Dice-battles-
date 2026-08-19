@@ -17,6 +17,7 @@ async function main(): Promise<void> {
   await import('./flight.test');
   await import('./matchmaking.test');
   await import('./colorblind.test');
+  await import('./splitRules.test');
   process.exit(await runAll());
 }
 

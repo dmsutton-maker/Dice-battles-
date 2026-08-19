@@ -770,6 +770,7 @@ export function DiceDemoScreen() {
       <TwoPlayerScreen
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
+        mode={mode}
         onExit={() => setTwoPlayer(false)}
       />
     );
@@ -984,7 +985,10 @@ export function DiceDemoScreen() {
                 setTwoPlayer(true);
               }}
             >
-              <Text style={styles.twoPlayerText}>👥 2 Players — Split Screen</Text>
+              {/* The mode picked above carries into split screen. */}
+              <Text style={styles.twoPlayerText}>
+                👥 2 Players — {MODES[mode].name}
+              </Text>
             </Pressable>
           </ScrollView>
         </View>
