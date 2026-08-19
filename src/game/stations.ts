@@ -79,11 +79,45 @@ export const RETREAT_SLOTS: Slot[] = RETREAT_XS.map((x) => ({
 }));
 
 /** Captured prisoners paraded along the far battlement (Skirmish/War). */
+/**
+ * The round corner towers, shared so the arenas that draw them and the
+ * tests that check nothing stands inside them agree on one set of numbers.
+ * The cone roof is the widest part, so that is the radius quoted.
+ */
+export const CORNER_TOWER_RADIUS = 0.6;
+
+export const CORNER_TOWERS: { x: number; z: number }[] = (() => {
+  const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+  const x = innerWidth / 2 + wallThickness;
+  const z = innerDepth / 2 + wallThickness;
+  return [
+    { x: -x, z: -z },
+    { x, z: -z },
+    { x: -x, z },
+    { x, z },
+  ];
+})();
+
+/**
+ * Where captured prisoners stand on top of the far wall.
+ *
+ * The outermost two used to sit at x ±2.5, which put them inside the
+ * corner towers at ±2.8 — in Skirmish, where the opponent's rescues land
+ * here, the figures came out tangled in the stonework. The row is narrower
+ * now so all six clear the towers, and still spaced further apart than a
+ * figure is wide.
+ */
 export const WALL_SLOTS: Slot[] = (() => {
   const { innerDepth, wallHeight, wallThickness } = TUNING.tray;
   const z = -(innerDepth / 2 + wallThickness / 2);
-  const xs = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5];
-  return xs.map((x) => ({ x, y: wallHeight + 0.26, z, facing: 0 }));
+  const usable = 3.7;
+  const step = usable / 5;
+  return Array.from({ length: 6 }, (_v, i) => ({
+    x: -usable / 2 + i * step,
+    y: wallHeight + 0.26,
+    z,
+    facing: 0,
+  }));
 })();
 
 export function slotFor(station: Station): Slot {

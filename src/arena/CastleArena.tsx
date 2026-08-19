@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
 import {
+  CORNER_TOWERS,
   RETREAT_POOL,
   RETREAT_POST_XS,
   RETREAT_POST_Z,
@@ -362,12 +363,9 @@ export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
     return list;
   }, [halfW, halfD, wallHeight, wallThickness]);
 
-  const towerPositions: [number, number][] = [
-    [-(halfW + wallThickness), -(halfD + wallThickness)],
-    [halfW + wallThickness, -(halfD + wallThickness)],
-    [-(halfW + wallThickness), halfD + wallThickness],
-    [halfW + wallThickness, halfD + wallThickness],
-  ];
+  // Shared with the station maths so the wall row can be checked against
+  // these without the two drifting apart.
+  const towerPositions: [number, number][] = CORNER_TOWERS.map((t) => [t.x, t.z]);
 
   return (
     <group>

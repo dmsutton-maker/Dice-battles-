@@ -70,13 +70,15 @@ export function makeUnits(
   aiColor: ColorDef | null,
 ): PrisonerUnit[] {
   if (mode === 'colorwar' && playerColor && aiColor) {
-    // Three of each fighter's color, interleaved in the jail lineup.
+    // Your three fill the LEFT half of the jail, your opponent's the
+    // right. They used to alternate, which made it hard to see at a
+    // glance whose side was emptying — sides read faster than a pattern.
     const lineup = [
       playerColor,
-      aiColor,
+      playerColor,
       playerColor,
       aiColor,
-      playerColor,
+      aiColor,
       aiColor,
     ];
     return lineup.map((c, i) => ({

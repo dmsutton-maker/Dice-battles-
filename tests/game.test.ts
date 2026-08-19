@@ -274,3 +274,38 @@ suite('game · stations', () => {
     RETREAT_SLOTS.forEach((s) => assert(s.z > 0, 'retreat should be on our side'));
   });
 });
+
+suite('game · color war sides', () => {
+  test('your three prisoners hold the left half of the jail', () => {
+    const [mine, theirs] = [PRISONER_COLORS[0], PRISONER_COLORS[1]];
+    const units = makeUnits('colorwar', PRISONER_COLORS, mine, theirs);
+    assertEqual(units.length, 6, 'color war should field six figures');
+
+    const left = units.filter((u) => u.jailIndex < 3);
+    const right = units.filter((u) => u.jailIndex >= 3);
+    assert(
+      left.every((u) => u.colorId === mine.id),
+      'the left half of the jail is not all yours',
+    );
+    assert(
+      right.every((u) => u.colorId === theirs.id),
+      'the right half of the jail is not all your opponent\'s',
+    );
+  });
+
+  test('every figure still has its own jail cell', () => {
+    const units = makeUnits(
+      'colorwar',
+      PRISONER_COLORS,
+      PRISONER_COLORS[2],
+      PRISONER_COLORS[4],
+    );
+    const cells = units.map((u) => u.jailIndex).sort((a, b) => a - b);
+    assertEqual(cells.join(','), '0,1,2,3,4,5', 'two figures share a cell');
+    assertEqual(
+      new Set(units.map((u) => u.key)).size,
+      units.length,
+      'two figures share a key',
+    );
+  });
+});

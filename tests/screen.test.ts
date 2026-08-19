@@ -14,6 +14,8 @@ import {
 import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
 import {
+  CORNER_TOWERS,
+  CORNER_TOWER_RADIUS,
   FIGURE_RADIUS,
   JAIL_SLOTS,
   RETREAT_POOL,
@@ -415,5 +417,48 @@ suite('screen · assets', () => {
       eas.build?.production?.channel === 'main',
       'the production build must follow the same update channel as testers',
     );
+  });
+});
+
+suite('screen · the wall row', () => {
+  test('nothing on the wall stands inside a corner tower', () => {
+    // Skirmish sends the opponent's rescues up here, and the outer two
+    // used to sit at x +/-2.5 with the towers at +/-2.8 — David saw the
+    // figures tangled in the stonework.
+    for (const slot of WALL_SLOTS) {
+      for (const tower of CORNER_TOWERS) {
+        const gap =
+          Math.hypot(tower.x - slot.x, tower.z - slot.z) -
+          CORNER_TOWER_RADIUS -
+          FIGURE_RADIUS;
+        assert(
+          gap > 0,
+          `a corner tower overlaps the wall figure at x ${slot.x.toFixed(2)} by ${(-gap).toFixed(2)}`,
+        );
+      }
+    }
+  });
+
+  test('captured prisoners never stand inside each other', () => {
+    for (let i = 0; i < WALL_SLOTS.length; i++) {
+      for (let j = i + 1; j < WALL_SLOTS.length; j++) {
+        const d = Math.hypot(
+          WALL_SLOTS[i].x - WALL_SLOTS[j].x,
+          WALL_SLOTS[i].z - WALL_SLOTS[j].z,
+        );
+        assert(d > FIGURE_RADIUS * 2, `wall spots ${i} and ${j} overlap`);
+      }
+    }
+  });
+
+  test('the whole wall row stays on the wall', () => {
+    const { innerWidth, wallThickness } = TUNING.tray;
+    const outerEdge = innerWidth / 2 + wallThickness;
+    for (const slot of WALL_SLOTS) {
+      assert(
+        Math.abs(slot.x) + FIGURE_RADIUS <= outerEdge,
+        `the figure at x ${slot.x.toFixed(2)} hangs off the end of the wall`,
+      );
+    }
   });
 });
