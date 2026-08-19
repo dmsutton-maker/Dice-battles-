@@ -18,6 +18,24 @@ Last updated: 19 August 2026.
 
 Metro is told to ignore `hq/`. The game never imports from it.
 
+### Deploying the website — read this before changing Vercel's Git settings
+
+**`main` does not contain `hq/`.** The whole website — public site and
+admin — lives only on `claude/game-development-51x4zl`, which is ~84
+commits ahead of `main`. PR #1 has never been merged.
+
+So if the Vercel GitHub app is ever connected, its **Production Branch
+must be set to `claude/game-development-51x4zl`**, not `main`, and Root
+Directory to `hq`. Pointing it at `main` builds a repo with no Next.js
+app in it and takes the live site down.
+
+The cleaner long-term fix is to merge PR #1 so `main` is the truth
+again — that is David's call, not something to do unasked.
+
+As of 19 Aug 2026 the Vercel personal token in use had expired (`404
+User not found`) and the Vercel MCP connector could see the team but no
+projects, so neither could deploy.
+
 ## Live URLs
 
 - **papershipstudio.com** — public site (Home, Apps, the Dice Battles app
