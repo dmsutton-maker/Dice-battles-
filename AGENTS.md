@@ -145,10 +145,12 @@ when checked (17 Aug 2026) but has not been purchased.
 
 ## The App Store record
 
-- Listing name is **Dice Battles: Color Rush** — plain "Dice Battles" was
-  already taken by another app. The name under the icon on the phone is
-  separate and still reads **Dice Battles** (`expo.name` in `app.json`);
-  keep them apart on purpose.
+- The name is **Dice Battles: Color Rush** everywhere — the App Store
+  listing, `expo.name` in `app.json`, and the launch title card. Plain
+  "Dice Battles" was already taken by another app.
+- These used to be deliberately different, with the phone showing the
+  short name. David asked on 19 Aug 2026 for one name throughout, so the
+  split is gone; do not reintroduce it.
 - App Store Connect app ID `6802287913`, SKU `DICEBATTLES001`, bundle
   `com.dmsutton.dicebattles`, Apple team `K3N9FG8NKD`.
 - Submitting a build:

@@ -321,11 +321,22 @@ suite('screen · inventory', () => {
     assert(isArenaUnlocked(activeArena(0), 0), 'fallback battlefield is locked');
   });
 
-  test('the ladder alternates so something is always close to earn', () => {
-    const gaps = TIERS.slice(1).map((t, i) => t.at - TIERS[i].at);
-    const biggest = Math.max(...gaps);
-    note(`largest trophy gap between unlocks: ${biggest}`);
-    assertAtMost(biggest, 200, 'largest gap between unlocks');
+  test('the ladder starts close and gets steeper, never the other way', () => {
+    // David asked for cheap early rewards scaling up to expensive late
+    // ones. A flat cap on the largest gap would have banned exactly that,
+    // so what is checked instead is the SHAPE: the first reward is within
+    // easy reach, and the climb never gets easier as it goes.
+    const paid = TIERS.filter((t) => t.at > 0);
+    const gaps = paid.map((t, i) => t.at - (i === 0 ? 0 : paid[i - 1].at));
+    note(`trophy gaps between unlocks: ${gaps.join(', ')}`);
+
+    assertAtMost(gaps[0], 60, 'the first reward is too far from the start');
+    for (let i = 1; i < gaps.length; i++) {
+      assert(
+        gaps[i] >= gaps[i - 1],
+        `gap ${i} (${gaps[i]}) is smaller than the one before (${gaps[i - 1]}) — the ladder gets easier`,
+      );
+    }
   });
 });
 

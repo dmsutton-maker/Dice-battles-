@@ -5,7 +5,7 @@ import { getWallet } from '../game/currency';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
 
 /**
- * Standings.
+ * The Leaderboard.
  *
  * Everything shown here is REAL: it comes from this device's own record of
  * battles played. There is deliberately no invented list of world players
@@ -49,7 +49,7 @@ export function LeaderboardScreen({
   return (
     <View style={styles.overlay}>
       <View style={styles.header}>
-        <Text style={styles.title}>🏅 STANDINGS</Text>
+        <Text style={styles.title}>🏅 LEADERBOARD</Text>
         <Text style={styles.trophies}>🏆 {trophies}</Text>
       </View>
 

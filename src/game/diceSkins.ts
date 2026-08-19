@@ -33,7 +33,7 @@ export interface DiceSkin {
 
 export const DICE_SKINS: DiceSkin[] = [
   // Earned on the trophy ladder.
-  { id: 'ivory', name: 'Ivory', emoji: '🎲', body: '#ffffff', pattern: 'plain', unlock: null },
+  { id: 'ivory', name: 'Ivory', emoji: '🎲', body: '#ffffff', pattern: 'plain', unlock: 'ivory-dice' },
   {
     id: 'gold',
     name: 'Gold',

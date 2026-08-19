@@ -17,8 +17,10 @@ export interface ModeDef {
 
 export const MODES: Record<ModeId, ModeDef> = {
   classic: {
+    // The id stays 'classic' on purpose: it is the key saved progress and
+    // per-mode win counts are stored under. Only the shown name changed.
     id: 'classic',
-    name: 'Classic',
+    name: 'Color Rush',
     emoji: '⚔️',
     rules: 'Match a color to rescue that prisoner. First to all six wins!',
   },

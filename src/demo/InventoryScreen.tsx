@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { TIERS } from '../game/progress';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { DICE_SKINS } from '../game/diceSkins';
 import {
@@ -8,7 +9,6 @@ import {
   isArenaUnlocked,
   isSkinUnlocked,
 } from '../game/loadout';
-import { TIERS, tierLabel } from '../game/progress';
 
 /**
  * The Inventory: everything cosmetic the player has earned, in one place.
@@ -16,8 +16,7 @@ import { TIERS, tierLabel } from '../game/progress';
  * the pre-battle screen stays about the battle.
  *
  * Locked items are shown, not hidden — seeing the next reward and its price
- * is the point of a trophy ladder. The one exception is the Mystery Arena,
- * whose identity stays secret until it is earned.
+ * is the point of a trophy ladder.
  */
 interface InventoryScreenProps {
   trophies: number;
@@ -60,14 +59,11 @@ export function InventoryScreen({
         <View style={styles.grid}>
           {ARENA_ORDER.map((id) => {
             const arena = ARENAS[id];
-            const tier = TIERS.find((t) => t.id === ARENA_UNLOCKS[id]);
             const unlocked = isArenaUnlocked(id, trophies);
             const equipped = arenaId === id;
-            // The Mystery Arena keeps its name and its sky a secret.
-            const secret = tier?.mystery === true && !unlocked;
-            const label = secret
-              ? tierLabel(tier!, trophies)
-              : { name: arena.name, emoji: arena.emoji };
+            // Every arena shows its real name and sky, locked or not —
+            // you cannot want what you cannot see.
+            const label = { name: arena.name, emoji: arena.emoji };
 
             return (
               <Pressable
@@ -83,7 +79,7 @@ export function InventoryScreen({
                 <View
                   style={[
                     styles.swatch,
-                    { backgroundColor: secret ? '#2a2440' : arena.skyColor },
+                    { backgroundColor: arena.skyColor },
                   ]}
                 >
                   <Text style={styles.swatchEmoji}>{label.emoji}</Text>

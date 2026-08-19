@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AiDifficultyId } from './ai';
+import { ModeId } from './modes';
+import { RewardRange, rollReward } from './rewards';
 
 /**
  * Trophy progression, Clash Royale style: win trophies on victory, lose
@@ -10,6 +12,8 @@ export interface Progress {
   trophies: number;
   /** Lifetime wins per difficulty — the per-difficulty medal counters. */
   wins: Record<AiDifficultyId, number>;
+  /** Lifetime wins per game mode, shown in Your Records. */
+  modeWins: Record<ModeId, number>;
   /**
    * Family tester mode: every unlock available regardless of trophies, so
    * playtesters can try all arenas/modes immediately. Toggled by the secret
@@ -22,14 +26,22 @@ export interface Progress {
  * Higher difficulties risk and reward MUCH more — Hard pays nearly 5x Easy,
  * so climbing the ladder fast means daring the moat.
  */
-export const TROPHY_STAKES: Record<AiDifficultyId, { win: number; loss: number }> = {
-  easy: { win: 15, loss: 10 },
-  medium: { win: 35, loss: 15 },
-  hard: { win: 70, loss: 25 },
+export const TROPHY_STAKES: Record<
+  AiDifficultyId,
+  { win: RewardRange; loss: RewardRange }
+> = {
+  // The smallest possible win must beat the biggest possible loss at every
+  // difficulty, or an unlucky win followed by a lucky loss costs you rank
+  // for playing well. Easy is gentlest on purpose — it is where a five-
+  // year-old learns the game.
+  easy: { win: { min: 10, max: 20 }, loss: { min: 3, max: 8 } },
+  medium: { win: { min: 25, max: 45 }, loss: { min: 9, max: 18 } },
+  hard: { win: { min: 55, max: 85 }, loss: { min: 20, max: 40 } },
 };
 
 export type UnlockId =
   | 'castle'
+  | 'ivory-dice'
   | 'golden-dice'
   | 'sunset-castle'
   | 'mint-dice'
@@ -44,11 +56,6 @@ export interface Tier {
   name: string;
   emoji: string;
   id: UnlockId;
-  /**
-   * Shown as "❓ Mystery Arena" everywhere until unlocked — the surprise is
-   * the reward. Only trophies persist, so renaming ids is safe.
-   */
-  mystery?: boolean;
 }
 
 /** The unlock ladder. */
@@ -57,22 +64,28 @@ export interface Tier {
  * something close to earn. Everything cosmetic lands in the Inventory.
  */
 export const TIERS: Tier[] = [
+  // The two you start with, so the ladder shows where you began.
   { at: 0, name: 'Castle Courtyard', emoji: '🏰', id: 'castle' },
-  { at: 100, name: 'Gold Dice', emoji: '✨', id: 'golden-dice' },
-  { at: 250, name: 'Sunset Castle', emoji: '🌅', id: 'sunset-castle' },
-  { at: 325, name: 'Mint Dice', emoji: '🍃', id: 'mint-dice' },
-  { at: 400, name: 'Jungle Clearing', emoji: '🌴', id: 'jungle' },
-  { at: 475, name: 'Bubblegum Dice', emoji: '🍬', id: 'bubblegum-dice' },
-  { at: 550, name: 'Courtyard Treasure', emoji: '💰', id: 'treasure' },
-  { at: 700, name: 'Space Station', emoji: '🚀', id: 'space', mystery: true },
-  { at: 850, name: 'Midnight Dice', emoji: '🌑', id: 'midnight-dice' },
+  { at: 0, name: 'Ivory Dice', emoji: '🎲', id: 'ivory-dice' },
+  // Gaps widen the whole way up — 40, 60, 80, 110, 140, 180, 240, 300.
+  // The first reward used to cost 100 trophies, several sessions before
+  // anything at all happened.
+  { at: 40, name: 'Gold Dice', emoji: '✨', id: 'golden-dice' },
+  { at: 100, name: 'Sunset Castle', emoji: '🌅', id: 'sunset-castle' },
+  { at: 180, name: 'Mint Dice', emoji: '🍃', id: 'mint-dice' },
+  { at: 290, name: 'Jungle Clearing', emoji: '🌴', id: 'jungle' },
+  { at: 430, name: 'Bubblegum Dice', emoji: '🍬', id: 'bubblegum-dice' },
+  { at: 610, name: 'Courtyard Treasure', emoji: '💰', id: 'treasure' },
+  { at: 850, name: 'Space Station', emoji: '🚀', id: 'space' },
+  { at: 1150, name: 'Midnight Dice', emoji: '🌑', id: 'midnight-dice' },
 ];
 
-/** Picker/teaser label — mystery tiers stay hidden until earned. */
-export function tierLabel(tier: Tier, trophies: number): { name: string; emoji: string } {
-  if (tier.mystery && trophies < tier.at && !current.unlockAll) {
-    return { name: 'Mystery Arena', emoji: '❓' };
-  }
+/**
+ * Picker/teaser label. Every tier shows its real name from the start —
+ * seeing what Space Station IS is what makes 700 trophies worth chasing;
+ * a "❓ Mystery Arena" card gave the player nothing to want.
+ */
+export function tierLabel(tier: Tier, _trophies: number): { name: string; emoji: string } {
   return { name: tier.name, emoji: tier.emoji };
 }
 
@@ -97,7 +110,18 @@ const STORAGE_KEY = 'dice-battles:progress';
 
 const EMPTY_WINS: Record<AiDifficultyId, number> = { easy: 0, medium: 0, hard: 0 };
 
-let current: Progress = { trophies: 0, wins: { ...EMPTY_WINS } };
+const EMPTY_MODE_WINS: Record<ModeId, number> = {
+  classic: 0,
+  ultimate: 0,
+  skirmish: 0,
+  colorwar: 0,
+};
+
+let current: Progress = {
+  trophies: 0,
+  wins: { ...EMPTY_WINS },
+  modeWins: { ...EMPTY_MODE_WINS },
+};
 
 export function getProgress(): Progress {
   return current;
@@ -112,6 +136,9 @@ export async function loadProgress(): Promise<Progress> {
         ...current,
         ...parsed,
         wins: { ...EMPTY_WINS, ...(parsed.wins ?? {}) },
+        // Saves written before per-mode counting existed have no modeWins;
+        // they start at zero rather than breaking the read.
+        modeWins: { ...EMPTY_MODE_WINS, ...(parsed.modeWins ?? {}) },
       };
     }
   } catch {
@@ -141,15 +168,24 @@ export interface MatchResult {
 export function applyMatchResult(
   won: boolean,
   difficulty: AiDifficultyId,
+  mode: ModeId,
+  rng: () => number = Math.random,
 ): MatchResult {
   const stakes = TROPHY_STAKES[difficulty];
   const before = current.trophies;
-  const delta = won ? stakes.win : -stakes.loss;
+  // Varies inside the band, like coins — two easy wins should not be worth
+  // an identical number every time.
+  const delta = won
+    ? rollReward(stakes.win, rng)
+    : -rollReward(stakes.loss, rng);
   const after = Math.max(0, before + delta);
   const wins = won
     ? { ...current.wins, [difficulty]: current.wins[difficulty] + 1 }
     : current.wins;
-  current = { ...current, trophies: after, wins };
+  const modeWins = won
+    ? { ...current.modeWins, [mode]: current.modeWins[mode] + 1 }
+    : current.modeWins;
+  current = { ...current, trophies: after, wins, modeWins };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
   const newUnlocks = won
     ? TIERS.filter((t) => t.at > before && t.at <= after)

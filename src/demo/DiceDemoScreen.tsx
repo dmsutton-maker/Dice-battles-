@@ -84,6 +84,7 @@ import { TwoPlayerScreen } from './TwoPlayerScreen';
 import { VolumeSlider } from './VolumeSlider';
 import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
+import { rangeLabel } from '../game/rewards';
 
 /**
  * Classic mode vs one AI opponent.
@@ -294,7 +295,11 @@ export function DiceDemoScreen() {
         setLastDelta(0);
         return;
       }
-      const result = applyMatchResult(outcome === 'won', difficultyRef.current);
+      const result = applyMatchResult(
+        outcome === 'won',
+        difficultyRef.current,
+        modeRef.current,
+      );
       setTrophies(result.trophies);
       setWins(getProgress().wins);
       setLastDelta(result.delta);
@@ -672,7 +677,7 @@ export function DiceDemoScreen() {
       </View>
       <Text style={styles.difficultyHint}>{OBSTACLE_HINTS[difficulty]}</Text>
       <Text style={styles.stakesText}>
-        Win +{stakes.win} 🏆 · Lose −{stakes.loss} 🏆
+        Win +{rangeLabel(stakes.win)} 🏆 · Lose −{rangeLabel(stakes.loss)} 🏆
       </Text>
     </View>
   );
@@ -896,7 +901,7 @@ export function DiceDemoScreen() {
                 style={styles.navButton}
                 onPress={() => setShowLeaderboard(true)}
               >
-                <Text style={styles.navText}>🏅 STANDINGS</Text>
+                <Text style={styles.navText}>🏅 LEADERBOARD</Text>
               </Pressable>
             </View>
             <Pressable style={styles.startButton} onPress={startCountdown}>

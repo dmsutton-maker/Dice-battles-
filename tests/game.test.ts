@@ -15,6 +15,7 @@ import {
   WALL_SLOTS,
 } from '../src/game/stations';
 import { assert, assertEqual, suite, test } from './harness';
+import { averageOf } from '../src/game/rewards';
 
 /** Rules, progression and palette invariants — pure logic, no physics. */
 
@@ -185,12 +186,18 @@ suite('game · opponents', () => {
 suite('game · progression', () => {
   test('the trophy ladder climbs and every tier is reachable', () => {
     for (let i = 1; i < TIERS.length; i++) {
+      // >= rather than >: the arena and the dice you START with both sit at
+      // zero, so the ladder can show where you began.
       assert(
-        TIERS[i].at > TIERS[i - 1].at,
+        TIERS[i].at >= TIERS[i - 1].at,
         `tier ${TIERS[i].id} does not come after ${TIERS[i - 1].id}`,
       );
     }
     assertEqual(TIERS[0].at, 0, 'first tier must be free');
+    assert(
+      TIERS.filter((t) => t.at === 0).length <= 2,
+      'only the starting arena and dice should be free',
+    );
     assertEqual(
       new Set(TIERS.map((t) => t.id)).size,
       TIERS.length,
@@ -200,23 +207,37 @@ suite('game · progression', () => {
 
   test('harder battles are worth more and risk more', () => {
     const { easy, medium, hard } = TROPHY_STAKES;
-    assert(easy.win < medium.win && medium.win < hard.win, 'wins should scale');
-    assert(easy.loss < medium.loss && medium.loss < hard.loss, 'losses should scale');
+    assert(
+      averageOf(easy.win) < averageOf(medium.win) &&
+        averageOf(medium.win) < averageOf(hard.win),
+      'wins should scale',
+    );
+    assert(
+      averageOf(easy.loss) < averageOf(medium.loss) &&
+        averageOf(medium.loss) < averageOf(hard.loss),
+      'losses should scale',
+    );
     (['easy', 'medium', 'hard'] as const).forEach((d) => {
+      // Compared at the worst case: the SMALLEST possible win must still
+      // beat the BIGGEST possible loss, or a good game can cost you rank.
       assert(
-        TROPHY_STAKES[d].win > TROPHY_STAKES[d].loss,
-        `${d} punishes losing more than it rewards winning`,
+        TROPHY_STAKES[d].win.min > TROPHY_STAKES[d].loss.max,
+        `${d} can punish losing more than it rewards winning`,
       );
     });
   });
 
-  test('the mystery arena keeps its secret until it is earned', () => {
-    const mystery = TIERS.find((t) => t.mystery);
-    assert(mystery !== undefined, 'no mystery tier defined');
-    const hidden = tierLabel(mystery!, mystery!.at - 1);
-    assertEqual(hidden.name, 'Mystery Arena', 'locked mystery tier leaks its name');
-    const revealed = tierLabel(mystery!, mystery!.at);
-    assertEqual(revealed.name, mystery!.name, 'earned mystery tier stays hidden');
+  test('every tier shows its real name, locked or not', () => {
+    // There used to be a "❓ Mystery Arena" that hid Space Station until it
+    // was earned. David asked for the name all the way through: a reward
+    // you cannot see is not a reward you can want.
+    TIERS.forEach((tier) => {
+      const locked = tierLabel(tier, Math.max(0, tier.at - 1));
+      const earned = tierLabel(tier, tier.at);
+      assertEqual(locked.name, tier.name, `${tier.id} hides its name while locked`);
+      assertEqual(earned.name, tier.name, `${tier.id} renames itself once earned`);
+      assertEqual(locked.emoji, tier.emoji, `${tier.id} hides its emoji while locked`);
+    });
   });
 });
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STORE_SKINS } from '../game/diceSkins';
 import { buyWithCoins, COIN_REWARDS, getWallet, owns } from '../game/currency';
+import { rangeLabel } from '../game/rewards';
 
 /**
  * The Store: spend coins earned by playing.
@@ -50,8 +51,9 @@ export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
 
         <Text style={styles.sectionTitle}>PATTERNED DICE</Text>
         <Text style={styles.sectionNote}>
-          Earn coins every battle: {COIN_REWARDS.easy.win} for an Easy win, up
-          to {COIN_REWARDS.hard.win} on Hard. Losing still pays a little.
+          Earn coins every battle: {rangeLabel(COIN_REWARDS.easy.win)} for an
+          Easy win, up to {rangeLabel(COIN_REWARDS.hard.win)} on Hard. Losing
+          still pays a little — it never costs you coins.
         </Text>
 
         <View style={styles.grid}>

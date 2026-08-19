@@ -18,9 +18,9 @@ const textShadow = {
  * Studio" in the studio's own type. The native splash still shows first,
  * for the moment before JavaScript is running; this takes over from it.
  *
- * The name here is "Dice Battles" — the name under the icon on the phone.
- * The App Store listing name is "Dice Battles: Color Rush", deliberately
- * kept separate (see AGENTS.md).
+ * The name is the full "Dice Battles: Color Rush" — David asked for the
+ * one name everywhere, so the icon, the title card and the App Store
+ * listing now all agree.
  */
 export function BootSplash({ onDone }: { onDone: () => void }) {
   const done = useRef(onDone);
@@ -35,6 +35,7 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
     <View style={styles.screen}>
       <Text style={styles.dice}>🎲</Text>
       <Text style={styles.title}>DICE BATTLES</Text>
+      <Text style={styles.subtitle}>COLOR RUSH</Text>
       <View style={styles.rule} />
       <Text style={styles.tagline}>Colors, not numbers</Text>
 
@@ -63,6 +64,15 @@ const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: '900',
     letterSpacing: 1.5,
+    textAlign: 'center',
+    ...textShadow,
+  },
+  subtitle: {
+    color: '#fc8403',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 4.5,
+    marginTop: 6,
     textAlign: 'center',
     ...textShadow,
   },

@@ -131,5 +131,5 @@ export const OBSTACLES_BY_DIFFICULTY: Record<AiDifficultyId, ObstacleConfig> = {
 export const OBSTACLE_HINTS: Record<AiDifficultyId, string> = {
   easy: 'A clear courtyard — nothing in your way. Just outroll them!',
   medium: 'A hill in a new spot every battle — dice bounce off it.',
-  hard: 'The hill AND a wandering moat that swallows dice whole.',
+  hard: 'The hill AND a pond that swallows dice whole.',
 };

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AiDifficultyId } from './ai';
+import { RewardRange, rollReward } from './rewards';
 
 /**
  * Coins: the in-game currency, earned by playing and spent in the Store.
@@ -19,14 +20,21 @@ export interface Wallet {
 }
 
 /**
- * Coins per battle. Winning pays properly; losing still pays a little, so
- * a young player who keeps losing on Hard is still working toward
- * something. Harder battles pay more, matching the trophy stakes.
+ * Coins per battle, as ranges — the payout varies inside the band so the
+ * number is worth looking at each time. Winning pays properly; losing
+ * still pays a little, so a young player on a losing streak is still
+ * working toward something. Harder battles pay more.
+ *
+ * A loss never SUBTRACTS coins. That is the whole difference from
+ * trophies: trophies are rank and can fall, coins only accumulate.
  */
-export const COIN_REWARDS: Record<AiDifficultyId, { win: number; loss: number }> = {
-  easy: { win: 20, loss: 5 },
-  medium: { win: 40, loss: 10 },
-  hard: { win: 75, loss: 15 },
+export const COIN_REWARDS: Record<
+  AiDifficultyId,
+  { win: RewardRange; loss: RewardRange }
+> = {
+  easy: { win: { min: 10, max: 20 }, loss: { min: 3, max: 7 } },
+  medium: { win: { min: 25, max: 45 }, loss: { min: 6, max: 14 } },
+  hard: { win: { min: 50, max: 85 }, loss: { min: 10, max: 20 } },
 };
 
 /** A tie is a draw, not a loss — it pays the losing rate. */
@@ -62,19 +70,27 @@ function persist(): void {
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
 }
 
-/** Pay out for a finished battle. Returns the coins awarded. */
+/** Pay out for a finished battle. Returns the coins awarded, never negative. */
 export function awardCoins(
   outcome: 'won' | 'lost' | 'tie',
   difficulty: AiDifficultyId,
+  rng: () => number = Math.random,
 ): number {
   const rates = COIN_REWARDS[difficulty];
+  const band = outcome === 'won' ? rates.win : rates.loss;
+  const rolled = rollReward(band, rng);
   const amount =
-    outcome === 'won'
-      ? rates.win
-      : Math.round(rates.loss * (outcome === 'tie' ? COIN_TIE_MULTIPLIER : 1));
+    outcome === 'tie' ? Math.round(rolled * COIN_TIE_MULTIPLIER) : rolled;
   current = { ...current, coins: current.coins + amount };
   persist();
   return amount;
+}
+
+/** The MONEY code in Settings. Returns the new balance. */
+export function grantCoins(amount: number): number {
+  current = { ...current, coins: current.coins + Math.max(0, Math.floor(amount)) };
+  persist();
+  return current.coins;
 }
 
 export function canAfford(price: number): boolean {

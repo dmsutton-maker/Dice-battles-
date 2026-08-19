@@ -1,3 +1,4 @@
+import { averageOf } from '../src/game/rewards';
 import {
   awardCoins,
   buyWithCoins,
@@ -8,6 +9,10 @@ import {
   resetWalletForTests,
 } from '../src/game/currency';
 import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
+import { TIERS, UnlockId } from '../src/game/progress';
+
+const priceInTrophies = (id: UnlockId): number =>
+  TIERS.find((t) => t.id === id)?.at ?? 0;
 import { isSkinUnlocked } from '../src/game/loadout';
 import { assert, assertEqual, suite, test } from './harness';
 
@@ -20,14 +25,44 @@ suite('currency · earning', () => {
   test('winning pays more than losing, and harder pays more', () => {
     for (const d of ['easy', 'medium', 'hard'] as const) {
       assert(
-        COIN_REWARDS[d].win > COIN_REWARDS[d].loss,
-        `${d} pays as much for losing as winning`,
+        COIN_REWARDS[d].win.min > COIN_REWARDS[d].loss.max,
+        `${d} can pay as much for losing as winning`,
       );
     }
     assert(
-      COIN_REWARDS.easy.win < COIN_REWARDS.medium.win &&
-        COIN_REWARDS.medium.win < COIN_REWARDS.hard.win,
+      averageOf(COIN_REWARDS.easy.win) < averageOf(COIN_REWARDS.medium.win) &&
+        averageOf(COIN_REWARDS.medium.win) < averageOf(COIN_REWARDS.hard.win),
       'harder battles should pay more',
+    );
+  });
+
+  test('the payout actually varies, and stays inside its band', () => {
+    // David asked for a range rather than a fixed number: an Easy win is
+    // 10-20 coins, not 20 every single time.
+    const band = COIN_REWARDS.easy.win;
+    assert(band.min === 10 && band.max === 20, 'Easy win should be 10-20');
+    const seen = new Set<number>();
+    for (let i = 0; i < 400; i++) {
+      resetWalletForTests();
+      const paid = awardCoins('won', 'easy');
+      assert(
+        paid >= band.min && paid <= band.max,
+        `paid ${paid}, outside ${band.min}-${band.max}`,
+      );
+      seen.add(paid);
+    }
+    assert(seen.size > 1, 'the payout never varied across 400 wins');
+  });
+
+  test('both ends of a band are reachable', () => {
+    const band = COIN_REWARDS.easy.win;
+    resetWalletForTests();
+    assertEqual(awardCoins('won', 'easy', () => 0), band.min, 'lowest roll');
+    resetWalletForTests();
+    assertEqual(
+      awardCoins('won', 'easy', () => 0.999999999),
+      band.max,
+      'highest roll',
     );
   });
 
@@ -35,7 +70,7 @@ suite('currency · earning', () => {
     // A young player on a losing streak should still be working toward
     // something rather than earning nothing at all.
     for (const d of ['easy', 'medium', 'hard'] as const) {
-      assert(COIN_REWARDS[d].loss > 0, `${d} pays nothing for a loss`);
+      assert(COIN_REWARDS[d].loss.min > 0, `${d} can pay nothing for a loss`);
     }
   });
 
@@ -97,7 +132,14 @@ suite('currency · spending', () => {
     // The two currencies must stay separate: coins buy Store skins only,
     // trophies unlock ladder skins only.
     resetWalletForTests({ coins: 99999, owned: [] });
-    for (const skin of DICE_SKINS.filter((s) => s.price === undefined && s.unlock)) {
+    // Ivory sits on the ladder at zero trophies — it is the dice you start
+    // with, so being usable at 0 is correct, not a leak. Everything that
+    // actually COSTS trophies must stay out of reach of coins.
+    const costsTrophies = DICE_SKINS.filter(
+      (s) => s.price === undefined && s.unlock && priceInTrophies(s.unlock) > 0,
+    );
+    assert(costsTrophies.length > 0, 'no trophy-gated dice left to check');
+    for (const skin of costsTrophies) {
       assert(
         !isSkinUnlocked(skin.id, 0),
         `${skin.name} is a ladder reward but coins alone made it usable`,
@@ -111,7 +153,7 @@ suite('currency · spending', () => {
     // A first purchase should be within reach of a modest run of wins,
     // not a grind that makes coins feel pointless.
     const cheapest = Math.min(...prices);
-    const winsNeeded = Math.ceil(cheapest / COIN_REWARDS.medium.win);
+    const winsNeeded = Math.ceil(cheapest / averageOf(COIN_REWARDS.medium.win));
     assert(
       winsNeeded <= 10,
       `the cheapest item needs ${winsNeeded} Medium wins — too far away`,
