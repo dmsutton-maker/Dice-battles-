@@ -59,6 +59,7 @@ interface DiceSceneProps {
   dieBodyColor: string;
   diePattern?: PatternId;
   diePatternInk?: string;
+  dieSymbols?: boolean;
   /** Trophy unlock that adds the courtyard treasure. */
   showTreasure: boolean;
   /**
@@ -90,6 +91,7 @@ export function DiceScene({
   dieBodyColor,
   diePattern = 'plain',
   diePatternInk,
+  dieSymbols = false,
   showTreasure,
   throwsEnabled = true,
 }: DiceSceneProps) {
@@ -434,6 +436,7 @@ export function DiceScene({
           bodyColor={dieBodyColor}
             pattern={diePattern}
             patternInk={diePatternInk}
+            symbols={dieSymbols}
           ref={(mesh: THREE.Group | null) => {
             dieMeshRefs.current[i] = mesh;
           }}

@@ -4,6 +4,8 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { DIE_FACE_COLORS } from '../game/colors';
 import { TUNING } from '../game/tuning';
 import { createPatternTexture, PatternId } from './patterns';
+import { createSymbolTexture } from './symbols';
+import { COLOR_SYMBOLS } from '../game/colorblind';
 
 /**
  * Visual die: an ivory rounded cube with a colored circular sticker inset on
@@ -26,9 +28,15 @@ const STICKER_TRANSFORMS: {
 
 export const DieMesh = forwardRef<
   THREE.Group,
-  { bodyColor?: string; pattern?: PatternId; patternInk?: string }
+  {
+    bodyColor?: string;
+    pattern?: PatternId;
+    patternInk?: string;
+    /** Colourblind mode: stamp a distinct shape on each face sticker. */
+    symbols?: boolean;
+  }
 >(function DieMesh(
-  { bodyColor = '#ffffff', pattern = 'plain', patternInk },
+  { bodyColor = '#ffffff', pattern = 'plain', patternInk, symbols = false },
   ref,
 ) {
   const size = TUNING.dieSize;
@@ -62,10 +70,17 @@ export const DieMesh = forwardRef<
   // without it muting or hue-shifting the sticker colors.
   const stickerMaterials = useMemo(
     () =>
-      DIE_FACE_COLORS.map(
-        (c) => new THREE.MeshBasicMaterial({ color: c.hex, toneMapped: false }),
+      DIE_FACE_COLORS.map((c) =>
+        symbols
+          ? new THREE.MeshBasicMaterial({
+              // The colour is still the colour — the shape is stamped on
+              // top of it, so nothing about the palette changes.
+              map: createSymbolTexture(COLOR_SYMBOLS[c.id], c.hex),
+              toneMapped: false,
+            })
+          : new THREE.MeshBasicMaterial({ color: c.hex, toneMapped: false }),
       ),
-    [],
+    [symbols],
   );
   const stickerGeometry = useMemo(
     () => new THREE.CircleGeometry(size * 0.33, 24),

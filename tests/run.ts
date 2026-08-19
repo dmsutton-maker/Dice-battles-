@@ -16,6 +16,7 @@ async function main(): Promise<void> {
   await import('./bugReport.test');
   await import('./flight.test');
   await import('./matchmaking.test');
+  await import('./colorblind.test');
   process.exit(await runAll());
 }
 

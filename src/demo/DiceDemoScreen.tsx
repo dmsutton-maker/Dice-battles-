@@ -90,6 +90,10 @@ import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
 import { Reward, RewardPopup } from './RewardPopup';
+import {
+  loadColorblindMode,
+  setColorblindMode,
+} from '../game/colorblind';
 
 /**
  * Classic mode vs one AI opponent.
@@ -119,8 +123,14 @@ export function DiceDemoScreen() {
     // Nothing is drawn until the saved loadout and progress are in hand:
     // rendering first would show the default castle for a frame before
     // swapping to the battlefield the player actually left equipped.
-    Promise.all([loadAudioSettings(), loadLoadout(), loadProgress(), loadWallet()])
-      .then(([audio, saved, progress, purse]) => {
+    Promise.all([
+      loadAudioSettings(),
+      loadLoadout(),
+      loadProgress(),
+      loadWallet(),
+      loadColorblindMode(),
+    ])
+      .then(([audio, saved, progress, purse, cb]) => {
         setAudioPrefs(audio);
         setLoadout(saved);
         setWallet(purse);
@@ -128,6 +138,7 @@ export function DiceDemoScreen() {
         setWins(progress.wins);
         setModeWins(progress.modeWins);
         setUnlockAll(!!progress.unlockAll);
+        setColorblind(cb);
       })
       .catch(() => {
         // Defaults are fine if storage is unavailable.
@@ -154,6 +165,7 @@ export function DiceDemoScreen() {
   // battle used to show only the second one.
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [colorblind, setColorblind] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -781,6 +793,7 @@ export function DiceDemoScreen() {
           dieBodyColor={dieBodyColor}
           diePattern={equippedSkin.pattern}
           diePatternInk={equippedSkin.ink}
+          dieSymbols={colorblind}
           showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}
           onThrow={handleThrow}
@@ -1095,6 +1108,33 @@ export function DiceDemoScreen() {
                 }
               />
             ))}
+            <View style={styles.settingsDividerLine} />
+            {/*
+              Colourblind mode. The palette does not change — it is already
+              built for colour-vision deficiency — a shape is added on top,
+              so nobody has to make a fine colour judgement in a hurry.
+            */}
+            <Pressable
+              style={styles.toggleRow}
+              onPress={() => {
+                playClick();
+                const next = !colorblind;
+                setColorblind(next);
+                setColorblindMode(next);
+              }}
+            >
+              <View style={styles.toggleText}>
+                <Text style={styles.toggleLabel}>
+                  {colorblind ? '🔷' : '⬜'} Shapes on the dice
+                </Text>
+                <Text style={styles.toggleNote}>
+                  Every colour also gets its own shape.
+                </Text>
+              </View>
+              <View style={[styles.toggleBox, colorblind && styles.toggleBoxOn]}>
+                <Text style={styles.toggleTick}>{colorblind ? '✓' : ''}</Text>
+              </View>
+            </Pressable>
             <View style={styles.settingsDividerLine} />
             <Text style={styles.settingsStats}>
               🏆 {trophies} trophies{'\n'}🥉 Easy ×{wins.easy}   🥈 Medium ×
@@ -1648,6 +1688,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 4,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
+  },
+  toggleText: {
+    flex: 1,
+  },
+  toggleLabel: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  toggleNote: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  toggleBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    borderWidth: 2.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleBoxOn: {
+    backgroundColor: '#33cc6b',
+    borderColor: '#33cc6b',
+  },
+  toggleTick: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '900',
   },
   codeInput: {
     flex: 1,
