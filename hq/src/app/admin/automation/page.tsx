@@ -46,9 +46,9 @@ const STANDING: Standing[] = [
     when: 'Every hour',
     does: 'Reads the board for new bug reports — from the family, or sent straight from the game’s Report a Bug button.',
     asks:
-      'Priority 1 ("Drop everything") is fixed straight away without asking. Everything else emails David and waits for a yes.',
+      'Priority 1 ("Drop everything") is fixed straight away without asking. Everything else asks David and waits for a yes.',
     caveat:
-      'Set up, but not yet proven: the first automatic run will show whether it keeps the database and email access it needs. If nothing ever appears below, that is what went wrong.',
+      'Confirmed working on 19 August 2026 — the first automatic run reached the board and the email account it needs.',
   },
   {
     emoji: '✍️',
