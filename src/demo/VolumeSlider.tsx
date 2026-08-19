@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   GestureResponderEvent,
   LayoutChangeEvent,
@@ -7,7 +7,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { fillPercent, volumeFromTouch, volumeIcon, volumeLabel } from '../audio/slider';
+import {
+  fillPercent,
+  knobLeft,
+  volumeFromTouch,
+  volumeIcon,
+  volumeLabel,
+} from '../audio/slider';
 
 /**
  * A volume slider, drawn and driven in plain React Native.
@@ -37,13 +43,26 @@ export function VolumeSlider({
   // The PanResponder is built once, so it reads the live width and the
   // live callback through refs rather than closing over stale props.
   const widthRef = useRef(0);
+  const stripRef = useRef<View>(null);
+  const originRef = useRef<number | null>(null);
+  const [width, setWidth] = useState(0);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
   const responder = useMemo(() => {
+    /**
+     * `locationX` is measured against whichever view the touch is IN, so
+     * once a drag wandered onto the knob or the fill it started reporting
+     * against that child instead of the strip and the value jumped about.
+     * That was the glitchiness. The children are now pointerEvents="none"
+     * so the strip is always the target, and moves are measured from the
+     * strip's own left edge via pageX.
+     */
     const setFrom = (event: GestureResponderEvent) => {
-      const next = volumeFromTouch(event.nativeEvent.locationX, widthRef.current);
-      onChangeRef.current(next);
+      const { pageX, locationX } = event.nativeEvent;
+      const originX = originRef.current;
+      const x = originX === null ? locationX : pageX - originX;
+      onChangeRef.current(volumeFromTouch(x, widthRef.current));
     };
     return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -58,6 +77,12 @@ export function VolumeSlider({
 
   const onLayout = (event: LayoutChangeEvent) => {
     widthRef.current = event.nativeEvent.layout.width;
+    setWidth(event.nativeEvent.layout.width);
+    // Page position of the strip's left edge, so a drag can be measured
+    // against the strip no matter what is under the finger.
+    stripRef.current?.measure((_x, _y, _w, _h, pageX) => {
+      if (Number.isFinite(pageX)) originRef.current = pageX;
+    });
   };
 
   const muted = value <= 0;
@@ -73,8 +98,13 @@ export function VolumeSlider({
         </Text>
       </View>
       {/* The whole strip is the touch target; the bar inside is the picture. */}
-      <View style={styles.touchStrip} onLayout={onLayout} {...responder.panHandlers}>
-        <View style={styles.track}>
+      <View
+        ref={stripRef}
+        style={styles.touchStrip}
+        onLayout={onLayout}
+        {...responder.panHandlers}
+      >
+        <View style={styles.track} pointerEvents="none">
           <View
             style={[
               styles.fill,
@@ -83,7 +113,10 @@ export function VolumeSlider({
             ]}
           />
         </View>
-        <View style={[styles.knob, { left: fillPercent(value) }]} />
+        <View
+          pointerEvents="none"
+          style={[styles.knob, { left: knobLeft(value, width, KNOB) }]}
+        />
       </View>
     </View>
   );
@@ -146,7 +179,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 2,
     borderColor: 'rgba(0,0,0,0.25)',
-    // `left` is the fill percentage, so the knob's centre lands on the value.
-    marginLeft: -KNOB / 2,
+    // No negative margin: knobLeft already keeps the whole knob on the
+    // track, so it can no longer hang off the ends of the panel.
   },
 });

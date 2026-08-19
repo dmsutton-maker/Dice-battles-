@@ -160,7 +160,10 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(20,16,40,0.96)',
-    paddingTop: 64,
+    // Above the Home screen's settings gear (zIndex 5), which used to
+    // float on top of these screens and sit over their headers.
+    zIndex: 20,
+    paddingTop: 100,
     paddingBottom: 24,
   },
   header: {

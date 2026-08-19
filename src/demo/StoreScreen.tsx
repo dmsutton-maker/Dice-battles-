@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STORE_SKINS } from '../game/diceSkins';
 import { buyWithCoins, COIN_REWARDS, getWallet, owns } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
+import { Reward } from './RewardPopup';
 
 /**
  * The Store: spend coins earned by playing.
@@ -14,19 +15,25 @@ import { rangeLabel } from '../game/rewards';
  */
 interface StoreScreenProps {
   onClose: () => void;
-  onPurchase: () => void;
+  /** Reports what was bought, so the reward popup can celebrate it. */
+  onPurchase: (bought: Reward | null) => void;
 }
 
 export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
   const [wallet, setWallet] = useState(getWallet());
   const [message, setMessage] = useState<string | null>(null);
 
-  const buy = (id: string, price: number, name: string) => {
+  const buy = (id: string, price: number, name: string, emoji: string) => {
     const result = buyWithCoins(id, price);
     if (result.ok) {
       setWallet({ ...getWallet() });
-      setMessage(`${name} is yours! Equip it in the Inventory.`);
-      onPurchase();
+      setMessage(null);
+      onPurchase({
+        emoji,
+        name,
+        kicker: 'PURCHASED',
+        note: 'Head to the Inventory to equip it.',
+      });
     } else if (result.reason === 'too-expensive') {
       setMessage(`${name} costs ${price} coins — keep battling!`);
     }
@@ -34,9 +41,9 @@ export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
 
   return (
     <View style={styles.overlay}>
+      {/* No coin count here — the shared HUD shows it on every screen. */}
       <View style={styles.header}>
         <Text style={styles.title}>🛒 STORE</Text>
-        <Text style={styles.coins}>🪙 {wallet.coins}</Text>
       </View>
 
       <ScrollView
@@ -64,7 +71,7 @@ export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
               <Pressable
                 key={skin.id}
                 disabled={bought}
-                onPress={() => buy(skin.id, skin.price!, skin.name)}
+                onPress={() => buy(skin.id, skin.price!, skin.name, skin.emoji)}
                 style={[
                   styles.card,
                   bought && styles.cardOwned,
@@ -111,7 +118,10 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(20,16,40,0.96)',
-    paddingTop: 64,
+    // Above the Home screen's settings gear (zIndex 5), which used to
+    // float on top of these screens and sit over their headers.
+    zIndex: 20,
+    paddingTop: 100,
     paddingBottom: 24,
   },
   header: {

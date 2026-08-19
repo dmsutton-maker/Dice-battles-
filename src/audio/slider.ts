@@ -36,3 +36,23 @@ export function volumeIcon(volume: number): string {
   if (v <= 0.66) return '🔉';
   return '🔊';
 }
+
+/**
+ * Where the knob's LEFT edge goes, in points, so the whole knob stays on
+ * the track.
+ *
+ * Positioning it by percentage with a negative margin — what this used to
+ * do — hangs it half off the left end at 0% and half off the right end at
+ * 100%, which is the slider "going off the menu a little bit". Here the
+ * travel is the track minus one knob width, so at either extreme the knob
+ * is flush with the end instead of over it.
+ */
+export function knobLeft(
+  volume: number,
+  trackWidth: number,
+  knobSize: number,
+): number {
+  if (!Number.isFinite(trackWidth) || trackWidth <= 0) return 0;
+  const travel = Math.max(0, trackWidth - knobSize);
+  return clampVolume(volume) * travel;
+}

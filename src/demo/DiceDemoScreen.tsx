@@ -58,6 +58,8 @@ import {
   nextTier,
   setUnlockAll as persistUnlockAll,
   TESTER_CODE,
+  MONEY_CODE,
+  MONEY_CODE_COINS,
   TESTER_LOCK_CODE,
   TIERS,
   tierLabel,
@@ -74,7 +76,7 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { flickFromGesture } from '../game/aim';
-import { awardCoins, getWallet, loadWallet } from '../game/currency';
+import { awardCoins, getWallet, grantCoins, loadWallet } from '../game/currency';
 import { skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
@@ -85,6 +87,8 @@ import { VolumeSlider } from './VolumeSlider';
 import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
+import { StatsHud } from './StatsHud';
+import { Reward, RewardPopup } from './RewardPopup';
 
 /**
  * Classic mode vs one AI opponent.
@@ -121,6 +125,7 @@ export function DiceDemoScreen() {
         setWallet(purse);
         setTrophies(progress.trophies);
         setWins(progress.wins);
+        setModeWins(progress.modeWins);
         setUnlockAll(!!progress.unlockAll);
       })
       .catch(() => {
@@ -144,6 +149,9 @@ export function DiceDemoScreen() {
   const [unlockAll, setUnlockAll] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
+  // Rewards queue rather than replace each other: crossing two tiers in one
+  // battle used to show only the second one.
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
@@ -160,6 +168,12 @@ export function DiceDemoScreen() {
   const [round, setRound] = useState(0);
   const [trophies, setTrophies] = useState(0);
   const [wins, setWins] = useState({ easy: 0, medium: 0, hard: 0 });
+  const [modeWins, setModeWins] = useState<Record<ModeId, number>>({
+    classic: 0,
+    ultimate: 0,
+    skirmish: 0,
+    colorwar: 0,
+  });
   const [lastDelta, setLastDelta] = useState<number | null>(null);
   const [lastCoins, setLastCoins] = useState(0);
   const [aiFlash, setAiFlash] = useState(false);
@@ -260,6 +274,11 @@ export function DiceDemoScreen() {
       setUnlockAll(true);
       setCodeFeedback('🔓 Everything unlocked — have fun testing!');
       playFanfare();
+    } else if (code === MONEY_CODE) {
+      grantCoins(MONEY_CODE_COINS);
+      setWallet({ ...getWallet() });
+      setCodeFeedback(`🪙 ${MONEY_CODE_COINS.toLocaleString()} coins added!`);
+      playFanfare();
     } else if (code === TESTER_LOCK_CODE) {
       persistUnlockAll(false);
       setUnlockAll(false);
@@ -301,7 +320,19 @@ export function DiceDemoScreen() {
         modeRef.current,
       );
       setTrophies(result.trophies);
+      if (result.newUnlocks.length > 0) {
+        setRewards((queue) => [
+          ...queue,
+          ...result.newUnlocks.map((tier) => ({
+            emoji: tier.emoji,
+            name: tier.name,
+            kicker: 'NEW REWARD UNLOCKED',
+            note: 'Put it on in the Inventory whenever you like.',
+          })),
+        ]);
+      }
       setWins(getProgress().wins);
+      setModeWins(getProgress().modeWins);
       setLastDelta(result.delta);
       if (outcome === 'won') {
         playFanfare();
@@ -873,9 +904,6 @@ export function DiceDemoScreen() {
             <Text style={styles.tagline}>
               Race other players to free your prisoners!
             </Text>
-            <Text style={styles.trophyLine}>
-              🏆 {trophies}   🪙 {wallet.coins}
-            </Text>
             {unlockAll ? (
               <Text style={styles.trophyNext}>
                 🔓 Family tester mode — everything unlocked
@@ -963,13 +991,17 @@ export function DiceDemoScreen() {
       {showStore && (
         <StoreScreen
           onClose={() => setShowStore(false)}
-          onPurchase={() => setWallet({ ...getWallet() })}
+          onPurchase={(bought) => {
+            setWallet({ ...getWallet() });
+            if (bought) setRewards((queue) => [...queue, bought]);
+          }}
         />
       )}
       {showLeaderboard && (
         <LeaderboardScreen
           trophies={trophies}
           wins={wins}
+          modeWins={modeWins}
           onClose={() => setShowLeaderboard(false)}
         />
       )}
@@ -983,6 +1015,19 @@ export function DiceDemoScreen() {
           onClose={() => setShowInventory(false)}
         />
       )}
+      {phase !== 'battle' &&
+        phase !== 'arm' &&
+        phase !== 'go' &&
+        phase !== 'matching' &&
+        !showLeaderboard && <StatsHud trophies={trophies} coins={wallet.coins} />}
+
+      {rewards.length > 0 && (
+        <RewardPopup
+          reward={rewards[0]}
+          onClose={() => setRewards((queue) => queue.slice(1))}
+        />
+      )}
+
       {showSettings && (
         <View style={styles.settingsOverlay}>
           <View style={styles.settingsPanel}>

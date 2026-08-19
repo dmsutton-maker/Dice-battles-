@@ -160,3 +160,25 @@ suite('currency · spending', () => {
     );
   });
 });
+
+suite('currency · store shelf', () => {
+  test('the Store lists items cheapest first', () => {
+    const prices = STORE_SKINS.map((s) => s.price!);
+    for (let i = 1; i < prices.length; i++) {
+      assert(
+        prices[i] >= prices[i - 1],
+        `${STORE_SKINS[i].name} (${prices[i]}) is listed after a dearer item (${prices[i - 1]})`,
+      );
+    }
+  });
+
+  test('sorting the shelf did not drop or duplicate anything', () => {
+    const buyable = DICE_SKINS.filter((s) => s.price !== undefined);
+    assertEqual(STORE_SKINS.length, buyable.length, 'an item fell off the shelf');
+    assertEqual(
+      new Set(STORE_SKINS.map((s) => s.id)).size,
+      STORE_SKINS.length,
+      'an item is listed twice',
+    );
+  });
+});

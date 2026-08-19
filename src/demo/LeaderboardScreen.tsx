@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiDifficultyId } from '../game/ai';
 import { getWallet } from '../game/currency';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
+import { MODES, MODE_ORDER, ModeId } from '../game/modes';
 
 /**
  * The Leaderboard.
@@ -22,6 +23,7 @@ import { nextTier, TIERS, tierLabel } from '../game/progress';
 interface LeaderboardScreenProps {
   trophies: number;
   wins: Record<AiDifficultyId, number>;
+  modeWins: Record<ModeId, number>;
   onClose: () => void;
 }
 
@@ -34,6 +36,7 @@ const DIFFICULTY_MEDALS: { id: AiDifficultyId; label: string; medal: string }[] 
 export function LeaderboardScreen({
   trophies,
   wins,
+  modeWins,
   onClose,
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
@@ -50,7 +53,6 @@ export function LeaderboardScreen({
     <View style={styles.overlay}>
       <View style={styles.header}>
         <Text style={styles.title}>🏅 LEADERBOARD</Text>
-        <Text style={styles.trophies}>🏆 {trophies}</Text>
       </View>
 
       <ScrollView
@@ -88,8 +90,12 @@ export function LeaderboardScreen({
         </View>
         <View style={styles.statRow}>
           <View style={styles.statCard}>
+            <Text style={styles.statValue}>{trophies}</Text>
+            <Text style={styles.statLabel}>🏆 Trophies</Text>
+          </View>
+          <View style={styles.statCard}>
             <Text style={styles.statValue}>{totalWins}</Text>
-            <Text style={styles.statLabel}>🏆 Battles won</Text>
+            <Text style={styles.statLabel}>⚔️ Battles won</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{wallet.coins}</Text>
@@ -99,6 +105,18 @@ export function LeaderboardScreen({
             <Text style={styles.statValue}>{wallet.owned.length}</Text>
             <Text style={styles.statLabel}>🛒 Bought</Text>
           </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>WINS BY MODE</Text>
+        <View style={styles.statRow}>
+          {MODE_ORDER.map((id) => (
+            <View key={id} style={styles.statCard}>
+              <Text style={styles.statValue}>{modeWins[id] ?? 0}</Text>
+              <Text style={styles.statLabel}>
+                {MODES[id].emoji} {MODES[id].name}
+              </Text>
+            </View>
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>THE LADDER</Text>
@@ -156,7 +174,10 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(20,16,40,0.96)',
-    paddingTop: 64,
+    // Above the Home screen's settings gear (zIndex 5), which used to
+    // float on top of these screens and sit over their headers.
+    zIndex: 20,
+    paddingTop: 100,
     paddingBottom: 24,
   },
   header: {
@@ -211,9 +232,18 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
 
-  statRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  // Four cards per row now (trophies, wins, coins, bought), so they wrap
+  // rather than squeezing to unreadable widths on a small phone.
+  statRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 10,
+  },
   statCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 72,
+    minWidth: 72,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 14,
     paddingVertical: 12,

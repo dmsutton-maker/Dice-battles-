@@ -19,6 +19,7 @@ import {
   volumeFromTouch,
   volumeIcon,
   volumeLabel,
+  knobLeft,
 } from '../src/audio/slider';
 import { assert, assertClose, assertEqual, suite, test } from './harness';
 
@@ -237,5 +238,46 @@ suite('audio · wiring', () => {
       slider.includes('PanResponder'),
       'the slider should drive itself with PanResponder',
     );
+  });
+});
+
+suite('audio · slider knob', () => {
+  const KNOB = 22;
+
+  test('the knob never hangs off either end of the track', () => {
+    // It used to be placed by percentage with a negative margin, so it sat
+    // half outside the panel at 0% and at 100% — David saw it as the
+    // slider going off the menu.
+    for (const width of [120, 200, 260, 320]) {
+      for (let v = 0; v <= 1.0001; v += 0.05) {
+        const left = knobLeft(v, width, KNOB);
+        assert(left >= 0, `knob left ${left} is off the left end at ${v}`);
+        assert(
+          left + KNOB <= width + 0.0001,
+          `knob right ${left + KNOB} passes the track width ${width} at ${v}`,
+        );
+      }
+    }
+  });
+
+  test('the ends of the track really are the ends of the range', () => {
+    assertEqual(knobLeft(0, 200, KNOB), 0, 'silence should sit flush left');
+    assertEqual(knobLeft(1, 200, KNOB), 178, 'full should sit flush right');
+  });
+
+  test('the knob moves in step with the value', () => {
+    let previous = -1;
+    for (let v = 0; v <= 1.0001; v += 0.1) {
+      const left = knobLeft(v, 200, KNOB);
+      assert(left > previous, `knob went backwards at ${v}`);
+      previous = left;
+    }
+  });
+
+  test('a track with no width yet cannot produce a broken position', () => {
+    assertEqual(knobLeft(0.5, 0, KNOB), 0, 'zero width');
+    assertEqual(knobLeft(0.5, Number.NaN, KNOB), 0, 'unmeasured width');
+    // A track narrower than the knob has nowhere to travel, not a negative.
+    assertEqual(knobLeft(1, 10, KNOB), 0, 'track narrower than the knob');
   });
 });

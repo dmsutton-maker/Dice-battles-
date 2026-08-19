@@ -94,6 +94,10 @@ export function tierLabel(tier: Tier, _trophies: number): { name: string; emoji:
  * playtesting ("LOCK" turns tester mode back off to test real progression).
  */
 export const TESTER_CODE = 'FAMILY';
+
+/** Tops the wallet up, for testing the Store without grinding for coins. */
+export const MONEY_CODE = 'MONEY';
+export const MONEY_CODE_COINS = 10000;
 export const TESTER_LOCK_CODE = 'LOCK';
 
 export function setUnlockAll(on: boolean): Progress {

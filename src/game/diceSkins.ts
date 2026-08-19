@@ -111,8 +111,14 @@ export const DICE_SKINS: DiceSkin[] = [
   },
 ];
 
-/** Skins bought with coins, in Store display order. */
-export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined);
+/**
+ * Skins bought with coins, cheapest first — so the Store reads as a ladder
+ * you climb rather than a jumble, and the thing you can almost afford is
+ * near the top.
+ */
+export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined).sort(
+  (a, b) => a.price! - b.price!,
+);
 /** Skins earned by climbing the trophy ladder. */
 export const LADDER_SKINS = DICE_SKINS.filter((s) => s.price === undefined);
 
