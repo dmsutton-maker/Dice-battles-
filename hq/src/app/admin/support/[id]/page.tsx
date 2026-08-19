@@ -1,7 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase/server';
-import { markHandled, replyToMessage } from '../../actions';
+import {
+  discardDraftReply,
+  markHandled,
+  replyToMessage,
+  sendDraftReply,
+} from '../../actions';
 
 interface Message {
   id: string;
@@ -21,6 +26,8 @@ interface Reply {
   body: string;
   delivered: boolean;
   delivery_note: string;
+  is_draft: boolean;
+  author_kind: 'member' | 'claude';
   created_at: string;
 }
 
@@ -47,6 +54,9 @@ export default async function TicketPage({
   if (!message) notFound();
   const item = message as Message;
   const byId = new Map((members ?? []).map((m: Member) => [m.id, m]));
+  const all = (replies ?? []) as Reply[];
+  const sent = all.filter((r) => !r.is_draft);
+  const drafts = all.filter((r) => r.is_draft);
 
   return (
     <>
@@ -76,7 +86,7 @@ export default async function TicketPage({
         </form>
       </div>
 
-      {(replies ?? []).map((reply: Reply) => {
+      {sent.map((reply) => {
         const who = reply.member_id ? byId.get(reply.member_id) : null;
         return (
           <div key={reply.id} className="card" style={{ borderLeft: '3px solid var(--accent)' }}>
@@ -94,6 +104,39 @@ export default async function TicketPage({
           </div>
         );
       })}
+
+      {drafts.map((draft) => (
+        <div
+          key={draft.id}
+          className="card"
+          style={{ borderLeft: '3px solid var(--orange)', background: 'var(--panel-2)' }}
+        >
+          <div className="spread" style={{ marginBottom: 6 }}>
+            <strong>✍️ Suggested reply — not sent</strong>
+            <span className="faint">{new Date(draft.created_at).toLocaleString()}</span>
+          </div>
+          <p className="faint" style={{ marginTop: 0 }}>
+            Claude wrote this for you to check. Edit anything you want, then
+            send it — or bin it. Nothing reaches{' '}
+            {item.email || 'the player'} until you press Send.
+          </p>
+          <form action={sendDraftReply}>
+            <input type="hidden" name="reply_id" value={draft.id} />
+            <input type="hidden" name="message_id" value={item.id} />
+            <textarea name="body" defaultValue={draft.body} style={{ minHeight: 130 }} required />
+            <div className="row" style={{ marginTop: 12 }}>
+              <button type="submit">Send this reply</button>
+            </div>
+          </form>
+          <form action={discardDraftReply} style={{ marginTop: 8 }}>
+            <input type="hidden" name="reply_id" value={draft.id} />
+            <input type="hidden" name="message_id" value={item.id} />
+            <button className="button-quiet button-small" type="submit">
+              Discard it
+            </button>
+          </form>
+        </div>
+      ))}
 
       <div className="card">
         <h3>Reply</h3>

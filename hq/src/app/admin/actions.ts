@@ -346,13 +346,66 @@ export async function markHandled(formData: FormData) {
 }
 
 /**
+ * Actually put a reply in the player's inbox, if that is possible.
+ *
+ * Returns honestly: `delivered` is only true when an email genuinely
+ * went out. Everything else — no reply address, no mail service
+ * connected, the send failed — comes back false with a note saying
+ * which, rather than pretending something was sent that wasn't.
+ */
+async function deliverReply(
+  to: string,
+  subject: string,
+  body: string,
+): Promise<{ delivered: boolean; note: string }> {
+  if (!to) {
+    return {
+      delivered: false,
+      note: 'No reply address was given, so this stays here for the family to see.',
+    };
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return {
+      delivered: false,
+      note: 'Saved here, but not emailed — no outbound email service is connected yet.',
+    };
+  }
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Paper Ship Studio <support@papershipstudio.com>',
+        to,
+        subject: `Re: ${subject || 'Your message to Paper Ship Studio'}`,
+        text: body,
+      }),
+    });
+    if (res.ok) return { delivered: true, note: '' };
+    const errText = await res.text().catch(() => '');
+    return {
+      delivered: false,
+      note: `Saved here, but the email did not send: ${errText || res.status}`,
+    };
+  } catch (err) {
+    return {
+      delivered: false,
+      note: `Saved here, but the email did not send: ${
+        err instanceof Error ? err.message : 'unknown error'
+      }`,
+    };
+  }
+}
+
+/**
  * Reply to a support message from right here — a real ticket thread,
  * not "open your own mail app and hope you remember what it was about."
- *
- * If the player left an email and an outbound mail service is
- * connected (RESEND_API_KEY), the reply actually goes out. If not, it's
- * still saved and visible to the family — just not delivered — and says
- * so honestly rather than pretending to have sent something it didn't.
  */
 export async function replyToMessage(formData: FormData) {
   const member = await requireMember();
@@ -370,49 +423,20 @@ export async function replyToMessage(formData: FormData) {
   if (fetchError) throw new Error(fetchError.message);
   if (!original) throw new Error('That message no longer exists.');
 
-  let delivered = false;
-  let deliveryNote = 'No reply address was given, so this stays here for the family to see.';
-
-  if (original.email) {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      deliveryNote = 'Saved here, but not emailed — no outbound email service is connected yet.';
-    } else {
-      try {
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: 'Paper Ship Studio <support@papershipstudio.com>',
-            to: original.email,
-            subject: `Re: ${original.subject || 'Your message to Paper Ship Studio'}`,
-            text: body,
-          }),
-        });
-        if (res.ok) {
-          delivered = true;
-          deliveryNote = '';
-        } else {
-          const errText = await res.text().catch(() => '');
-          deliveryNote = `Saved here, but the email did not send: ${errText || res.status}`;
-        }
-      } catch (err) {
-        deliveryNote = `Saved here, but the email did not send: ${
-          err instanceof Error ? err.message : 'unknown error'
-        }`;
-      }
-    }
-  }
+  const { delivered, note } = await deliverReply(
+    original.email,
+    original.subject,
+    body,
+  );
 
   const { error: insertError } = await admin.from('message_replies').insert({
     message_id: messageId,
     member_id: member.id,
     body,
     delivered,
-    delivery_note: deliveryNote,
+    delivery_note: note,
+    is_draft: false,
+    author_kind: 'member',
   });
   if (insertError) throw new Error(insertError.message);
 
@@ -423,6 +447,80 @@ export async function replyToMessage(formData: FormData) {
     member.display_name,
     delivered ? 'replied to a support message and emailed the player' : 'replied to a support message',
   );
+  revalidatePath(`/admin/support/${messageId}`);
+  revalidatePath('/admin/support');
+}
+
+/**
+ * Send a draft Claude suggested — after a person has read it, edited it
+ * if they wanted to, and decided it should go. The text sent is whatever
+ * is in the box at the moment Send is pressed, not whatever was drafted:
+ * editing and sending are one action, so nobody can send an older version
+ * of a reply by accident.
+ */
+export async function sendDraftReply(formData: FormData) {
+  const member = await requireMember();
+  const admin = supabaseAdmin();
+
+  const replyId = String(formData.get('reply_id') ?? '');
+  const messageId = String(formData.get('message_id') ?? '');
+  const body = String(formData.get('body') ?? '').trim();
+  if (!body) throw new Error('A reply cannot be empty.');
+
+  const { data: original, error: fetchError } = await admin
+    .from('messages')
+    .select('*')
+    .eq('id', messageId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!original) throw new Error('That message no longer exists.');
+
+  const { delivered, note } = await deliverReply(
+    original.email,
+    original.subject,
+    body,
+  );
+
+  const { error } = await admin
+    .from('message_replies')
+    .update({
+      body,
+      delivered,
+      delivery_note: note,
+      is_draft: false,
+      // Whoever pressed Send owns it now, whoever first drafted it.
+      member_id: member.id,
+    })
+    .eq('id', replyId);
+  if (error) throw new Error(error.message);
+
+  await admin.from('messages').update({ handled: true }).eq('id', messageId);
+
+  await log(
+    null,
+    member.display_name,
+    delivered ? 'sent a suggested reply and emailed the player' : 'sent a suggested reply',
+  );
+  revalidatePath(`/admin/support/${messageId}`);
+  revalidatePath('/admin/support');
+}
+
+/** Bin a suggested reply without sending it. */
+export async function discardDraftReply(formData: FormData) {
+  const member = await requireMember();
+  const admin = supabaseAdmin();
+
+  const replyId = String(formData.get('reply_id') ?? '');
+  const messageId = String(formData.get('message_id') ?? '');
+
+  const { error } = await admin
+    .from('message_replies')
+    .delete()
+    .eq('id', replyId)
+    .eq('is_draft', true);
+  if (error) throw new Error(error.message);
+
+  await log(null, member.display_name, 'discarded a suggested reply');
   revalidatePath(`/admin/support/${messageId}`);
   revalidatePath('/admin/support');
 }

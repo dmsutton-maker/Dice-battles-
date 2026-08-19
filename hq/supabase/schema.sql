@@ -285,6 +285,13 @@ create table if not exists public.message_replies (
   body         text not null check (char_length(trim(body)) > 0),
   delivered    boolean not null default false,
   delivery_note text not null default '',
+  -- Written but NOT sent to anybody. Claude drafts suggested replies for
+  -- the family to read, edit and send — nothing reaches a player until a
+  -- person presses Send. A draft is a suggestion, not an outgoing message.
+  is_draft     boolean not null default false,
+  -- 'member' (a person typed it) or 'claude' (a suggested draft).
+  author_kind  text not null default 'member'
+               check (author_kind in ('member', 'claude')),
   created_at   timestamptz not null default now()
 );
 
@@ -300,6 +307,20 @@ create policy message_replies_read on public.message_replies
 drop policy if exists message_replies_write on public.message_replies;
 create policy message_replies_write on public.message_replies
   for insert with check (public.is_member());
+
+-- Drafts get edited and discarded before they are ever sent.
+drop policy if exists message_replies_update on public.message_replies;
+create policy message_replies_update on public.message_replies
+  for update using (public.is_member()) with check (public.is_member());
+
+drop policy if exists message_replies_delete on public.message_replies;
+create policy message_replies_delete on public.message_replies
+  for delete using (public.is_member());
+
+alter table public.message_replies
+  add column if not exists is_draft boolean not null default false;
+alter table public.message_replies
+  add column if not exists author_kind text not null default 'member';
 
 -- ---------------------------------------------------------------------
 -- Site content — the editable text on the public pages (taglines, FAQ

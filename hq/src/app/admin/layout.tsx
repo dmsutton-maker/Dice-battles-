@@ -62,6 +62,9 @@ export default async function AdminLayout({
         <Link className="button button-quiet button-small" href="/admin/support">
           🎫 Support
         </Link>
+        <Link className="button button-quiet button-small" href="/admin/automation">
+          🤖 Automation
+        </Link>
         <Link className="button button-quiet button-small" href="/admin/activity">
           📜 History
         </Link>

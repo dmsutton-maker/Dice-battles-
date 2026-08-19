@@ -74,6 +74,33 @@ and approved items are the work queue:
 A direct request in chat still outranks the board — the board is for work
 queued up in advance, not a gate on David or Marc asking for something.
 
+## What runs without being asked
+
+Standing policy, agreed with David:
+
+- **A bug at priority 1 ("Drop everything") is fixed immediately**, with no
+  approval and no waiting — email David when starting and again when it
+  ships. Bugs are pre-approved anyway; priority 1 also means don't queue it.
+- **Every other bug** gets an email describing it and the direct question
+  "can I start on this now?" — and then WAITS for an answer. Priority is
+  the whole distinction; do not read urgency into a bug that is not marked 1.
+- **Support replies are drafted, never sent.** Write a suggested reply into
+  `message_replies` with `is_draft = true`, and a person reads, edits and
+  sends it. Nothing reaches a player without a human pressing Send. This is
+  deliberate while the tone is still being judged, not a technical limit.
+- Automation is visible at `/admin/automation` — what is configured, and
+  what it has actually done. If something claims to run and nothing shows
+  up there, say so plainly rather than assuming it worked.
+
+## Who the game is for
+
+Ages 5+ means **nobody is excluded at the bottom end** — not that this is
+a children's game. David wants it played by grandparents as readily as by
+five-year-olds. The colours-not-numbers design serves pre-readers and
+anyone who would rather not squint at pips. Copy that frames the game as
+kid-first undersells it; when writing anything public-facing, write for a
+family, not for children.
+
 Questions with no right answer — which icon, which name, which colour —
 go up as a **proposal** via `POST /api/proposals` for the family to vote
 on, rather than being decided alone. Read the outcome from
