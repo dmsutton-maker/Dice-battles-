@@ -93,6 +93,19 @@ export function grantCoins(amount: number): number {
   return current.coins;
 }
 
+/**
+ * Spend coins on something that is not an item — a tournament entry fee.
+ * Refuses rather than going negative, like buyWithCoins, but records no
+ * ownership: there is nothing to own.
+ */
+export function spendCoins(amount: number): boolean {
+  const cost = Math.max(0, Math.floor(amount));
+  if (current.coins < cost) return false;
+  current = { ...current, coins: current.coins - cost };
+  persist();
+  return true;
+}
+
 export function canAfford(price: number): boolean {
   return current.coins >= price;
 }

@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.11.0 — 2026-08-19 · requested by Marc and David
+
+A bottom menu bar, tournaments, news, and a long list of fixes.
+
+### Added
+- **Bottom navigation.** Store, Leaderboard and Inventory were buttons on
+  the home screen that opened modals. They are tabs now, alongside two new
+  ones, on a fixed bar — the Clash Royale shape Marc asked for.
+- **Cups.** Three knockout brackets against the AI roster: Courtyard Cup
+  (free, 4 players), Castle Classic (50 coins, 4) and Grand Championship
+  (150 coins, 8). Win every round to take the prize; one loss ends the run.
+  Offline by design — real bracket play needs accounts and a server.
+- **News tab.** What changed, in plain words, bundled with each update.
+- **Title card on launch** with the game's name and Paper Ship Studio.
+- **Opponent reveal** before each round — names shuffle, then the rival you
+  actually face is shown.
+- **Colourblind mode** (Settings): every colour also gets a shape.
+- **All four modes in split screen**, not just Color Rush.
+- **Sounds** for button presses and equipping an item.
+- **Unlock and purchase popups**, both saying where to go to equip.
+- **MONEY** code in Settings adds 10,000 coins for testing.
+
+### Changed
+- The app is **Dice Battles: Color Rush** everywhere now; the phone used to
+  show the short name deliberately, and no longer does.
+- **Classic → Color Rush**, **Standings → Leaderboard**, "wandering moat" →
+  "pond".
+- The **"❓ Mystery Arena"** placeholder is gone — every tier shows its real
+  name from the start.
+- **Rewards vary** within a band instead of paying a fixed number. An easy
+  win is 10–20 coins. Losing still never costs coins.
+- **The ladder starts closer**: the first reward cost 100 trophies, now 40,
+  with gaps widening the whole way up. Ivory Dice joins it at 0.
+- **Color War** splits the jail into sides — your three on the left.
+- Your Records gained the trophy count and wins by mode.
+
+### Fixed
+- **The dice now follow your finger.** A flick that ended with a moment's
+  hesitation was read as a tap, because the throw used a whole-gesture
+  average; it measures the last 90ms now.
+- **Skirmish figures no longer stand inside the corner towers.**
+- **The volume sliders** stopped jumping about and no longer hang off the
+  edge of the panel.
+- **The scoreboard** no longer sits on top of the prisoners.
+- **The mode picker** stopped jumping when Color War is selected.
+- **Starry and Frost** were the same picture in two colours; Frost is ice
+  crystals now, and Starry's stars were blobs rather than stars.
+- **Bubbles** looks like bubbles rather than polka dots.
+- Coins and trophies no longer collide with the settings gear in the menus.
+- Website: passwords have a Show button, and long words wrap instead of
+  running out through the side of their card.
+
+
 Every published update gets a version here, with **who asked for it**, so
 any change can be traced back and rolled back on request.
 

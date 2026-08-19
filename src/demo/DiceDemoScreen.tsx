@@ -78,7 +78,13 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
-import { awardCoins, getWallet, grantCoins, loadWallet } from '../game/currency';
+import {
+  awardCoins,
+  getWallet,
+  grantCoins,
+  loadWallet,
+  spendCoins,
+} from '../game/currency';
 import { skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
@@ -90,6 +96,17 @@ import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
+import { BottomNav, BOTTOM_NAV_HEIGHT, Tab } from './BottomNav';
+import { NewsScreen } from './NewsScreen';
+import { TournamentScreen } from './TournamentScreen';
+import {
+  RunState,
+  TournamentDef,
+  advanceRun,
+  startRun,
+  tournamentById,
+} from '../game/tournament';
+import { rollReward } from '../game/rewards';
 import { Reward, RewardPopup } from './RewardPopup';
 import {
   loadColorblindMode,
@@ -154,9 +171,10 @@ export function DiceDemoScreen() {
   const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
   const [twoPlayer, setTwoPlayer] = useState(false);
   const [loadout, setLoadout] = useState(getLoadout());
-  const [showInventory, setShowInventory] = useState(false);
-  const [showStore, setShowStore] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [tab, setTab] = useState<Tab>('play');
+  // The cup being played, if any. A round started from a cup reports back
+  // to it when it finishes.
+  const [run, setRun] = useState<RunState | null>(null);
   const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
   const [unlockAll, setUnlockAll] = useState(false);
@@ -198,6 +216,7 @@ export function DiceDemoScreen() {
   const difficultyRef = useRef<AiDifficultyId>('easy');
   const modeRef = useRef<ModeId>('classic');
   const opponentRef = useRef<AiOpponent | null>(null);
+  const runRef = useRef<RunState | null>(null);
   const unitsRef = useRef<PrisonerUnit[]>([]);
   const warRef = useRef<{ player: ColorDef; ai: ColorDef } | null>(null);
   const aiFreedRef = useRef<PrisonerColorId[]>([]);
@@ -323,6 +342,30 @@ export function DiceDemoScreen() {
       const coins = awardCoins(outcome, difficultyRef.current);
       setWallet({ ...getWallet() });
       setLastCoins(coins);
+
+      // A cup round reports back to the bracket. A tie does not advance
+      // you and does not knock you out — you play the round again.
+      if (runRef.current && outcome !== 'tie') {
+        const cup = tournamentById(runRef.current.tournamentId);
+        if (cup) {
+          const next = advanceRun(runRef.current, cup, outcome === 'won');
+          setRun(next);
+          if (next.finished === 'champion') {
+            const prize = rollReward(cup.prize);
+            grantCoins(prize);
+            setWallet({ ...getWallet() });
+            setRewards((queue) => [
+              ...queue,
+              {
+                emoji: cup.emoji,
+                name: `${cup.name} champion!`,
+                kicker: 'CUP WON',
+                note: `You beat the whole bracket. ${prize} coins are yours.`,
+              },
+            ]);
+          }
+        }
+      }
       if (outcome === 'tie') {
         showCallout("It's a tie!", 'tie');
         setLastDelta(0);
@@ -375,6 +418,33 @@ export function DiceDemoScreen() {
    * seconds before the countdown. `beginCountdown` is the old body of this
    * function and runs when the reveal finishes.
    */
+  /**
+   * Which menu page is showing. A battle always takes the screen back —
+   * being three rounds into a cup with the Store open would be nonsense.
+   */
+  // finishRound runs from a callback created once, so the run is read
+  // through a ref rather than a captured value.
+  runRef.current = run;
+
+  const menuTab: Tab | null =
+    phase === 'pick' && tab !== 'play' ? tab : null;
+
+  const backToPlay = useCallback(() => {
+    playClick();
+    setTab('play');
+  }, []);
+
+  /** Pay the entry fee and open a bracket. */
+  const enterTournament = useCallback((tournament: TournamentDef) => {
+    if (tournament.entry > 0) {
+      if (!spendCoins(tournament.entry)) return;
+      setWallet({ ...getWallet() });
+    }
+    setRun(startRun(tournament));
+    setDifficulty(tournament.difficulty);
+    difficultyRef.current = tournament.difficulty;
+  }, []);
+
   const startCountdown = useCallback(() => {
     const rival = pickOpponent(opponentRef.current ?? undefined);
     opponentRef.current = rival;
@@ -386,6 +456,12 @@ export function DiceDemoScreen() {
     setCallout(null);
     setPhaseBoth('matching');
   }, [resetRace, setPhaseBoth]);
+
+  /** Start the next bracket round: same flow as a normal battle. */
+  const playCupRound = useCallback(() => {
+    setTab('play');
+    startCountdown();
+  }, [startCountdown]);
 
   const beginCountdown = useCallback(() => {
     setPhaseBoth('arm');
@@ -760,15 +836,6 @@ export function DiceDemoScreen() {
     </View>
   );
 
-  const inventoryButton = (
-    <Pressable style={styles.inventoryButton} onPress={() => {
-      playClick();
-      setShowInventory(true);
-    }}>
-      <Text style={styles.inventoryText}>🎒 INVENTORY</Text>
-    </Pressable>
-  );
-
   // Every round ends with an explicit choice — one more battle, or back to
   // the menu to change mode, difficulty or arena. Tapping the result screen
   // used to restart instantly, which meant a stray tap started a fresh
@@ -978,27 +1045,6 @@ export function DiceDemoScreen() {
             )}
             {modeRow}
             {difficultyRow}
-            {inventoryButton}
-            <View style={styles.navRow}>
-              <Pressable
-                style={styles.navButton}
-                onPress={() => {
-                  playClick();
-                  setShowStore(true);
-                }}
-              >
-                <Text style={styles.navText}>🛒 STORE</Text>
-              </Pressable>
-              <Pressable
-                style={styles.navButton}
-                onPress={() => {
-                  playClick();
-                  setShowLeaderboard(true);
-                }}
-              >
-                <Text style={styles.navText}>🏅 LEADERBOARD</Text>
-              </Pressable>
-            </View>
             <Pressable style={styles.startButton} onPress={startCountdown}>
               <Text style={styles.startText}>▶ START BATTLE</Text>
             </Pressable>
@@ -1061,38 +1107,61 @@ export function DiceDemoScreen() {
           {roundOverButtons}
         </View>
       )}
-      {showStore && (
+      {/*
+        The menu pages. Each is a tab rather than a modal now — the Close
+        buttons stay for the phone's own back gesture habits, and drop you
+        on Battle.
+      */}
+      {menuTab === 'store' && (
         <StoreScreen
-          onClose={() => setShowStore(false)}
+          onClose={backToPlay}
           onPurchase={(bought) => {
             setWallet({ ...getWallet() });
             if (bought) setRewards((queue) => [...queue, bought]);
           }}
         />
       )}
-      {showLeaderboard && (
+      {menuTab === 'leaderboard' && (
         <LeaderboardScreen
           trophies={trophies}
           wins={wins}
           modeWins={modeWins}
-          onClose={() => setShowLeaderboard(false)}
+          onClose={backToPlay}
         />
       )}
-      {showInventory && (
+      {menuTab === 'inventory' && (
         <InventoryScreen
           trophies={trophies}
           arenaId={arenaId}
           skinId={loadout.skinId}
           onEquipArena={(id) => setLoadout({ ...equipArena(id) })}
           onEquipSkin={(id) => setLoadout({ ...equipSkin(id) })}
-          onClose={() => setShowInventory(false)}
+          onClose={backToPlay}
         />
       )}
+      {menuTab === 'news' && <NewsScreen />}
+      {menuTab === 'cups' && (
+        <TournamentScreen
+          coins={wallet.coins}
+          run={run}
+          onEnter={enterTournament}
+          onPlayRound={playCupRound}
+          onAbandon={() => setRun(null)}
+        />
+      )}
+
       {phase !== 'battle' &&
         phase !== 'arm' &&
         phase !== 'go' &&
         phase !== 'matching' &&
-        !showLeaderboard && <StatsHud trophies={trophies} coins={wallet.coins} />}
+        menuTab !== 'leaderboard' && (
+          <StatsHud trophies={trophies} coins={wallet.coins} />
+        )}
+
+      {/* The bar itself. Gone during a battle — the board wants the room. */}
+      {phase !== 'battle' && phase !== 'arm' && phase !== 'go' && phase !== 'matching' && (
+        <BottomNav active={tab} onSelect={setTab} />
+      )}
 
       {rewards.length > 0 && (
         <RewardPopup
@@ -1494,7 +1563,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 64,
+    paddingTop: 64,
+    // Clear of the bottom bar, or START BATTLE sits behind it.
+    paddingBottom: 64 + BOTTOM_NAV_HEIGHT,
     paddingHorizontal: 4,
   },
   gearButton: {
@@ -1775,38 +1846,6 @@ const styles = StyleSheet.create({
   },
   codeGoText: {
     color: '#241c40',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  navRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  navButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  navText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  inventoryButton: {
-    marginTop: 22,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  inventoryText: {
-    color: '#ffffff',
     fontSize: 14,
     fontWeight: '800',
   },
