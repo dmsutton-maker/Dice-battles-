@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { supabaseServer } from '@/lib/supabase/server';
-import type { Idea } from '@/lib/types';
+import { PRIORITY_LABELS, STATUS_COLORS, STATUS_LABELS, type Idea } from '@/lib/types';
 import { Office, type Worker } from './Office';
 
 /**
@@ -14,6 +14,21 @@ import { Office, type Worker } from './Office';
  * if something claims to be running and nothing ever appears below, that
  * gap is the story.
  */
+
+interface ChangeRow {
+  id: string;
+  summary: string;
+  area: string;
+  version: string;
+  created_at: string;
+}
+
+const AREA_COLOR: Record<string, string> = {
+  game: 'var(--accent)',
+  website: 'var(--green)',
+  admin: 'var(--yellow)',
+  'behind the scenes': 'var(--muted)',
+};
 
 interface Standing {
   name: string;
@@ -54,15 +69,21 @@ const STANDING: Standing[] = [
 export default async function AutomationPage() {
   const supabase = await supabaseServer();
 
-  const [{ data: ideas }, { data: drafts }, { data: activity }] = await Promise.all([
-    supabase.from('ideas').select('*').eq('kind', 'bug').order('created_at', { ascending: false }),
-    supabase.from('message_replies').select('id').eq('is_draft', true),
-    supabase
-      .from('activity')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(40),
-  ]);
+  const [{ data: ideas }, { data: drafts }, { data: changes }, { data: activity }] =
+    await Promise.all([
+      supabase.from('ideas').select('*').eq('kind', 'bug').order('created_at', { ascending: false }),
+      supabase.from('message_replies').select('id').eq('is_draft', true),
+      supabase
+        .from('changes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30),
+      supabase
+        .from('activity')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ]);
 
   const bugs = (ideas ?? []) as Idea[];
   const openBugs = bugs.filter((b) => b.status !== 'shipped' && b.status !== 'declined');
@@ -129,34 +150,74 @@ export default async function AutomationPage() {
       </div>
 
       <div className="grid" style={{ marginBottom: 18 }}>
-        <div className="card card-tight">
+        <Link href="/admin" className="card card-tight" style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}>
           <h3 style={{ color: dropEverything.length > 0 ? 'var(--red)' : 'var(--text)' }}>
             {dropEverything.length}
           </h3>
           <div className="faint">drop-everything bugs open</div>
-        </div>
-        <div className="card card-tight">
+        </Link>
+        <Link href="/admin" className="card card-tight" style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}>
           <h3>{openBugs.length}</h3>
           <div className="faint">bugs open in total</div>
-        </div>
-        <div className="card card-tight">
+        </Link>
+        <Link href="/admin/support" className="card card-tight" style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}>
           <h3 style={{ color: draftCount > 0 ? 'var(--orange)' : 'var(--text)' }}>{draftCount}</h3>
           <div className="faint">
             {draftCount === 1 ? 'reply waiting' : 'replies waiting'} for you to check
           </div>
-        </div>
+        </Link>
       </div>
 
-      {dropEverything.length > 0 && (
-        <div className="notice notice-bad">
-          <strong>Drop everything:</strong>{' '}
-          {dropEverything.map((bug, i) => (
-            <span key={bug.id}>
-              {i > 0 && ', '}
-              <Link href={`/admin/ideas/${bug.id}`}>{bug.title}</Link>
-            </span>
+      {openBugs.length > 0 && (
+        <div className="card">
+          <h3 style={{ marginBottom: 4 }}>Bugs open right now</h3>
+          <p className="faint" style={{ marginTop: 0 }}>
+            Click one to read it and decide. Anything marked{' '}
+            <strong>Drop everything</strong> gets fixed without waiting to be
+            asked; the rest wait for your yes.
+          </p>
+          {openBugs.map((bug) => (
+            <Link
+              key={bug.id}
+              href={`/admin/ideas/${bug.id}`}
+              className="idea"
+              style={{
+                borderLeftColor:
+                  bug.priority === 1 ? 'var(--red)' : STATUS_COLORS[bug.status],
+              }}
+            >
+              <div className="spread">
+                <h3>{bug.title}</h3>
+                <span
+                  className="pill"
+                  style={
+                    bug.priority === 1
+                      ? { background: 'var(--red)' }
+                      : { background: 'transparent', color: 'var(--muted)', border: '1px solid var(--line)' }
+                  }
+                >
+                  {PRIORITY_LABELS[bug.priority]}
+                </span>
+              </div>
+              <div className="faint">
+                {bug.app} · {STATUS_LABELS[bug.status]}
+              </div>
+              {bug.detail && (
+                <p
+                  className="muted"
+                  style={{
+                    margin: '4px 0 0',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {bug.detail}
+                </p>
+              )}
+            </Link>
           ))}
-          . These get fixed without waiting to be asked.
         </div>
       )}
 
@@ -187,7 +248,36 @@ export default async function AutomationPage() {
         </div>
       ))}
 
-      <h2 style={{ fontSize: 18, marginTop: 24 }}>What has actually happened</h2>
+      <h2 style={{ fontSize: 18, marginTop: 24 }}>What changed, in plain words</h2>
+      <p className="faint" style={{ marginTop: -6 }}>
+        Every change to the game, the website or this admin — one line each,
+        newest first.
+      </p>
+      <div className="card">
+        {(changes ?? []).length === 0 && <p className="faint">Nothing yet.</p>}
+        {((changes ?? []) as ChangeRow[]).map((row) => (
+          <div key={row.id} style={{ borderTop: '1px solid var(--line)', padding: '11px 0' }}>
+            <div className="row" style={{ gap: 8, marginBottom: 3 }}>
+              <span
+                className="pill"
+                style={{ background: AREA_COLOR[row.area] ?? 'var(--faint)' }}
+              >
+                {row.area}
+              </span>
+              {row.version && <span className="pill pill-outline">{row.version}</span>}
+              <span className="faint">
+                {new Date(row.created_at).toLocaleDateString(undefined, {
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+            </div>
+            <div>{row.summary}</div>
+          </div>
+        ))}
+      </div>
+
+      <h2 style={{ fontSize: 18, marginTop: 24 }}>Who did what in here</h2>
       <div className="card">
         {(activity ?? []).length === 0 && (
           <p className="faint">Nothing recorded yet.</p>

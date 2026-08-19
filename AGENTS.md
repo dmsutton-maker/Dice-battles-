@@ -28,6 +28,26 @@ before writing any code — Expo APIs change between SDK versions.
   `npx expo export --platform ios --output-dir /tmp/export-test`
   (Metro bundle check) — there is no device in CI.
 
+## Every change gets written down, in plain words
+
+**After anything ships — game, website or admin — add a row to the
+`changes` table.** One or two sentences, no jargon: David and the boys
+read this to see what happened without reading code or a git log.
+
+```sql
+insert into public.changes (summary, area, version) values
+  ('Fixed the contact form: what you typed was white on white.', 'website', '');
+```
+
+`area` is one of `game`, `website`, `admin`, `behind the scenes`;
+`version` only when the game shipped one. It shows on
+`/admin/automation` under "What changed, in plain words".
+
+Write it the way you would tell someone at the kitchen table — "the dice
+sometimes got stuck in the moat, that's fixed" — not "resolved a race
+condition in the settle handler". This is separate from `CHANGELOG.md`,
+which stays versioned and technical for the game's own releases.
+
 ## Releasing
 
 - Every published update gets a version in `CHANGELOG.md`, recording

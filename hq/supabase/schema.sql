@@ -323,6 +323,38 @@ alter table public.message_replies
   add column if not exists author_kind text not null default 'member';
 
 -- ---------------------------------------------------------------------
+-- Changes — a plain-English record of everything that gets changed, one
+-- or two sentences each, readable by anyone in the family without
+-- knowing what a deploy is.
+--
+-- Deliberately not CHANGELOG.md (versioned, technical, for the game's
+-- releases) and not `activity` (what people click inside the admin).
+-- This is simply "what changed, in words", and every change made to the
+-- game, the website or the admin gets a line here.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.changes (
+  id         uuid primary key default gen_random_uuid(),
+  summary    text not null check (char_length(trim(summary)) > 0),
+  area       text not null default 'website'
+             check (area in ('game', 'website', 'admin', 'behind the scenes')),
+  version    text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists changes_created_idx
+  on public.changes (created_at desc);
+
+alter table public.changes enable row level security;
+
+drop policy if exists changes_read on public.changes;
+create policy changes_read on public.changes
+  for select using (public.is_member());
+
+-- Written through the service role by whoever made the change. Nobody
+-- types these in by hand, so there is deliberately no insert policy.
+
+-- ---------------------------------------------------------------------
 -- Site content — the editable text on the public pages (taglines, FAQ
 -- entries, legal-page sections, and so on). A page reads its copy from
 -- here at request time, falling back to the copy baked into the page's
