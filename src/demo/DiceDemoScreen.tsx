@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  GestureResponderEvent,
 } from 'react-native';
 import { ArenaId, ARENAS } from '../arena/arenas';
 import {
@@ -76,7 +77,7 @@ import {
   Station,
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
-import { flickFromGesture } from '../game/aim';
+import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
 import { awardCoins, getWallet, grantCoins, loadWallet } from '../game/currency';
 import { skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
@@ -626,11 +627,28 @@ export function DiceDemoScreen() {
     [finishRound, moveUnit, showCallout],
   );
 
+  // Touch samples for the release velocity. PanResponder's own vx/vy is a
+  // whole-gesture average and dies to nearly zero if the finger hesitates
+  // before lifting, which turned real flicks into taps.
+  const samples = useRef<TouchSample[]>([]);
+  const sample = (event: GestureResponderEvent) => {
+    const { pageX, pageY, timestamp } = event.nativeEvent;
+    samples.current.push({ x: pageX, y: pageY, t: timestamp });
+    // A tenth of a second of history is all the tail needs.
+    if (samples.current.length > 12) samples.current.shift();
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
+      // Once the throw gesture is claimed, nothing may take it away
+      // mid-flick — a stolen gesture never reaches release and the dice
+      // simply never move.
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (event) => {
+        samples.current = [];
+        sample(event);
         if (phaseRef.current === 'pick') startCountdown();
         // battle: the throw waits for release, so a flick can carry the
         // player's own direction and speed into the dice. arm/go: inputs
@@ -639,9 +657,15 @@ export function DiceDemoScreen() {
       // Lifting the finger throws: a fast gesture is a flick, carrying its
       // direction and speed into the dice; a slow one is a tap and rolls
       // them gently forward.
-      onPanResponderRelease: (_event, gesture) => {
+      onPanResponderMove: sample,
+      onPanResponderRelease: (event, gesture) => {
+        sample(event);
         if (phaseRef.current !== 'battle') return;
-        controlsRef.current?.throwAll(flickFromGesture(gesture) ?? undefined);
+        const velocity = velocityFromSamples(samples.current);
+        controlsRef.current?.throwAll(
+          flickFromGesture(gesture, { velocity }) ?? undefined,
+        );
+        samples.current = [];
       },
     }),
   ).current;

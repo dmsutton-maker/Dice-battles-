@@ -1,7 +1,14 @@
 import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  GestureResponderEvent,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { playCue } from '../audio/announcer';
 import { playCheer, playFanfare, playThrow, startMusic, stopMusic } from '../audio/sounds';
@@ -16,7 +23,11 @@ import {
   Zone,
 } from '../game/splitRules';
 import { EMPTY_LAYOUT } from '../game/obstacles';
-import { flickFromGesture } from '../game/aim';
+import {
+  flickFromGesture,
+  TouchSample,
+  velocityFromSamples,
+} from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
 
 /**
@@ -79,20 +90,37 @@ function ZoneView({
   onRematch,
   onExitToMenu,
 }: ZoneViewProps) {
+  // See the note in src/game/aim.ts: PanResponder's own vx/vy averages the
+  // whole gesture and collapses if the finger hesitates before lifting.
+  const samples = useRef<TouchSample[]>([]);
+  const sample = (event: GestureResponderEvent) => {
+    const { pageX, pageY, timestamp } = event.nativeEvent;
+    samples.current.push({ x: pageX, y: pageY, t: timestamp });
+    if (samples.current.length > 12) samples.current.shift();
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
+      // Neither zone may have its throw stolen mid-flick.
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (event) => {
         // The throw waits for release so the flick carries the gesture.
         // 'over': the round-over buttons decide what happens next.
+        samples.current = [];
+        sample(event);
       },
+      onPanResponderMove: sample,
       // Lifting the finger throws, carrying the flick.
-      onPanResponderRelease: (_event, gesture) => {
+      onPanResponderRelease: (event, gesture) => {
+        sample(event);
         if (phaseRef.current !== 'battle') return;
+        const velocity = velocityFromSamples(samples.current);
         controlsRef.current?.throwAll(
-          flickFromGesture(gesture, { rotated }) ?? undefined,
+          flickFromGesture(gesture, { rotated, velocity }) ?? undefined,
         );
+        samples.current = [];
       },
     }),
   ).current;
