@@ -83,6 +83,7 @@ import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
 import { VolumeSlider } from './VolumeSlider';
 import { BugReportModal } from '../debug/BugReportModal';
+import { MatchmakingOverlay } from './MatchmakingOverlay';
 
 /**
  * Classic mode vs one AI opponent.
@@ -93,7 +94,15 @@ import { BugReportModal } from '../debug/BugReportModal';
  * The AI rolls fair virtual dice on a timer (difficulty = speed).
  */
 
-type Phase = 'pick' | 'arm' | 'go' | 'battle' | 'won' | 'lost' | 'tie';
+type Phase =
+  | 'pick'
+  | 'matching'
+  | 'arm'
+  | 'go'
+  | 'battle'
+  | 'won'
+  | 'lost'
+  | 'tie';
 
 export function DiceDemoScreen() {
   const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
@@ -311,6 +320,11 @@ export function DiceDemoScreen() {
     [setPhaseBoth, showCallout],
   );
 
+  /**
+   * Start of a round: pick the rival, then show who it is for a couple of
+   * seconds before the countdown. `beginCountdown` is the old body of this
+   * function and runs when the reveal finishes.
+   */
   const startCountdown = useCallback(() => {
     const rival = pickOpponent(opponentRef.current ?? undefined);
     opponentRef.current = rival;
@@ -320,6 +334,10 @@ export function DiceDemoScreen() {
     setLayout(generateObstacleLayout(difficultyRef.current));
     setRound((r) => r + 1);
     setCallout(null);
+    setPhaseBoth('matching');
+  }, [resetRace, setPhaseBoth]);
+
+  const beginCountdown = useCallback(() => {
     setPhaseBoth('arm');
     playCue('ready');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -335,13 +353,18 @@ export function DiceDemoScreen() {
         setPhaseBoth('battle');
       }, 1800),
     ];
-  }, [resetRace, setPhaseBoth]);
+  }, [setPhaseBoth]);
 
   // Background music plays through the countdown and the race. The music
   // level is not a dependency: the player can move that slider mid-battle
   // and the loop follows it without being restarted (see syncMusic).
   useEffect(() => {
-    if (phase === 'arm' || phase === 'go' || phase === 'battle') {
+    if (
+      phase === 'matching' ||
+      phase === 'arm' ||
+      phase === 'go' ||
+      phase === 'battle'
+    ) {
       startMusic();
     } else {
       stopMusic();
@@ -888,6 +911,10 @@ export function DiceDemoScreen() {
           </ScrollView>
         </View>
       )}
+      {phase === 'matching' && (
+        <MatchmakingOverlay opponent={opponent} onDone={beginCountdown} />
+      )}
+
       {phase === 'arm' && (
         <View pointerEvents="none" style={styles.overlayClear}>
           <Text style={styles.countdownText}>ARM YOUR DICE!</Text>

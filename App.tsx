@@ -2,6 +2,7 @@ import React from 'react';
 import { CrashScreen } from './src/debug/CrashScreen';
 import { getLastFatal, onFatal, reportFatal } from './src/debug/crashGuard';
 import { DiceDemoScreen } from './src/demo/DiceDemoScreen';
+import { BootSplash } from './src/demo/BootSplash';
 
 /**
  * The app, wrapped so a failure shows a message instead of vanishing.
@@ -12,13 +13,15 @@ import { DiceDemoScreen } from './src/demo/DiceDemoScreen';
  */
 interface State {
   error: Error | null;
+  /** The title card is up; the game is mounted behind it either way. */
+  booting: boolean;
 }
 
 export default class App extends React.Component<Record<string, never>, State> {
-  state: State = { error: getLastFatal() };
+  state: State = { error: getLastFatal(), booting: true };
   private stopListening?: () => void;
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
@@ -36,6 +39,15 @@ export default class App extends React.Component<Record<string, never>, State> {
 
   render() {
     if (this.state.error) return <CrashScreen error={this.state.error} />;
-    return <DiceDemoScreen />;
+    // The game mounts underneath the title card rather than after it, so
+    // the first frame is ready by the time the card clears.
+    return (
+      <>
+        <DiceDemoScreen />
+        {this.state.booting && (
+          <BootSplash onDone={() => this.setState({ booting: false })} />
+        )}
+      </>
+    );
   }
 }
