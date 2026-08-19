@@ -1,17 +1,32 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LogoPlaceholder } from '@/components/site/Logo';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts, heroGradient } from '@/components/site/tokens';
 import styles from '../site.module.css';
+import { getSiteContent, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Our Apps — Paper Ship Studio',
-  description: 'One game so far — with more on the way from the same small studio.',
+  description: 'The apps we make at Paper Ship Studio.',
 };
 
-export default function AppsPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function AppsPage() {
+  const content = await getSiteContent();
+  const intro = text(
+    content,
+    'apps.intro',
+    'Simple, well-made games for players of any age.',
+  );
+  const cardKicker = text(content, 'apps.card_kicker', 'Dice game');
+  const cardDescription = text(
+    content,
+    'apps.card_description',
+    'Roll color dice, march your army and take the other castle — pick up and play, no reading required.',
+  );
+
   return (
     <SitePage active="Apps">
       <main>
@@ -21,7 +36,7 @@ export default function AppsPage() {
         >
           <h1 style={{ font: `800 36px/1.2 ${fonts.heading}`, margin: 0, color: colors.ink }}>Our apps</h1>
           <p style={{ font: `600 15.5px/1.6 ${fonts.body}`, color: colors.secondary, margin: '10px 0 0', maxWidth: 560 }}>
-            One game so far — with more on the way from the same small studio.
+            {intro}
           </p>
         </section>
 
@@ -73,12 +88,11 @@ export default function AppsPage() {
                     color: 'rgba(255,255,255,0.75)',
                   }}
                 >
-                  Our first game
+                  {cardKicker}
                 </span>
                 <span style={{ font: `800 26px ${fonts.heading}`, color: '#fff' }}>Dice Battles: Color Rush</span>
                 <span style={{ font: `600 14.5px/1.5 ${fonts.body}`, color: 'rgba(255,255,255,0.9)' }}>
-                  Roll color dice, march your army and take the other castle — pick up and play, no reading
-                  required.
+                  {cardDescription}
                 </span>
               </div>
               <span
@@ -98,42 +112,6 @@ export default function AppsPage() {
             </div>
           </Link>
 
-          <div
-            className="psg-row-wrap"
-            style={{
-              marginTop: 28,
-              border: `2px dashed ${colors.hairline}`,
-              borderRadius: 24,
-              padding: '40px 48px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 24,
-              flexWrap: 'wrap',
-            }}
-          >
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 16,
-                background: colors.offWhite,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <LogoPlaceholder size={24} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ font: `800 16px ${fonts.heading}`, color: colors.secondary2 }}>
-                Our next game is already taking shape
-              </span>
-              <span style={{ font: `600 13.5px ${fonts.body}`, color: colors.muted }}>
-                We&apos;ll add it here the day it ships.
-              </span>
-            </div>
-          </div>
         </section>
       </main>
     </SitePage>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
-import { getSiteContent, sectionList } from '@/lib/content';
+import { getSiteContent, sectionList, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Terms of Use — Paper Ship Studio',
@@ -9,6 +9,9 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
+
+const DEFAULT_INTRO =
+  'These terms cover your use of any app published by Paper Ship Studio, including Dice Battles: Color Rush. Paper Ship Studio is currently operated by its owner as an individual, trading under the Paper Ship Studio name, and is not yet a registered company. By downloading or using our apps, you agree to these terms.';
 
 const DEFAULT_SECTIONS = [
   {
@@ -40,6 +43,7 @@ const DEFAULT_SECTIONS = [
 export default async function TermsPage() {
   const content = await getSiteContent();
   const sections = sectionList(content, 'terms.sections', DEFAULT_SECTIONS);
+  const intro = text(content, 'terms.intro', DEFAULT_INTRO);
 
   return (
     <SitePage active="none">
@@ -55,12 +59,7 @@ export default async function TermsPage() {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28, font: `400 15.5px/1.7 ${fonts.body}`, color: colors.body }}>
-          <p>
-            These terms cover your use of any app published by Paper Ship Studio, including Dice
-            Battles: Color Rush. Paper Ship Studio is currently operated by its owner as an
-            individual, trading under the Paper Ship Studio name, and is not yet a registered
-            company. By downloading or using our apps, you agree to these terms.
-          </p>
+          <p>{intro}</p>
 
           {sections.map((s) => (
             <div key={s.heading}>

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
 import styles from '../../site.module.css';
-import { faqList, getSiteContent, highlightList, sectionList, text } from '@/lib/content';
+import { faqList, getSiteContent, highlightList, labelList, sectionList, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Dice Battles: Color Rush — Paper Ship Studio',
@@ -15,6 +15,13 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 const HIGHLIGHT_TINTS = [colors.cyanTint, colors.cream, colors.orangeTint, colors.yellowTint];
+
+/** Badge colours, cycled so any number of badges still reads as a set. */
+const PILL_TINTS = [
+  { bg: colors.cyanTint, ink: colors.cyan },
+  { bg: colors.cream, ink: colors.yellowDeepText2 },
+  { bg: colors.orangeTint, ink: colors.orangeDeep },
+];
 
 const DEFAULT_HIGHLIGHTS = [
   {
@@ -67,6 +74,12 @@ export default async function DiceBattlesAppPage() {
   const highlights = highlightList(content, 'dice_battles.highlights', DEFAULT_HIGHLIGHTS);
   const faqs = faqList(content, 'dice_battles.faq', DEFAULT_FAQS);
   const extraSections = sectionList(content, 'dice_battles.extra_sections', []);
+  const pills = labelList(content, 'dice_battles.pills', [
+    'No ads',
+    'No accounts',
+    'No tracking',
+  ]);
+  const ctaTitle = text(content, 'dice_battles.cta_title', 'Report a problem, or just say hi');
 
   return (
     <SitePage active="Apps">
@@ -107,17 +120,27 @@ export default async function DiceBattlesAppPage() {
               >
                 {description}
               </p>
-              <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
-                <span style={{ padding: '8px 16px', background: colors.cyanTint, color: colors.cyan, font: `700 12.5px ${fonts.body}`, borderRadius: 999 }}>
-                  No ads
-                </span>
-                <span style={{ padding: '8px 16px', background: colors.cream, color: colors.yellowDeepText2, font: `700 12.5px ${fonts.body}`, borderRadius: 999 }}>
-                  No accounts
-                </span>
-                <span style={{ padding: '8px 16px', background: colors.orangeTint, color: colors.orangeDeep, font: `700 12.5px ${fonts.body}`, borderRadius: 999 }}>
-                  No tracking
-                </span>
-              </div>
+              {pills.length > 0 && (
+                <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                  {pills.map((label, i) => {
+                    const tint = PILL_TINTS[i % PILL_TINTS.length];
+                    return (
+                      <span
+                        key={label}
+                        style={{
+                          padding: '8px 16px',
+                          background: tint.bg,
+                          color: tint.ink,
+                          font: `700 12.5px ${fonts.body}`,
+                          borderRadius: 999,
+                        }}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -209,7 +232,7 @@ export default async function DiceBattlesAppPage() {
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ font: `800 18px ${fonts.heading}`, color: '#fff' }}>Report a problem, or just say hi</span>
+              <span style={{ font: `800 18px ${fonts.heading}`, color: '#fff' }}>{ctaTitle}</span>
               <span style={{ font: `600 14px/1.5 ${fonts.body}`, color: 'rgba(255,255,255,0.7)' }}>
                 {ctaSubhead}
               </span>

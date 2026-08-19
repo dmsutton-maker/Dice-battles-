@@ -30,7 +30,9 @@ export default async function HomePage() {
     "We're a small, independent studio making colorful, considered games built to be played together — across a kitchen table, a couch, or a video call. Easy enough to pick up in a minute, whether you're five or eighty-five. No ads, no accounts, no analytics. Nothing to sign up for, nothing tracked.",
   );
   const appsCardTagline = text(content, 'home.apps_card_tagline', 'Colors, not numbers — learn it in a minute, at any age');
-  const appsCardNote = text(content, 'home.apps_card_note', 'Our first game. More battles are already in the works.');
+  const appsCardNote = text(content, 'home.apps_card_note', '');
+  const appsHeading = text(content, 'home.apps_heading', 'Our apps');
+  const ctaLabel = text(content, 'home.cta_label', 'See our apps →');
 
   return (
     <SitePage active="Home">
@@ -122,7 +124,7 @@ export default async function HomePage() {
                   textDecoration: 'none',
                 }}
               >
-                See our apps &rarr;
+                {ctaLabel}
               </Link>
             </div>
           </div>
@@ -181,7 +183,7 @@ export default async function HomePage() {
                 color: colors.orange,
               }}
             >
-              Our apps
+              {appsHeading}
             </span>
             <div
               className="psg-row-wrap"
@@ -215,15 +217,17 @@ export default async function HomePage() {
                 <span style={{ font: `700 14.5px ${fonts.body}`, color: colors.yellowDeepText }}>
                   {appsCardTagline}
                 </span>
-                <span
-                  style={{
-                    font: `600 13.5px ${fonts.body}`,
-                    color: colors.yellowDeepText2,
-                    marginTop: 4,
-                  }}
-                >
-                  {appsCardNote}
-                </span>
+                {appsCardNote && (
+                  <span
+                    style={{
+                      font: `600 13.5px ${fonts.body}`,
+                      color: colors.yellowDeepText2,
+                      marginTop: 4,
+                    }}
+                  >
+                    {appsCardNote}
+                  </span>
+                )}
               </div>
               <Link
                 href="/apps/dice-battles-color-rush"

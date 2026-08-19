@@ -729,65 +729,138 @@ function collectRows<T extends Record<string, string>>(
   return rows;
 }
 
-export async function updateHomeContent(formData: FormData) {
-  const member = await requireMember();
-  await Promise.all([
-    setContent('home.hero_tagline', String(formData.get('hero_tagline') ?? '').trim(), member.display_name),
-    setContent('home.hero_subhead', String(formData.get('hero_subhead') ?? '').trim(), member.display_name),
-    setContent('home.about_body', String(formData.get('about_body') ?? '').trim(), member.display_name),
-    setContent('home.apps_card_tagline', String(formData.get('apps_card_tagline') ?? '').trim(), member.display_name),
-    setContent('home.apps_card_note', String(formData.get('apps_card_note') ?? '').trim(), member.display_name),
-  ]);
-  revalidatePath('/');
-  revalidatePath('/admin/content');
+/** What a save reports back, so the page can confirm it rather than going quiet. */
+export interface SaveResult {
+  ok: boolean;
+  message: string;
 }
 
-export async function updateDiceBattlesContent(formData: FormData) {
+function saved(what: string): SaveResult {
+  const at = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return { ok: true, message: `${what} saved and live at ${at}.` };
+}
+
+/** Reads one text field, trimmed. */
+function field(formData: FormData, name: string): string {
+  return String(formData.get(name) ?? '').trim();
+}
+
+export async function updateHomeContent(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
+  const member = await requireMember();
+  await Promise.all([
+    setContent('home.hero_tagline', field(formData, 'hero_tagline'), member.display_name),
+    setContent('home.hero_subhead', field(formData, 'hero_subhead'), member.display_name),
+    setContent('home.about_body', field(formData, 'about_body'), member.display_name),
+    setContent('home.apps_heading', field(formData, 'apps_heading'), member.display_name),
+    setContent('home.apps_card_tagline', field(formData, 'apps_card_tagline'), member.display_name),
+    setContent('home.apps_card_note', field(formData, 'apps_card_note'), member.display_name),
+    setContent('home.cta_label', field(formData, 'cta_label'), member.display_name),
+  ]);
+  revalidatePath('/');
+  revalidatePath('/admin/content/home');
+  return saved('The home page');
+}
+
+export async function updateAppsContent(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
+  const member = await requireMember();
+  await Promise.all([
+    setContent('apps.intro', field(formData, 'intro'), member.display_name),
+    setContent('apps.card_kicker', field(formData, 'card_kicker'), member.display_name),
+    setContent('apps.card_description', field(formData, 'card_description'), member.display_name),
+  ]);
+  revalidatePath('/apps');
+  revalidatePath('/admin/content/apps');
+  return saved('The Apps page');
+}
+
+export async function updateDiceBattlesContent(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
   const member = await requireMember();
   const highlights = collectRows(formData, 10, { title: 'highlight_title', body: 'highlight_body' }, 'title');
   const faq = collectRows(formData, 20, { q: 'faq_q', a: 'faq_a' }, 'q');
-  const extraSections = collectRows(
-    formData,
-    12,
-    { heading: 'extra_heading', body: 'extra_body' },
-    'heading',
-  );
+  const extraSections = collectRows(formData, 12, { heading: 'extra_heading', body: 'extra_body' }, 'heading');
+  // The little claim badges under the title — "No ads" and friends. These
+  // are promises about what the game does, so they have to be editable:
+  // the day advertising ships, a badge nobody can change becomes a lie on
+  // the front of the app page.
+  const pills = collectRows(formData, 8, { label: 'pill_label' }, 'label');
 
   await Promise.all([
-    setContent('dice_battles.description', String(formData.get('description') ?? '').trim(), member.display_name),
-    setContent('dice_battles.cta_subhead', String(formData.get('cta_subhead') ?? '').trim(), member.display_name),
+    setContent('dice_battles.description', field(formData, 'description'), member.display_name),
+    setContent('dice_battles.pills', pills, member.display_name),
+    setContent('dice_battles.cta_title', field(formData, 'cta_title'), member.display_name),
+    setContent('dice_battles.cta_subhead', field(formData, 'cta_subhead'), member.display_name),
     setContent('dice_battles.highlights', highlights, member.display_name),
     setContent('dice_battles.faq', faq, member.display_name),
     setContent('dice_battles.extra_sections', extraSections, member.display_name),
   ]);
   revalidatePath('/apps/dice-battles-color-rush');
-  revalidatePath('/admin/content');
+  // Support shows the first few of these same questions, so it has to be
+  // refreshed as well — otherwise an edited answer shows up on one page
+  // and the old wording stays on the other.
+  revalidatePath('/support');
+  revalidatePath('/admin/content/dice-battles');
+  return saved('The Dice Battles page');
 }
 
-export async function updateSupportContent(formData: FormData) {
+export async function updateSupportContent(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
   const member = await requireMember();
-  const gameFaq = collectRows(formData, 15, { q: 'game_faq_q', a: 'game_faq_a' }, 'q');
-
+  // No FAQ here on purpose. The Support page shows the first few entries
+  // from the Dice Battles page's own FAQ, so a question has ONE answer
+  // that is edited in ONE place — two lists is how the same question ends
+  // up answered two different ways on two pages.
   await Promise.all([
-    setContent('support.intro', String(formData.get('intro') ?? '').trim(), member.display_name),
-    setContent('support.game_faq', gameFaq, member.display_name),
+    setContent('support.intro', field(formData, 'intro'), member.display_name),
+    setContent('support.form_note', field(formData, 'form_note'), member.display_name),
   ]);
   revalidatePath('/support');
-  revalidatePath('/admin/content');
+  revalidatePath('/admin/content/support');
+  return saved('The Support page');
 }
 
-export async function updatePrivacyContent(formData: FormData) {
+export async function updatePrivacyContent(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
   const member = await requireMember();
-  const sections = collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading');
-  await setContent('privacy.sections', sections, member.display_name);
+  await Promise.all([
+    setContent('privacy.intro', field(formData, 'intro'), member.display_name),
+    setContent(
+      'privacy.sections',
+      collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading'),
+      member.display_name,
+    ),
+  ]);
   revalidatePath('/privacy');
-  revalidatePath('/admin/content');
+  revalidatePath('/admin/content/privacy');
+  return saved('The Privacy Policy');
 }
 
-export async function updateTermsContent(formData: FormData) {
+export async function updateTermsContent(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
   const member = await requireMember();
-  const sections = collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading');
-  await setContent('terms.sections', sections, member.display_name);
+  await Promise.all([
+    setContent('terms.intro', field(formData, 'intro'), member.display_name),
+    setContent(
+      'terms.sections',
+      collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading'),
+      member.display_name,
+    ),
+  ]);
   revalidatePath('/terms');
-  revalidatePath('/admin/content');
+  revalidatePath('/admin/content/terms');
+  return saved('The Terms of Use');
 }

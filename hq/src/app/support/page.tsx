@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
+/** Falls back to the app page's own list — there is only ever one FAQ. */
 const DEFAULT_GAME_FAQS = [
   { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
   { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
@@ -30,7 +31,11 @@ export default async function SupportPage() {
     'support.intro',
     "We're a small studio, so support is just us — reading every message ourselves.",
   );
-  const gameFaqs = faqList(content, 'support.game_faq', DEFAULT_GAME_FAQS);
+  // The SAME list the Dice Battles page shows, trimmed to the first few.
+  // These used to be a separate `support.game_faq`, which meant editing a
+  // question in one place left the other page answering it the old way.
+  const gameFaqs = faqList(content, 'dice_battles.faq', DEFAULT_GAME_FAQS).slice(0, 3);
+  const formNote = text(content, 'support.form_note', '');
 
   return (
     <SitePage active="Support">
@@ -50,6 +55,11 @@ export default async function SupportPage() {
           style={{ padding: '32px 56px 0', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
           <ContactForm />
+          {formNote && (
+            <p style={{ font: `600 13px/1.6 ${fonts.body}`, color: colors.muted, marginTop: 14 }}>
+              {formNote}
+            </p>
+          )}
         </section>
 
         <section
@@ -92,20 +102,6 @@ export default async function SupportPage() {
               >
                 Full FAQ on the app page &rarr;
               </Link>
-            </div>
-            <div
-              style={{
-                padding: 20,
-                borderRadius: 14,
-                border: `2px dashed ${colors.hairline}`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <span style={{ font: `600 13.5px ${fonts.body}`, color: colors.muted }}>
-                Future games will get their own section here.
-              </span>
             </div>
           </div>
         </section>

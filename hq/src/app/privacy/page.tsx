@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
-import { getSiteContent, sectionList } from '@/lib/content';
+import { getSiteContent, sectionList, text } from '@/lib/content';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Paper Ship Studio',
@@ -10,6 +10,9 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
+
+const DEFAULT_INTRO =
+  'Paper Ship Studio ("we," "us," or "the studio") is a small, independent game studio, currently operated by its owner as an individual and trading under the Paper Ship Studio name. This policy covers every app we publish, including Dice Battles: Color Rush.';
 
 const DEFAULT_SECTIONS = [
   {
@@ -41,6 +44,7 @@ const DEFAULT_SECTIONS = [
 export default async function PrivacyPage() {
   const content = await getSiteContent();
   const sections = sectionList(content, 'privacy.sections', DEFAULT_SECTIONS);
+  const intro = text(content, 'privacy.intro', DEFAULT_INTRO);
 
   return (
     <SitePage active="none">
@@ -56,12 +60,7 @@ export default async function PrivacyPage() {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28, font: `400 15.5px/1.7 ${fonts.body}`, color: colors.body }}>
-          <p>
-            Paper Ship Studio (&quot;we,&quot; &quot;us,&quot; or &quot;the studio&quot;) is a
-            small, independent game studio, currently operated by its owner as an individual and
-            trading under the Paper Ship Studio name. This policy covers every app we publish,
-            including Dice Battles: Color Rush.
-          </p>
+          <p>{intro}</p>
 
           {sections.map((s) => (
             <div key={s.heading}>

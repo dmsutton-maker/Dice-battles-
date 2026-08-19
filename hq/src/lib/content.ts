@@ -71,3 +71,20 @@ export function sectionList(
     .filter((v): v is Section => typeof v?.heading === 'string' && typeof v?.body === 'string')
     .filter((v) => v.heading.trim() !== '');
 }
+
+export interface LabelItem {
+  label: string;
+}
+
+/** A list of short badge labels — the "No ads" pills and the like. */
+export function labelList(
+  content: ContentMap,
+  key: string,
+  fallback: string[],
+): string[] {
+  const value = content[key];
+  if (!Array.isArray(value) || value.length === 0) return fallback;
+  return value
+    .map((v) => (typeof v === 'string' ? v : (v as LabelItem)?.label))
+    .filter((v): v is string => typeof v === 'string' && v.trim() !== '');
+}
