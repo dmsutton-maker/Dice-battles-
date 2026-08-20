@@ -54,6 +54,9 @@ import {
 } from '../game/obstacles';
 import {
   applyMatchResult,
+  parseTrophyCode,
+  setTrophies as writeTrophies,
+  TROPHY_CODE_MAX,
   getProgress,
   isUnlocked,
   loadProgress,
@@ -315,6 +318,9 @@ export function DiceDemoScreen() {
   const submitCode = useCallback(() => {
     const code = codeInput.trim().toUpperCase();
     setCodeInput('');
+    // Parsed once, up front: "500 TROPHY" carries a value, so it cannot be
+    // matched by comparison like the others.
+    const trophyCode = parseTrophyCode(code);
     if (code === TESTER_CODE) {
       persistUnlockAll(true);
       setUnlockAll(true);
@@ -338,6 +344,32 @@ export function DiceDemoScreen() {
           : `🧹 ${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
       );
       playClick();
+    } else if (trophyCode) {
+      // Checked before the catch-all, so "500 TROPHY" is never met with
+      // "that's not the secret code".
+      const result = writeTrophies(trophyCode.trophies);
+      setTrophies(result.trophies);
+      // Going down relocks things, so the equipped skin may no longer be
+      // owned. activeDieBody falls back on its own, but the Inventory would
+      // still print "equipped" on a card it also shows as locked.
+      setLoadout({ ...getLoadout() });
+      if (result.newUnlocks.length > 0) {
+        setRewards((queue) => [
+          ...queue,
+          ...result.newUnlocks.map((tier) => ({
+            emoji: tier.emoji,
+            name: tier.name,
+            kicker: 'NEW REWARD UNLOCKED',
+            note: 'Put it on in the Inventory whenever you like.',
+          })),
+        ]);
+      }
+      setCodeFeedback(
+        trophyCode.clamped
+          ? `🏆 That is more trophies than the game holds — set to ${TROPHY_CODE_MAX.toLocaleString()}.`
+          : `🏆 Trophies set to ${result.trophies.toLocaleString()}.`,
+      );
+      playFanfare();
     } else if (code === TESTER_LOCK_CODE) {
       persistUnlockAll(false);
       setUnlockAll(false);

@@ -107,6 +107,78 @@ export const TESTER_LOCK_CODE = 'LOCK';
  */
 export const RESET_CODE = 'RESET';
 
+/**
+ * "500 TROPHY" — set the trophy count to exactly that number.
+ *
+ * Unlike the other codes this one carries a value, so it is parsed rather
+ * than compared. It SETS rather than adds: the point is to stand at a
+ * chosen rung of the ladder and look at what is unlocked there, which
+ * means being able to go down as readily as up.
+ *
+ * The word may come either side of the number. A child typing a cheat code
+ * should not have to remember which way round it goes, and "TROPHY 500"
+ * cannot mean anything else.
+ */
+export const TROPHY_CODE_WORD = 'TROPHY';
+
+/**
+ * The ceiling. The top of the ladder is a few hundred, so anything past
+ * this is a typo or somebody leaning on a key — and a count that wide
+ * breaks the HUD layout it has to fit inside.
+ */
+export const TROPHY_CODE_MAX = 99_999;
+
+export interface TrophyCode {
+  /** What the trophy count will actually be set to, after clamping. */
+  trophies: number;
+  /** True when the typed number was above the ceiling and was reduced. */
+  clamped: boolean;
+}
+
+/**
+ * Read "500 TROPHY" (or "TROPHY 500"). Returns null when this is not a
+ * trophy code at all, so the caller can fall through to the other codes.
+ *
+ * The input arrives already trimmed and upper-cased from Settings; doing
+ * it again here keeps the function honest on its own.
+ */
+export function parseTrophyCode(raw: string): TrophyCode | null {
+  const text = raw.trim().toUpperCase();
+  const match =
+    text.match(new RegExp(`^(\\d+)\\s*${TROPHY_CODE_WORD}$`)) ??
+    text.match(new RegExp(`^${TROPHY_CODE_WORD}\\s*(\\d+)$`));
+  if (!match) return null;
+
+  const asked = Number(match[1]);
+  // A number long enough to overflow is not a number anyone meant.
+  if (!Number.isFinite(asked)) return null;
+  return {
+    trophies: Math.min(asked, TROPHY_CODE_MAX),
+    clamped: asked > TROPHY_CODE_MAX,
+  };
+}
+
+/**
+ * Set the trophy count outright, and report which tiers that crosses.
+ *
+ * Wins are deliberately left alone: they are a record of what was actually
+ * played, and a cheat code that rewrote history would make Your Records
+ * lie. Going DOWN relocks things — that is the point, not a side effect —
+ * and both activeArena and activeDieBody already fall back when the
+ * equipped item is no longer unlocked.
+ */
+export function setTrophies(trophies: number): MatchResult {
+  const before = current.trophies;
+  const after = Math.max(0, Math.min(Math.floor(trophies), TROPHY_CODE_MAX));
+  current = { ...current, trophies: after };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  return {
+    trophies: after,
+    delta: after - before,
+    newUnlocks: TIERS.filter((t) => t.at > before && t.at <= after),
+  };
+}
+
 export function setUnlockAll(on: boolean): Progress {
   current = { ...current, unlockAll: on };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});

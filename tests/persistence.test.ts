@@ -8,6 +8,14 @@ import {
   loadLoadout,
 } from '../src/game/loadout';
 import { skinById } from '../src/game/diceSkins';
+import {
+  applyMatchResult,
+  getProgress,
+  isUnlocked,
+  parseTrophyCode,
+  setTrophies,
+  TROPHY_CODE_MAX,
+} from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
 
 /**
@@ -70,5 +78,66 @@ suite('persistence · loadout', () => {
     // The choice is remembered, just not used until it is earned again.
     assertEqual(getLoadout().arenaId, 'space', 'the choice itself was discarded');
     assertEqual(activeArena(9999), 'space', 'earning it back does not restore it');
+  });
+});
+
+suite('codes · "500 TROPHY" sets the trophy count', () => {
+  test('reads the number, either side of the word', () => {
+    assertEqual(parseTrophyCode('500 TROPHY')?.trophies, 500, '500 TROPHY');
+    assertEqual(parseTrophyCode('137 TROPHY')?.trophies, 137, '137 TROPHY');
+    assertEqual(parseTrophyCode('TROPHY 42')?.trophies, 42, 'word first');
+    assertEqual(parseTrophyCode('0 TROPHY')?.trophies, 0, 'zero is a real answer');
+    // Typed by a child, so be forgiving about spacing and case.
+    assertEqual(parseTrophyCode('  250trophy  ')?.trophies, 250, 'no space, padded');
+    assertEqual(parseTrophyCode('250 trophy')?.trophies, 250, 'lower case');
+  });
+
+  test('anything that is not a trophy code returns null', () => {
+    // Must be null rather than 0, or the caller cannot fall through to the
+    // other codes and every wrong entry would wipe the player's trophies.
+    for (const input of ['TROPHY', 'MONEY', 'RESET', '', 'FIVE TROPHY', 'TROPHY TROPHY', '-5 TROPHY', '1.5 TROPHY', '500 TROPHIES']) {
+      assertEqual(parseTrophyCode(input), null, `"${input}" should not parse`);
+    }
+  });
+
+  test('an absurd number is capped rather than accepted', () => {
+    const huge = parseTrophyCode('999999999999 TROPHY');
+    assertEqual(huge?.trophies, TROPHY_CODE_MAX, 'capped value');
+    assertEqual(huge?.clamped, true, 'reports that it capped');
+    assertEqual(parseTrophyCode('500 TROPHY')?.clamped, false, 'a sane number is not capped');
+  });
+
+  test('setting the count reports the tiers it crosses', () => {
+    store.clear();
+    setTrophies(0);
+    const up = setTrophies(500);
+    assertEqual(up.trophies, 500, 'trophies after');
+    assert(up.newUnlocks.length > 0, 'jumping to 500 should unlock several tiers');
+    assert(
+      up.newUnlocks.every((t) => t.at <= 500),
+      'nothing above the new count should be reported as unlocked',
+    );
+  });
+
+  test('going down relocks, and does not re-announce on the way back', () => {
+    store.clear();
+    setTrophies(0);
+    setTrophies(500);
+    const down = setTrophies(50);
+    assertEqual(down.trophies, 50, 'trophies after going down');
+    assertEqual(down.newUnlocks.length, 0, 'going down unlocks nothing');
+    assert(down.delta < 0, 'delta should be negative');
+    // Relocking is the point of being able to go down — it is how the
+    // ladder gets tested from the bottom again.
+    assertEqual(isUnlocked('sunset-castle', getProgress().trophies), false, 'sunset relocked');
+  });
+
+  test('wins are left alone — a cheat must not rewrite the record', () => {
+    store.clear();
+    setTrophies(0);
+    applyMatchResult(true, 'easy', 'classic', () => 0.5);
+    const winsBefore = getProgress().wins.easy;
+    setTrophies(900);
+    assertEqual(getProgress().wins.easy, winsBefore, 'easy wins unchanged');
   });
 });

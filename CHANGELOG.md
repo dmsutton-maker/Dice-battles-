@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.13.0 — 2026-08-20 · requested by David
+
+### Added
+- **A new secret code: "500 TROPHY".** Any number followed by the word
+  sets the trophy count to exactly that — `137 TROPHY` gives you 137. The
+  word can go either side of the number, so `TROPHY 137` works too; a
+  child typing a cheat code should not have to remember the order.
+- It **sets** rather than adds, so it goes down as readily as up. Standing
+  at a chosen rung of the ladder and seeing what is unlocked there is the
+  point, and that needs both directions. Going down relocks things; the
+  equipped dice and arena already fall back on their own when they are no
+  longer owned.
+- Crossing a tier shows the usual unlock popup, so the reward moment can be
+  tested without grinding for it.
+- Wins are deliberately left untouched. They are a record of what was
+  actually played, and a cheat that rewrote history would make Your
+  Records lie.
+- Numbers past 99,999 are capped, and it says so rather than pretending.
+
 ## v1.12.2 — 2026-08-20 · requested by David
 
 ### Fixed
