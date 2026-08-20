@@ -78,6 +78,7 @@ import {
   Station,
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
+import { GAME_VERSION } from '../game/version';
 import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
 import {
   awardCoins,
@@ -1325,6 +1326,13 @@ export function DiceDemoScreen() {
             >
               <Text style={styles.bugReportButtonText}>🐞 Report a Bug</Text>
             </Pressable>
+            {/*
+              The version, under the button that sends it. A report is
+              only traceable if we know which release it came from, and
+              this is where someone looks when asked "what version are
+              you on?" — it is also sent automatically with the report.
+            */}
+            <Text style={styles.versionLine}>{GAME_VERSION}</Text>
             </ScrollView>
             {/*
               No Done button. Settings is a tab now — you leave it by
@@ -1690,6 +1698,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     fontSize: 14,
     fontWeight: '800',
+  },
+  versionLine: {
+    color: 'rgba(255,255,255,0.38)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textAlign: 'center',
+    marginTop: 10,
   },
   overlayClear: {
     ...StyleSheet.absoluteFillObject,

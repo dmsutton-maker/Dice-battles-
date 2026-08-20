@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.12.0 — 2026-08-20 · requested by David
+
+### Added
+- **The version number now shows in Settings**, under Report a Bug — so
+  when someone reports something, the release it came from is one look
+  away rather than a guess.
+
+### Fixed
+- **Bug reports were stamped with the wrong version, and had been for
+  eleven releases.** They sent `app.json`'s native version, which sat at
+  1.0.0 since the first build — an over-the-air update cannot change it,
+  and almost every release has been over-the-air. Reports now carry the
+  game version from the bundle (right the moment an update lands) as
+  well as the native build number.
+- The version lives in `src/game/version.ts`, and `npm test` fails if it
+  does not match the newest heading in this file — a release that forgets
+  to move it cannot go out.
+
 ## v1.11.8 — 2026-08-20 · requested by David
 
 ### Fixed

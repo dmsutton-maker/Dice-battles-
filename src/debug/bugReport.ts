@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { Dimensions, Platform } from 'react-native';
 import { MAX_DEVICE_LENGTH, prepareBugReport } from './bugReportValidation';
+import { GAME_VERSION } from '../game/version';
 
 /**
  * Sends a bug report to the family HQ.
@@ -26,10 +27,16 @@ export interface BugReportResult {
 /** Everything attached automatically, so a player never has to type it. */
 function deviceContext(): string {
   const { width, height } = Dimensions.get('window');
-  const appVersion = Constants.expoConfig?.version ?? 'unknown';
+  // GAME_VERSION, not Constants.expoConfig.version. The latter is the
+  // NATIVE version from app.json, which an over-the-air update cannot
+  // change — it read 1.0.0 while the game was on v1.11.8, so every report
+  // so far has been stamped with the wrong release. Both are sent now:
+  // the game version says which code, the native one says which build.
+  const nativeVersion = Constants.expoConfig?.version ?? 'unknown';
   const parts = [
     `${Platform.OS} ${Platform.Version}`,
-    `app ${appVersion}`,
+    `game ${GAME_VERSION}`,
+    `build ${nativeVersion}`,
     `${Math.round(width)}x${Math.round(height)}`,
     `update ${Updates.updateId ?? 'embedded'}`,
     `channel ${Updates.channel ?? 'none'}`,

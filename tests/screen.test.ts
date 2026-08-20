@@ -13,6 +13,7 @@ import {
 } from '../src/game/loadout';
 import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
+import { GAME_VERSION } from '../src/game/version';
 import {
   CORNER_TOWERS,
   CORNER_TOWER_RADIUS,
@@ -675,5 +676,49 @@ suite('screen · the menu does not jump', () => {
         );
       }
     }
+  });
+});
+
+suite('release · the version number is real', () => {
+  const root = join(__dirname, '..');
+  const changelog = readFileSync(join(root, 'CHANGELOG.md'), 'utf8');
+
+  /** The newest version heading in the changelog, e.g. "v1.12.0". */
+  const newest = changelog.match(/^## (v\d+\.\d+\.\d+)/m)?.[1] ?? null;
+
+  test('the changelog has a newest version to compare against', () => {
+    assert(newest !== null, 'CHANGELOG.md has no "## vX.Y.Z" heading');
+  });
+
+  test('GAME_VERSION matches the newest changelog entry', () => {
+    // The whole point of showing a version in Settings is that a bug
+    // report can be traced to the exact build it came from. A version
+    // that lags the release is worse than none, because it sends the
+    // reader looking in the wrong code. app.json's version sat at 1.0.0
+    // through eleven releases precisely because nothing checked it.
+    assertEqual(
+      GAME_VERSION,
+      newest!,
+      'GAME_VERSION has drifted from CHANGELOG.md — bump it with the release',
+    );
+  });
+
+  test('Settings shows the version under Report a Bug', () => {
+    const screen = readFileSync(
+      join(root, 'src/demo/DiceDemoScreen.tsx'),
+      'utf8',
+    );
+    assert(
+      screen.includes('{GAME_VERSION}'),
+      'the Settings tab never renders GAME_VERSION',
+    );
+  });
+
+  test('a bug report carries the version a player is actually running', () => {
+    const report = readFileSync(join(root, 'src/debug/bugReport.ts'), 'utf8');
+    assert(
+      report.includes('GAME_VERSION'),
+      'bug reports still stamp the native app.json version, which OTA updates cannot move',
+    );
   });
 });
