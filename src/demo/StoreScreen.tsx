@@ -16,12 +16,11 @@ import { DiceSwatch } from './DiceSwatch';
  * screen rather than only being true in the code.
  */
 interface StoreScreenProps {
-  onClose: () => void;
   /** Reports what was bought, so the reward popup can celebrate it. */
   onPurchase: (bought: Reward | null) => void;
 }
 
-export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
+export function StoreScreen({ onPurchase }: StoreScreenProps) {
   const [wallet, setWallet] = useState(getWallet());
   const [message, setMessage] = useState<string | null>(null);
 
@@ -110,15 +109,14 @@ export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
 
       {message && <Text style={styles.message}>{message}</Text>}
 
-      <Pressable
-        style={styles.doneButton}
-        onPress={() => {
-          playClick();
-          onClose();
-        }}
-      >
-        <Text style={styles.doneText}>Done</Text>
-      </Pressable>
+      {/*
+        No Done button. It used to sit here and it never worked: the tab
+        bar is drawn on top of this screen with an opaque background and a
+        higher zIndex, so the button was both invisible and untappable —
+        a tap in that spot hit whichever tab was over it. The bar IS the
+        way out of these pages, the way it already is on Settings and
+        Cups.
+      */}
     </View>
   );
 }
@@ -224,13 +222,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
     paddingHorizontal: 20,
-  },
-  doneButton: {
-    alignSelf: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 13,
-    borderRadius: 24,
-    backgroundColor: '#ffe521',
   },
   doneText: { color: '#241c40', fontSize: 16, fontWeight: '900' },
 });

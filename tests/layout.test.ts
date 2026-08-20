@@ -177,3 +177,56 @@ suite('layout · a bug report can be abandoned', () => {
     );
   });
 });
+
+suite('layout · no screen hides its own way out', () => {
+  const menus = ['InventoryScreen', 'StoreScreen', 'LeaderboardScreen'];
+
+  test('no menu page draws a button underneath the tab bar', () => {
+    /*
+      All three used to end with a Done button placed after their scroll,
+      with a flat 24pt of bottom padding. The tab bar is drawn over these
+      pages at zIndex 35 with a 97%-opaque background, so the button was
+      invisible AND untappable — a tap there hit whichever tab sat over it.
+      The bar is the way out of these pages, as it already is on Settings
+      and Cups.
+    */
+    for (const name of menus) {
+      const src = readFileSync(join(root, `src/demo/${name}.tsx`), 'utf8');
+      assert(
+        !src.includes('doneButton'),
+        `${name} still has a Done button under the tab bar`,
+      );
+      assert(
+        !/onClose/.test(src),
+        `${name} still takes an onClose it has no way to call`,
+      );
+    }
+  });
+
+  test('the in-battle HUD clears the home indicator by derivation', () => {
+    // It was a hardcoded 34 — correct on a Face ID iPhone purely because
+    // that is the inset, and 34pt of wasted board on a home-button phone.
+    const style = screen.match(/bottomHud: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'bottomHud is not defined');
+    assert(
+      /bottom: BOTTOM_INSET \+ \d+/.test(style!),
+      'the in-battle HUD still hardcodes its distance from the bottom edge',
+    );
+  });
+
+  test('the report panel centres inside the avoider, not outside it', () => {
+    // With behavior="padding" the view grows its own box, so centring from
+    // outside makes each frame of padding re-centre the panel and it
+    // settles over several layout passes instead of one.
+    const backdrop = report.match(/backdrop: \{[\s\S]*?\n  \},/)?.[0];
+    assert(backdrop !== undefined, 'backdrop is not defined');
+    assert(
+      !/justifyContent/.test(backdrop!),
+      'the backdrop still centres the panel, which makes the keyboard lift settle in steps',
+    );
+    assert(
+      /avoider: \{[\s\S]*?flex: 1[\s\S]*?justifyContent: 'center'/.test(report),
+      'the keyboard-avoiding view is not full-bleed with the centring inside it',
+    );
+  });
+});

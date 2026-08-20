@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
-import { playClick, playEquip } from '../audio/sounds';
+import { playEquip } from '../audio/sounds';
 import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { DICE_SKINS } from '../game/diceSkins';
@@ -26,7 +26,6 @@ interface InventoryScreenProps {
   skinId: string;
   onEquipArena: (id: ArenaId) => void;
   onEquipSkin: (id: string) => void;
-  onClose: () => void;
 }
 
 function priceFor(unlockId: string): number {
@@ -39,7 +38,6 @@ export function InventoryScreen({
   skinId,
   onEquipArena,
   onEquipSkin,
-  onClose,
 }: InventoryScreenProps) {
   return (
     <View style={styles.overlay}>
@@ -152,15 +150,14 @@ export function InventoryScreen({
         </View>
       </ScrollView>
 
-      <Pressable
-        style={styles.doneButton}
-        onPress={() => {
-          playClick();
-          onClose();
-        }}
-      >
-        <Text style={styles.doneText}>Done</Text>
-      </Pressable>
+      {/*
+        No Done button. It used to sit here and it never worked: the tab
+        bar is drawn on top of this screen with an opaque background and a
+        higher zIndex, so the button was both invisible and untappable —
+        a tap in that spot hit whichever tab was over it. The bar IS the
+        way out of these pages, the way it already is on Settings and
+        Cups.
+      */}
     </View>
   );
 }
@@ -287,17 +284,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     marginTop: 3,
-  },
-  doneButton: {
-    alignSelf: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 13,
-    borderRadius: 24,
-    backgroundColor: '#ffe521',
-  },
-  doneText: {
-    color: '#241c40',
-    fontSize: 16,
-    fontWeight: '900',
   },
 });

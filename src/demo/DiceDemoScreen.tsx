@@ -106,6 +106,7 @@ import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
 import { BottomNav, BOTTOM_NAV_HEIGHT, Tab } from './BottomNav';
+import { BOTTOM_INSET } from '../game/safeArea';
 import { NewsScreen } from './NewsScreen';
 import { TournamentScreen } from './TournamentScreen';
 import {
@@ -527,11 +528,6 @@ export function DiceDemoScreen() {
   useEffect(() => {
     if (tab !== 'settings') setCodeFeedback(null);
   }, [tab]);
-
-  const backToPlay = useCallback(() => {
-    playClick();
-    setTab('play');
-  }, []);
 
   /** Pay the entry fee and open a bracket. */
   const enterTournament = useCallback((tournament: TournamentDef) => {
@@ -1249,7 +1245,6 @@ export function DiceDemoScreen() {
       */}
       {menuTab === 'store' && (
         <StoreScreen
-          onClose={backToPlay}
           onPurchase={(bought) => {
             setWallet({ ...getWallet() });
             if (bought) setRewards((queue) => [...queue, bought]);
@@ -1261,7 +1256,6 @@ export function DiceDemoScreen() {
           trophies={trophies}
           wins={wins}
           modeWins={modeWins}
-          onClose={backToPlay}
         />
       )}
       {menuTab === 'inventory' && (
@@ -1271,7 +1265,6 @@ export function DiceDemoScreen() {
           skinId={loadout.skinId}
           onEquipArena={(id) => setLoadout({ ...equipArena(id) })}
           onEquipSkin={(id) => setLoadout({ ...equipSkin(id) })}
-          onClose={backToPlay}
         />
       )}
       {menuTab === 'news' && <NewsScreen />}
@@ -1687,7 +1680,11 @@ const styles = StyleSheet.create({
   },
   bottomHud: {
     position: 'absolute',
-    bottom: 34,
+    // Was a hardcoded 34 — right by coincidence, since that happens to be
+    // the iPhone home-indicator inset. On a phone with a home button it
+    // wasted 34pt of board for nothing. Derived now, so it is right on
+    // purpose rather than by accident.
+    bottom: BOTTOM_INSET + 12,
     left: 0,
     right: 0,
     alignItems: 'center',

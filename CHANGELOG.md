@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.14.0 — 2026-08-20 · requested by David
+
+All three of David's reports from a real iPhone 15 turned out to share one
+cause: nothing in the app knew that modern iPhones reserve a strip at the
+bottom of the screen for the home indicator — the bar you swipe up on.
+
+### Fixed
+- **The bottom row of tabs now fits.** It was drawn with a flat 18pt of
+  padding against the 34pt an iPhone 15 needs, so the labels sat inside
+  the home indicator strip. The bar reserves the real inset now, and each
+  label holds one line regardless of the phone's text-size setting — seven
+  cells across the narrowest iPhone is about 53pt each, and a player who
+  has turned iOS text up should not be the one who breaks the row.
+- **The version number in Settings is always visible.** It only appeared
+  if you tapped the secret-code box: it was still inside the flex layout,
+  the scrolling area was taking the space, and opening the keyboard
+  squeezed the panel just enough to reveal it. It is now positioned
+  absolutely, outside both the flex flow and the keyboard-avoiding view,
+  anchored above the tab bar where nothing can move it.
+- **A bug report can be abandoned without sending it.** The Cancel button
+  existed but sat under the keyboard, because the box takes focus as the
+  screen opens and the panel is centred. The panel lifts clear now, and
+  tapping the dimmed area behind it closes it too. Taps inside the panel
+  are ignored, so missing a button by a few points does not throw away
+  what you typed.
+
+### Fixed (found by the smoke test, not reported)
+- **The Done button on Store, Inventory and Leaderboard never worked.**
+  All three drew it underneath the tab bar, which is opaque and sits on
+  top — so it was invisible, and a tap there hit whichever tab was over
+  it. It has been removed rather than moved: the tab bar is the way out of
+  these pages, as it already is on Settings and Cups. The unused `onClose`
+  wiring went with it.
+- The in-battle HUD's distance from the bottom edge was a hardcoded 34 —
+  right on a Face ID iPhone only because that happens to be the inset, and
+  34pt of wasted board on a phone with a home button. It is derived now.
+- The report panel's keyboard lift is deterministic rather than settling
+  over several layout passes; centring moved inside the keyboard-avoiding
+  view, which is where it belongs when the view grows its own box.
+
 ## v1.13.5 — 2026-08-20 · requested by David
 
 ### Fixed

@@ -4,7 +4,6 @@ import { AiDifficultyId } from '../game/ai';
 import { getWallet } from '../game/currency';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
-import { playClick } from '../audio/sounds';
 
 /**
  * The Leaderboard.
@@ -25,7 +24,6 @@ interface LeaderboardScreenProps {
   trophies: number;
   wins: Record<AiDifficultyId, number>;
   modeWins: Record<ModeId, number>;
-  onClose: () => void;
 }
 
 const DIFFICULTY_MEDALS: { id: AiDifficultyId; label: string; medal: string }[] = [
@@ -38,7 +36,6 @@ export function LeaderboardScreen({
   trophies,
   wins,
   modeWins,
-  onClose,
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
   const totalWins = DIFFICULTY_MEDALS.reduce((sum, d) => sum + wins[d.id], 0);
@@ -164,15 +161,14 @@ export function LeaderboardScreen({
         </View>
       </ScrollView>
 
-      <Pressable
-        style={styles.doneButton}
-        onPress={() => {
-          playClick();
-          onClose();
-        }}
-      >
-        <Text style={styles.doneText}>Done</Text>
-      </Pressable>
+      {/*
+        No Done button. It used to sit here and it never worked: the tab
+        bar is drawn on top of this screen with an opaque background and a
+        higher zIndex, so the button was both invisible and untappable —
+        a tap in that spot hit whichever tab was over it. The bar IS the
+        way out of these pages, the way it already is on Settings and
+        Cups.
+      */}
     </View>
   );
 }
@@ -304,12 +300,5 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  doneButton: {
-    alignSelf: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 13,
-    borderRadius: 24,
-    backgroundColor: '#ffe521',
-  },
   doneText: { color: '#241c40', fontSize: 16, fontWeight: '900' },
 });

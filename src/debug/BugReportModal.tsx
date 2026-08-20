@@ -73,6 +73,15 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
         }}
       >
         <KeyboardAvoidingView
+          /*
+            flex: 1 and the centring live HERE, not on the backdrop. With
+            `behavior="padding"` the view grows its OWN box, so centring it
+            from outside means each frame of padding also re-centres the
+            panel, and it settles over several layout passes rather than
+            one. Full-bleed with the centring inside, the panel is placed
+            once, deterministically.
+          */
+          style={styles.avoider}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           {/*
@@ -140,6 +149,9 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(10,8,24,0.75)',
+  },
+  avoider: {
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 26,
   },
