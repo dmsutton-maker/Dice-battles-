@@ -2,6 +2,7 @@ import { averageOf } from '../src/game/rewards';
 import {
   awardCoins,
   buyWithCoins,
+  clearPurchases,
   canAfford,
   COIN_REWARDS,
   getWallet,
@@ -14,6 +15,7 @@ import { TIERS, UnlockId } from '../src/game/progress';
 const priceInTrophies = (id: UnlockId): number =>
   TIERS.find((t) => t.id === id)?.at ?? 0;
 import { isSkinUnlocked } from '../src/game/loadout';
+import { setUnlockAll } from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
 
 /**
@@ -225,5 +227,75 @@ suite('currency · items are telling apart-able', () => {
       emojis.length,
       `two skins share an emoji: ${emojis.join(' ')}`,
     );
+  });
+});
+
+suite('currency · the RESET code', () => {
+  test('clearing purchases empties the cupboard but keeps the coins', () => {
+    // The point is to buy the things a second time and see the shelf
+    // work; refunding would skip straight past that.
+    resetWalletForTests({ coins: 500, owned: [] });
+    const skin = STORE_SKINS[0];
+    assert(buyWithCoins(skin.id, skin.price!).ok, 'the setup purchase failed');
+    const after = getWallet().coins;
+
+    const removed = clearPurchases();
+    assertEqual(removed, 1, 'wrong number of items cleared');
+    assertEqual(getWallet().owned.length, 0, 'something survived the reset');
+    assertEqual(getWallet().coins, after, 'the reset refunded coins');
+  });
+
+  test('a cleared item has to be bought again', () => {
+    resetWalletForTests({ coins: 5000, owned: [] });
+    const skin = STORE_SKINS[0];
+    buyWithCoins(skin.id, skin.price!);
+    assert(owns(skin.id), 'not owned after buying');
+    clearPurchases();
+    assert(!owns(skin.id), 'still owned after the reset');
+    // And buying it again is allowed, rather than refused as a duplicate.
+    assert(buyWithCoins(skin.id, skin.price!).ok, 'could not re-buy it');
+  });
+
+  test('resetting an untouched wallet is harmless', () => {
+    resetWalletForTests({ coins: 120, owned: [] });
+    assertEqual(clearPurchases(), 0, 'claimed to clear something');
+    assertEqual(getWallet().coins, 120, 'an empty reset touched the coins');
+  });
+});
+
+suite('currency · tester mode reaches the Store', () => {
+  test('bought dice are usable in tester mode without buying them', () => {
+    // It used to open the ladder and the arenas but stop at the Store, so
+    // a playtester still had to grind coins for half the dice.
+    resetWalletForTests({ coins: 0, owned: [] });
+    setUnlockAll(false);
+    const paid = STORE_SKINS[0];
+    assert(!isSkinUnlocked(paid.id, 0), 'a Store skin was free before the code');
+
+    setUnlockAll(true);
+    assert(isSkinUnlocked(paid.id, 0), 'tester mode still gates the Store');
+    setUnlockAll(false);
+  });
+
+  test('every Store item opens up, not just one', () => {
+    resetWalletForTests({ coins: 0, owned: [] });
+    setUnlockAll(true);
+    for (const skin of STORE_SKINS) {
+      assert(isSkinUnlocked(skin.id, 0), `${skin.name} is still locked`);
+    }
+    setUnlockAll(false); // never leak tester mode into a later suite
+  });
+
+  test('turning tester mode off puts them back behind the till', () => {
+    // Nothing is bought by the code — they cost coins again the moment
+    // it goes off, or a tester would silently keep them for good.
+    resetWalletForTests({ coins: 0, owned: [] });
+    setUnlockAll(true);
+    const paid = STORE_SKINS[0];
+    assert(isSkinUnlocked(paid.id, 0), 'not open with the code on');
+
+    setUnlockAll(false);
+    assert(!isSkinUnlocked(paid.id, 0), 'stayed unlocked after the code went off');
+    assert(!owns(paid.id), 'tester mode quietly bought it');
   });
 });

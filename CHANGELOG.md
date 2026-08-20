@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.11.4 — 2026-08-20 · requested by David
+
+### Added
+- **RESET code** in Settings: forgets everything bought with coins so the
+  Store can be walked through from scratch. Coins are deliberately NOT
+  refunded — the point is to buy the items again. If the wiped skin was
+  the equipped one, the loadout goes back to Ivory.
+
+### Fixed
+- **Family tester mode now covers the Store.** It opened the trophy
+  ladder and the arenas but stopped at anything with a coin price, so a
+  playtester still had to grind for half the dice. Nothing is bought by
+  the code — the items simply become usable while it is on, and cost
+  coins again the moment it goes off.
+
 ## v1.11.3 — 2026-08-20 · requested by David
 
 ### Fixed

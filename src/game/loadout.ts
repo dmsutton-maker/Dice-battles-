@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { DEFAULT_SKIN_ID, DICE_SKINS, skinById } from './diceSkins';
 import { owns } from './currency';
-import { isUnlocked, UnlockId } from './progress';
+import { hasUnlockAll, isUnlocked, UnlockId } from './progress';
 
 /**
  * What the player has EQUIPPED, as opposed to what they have earned
@@ -80,10 +80,16 @@ export function isArenaUnlocked(arenaId: ArenaId, trophies: number): boolean {
  * A skin is available if it is free, earned on the ladder, or bought in
  * the Store. The two routes never overlap: a skin has an unlock tier or a
  * coin price, not both.
+ *
+ * Family tester mode covers BOTH routes. It used to open the ladder and
+ * the arenas but stop at the Store, so a playtester still had to grind
+ * coins for half the dice — which is the opposite of what the mode is
+ * for. Nothing is bought: they are simply usable while it is on, and
+ * still cost coins the moment it goes off.
  */
 export function isSkinUnlocked(skinId: string, trophies: number): boolean {
   const skin = skinById(skinId);
-  if (skin.price !== undefined) return owns(skin.id);
+  if (skin.price !== undefined) return hasUnlockAll() || owns(skin.id);
   if (skin.unlock === null || skin.unlock === undefined) return true;
   return isUnlocked(skin.unlock, trophies);
 }

@@ -62,6 +62,7 @@ import {
   TESTER_CODE,
   MONEY_CODE,
   MONEY_CODE_COINS,
+  RESET_CODE,
   TESTER_LOCK_CODE,
   TIERS,
   tierLabel,
@@ -82,10 +83,11 @@ import {
   awardCoins,
   getWallet,
   grantCoins,
+  clearPurchases,
   loadWallet,
   spendCoins,
 } from '../game/currency';
-import { skinById } from '../game/diceSkins';
+import { DEFAULT_SKIN_ID, skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
@@ -312,6 +314,19 @@ export function DiceDemoScreen() {
       setWallet({ ...getWallet() });
       setCodeFeedback(`🪙 ${MONEY_CODE_COINS.toLocaleString()} coins added!`);
       playFanfare();
+    } else if (code === RESET_CODE) {
+      const removed = clearPurchases();
+      setWallet({ ...getWallet() });
+      // A wiped skin may still be the equipped one. activeDieBody already
+      // falls back, but the Inventory would show "equipped" on a card it
+      // also shows as locked, so put the loadout back to the free dice.
+      setLoadout({ ...equipSkin(DEFAULT_SKIN_ID) });
+      setCodeFeedback(
+        removed === 0
+          ? 'Nothing bought yet — the Store is already untouched.'
+          : `🧹 ${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
+      );
+      playClick();
     } else if (code === TESTER_LOCK_CODE) {
       persistUnlockAll(false);
       setUnlockAll(false);

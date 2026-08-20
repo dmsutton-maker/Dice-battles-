@@ -130,6 +130,22 @@ export function buyWithCoins(itemId: string, price: number): PurchaseResult {
   return { ok: true, coins: current.coins };
 }
 
+/**
+ * Forget everything bought with coins, so the Store can be walked through
+ * again from nothing. The RESET code in Settings.
+ *
+ * Coins are deliberately NOT refunded: the point is to buy the items a
+ * second time and see the shelf work, which a refund would skip past.
+ * Returns how many items were let go.
+ */
+export function clearPurchases(): number {
+  const removed = current.owned.length;
+  if (removed === 0) return 0;
+  current = { ...current, owned: [] };
+  persist();
+  return removed;
+}
+
 /** Test-only reset so suites do not leak state between cases. */
 export function resetWalletForTests(wallet: Wallet = { coins: 0, owned: [] }): void {
   current = { ...wallet, owned: [...wallet.owned] };

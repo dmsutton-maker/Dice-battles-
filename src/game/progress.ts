@@ -100,6 +100,13 @@ export const MONEY_CODE = 'MONEY';
 export const MONEY_CODE_COINS = 10000;
 export const TESTER_LOCK_CODE = 'LOCK';
 
+/**
+ * Empties the Store cupboard so the shelf can be walked through from
+ * scratch. Coins are left alone — the point is to buy the things again,
+ * not to be handed them.
+ */
+export const RESET_CODE = 'RESET';
+
 export function setUnlockAll(on: boolean): Progress {
   current = { ...current, unlockAll: on };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
