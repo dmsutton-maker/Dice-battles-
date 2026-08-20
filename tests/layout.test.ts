@@ -98,52 +98,49 @@ suite('layout · the tab bar clears the home indicator', () => {
     );
   });
 
-  test('there really are seven tabs to fit', () => {
-    const tabs = nav.match(/\{ id: '/g) ?? [];
-    assertEqual(tabs.length, 7, 'tab count');
+  test('five tabs, Battle in the middle, in the order asked for', () => {
+    const ids = [...nav.matchAll(/\{ id: '([a-z]+)',/g)].map((m) => m[1]);
+    assertEqual(
+      ids.join(','),
+      'store,inventory,play,cups,leaderboard',
+      'tab order',
+    );
+    assertEqual(ids[Math.floor(ids.length / 2)], 'play', 'the middle tab');
   });
 });
 
-suite('layout · the version line cannot be pushed off', () => {
-  test('it is positioned absolutely, outside the flex flow', () => {
+suite('layout · the version line is the last row of the Settings popup', () => {
+  test('it is the final child of the panel, after the scroll', () => {
     /*
-      Twice it lived inside the flex flow and twice something took its
-      space — first the scroll swallowed it, then it only appeared when the
-      keyboard squeezed the panel enough to leave room. Out of the flow,
-      nothing can move it.
+      Three earlier attempts fought over this while Settings was a full
+      page competing with the tab bar for the bottom edge — inside the
+      scroll it fell below the fold, in the flex flow the scroll swallowed
+      it, so it ended up positioned absolutely against the page.
+
+      The popup removes the fight: the panel has a known bottom of its own,
+      so the line is just the last row. Simpler is only safe because the
+      thing that made it hard is gone.
     */
-    const style = screen.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
-    assert(style !== undefined, 'versionLine is not defined');
-    assert(/position: 'absolute'/.test(style!), 'the version line is still in the flex flow');
-    // Anchored to the bottom of the PAGE. The page now ends at the top of
-    // the tab bar, so this clears the bar and the home indicator without
-    // naming either — one number to be right instead of three.
-    assert(
-      /bottom: \d+/.test(style!),
-      'the version line is not anchored to the bottom of the page',
+    const scrollEnd = screen.indexOf(
+      '</ScrollView>',
+      screen.indexOf('settingsScrollContent'),
     );
-  });
-
-  test('it sits outside the keyboard-avoiding view', () => {
-    const kavEnd = screen.indexOf('</KeyboardAvoidingView>');
     const versionAt = screen.indexOf('{GAME_VERSION}');
-    assert(kavEnd > 0 && versionAt > 0, 'could not locate both');
+    const panelEnd = screen.indexOf('</KeyboardAvoidingView>');
+    assert(scrollEnd > 0 && versionAt > 0 && panelEnd > 0, 'could not locate all three');
+    assert(versionAt > scrollEnd, 'the version line is back inside the scroll');
     assert(
-      versionAt > kavEnd,
-      'the version line is inside the keyboard-avoiding view, so the keyboard moves it',
+      versionAt < panelEnd,
+      'the version line escaped the panel, so it has no box to sit in',
     );
   });
 
-  test('the settings page reserves room for it as well as the bar', () => {
-    // Absolute positioning takes no space, so without this the scrolling
-    // content runs underneath the version line and the two overlap.
-    const style = screen.match(/settingsPanel: \{[\s\S]*?\n  \},/)?.[0];
-    assert(style !== undefined, 'settingsPanel is not defined');
-    const pad = style!.match(/paddingBottom: (\d+),/);
-    assert(pad !== null, 'the panel reserves nothing for the pinned version line');
+  test('Settings sits inside the popup, so it has a bottom of its own', () => {
+    const settingsAt = screen.indexOf('<Popup title="⚙️ SETTINGS"');
+    assert(settingsAt > 0, 'Settings is not in a popup');
     assert(
-      Number(pad![1]) >= 23,
-      `only ${pad![1]}px reserved — the 15pt line plus its gaps would overlap the scroll`,
+      screen.indexOf('{GAME_VERSION}') > settingsAt,
+      'the version line is not inside the Settings popup',
     );
   });
 });
@@ -239,7 +236,6 @@ suite('layout · the tab bar is its own section, not a thing pages dodge', () =>
     'InventoryScreen',
     'StoreScreen',
     'LeaderboardScreen',
-    'NewsScreen',
     'TournamentScreen',
   ];
 
@@ -264,15 +260,6 @@ suite('layout · the tab bar is its own section, not a thing pages dodge', () =>
     }
   });
 
-  test('the Settings page ends there too', () => {
-    const style = screen.match(/settingsOverlay: \{[\s\S]*?\n  \},/)?.[0];
-    assert(style !== undefined, 'settingsOverlay is not defined');
-    assert(
-      style!.includes('...MENU_PAGE_AREA'),
-      'Settings still fills the whole screen behind the tab bar',
-    );
-  });
-
   test('the page area really does stop at the top of the bar', () => {
     const nav = readFileSync(join(root, 'src/demo/BottomNav.tsx'), 'utf8');
     const area = nav.match(/MENU_PAGE_AREA = \{[\s\S]*?\} as const;/)?.[0];
@@ -294,10 +281,5 @@ suite('layout · the tab bar is its own section, not a thing pages dodge', () =>
         `${name} pads by the bar height on top of already ending above it`,
       );
     }
-    const panel = screen.match(/settingsPanel: \{[\s\S]*?\n  \},/)?.[0];
-    assert(
-      !/paddingBottom: BOTTOM_NAV_HEIGHT/.test(panel ?? ''),
-      'the Settings panel reserves the bar height twice',
-    );
   });
 });

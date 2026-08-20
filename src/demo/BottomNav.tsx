@@ -11,27 +11,26 @@ import { BOTTOM_INSET } from '../game/safeArea';
  * are all one tap from anywhere, and which one you are on is always
  * visible. It hides during a battle: the board wants the whole screen.
  */
-export type Tab =
-  | 'play'
-  | 'cups'
-  | 'news'
-  | 'store'
-  | 'inventory'
-  | 'leaderboard'
-  | 'settings';
+/**
+ * Settings and News are NOT here. They are popups opened from two small
+ * buttons at the top of the home screen: neither is somewhere you go
+ * during play, so neither should take thumb space from the five things
+ * you actually move between.
+ */
+export type Tab = 'store' | 'inventory' | 'play' | 'cups' | 'leaderboard';
 
 /**
- * Seven across, with Battle dead centre — the thing you came to do sits
- * under your thumb, and everything else is one reach either side.
+ * Five across, with Battle dead centre — the thing you came to do sits
+ * under your thumb, and two reaches either side of it. Seven cells left
+ * about 53pt each on a small phone; five leave 75, which is room for a
+ * comfortable tap rather than a careful one.
  */
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'cups', label: 'Cups', icon: '🏆' },
   { id: 'store', label: 'Store', icon: '🛒' },
   { id: 'inventory', label: 'Items', icon: '🎒' },
   { id: 'play', label: 'Battle', icon: '⚔️' },
+  { id: 'cups', label: 'Cups', icon: '🏆' },
   { id: 'leaderboard', label: 'Ranks', icon: '🏅' },
-  { id: 'news', label: 'News', icon: '📰' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export function BottomNav({
@@ -136,8 +135,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pill: {
-    // 10pt each side crowded the icons at seven-across on a small phone.
-    paddingHorizontal: 7,
+    // Back to a generous pill now there are five cells rather than seven.
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
   },
@@ -149,7 +148,8 @@ const styles = StyleSheet.create({
   },
   label: {
     color: 'rgba(255,255,255,0.5)',
-    fontSize: 9.5,
+    // 75pt cells hold a bigger label than 53pt ones did.
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0,
   },

@@ -1,19 +1,18 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NEWS } from '../game/news';
-import { MENU_PAGE_AREA } from './BottomNav';
 
 /**
  * What's new, newest first. Bundled with the app — see src/game/news.ts
  * for why there is no feed behind it.
+ *
+ * The list only; the panel, the title and the ✕ come from Popup. News used
+ * to be a whole page behind a tab of its own, which was a lot of ceremony
+ * for something you read once when something changes.
  */
 export function NewsScreen() {
   return (
-    <View style={styles.overlay}>
-      <View style={styles.header}>
-        <Text style={styles.title}>📰 NEWS</Text>
-      </View>
-
+    <View>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -48,27 +47,9 @@ export function NewsScreen() {
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...MENU_PAGE_AREA,
-    // Solid, not 96%: the arena used to show faintly through every
-    // menu. Only the battle screen shows the board now.
-    backgroundColor: '#141028',
-    zIndex: 20,
-    paddingTop: 100,
-  },
-  header: {
-    paddingHorizontal: 22,
-    marginBottom: 10,
-  },
-  title: {
-    color: '#ffffff',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
   scroll: {
-    paddingHorizontal: 22,
-    paddingBottom: 24,
+    paddingHorizontal: 18,
+    paddingBottom: 6,
   },
   note: {
     color: 'rgba(255,255,255,0.6)',

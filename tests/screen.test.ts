@@ -563,7 +563,6 @@ suite('screen · the board belongs to the battle screen', () => {
       'StoreScreen',
       'InventoryScreen',
       'LeaderboardScreen',
-      'NewsScreen',
       'TournamentScreen',
     ];
     for (const page of pages) {
@@ -578,34 +577,72 @@ suite('screen · the board belongs to the battle screen', () => {
     }
   });
 
-  test('settings is a page like the rest, not a popup', () => {
-    // It began as a translucent card over the home screen. David asked
-    // for it to be a tab like everything else, so it is solid and full
-    // height now — and it must not drift back.
+  test('Settings and News are popups, opened from the top buttons', () => {
+    /*
+      They were two of seven tabs. Neither is somewhere you go during play,
+      so both were taking thumb space from the five things you actually
+      move between. They open over the game now, from two small buttons at
+      the top of the home screen.
+
+      This reverses an earlier decision to make Settings a tab; the tests
+      that enforced THAT have been replaced by these rather than left to
+      fail, because the rule changed, not the code.
+    */
     const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
-    const overlay = source.slice(source.indexOf('settingsOverlay: {'));
-    const bg = /backgroundColor:\s*'([^']+)'/.exec(overlay);
-    assert(bg !== null, 'the settings page sets no background');
+    const nav = readFileSync('src/demo/BottomNav.tsx', 'utf8');
+
     assert(
-      !bg![1].startsWith('rgba'),
-      `settings is see-through (${bg![1]}) — the board shows through it`,
+      /<Popup title="⚙️ SETTINGS"/.test(source),
+      'Settings is not a popup',
+    );
+    assert(/<Popup title="📰 NEWS"/.test(source), 'News is not a popup');
+    assert(
+      /onSettings=\{\(\) => setPopup\('settings'\)\}/.test(source),
+      'the top button does not open Settings',
+    );
+    assert(
+      /onNews=\{\(\) => setPopup\('news'\)\}/.test(source),
+      'the top button does not open News',
+    );
+    for (const gone of ["'settings'", "'news'"]) {
+      assert(
+        !nav.includes(`id: ${gone}`),
+        `${gone} is still a tab as well as a popup`,
+      );
+    }
+  });
+
+  test('a popup can always be closed', () => {
+    // A popup you can get stuck in is worse than a page. Two ways out: the
+    // ✕, and the dimmed area around the panel.
+    const popup = readFileSync('src/demo/Popup.tsx', 'utf8');
+    assert(/onPress=\{close\}/.test(popup), 'the ✕ does not close the popup');
+    assert(
+      /<Pressable\s+style=\{StyleSheet\.absoluteFill\}\s+onPress=\{close\}/.test(popup),
+      'tapping the dimmed area does not close the popup',
+    );
+    assert(
+      /hitSlop=\{\d+\}/.test(popup),
+      'the ✕ has no hitSlop, so it is a small target',
     );
   });
 
-  test('settings is reached the same way as every other page', () => {
-    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+  test('the popup dims the whole screen, tab bar included', () => {
+    const popup = readFileSync('src/demo/Popup.tsx', 'utf8');
+    const backdrop = popup.match(/backdrop: \{[\s\S]*?\n  \},/)?.[0];
+    assert(backdrop !== undefined, 'the popup has no backdrop');
+    const bg = /backgroundColor: 'rgba\([^)]*, ?([\d.]+)\)'/.exec(backdrop!);
+    assert(bg !== null, 'the backdrop is not translucent');
+    const alpha = Number(bg![1]);
     assert(
-      !/showSettings/.test(source),
-      'settings still has its own open/closed flag instead of being a tab',
+      alpha > 0.5 && alpha < 0.95,
+      `backdrop alpha ${alpha} — should be dark but still show the game through`,
     );
+    const z = /zIndex: (\d+)/.exec(backdrop!);
+    assert(z !== null, 'the backdrop has no zIndex');
     assert(
-      /menuTab === 'settings'/.test(source),
-      'settings is not driven by the tab bar',
-    );
-    const nav = readFileSync('src/demo/BottomNav.tsx', 'utf8');
-    assert(
-      /\|\s*'settings'/.test(nav),
-      'settings is not one of the tabs',
+      Number(z![1]) > 35,
+      `zIndex ${z![1]} does not cover the tab bar (35), so the bar stays bright`,
     );
   });
 

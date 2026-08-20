@@ -105,9 +105,11 @@ import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
-import { BottomNav, BOTTOM_NAV_HEIGHT, MENU_PAGE_AREA, Tab } from './BottomNav';
+import { BottomNav, BOTTOM_NAV_HEIGHT, Tab } from './BottomNav';
 import { BOTTOM_INSET } from '../game/safeArea';
 import { NewsScreen } from './NewsScreen';
+import { Popup } from './Popup';
+import { TopButtons } from './TopButtons';
 import { TournamentScreen } from './TournamentScreen';
 import {
   RunState,
@@ -182,6 +184,13 @@ export function DiceDemoScreen() {
   const [twoPlayer, setTwoPlayer] = useState(false);
   const [loadout, setLoadout] = useState(getLoadout());
   const [tab, setTab] = useState<Tab>('play');
+  /*
+    Settings and News open OVER whatever you were doing rather than
+    replacing it, so they are their own bit of state — not a sixth and
+    seventh value of `tab`. Only one can be open at a time; there is
+    nowhere to open the second from while the first is covering the screen.
+  */
+  const [popup, setPopup] = useState<'settings' | 'news' | null>(null);
   // The cup being played, if any. A round started from a cup reports back
   // to it when it finishes.
   const [run, setRun] = useState<RunState | null>(null);
@@ -526,8 +535,8 @@ export function DiceDemoScreen() {
   // do this on its way out, and without it "10,000 coins added!" would
   // still be sitting there next time you opened the page.
   useEffect(() => {
-    if (tab !== 'settings') setCodeFeedback(null);
-  }, [tab]);
+    if (popup !== 'settings') setCodeFeedback(null);
+  }, [popup]);
 
   /** Pay the entry fee and open a bracket. */
   const enterTournament = useCallback((tournament: TournamentDef) => {
@@ -1267,7 +1276,6 @@ export function DiceDemoScreen() {
           onEquipSkin={(id) => setLoadout({ ...equipSkin(id) })}
         />
       )}
-      {menuTab === 'news' && <NewsScreen />}
       {menuTab === 'cups' && (
         <TournamentScreen
           coins={wallet.coins}
@@ -1289,6 +1297,18 @@ export function DiceDemoScreen() {
         <StatsHud trophies={trophies} coins={wallet.coins} />
       )}
 
+      {/*
+        Settings and News, opposite the trophy and coin pills. Only while
+        the menus are up — mid-battle the board wants the whole screen, and
+        a stray tap on a gear during a throw would be its own bug.
+      */}
+      {phase === 'pick' && (
+        <TopButtons
+          onSettings={() => setPopup('settings')}
+          onNews={() => setPopup('news')}
+        />
+      )}
+
       {/* The bar itself. Gone during a battle — the board wants the room. */}
       {phase !== 'battle' && phase !== 'arm' && phase !== 'go' && phase !== 'matching' && (
         <BottomNav active={tab} onSelect={setTab} />
@@ -1301,13 +1321,19 @@ export function DiceDemoScreen() {
         />
       )}
 
-      {menuTab === 'settings' && (
-        <View style={styles.settingsOverlay}>
+      {popup === 'news' && (
+        <Popup title="📰 NEWS" onClose={() => setPopup(null)}>
+          <NewsScreen />
+        </Popup>
+      )}
+
+      {popup === 'settings' && (
+        <Popup title="⚙️ SETTINGS" onClose={() => setPopup(null)}>
           {/*
-            Shrinks the panel by the keyboard's height, so there is somewhere
-            to scroll the code box TO. Scrolling alone would not help: with
-            the panel still full height, the box would scroll to a part of
-            the page the keyboard is sitting on top of.
+            Shrinks the panel by the keyboard's height, so there is
+            somewhere to scroll the code box TO. Scrolling alone would not
+            help: with the panel still full height, the box would scroll to
+            a part of the page the keyboard is sitting on top of.
 
             iOS only. Android resizes the window for the keyboard by itself
             (Expo's default softwareKeyboardLayoutMode), and stacking this
@@ -1317,7 +1343,6 @@ export function DiceDemoScreen() {
             style={styles.settingsPanel}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            <Text style={styles.settingsTitle}>⚙️ SETTINGS</Text>
             {/*
               Four sliders make this page taller than any phone, so the
               middle scrolls while the version line stays pinned below it.
@@ -1438,26 +1463,14 @@ export function DiceDemoScreen() {
             </Pressable>
             </ScrollView>
             {/*
-              No Done button. Settings is a tab now — you leave it by
-              tapping another one, the same as every other page, and a
-              button that only goes "back to Battle" is a second way to
-              do what the bar already does.
+              The version, the last row of the panel. It no longer has to
+              be positioned absolutely to survive: the popup gives Settings
+              a box of its own with a known bottom, rather than a page
+              competing with a tab bar for the same edge.
             */}
+            <Text style={styles.versionLine}>{GAME_VERSION}</Text>
           </KeyboardAvoidingView>
-          {/*
-            The version, pinned to the OVERLAY and positioned absolutely —
-            outside the flex flow altogether, and outside the
-            KeyboardAvoidingView.
-
-            Two earlier attempts put it inside that flow, and both times
-            something else took the space: first the scroll swallowed it,
-            then it only surfaced when the keyboard opened and squeezed the
-            panel enough to leave room. Taking it out of the flow entirely
-            means nothing can push it anywhere. It sits just above the tab
-            bar, on every screen, whatever else is happening.
-          */}
-          <Text style={styles.versionLine}>{GAME_VERSION}</Text>
-        </View>
+        </Popup>
       )}
       <BugReportModal
         visible={showBugReport}
@@ -1765,25 +1778,11 @@ const styles = StyleSheet.create({
    * it to behave like every other tab, so it is solid and full height and
    * matches Store, Cups, Items, Ranks and News.
    */
-  settingsOverlay: {
-    // Ends where the tab bar begins, like every other menu page.
-    ...MENU_PAGE_AREA,
-    backgroundColor: '#141028',
-    zIndex: 20,
-    paddingTop: 100,
-    paddingHorizontal: 22,
-  },
   settingsPanel: {
-    flex: 1,
-    /*
-      Room for the version line pinned at the bottom of this page. It is
-      positioned absolutely so it takes no space of its own — without this
-      the scrolling content would run underneath it. The tab bar needs no
-      allowance any more: the page itself now ends above it.
-
-      15pt of line, 8pt below it, 9pt above.
-    */
-    paddingBottom: 32,
+    // Shrinks to its content up to the popup's own max height, rather
+    // than filling a screen it no longer owns.
+    flexShrink: 1,
+    paddingBottom: 0,
   },
   settingsScroll: {
     /*
@@ -1814,13 +1813,6 @@ const styles = StyleSheet.create({
   },
   // Same header as Store, Cups, Items, Ranks and News — it is one of
   // them now, so it should not look like a leftover dialog.
-  settingsTitle: {
-    color: '#ffffff',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    marginBottom: 12,
-  },
   settingsSectionTitle: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
@@ -1854,14 +1846,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   versionLine: {
-    // Out of the flex flow: nothing above it can take its space.
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    // 8pt up from the bottom of the page — and the page now ends at the
-    // top of the tab bar, so this clears the bar and the home indicator
-    // without naming either.
-    bottom: 8,
+    marginTop: 10,
     color: 'rgba(255,255,255,0.38)',
     fontSize: 11,
     fontWeight: '700',
