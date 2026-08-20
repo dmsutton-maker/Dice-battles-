@@ -50,6 +50,27 @@ which stays versioned and technical for the game's own releases.
 
 ## Releasing
 
+**Shipping is automatic now.** David asked on 20 Aug 2026 for changes to
+reach Expo and TestFlight without him having to ask each time.
+
+- **Every change goes out over the air as soon as it is verified** —
+  typecheck, tests, bundle check, CHANGELOG entry, then
+  `eas update --branch main --message "vX.Y.Z — what changed"`. No
+  waiting to be told. An OTA update is reversible in seconds, so the cost
+  of shipping one is close to nothing and the cost of sitting on it is
+  that nobody can play it.
+- **A new BUILD is only needed for what Apple bakes into the binary** —
+  the app name, the icon, anything in `app.json` outside JS, a new
+  dependency with native code, or an SDK bump. Run the build when a
+  change requires one, because otherwise that change simply never
+  arrives. Say so in chat when you do.
+- The Expo access token is on David's account (`dmsutton`). It is NEVER
+  written to disk in this repo — pass it as `EXPO_TOKEN` in the
+  environment only. This repo is public.
+- Roll back a bad update with `eas update:republish`, don't ship a
+  panicked fix on top of it.
+
+
 - Every published update gets a version in `CHANGELOG.md`, recording
   **who requested it**, so any change can be traced and rolled back.
 - Put the version in the EAS update message too:
