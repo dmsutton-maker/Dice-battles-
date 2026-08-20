@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.12.2 — 2026-08-20 · requested by David
+
+### Fixed
+- **Difficulty now applies in 2-player split screen.** It never did: the
+  split screen passed an empty courtyard regardless, so picking Hard and
+  handing the phone over quietly put both players back on Easy. Difficulty
+  in this game IS the obstacles you roll on rather than how the opponent
+  plays, which is exactly why it carries to a human opponent unchanged.
+  The chosen difficulty now rides across from the start screen the same
+  way the mode already did, and both the button and each zone's scoreline
+  name it.
+- Both players roll on **one shared layout**. Obstacle positions are rolled
+  at random, so generating them per zone would have put the hill — and on
+  Hard the pond — somewhere different for each player. In a head-to-head on
+  one table that is not variety, it is one player getting the easier
+  courtyard.
+- A rematch rebuilds each zone's physics world around the new obstacles.
+  The scene builds its world once per mount, so without this the dice would
+  have collided with the previous match's hill while the new one was drawn
+  somewhere else.
+
+### Changed
+- **"Shapes on the dice" is now "Colorblind mode"** in Settings, and in the
+  news entry that introduced it. It stopped being only about the dice when
+  the shapes went onto the prisoners too, and naming the setting after what
+  it is for makes it findable by someone who needs it.
+
 ## v1.12.1 — 2026-08-20 · requested by David (reported on the ideas board)
 
 ### Fixed

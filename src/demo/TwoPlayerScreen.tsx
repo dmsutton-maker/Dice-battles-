@@ -14,6 +14,7 @@ import { playCue } from '../audio/announcer';
 import { playCheer, playFanfare, playThrow, startMusic, stopMusic } from '../audio/sounds';
 import { ColorDef, PRISONER_COLORS } from '../game/colors';
 import { makeUnits, MODES, ModeId, PrisonerUnit } from '../game/modes';
+import { AI_DIFFICULTIES, AiDifficultyId } from '../game/ai';
 import { PrisonerColorId } from '../game/colors';
 import {
   applySplitMatch,
@@ -22,7 +23,7 @@ import {
   targetFor,
   Zone,
 } from '../game/splitRules';
-import { EMPTY_LAYOUT } from '../game/obstacles';
+import { generateObstacleLayout, ObstacleLayout } from '../game/obstacles';
 import {
   flickFromGesture,
   TouchSample,
@@ -49,6 +50,15 @@ interface TwoPlayerScreenProps {
   arenaId: ArenaId;
   dieBodyColor: string;
   mode: ModeId;
+  /**
+   * The difficulty chosen on the start screen, carried in the same way the
+   * mode is. Against the AI, difficulty is the obstacles in the courtyard
+   * rather than how the opponent plays (see src/game/obstacles.ts) — which
+   * is exactly why it transfers to a human opponent unchanged. Split screen
+   * used to hard-code an empty courtyard, so picking Hard and then handing
+   * the phone over quietly dropped you back to Easy.
+   */
+  difficulty: AiDifficultyId;
   /** Colourblind mode — shapes on the dice and the prisoners. */
   symbols: boolean;
   onExit: () => void;
@@ -67,6 +77,11 @@ interface ZoneViewProps {
   arenaId: ArenaId;
   dieBodyColor: string;
   symbols: boolean;
+  /** Shared with the other zone — see the note where it is generated. */
+  layout: ObstacleLayout;
+  /** Bumped each match so the physics world rebuilds around new obstacles. */
+  matchKey: number;
+  difficultyName: string;
   controlsRef: React.MutableRefObject<SceneControls | null>;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
@@ -87,6 +102,9 @@ function ZoneView({
   arenaId,
   dieBodyColor,
   symbols,
+  layout,
+  matchKey,
+  difficultyName,
   controlsRef,
   onThrow,
   onSettled,
@@ -140,12 +158,18 @@ function ZoneView({
       >
         <color attach="background" args={[ARENAS[arenaId].skyColor]} />
         <DiceScene
+          /*
+            Keyed on the match: DiceScene builds its physics world once per
+            mount, so without a fresh key a rematch would draw the new hill
+            and pond while the dice still collided with the old ones.
+          */
+          key={matchKey}
           controlsRef={controlsRef}
           onThrow={onThrow}
           onSettled={onSettled}
           units={units}
           shakeSignal={0}
-          layout={EMPTY_LAYOUT}
+          layout={layout}
           arenaId={arenaId}
           dieBodyColor={dieBodyColor}
           dieSymbols={symbols}
@@ -158,7 +182,7 @@ function ZoneView({
       {/* Zone score strip */}
       <View pointerEvents="none" style={styles.zoneHud}>
         <Text style={styles.zoneScore}>
-          {modeName} · {score} / {target}
+          {modeName} · {difficultyName} · {score} / {target}
           {oppScore > score ? '  — catch up!' : ''}
         </Text>
       </View>
@@ -195,6 +219,7 @@ export function TwoPlayerScreen({
   arenaId,
   dieBodyColor,
   mode,
+  difficulty,
   symbols,
   onExit,
 }: TwoPlayerScreenProps) {
@@ -220,6 +245,10 @@ export function TwoPlayerScreen({
     };
   }, [mode, zoneColors]);
   const [phase, setPhase] = useState<Phase>('ready');
+  // The obstacles both players roll on. Rolled fresh at the start of each
+  // match, and matchKey rebuilds each zone's physics world around them.
+  const [layout, setLayout] = useState(() => generateObstacleLayout(difficulty));
+  const [matchKey, setMatchKey] = useState(0);
   const phaseRef = useRef<Phase>('ready');
   const [winner, setWinner] = useState<0 | 1 | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -256,6 +285,15 @@ export function TwoPlayerScreen({
   }, [phase]);
 
   const startMatch = useCallback(() => {
+    /*
+      ONE layout for both zones. generateObstacleLayout rolls fresh random
+      positions each call, so generating per zone would put the hill in a
+      different place for each player — and on Hard, the pond too. In a
+      head-to-head on one table that is not variety, it is one player
+      getting the easier courtyard, and they would be right to complain.
+    */
+    setLayout(generateObstacleLayout(difficulty));
+    setMatchKey((n) => n + 1);
     const fresh = buildBoards();
     unitsRefA.current = fresh.a;
     unitsRefB.current = fresh.b;
@@ -275,7 +313,7 @@ export function TwoPlayerScreen({
       }, 1100),
       setTimeout(() => setPhaseBoth('battle'), 1800),
     ];
-  }, [setPhaseBoth, buildBoards]);
+  }, [setPhaseBoth, buildBoards, difficulty]);
 
   const makeSettleHandler = useCallback(
     (zone: Zone) => (faces: ColorDef[]) => {
@@ -348,6 +386,9 @@ export function TwoPlayerScreen({
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
         symbols={symbols}
+        layout={layout}
+        matchKey={matchKey}
+        difficultyName={AI_DIFFICULTIES[difficulty].label}
         controlsRef={controlsB}
         onThrow={noop}
         onSettled={settledB}
@@ -369,6 +410,9 @@ export function TwoPlayerScreen({
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
         symbols={symbols}
+        layout={layout}
+        matchKey={matchKey}
+        difficultyName={AI_DIFFICULTIES[difficulty].label}
         controlsRef={controlsA}
         onThrow={noop}
         onSettled={settledA}

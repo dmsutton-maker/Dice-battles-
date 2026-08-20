@@ -923,6 +923,7 @@ export function DiceDemoScreen() {
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
         mode={mode}
+        difficulty={difficulty}
         symbols={colorblind}
         onExit={() => setTwoPlayer(false)}
       />
@@ -1112,9 +1113,20 @@ export function DiceDemoScreen() {
                 setTwoPlayer(true);
               }}
             >
-              {/* The mode picked above carries into split screen. */}
-              <Text style={styles.twoPlayerText} numberOfLines={1}>
-                👥 2 Players — {MODES[mode].name}
+              {/* The mode AND the difficulty picked above both carry into
+                  split screen — the courtyard obstacles are the difficulty,
+                  and they apply just as well to a human opponent. */}
+              <Text
+                style={styles.twoPlayerText}
+                numberOfLines={1}
+                // Naming both the mode and the difficulty makes this the
+                // longest label on the screen. Shrink it rather than
+                // ellipsising it on a small phone — "Color Rush · Med…"
+                // is worse than the same words a point smaller.
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                👥 2 Players · {MODES[mode].name} · {AI_DIFFICULTIES[difficulty].label}
               </Text>
             </Pressable>
           </ScrollView>
@@ -1282,10 +1294,11 @@ export function DiceDemoScreen() {
             >
               <View style={styles.toggleText}>
                 <Text style={styles.toggleLabel}>
-                  {colorblind ? '🔷' : '⬜'} Shapes on the dice
+                  {colorblind ? '🔷' : '⬜'} Colorblind mode
                 </Text>
                 <Text style={styles.toggleNote}>
-                  Every colour also gets its own shape.
+                  Every colour gets its own shape, on the dice and the
+                  prisoners.
                 </Text>
               </View>
               <View style={[styles.toggleBox, colorblind && styles.toggleBoxOn]}>
@@ -1498,6 +1511,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '800',
+    // Fixed, so shrinking the font to fit cannot change the button's
+    // height and shift everything below it.
+    lineHeight: 20,
   },
   tagline: {
     color: 'rgba(255,255,255,0.9)',

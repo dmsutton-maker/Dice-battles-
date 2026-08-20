@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../src/arena/arenas';
 import { createSkyGradient } from '../src/arena/skyGradient';
@@ -119,5 +121,70 @@ suite('arena · the sky gradient runs the right way up', () => {
     for (let y = 0; y < height; y++) {
       assertEqual(data[y * width * 4 + 3], 255, `row ${y} alpha`);
     }
+  });
+});
+
+suite('split screen · difficulty reaches both players', () => {
+  const root = join(__dirname, '..');
+  const source = readFileSync(join(root, 'src/demo/TwoPlayerScreen.tsx'), 'utf8');
+  const parent = readFileSync(join(root, 'src/demo/DiceDemoScreen.tsx'), 'utf8');
+
+  test('split screen no longer hard-codes an empty courtyard', () => {
+    // It used to pass EMPTY_LAYOUT, so picking Hard and handing the phone
+    // over silently put both players back on Easy.
+    assert(
+      !source.includes('EMPTY_LAYOUT'),
+      'TwoPlayerScreen still forces an empty courtyard',
+    );
+    assert(
+      source.includes('generateObstacleLayout(difficulty)'),
+      'the obstacles are not generated from the chosen difficulty',
+    );
+  });
+
+  test('the parent passes the chosen difficulty through', () => {
+    assert(
+      /<TwoPlayerScreen[\s\S]{0,400}?difficulty=\{difficulty\}/.test(parent),
+      'DiceDemoScreen does not hand its difficulty to split screen',
+    );
+  });
+
+  test('both zones roll on ONE layout, not one each', () => {
+    // generateObstacleLayout randomises positions, so a call per zone would
+    // give each player a different courtyard — on Hard, a pond in a
+    // different place. That is not variety, it is an unfair match.
+    // Exactly one place holds the layout (the initial state) and one place
+    // refreshes it (the rematch) — never one per zone.
+    const calls = source.match(/generateObstacleLayout\(/g) ?? [];
+    assertEqual(calls.length, 2, 'generateObstacleLayout call sites');
+
+    const zones = [...source.matchAll(/<ZoneView[\s\S]*?\/>/g)].map(([tag]) => tag);
+    assertEqual(zones.length, 2, 'there should be exactly two zones');
+    for (const [i, zone] of zones.entries()) {
+      assert(
+        zone.includes('layout={layout}'),
+        `zone ${i} is not given the shared layout`,
+      );
+    }
+  });
+
+  test('a rematch rebuilds the physics world around the new obstacles', () => {
+    // DiceScene builds its world once per mount. Without a changing key the
+    // dice would collide with the previous match's hill while the new one
+    // is drawn somewhere else.
+    assert(
+      source.includes('key={matchKey}'),
+      'DiceScene is not keyed, so the physics world would go stale',
+    );
+    assert(
+      /setMatchKey\(\(n\) => n \+ 1\)/.test(source),
+      'matchKey never changes, so the key does nothing',
+    );
+    const start = source.indexOf('const startMatch');
+    const body = source.slice(start, start + 900);
+    assert(
+      body.includes('setLayout(generateObstacleLayout(difficulty))'),
+      'a rematch does not roll fresh obstacles',
+    );
   });
 });

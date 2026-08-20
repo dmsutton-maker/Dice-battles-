@@ -62,11 +62,12 @@ export const NEWS: NewsItem[] = [
     id: 'v1-10-2-shapes',
     date: '19 August 2026',
     version: 'v1.10.2',
-    title: 'Shapes on the dice',
+    title: 'Colorblind mode',
     emoji: '🔷',
     body:
       'A new setting gives every colour its own shape as well — a circle ' +
       'for red, a square for blue, and so on. Helpful if colours are hard ' +
-      'to tell apart, and in bright sunlight it helps everyone.',
+      'to tell apart, and in bright sunlight it helps everyone. Find it in ' +
+      'Settings.',
   },
 ];
