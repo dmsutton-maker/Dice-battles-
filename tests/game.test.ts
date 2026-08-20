@@ -309,3 +309,44 @@ suite('game · color war sides', () => {
     );
   });
 });
+
+suite('game · color war shares the bottom row', () => {
+  test('there is room for three each along the retreat', () => {
+    // Both fighters' rescues now stand in the same row: yours on the
+    // left three spots, your opponent's on the right three. The AI's used
+    // to be paraded up on the far battlement instead.
+    assertEqual(RETREAT_SLOTS.length, 6, 'the bottom row must seat six');
+    const left = RETREAT_SLOTS.slice(0, 3);
+    const right = RETREAT_SLOTS.slice(3);
+    assert(
+      left.every((s) => s.x < 0),
+      'the first three spots are not on the left',
+    );
+    assert(
+      right.every((s) => s.x > 0),
+      'the last three spots are not on the right',
+    );
+    assert(
+      Math.max(...left.map((s) => s.x)) < Math.min(...right.map((s) => s.x)),
+      'the two halves of the row overlap',
+    );
+  });
+
+  test('the two sides can be told apart by colour alone', () => {
+    // Counting by station would add the two together now they share a
+    // row, so each side is counted by its own colour.
+    const [mine, theirs] = [PRISONER_COLORS[0], PRISONER_COLORS[1]];
+    assert(mine.id !== theirs.id, 'color war drew the same colour twice');
+    const units = makeUnits('colorwar', PRISONER_COLORS, mine, theirs);
+    assertEqual(
+      units.filter((u) => u.colorId === mine.id).length,
+      3,
+      'you should field three',
+    );
+    assertEqual(
+      units.filter((u) => u.colorId === theirs.id).length,
+      3,
+      'your opponent should field three',
+    );
+  });
+});

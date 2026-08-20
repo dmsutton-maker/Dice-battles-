@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
 import { playClick, playEquip } from '../audio/sounds';
+import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { DICE_SKINS } from '../game/diceSkins';
 import {
@@ -129,13 +130,8 @@ export function InventoryScreen({
                   !unlocked && styles.cardLocked,
                 ]}
               >
-                {/* A little die drawn in the skin's own shell colour. */}
-                <View style={[styles.swatch, { backgroundColor: skin.body }]}>
-                  <View style={styles.pipRow}>
-                    <View style={[styles.pip, { backgroundColor: '#cc2533' }]} />
-                    <View style={[styles.pip, { backgroundColor: '#043fe0' }]} />
-                  </View>
-                </View>
+                {/* The real shell, same painter as the dice in play. */}
+                <DiceSwatch skin={skin} size={58} />
                 <Text style={[styles.cardName, !unlocked && styles.lockedText]}>
                   {skin.emoji} {skin.name}
                 </Text>

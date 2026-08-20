@@ -98,7 +98,7 @@ import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
-import { BottomNav, BOTTOM_NAV_HEIGHT, Tab } from './BottomNav';
+import { BottomNav, BOTTOM_NAV_HEIGHT, NavTarget, Tab } from './BottomNav';
 import { NewsScreen } from './NewsScreen';
 import { TournamentScreen } from './TournamentScreen';
 import {
@@ -293,6 +293,16 @@ export function DiceDemoScreen() {
     unitsRef.current.filter((u) => u.station.kind === 'wall').length;
   const jailCount = () =>
     unitsRef.current.filter((u) => u.station.kind === 'jail').length;
+  /**
+   * Color War stands both fighters' rescues along the same bottom row —
+   * yours on the left three spots, your opponent's on the right three —
+   * so counting has to go by COLOUR. retreatCount() would add the two
+   * together and hand each side the other's score.
+   */
+  const warRetreatCount = (colorId: PrisonerColorId): number =>
+    unitsRef.current.filter(
+      (u) => u.station.kind === 'retreat' && u.colorId === colorId,
+    ).length;
 
   const showCallout = useCallback((text: string, cue?: VoiceCue | null) => {
     setCallout({ key: Date.now(), text });
@@ -444,6 +454,18 @@ export function DiceDemoScreen() {
   const menuTab: Tab | null =
     phase === 'pick' && tab !== 'play' ? tab : null;
 
+  /**
+   * Settings is on the bar but is not a page: it opens the popup over
+   * wherever you already were, and the tab you were on stays lit.
+   */
+  const goTo = useCallback((target: NavTarget) => {
+    if (target === 'settings') {
+      setShowSettings(true);
+      return;
+    }
+    setTab(target);
+  }, []);
+
   const backToPlay = useCallback(() => {
     playClick();
     setTab('play');
@@ -586,9 +608,13 @@ export function DiceDemoScreen() {
         (u) => u.colorId === war.ai.id && u.station.kind === 'jail',
       );
       if (!unit) return;
-      moveUnit(unit.key, { kind: 'wall', index: wallCount() });
+      // Right three spots of the bottom row: indices 3, 4, 5.
+      moveUnit(unit.key, {
+        kind: 'retreat',
+        index: 3 + warRetreatCount(war.ai.id),
+      });
       aiPing();
-      const ac = wallCount();
+      const ac = warRetreatCount(war.ai.id);
       if (ac >= 3) {
         finishRound('lost');
       } else if (ac === 2) {
@@ -704,9 +730,13 @@ export function DiceDemoScreen() {
         (u) => u.colorId === war.player.id && u.station.kind === 'jail',
       );
       if (!unit) return;
-      moveUnit(unit.key, { kind: 'retreat', index: retreatCount() });
+      // Left three spots of the bottom row: indices 0, 1, 2.
+      moveUnit(unit.key, {
+        kind: 'retreat',
+        index: warRetreatCount(war.player.id),
+      });
       celebrate();
-      const n = retreatCount();
+      const n = warRetreatCount(war.player.id);
       if (n >= 3) {
         finishRound('won');
       } else if (n === 2) {
@@ -766,11 +796,23 @@ export function DiceDemoScreen() {
   const arenaId: ArenaId = activeArena(trophies);
   const dieBodyColor = activeDieBody(trophies);
   const equippedSkin = skinById(loadout.skinId);
-  const playerScore = units.filter((u) => u.station.kind === 'retreat').length;
+  // In Color War both sides stand in the retreat row, so each side's
+  // score is its own colour rather than everyone standing there.
+  const inRetreat = (colorId: PrisonerColorId) =>
+    units.filter((u) => u.station.kind === 'retreat' && u.colorId === colorId)
+      .length;
+  const playerScore =
+    mode === 'colorwar' && warColors
+      ? inRetreat(warColors.player.id)
+      : units.filter((u) => u.station.kind === 'retreat').length;
   const aiScore =
-    mode === 'skirmish' || mode === 'colorwar'
-      ? units.filter((u) => u.station.kind === 'wall').length
-      : aiFreed.length;
+    mode === 'colorwar'
+      ? warColors
+        ? inRetreat(warColors.ai.id)
+        : 0
+      : mode === 'skirmish'
+        ? units.filter((u) => u.station.kind === 'wall').length
+        : aiFreed.length;
   const target = mode === 'colorwar' ? 3 : 6;
   const upNext = nextTier(trophies);
   const upNextLabel = upNext ? tierLabel(upNext, trophies) : null;
@@ -1023,15 +1065,7 @@ export function DiceDemoScreen() {
       {/* Pick / countdown / result overlays */}
       {phase === 'pick' && (
         <View style={styles.overlay}>
-          <Pressable
-            style={styles.gearButton}
-            onPress={() => {
-              playClick();
-              setShowSettings(true);
-            }}
-          >
-            <Text style={styles.gearText}>⚙️</Text>
-          </Pressable>
+          {/* The floating gear moved to the bottom bar. */}
           {/*
             Scrolling is enabled only when the content genuinely overflows.
             On most phones everything fits, and a screen that rubber-bands
@@ -1181,7 +1215,7 @@ export function DiceDemoScreen() {
 
       {/* The bar itself. Gone during a battle — the board wants the room. */}
       {phase !== 'battle' && phase !== 'arm' && phase !== 'go' && phase !== 'matching' && (
-        <BottomNav active={tab} onSelect={setTab} />
+        <BottomNav active={tab} onSelect={goTo} />
       )}
 
       {rewards.length > 0 && (
@@ -1574,21 +1608,6 @@ const styles = StyleSheet.create({
     // Clear of the bottom bar, or START BATTLE sits behind it.
     paddingBottom: 64 + BOTTOM_NAV_HEIGHT,
     paddingHorizontal: 4,
-  },
-  gearButton: {
-    position: 'absolute',
-    top: 54,
-    right: 18,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
-  },
-  gearText: {
-    fontSize: 21,
   },
   startButton: {
     marginTop: 24,

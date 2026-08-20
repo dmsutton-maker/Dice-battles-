@@ -146,11 +146,18 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
  * Build the shell texture for a pattern. `base` is the skin's own colour
  * and `ink` is the pattern colour drawn over it.
  */
-export function createPatternTexture(
+/**
+ * Raw RGB bytes for a pattern, one triple per pixel.
+ *
+ * Shared by the 3D shell texture and the 2D preview in the Store and the
+ * Inventory, so what is on the shelf cannot drift away from what ends up
+ * in your hand.
+ */
+export function patternPixels(
   pattern: Exclude<PatternId, 'plain'>,
   base: string,
   ink: string,
-): THREE.DataTexture {
+): number[] {
   const parse = (hex: string) => {
     const n = parseInt(hex.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -159,16 +166,42 @@ export function createPatternTexture(
   const [ir, ig, ib] = parse(ink);
   const paint = PAINTERS[pattern];
 
-  const data = new Uint8Array(SIZE * SIZE * 4);
+  const out: number[] = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
       const mask = Math.max(0, Math.min(1, paint(x, y)));
-      const i = (y * SIZE + x) * 4;
-      data[i] = br + (ir - br) * mask;
-      data[i + 1] = bg + (ig - bg) * mask;
-      data[i + 2] = bb + (ib - bb) * mask;
-      data[i + 3] = 255;
+      // Rounded to whole bytes. A Uint8Array used to truncate these for
+      // free; the PNG encoder takes a plain array and a fractional byte
+      // corrupts the stream.
+      out.push(
+        Math.round(br + (ir - br) * mask),
+        Math.round(bg + (ig - bg) * mask),
+        Math.round(bb + (ib - bb) * mask),
+      );
     }
+  }
+  return out;
+}
+
+/** The size every pattern is drawn at. */
+export const PATTERN_SIZE = SIZE;
+
+/**
+ * Build the shell texture for a pattern. `base` is the skin's own colour
+ * and `ink` is the pattern colour drawn over it.
+ */
+export function createPatternTexture(
+  pattern: Exclude<PatternId, 'plain'>,
+  base: string,
+  ink: string,
+): THREE.DataTexture {
+  const rgb = patternPixels(pattern, base, ink);
+  const data = new Uint8Array(SIZE * SIZE * 4);
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 3) {
+    data[i] = rgb[p];
+    data[i + 1] = rgb[p + 1];
+    data[i + 2] = rgb[p + 2];
+    data[i + 3] = 255;
   }
 
   const texture = new THREE.DataTexture(data, SIZE, SIZE);

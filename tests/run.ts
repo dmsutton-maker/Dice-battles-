@@ -20,6 +20,7 @@ async function main(): Promise<void> {
   await import('./splitRules.test');
   await import('./aim.test');
   await import('./tournament.test');
+  await import('./preview.test');
   process.exit(await runAll());
 }
 

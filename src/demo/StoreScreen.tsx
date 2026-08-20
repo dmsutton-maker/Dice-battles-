@@ -5,6 +5,7 @@ import { buyWithCoins, COIN_REWARDS, getWallet, owns } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
 import { Reward } from './RewardPopup';
 import { playClick } from '../audio/sounds';
+import { DiceSwatch } from './DiceSwatch';
 
 /**
  * The Store: spend coins earned by playing.
@@ -82,9 +83,7 @@ export function StoreScreen({ onClose, onPurchase }: StoreScreenProps) {
                   !bought && !affordable && styles.cardLocked,
                 ]}
               >
-                <View style={[styles.swatch, { backgroundColor: skin.body }]}>
-                  <Text style={styles.swatchEmoji}>{skin.emoji}</Text>
-                </View>
+                <DiceSwatch skin={skin} size={58} />
                 <Text style={styles.cardName}>{skin.name}</Text>
                 {bought ? (
                   <Text style={styles.ownedTag}>OWNED</Text>

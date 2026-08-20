@@ -18,13 +18,26 @@ export type Tab =
   | 'inventory'
   | 'leaderboard';
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
+/**
+ * Settings sits on the bar but is not a page — tapping it opens the
+ * popup over whatever you were looking at, and the tab you were on stays
+ * selected. It is a translucent panel over the game on purpose, so
+ * turning it into a solid page would lose that.
+ */
+export type NavTarget = Tab | 'settings';
+
+/**
+ * Seven across, with Battle dead centre — the thing you came to do sits
+ * under your thumb, and everything else is one reach either side.
+ */
+const TABS: { id: NavTarget; label: string; icon: string }[] = [
   { id: 'cups', label: 'Cups', icon: '🏆' },
   { id: 'store', label: 'Store', icon: '🛒' },
-  { id: 'play', label: 'Battle', icon: '⚔️' },
   { id: 'inventory', label: 'Items', icon: '🎒' },
+  { id: 'play', label: 'Battle', icon: '⚔️' },
   { id: 'leaderboard', label: 'Ranks', icon: '🏅' },
   { id: 'news', label: 'News', icon: '📰' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export function BottomNav({
@@ -32,11 +45,13 @@ export function BottomNav({
   onSelect,
 }: {
   active: Tab;
-  onSelect: (tab: Tab) => void;
+  onSelect: (target: NavTarget) => void;
 }) {
   return (
     <View style={styles.bar}>
       {TABS.map((tab) => {
+        // `active` is a Tab, so the settings entry can never match it —
+        // it is an action, not somewhere you can be.
         const on = tab.id === active;
         return (
           <Pressable
@@ -86,7 +101,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pill: {
-    paddingHorizontal: 13,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
   },
@@ -94,13 +109,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,229,33,0.18)',
   },
   icon: {
-    fontSize: 21,
+    fontSize: 20,
   },
   label: {
     color: 'rgba(255,255,255,0.5)',
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   labelOn: {
     color: '#ffe521',
