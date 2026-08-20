@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { createSkyGradient } from './skyGradient';
 import { TUNING } from '../game/tuning';
 import {
   CORNER_TOWERS,
@@ -26,18 +27,39 @@ const VARIANTS = {
     cloud: '#ffffff',
     umbrellaA: '#ff7f66',
     umbrellaB: '#5bc8e8',
+    mountain: '#8b93a5',
+    path: '#c7ad83',
+    tree: null,
   },
+  /*
+   * Dusk, not day-with-orange-bits. The old sunset values were all still
+   * daytime brightness — a mid green meadow, mid green hills — so the only
+   * difference a player could see was the roof going pink. Evening is
+   * DARKER as well as warmer, and the low sun means the parts of the world
+   * facing away from it fall into cool shadow rather than staying lit.
+   */
   sunset: {
-    roof: '#b84fa0',
-    meadow: '#7d9150',
-    hill: '#6b7f45',
-    water: '#e8955c',
-    cloud: '#ffd9b8',
-    umbrellaA: '#ff9d5c',
-    umbrellaB: '#c084e8',
+    roof: '#8e3f6d',
+    meadow: '#4a5236',
+    hill: '#3b4530',
+    water: '#c9743f',
+    cloud: '#ff9f7d',
+    umbrellaA: '#d96b3c',
+    umbrellaB: '#8b5cc4',
+    mountain: '#544663',
+    path: '#8a7458',
+    tree: '#243a2c',
+    /** Warm glow behind the courtyard windows once the sun is down low. */
+    window: '#ffd47a',
   },
 } as const;
 export type CastleVariant = keyof typeof VARIANTS;
+type Palette = (typeof VARIANTS)[CastleVariant];
+
+/** Fields only the sunset palette carries; day falls back to its own look. */
+function duskOnly(palette: Palette): (typeof VARIANTS)['sunset'] | null {
+  return 'window' in palette ? palette : null;
+}
 
 /** Simple toy tree: trunk + cone of leaves. */
 function Tree({
@@ -157,7 +179,7 @@ function JailPen() {
  * sun umbrellas, a little pool, and flowering bushes. Slot positions must
  * stay in sync with the free slots in src/game/Prisoners.tsx.
  */
-function RetreatGarden({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
+function RetreatGarden({ palette }: { palette: Palette }) {
   const towelXs = RETREAT_XS;
   const towelColors = ['#ffe08a', '#9be0ff', '#ffc4d6', '#c9f0b8', '#e8d5ff', '#ffd7b0'];
   return (
@@ -226,13 +248,100 @@ function RetreatGarden({ palette }: { palette: (typeof VARIANTS)[CastleVariant] 
 }
 
 /**
+ * The evening sky, and the sun making it.
+ *
+ * The flat backdrop colour behind the canvas cannot be a sunset: a sunset
+ * is a gradient, hot at the horizon and deep overhead, and that band near
+ * the ground is the whole readable signal. So the sunset arena draws its
+ * own dome and puts the sun in it, low and half-swallowed by the hills,
+ * on the same side the key light comes from — a sun in one place lit from
+ * another is the sort of thing nobody names but everybody notices.
+ */
+function SunsetSky() {
+  const gradient = useMemo(
+    () =>
+      createSkyGradient([
+        '#ffd27a', // right at the horizon, where the sun is
+        '#ff8f52',
+        '#e2557f',
+        '#7b3f8f',
+        '#2e2050', // overhead, already night
+      ]),
+    [],
+  );
+
+  return (
+    <group>
+      {/* Inside-out dome, unlit — a sky is a source of light, not a
+          surface receiving it, so shading it would be wrong. */}
+      <mesh>
+        <sphereGeometry args={[58, 24, 16]} />
+        <meshBasicMaterial map={gradient} side={THREE.BackSide} fog={false} />
+      </mesh>
+
+      {/* The sun: low, and to the left, matching SUNSET_LIGHT's key. */}
+      <group position={[-34, 1.6, -30]}>
+        <mesh>
+          <circleGeometry args={[4.2, 32]} />
+          <meshBasicMaterial color="#fff0c4" />
+        </mesh>
+        {/* Two soft haloes rather than a bloom pass, which would cost a
+            render target on a phone for one arena. */}
+        <mesh position={[0, 0, -0.4]}>
+          <circleGeometry args={[6.6, 32]} />
+          <meshBasicMaterial color="#ffb257" transparent opacity={0.45} />
+        </mesh>
+        <mesh position={[0, 0, -0.8]}>
+          <circleGeometry args={[10.5, 32]} />
+          <meshBasicMaterial color="#ff8a4a" transparent opacity={0.22} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+/**
+ * Lit windows in the corner towers.
+ *
+ * The single clearest "it is evening" cue there is: somebody indoors has
+ * turned a lamp on. Unlit material, so they stay bright while the low sun
+ * lets the stone around them fall dark.
+ */
+function TowerWindows({ color }: { color: string }) {
+  const { wallHeight } = TUNING.tray;
+  return (
+    <>
+      {[0, 1, 2, 3].map((k) => {
+        const angle = (k * Math.PI) / 2 + Math.PI / 4;
+        return (
+          <mesh
+            key={`win-${k}`}
+            position={[
+              Math.sin(angle) * 0.52,
+              wallHeight * 0.62,
+              Math.cos(angle) * 0.52,
+            ]}
+            rotation={[0, angle, 0]}
+          >
+            <planeGeometry args={[0.2, 0.3]} />
+            <meshBasicMaterial color={color} />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+/**
  * The toy world around the castle: meadow, path to the gate, pond, trees,
  * rolling hills, distant mountains, and a few clouds. Everything procedural
  * and cheap — unlit clouds, low-poly cones and squashed spheres.
  */
-function Landscape({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
+function Landscape({ palette }: { palette: Palette }) {
+  const dusk = duskOnly(palette);
   return (
     <group>
+      {dusk && <SunsetSky />}
       {/* Meadow */}
       <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[34, 40]} />
@@ -251,9 +360,14 @@ function Landscape({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
         <meshStandardMaterial color={palette.water} roughness={0.25} />
       </mesh>
 
-      {/* Trees */}
+      {/* Trees. At dusk they read as near-silhouettes: leaves this far
+          from the low sun keep almost none of their daytime green. */}
       {TREES.map((tree, i) => (
-        <Tree key={`tree-${i}`} {...tree} />
+        <Tree
+          key={`tree-${i}`}
+          {...tree}
+          leaf={palette.tree ?? tree.leaf}
+        />
       ))}
 
       {/* Rolling hills */}
@@ -282,7 +396,7 @@ function Landscape({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
       ).map(([x, z, r, h], i) => (
         <mesh key={`mountain-${i}`} position={[x, h / 2 - 1.2, z]}>
           <coneGeometry args={[r, h, 10]} />
-          <meshStandardMaterial color="#8b93a5" roughness={1} />
+          <meshStandardMaterial color={palette.mountain} roughness={1} />
         </mesh>
       ))}
 
@@ -323,7 +437,8 @@ function Landscape({ palette }: { palette: (typeof VARIANTS)[CastleVariant] }) {
  * than a box floating in space.
  */
 export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
-  const palette = VARIANTS[variant];
+  const palette: Palette = VARIANTS[variant];
+  const dusk = duskOnly(palette);
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
@@ -424,6 +539,7 @@ export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
             <coneGeometry args={[0.6, 0.8, 12]} />
             <meshStandardMaterial color={palette.roof} roughness={0.6} />
           </mesh>
+          {dusk && <TowerWindows color={dusk.window} />}
         </group>
       ))}
     </group>

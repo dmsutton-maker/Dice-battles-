@@ -96,6 +96,7 @@ export function DiceScene({
   throwsEnabled = true,
 }: DiceSceneProps) {
   const ArenaComponent = ARENAS[arenaId].Component;
+  const lighting = ARENAS[arenaId].lighting;
   // The parent remounts this scene (key includes the round) whenever the
   // layout changes, so building the world once per mount is correct.
   const obstacles = layout;
@@ -352,11 +353,31 @@ export function DiceScene({
   return (
     <>
       <CameraRig />
-      {/* Near-neutral lights (tints shift hues), back at the brighter
-          intensities that suited filmic tone mapping. */}
-      <hemisphereLight args={['#eef2fa', '#8f877b', 1.0]} />
-      <directionalLight position={[4, 12, 6]} intensity={2.4} />
-      <directionalLight position={[-6, 8, -4]} intensity={0.7} color="#f2f4f8" />
+      {/*
+        Lighting belongs to the ARENA, not to the scene. It used to be
+        these three fixed lights for every arena, which is why Sunset
+        Castle looked like the day castle repainted: a high white sun was
+        still overhead. Because the lights are global they also fall on
+        the dice and the prisoners, so the hour changes for everything on
+        the table rather than for the scenery alone.
+      */}
+      <hemisphereLight
+        args={[
+          lighting.hemisphere.sky,
+          lighting.hemisphere.ground,
+          lighting.hemisphere.intensity,
+        ]}
+      />
+      <directionalLight
+        position={lighting.key.position}
+        intensity={lighting.key.intensity}
+        color={lighting.key.color}
+      />
+      <directionalLight
+        position={lighting.fill.position}
+        intensity={lighting.fill.intensity}
+        color={lighting.fill.color}
+      />
 
       <ArenaComponent />
       {showTreasure && <TreasureChest />}

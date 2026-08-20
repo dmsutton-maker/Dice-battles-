@@ -21,6 +21,7 @@ async function main(): Promise<void> {
   await import('./aim.test');
   await import('./tournament.test');
   await import('./preview.test');
+  await import('./arena.test');
   process.exit(await runAll());
 }
 

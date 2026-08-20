@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.12.1 — 2026-08-20 · requested by David (reported on the ideas board)
+
+### Fixed
+- **Sunset Castle now actually looks like sunset.** It was the day castle
+  with seven colours swapped — roof, grass, hills, water, clouds and two
+  umbrellas — and nothing else. It cost 100 trophies and then looked like
+  the arena you already had.
+
+  The reason it could never work: **lighting was global to the scene and
+  identical for every arena.** A high white sun stayed overhead no matter
+  which battlefield you picked, and no amount of repainting says "evening"
+  underneath a midday sun.
+
+  Lighting now belongs to the arena (`ArenaLighting` in
+  `src/arena/arenas.tsx`). Sunset Castle gets a low amber sun raking in
+  from one side, cool blue skylight filling the other, and less light
+  overall — evening is darker as well as warmer. Because the lights are
+  global they fall on the dice and the prisoners too, so the whole table
+  changes hour, not just the scenery.
+
+  On top of that: a real gradient sky dome (gold at the horizon through
+  pink to deep indigo overhead), the sun itself sitting low behind the
+  hills on the same side the light comes from, lit windows in the corner
+  towers, and a dusk landscape — trees near silhouette, hills and meadow
+  gone deep, mountains a dusty violet.
+
+### Fixed (found while building the above)
+- The sky gradient was writing linear-light values into a texture declared
+  as sRGB, so the GPU decoded them a second time and the whole sky came out
+  far too dark. Caught by a test comparing the stored bytes against the
+  colours asked for.
+
 ## v1.12.0 — 2026-08-20 · requested by David
 
 ### Added
