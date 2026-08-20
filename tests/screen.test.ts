@@ -768,15 +768,6 @@ suite('screen · nothing sits flush against the bottom of Settings', () => {
     );
   });
 
-  test('the pinned version line cannot be squeezed away on a short screen', () => {
-    const style = settings.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
-    assert(style !== undefined, 'versionLine is not defined');
-    assert(
-      /flexShrink: 0/.test(style!),
-      'versionLine has no flexShrink: 0 — a short phone could compress it to nothing',
-    );
-  });
-
   test('the Settings page looks scrollable, because it is', () => {
     /*
       The page always scrolled; nothing told you so. bounces={false} means

@@ -1443,25 +1443,25 @@ export function DiceDemoScreen() {
             </Pressable>
             </ScrollView>
             {/*
-              The version, PINNED under the scrolling area rather than
-              inside it.
-
-              It used to be the last thing in the scroll, which meant it
-              only appeared once you had scrolled all the way down — and
-              `bounces={false}` gives no hint that there is anything below
-              the fold, so it read as cut off. As a fixed footer it is
-              always on screen whatever the phone's height, which is the
-              only version of this that works on every device rather than
-              on the one it was measured against.
-            */}
-            <Text style={styles.versionLine}>{GAME_VERSION}</Text>
-            {/*
               No Done button. Settings is a tab now — you leave it by
               tapping another one, the same as every other page, and a
               button that only goes "back to Battle" is a second way to
               do what the bar already does.
             */}
           </KeyboardAvoidingView>
+          {/*
+            The version, pinned to the OVERLAY and positioned absolutely —
+            outside the flex flow altogether, and outside the
+            KeyboardAvoidingView.
+
+            Two earlier attempts put it inside that flow, and both times
+            something else took the space: first the scroll swallowed it,
+            then it only surfaced when the keyboard opened and squeezed the
+            panel enough to leave room. Taking it out of the flow entirely
+            means nothing can push it anywhere. It sits just above the tab
+            bar, on every screen, whatever else is happening.
+          */}
+          <Text style={styles.versionLine}>{GAME_VERSION}</Text>
         </View>
       )}
       <BugReportModal
@@ -1775,8 +1775,15 @@ const styles = StyleSheet.create({
   },
   settingsPanel: {
     flex: 1,
-    // Room for the bottom bar, so Done never sits under it.
-    paddingBottom: BOTTOM_NAV_HEIGHT,
+    /*
+      Room for the tab bar AND for the version line pinned above it. The
+      version line is positioned absolutely, so it takes no space of its
+      own — if this padding only covered the bar, the scrolling content
+      would run underneath the version line and the two would overlap.
+
+      15pt of line, 8pt below it, 9pt above.
+    */
+    paddingBottom: BOTTOM_NAV_HEIGHT + 32,
   },
   settingsScroll: {
     /*
@@ -1847,21 +1854,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   versionLine: {
+    // Out of the flex flow: nothing above it can take its space.
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    // Directly above the tab bar, which already includes the home
+    // indicator, so this clears both.
+    bottom: BOTTOM_NAV_HEIGHT + 8,
     color: 'rgba(255,255,255,0.38)',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
     textAlign: 'center',
-    // A pinned footer now, so it needs its own room above and below rather
-    // than borrowing the scroll's padding.
-    marginTop: 12,
-    paddingBottom: 6,
     // Stated, so the glyph box is never tighter than the descenders in a
     // version string need.
     lineHeight: 15,
-    // It is the one line here that must never be what gives way when the
-    // panel is squeezed on a short phone.
-    flexShrink: 0,
   },
   overlayClear: {
     ...StyleSheet.absoluteFillObject,

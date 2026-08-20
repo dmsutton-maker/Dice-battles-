@@ -1,0 +1,179 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { assert, assertEqual, note, suite, test } from './harness';
+import {
+  ANDROID_GESTURE_BAR,
+  bottomInsetFor,
+  IPAD_INDICATOR,
+  IPHONE_INDICATOR,
+  SHORTEST_INDICATOR_IPHONE,
+} from '../src/game/safeAreaRules';
+
+/**
+ * Fitting on the actual phone. Every bug in here was reported from a real
+ * device, and every one of them came from the app not knowing that modern
+ * iPhones reserve a strip at the bottom for the home indicator.
+ */
+
+const root = join(__dirname, '..');
+const nav = readFileSync(join(root, 'src/demo/BottomNav.tsx'), 'utf8');
+const screen = readFileSync(join(root, 'src/demo/DiceDemoScreen.tsx'), 'utf8');
+const report = readFileSync(join(root, 'src/debug/BugReportModal.tsx'), 'utf8');
+
+suite('layout · the bottom inset matches the hardware', () => {
+  test('the cutoff sits between the two families of iPhone', () => {
+    const TALLEST_HOME_BUTTON = 736; // iPhone 8 Plus
+    const SHORTEST_INDICATOR = 812; // iPhone X
+    assert(
+      SHORTEST_INDICATOR_IPHONE > TALLEST_HOME_BUTTON,
+      'the cutoff would treat a home-button iPhone as having an indicator',
+    );
+    assert(
+      SHORTEST_INDICATOR_IPHONE <= SHORTEST_INDICATOR,
+      'the cutoff would treat an iPhone X as having a home button',
+    );
+    note(`home-indicator cutoff: ${SHORTEST_INDICATOR_IPHONE}pt tall`);
+  });
+
+  test('every real device gets the inset Apple gives it', () => {
+    // Longest side in portrait, from Apple's own device metrics.
+    const phones: [string, number, number][] = [
+      ['iPhone SE (2nd/3rd)', 667, 0],
+      ['iPhone 8 Plus', 736, 0],
+      ['iPhone X', 812, IPHONE_INDICATOR],
+      ['iPhone 13 mini', 812, IPHONE_INDICATOR],
+      ['iPhone 15', 852, IPHONE_INDICATOR],
+      ['iPhone 15 Pro Max', 932, IPHONE_INDICATOR],
+    ];
+    for (const [name, longSide, expected] of phones) {
+      assertEqual(
+        bottomInsetFor({ os: 'ios', isPad: false, longSide }),
+        expected,
+        name,
+      );
+    }
+    assertEqual(
+      bottomInsetFor({ os: 'ios', isPad: true, longSide: 1194 }),
+      IPAD_INDICATOR,
+      'iPad Pro 11"',
+    );
+    assertEqual(
+      bottomInsetFor({ os: 'android', isPad: false, longSide: 915 }),
+      ANDROID_GESTURE_BAR,
+      'Android',
+    );
+  });
+
+  test('an iPhone 15 gets real clearance, not a token gap', () => {
+    // The whole bug: 18pt of padding against a 34pt indicator.
+    const iphone15 = bottomInsetFor({ os: 'ios', isPad: false, longSide: 852 });
+    assert(iphone15 >= 34, `iPhone 15 inset is only ${iphone15}pt`);
+    note(`iPhone 15 bottom inset: ${iphone15}pt (was 0 before this)`);
+  });
+});
+
+suite('layout · the tab bar clears the home indicator', () => {
+  test('the bar reserves the inset on top of its buttons', () => {
+    // A flat 18pt was about half what an iPhone 15 needs, so the labels sat
+    // in the home indicator strip and the row read as not fitting.
+    assert(
+      /BOTTOM_NAV_HEIGHT = BAR_CONTENT_HEIGHT \+ BOTTOM_INSET/.test(nav),
+      'the bar height does not include the home indicator inset',
+    );
+    assert(
+      /paddingBottom: 18 \+ BOTTOM_INSET/.test(nav),
+      'the bar padding does not clear the home indicator',
+    );
+  });
+
+  test('seven labels each hold one line, whatever the system text size', () => {
+    // Seven cells across the narrowest iPhone is about 53pt each. A player
+    // who has turned up iOS text size must not be the one who breaks it.
+    const label = nav.match(/<Text\s+style=\{\[styles\.label[\s\S]*?>/)?.[0];
+    assert(label !== undefined, 'could not find the tab label');
+    assert(/numberOfLines=\{1\}/.test(label!), 'tab labels can wrap to two lines');
+    assert(
+      /allowFontScaling=\{false\}/.test(label!),
+      'tab labels scale with system text size, which breaks the row',
+    );
+  });
+
+  test('there really are seven tabs to fit', () => {
+    const tabs = nav.match(/\{ id: '/g) ?? [];
+    assertEqual(tabs.length, 7, 'tab count');
+  });
+});
+
+suite('layout · the version line cannot be pushed off', () => {
+  test('it is positioned absolutely, outside the flex flow', () => {
+    /*
+      Twice it lived inside the flex flow and twice something took its
+      space — first the scroll swallowed it, then it only appeared when the
+      keyboard squeezed the panel enough to leave room. Out of the flow,
+      nothing can move it.
+    */
+    const style = screen.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'versionLine is not defined');
+    assert(/position: 'absolute'/.test(style!), 'the version line is still in the flex flow');
+    assert(
+      /bottom: BOTTOM_NAV_HEIGHT \+ \d+/.test(style!),
+      'the version line is not anchored above the tab bar',
+    );
+  });
+
+  test('it sits outside the keyboard-avoiding view', () => {
+    const kavEnd = screen.indexOf('</KeyboardAvoidingView>');
+    const versionAt = screen.indexOf('{GAME_VERSION}');
+    assert(kavEnd > 0 && versionAt > 0, 'could not locate both');
+    assert(
+      versionAt > kavEnd,
+      'the version line is inside the keyboard-avoiding view, so the keyboard moves it',
+    );
+  });
+
+  test('the settings page reserves room for it as well as the bar', () => {
+    // Absolute positioning takes no space, so without this the scrolling
+    // content runs underneath the version line and the two overlap.
+    const style = screen.match(/settingsPanel: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'settingsPanel is not defined');
+    const pad = style!.match(/paddingBottom: BOTTOM_NAV_HEIGHT \+ (\d+)/);
+    assert(pad !== null, 'the panel only reserves the bar, not the version line');
+    assert(
+      Number(pad![1]) >= 23,
+      `only ${pad![1]}px reserved — the 15pt line plus its gaps would overlap the scroll`,
+    );
+  });
+});
+
+suite('layout · a bug report can be abandoned', () => {
+  test('the panel lifts clear of the keyboard', () => {
+    // The box autofocuses and the panel is centred, so the keyboard came up
+    // over the Cancel button — no way out without sending a report.
+    assert(
+      report.includes('KeyboardAvoidingView'),
+      'the report panel does not move for the keyboard, so Cancel stays buried',
+    );
+  });
+
+  test('tapping the dimmed area behind it also closes it', () => {
+    const backdrop = report.match(/<Pressable\s+style=\{styles\.backdrop\}[\s\S]*?\}\}\s*>/)?.[0];
+    assert(backdrop !== undefined, 'the backdrop is not pressable');
+    assert(/onClose\(\)/.test(backdrop!), 'pressing the backdrop does not close the report');
+  });
+
+  test('tapping inside the panel does NOT close it', () => {
+    // Otherwise missing a button by a few points throws away what you typed.
+    assert(
+      /<Pressable style=\{styles\.panel\} onPress=\{\(\) => \{\}\}>/.test(report),
+      'the panel does not swallow taps, so a near-miss would discard the report',
+    );
+  });
+
+  test('closing puts the keyboard away with it', () => {
+    const closes = report.match(/Keyboard\.dismiss\(\)/g) ?? [];
+    assert(
+      closes.length >= 2,
+      'the keyboard is not dismissed on both ways out of the report',
+    );
+  });
+});

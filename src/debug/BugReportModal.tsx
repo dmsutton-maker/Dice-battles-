@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -52,8 +55,31 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.panel}>
+      {/*
+        The panel is centred in the screen and the box takes focus on open,
+        so the keyboard used to come up over the bottom of it — taking the
+        Cancel button with it. There was no way out of this screen without
+        sending a report you did not want to send.
+
+        Two ways out now. The panel lifts clear of the keyboard, and
+        tapping the dimmed area behind it closes the whole thing.
+      */}
+      <Pressable
+        style={styles.backdrop}
+        onPress={() => {
+          Keyboard.dismiss();
+          reset();
+          onClose();
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {/*
+            Swallows taps so pressing inside the panel — or missing a
+            button by a few points — does not close it.
+          */}
+          <Pressable style={styles.panel} onPress={() => {}}>
           <Text style={styles.title}>🐞 Report a Bug</Text>
           <Text style={styles.subtitle}>
             What happened? Your device and game version are attached
@@ -94,6 +120,7 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
           <Pressable
             style={styles.closeButton}
             onPress={() => {
+              Keyboard.dismiss();
               reset();
               onClose();
             }}
@@ -102,8 +129,9 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
               {sent ? 'Done' : 'Cancel'}
             </Text>
           </Pressable>
-        </View>
-      </View>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Pressable>
     </Modal>
   );
 }

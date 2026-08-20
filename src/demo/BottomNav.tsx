@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
+import { BOTTOM_INSET } from '../game/safeArea';
 
 /**
  * The menu bar along the bottom — the way Clash Royale does it.
@@ -57,7 +58,20 @@ export function BottomNav({
             <View style={[styles.pill, on && styles.pillOn]}>
               <Text style={styles.icon}>{tab.icon}</Text>
             </View>
-            <Text style={[styles.label, on && styles.labelOn]}>{tab.label}</Text>
+            <Text
+              style={[styles.label, on && styles.labelOn]}
+              /*
+                Seven cells across the narrowest iPhone leaves about 53pt
+                each. "Settings" and "Battle" have to hold one line inside
+                that, and a player who has turned up the system text size
+                must not be the one who breaks the row — so this label does
+                not scale with it.
+              */
+              numberOfLines={1}
+              allowFontScaling={false}
+            >
+              {tab.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -65,8 +79,16 @@ export function BottomNav({
   );
 }
 
-/** How much room the bar takes, so pages can pad clear of it. */
-export const BOTTOM_NAV_HEIGHT = 82;
+/**
+ * How much room the bar takes, so pages can pad clear of it.
+ *
+ * The bar itself is a fixed 82pt of buttons, PLUS whatever the phone
+ * reserves for its home indicator. It used to be a flat 82 with 18pt of
+ * bottom padding, which is about half of what an iPhone 15 needs — so the
+ * labels sat in the home indicator strip and the row read as not fitting.
+ */
+const BAR_CONTENT_HEIGHT = 82;
+export const BOTTOM_NAV_HEIGHT = BAR_CONTENT_HEIGHT + BOTTOM_INSET;
 
 const styles = StyleSheet.create({
   bar: {
@@ -77,7 +99,9 @@ const styles = StyleSheet.create({
     height: BOTTOM_NAV_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 18,
+    // The original 18pt of breathing room, and then clear of the home
+    // indicator on top of it.
+    paddingBottom: 18 + BOTTOM_INSET,
     paddingTop: 6,
     backgroundColor: 'rgba(16,11,34,0.97)',
     borderTopWidth: 2,
@@ -92,7 +116,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pill: {
-    paddingHorizontal: 10,
+    // 10pt each side crowded the icons at seven-across on a small phone.
+    paddingHorizontal: 7,
     paddingVertical: 4,
     borderRadius: 999,
   },
