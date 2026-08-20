@@ -91,9 +91,24 @@ All on David's personal accounts. Never employer-linked.
 - **The app icon on phones is stale** — `assets/icon.png` holds the
   settled "Perfect Match" design, but an icon is compiled in, not sent
   over the air. It reaches phones in the next native build.
-- **Android has never shipped** — the code is cross-platform and
-  `app.json` carries Android config, but there is no Play Console
-  account and no Android build has been made.
+- **Android now has a build, but has never shipped to a store.** The
+  first Android APK was built 20 Aug 2026 (`eas build --platform android
+  --profile adhoc`), on the `main` channel, so it receives every
+  `eas update` exactly as the TestFlight build does. There is still no
+  Play Console account (that is $25 once, against Apple's $99 a year).
+
+  The APK matters beyond Android itself: it installs from a link with no
+  developer account, no device registration and **no age check**, which
+  is the wall that stops under-13s using TestFlight. If testers under 13
+  need the real app, Android is the only route that does not require
+  Apple's permission.
+
+  Nobody has yet played it on Android. Expect rough edges; the app has
+  only ever been exercised on iOS.
+
+  Note for whoever builds next: the first attempt failed with
+  `Connection reset` while EAS downloaded Gradle itself. That is Expo's
+  network, not this repo — retry rather than change anything.
 - **No legal entity** — Paper Ship Studio is a trading name, not a
   company. Legal pages name David Sutton personally, which is correct
   until that changes.
