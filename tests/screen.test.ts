@@ -777,6 +777,26 @@ suite('screen · nothing sits flush against the bottom of Settings', () => {
     );
   });
 
+  test('the Settings page looks scrollable, because it is', () => {
+    /*
+      The page always scrolled; nothing told you so. bounces={false} means
+      no rubber-band when you pull at it, and a hidden indicator means no
+      bar to say there is more underneath — so a page taller than the phone
+      read as a dead end, and the version line under the fold read as
+      missing rather than as below it.
+    */
+    const tag = settings.match(/<ScrollView\s+ref=\{settingsScrollRef\}[\s\S]*?>/)?.[0];
+    assert(tag !== undefined, 'could not find the Settings ScrollView');
+    assert(
+      !/bounces=\{false\}/.test(tag!),
+      'bounces is off — pulling the page gives no sign it can move',
+    );
+    assert(
+      !/showsVerticalScrollIndicator=\{false\}/.test(tag!),
+      'the scroll indicator is hidden — nothing shows there is more below',
+    );
+  });
+
   test('the scroll yields space to the pinned footer', () => {
     /*
       The bug this catches shipped: settingsScroll had `flexGrow: 1,

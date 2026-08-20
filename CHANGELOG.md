@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.13.5 — 2026-08-20 · requested by David
+
+### Fixed
+- **The Settings page now behaves like the scrolling page it is.** It has
+  always scrolled, but two flags hid every sign of it: `bounces={false}`
+  meant pulling at the page did nothing, and the scroll indicator was
+  hidden, so there was no bar to say anything sat below the fold. A page
+  taller than the phone read as a dead end — which is the real reason the
+  version line at the bottom read as missing rather than as further down.
+- Both cues are on now. The indicator fades away by itself when you stop,
+  so it costs nothing at rest.
+
 ## v1.13.4 — 2026-08-20 · requested by David
 
 ### Fixed

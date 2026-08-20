@@ -1326,17 +1326,24 @@ export function DiceDemoScreen() {
           >
             <Text style={styles.settingsTitle}>⚙️ SETTINGS</Text>
             {/*
-              Four sliders make this panel taller than a small phone, so the
-              middle scrolls and the Done button stays put — no scrolling
-              yourself off the only way out. It only scrolls when it has to:
-              `bounces={false}` means no rubber-band on a panel that fits.
+              Four sliders make this page taller than any phone, so the
+              middle scrolls while the version line stays pinned below it.
+
+              Both scroll cues are deliberately ON. They used to be off —
+              `bounces={false}` and a hidden indicator — which made a page
+              that genuinely scrolls feel like a dead end: no rubber-band
+              when you pull, no bar to say there is more underneath. That
+              is why the version line at the bottom read as missing rather
+              than as below the fold. The bar fades away on its own when
+              you stop, so showing it costs nothing at rest.
             */}
             <ScrollView
               ref={settingsScrollRef}
               style={styles.settingsScroll}
               contentContainerStyle={styles.settingsScrollContent}
-              bounces={false}
-              showsVerticalScrollIndicator={false}
+              bounces
+              showsVerticalScrollIndicator
+              indicatorStyle="white"
               keyboardShouldPersistTaps="handled"
             >
             <Text style={styles.settingsSectionTitle}>VOLUME</Text>
