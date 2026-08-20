@@ -777,6 +777,28 @@ suite('screen · nothing sits flush against the bottom of Settings', () => {
     );
   });
 
+  test('the scroll yields space to the pinned footer', () => {
+    /*
+      The bug this catches shipped: settingsScroll had `flexGrow: 1,
+      flexShrink: 1` and no flexBasis. flexBasis then defaults to `auto`,
+      which for a ScrollView means it starts out as tall as ALL of its
+      content — so it claimed the whole panel and pushed the pinned version
+      line off the bottom, where it vanished entirely.
+
+      `flex: 1` sets flexBasis to 0, so the scroll takes only what is left
+      after the footer. Any style that pins something below this scroll has
+      to keep that, or the footer disappears again.
+    */
+    const style = settings.match(/settingsScroll: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'settingsScroll is not defined');
+    const hasZeroBasis =
+      /\bflex: 1\b/.test(style!) || /flexBasis: 0\b/.test(style!);
+    assert(
+      hasZeroBasis,
+      'settingsScroll needs flex: 1 (or flexBasis: 0) — with flexBasis auto it swallows the pinned footer',
+    );
+  });
+
   test('the version line reserves its own height', () => {
     const style = settings.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
     assert(style !== undefined, 'versionLine is not defined');

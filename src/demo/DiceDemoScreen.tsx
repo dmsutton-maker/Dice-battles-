@@ -1772,8 +1772,21 @@ const styles = StyleSheet.create({
     paddingBottom: BOTTOM_NAV_HEIGHT,
   },
   settingsScroll: {
-    flexGrow: 1,
-    flexShrink: 1,
+    /*
+      `flex: 1`, NOT `flexGrow: 1, flexShrink: 1`. The difference is
+      flexBasis: flex:1 sets it to 0, the pair leaves it `auto`, and `auto`
+      on a ScrollView means its starting size is the WHOLE height of its
+      content — hundreds of points of sliders and sections.
+
+      With nothing below it that was harmless. The moment the version line
+      became a sibling underneath, the scroll started from that enormous
+      basis, claimed the entire panel, and pushed the version line off the
+      bottom where it could not be seen at all.
+
+      From a zero basis it takes only what is left after the pinned footer,
+      which is the whole point of pinning one.
+    */
+    flex: 1,
   },
   settingsScrollContent: {
     /*

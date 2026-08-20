@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.13.4 — 2026-08-20 · requested by David
+
+### Fixed
+- **The version number is back, and now actually visible.** v1.13.3 pinned
+  it below the scrolling area, which was the right move but made it vanish
+  outright.
+
+  The cause was a flexbox default. `settingsScroll` carried
+  `flexGrow: 1, flexShrink: 1` and no `flexBasis`, which leaves flexBasis
+  at `auto` — and for a ScrollView, `auto` means it starts out as tall as
+  ALL of its content, hundreds of points of sliders and sections. With
+  nothing beneath it that never showed. The moment the version line became
+  a sibling underneath, the scroll started from that enormous basis,
+  claimed the whole panel, and pushed the line off the bottom.
+
+  `flex: 1` sets flexBasis to 0, so the scroll takes only what is left
+  after the pinned footer — which is the entire point of pinning one.
+- A test now fails if that basis is ever lost again, verified by
+  reintroducing the exact bug and watching it go red.
+
 ## v1.13.3 — 2026-08-20 · requested by David
 
 ### Fixed
