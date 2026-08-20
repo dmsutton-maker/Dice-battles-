@@ -33,6 +33,8 @@ const cheerSource = require('../../assets/sounds/cheer.wav');
  */
 const clickSource = require('../../assets/sounds/click.wav');
 const equipSource = require('../../assets/sounds/equip.wav');
+/** Plays once on the title card. Synthesised, same as the UI sounds. */
+const startupSource = require('../../assets/sounds/startup.wav');
 const fanfareSource = require('../../assets/sounds/fanfare.wav');
 /**
  * Battle music rotation — Kevin MacLeod (incompetech.com), CC-BY 4.0.
@@ -59,6 +61,8 @@ export const MIX = {
   /** UI sounds sit under everything — heard once, never noticed twice. */
   click: 0.3,
   equip: 0.55,
+  /** The title card sting — present, not startling. */
+  startup: 0.7,
   music: 0.4,
 } as const;
 
@@ -74,6 +78,7 @@ let cheerVoice: Voice | null = null;
 let fanfareVoice: Voice | null = null;
 let clickPool: Voice[] = [];
 let equipVoice: Voice | null = null;
+let startupVoice: Voice | null = null;
 let musicPlayers: AudioPlayer[] = [];
 let musicPlayer: AudioPlayer | null = null;
 /** Whether the game WANTS music — separate from whether it is audible. */
@@ -110,6 +115,7 @@ export function initSounds(): void {
       voice(s, MIX.click),
     );
     equipVoice = voice(equipSource, MIX.equip);
+    startupVoice = voice(startupSource, MIX.startup);
     musicPlayers = musicSources.map((source) => {
       const player = createAudioPlayer(source);
       player.loop = true;
@@ -128,6 +134,7 @@ export function initSounds(): void {
     fanfareVoice = null;
     clickPool = [];
     equipVoice = null;
+    startupVoice = null;
     musicPlayers = [];
     musicPlayer = null;
   }
@@ -156,6 +163,11 @@ export function playClick(): void {
   if (clickPool.length === 0) return;
   replay(clickPool[clickIndex]);
   clickIndex = (clickIndex + 1) % clickPool.length;
+}
+
+/** The rising note on the title card, once per launch. */
+export function playStartup(): void {
+  replay(startupVoice);
 }
 
 /** Something snapping into place — putting on a skin or an arena. */

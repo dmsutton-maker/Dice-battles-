@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.11.1 — 2026-08-20 · requested by David
+
+### Fixed
+- **The title card now comes before the loading, not after it.** The game
+  was rendered on the very first render with the card drawn on top, so the
+  GL canvas, physics world, audio players and four storage reads all ran
+  before React could paint anything — the card arrived once the slow part
+  was already over. The card renders alone now and the game mounts a beat
+  later, underneath it.
+
+### Added
+- **A sound on the title card** — a rising note, once per launch. It waits
+  for the saved volume settings first, so a muted phone stays muted.
+
 ## v1.11.0 — 2026-08-19 · requested by Marc and David
 
 A bottom menu bar, tournaments, news, and a long list of fixes.

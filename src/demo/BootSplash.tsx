@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from 'react';
+import { initSounds, playStartup } from '../audio/sounds';
+import { loadAudioSettings } from '../audio/settings';
 import { StyleSheet, Text, View } from 'react-native';
 
 /** How long the title card is held before the game appears. */
@@ -27,8 +29,25 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
   done.current = onDone;
 
   useEffect(() => {
+    let cancelled = false;
+    // Saved volumes are read BEFORE the sound plays: a phone the family
+    // muted must stay muted, and the settings live in storage, so playing
+    // first and checking after would blare once on every launch.
+    loadAudioSettings()
+      .then(() => {
+        if (cancelled) return;
+        initSounds();
+        playStartup();
+      })
+      .catch(() => {
+        // No sound is fine; the card still shows.
+      });
+
     const id = setTimeout(() => done.current(), BOOT_SPLASH_MS);
-    return () => clearTimeout(id);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
   }, []);
 
   return (

@@ -462,3 +462,62 @@ suite('screen · the wall row', () => {
     }
   });
 });
+
+suite('screen · the title card comes first', () => {
+  const app = readFileSync('App.tsx', 'utf8');
+
+  test('the game is not mounted on the first render', () => {
+    // It used to render unconditionally with the card drawn over it, so
+    // the GL canvas, physics world, audio players and four storage reads
+    // all ran before React could paint. The card then appeared AFTER the
+    // slow part — a loading screen that shows up once loading is done.
+    assert(
+      /\{this\.state\.loading && <DiceDemoScreen \/>\}/.test(app),
+      'DiceDemoScreen is rendered without waiting for the title card',
+    );
+    assert(
+      !/^\s*<DiceDemoScreen \/>\s*$/m.test(app),
+      'DiceDemoScreen is still mounted unconditionally somewhere',
+    );
+  });
+
+  test('loading starts only after the first frame has settled', () => {
+    assert(
+      app.includes('InteractionManager.runAfterInteractions'),
+      'nothing defers the game mount past the first paint',
+    );
+  });
+
+  test('a stuck interaction handle cannot strand the title card', () => {
+    // runAfterInteractions waits on a handle a stray animation can hold
+    // open. A card that never lifts is worse than one that lifts early.
+    assert(
+      /this\.fallback = setTimeout/.test(app),
+      'no fallback if runAfterInteractions never fires',
+    );
+    assert(
+      /if \(this\.state\.loading\) return;/.test(app),
+      'the two triggers could both mount the game',
+    );
+  });
+
+  test('the card never lifts onto an unmounted game', () => {
+    assert(
+      /this\.cardDone && this\.state\.loading/.test(app),
+      'the card can clear before the game exists, showing a blank screen',
+    );
+  });
+
+  test('the startup sound waits for the saved volume settings', () => {
+    // Playing first and checking after would blare once on every launch
+    // for a family that muted the game.
+    const splash = readFileSync('src/demo/BootSplash.tsx', 'utf8');
+    // Compare the CALLS, not the imports — import order says nothing.
+    const body = splash.slice(splash.lastIndexOf('\nimport '));
+    const load = body.indexOf('loadAudioSettings(');
+    const play = body.indexOf('playStartup(');
+    assert(load !== -1, 'the volume settings are never read');
+    assert(play !== -1, 'the title card plays no sound');
+    assert(load < play, 'the sound plays before the volume settings are read');
+  });
+});
