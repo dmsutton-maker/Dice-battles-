@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiDifficultyId } from '../game/ai';
+import { MENU_PAGE_AREA } from './BottomNav';
 import { getWallet } from '../game/currency';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
@@ -175,7 +176,7 @@ export function LeaderboardScreen({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: '#141028',

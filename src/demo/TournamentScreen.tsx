@@ -13,7 +13,7 @@ import {
   roundsToWin,
   tournamentById,
 } from '../game/tournament';
-import { BOTTOM_NAV_HEIGHT } from './BottomNav';
+import { MENU_PAGE_AREA } from './BottomNav';
 import { GoldCoin } from './GoldCoin';
 
 /**
@@ -156,7 +156,7 @@ export function TournamentScreen({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: '#141028',
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: 22,
-    paddingBottom: BOTTOM_NAV_HEIGHT + 24,
+    paddingBottom: 24,
   },
   note: {
     color: 'rgba(255,255,255,0.6)',

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STORE_SKINS } from '../game/diceSkins';
+import { MENU_PAGE_AREA } from './BottomNav';
 import { buyWithCoins, COIN_REWARDS, getWallet, owns } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
 import { Reward } from './RewardPopup';
@@ -123,7 +124,7 @@ export function StoreScreen({ onPurchase }: StoreScreenProps) {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: '#141028',

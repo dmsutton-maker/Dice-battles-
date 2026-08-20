@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NEWS } from '../game/news';
-import { BOTTOM_NAV_HEIGHT } from './BottomNav';
+import { MENU_PAGE_AREA } from './BottomNav';
 
 /**
  * What's new, newest first. Bundled with the app — see src/game/news.ts
@@ -49,7 +49,7 @@ export function NewsScreen() {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: '#141028',
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: 22,
-    paddingBottom: BOTTOM_NAV_HEIGHT + 24,
+    paddingBottom: 24,
   },
   note: {
     color: 'rgba(255,255,255,0.6)',

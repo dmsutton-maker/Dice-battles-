@@ -105,7 +105,7 @@ import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
-import { BottomNav, BOTTOM_NAV_HEIGHT, Tab } from './BottomNav';
+import { BottomNav, BOTTOM_NAV_HEIGHT, MENU_PAGE_AREA, Tab } from './BottomNav';
 import { BOTTOM_INSET } from '../game/safeArea';
 import { NewsScreen } from './NewsScreen';
 import { TournamentScreen } from './TournamentScreen';
@@ -1764,7 +1764,8 @@ const styles = StyleSheet.create({
    * matches Store, Cups, Items, Ranks and News.
    */
   settingsOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    // Ends where the tab bar begins, like every other menu page.
+    ...MENU_PAGE_AREA,
     backgroundColor: '#141028',
     zIndex: 20,
     paddingTop: 100,
@@ -1773,14 +1774,14 @@ const styles = StyleSheet.create({
   settingsPanel: {
     flex: 1,
     /*
-      Room for the tab bar AND for the version line pinned above it. The
-      version line is positioned absolutely, so it takes no space of its
-      own — if this padding only covered the bar, the scrolling content
-      would run underneath the version line and the two would overlap.
+      Room for the version line pinned at the bottom of this page. It is
+      positioned absolutely so it takes no space of its own — without this
+      the scrolling content would run underneath it. The tab bar needs no
+      allowance any more: the page itself now ends above it.
 
       15pt of line, 8pt below it, 9pt above.
     */
-    paddingBottom: BOTTOM_NAV_HEIGHT + 32,
+    paddingBottom: 32,
   },
   settingsScroll: {
     /*
@@ -1855,9 +1856,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    // Directly above the tab bar, which already includes the home
-    // indicator, so this clears both.
-    bottom: BOTTOM_NAV_HEIGHT + 8,
+    // 8pt up from the bottom of the page — and the page now ends at the
+    // top of the tab bar, so this clears the bar and the home indicator
+    // without naming either.
+    bottom: 8,
     color: 'rgba(255,255,255,0.38)',
     fontSize: 11,
     fontWeight: '700',

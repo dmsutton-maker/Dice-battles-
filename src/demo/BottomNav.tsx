@@ -90,6 +90,26 @@ export function BottomNav({
 const BAR_CONTENT_HEIGHT = 82;
 export const BOTTOM_NAV_HEIGHT = BAR_CONTENT_HEIGHT + BOTTOM_INSET;
 
+/**
+ * The area a menu page gets: the whole screen ABOVE the bar.
+ *
+ * The bar is drawn over the pages, so every page used to be responsible
+ * for remembering to pad around it — and three of them did not, which cut
+ * the bottom off Ranks, Items and Settings. Making each page END where the
+ * bar begins turns that from something to remember into something that
+ * cannot go wrong: the bar is its own section of the screen, and a page
+ * has no room down there to lose.
+ *
+ * A page's own paddingBottom is now just breathing room, not clearance.
+ */
+export const MENU_PAGE_AREA = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: BOTTOM_NAV_HEIGHT,
+} as const;
+
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',

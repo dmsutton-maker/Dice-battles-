@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.14.1 — 2026-08-20 · requested by David
+
+### Fixed
+- **The bottom of Ranks, Items and Settings is reachable again.** The tab
+  bar was drawn ON TOP of every page, which left each page responsible for
+  remembering to pad around it. Store, Inventory and Leaderboard used a
+  flat 24pt with no allowance at all, so the bar sat over the last stretch
+  of those pages and you could not scroll past it.
+- **The bar is now its own section of the screen.** Every menu page ends
+  where the bar begins, rather than running underneath it and hoping. That
+  turns "remember to leave room" into something that cannot go wrong: there
+  is no room down there for a page to lose. A page's own bottom padding is
+  breathing room again, not clearance.
+- Settings, News and Cups had been padding by the bar's height themselves;
+  that allowance is gone, since keeping it would now leave a dead strip the
+  size of the bar at the bottom of each.
+
 ## v1.14.0 — 2026-08-20 · requested by David
 
 All three of David's reports from a real iPhone 15 turned out to share one

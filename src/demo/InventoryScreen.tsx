@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
 import { playEquip } from '../audio/sounds';
+import { MENU_PAGE_AREA } from './BottomNav';
 import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { DICE_SKINS } from '../game/diceSkins';
@@ -164,7 +165,7 @@ export function InventoryScreen({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: '#141028',

@@ -115,9 +115,12 @@ suite('layout · the version line cannot be pushed off', () => {
     const style = screen.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
     assert(style !== undefined, 'versionLine is not defined');
     assert(/position: 'absolute'/.test(style!), 'the version line is still in the flex flow');
+    // Anchored to the bottom of the PAGE. The page now ends at the top of
+    // the tab bar, so this clears the bar and the home indicator without
+    // naming either — one number to be right instead of three.
     assert(
-      /bottom: BOTTOM_NAV_HEIGHT \+ \d+/.test(style!),
-      'the version line is not anchored above the tab bar',
+      /bottom: \d+/.test(style!),
+      'the version line is not anchored to the bottom of the page',
     );
   });
 
@@ -136,8 +139,8 @@ suite('layout · the version line cannot be pushed off', () => {
     // content runs underneath the version line and the two overlap.
     const style = screen.match(/settingsPanel: \{[\s\S]*?\n  \},/)?.[0];
     assert(style !== undefined, 'settingsPanel is not defined');
-    const pad = style!.match(/paddingBottom: BOTTOM_NAV_HEIGHT \+ (\d+)/);
-    assert(pad !== null, 'the panel only reserves the bar, not the version line');
+    const pad = style!.match(/paddingBottom: (\d+),/);
+    assert(pad !== null, 'the panel reserves nothing for the pinned version line');
     assert(
       Number(pad![1]) >= 23,
       `only ${pad![1]}px reserved — the 15pt line plus its gaps would overlap the scroll`,
@@ -227,6 +230,74 @@ suite('layout · no screen hides its own way out', () => {
     assert(
       /avoider: \{[\s\S]*?flex: 1[\s\S]*?justifyContent: 'center'/.test(report),
       'the keyboard-avoiding view is not full-bleed with the centring inside it',
+    );
+  });
+});
+
+suite('layout · the tab bar is its own section, not a thing pages dodge', () => {
+  const pages = [
+    'InventoryScreen',
+    'StoreScreen',
+    'LeaderboardScreen',
+    'NewsScreen',
+    'TournamentScreen',
+  ];
+
+  test('every menu page ends where the bar begins', () => {
+    /*
+      The bar is drawn over the pages, so each one used to be responsible
+      for padding around it — and Store, Inventory and Leaderboard used a
+      flat paddingBottom: 24 with no allowance at all, which cut the bottom
+      off Ranks and Items. Ending each page above the bar turns that from
+      something to remember into something that cannot go wrong.
+    */
+    for (const name of pages) {
+      const src = readFileSync(join(root, `src/demo/${name}.tsx`), 'utf8');
+      assert(
+        src.includes('...MENU_PAGE_AREA'),
+        `${name} still fills the whole screen, so the tab bar covers its bottom`,
+      );
+      assert(
+        !src.includes('absoluteFillObject'),
+        `${name} still uses absoluteFillObject for its page area`,
+      );
+    }
+  });
+
+  test('the Settings page ends there too', () => {
+    const style = screen.match(/settingsOverlay: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'settingsOverlay is not defined');
+    assert(
+      style!.includes('...MENU_PAGE_AREA'),
+      'Settings still fills the whole screen behind the tab bar',
+    );
+  });
+
+  test('the page area really does stop at the top of the bar', () => {
+    const nav = readFileSync(join(root, 'src/demo/BottomNav.tsx'), 'utf8');
+    const area = nav.match(/MENU_PAGE_AREA = \{[\s\S]*?\} as const;/)?.[0];
+    assert(area !== undefined, 'MENU_PAGE_AREA is not defined');
+    assert(
+      /bottom: BOTTOM_NAV_HEIGHT/.test(area!),
+      'the page area does not stop at the bar',
+    );
+    assert(/position: 'absolute'/.test(area!), 'the page area is not positioned');
+  });
+
+  test('nobody reserves the bar height twice', () => {
+    // Once a page ends above the bar, padding by the bar height again
+    // leaves a dead strip the size of the bar at the bottom of the page.
+    for (const name of pages) {
+      const src = readFileSync(join(root, `src/demo/${name}.tsx`), 'utf8');
+      assert(
+        !/paddingBottom: BOTTOM_NAV_HEIGHT/.test(src),
+        `${name} pads by the bar height on top of already ending above it`,
+      );
+    }
+    const panel = screen.match(/settingsPanel: \{[\s\S]*?\n  \},/)?.[0];
+    assert(
+      !/paddingBottom: BOTTOM_NAV_HEIGHT/.test(panel ?? ''),
+      'the Settings panel reserves the bar height twice',
     );
   });
 });
