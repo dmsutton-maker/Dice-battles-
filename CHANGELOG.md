@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.13.3 — 2026-08-20 · requested by David
+
+### Fixed
+- **The version number in Settings is now pinned in place**, below the
+  scrolling area instead of inside it. v1.13.2 gave it more breathing room,
+  which did not help: the real problem was that it was the last thing in a
+  scrolling list, so it only appeared once you had scrolled all the way
+  down — and `bounces={false}` gives no hint there is anything below the
+  fold, so it read as cut off.
+- As a fixed footer it is on screen at every phone height, rather than at
+  whichever height it happened to be measured against. `flexShrink: 0`
+  keeps a short screen from squeezing it away.
+
 ## v1.13.2 — 2026-08-20 · requested by David
 
 ### Fixed

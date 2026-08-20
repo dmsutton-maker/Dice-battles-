@@ -1434,14 +1434,20 @@ export function DiceDemoScreen() {
             >
               <Text style={styles.bugReportButtonText}>🐞 Report a Bug</Text>
             </Pressable>
+            </ScrollView>
             {/*
-              The version, under the button that sends it. A report is
-              only traceable if we know which release it came from, and
-              this is where someone looks when asked "what version are
-              you on?" — it is also sent automatically with the report.
+              The version, PINNED under the scrolling area rather than
+              inside it.
+
+              It used to be the last thing in the scroll, which meant it
+              only appeared once you had scrolled all the way down — and
+              `bounces={false}` gives no hint that there is anything below
+              the fold, so it read as cut off. As a fixed footer it is
+              always on screen whatever the phone's height, which is the
+              only version of this that works on every device rather than
+              on the one it was measured against.
             */}
             <Text style={styles.versionLine}>{GAME_VERSION}</Text>
-            </ScrollView>
             {/*
               No Done button. Settings is a tab now — you leave it by
               tapping another one, the same as every other page, and a
@@ -1826,10 +1832,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.6,
     textAlign: 'center',
-    marginTop: 10,
+    // A pinned footer now, so it needs its own room above and below rather
+    // than borrowing the scroll's padding.
+    marginTop: 12,
+    paddingBottom: 6,
     // Stated, so the glyph box is never tighter than the descenders in a
     // version string need.
     lineHeight: 15,
+    // It is the one line here that must never be what gives way when the
+    // panel is squeezed on a short phone.
+    flexShrink: 0,
   },
   overlayClear: {
     ...StyleSheet.absoluteFillObject,

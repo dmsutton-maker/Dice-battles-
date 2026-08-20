@@ -749,6 +749,34 @@ suite('screen · nothing sits flush against the bottom of Settings', () => {
     );
   });
 
+  test('the version line is pinned, not buried at the end of the scroll', () => {
+    // Inside the ScrollView it only appeared once you had scrolled all the
+    // way down, and bounces={false} gives no hint that anything is below
+    // the fold — so it read as cut off. Pinned below the scroll, it is on
+    // screen at every phone height rather than just the one it was
+    // measured against.
+    const scrollEnd = settings.indexOf(
+      '</ScrollView>',
+      settings.indexOf('settingsScrollContent'),
+    );
+    const versionAt = settings.indexOf('{GAME_VERSION}');
+    assert(scrollEnd > 0, 'could not find the end of the Settings scroll');
+    assert(versionAt > 0, 'the version line is not rendered at all');
+    assert(
+      versionAt > scrollEnd,
+      'the version line is still inside the scrolling area, so it can sit below the fold',
+    );
+  });
+
+  test('the pinned version line cannot be squeezed away on a short screen', () => {
+    const style = settings.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'versionLine is not defined');
+    assert(
+      /flexShrink: 0/.test(style!),
+      'versionLine has no flexShrink: 0 — a short phone could compress it to nothing',
+    );
+  });
+
   test('the version line reserves its own height', () => {
     const style = settings.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
     assert(style !== undefined, 'versionLine is not defined');
