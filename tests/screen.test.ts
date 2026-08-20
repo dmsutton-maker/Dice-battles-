@@ -768,7 +768,7 @@ suite('screen · nothing sits flush against the bottom of Settings', () => {
     );
   });
 
-  test('the Settings page looks scrollable, because it is', () => {
+  test('the Settings page still signals that it scrolls', () => {
     /*
       The page always scrolled; nothing told you so. bounces={false} means
       no rubber-band when you pull at it, and a hidden indicator means no
@@ -782,9 +782,12 @@ suite('screen · nothing sits flush against the bottom of Settings', () => {
       !/bounces=\{false\}/.test(tag!),
       'bounces is off — pulling the page gives no sign it can move',
     );
+    // The scroll BAR is deliberately off: it draws over the right edge of
+    // whatever it passes, which on a page of sliders means sitting on top
+    // of the controls. The bounce carries the message on its own.
     assert(
-      !/showsVerticalScrollIndicator=\{false\}/.test(tag!),
-      'the scroll indicator is hidden — nothing shows there is more below',
+      /showsVerticalScrollIndicator=\{false\}/.test(tag!),
+      'the scroll indicator is back, and it overlaps the settings controls',
     );
   });
 

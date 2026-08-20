@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.14.2 — 2026-08-20 · requested by David
+
+### Changed
+- **The scroll bar in Settings is hidden again.** It draws over the
+  right-hand edge of whatever it passes, and on a page of sliders and
+  toggles that means sitting on top of the controls.
+- The rubber-band bounce stays, which is the part that actually tells you
+  the page can move. It was the missing bounce, not the missing bar, that
+  made this page feel like a dead end back in v1.13.5 — and the page no
+  longer runs underneath the tab bar, so there is nothing hidden down
+  there for an indicator to hint at.
+
 ## v1.14.1 — 2026-08-20 · requested by David
 
 ### Fixed

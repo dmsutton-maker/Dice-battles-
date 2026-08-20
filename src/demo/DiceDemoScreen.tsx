@@ -1322,21 +1322,23 @@ export function DiceDemoScreen() {
               Four sliders make this page taller than any phone, so the
               middle scrolls while the version line stays pinned below it.
 
-              Both scroll cues are deliberately ON. They used to be off —
-              `bounces={false}` and a hidden indicator — which made a page
-              that genuinely scrolls feel like a dead end: no rubber-band
-              when you pull, no bar to say there is more underneath. That
-              is why the version line at the bottom read as missing rather
-              than as below the fold. The bar fades away on its own when
-              you stop, so showing it costs nothing at rest.
+              `bounces` stays ON: the rubber-band when you pull is what
+              tells you the page can move at all, and without it this felt
+              like a dead end.
+
+              The scroll BAR is off. It was briefly on for the same reason,
+              but it draws over the right-hand edge of whatever it passes,
+              and on a page of sliders and toggles that is a bar sitting on
+              top of the controls. The bounce carries the message on its
+              own, and the page no longer runs under the tab bar, so there
+              is nothing hidden for the indicator to hint at.
             */}
             <ScrollView
               ref={settingsScrollRef}
               style={styles.settingsScroll}
               contentContainerStyle={styles.settingsScrollContent}
               bounces
-              showsVerticalScrollIndicator
-              indicatorStyle="white"
+              showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
             <Text style={styles.settingsSectionTitle}>VOLUME</Text>
