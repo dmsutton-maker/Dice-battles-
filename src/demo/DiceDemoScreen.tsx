@@ -881,7 +881,15 @@ export function DiceDemoScreen() {
         </Pressable>
       ))}
       </View>
-      <Text style={styles.difficultyHint}>{OBSTACLE_HINTS[difficulty]}</Text>
+      {/*
+        Two lines' worth of height always. Easy's hint wraps to two where
+        Medium's and Hard's fit on one, so picking a difficulty shifted
+        the stakes line and everything under it — the same fault the mode
+        rules had.
+      */}
+      <Text style={styles.difficultyHint} numberOfLines={2}>
+        {OBSTACLE_HINTS[difficulty]}
+      </Text>
       <Text style={styles.stakesText}>
         Win +{rangeLabel(stakes.win)} 🏆 · Lose −{rangeLabel(stakes.loss)} 🏆
       </Text>
@@ -1081,12 +1089,12 @@ export function DiceDemoScreen() {
               Race other players to free your prisoners!
             </Text>
             {unlockAll ? (
-              <Text style={styles.trophyNext}>
+              <Text style={styles.trophyNext} numberOfLines={1}>
                 🔓 Family tester mode — everything unlocked
               </Text>
             ) : (
               upNext && (
-                <Text style={styles.trophyNext}>
+                <Text style={styles.trophyNext} numberOfLines={1}>
                   Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} 🏆
                 </Text>
               )
@@ -1104,7 +1112,7 @@ export function DiceDemoScreen() {
               }}
             >
               {/* The mode picked above carries into split screen. */}
-              <Text style={styles.twoPlayerText}>
+              <Text style={styles.twoPlayerText} numberOfLines={1}>
                 👥 2 Players — {MODES[mode].name}
               </Text>
             </Pressable>
@@ -1132,7 +1140,7 @@ export function DiceDemoScreen() {
             {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} 🏆 → {trophies}
           </Text>
           {upNext && (
-            <Text style={styles.trophyNext}>
+            <Text style={styles.trophyNext} numberOfLines={1}>
               Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} 🏆
             </Text>
           )}
@@ -1509,6 +1517,10 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     fontSize: 13.5,
     fontWeight: '700',
+    lineHeight: 18,
+    // One line, always. Arena names differ in length and this sits above
+    // the mode picker, so a wrap would push the whole column down.
+    height: 18,
     marginTop: 4,
     ...textShadow,
   },
@@ -1770,6 +1782,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
+    // Exactly two lines — see the note at the usage site.
+    height: 36,
     marginTop: 10,
     textAlign: 'center',
   },

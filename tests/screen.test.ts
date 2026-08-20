@@ -623,3 +623,57 @@ suite('screen · the board belongs to the battle screen', () => {
     );
   });
 });
+
+suite('screen · the menu does not jump', () => {
+  /**
+   * Three times now, a line of text that changes with what you tapped has
+   * shifted everything below it: the mode rules (Color War's fit on one
+   * line where the others take two), the difficulty hint (Easy's takes
+   * two where Medium's and Hard's take one), and the next-unlock line.
+   *
+   * Any text whose CONTENT depends on a selection has to reserve its
+   * height, or the menu moves under your thumb between taps.
+   */
+  const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+
+  const styleBlock = (name: string): string => {
+    const at = source.indexOf(`  ${name}: {`);
+    assert(at !== -1, `no style called ${name}`);
+    return source.slice(at, source.indexOf('},', at));
+  };
+
+  for (const name of ['modeRules', 'difficultyHint', 'trophyNext']) {
+    test(`${name} reserves its height`, () => {
+      const block = styleBlock(name);
+      const height = /height:\s*(\d+)/.exec(block);
+      const lineHeight = /lineHeight:\s*(\d+)/.exec(block);
+      assert(height !== null, `${name} has no fixed height — it will shift the menu`);
+      assert(lineHeight !== null, `${name} has no lineHeight, so its height is a guess`);
+      const lines = Number(height![1]) / Number(lineHeight![1]);
+      assert(
+        Number.isInteger(lines) && lines >= 1 && lines <= 3,
+        `${name} reserves ${height![1]}px at ${lineHeight![1]}px a line — not a whole number of lines`,
+      );
+    });
+  }
+
+  test('every reserved line also caps how many lines it may take', () => {
+    // A fixed height without numberOfLines clips mid-wrap instead of
+    // ellipsising, which looks broken rather than tidy.
+    for (const name of ['modeRules', 'difficultyHint', 'trophyNext']) {
+      // Read the WHOLE opening tag, not just the style attribute — the
+      // first version of this test matched `style={styles.x}` as a prefix
+      // of `style={styles.x} numberOfLines={2}` and failed on correct code.
+      const tags = [
+        ...source.matchAll(new RegExp(`<Text style=\\{styles\\.${name}\\}[^>]*>`, 'g')),
+      ];
+      assert(tags.length > 0, `${name} is not used anywhere`);
+      for (const [tag] of tags) {
+        assert(
+          /numberOfLines=\{\d+\}/.test(tag),
+          `${name} is used without numberOfLines: ${tag.trim()}`,
+        );
+      }
+    }
+  });
+});

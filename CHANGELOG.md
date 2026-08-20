@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.11.8 — 2026-08-20 · requested by David
+
+### Fixed
+- **The menu no longer moves when you pick a difficulty.** Easy's hint
+  wraps to two lines where Medium's and Hard's fit on one, so the stakes
+  line and everything under it shifted between taps — the same fault the
+  mode rules had. Both now reserve their height.
+- The next-unlock line is held to one line as well, since arena names
+  differ in length and it sits above the whole picker.
+
 ## v1.11.7 — 2026-08-20 · requested by David
 
 ### Added
