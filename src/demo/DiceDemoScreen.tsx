@@ -4,7 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -186,6 +189,37 @@ export function DiceDemoScreen() {
   const [unlockAll, setUnlockAll] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
+  /*
+    Getting the code box out from under the keyboard.
+
+    The box sits low in the Settings page, so on a phone the keyboard
+    covered the very thing being typed into. Two halves to the fix: the
+    panel shrinks by the keyboard's height (KeyboardAvoidingView below),
+    and the page scrolls the box into what is left of the view.
+
+    The scroll waits for `keyboardDidShow` rather than firing on focus,
+    because at focus the keyboard has not finished animating and its height
+    is not yet known — scrolling then lands in the wrong place, and by a
+    different amount depending on whether the autocorrect bar is showing.
+  */
+  const settingsScrollRef = useRef<ScrollView | null>(null);
+  const codeRowY = useRef(0);
+  const codeFocused = useRef(false);
+
+  const revealCodeBox = useCallback(() => {
+    if (!codeFocused.current) return;
+    // A little above the box, so it does not sit flush against the
+    // keyboard with its label cut off.
+    settingsScrollRef.current?.scrollTo({
+      y: Math.max(0, codeRowY.current - 24),
+      animated: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', revealCodeBox);
+    return () => shown.remove();
+  }, [revealCodeBox]);
   // Rewards queue rather than replace each other: crossing two tiers in one
   // battle used to show only the second one.
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -1276,7 +1310,20 @@ export function DiceDemoScreen() {
 
       {menuTab === 'settings' && (
         <View style={styles.settingsOverlay}>
-          <View style={styles.settingsPanel}>
+          {/*
+            Shrinks the panel by the keyboard's height, so there is somewhere
+            to scroll the code box TO. Scrolling alone would not help: with
+            the panel still full height, the box would scroll to a part of
+            the page the keyboard is sitting on top of.
+
+            iOS only. Android resizes the window for the keyboard by itself
+            (Expo's default softwareKeyboardLayoutMode), and stacking this
+            on top of that would count the keyboard twice.
+          */}
+          <KeyboardAvoidingView
+            style={styles.settingsPanel}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             <Text style={styles.settingsTitle}>⚙️ SETTINGS</Text>
             {/*
               Four sliders make this panel taller than a small phone, so the
@@ -1285,6 +1332,7 @@ export function DiceDemoScreen() {
               `bounces={false}` means no rubber-band on a panel that fits.
             */}
             <ScrollView
+              ref={settingsScrollRef}
               style={styles.settingsScroll}
               bounces={false}
               showsVerticalScrollIndicator={false}
@@ -1343,12 +1391,26 @@ export function DiceDemoScreen() {
               {wins.medium}   🥇 Hard ×{wins.hard}
             </Text>
             <View style={styles.settingsDividerLine} />
-            <View style={styles.codeRow}>
+            <View
+              style={styles.codeRow}
+              onLayout={(e) => {
+                codeRowY.current = e.nativeEvent.layout.y;
+              }}
+            >
               <TextInput
                 style={styles.codeInput}
                 value={codeInput}
                 onChangeText={setCodeInput}
                 onSubmitEditing={submitCode}
+                onFocus={() => {
+                  codeFocused.current = true;
+                  // Covers the case where the keyboard is already open —
+                  // keyboardDidShow will not fire again for this tap.
+                  revealCodeBox();
+                }}
+                onBlur={() => {
+                  codeFocused.current = false;
+                }}
                 placeholder="Secret code…"
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 autoCapitalize="characters"
@@ -1385,7 +1447,7 @@ export function DiceDemoScreen() {
               button that only goes "back to Battle" is a second way to
               do what the bar already does.
             */}
-          </View>
+          </KeyboardAvoidingView>
         </View>
       )}
       <BugReportModal

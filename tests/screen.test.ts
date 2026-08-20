@@ -722,3 +722,63 @@ suite('release · the version number is real', () => {
     );
   });
 });
+
+suite('screen · the keyboard does not cover the code box', () => {
+  const source = readFileSync(
+    join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'),
+    'utf8',
+  );
+
+  test('the settings panel makes room for the keyboard', () => {
+    // Scrolling alone cannot fix this: with the panel still full height,
+    // the box scrolls to a part of the page the keyboard sits on top of.
+    assert(
+      /<KeyboardAvoidingView[\s\S]{0,200}styles\.settingsPanel/.test(source),
+      'the settings panel does not shrink for the keyboard',
+    );
+    assert(
+      /behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/.test(source),
+      'behavior should apply on iOS only — Android resizes the window itself',
+    );
+  });
+
+  test('the page scrolls the box into view once the keyboard is up', () => {
+    // Waiting for keyboardDidShow rather than acting on focus: at focus the
+    // keyboard is still animating and its height is unknown, so the scroll
+    // lands short — and by a different amount when the autocorrect bar shows.
+    assert(
+      source.includes("Keyboard.addListener('keyboardDidShow'"),
+      'nothing scrolls the box into view when the keyboard appears',
+    );
+    assert(
+      /shown\.remove\(\)/.test(source),
+      'the keyboard listener is never removed, which leaks on every unmount',
+    );
+  });
+
+  test('the scroll target is measured, not guessed', () => {
+    // scrollToEnd would work only while the code box happens to be the last
+    // thing on the page; measuring survives anything being added below it.
+    assert(
+      /onLayout=\{\(e\) => \{\s*codeRowY\.current = e\.nativeEvent\.layout\.y;/.test(
+        source,
+      ),
+      'the code row never measures its own position',
+    );
+    assert(
+      /scrollTo\(\{\s*y: Math\.max\(0, codeRowY\.current - 24\)/.test(source),
+      'the scroll does not use the measured position',
+    );
+  });
+
+  test('focus and blur both track, so it cannot scroll for another field', () => {
+    assert(
+      /onFocus=\{\(\) => \{\s*codeFocused\.current = true;/.test(source),
+      'focus is not tracked',
+    );
+    assert(
+      /onBlur=\{\(\) => \{\s*codeFocused\.current = false;/.test(source),
+      'blur is not tracked, so the page would keep jumping to the code box',
+    );
+  });
+});

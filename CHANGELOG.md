@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.13.1 — 2026-08-20 · requested by David
+
+### Fixed
+- **The keyboard no longer covers the secret-code box.** Tapping it opened
+  the keyboard straight over the thing you were typing into. The Settings
+  page now shrinks by the keyboard's height and scrolls the box up into
+  what is left, so you can see what you type.
+- Two details that matter for it working on a real phone: the scroll waits
+  for the keyboard to finish appearing rather than firing on tap — at tap
+  time its height is not known yet, so the scroll lands short, and by a
+  different amount depending on whether the autocorrect bar is showing. And
+  the position is measured rather than assumed, so it keeps working if
+  anything is ever added below the box.
+
 ## v1.13.0 — 2026-08-20 · requested by David
 
 ### Added
