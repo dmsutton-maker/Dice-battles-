@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.15.0 — 2026-08-20 · requested by David
+
+### Changed
+- **Settings and News have left the bottom bar.** They are two small icon
+  buttons at the top right of the home screen now, level with the trophy
+  and coin pills. Neither is somewhere you go during play, so neither was
+  earning its place among the things you move between constantly.
+- **The bar is five tabs**: Store, Items, Battle, Cups, Ranks — Battle dead
+  centre. Five cells leave about 75pt each on a small phone where seven
+  left 53, so the labels go back up to a readable size.
+- **Settings and News open as popups over the game**, dimmed but still
+  visible behind, so it is obvious you have not gone anywhere. Two ways
+  out: the ✕, and tapping the dim.
+
+### Fixed before release
+Two bugs were caught by the test agent before this shipped, both flexbox
+arithmetic that the typechecker and 247 existing tests all passed happily:
+- **The Settings popup rendered its whole body at zero height** — every
+  slider, the toggle, the code box and the Report a Bug button, gone. A
+  `flex: 1` scrolling area means "grow into space my parent proves it
+  has", and a panel capped by `maxHeight` with no height of its own can
+  never prove any.
+- **The News popup clipped its older entries** with no way to scroll to
+  them, and would have quietly lost one more with every entry added.
+- Notably this is the OPPOSITE of the right answer three releases ago,
+  when the same two properties were swapped the other way. What changed is
+  whether the parent's height is known.
+
+### Added
+- **A test suite that runs the real layout engine.** Everything else here
+  reads the source as text, which is why neither bug above was caught —
+  a regex can see that a style exists, never what it resolves to. The new
+  suite builds the actual popup trees in Yoga (the same algorithm React
+  Native ships) and asserts the scrolling area comes out with real height,
+  in the same spirit as the physics suite running real cannon-es.
+
 ## v1.14.2 — 2026-08-20 · requested by David
 
 ### Changed

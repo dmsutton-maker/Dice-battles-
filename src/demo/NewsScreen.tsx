@@ -14,6 +14,15 @@ export function NewsScreen() {
   return (
     <View>
       <ScrollView
+        /*
+          flexShrink, or this list silently loses its oldest entries. With
+          no flex at all a ScrollView takes its full content height, so the
+          popup's maxHeight clipped the overflow — and because the scroll
+          thought it already fitted inside its own bounds, dragging it did
+          nothing. Everything past the fold was simply gone, and quietly
+          worse with every news item added.
+        */
+        style={styles.list}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
@@ -47,6 +56,9 @@ export function NewsScreen() {
 }
 
 const styles = StyleSheet.create({
+  list: {
+    flexShrink: 1,
+  },
   scroll: {
     paddingHorizontal: 18,
     paddingBottom: 6,

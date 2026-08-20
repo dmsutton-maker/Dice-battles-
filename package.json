@@ -23,7 +23,8 @@
     "@types/react": "~19.1.0",
     "@types/three": "^0.185.0",
     "tsx": "^4.23.12",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "yoga-layout": "^3.2.1"
   },
   "scripts": {
     "start": "expo start",

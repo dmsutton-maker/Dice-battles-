@@ -1780,26 +1780,32 @@ const styles = StyleSheet.create({
    */
   settingsPanel: {
     // Shrinks to its content up to the popup's own max height, rather
-    // than filling a screen it no longer owns.
+    // than filling a screen it no longer owns. No flexGrow: there is no
+    // proven space to grow into inside a maxHeight-capped panel.
     flexShrink: 1,
     paddingBottom: 0,
   },
   settingsScroll: {
     /*
-      `flex: 1`, NOT `flexGrow: 1, flexShrink: 1`. The difference is
-      flexBasis: flex:1 sets it to 0, the pair leaves it `auto`, and `auto`
-      on a ScrollView means its starting size is the WHOLE height of its
-      content — hundreds of points of sliders and sections.
+      `flexShrink: 1` — deliberately NOT `flex: 1`, and this reverses what
+      was right when Settings was a full page.
 
-      With nothing below it that was harmless. The moment the version line
-      became a sibling underneath, the scroll started from that enormous
-      basis, claimed the entire panel, and pushed the version line off the
-      bottom where it could not be seen at all.
+      `flex: 1` means flexBasis 0: "start at nothing and grow into space my
+      parent proves it has". A parent with a definite height can prove it.
+      The popup panel is capped with maxHeight and has NO height of its
+      own, so it can never prove anything — and the scroll resolved to
+      exactly zero. Settings opened to a title, a ✕ and a blank hole where
+      every control should be.
 
-      From a zero basis it takes only what is left after the pinned footer,
-      which is the whole point of pinning one.
+      flexShrink with basis auto starts at the content's full height and
+      shrinks to whatever the capped panel allows, which is the behaviour a
+      scrolling area inside a "grow to fit, up to a limit" box needs.
+
+      Verified in the real Yoga engine rather than by eye: iPhone SE gives
+      panel 521 / scroll 452 this way, and panel 69 / scroll 0 with flex:1.
+      tests/popupLayout.test.ts runs that same check.
     */
-    flex: 1,
+    flexShrink: 1,
   },
   settingsScrollContent: {
     /*

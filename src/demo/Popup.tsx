@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
 
 /**
@@ -24,6 +24,10 @@ export function Popup({
 }) {
   const close = () => {
     playClick();
+    // Explicit, not left to unmounting the focused box to do it. The bug
+    // report modal looked fine by that reasoning too, right up until the
+    // keyboard was left sitting over the screen behind it.
+    Keyboard.dismiss();
     onClose();
   };
 
