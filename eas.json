@@ -16,6 +16,9 @@
       "environment": "production",
       "ios": {
         "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
       }
     }
   },
