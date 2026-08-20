@@ -908,15 +908,11 @@ export function DiceDemoScreen() {
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
       {/*
-        The title steps aside once a battle starts. It and the scoreboard
-        used to stack, pushing the score down onto the jail row — you know
-        which game you are in by then, and the prisoners matter more.
+        There is no game-name bar across the top any more. It sat at y58
+        spanning the full width while the trophy and coin pills sit at
+        y52 on the left, so the two ran into each other — and the name was
+        already on the launch card and again in the heading below.
       */}
-      {phase !== 'battle' && phase !== 'won' && phase !== 'lost' && phase !== 'tie' && (
-        <View pointerEvents="none" style={styles.topBar}>
-          <Text style={styles.title}>DICE BATTLES</Text>
-        </View>
-      )}
 
       {/* Scoreboard */}
       {(phase === 'battle' || phase === 'won' || phase === 'lost' || phase === 'tie') && (
@@ -1157,13 +1153,16 @@ export function DiceDemoScreen() {
         />
       )}
 
-      {phase !== 'battle' &&
-        phase !== 'arm' &&
-        phase !== 'go' &&
-        phase !== 'matching' &&
-        menuTab !== 'leaderboard' && (
-          <StatsHud trophies={trophies} coins={wallet.coins} />
-        )}
+      {/*
+        Only on the home screen and the menus. It used to show on the
+        result screen too, where the scoreboard sits centred at y54 and
+        would have run into these pills at y52 — the same collision the
+        game-name bar had. The result screen reports the trophies and
+        coins won in its own text anyway.
+      */}
+      {phase === 'pick' && menuTab !== 'leaderboard' && (
+        <StatsHud trophies={trophies} coins={wallet.coins} />
+      )}
 
       {/* The bar itself. Gone during a battle — the board wants the room. */}
       {phase !== 'battle' && phase !== 'arm' && phase !== 'go' && phase !== 'matching' && (
@@ -1323,20 +1322,6 @@ const styles = StyleSheet.create({
   },
   canvas: {
     flex: 1,
-  },
-  topBar: {
-    position: 'absolute',
-    top: 58,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  title: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 5,
-    ...textShadow,
   },
   scoreboard: {
     position: 'absolute',

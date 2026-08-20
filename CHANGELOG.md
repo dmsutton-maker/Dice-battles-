@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.11.3 — 2026-08-20 · requested by David
+
+### Fixed
+- **The game-name bar across the top is gone.** It spanned the full width
+  at y58 while the trophy and coin pills sit at y52 on the left, so the
+  two ran into each other. The name was already on the launch card and
+  again in the heading below it, so nothing is lost.
+- The trophy and coin pills now show only on the home screen and the
+  menus. They also appeared on the result screen, where the centred
+  scoreboard would have collided with them the same way — that screen
+  reports what you won in its own text.
+
 ## v1.11.2 — 2026-08-20 · requested by David
 
 ### Fixed
