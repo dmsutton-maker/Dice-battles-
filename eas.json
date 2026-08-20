@@ -8,6 +8,15 @@
       "autoIncrement": true,
       "environment": "production",
       "credentialsSource": "local"
+    },
+    "adhoc": {
+      "channel": "main",
+      "distribution": "internal",
+      "autoIncrement": true,
+      "environment": "production",
+      "ios": {
+        "simulator": false
+      }
     }
   },
   "submit": {
