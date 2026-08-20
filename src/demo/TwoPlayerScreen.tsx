@@ -49,6 +49,8 @@ interface TwoPlayerScreenProps {
   arenaId: ArenaId;
   dieBodyColor: string;
   mode: ModeId;
+  /** Colourblind mode — shapes on the dice and the prisoners. */
+  symbols: boolean;
   onExit: () => void;
 }
 
@@ -64,6 +66,7 @@ interface ZoneViewProps {
   units: PrisonerUnit[];
   arenaId: ArenaId;
   dieBodyColor: string;
+  symbols: boolean;
   controlsRef: React.MutableRefObject<SceneControls | null>;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
@@ -83,6 +86,7 @@ function ZoneView({
   units,
   arenaId,
   dieBodyColor,
+  symbols,
   controlsRef,
   onThrow,
   onSettled,
@@ -144,6 +148,7 @@ function ZoneView({
           layout={EMPTY_LAYOUT}
           arenaId={arenaId}
           dieBodyColor={dieBodyColor}
+          dieSymbols={symbols}
           showTreasure={false}
           throwsEnabled={phase === 'battle'}
         />
@@ -190,6 +195,7 @@ export function TwoPlayerScreen({
   arenaId,
   dieBodyColor,
   mode,
+  symbols,
   onExit,
 }: TwoPlayerScreenProps) {
   // Color War gives each player one colour to rescue. Fixed for the match
@@ -341,6 +347,7 @@ export function TwoPlayerScreen({
         units={unitsB}
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
+        symbols={symbols}
         controlsRef={controlsB}
         onThrow={noop}
         onSettled={settledB}
@@ -361,6 +368,7 @@ export function TwoPlayerScreen({
         units={unitsA}
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
+        symbols={symbols}
         controlsRef={controlsA}
         onThrow={noop}
         onSettled={settledA}

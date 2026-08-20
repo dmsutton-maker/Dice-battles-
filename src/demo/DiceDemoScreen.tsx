@@ -454,6 +454,13 @@ export function DiceDemoScreen() {
   const menuTab: Tab | null =
     phase === 'pick' && tab !== 'play' ? tab : null;
 
+  // Leaving Settings clears the code feedback — the Done button used to
+  // do this on its way out, and without it "10,000 coins added!" would
+  // still be sitting there next time you opened the page.
+  useEffect(() => {
+    if (tab !== 'settings') setCodeFeedback(null);
+  }, [tab]);
+
   const backToPlay = useCallback(() => {
     playClick();
     setTab('play');
@@ -907,6 +914,7 @@ export function DiceDemoScreen() {
         arenaId={arenaId}
         dieBodyColor={dieBodyColor}
         mode={mode}
+        symbols={colorblind}
         onExit={() => setTwoPlayer(false)}
       />
     );
@@ -1310,16 +1318,12 @@ export function DiceDemoScreen() {
               <Text style={styles.bugReportButtonText}>🐞 Report a Bug</Text>
             </Pressable>
             </ScrollView>
-            <Pressable
-              style={styles.settingsDone}
-              onPress={() => {
-                playClick();
-                setCodeFeedback(null);
-                setTab('play');
-              }}
-            >
-              <Text style={styles.settingsDoneText}>Done</Text>
-            </Pressable>
+            {/*
+              No Done button. Settings is a tab now — you leave it by
+              tapping another one, the same as every other page, and a
+              button that only goes "back to Battle" is a second way to
+              do what the bar already does.
+            */}
           </View>
         </View>
       )}
@@ -1674,18 +1678,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     fontSize: 14,
     fontWeight: '800',
-  },
-  settingsDone: {
-    marginTop: 16,
-    backgroundColor: '#ffe521',
-    borderRadius: 20,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  settingsDoneText: {
-    color: '#241c40',
-    fontSize: 16,
-    fontWeight: '900',
   },
   overlayClear: {
     ...StyleSheet.absoluteFillObject,

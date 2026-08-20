@@ -5,10 +5,19 @@ import { FLIGHT_SECONDS, flightAt, type FlightPoint } from './flight';
 import { PrisonerUnit, Station } from './modes';
 import { Slot, slotFor as sharedSlotFor } from './stations';
 import { TUNING } from './tuning';
+import { COLOR_SYMBOLS } from './colorblind';
+import { createSymbolTexture } from '../dice/symbols';
 
 interface PrisonersProps {
   /** The full lineup with each figure's current station. */
   units: PrisonerUnit[];
+  /**
+   * Colourblind mode: give each figure the same shape its colour wears on
+   * the dice. Shapes on the dice alone were only half the job — the whole
+   * move is matching a rolled colour to a PRISONER, so a player who could
+   * read the die still had to judge the figure by colour.
+   */
+  symbols?: boolean;
 }
 
 function stationKey(s: Station): string {
@@ -21,13 +30,29 @@ function stationKey(s: Station): string {
  * his captures). When a unit's station changes, the figure leaps there in a
  * spinning arc — including BACK to jail in Ultimate mode.
  */
-export function Prisoners({ units }: PrisonersProps) {
+export function Prisoners({ units, symbols = false }: PrisonersProps) {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
 
   // Slot coordinates are shared with the arenas (src/game/stations.ts) so
   // every battlefield builds its jail, retreat and battlement around the
   // same positions these figures stand on.
   const slotFor = (s: Station): Slot => sharedSlotFor(s);
+
+  const badgeTextures = useMemo(() => {
+    if (!symbols) return null;
+    const byColor = new Map<string, THREE.Texture>();
+    for (const unit of units) {
+      if (byColor.has(unit.colorId)) continue;
+      byColor.set(
+        unit.colorId,
+        createSymbolTexture(COLOR_SYMBOLS[unit.colorId], unit.hex),
+      );
+    }
+    return byColor;
+    // Keyed on the colours present, so it is rebuilt when the lineup's
+    // colours change (Color War draws two fresh ones each round) and not
+    // on every move.
+  }, [symbols, units.map((u) => u.colorId).join(',')]);
 
   const groupRefs = useRef<Map<string, THREE.Group>>(new Map());
   const balloonRefs = useRef<Map<string, THREE.Group>>(new Map());
@@ -133,6 +158,23 @@ export function Prisoners({ units }: PrisonersProps) {
             <sphereGeometry args={[0.135, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.6]} />
             <meshBasicMaterial color={unit.hex} toneMapped={false} />
           </mesh>
+          {/*
+            Colourblind badge: the colour's shape, held above the helmet.
+            Tilted back toward the camera rather than lying flat — the
+            camera sits about 30 degrees off vertical, so a plane facing
+            straight up would be read at an angle.
+          */}
+          {badgeTextures && (
+            <mesh position={[0, 1.02, 0]} rotation={[-Math.PI / 2 + 0.5, 0, 0]}>
+              <planeGeometry args={[0.34, 0.34]} />
+              <meshBasicMaterial
+                map={badgeTextures.get(unit.colorId)}
+                toneMapped={false}
+                transparent={false}
+              />
+            </mesh>
+          )}
+
           {/* Celebration balloon (visible once safely at the retreat) */}
           <group
             ref={(g) => {

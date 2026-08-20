@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { initSounds, playStartup } from '../audio/sounds';
 import { loadAudioSettings } from '../audio/settings';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 /** How long the title card is held before the game appears. */
 export const BOOT_SPLASH_MS = 1900;
@@ -60,6 +60,16 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
 
       <View style={styles.studio}>
         <Text style={styles.studioLabel}>a game by</Text>
+        {/*
+          The reversed variant of the mark (logo-assets/2e-icon-reversed):
+          this card is near-black, and the standard one has a near-black
+          hull that would vanish into it.
+        */}
+        <Image
+          source={require('../../assets/paper-ship-mark.png')}
+          style={styles.mark}
+          resizeMode="contain"
+        />
         <Text style={styles.studioName}>Paper Ship Studio</Text>
       </View>
     </View>
@@ -120,6 +130,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 104,
     alignItems: 'center',
+  },
+  mark: {
+    width: 54,
+    height: 45,
+    marginTop: 8,
+    marginBottom: 6,
   },
   studioLabel: {
     color: 'rgba(255,255,255,0.55)',

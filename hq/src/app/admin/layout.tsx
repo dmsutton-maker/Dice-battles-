@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { currentMember } from '@/lib/supabase/server';
+import { Logo } from '@/components/site/Logo';
 
 export const metadata = {
   title: 'Admin — Paper Ship Studio',
@@ -26,12 +27,16 @@ export default async function AdminLayout({
   return (
     <div className="wrap">
       <div className="spread" style={{ marginBottom: 18 }}>
-        <div>
-          <h1 style={{ marginBottom: 2 }}>🛠️ Paper Ship Studio Admin</h1>
-          <p className="faint" style={{ margin: 0 }}>
-            Signed in as {member.display_name}
-            {member.role === 'owner' ? ' · owner' : ''}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* The studio's own mark, not a spanner emoji. */}
+          <Logo size={34} />
+          <div>
+            <h1 style={{ marginBottom: 2 }}>Paper Ship Studio Admin</h1>
+            <p className="faint" style={{ margin: 0 }}>
+              Signed in as {member.display_name}
+              {member.role === 'owner' ? ' · owner' : ''}
+            </p>
+          </div>
         </div>
         <form action="/auth/signout" method="post">
           <button className="button-quiet button-small" type="submit">

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { assert, assertEqual, suite, test } from './harness';
 import { COLOR_SYMBOLS, SymbolId } from '../src/game/colorblind';
 import { PRISONER_COLORS, PrisonerColorId } from '../src/game/colors';
@@ -94,6 +95,49 @@ suite('colorblind · symbols', () => {
     assert(
       first.every((v, i) => v === second[i]),
       'the same symbol rendered differently twice',
+    );
+  });
+});
+
+suite('colorblind · both halves of the match', () => {
+  const read = (p: string) => readFileSync(p, 'utf8');
+
+  test('the shapes reach the prisoners, not just the dice', () => {
+    // The move is matching a rolled COLOUR to a PRISONER. Shapes on the
+    // dice alone left the other half of that judgement on colour.
+    const prisoners = read('src/game/Prisoners.tsx');
+    assert(
+      prisoners.includes('COLOR_SYMBOLS'),
+      'the prisoner figures carry no colourblind shape',
+    );
+    assert(
+      prisoners.includes('createSymbolTexture'),
+      'the prisoners do not use the same symbol art as the dice',
+    );
+  });
+
+  test('a figure and a die of the same colour show the same shape', () => {
+    // Both read COLOR_SYMBOLS, so there is one mapping rather than two
+    // that could disagree.
+    const die = read('src/dice/DieMesh.tsx');
+    const prisoners = read('src/game/Prisoners.tsx');
+    for (const source of [die, prisoners]) {
+      assert(
+        /COLOR_SYMBOLS\[[a-zA-Z.]+\.(id|colorId)\]/.test(source),
+        'a symbol is chosen some other way than by colour id',
+      );
+    }
+  });
+
+  test('split screen gets the shapes too', () => {
+    // Someone who needs them needs them in two-player as well.
+    const two = read('src/demo/TwoPlayerScreen.tsx');
+    assert(/symbols: boolean/.test(two), 'split screen takes no symbols prop');
+    assert(/dieSymbols=\{symbols\}/.test(two), 'split screen never passes it on');
+    const parent = read('src/demo/DiceDemoScreen.tsx');
+    assert(
+      /symbols=\{colorblind\}/.test(parent),
+      'the setting is not handed to split screen',
     );
   });
 });

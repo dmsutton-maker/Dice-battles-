@@ -360,7 +360,7 @@ export function DiceScene({
 
       <ArenaComponent />
       {showTreasure && <TreasureChest />}
-      <Prisoners units={units} />
+      <Prisoners units={units} symbols={dieSymbols} />
 
       {/* Difficulty obstacles */}
       {obstacles.mound && (

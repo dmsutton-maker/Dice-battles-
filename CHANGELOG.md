@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.11.7 — 2026-08-20 · requested by David
+
+### Added
+- **The studio mark, from the design handoff**, in all three places it
+  belongs: the game's title card (reversed variant, since that card is
+  near-black), the website header and footer, and the admin header —
+  which was a 🛠️ emoji. The site also gets a favicon, which it never had.
+- **Colourblind shapes now sit on the prisoners as well as the dice.**
+  The move is matching a rolled colour to a PRISONER, so shapes on one
+  side left the other half of that judgement on colour. Split screen
+  gets them too.
+
+### Changed
+- The mark's geometry is the handoff's: a short front sail and a tall
+  main sail, where the old one drew both the same height.
+- **No Done button in Settings** — it is a tab now, so you leave by
+  tapping another one.
+
 ## v1.11.6 — 2026-08-20 · requested by David
 
 ### Changed
