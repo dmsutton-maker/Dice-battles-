@@ -577,14 +577,42 @@ suite('screen · the board belongs to the battle screen', () => {
     }
   });
 
-  test('settings stays a translucent popup', () => {
+  test('settings is a page like the rest, not a popup', () => {
+    // It began as a translucent card over the home screen. David asked
+    // for it to be a tab like everything else, so it is solid and full
+    // height now — and it must not drift back.
     const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
     const overlay = source.slice(source.indexOf('settingsOverlay: {'));
     const bg = /backgroundColor:\s*'([^']+)'/.exec(overlay);
+    assert(bg !== null, 'the settings page sets no background');
     assert(
-      bg !== null && bg![1].startsWith('rgba'),
-      'settings went solid — it is a popup over the game, not its own page',
+      !bg![1].startsWith('rgba'),
+      `settings is see-through (${bg![1]}) — the board shows through it`,
     );
+  });
+
+  test('settings is reached the same way as every other page', () => {
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    assert(
+      !/showSettings/.test(source),
+      'settings still has its own open/closed flag instead of being a tab',
+    );
+    assert(
+      /menuTab === 'settings'/.test(source),
+      'settings is not driven by the tab bar',
+    );
+    const nav = readFileSync('src/demo/BottomNav.tsx', 'utf8');
+    assert(
+      /\|\s*'settings'/.test(nav),
+      'settings is not one of the tabs',
+    );
+  });
+
+  test('Battle sits in the middle of the bar', () => {
+    const nav = readFileSync('src/demo/BottomNav.tsx', 'utf8');
+    const ids = [...nav.matchAll(/\{ id: '([a-z]+)',/g)].map((m) => m[1]);
+    assert(ids.length % 2 === 1, `an even number of tabs (${ids.length}) has no middle`);
+    assertEqual(ids[(ids.length - 1) / 2], 'play', `Battle is not centred: ${ids.join(', ')}`);
   });
 
   test('the board stops rendering while a menu is open', () => {

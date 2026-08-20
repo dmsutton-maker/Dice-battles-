@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.11.6 — 2026-08-20 · requested by David
+
+### Changed
+- **Settings is a page of its own**, like every other tab. It was still
+  opening as a translucent card over the home screen; it is now solid,
+  full height, and matches Store, Cups, Items, Ranks and News. Done
+  returns you to Battle.
+
 ## v1.11.5 — 2026-08-20 · requested by David
 
 ### Changed

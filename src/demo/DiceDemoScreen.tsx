@@ -98,7 +98,7 @@ import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
-import { BottomNav, BOTTOM_NAV_HEIGHT, NavTarget, Tab } from './BottomNav';
+import { BottomNav, BOTTOM_NAV_HEIGHT, Tab } from './BottomNav';
 import { NewsScreen } from './NewsScreen';
 import { TournamentScreen } from './TournamentScreen';
 import {
@@ -185,7 +185,7 @@ export function DiceDemoScreen() {
   // Rewards queue rather than replace each other: crossing two tiers in one
   // battle used to show only the second one.
   const [rewards, setRewards] = useState<Reward[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
+
   const [colorblind, setColorblind] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
@@ -453,18 +453,6 @@ export function DiceDemoScreen() {
 
   const menuTab: Tab | null =
     phase === 'pick' && tab !== 'play' ? tab : null;
-
-  /**
-   * Settings is on the bar but is not a page: it opens the popup over
-   * wherever you already were, and the tab you were on stays lit.
-   */
-  const goTo = useCallback((target: NavTarget) => {
-    if (target === 'settings') {
-      setShowSettings(true);
-      return;
-    }
-    setTab(target);
-  }, []);
 
   const backToPlay = useCallback(() => {
     playClick();
@@ -1215,7 +1203,7 @@ export function DiceDemoScreen() {
 
       {/* The bar itself. Gone during a battle — the board wants the room. */}
       {phase !== 'battle' && phase !== 'arm' && phase !== 'go' && phase !== 'matching' && (
-        <BottomNav active={tab} onSelect={goTo} />
+        <BottomNav active={tab} onSelect={setTab} />
       )}
 
       {rewards.length > 0 && (
@@ -1225,10 +1213,10 @@ export function DiceDemoScreen() {
         />
       )}
 
-      {showSettings && (
+      {menuTab === 'settings' && (
         <View style={styles.settingsOverlay}>
           <View style={styles.settingsPanel}>
-            <Text style={styles.settingsTitle}>⚙️ Settings</Text>
+            <Text style={styles.settingsTitle}>⚙️ SETTINGS</Text>
             {/*
               Four sliders make this panel taller than a small phone, so the
               middle scrolls and the Done button stays put — no scrolling
@@ -1325,8 +1313,9 @@ export function DiceDemoScreen() {
             <Pressable
               style={styles.settingsDone}
               onPress={() => {
-                setShowSettings(false);
+                playClick();
                 setCodeFeedback(null);
+                setTab('play');
               }}
             >
               <Text style={styles.settingsDoneText}>Done</Text>
@@ -1623,31 +1612,35 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
   },
+  /*
+   * Settings is a page of its own now, not a card floating over the game.
+   * It used to be a translucent popup on the home screen; David asked for
+   * it to behave like every other tab, so it is solid and full height and
+   * matches Store, Cups, Items, Ranks and News.
+   */
   settingsOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10,8,24,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-    zIndex: 10,
+    backgroundColor: '#141028',
+    zIndex: 20,
+    paddingTop: 100,
+    paddingHorizontal: 22,
   },
   settingsPanel: {
-    alignSelf: 'stretch',
-    backgroundColor: '#2c2450',
-    borderRadius: 22,
-    padding: 22,
-    // Never taller than the screen, so Done is always on it.
-    maxHeight: '88%',
+    flex: 1,
+    // Room for the bottom bar, so Done never sits under it.
+    paddingBottom: BOTTOM_NAV_HEIGHT,
   },
   settingsScroll: {
-    flexGrow: 0,
+    flexGrow: 1,
     flexShrink: 1,
   },
+  // Same header as Store, Cups, Items, Ranks and News — it is one of
+  // them now, so it should not look like a leftover dialog.
   settingsTitle: {
     color: '#ffffff',
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    textAlign: 'center',
+    letterSpacing: 1.5,
     marginBottom: 12,
   },
   settingsSectionTitle: {

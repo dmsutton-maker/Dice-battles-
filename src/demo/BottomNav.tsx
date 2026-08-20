@@ -16,21 +16,14 @@ export type Tab =
   | 'news'
   | 'store'
   | 'inventory'
-  | 'leaderboard';
-
-/**
- * Settings sits on the bar but is not a page — tapping it opens the
- * popup over whatever you were looking at, and the tab you were on stays
- * selected. It is a translucent panel over the game on purpose, so
- * turning it into a solid page would lose that.
- */
-export type NavTarget = Tab | 'settings';
+  | 'leaderboard'
+  | 'settings';
 
 /**
  * Seven across, with Battle dead centre — the thing you came to do sits
  * under your thumb, and everything else is one reach either side.
  */
-const TABS: { id: NavTarget; label: string; icon: string }[] = [
+const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'cups', label: 'Cups', icon: '🏆' },
   { id: 'store', label: 'Store', icon: '🛒' },
   { id: 'inventory', label: 'Items', icon: '🎒' },
@@ -45,13 +38,11 @@ export function BottomNav({
   onSelect,
 }: {
   active: Tab;
-  onSelect: (target: NavTarget) => void;
+  onSelect: (tab: Tab) => void;
 }) {
   return (
     <View style={styles.bar}>
       {TABS.map((tab) => {
-        // `active` is a Tab, so the settings entry can never match it —
-        // it is an action, not somewhere you can be.
         const on = tab.id === active;
         return (
           <Pressable
