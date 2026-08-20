@@ -14,6 +14,7 @@ import {
   tournamentById,
 } from '../game/tournament';
 import { BOTTOM_NAV_HEIGHT } from './BottomNav';
+import { GoldCoin } from './GoldCoin';
 
 /**
  * The Cups tab: pick a bracket, then play it one round at a time.
@@ -121,14 +122,22 @@ export function TournamentScreen({
                       {t.size} players · {AI_DIFFICULTIES[t.difficulty].label} ·{' '}
                       {roundsToWin(t.size)} rounds to win
                     </Text>
-                    <Text style={styles.cardPrize}>
-                      🪙 {rangeLabel(t.prize)} to the champion
-                    </Text>
+                    <View style={styles.prizeRow}>
+                      <GoldCoin size={13} />
+                      <Text style={styles.cardPrize}>
+                        {rangeLabel(t.prize)} to the champion
+                      </Text>
+                    </View>
                   </View>
                   <View style={styles.entry}>
-                    <Text style={styles.entryLabel}>
-                      {t.entry === 0 ? 'FREE' : `🪙 ${t.entry}`}
-                    </Text>
+                    {t.entry === 0 ? (
+                      <Text style={styles.entryLabel}>FREE</Text>
+                    ) : (
+                      <View style={styles.prizeRow}>
+                        <GoldCoin size={13} />
+                        <Text style={styles.entryLabel}>{t.entry}</Text>
+                      </View>
+                    )}
                     {!affordable && (
                       <Text style={styles.entryShort}>
                         {t.entry - coins} short
@@ -148,7 +157,9 @@ export function TournamentScreen({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,16,40,0.96)',
+    // Solid, not 96%: the arena used to show faintly through every
+    // menu. Only the battle screen shows the board now.
+    backgroundColor: '#141028',
     zIndex: 20,
     paddingTop: 100,
   },
@@ -196,6 +207,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   entry: { alignItems: 'flex-end' },
+  prizeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   entryLabel: { color: '#ffe521', fontSize: 15, fontWeight: '900' },
   entryShort: {
     color: 'rgba(255,255,255,0.5)',

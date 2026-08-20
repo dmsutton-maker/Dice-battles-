@@ -521,3 +521,77 @@ suite('screen · the title card comes first', () => {
     assert(load < play, 'the sound plays before the volume settings are read');
   });
 });
+
+suite('screen · nothing shows through the title card', () => {
+  test('the card stacks above every layer in the game', () => {
+    // Tree order is not enough in React Native: the stats HUD (30), the
+    // bottom bar (35) and the settings gear (5) all carried a zIndex and
+    // the card carried none, so trophies, coins, the gear and the menu
+    // bar punched straight through it on launch.
+    const splash = readFileSync('src/demo/BootSplash.tsx', 'utf8');
+    const cardZ = /zIndex:\s*(\d+)/.exec(splash);
+    assert(cardZ !== null, 'the title card has no zIndex at all');
+
+    const dir = 'src/demo';
+    let highest = 0;
+    let owner = '';
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.tsx'))) {
+      if (file === 'BootSplash.tsx') continue;
+      const source = readFileSync(join(dir, file), 'utf8');
+      for (const m of source.matchAll(/zIndex:\s*(\d+)/g)) {
+        const z = Number(m[1]);
+        if (z > highest) {
+          highest = z;
+          owner = file;
+        }
+      }
+    }
+    note(`highest zIndex in the game: ${highest} (${owner})`);
+    assert(
+      Number(cardZ![1]) > highest,
+      `the title card sits at ${cardZ![1]}, but ${owner} is at ${highest} and will show through it`,
+    );
+  });
+});
+
+suite('screen · the board belongs to the battle screen', () => {
+  test('every menu page is fully opaque', () => {
+    // They sat at 96%, so the arena showed faintly through all of them.
+    // Settings is the deliberate exception — it is a popup, not a page.
+    const pages = [
+      'StoreScreen',
+      'InventoryScreen',
+      'LeaderboardScreen',
+      'NewsScreen',
+      'TournamentScreen',
+    ];
+    for (const page of pages) {
+      const source = readFileSync(join('src/demo', `${page}.tsx`), 'utf8');
+      const overlay = source.slice(source.indexOf('overlay: {'));
+      const bg = /backgroundColor:\s*'([^']+)'/.exec(overlay);
+      assert(bg !== null, `${page} sets no background at all`);
+      assert(
+        !bg![1].startsWith('rgba'),
+        `${page} is see-through (${bg![1]}) — the board shows through it`,
+      );
+    }
+  });
+
+  test('settings stays a translucent popup', () => {
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    const overlay = source.slice(source.indexOf('settingsOverlay: {'));
+    const bg = /backgroundColor:\s*'([^']+)'/.exec(overlay);
+    assert(
+      bg !== null && bg![1].startsWith('rgba'),
+      'settings went solid — it is a popup over the game, not its own page',
+    );
+  });
+
+  test('the board stops rendering while a menu is open', () => {
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    assert(
+      /frameloop=\{menuTab === null \? 'always' : 'never'\}/.test(source),
+      'the 3D scene keeps running behind menus nobody can see',
+    );
+  });
+});

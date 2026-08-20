@@ -69,6 +69,13 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
 const styles = StyleSheet.create({
   screen: {
     ...StyleSheet.absoluteFillObject,
+    /*
+     * Above EVERYTHING in the game. Tree order is not enough: the stats
+     * HUD carries zIndex 30, the bottom bar 35 and the settings gear 5,
+     * and the card carried none — so the trophies, coins, gear and menu
+     * bar all punched straight through it on launch.
+     */
+    zIndex: 100,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#140c28',
@@ -111,7 +118,7 @@ const styles = StyleSheet.create({
   },
   studio: {
     position: 'absolute',
-    bottom: 64,
+    bottom: 104,
     alignItems: 'center',
   },
   studioLabel: {

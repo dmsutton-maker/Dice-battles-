@@ -172,7 +172,9 @@ export function InventoryScreen({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,16,40,0.96)',
+    // Solid, not 96%: the arena used to show faintly through every
+    // menu. Only the battle screen shows the board now.
+    backgroundColor: '#141028',
     // Above the Home screen's settings gear (zIndex 5), which used to
     // float on top of these screens and sit over their headers.
     zIndex: 20,

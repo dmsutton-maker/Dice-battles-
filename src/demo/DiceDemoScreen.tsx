@@ -872,6 +872,13 @@ export function DiceDemoScreen() {
       <StatusBar style="light" />
       <Canvas
         style={styles.canvas}
+        /*
+         * The board is not just hidden behind a menu — it stops rendering.
+         * Menus are only reachable from 'pick', where nothing is moving,
+         * so there is nothing to keep animating, and a phone should not
+         * be running a 3D scene nobody can see.
+         */
+        frameloop={menuTab === null ? 'always' : 'never'}
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
           camera.lookAt(0, 0, -0.2);

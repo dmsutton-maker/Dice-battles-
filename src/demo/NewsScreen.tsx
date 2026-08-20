@@ -50,7 +50,9 @@ export function NewsScreen() {
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,16,40,0.96)',
+    // Solid, not 96%: the arena used to show faintly through every
+    // menu. Only the battle screen shows the board now.
+    backgroundColor: '#141028',
     zIndex: 20,
     paddingTop: 100,
   },

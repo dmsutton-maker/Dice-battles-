@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { GoldCoin } from './GoldCoin';
 
 /**
  * Your trophies and your coins, in the same place on every screen.
@@ -28,8 +29,8 @@ export function StatsHud({
         <Text style={styles.value}>{trophies}</Text>
       </View>
       <View style={styles.pill}>
-        {/* Gold coins, per David — it used to be a generic token. */}
-        <Text style={styles.icon}>🪙</Text>
+        {/* Drawn, not 🪙 — see GoldCoin for why. */}
+        <GoldCoin size={16} />
         <Text style={[styles.value, styles.coinValue]}>{coins}</Text>
       </View>
     </View>

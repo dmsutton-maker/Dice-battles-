@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.11.2 — 2026-08-20 · requested by David
+
+### Fixed
+- **The trophies, coins, settings gear and bottom menu no longer show
+  through the title card.** They carried a zIndex (30, 5 and 35) and the
+  card carried none, so tree order counted for nothing and all four
+  punched through it on launch.
+- **Menu pages are solid.** They sat at 96% opacity, so the arena showed
+  faintly behind the Store, Cups, Items, Ranks and News. Settings stays
+  translucent on purpose — it is a popup over the game, not its own page.
+- **The board stops rendering behind a menu** rather than running unseen.
+
+### Changed
+- **The coin icon is a drawn gold coin** instead of 🪙, which renders
+  silver or flat depending on the phone.
+- The studio name sits a little higher on the title card.
+
 ## v1.11.1 — 2026-08-20 · requested by David
 
 ### Fixed
