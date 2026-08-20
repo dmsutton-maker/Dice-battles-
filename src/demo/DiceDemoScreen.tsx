@@ -1334,6 +1334,7 @@ export function DiceDemoScreen() {
             <ScrollView
               ref={settingsScrollRef}
               style={styles.settingsScroll}
+              contentContainerStyle={styles.settingsScrollContent}
               bounces={false}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -1768,6 +1769,16 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 1,
   },
+  settingsScrollContent: {
+    /*
+      Breathing room under the last thing on the page. Without it the final
+      row sits flush against the bottom edge of the scroll area and looks
+      clipped — and `bounces={false}` means you cannot even drag it into
+      view to check. Padding here rather than a margin on the version line
+      so anything added below it gets the same clearance.
+    */
+    paddingBottom: 26,
+  },
   // Same header as Store, Cups, Items, Ranks and News — it is one of
   // them now, so it should not look like a leftover dialog.
   settingsTitle: {
@@ -1816,6 +1827,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textAlign: 'center',
     marginTop: 10,
+    // Stated, so the glyph box is never tighter than the descenders in a
+    // version string need.
+    lineHeight: 15,
   },
   overlayClear: {
     ...StyleSheet.absoluteFillObject,

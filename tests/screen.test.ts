@@ -723,6 +723,42 @@ suite('release · the version number is real', () => {
   });
 });
 
+suite('screen · nothing sits flush against the bottom of Settings', () => {
+  const settings = readFileSync(
+    join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'),
+    'utf8',
+  );
+
+  test('the Settings scroll leaves room under its last row', () => {
+    // The version line was clipped because the scroll content ended exactly
+    // where the last child did. bounces={false} made it worse: you could not
+    // even drag it into view to see what was there.
+    assert(
+      /contentContainerStyle=\{styles\.settingsScrollContent\}/.test(settings),
+      'the Settings scroll has no content container style',
+    );
+    const style = settings.match(
+      /settingsScrollContent: \{[\s\S]*?\n  \},/,
+    )?.[0];
+    assert(style !== undefined, 'settingsScrollContent is not defined');
+    const pad = style!.match(/paddingBottom: (\d+)/);
+    assert(pad !== null, 'settingsScrollContent has no paddingBottom');
+    assert(
+      Number(pad![1]) >= 16,
+      `only ${pad![1]}px under the last row — not enough to clear the edge`,
+    );
+  });
+
+  test('the version line reserves its own height', () => {
+    const style = settings.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'versionLine is not defined');
+    assert(
+      /lineHeight: \d+/.test(style!),
+      'versionLine has no lineHeight, so descenders can clip',
+    );
+  });
+});
+
 suite('screen · the keyboard does not cover the code box', () => {
   const source = readFileSync(
     join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'),

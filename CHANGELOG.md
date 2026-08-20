@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.13.2 — 2026-08-20 · requested by David
+
+### Fixed
+- **The version number at the bottom of Settings was clipped.** The scroll
+  area ended exactly where its last row did, so the final line sat flush
+  against the edge — and `bounces={false}` meant you could not even drag it
+  into view to see what was cut. There is room under it now.
+- The padding sits on the scroll container rather than on the version line,
+  so anything added below it later gets the same clearance instead of
+  inheriting the same fault.
+
 ## v1.13.1 — 2026-08-20 · requested by David
 
 ### Fixed
