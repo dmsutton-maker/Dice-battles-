@@ -3,12 +3,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
 import { playEquip } from '../audio/sounds';
 import { MENU_PAGE_AREA } from './BottomNav';
+import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
-import { DICE_SKINS } from '../game/diceSkins';
 import {
   ARENA_ORDER,
   ARENA_UNLOCKS,
+  INVENTORY_SKIN_ORDER,
   isArenaUnlocked,
   isSkinUnlocked,
 } from '../game/loadout';
@@ -112,7 +113,7 @@ export function InventoryScreen({
           trophies; patterned ones are bought in the Store with coins.
         </Text>
         <View style={styles.grid}>
-          {DICE_SKINS.map((skin) => {
+          {INVENTORY_SKIN_ORDER.map((skin) => {
             const unlocked = isSkinUnlocked(skin.id, trophies);
             const equipped = skinId === skin.id;
             return (
@@ -139,7 +140,14 @@ export function InventoryScreen({
                 ) : unlocked ? (
                   <Text style={styles.tapTag}>Tap to use</Text>
                 ) : skin.price !== undefined ? (
-                  <Text style={styles.priceTag}>🛒 {skin.price} 🪙</Text>
+                  <CoinLabel
+                    coinFirst={false}
+                    size={12}
+                    style={styles.priceTagText}
+                    containerStyle={styles.priceTagRow}
+                  >
+                    🛒 {skin.price}
+                  </CoinLabel>
                 ) : (
                   <Text style={styles.priceTag}>
                     🔒 {priceFor(skin.unlock!)} 🏆
@@ -280,10 +288,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 3,
   },
+  priceTagText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '800',
+  },
   priceTag: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: 10,
     fontWeight: '800',
+    marginTop: 3,
+  },
+  // The drawn coin sits beside the text rather than inside it, so the gap
+  // under the card belongs to the row, not to the number.
+  priceTagRow: {
     marginTop: 3,
   },
 });

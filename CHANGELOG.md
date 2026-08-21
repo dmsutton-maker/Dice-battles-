@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.16.1 — 2026-08-21 · requested by David
+
+### Fixed
+- **Every price now shows the drawn gold coin.** The HUD had been drawing
+  its own coin for a while — three circles, guaranteed gold — while every
+  price tag in the Store and the Inventory still printed the coin emoji,
+  which renders silver on some phones and a flat disc on others. The same
+  currency wore two different faces one tab apart. Prices, Your Records and
+  the Settings message all use the drawn one now, through a single
+  `CoinLabel` so there is only one way to show coins.
+- **The Inventory lists dice cheapest first.** It was reading the raw list
+  in the order the dice were written down, and the Store prices were typed
+  out of sequence — 250, 300, 450, 400, 350 — so a 450-coin die sat above a
+  350-coin one. Trophy dice come first, cheapest up, then the coin dice,
+  cheapest up. The Store already sorted its own shelf; the Inventory never
+  did. The tests now pin both, and that every die is still listed exactly
+  once after sorting.
+
 ## v1.16.0 — 2026-08-21 · requested by David
 
 ### Changed

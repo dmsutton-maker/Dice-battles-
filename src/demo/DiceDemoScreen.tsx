@@ -379,8 +379,11 @@ export function DiceDemoScreen() {
       setWallet({ ...getWallet() });
       setCodeFeedback(
         coinCode.clamped
-          ? `🪙 That is more coins than the game holds — set to ${COIN_CODE_MAX.toLocaleString()}.`
-          : `🪙 Coins set to ${coins.toLocaleString()}.`,
+          // No coin emoji here: the game draws its own gold coin now, and
+          // this line sitting one tap away from the HUD was the last place
+          // still showing the other one.
+          ? `That is more coins than the game holds — set to ${COIN_CODE_MAX.toLocaleString()}.`
+          : `Coins set to ${coins.toLocaleString()}.`,
       );
       playFanfare();
     } else if (code === RESET_CODE) {

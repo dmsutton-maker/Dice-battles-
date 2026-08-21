@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 
 /**
  * A gold coin, drawn rather than an emoji.
@@ -41,7 +41,49 @@ export function GoldCoin({ size = 16 }: { size?: number }) {
   );
 }
 
+/**
+ * A number with the drawn coin beside it — a price on a card, a coin count
+ * in Your Records.
+ *
+ * It exists so there is ONE way to show coins. The HUD was already drawing
+ * the gold coin while every price tag still printed the coin emoji, so
+ * the same currency wore two different faces one tab apart.
+ *
+ * The coin is a View, so it cannot sit inside a Text the way an emoji did;
+ * this lays the two out in a row instead. Spacing that used to live on the
+ * text (a marginTop under the card) belongs on `containerStyle` now, or the
+ * text drifts a few points below the coin.
+ */
+export function CoinLabel({
+  children,
+  size = 13,
+  coinFirst = true,
+  style,
+  containerStyle,
+}: {
+  children: React.ReactNode;
+  size?: number;
+  /** False puts the coin after the number, as the Inventory tags read. */
+  coinFirst?: boolean;
+  style?: StyleProp<TextStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.labelRow, containerStyle]}>
+      {coinFirst && <GoldCoin size={size} />}
+      <Text style={style}>{children}</Text>
+      {!coinFirst && <GoldCoin size={size} />}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
   rim: {
     alignItems: 'center',
     justifyContent: 'center',

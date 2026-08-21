@@ -10,12 +10,17 @@ import {
   resetWalletForTests,
   setCoins,
 } from '../src/game/currency';
-import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
+import { DICE_SKINS, LADDER_SKINS, STORE_SKINS } from '../src/game/diceSkins';
 import { COIN_CODE_MAX, TIERS, UnlockId } from '../src/game/progress';
 
 const priceInTrophies = (id: UnlockId): number =>
   TIERS.find((t) => t.id === id)?.at ?? 0;
-import { isSkinUnlocked } from '../src/game/loadout';
+import {
+  ARENA_ORDER,
+  ARENA_UNLOCKS,
+  INVENTORY_SKIN_ORDER,
+  isSkinUnlocked,
+} from '../src/game/loadout';
 import { setUnlockAll } from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
 
@@ -329,5 +334,68 @@ suite('currency · the "500 COIN" code', () => {
     assertEqual(setCoins(999_999_999), COIN_CODE_MAX, 'capped at the ceiling');
     assertEqual(setCoins(-100), 0, 'never negative');
     assertEqual(setCoins(12.7), 12, 'whole coins only');
+  });
+});
+
+/**
+ * What order the cards come in. Price order is not decoration: a shelf that
+ * jumps 250 → 300 → 450 → 400 reads as random, and the whole point of
+ * showing a locked item is that the player can see what comes next.
+ */
+suite('inventory · everything is listed cheapest first', () => {
+  test('the dice run up in price, trophies first then coins', () => {
+    const ladder = INVENTORY_SKIN_ORDER.filter((s) => s.price === undefined);
+    const shop = INVENTORY_SKIN_ORDER.filter((s) => s.price !== undefined);
+
+    // The two groups must not interleave, or "then you can buy these" stops
+    // being true halfway down.
+    assertEqual(
+      INVENTORY_SKIN_ORDER.slice(0, ladder.length).every((s) => s.price === undefined),
+      true,
+      'every trophy die comes before every coin die',
+    );
+
+    const trophyCost = (id: UnlockId | null | undefined) =>
+      TIERS.find((t) => t.id === id)?.at ?? 0;
+    for (let i = 1; i < ladder.length; i++) {
+      assert(
+        trophyCost(ladder[i].unlock) >= trophyCost(ladder[i - 1].unlock),
+        `${ladder[i].name} (${trophyCost(ladder[i].unlock)}🏆) should not come after a dearer die`,
+      );
+    }
+    for (let i = 1; i < shop.length; i++) {
+      assert(
+        shop[i].price! >= shop[i - 1].price!,
+        `${shop[i].name} (${shop[i].price}) should not come after a dearer die`,
+      );
+    }
+    console.log(`    · inventory dice: ${INVENTORY_SKIN_ORDER.map((s) => s.name).join(', ')}`);
+  });
+
+  test('every die is listed exactly once', () => {
+    // A sort that drops or doubles a card is the failure that would not
+    // look like a bug — it would just look like an item you never earned.
+    assertEqual(INVENTORY_SKIN_ORDER.length, DICE_SKINS.length, 'same count as the full list');
+    assertEqual(
+      new Set(INVENTORY_SKIN_ORDER.map((s) => s.id)).size,
+      DICE_SKINS.length,
+      'no duplicates',
+    );
+    assertEqual(
+      LADDER_SKINS.length + STORE_SKINS.length,
+      DICE_SKINS.length,
+      'every die is either earned or bought, never neither',
+    );
+  });
+
+  test('the battlefields run up in price too', () => {
+    const cost = (id: (typeof ARENA_ORDER)[number]) =>
+      TIERS.find((t) => t.id === ARENA_UNLOCKS[id])?.at ?? 0;
+    for (let i = 1; i < ARENA_ORDER.length; i++) {
+      assert(
+        cost(ARENA_ORDER[i]) >= cost(ARENA_ORDER[i - 1]),
+        `${ARENA_ORDER[i]} (${cost(ARENA_ORDER[i])}🏆) is out of order`,
+      );
+    }
   });
 });

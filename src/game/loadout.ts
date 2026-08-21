@@ -1,8 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ARENAS, ArenaId } from '../arena/arenas';
-import { DEFAULT_SKIN_ID, DICE_SKINS, skinById } from './diceSkins';
+import {
+  DEFAULT_SKIN_ID,
+  DiceSkin,
+  DICE_SKINS,
+  LADDER_SKINS,
+  skinById,
+  STORE_SKINS,
+} from './diceSkins';
 import { owns } from './currency';
-import { hasUnlockAll, isUnlocked, UnlockId } from './progress';
+import { hasUnlockAll, isUnlocked, TIERS, UnlockId } from './progress';
 
 /**
  * What the player has EQUIPPED, as opposed to what they have earned
@@ -28,6 +35,30 @@ export const ARENA_UNLOCKS: Record<ArenaId, UnlockId> = {
 
 /** Display order in the Inventory — cheapest first. */
 export const ARENA_ORDER: ArenaId[] = ['castle', 'castleSunset', 'jungle', 'space'];
+
+/** What a ladder skin costs in trophies. Store skins cost none. */
+function trophyCost(skin: DiceSkin): number {
+  return TIERS.find((t) => t.id === skin.unlock)?.at ?? 0;
+}
+
+/**
+ * Display order for the dice in the Inventory: everything earned with
+ * trophies first, cheapest first, then everything bought with coins, also
+ * cheapest first.
+ *
+ * Sorted rather than hand-ordered because the raw DICE_SKINS list is
+ * declaration order, and the Store prices were written out of sequence —
+ * 250, 300, 450, 400, 350 — so the Inventory listed a 450 die above a 350
+ * one. The Store already sorted its own shelf; the Inventory was reading
+ * straight from the unsorted list.
+ *
+ * Trophy dice come first because they are the ones you cannot buy: the
+ * ladder is the spine of the screen, and the shop is what hangs off it.
+ */
+export const INVENTORY_SKIN_ORDER: DiceSkin[] = [
+  ...LADDER_SKINS.slice().sort((a, b) => trophyCost(a) - trophyCost(b)),
+  ...STORE_SKINS,
+];
 
 const STORAGE_KEY = 'dice-battles:loadout';
 const DEFAULT_LOADOUT: Loadout = { arenaId: 'castle', skinId: DEFAULT_SKIN_ID };

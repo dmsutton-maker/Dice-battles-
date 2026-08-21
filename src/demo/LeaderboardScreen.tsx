@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiDifficultyId } from '../game/ai';
 import { MENU_PAGE_AREA } from './BottomNav';
 import { getWallet } from '../game/currency';
+import { CoinLabel } from './GoldCoin';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
 
@@ -98,7 +99,9 @@ export function LeaderboardScreen({
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{wallet.coins}</Text>
-            <Text style={styles.statLabel}>🪙 Coins</Text>
+            <CoinLabel size={12} style={styles.statLabel}>
+              Coins
+            </CoinLabel>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{wallet.owned.length}</Text>

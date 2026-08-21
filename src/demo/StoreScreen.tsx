@@ -6,6 +6,7 @@ import { buyWithCoins, COIN_REWARDS, getWallet, owns } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
 import { Reward } from './RewardPopup';
 import { playClick } from '../audio/sounds';
+import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
 
 /**
@@ -88,9 +89,13 @@ export function StoreScreen({ onPurchase }: StoreScreenProps) {
                 {bought ? (
                   <Text style={styles.ownedTag}>OWNED</Text>
                 ) : (
-                  <Text style={[styles.price, !affordable && styles.priceShort]}>
-                    🪙 {skin.price}
-                  </Text>
+                  <CoinLabel
+                    size={13}
+                    style={[styles.priceText, !affordable && styles.priceShort]}
+                    containerStyle={styles.priceRow}
+                  >
+                    {skin.price}
+                  </CoinLabel>
                 )}
               </Pressable>
             );
@@ -192,7 +197,8 @@ const styles = StyleSheet.create({
   },
   swatchEmoji: { fontSize: 24 },
   cardName: { color: '#ffffff', fontSize: 12, fontWeight: '800', textAlign: 'center' },
-  price: { color: '#ffe521', fontSize: 12, fontWeight: '900', marginTop: 3 },
+  priceText: { color: '#ffe521', fontSize: 12, fontWeight: '900' },
+  priceRow: { marginTop: 3 },
   priceShort: { color: 'rgba(255,255,255,0.55)' },
   ownedTag: {
     color: '#33cc6b',
