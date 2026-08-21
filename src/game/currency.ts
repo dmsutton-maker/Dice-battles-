@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AiDifficultyId } from './ai';
+import { COIN_CODE_MAX } from './progress';
 import { RewardRange, rollReward } from './rewards';
 
 /**
@@ -86,9 +87,25 @@ export function awardCoins(
   return amount;
 }
 
-/** The MONEY code in Settings. Returns the new balance. */
+/** Hand over coins that were won — a cup prize. Returns the new balance. */
 export function grantCoins(amount: number): number {
   current = { ...current, coins: current.coins + Math.max(0, Math.floor(amount)) };
+  persist();
+  return current.coins;
+}
+
+/**
+ * The "500 COIN" code in Settings. Sets the balance outright rather than
+ * topping it up, so the Store can be looked at from any budget — including
+ * a smaller one than you already had, which is how you check that a price
+ * you cannot afford still reads as unaffordable.
+ *
+ * Nothing already bought is taken away: `owned` is a record of what was
+ * bought, and rewriting it would make the Inventory lie.
+ */
+export function setCoins(coins: number): number {
+  const asked = Number.isFinite(coins) ? Math.floor(coins) : 0;
+  current = { ...current, coins: Math.max(0, Math.min(asked, COIN_CODE_MAX)) };
   persist();
   return current.coins;
 }

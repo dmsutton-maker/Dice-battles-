@@ -8,9 +8,10 @@ import {
   getWallet,
   owns,
   resetWalletForTests,
+  setCoins,
 } from '../src/game/currency';
 import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
-import { TIERS, UnlockId } from '../src/game/progress';
+import { COIN_CODE_MAX, TIERS, UnlockId } from '../src/game/progress';
 
 const priceInTrophies = (id: UnlockId): number =>
   TIERS.find((t) => t.id === id)?.at ?? 0;
@@ -297,5 +298,36 @@ suite('currency · tester mode reaches the Store', () => {
     setUnlockAll(false);
     assert(!isSkinUnlocked(paid.id, 0), 'stayed unlocked after the code went off');
     assert(!owns(paid.id), 'tester mode quietly bought it');
+  });
+});
+
+/**
+ * The "500 COIN" code. It SETS the balance, the same way "500 TROPHY" sets
+ * the trophy count — so it has to be able to go down as readily as up, and
+ * it must not touch anything except the number of coins.
+ */
+suite('currency · the "500 COIN" code', () => {
+  test('sets the balance outright, up or down', () => {
+    resetWalletForTests({ coins: 0, owned: [] });
+    assertEqual(setCoins(500), 500, 'up from nothing');
+    assertEqual(getWallet().coins, 500, 'wallet agrees');
+    // Down is the point, not an accident: it is how an unaffordable price
+    // gets tested after you have already cheated yourself rich.
+    assertEqual(setCoins(50), 50, 'down again');
+    assertEqual(getWallet().coins, 50, 'wallet agrees going down');
+    assertEqual(setCoins(0), 0, 'all the way to empty');
+  });
+
+  test('what you already bought stays bought', () => {
+    resetWalletForTests({ coins: 1000, owned: ['bubbles'] });
+    setCoins(0);
+    assert(owns('bubbles'), 'emptying the wallet must not repossess items');
+  });
+
+  test('a silly number is clamped rather than stored', () => {
+    resetWalletForTests({ coins: 0, owned: [] });
+    assertEqual(setCoins(999_999_999), COIN_CODE_MAX, 'capped at the ceiling');
+    assertEqual(setCoins(-100), 0, 'never negative');
+    assertEqual(setCoins(12.7), 12, 'whole coins only');
   });
 });

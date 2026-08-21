@@ -58,16 +58,16 @@ import {
 import {
   applyMatchResult,
   parseTrophyCode,
+  parseCoinCode,
   setTrophies as writeTrophies,
   TROPHY_CODE_MAX,
+  COIN_CODE_MAX,
   getProgress,
   isUnlocked,
   loadProgress,
   nextTier,
   setUnlockAll as persistUnlockAll,
   TESTER_CODE,
-  MONEY_CODE,
-  MONEY_CODE_COINS,
   RESET_CODE,
   TESTER_LOCK_CODE,
   TIERS,
@@ -90,6 +90,7 @@ import {
   awardCoins,
   getWallet,
   grantCoins,
+  setCoins as writeCoins,
   clearPurchases,
   loadWallet,
   spendCoins,
@@ -362,18 +363,25 @@ export function DiceDemoScreen() {
   const submitCode = useCallback(() => {
     const code = codeInput.trim().toUpperCase();
     setCodeInput('');
-    // Parsed once, up front: "500 TROPHY" carries a value, so it cannot be
-    // matched by comparison like the others.
+    // Parsed once, up front: "500 TROPHY" and "500 COIN" carry a value, so
+    // they cannot be matched by comparison like the others.
     const trophyCode = parseTrophyCode(code);
+    const coinCode = parseCoinCode(code);
     if (code === TESTER_CODE) {
       persistUnlockAll(true);
       setUnlockAll(true);
       setCodeFeedback('🔓 Everything unlocked — have fun testing!');
       playFanfare();
-    } else if (code === MONEY_CODE) {
-      grantCoins(MONEY_CODE_COINS);
+    } else if (coinCode) {
+      // Checked before the catch-all, so "500 COIN" is never met with
+      // "that's not the secret code".
+      const coins = writeCoins(coinCode.coins);
       setWallet({ ...getWallet() });
-      setCodeFeedback(`🪙 ${MONEY_CODE_COINS.toLocaleString()} coins added!`);
+      setCodeFeedback(
+        coinCode.clamped
+          ? `🪙 That is more coins than the game holds — set to ${COIN_CODE_MAX.toLocaleString()}.`
+          : `🪙 Coins set to ${coins.toLocaleString()}.`,
+      );
       playFanfare();
     } else if (code === RESET_CODE) {
       const removed = clearPurchases();

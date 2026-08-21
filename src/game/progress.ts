@@ -95,9 +95,6 @@ export function tierLabel(tier: Tier, _trophies: number): { name: string; emoji:
  */
 export const TESTER_CODE = 'FAMILY';
 
-/** Tops the wallet up, for testing the Store without grinding for coins. */
-export const MONEY_CODE = 'MONEY';
-export const MONEY_CODE_COINS = 10000;
 export const TESTER_LOCK_CODE = 'LOCK';
 
 /**
@@ -108,25 +105,58 @@ export const TESTER_LOCK_CODE = 'LOCK';
 export const RESET_CODE = 'RESET';
 
 /**
- * "500 TROPHY" — set the trophy count to exactly that number.
+ * "500 TROPHY" and "500 COIN" — set that count to exactly that number.
  *
- * Unlike the other codes this one carries a value, so it is parsed rather
- * than compared. It SETS rather than adds: the point is to stand at a
- * chosen rung of the ladder and look at what is unlocked there, which
- * means being able to go down as readily as up.
+ * Unlike the other codes these carry a value, so they are parsed rather
+ * than compared. They SET rather than add: the point is to stand at a
+ * chosen rung of the ladder, or in front of the Store with a chosen
+ * balance, and look at what that buys — which means being able to go down
+ * as readily as up.
  *
  * The word may come either side of the number. A child typing a cheat code
  * should not have to remember which way round it goes, and "TROPHY 500"
  * cannot mean anything else.
  */
 export const TROPHY_CODE_WORD = 'TROPHY';
+export const COIN_CODE_WORD = 'COIN';
 
 /**
- * The ceiling. The top of the ladder is a few hundred, so anything past
- * this is a typo or somebody leaning on a key — and a count that wide
- * breaks the HUD layout it has to fit inside.
+ * The ceilings. The top of the ladder is a few hundred trophies, so
+ * anything past this is a typo or somebody leaning on a key — and a count
+ * that wide breaks the HUD layout it has to fit inside. Coins get a wider
+ * ceiling because they legitimately pile up as you play, but not so wide
+ * that the pill in the HUD stops fitting.
  */
 export const TROPHY_CODE_MAX = 99_999;
+export const COIN_CODE_MAX = 999_999;
+
+/** The shape both value-carrying codes read into. */
+interface NumberCode {
+  /** What the count will actually be set to, after clamping. */
+  value: number;
+  /** True when the typed number was above the ceiling and was reduced. */
+  clamped: boolean;
+}
+
+/**
+ * Read "500 WORD" (or "WORD 500"). Returns null when this is not that code
+ * at all, so the caller can fall through to the other codes.
+ *
+ * The input arrives already trimmed and upper-cased from Settings; doing
+ * it again here keeps the function honest on its own.
+ */
+function parseNumberCode(raw: string, word: string, max: number): NumberCode | null {
+  const text = raw.trim().toUpperCase();
+  const match =
+    text.match(new RegExp(`^(\\d+)\\s*${word}$`)) ??
+    text.match(new RegExp(`^${word}\\s*(\\d+)$`));
+  if (!match) return null;
+
+  const asked = Number(match[1]);
+  // A number long enough to overflow is not a number anyone meant.
+  if (!Number.isFinite(asked)) return null;
+  return { value: Math.min(asked, max), clamped: asked > max };
+}
 
 export interface TrophyCode {
   /** What the trophy count will actually be set to, after clamping. */
@@ -135,27 +165,23 @@ export interface TrophyCode {
   clamped: boolean;
 }
 
-/**
- * Read "500 TROPHY" (or "TROPHY 500"). Returns null when this is not a
- * trophy code at all, so the caller can fall through to the other codes.
- *
- * The input arrives already trimmed and upper-cased from Settings; doing
- * it again here keeps the function honest on its own.
- */
-export function parseTrophyCode(raw: string): TrophyCode | null {
-  const text = raw.trim().toUpperCase();
-  const match =
-    text.match(new RegExp(`^(\\d+)\\s*${TROPHY_CODE_WORD}$`)) ??
-    text.match(new RegExp(`^${TROPHY_CODE_WORD}\\s*(\\d+)$`));
-  if (!match) return null;
+export interface CoinCode {
+  /** What the coin balance will actually be set to, after clamping. */
+  coins: number;
+  /** True when the typed number was above the ceiling and was reduced. */
+  clamped: boolean;
+}
 
-  const asked = Number(match[1]);
-  // A number long enough to overflow is not a number anyone meant.
-  if (!Number.isFinite(asked)) return null;
-  return {
-    trophies: Math.min(asked, TROPHY_CODE_MAX),
-    clamped: asked > TROPHY_CODE_MAX,
-  };
+/** Read "500 TROPHY" (or "TROPHY 500"). */
+export function parseTrophyCode(raw: string): TrophyCode | null {
+  const code = parseNumberCode(raw, TROPHY_CODE_WORD, TROPHY_CODE_MAX);
+  return code && { trophies: code.value, clamped: code.clamped };
+}
+
+/** Read "500 COIN" (or "COIN 500"). */
+export function parseCoinCode(raw: string): CoinCode | null {
+  const code = parseNumberCode(raw, COIN_CODE_WORD, COIN_CODE_MAX);
+  return code && { coins: code.value, clamped: code.clamped };
 }
 
 /**

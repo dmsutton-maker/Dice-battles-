@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.16.0 — 2026-08-21 · requested by David
+
+### Changed
+- **MONEY is gone; the coin code is now "X COIN".** Type `500 COIN` and
+  you have exactly 500 coins — the same way `500 TROPHY` sets the trophy
+  count. The word can go either side of the number (`COIN 500` works too),
+  and case and spacing do not matter.
+- Setting rather than adding is the point: the old code only ever handed
+  over another 10,000, so once you were rich there was no way back down to
+  see how the Store looks to a player who is not. Now there is.
+- Coins stop at 999,999 — past that the number stops fitting the pill in
+  the corner. Anything you already bought stays bought, even if you set
+  yourself to zero.
+
 ## v1.15.1 — 2026-08-21 · requested by David
 
 ### Fixed

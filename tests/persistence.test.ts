@@ -12,8 +12,10 @@ import {
   applyMatchResult,
   getProgress,
   isUnlocked,
+  parseCoinCode,
   parseTrophyCode,
   setTrophies,
+  COIN_CODE_MAX,
   TROPHY_CODE_MAX,
 } from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
@@ -95,7 +97,7 @@ suite('codes · "500 TROPHY" sets the trophy count', () => {
   test('anything that is not a trophy code returns null', () => {
     // Must be null rather than 0, or the caller cannot fall through to the
     // other codes and every wrong entry would wipe the player's trophies.
-    for (const input of ['TROPHY', 'MONEY', 'RESET', '', 'FIVE TROPHY', 'TROPHY TROPHY', '-5 TROPHY', '1.5 TROPHY', '500 TROPHIES']) {
+    for (const input of ['TROPHY', 'COIN', '500 COIN', 'RESET', '', 'FIVE TROPHY', 'TROPHY TROPHY', '-5 TROPHY', '1.5 TROPHY', '500 TROPHIES']) {
       assertEqual(parseTrophyCode(input), null, `"${input}" should not parse`);
     }
   });
@@ -139,5 +141,38 @@ suite('codes · "500 TROPHY" sets the trophy count', () => {
     const winsBefore = getProgress().wins.easy;
     setTrophies(900);
     assertEqual(getProgress().wins.easy, winsBefore, 'easy wins unchanged');
+  });
+});
+
+suite('codes · "500 COIN" sets the coin balance', () => {
+  test('reads the number, either side of the word', () => {
+    assertEqual(parseCoinCode('500 COIN')?.coins, 500, '500 COIN');
+    assertEqual(parseCoinCode('137 COIN')?.coins, 137, '137 COIN');
+    assertEqual(parseCoinCode('COIN 42')?.coins, 42, 'word first');
+    assertEqual(parseCoinCode('0 COIN')?.coins, 0, 'zero is a real answer');
+    // Typed by a child, so be forgiving about spacing and case.
+    assertEqual(parseCoinCode('  250coin  ')?.coins, 250, 'no space, padded');
+    assertEqual(parseCoinCode('250 coin')?.coins, 250, 'lower case');
+  });
+
+  test('anything that is not a coin code returns null', () => {
+    // Must be null rather than 0, or the caller cannot fall through to the
+    // other codes and every wrong entry would empty the player's wallet.
+    for (const input of ['COIN', 'TROPHY', '500 TROPHY', 'RESET', '', 'FIVE COIN', 'COIN COIN', '-5 COIN', '1.5 COIN', '500 COINS']) {
+      assertEqual(parseCoinCode(input), null, `"${input}" should not parse`);
+    }
+  });
+
+  test('MONEY is no longer a code at all', () => {
+    // It was replaced by "X COIN"; nothing should quietly still answer to it.
+    assertEqual(parseCoinCode('MONEY'), null, 'MONEY does not parse');
+    assertEqual(parseTrophyCode('MONEY'), null, 'MONEY is not a trophy code either');
+  });
+
+  test('an absurd number is capped rather than accepted', () => {
+    const huge = parseCoinCode('999999999999 COIN');
+    assertEqual(huge?.coins, COIN_CODE_MAX, 'capped value');
+    assertEqual(huge?.clamped, true, 'reports that it capped');
+    assertEqual(parseCoinCode('500 COIN')?.clamped, false, 'a sane number is not capped');
   });
 });
