@@ -218,3 +218,61 @@ suite('popup layout · the code matches what was measured', () => {
     );
   });
 });
+
+suite('popup layout · Settings sits inside its panel', () => {
+  const screen = readFileSync(
+    join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'),
+    'utf8',
+  );
+  const popup = readFileSync(join(__dirname, '..', 'src/demo/Popup.tsx'), 'utf8');
+
+  test('the rows are inset, not flush against the panel border', () => {
+    // They had no horizontal padding at all, so every slider and button ran
+    // edge to edge against a rounded border while the title sat inside it.
+    const style = screen.match(/settingsScrollContent: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'settingsScrollContent is not defined');
+    const pad = style!.match(/paddingHorizontal: (\d+)/);
+    assert(pad !== null, 'the settings rows have no horizontal inset');
+    assert(
+      Number(pad![1]) >= 12,
+      `only ${pad![1]}px of inset — the rows still crowd the panel edge`,
+    );
+  });
+
+  test('the rows line up with the popup title above them', () => {
+    // Two different insets in one panel reads as a mistake even when
+    // nobody can say which number is wrong.
+    const rows = screen
+      .match(/settingsScrollContent: \{[\s\S]*?\n  \},/)?.[0]
+      .match(/paddingHorizontal: (\d+)/)?.[1];
+    const header = popup
+      .match(/header: \{[\s\S]*?\n  \},/)?.[0]
+      .match(/paddingHorizontal: (\d+)/)?.[1];
+    assert(rows !== undefined && header !== undefined, 'could not read both insets');
+    assert(
+      rows === header,
+      `rows inset ${rows}px but the title ${header}px — they should agree`,
+    );
+  });
+
+  test('the sliders still measure themselves, so narrowing them is safe', () => {
+    // The whole reason this change is safe: a slider reads its live width
+    // and page position from onLayout rather than assuming either.
+    const slider = readFileSync(
+      join(__dirname, '..', 'src/demo/VolumeSlider.tsx'),
+      'utf8',
+    );
+    assert(
+      /widthRef\.current = event\.nativeEvent\.layout\.width/.test(slider),
+      'the slider no longer reads its width on layout — a resize would break the touch maths',
+    );
+    assert(
+      /stripRef\.current\?\.measure\(/.test(slider),
+      'the slider no longer re-measures its page position on layout',
+    );
+    assert(
+      /onLayout=\{onLayout\}/.test(slider),
+      'the slider never runs its layout handler',
+    );
+  });
+});

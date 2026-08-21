@@ -1809,11 +1809,23 @@ const styles = StyleSheet.create({
   },
   settingsScrollContent: {
     /*
+      Inset to match the popup's own title row, which carries the same 18.
+      The rows had NO horizontal padding, so every slider and button ran
+      edge to edge against the panel's rounded border while the title sat
+      neatly inside it — the settings looked wider than the panel holding
+      them.
+
+      Safe to narrow the sliders: each one measures its own width and its
+      page position on layout, and React Native re-fires that whenever the
+      width changes, so the touch maths follows the new size rather than
+      remembering the old one.
+    */
+    paddingHorizontal: 18,
+    /*
       Breathing room under the last thing on the page. Without it the final
       row sits flush against the bottom edge of the scroll area and looks
-      clipped — and `bounces={false}` means you cannot even drag it into
-      view to check. Padding here rather than a margin on the version line
-      so anything added below it gets the same clearance.
+      clipped. Padding here rather than a margin on the version line so
+      anything added below it gets the same clearance.
     */
     paddingBottom: 26,
   },
