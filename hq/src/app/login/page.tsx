@@ -128,8 +128,8 @@ function LoginForm() {
       )}
 
       <p className="faint">
-        Forgotten your password? Ask David — he can set you a new one from
-        the People page in seconds.
+        Forgotten your password? Ask whoever set your account up — they can
+        give you a new one from the People page in seconds.
       </p>
     </main>
   );

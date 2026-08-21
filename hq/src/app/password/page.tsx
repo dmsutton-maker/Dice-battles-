@@ -51,8 +51,9 @@ export default async function PasswordPage() {
       </form>
 
       <p className="faint">
-        Forgotten it later? David can set you a new one from the People
-        page, and you will land back here to choose your own again.
+        Forgotten it later? Whoever set your account up can give you a new
+        one from the People page, and you will land back here to choose
+        your own again.
       </p>
     </main>
   );
