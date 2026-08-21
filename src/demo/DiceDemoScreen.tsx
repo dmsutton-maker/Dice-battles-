@@ -1864,6 +1864,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   versionLine: {
+    // The one row outside the scroll, so it needs the inset stated rather
+    // than inherited — otherwise it is the only line in the popup still
+    // running the full panel width. Invisible while the version string is
+    // short and centred; not invisible the first time it is not.
+    paddingHorizontal: 18,
     marginTop: 10,
     color: 'rgba(255,255,255,0.38)',
     fontSize: 11,

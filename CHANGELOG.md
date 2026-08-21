@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.15.1 — 2026-08-21 · requested by David
+
+### Fixed
+- **The Settings rows no longer run to the edges of the panel.** They had
+  no horizontal inset at all, so every slider, toggle and button pressed
+  against the rounded border while the title sat neatly inside it. All of
+  it now shares the title's inset, including the version line — which sits
+  outside the scrolling area and so needed telling separately.
+- Narrowing the sliders is safe because each reads its live width and
+  screen position when it lays out, rather than assuming either, so the
+  touch maths follows the new size. The test suite now asserts those two
+  reads still exist: losing them is what would make this break quietly
+  later rather than loudly now.
+
 ## v1.15.0 — 2026-08-20 · requested by David
 
 ### Changed

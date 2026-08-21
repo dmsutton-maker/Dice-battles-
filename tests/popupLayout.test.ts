@@ -255,6 +255,18 @@ suite('popup layout · Settings sits inside its panel', () => {
     );
   });
 
+  test('the version line is inset too, though it sits outside the scroll', () => {
+    // It is a sibling of the ScrollView, so the content inset does not
+    // reach it. Harmless while the version is short and centred, and the
+    // only line in the popup running full width the moment it is not.
+    const style = screen.match(/versionLine: \{[\s\S]*?\n  \},/)?.[0];
+    assert(style !== undefined, 'versionLine is not defined');
+    assert(
+      /paddingHorizontal: \d+/.test(style!),
+      'the version line has no inset, so it runs wider than every row above it',
+    );
+  });
+
   test('the sliders still measure themselves, so narrowing them is safe', () => {
     // The whole reason this change is safe: a slider reads its live width
     // and page position from onLayout rather than assuming either.
