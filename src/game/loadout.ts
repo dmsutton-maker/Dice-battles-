@@ -135,10 +135,21 @@ export function activeArena(trophies: number): ArenaId {
   return owned[owned.length - 1] ?? 'castle';
 }
 
-/** The dice shell colour actually used, with the same fallback rule. */
-export function activeDieBody(trophies: number): string {
-  const skin = isSkinUnlocked(current.skinId, trophies)
+/**
+ * The dice skin actually used, with the same fallback rule as the arena.
+ *
+ * The whole skin, not just its colour: the board used to take the body
+ * colour from here (which falls back) and the pattern straight from the
+ * stored id (which does not), so a locked patterned die rendered as ivory
+ * wearing zebra stripes. One resolved skin cannot disagree with itself.
+ */
+export function activeSkin(trophies: number): DiceSkin {
+  return isSkinUnlocked(current.skinId, trophies)
     ? skinById(current.skinId)
     : skinById(DEFAULT_SKIN_ID);
-  return skin.body;
+}
+
+/** The dice shell colour actually used, with the same fallback rule. */
+export function activeDieBody(trophies: number): string {
+  return activeSkin(trophies).body;
 }

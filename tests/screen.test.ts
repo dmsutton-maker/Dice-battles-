@@ -655,10 +655,47 @@ suite('screen · the board belongs to the battle screen', () => {
 
   test('the board stops rendering while a menu is open', () => {
     const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    // A preview is the exception, and the only one: it shows the board
+    // deliberately, with the item you tapped swapped in. Everything else
+    // behind a menu is a 3D scene nobody can see.
     assert(
-      /frameloop=\{menuTab === null \? 'always' : 'never'\}/.test(source),
+      /frameloop=\{menuTab === null \|\| preview !== null \? 'always' : 'never'\}/.test(
+        source,
+      ),
       'the 3D scene keeps running behind menus nobody can see',
     );
+  });
+
+  /**
+   * The preview only works because the board is visible underneath it. Two
+   * things could quietly take that away: an opaque menu page left mounted
+   * over it, or the tab bar sitting across the button.
+   */
+  test('nothing opaque is left over the board while a preview is open', () => {
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    for (const tab of ['store', 'leaderboard', 'inventory', 'cups']) {
+      assert(
+        new RegExp(`menuTab === '${tab}' && preview === null &&`).test(source),
+        `the ${tab} page stays up during a preview and hides the board`,
+      );
+    }
+    assert(
+      /preview === null && <BottomNav/.test(source),
+      'the tab bar stays over the preview, across its button',
+    );
+  });
+
+  test('the previewed item is what the board draws', () => {
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    // If the scene read the equipped ids directly, the preview would show
+    // the item you already have and quietly lie about the one you tapped.
+    for (const prop of [
+      'arenaId={sceneArenaId}',
+      'diePattern={sceneSkin.pattern}',
+      'diePatternInk={sceneSkin.ink}',
+    ]) {
+      assert(source.includes(prop), `the scene does not take ${prop}`);
+    }
   });
 });
 

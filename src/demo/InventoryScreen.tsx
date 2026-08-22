@@ -1,8 +1,9 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
-import { playEquip } from '../audio/sounds';
+import { playClick } from '../audio/sounds';
 import { MENU_PAGE_AREA } from './BottomNav';
+import { PreviewTarget } from '../game/itemPreview';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
@@ -26,8 +27,12 @@ interface InventoryScreenProps {
   trophies: number;
   arenaId: ArenaId;
   skinId: string;
-  onEquipArena: (id: ArenaId) => void;
-  onEquipSkin: (id: string) => void;
+  /**
+   * Opens the item on the real battlefield. Equipping happens there now,
+   * not here — a 58pt thumbnail is not enough to choose from, and it was
+   * never enough to tell Frost from Starry.
+   */
+  onPreview: (target: PreviewTarget) => void;
 }
 
 function priceFor(unlockId: string): number {
@@ -38,8 +43,7 @@ export function InventoryScreen({
   trophies,
   arenaId,
   skinId,
-  onEquipArena,
-  onEquipSkin,
+  onPreview,
 }: InventoryScreenProps) {
   return (
     <View style={styles.overlay}>
@@ -54,9 +58,9 @@ export function InventoryScreen({
       >
         <Text style={styles.sectionTitle}>BATTLEFIELDS</Text>
         <Text style={styles.sectionNote}>
-          Where your battles are fought. Every battlefield plays exactly the
-          same — only the view changes. Hills and moats come from the
-          difficulty you pick, not from the arena.
+          Tap one to stand on it and look around before you choose. Every
+          battlefield plays exactly the same — only the view changes. Hills
+          and moats come from the difficulty you pick, not from the arena.
         </Text>
         <View style={styles.grid}>
           {ARENA_ORDER.map((id) => {
@@ -70,10 +74,11 @@ export function InventoryScreen({
             return (
               <Pressable
                 key={id}
-                disabled={!unlocked}
+                // Locked items open too: seeing the battlefield you are
+                // saving for is the reason a locked card is shown at all.
                 onPress={() => {
-                  playEquip();
-                  onEquipArena(id);
+                  playClick();
+                  onPreview({ kind: 'arena', id });
                 }}
                 style={[
                   styles.card,
@@ -95,7 +100,7 @@ export function InventoryScreen({
                 {equipped ? (
                   <Text style={styles.equippedTag}>EQUIPPED</Text>
                 ) : unlocked ? (
-                  <Text style={styles.tapTag}>Tap to use</Text>
+                  <Text style={styles.tapTag}>Tap to see</Text>
                 ) : (
                   <Text style={styles.priceTag}>
                     🔒 {priceFor(ARENA_UNLOCKS[id])} 🏆
@@ -108,9 +113,10 @@ export function InventoryScreen({
 
         <Text style={styles.sectionTitle}>DICE</Text>
         <Text style={styles.sectionNote}>
-          Only the shell changes — the six face colours always stay the same,
-          so a match is always a match. Plain colours are earned with
-          trophies; patterned ones are bought in the Store with coins.
+          Tap a set to see it out on the board, and use it from there. Only
+          the shell changes — the six face colours always stay the same, so a
+          match is always a match. Plain colours are earned with trophies;
+          patterned ones are bought in the Store with coins.
         </Text>
         <View style={styles.grid}>
           {INVENTORY_SKIN_ORDER.map((skin) => {
@@ -119,10 +125,9 @@ export function InventoryScreen({
             return (
               <Pressable
                 key={skin.id}
-                disabled={!unlocked}
                 onPress={() => {
-                  playEquip();
-                  onEquipSkin(skin.id);
+                  playClick();
+                  onPreview({ kind: 'die', id: skin.id });
                 }}
                 style={[
                   styles.card,
@@ -138,7 +143,7 @@ export function InventoryScreen({
                 {equipped ? (
                   <Text style={styles.equippedTag}>EQUIPPED</Text>
                 ) : unlocked ? (
-                  <Text style={styles.tapTag}>Tap to use</Text>
+                  <Text style={styles.tapTag}>Tap to see</Text>
                 ) : skin.price !== undefined ? (
                   <CoinLabel
                     coinFirst={false}

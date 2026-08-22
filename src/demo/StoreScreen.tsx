@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STORE_SKINS } from '../game/diceSkins';
 import { MENU_PAGE_AREA } from './BottomNav';
-import { buyWithCoins, COIN_REWARDS, getWallet, owns } from '../game/currency';
+import { COIN_REWARDS, Wallet } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
-import { Reward } from './RewardPopup';
 import { playClick } from '../audio/sounds';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
@@ -18,30 +17,18 @@ import { DiceSwatch } from './DiceSwatch';
  * screen rather than only being true in the code.
  */
 interface StoreScreenProps {
-  /** Reports what was bought, so the reward popup can celebrate it. */
-  onPurchase: (bought: Reward | null) => void;
+  /**
+   * Passed in rather than read here, because buying now happens in the
+   * preview. This screen is mounted the whole time a preview is open over
+   * it, so reading the wallet once on mount would leave it showing the old
+   * balance and the old OWNED tags the moment you came back.
+   */
+  wallet: Wallet;
+  /** Opens the die on the real battlefield, where it is bought. */
+  onPreview: (skinId: string) => void;
 }
 
-export function StoreScreen({ onPurchase }: StoreScreenProps) {
-  const [wallet, setWallet] = useState(getWallet());
-  const [message, setMessage] = useState<string | null>(null);
-
-  const buy = (id: string, price: number, name: string, emoji: string) => {
-    const result = buyWithCoins(id, price);
-    if (result.ok) {
-      setWallet({ ...getWallet() });
-      setMessage(null);
-      onPurchase({
-        emoji,
-        name,
-        kicker: 'PURCHASED',
-        note: 'Head to the Inventory to equip it.',
-      });
-    } else if (result.reason === 'too-expensive') {
-      setMessage(`${name} costs ${price} coins — keep battling!`);
-    }
-  };
-
+export function StoreScreen({ wallet, onPreview }: StoreScreenProps) {
   return (
     <View style={styles.overlay}>
       {/* No coin count here — the shared HUD shows it on every screen. */}
@@ -61,22 +48,29 @@ export function StoreScreen({ onPurchase }: StoreScreenProps) {
 
         <Text style={styles.sectionTitle}>PATTERNED DICE</Text>
         <Text style={styles.sectionNote}>
-          Earn coins every battle: {rangeLabel(COIN_REWARDS.easy.win)} for an
-          Easy win, up to {rangeLabel(COIN_REWARDS.hard.win)} on Hard. Losing
-          still pays a little — it never costs you coins.
+          Tap any dice to see them on the battlefield before you spend a
+          coin — that is where you buy them too. Only the shell changes: the
+          six colours on the faces are the same on every set, so a match is
+          always a match.
+        </Text>
+        <Text style={styles.sectionNote}>
+          Coins come from playing. {rangeLabel(COIN_REWARDS.easy.win)} for an
+          Easy win, up to {rangeLabel(COIN_REWARDS.hard.win)} on Hard, and
+          losing still pays a little — it never costs you coins.
         </Text>
 
         <View style={styles.grid}>
           {STORE_SKINS.map((skin) => {
-            const bought = owns(skin.id);
+            const bought = wallet.owned.includes(skin.id);
             const affordable = wallet.coins >= skin.price!;
             return (
               <Pressable
                 key={skin.id}
-                disabled={bought}
+                // Owned dice are still tappable now: the preview is where
+                // you put them on, so a card you cannot open is a dead end.
                 onPress={() => {
                   playClick();
-                  buy(skin.id, skin.price!, skin.name, skin.emoji);
+                  onPreview(skin.id);
                 }}
                 style={[
                   styles.card,
@@ -112,8 +106,6 @@ export function StoreScreen({ onPurchase }: StoreScreenProps) {
           </Text>
         </View>
       </ScrollView>
-
-      {message && <Text style={styles.message}>{message}</Text>}
 
       {/*
         No Done button. It used to sit here and it never worked: the tab
@@ -222,13 +214,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 17,
   },
-  message: {
-    color: '#ffe521',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 10,
-    paddingHorizontal: 20,
-  },
-  doneText: { color: '#241c40', fontSize: 16, fontWeight: '900' },
 });

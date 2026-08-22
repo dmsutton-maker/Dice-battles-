@@ -19,9 +19,12 @@ import {
 import { ArenaId, ARENAS } from '../arena/arenas';
 import {
   activeArena,
-  activeDieBody,
+  activeSkin,
+  ARENA_UNLOCKS,
   equipArena,
   equipSkin,
+  isArenaUnlocked,
+  isSkinUnlocked,
   getLoadout,
   loadLoadout,
 } from '../game/loadout';
@@ -37,6 +40,7 @@ import {
   initSounds,
   playCheer,
   playClick,
+  playEquip,
   playFanfare,
   playThrow,
   startMusic,
@@ -88,6 +92,7 @@ import { GAME_VERSION } from '../game/version';
 import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
 import {
   awardCoins,
+  buyWithCoins,
   getWallet,
   grantCoins,
   setCoins as writeCoins,
@@ -111,6 +116,11 @@ import { BOTTOM_INSET } from '../game/safeArea';
 import { NewsScreen } from './NewsScreen';
 import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
+import { ItemPreviewBar } from './ItemPreviewBar';
+import {
+  previewAction,
+  PreviewTarget,
+} from '../game/itemPreview';
 import { TournamentScreen } from './TournamentScreen';
 import {
   RunState,
@@ -236,6 +246,12 @@ export function DiceDemoScreen() {
   const [rewards, setRewards] = useState<Reward[]>([]);
 
   const [colorblind, setColorblind] = useState(false);
+  /**
+   * The item being tried on, if any. Nothing about the loadout changes
+   * while this is set — the board simply shows the previewed item instead
+   * of the equipped one until the preview closes.
+   */
+  const [preview, setPreview] = useState<PreviewTarget | null>(null);
   const [showBugReport, setShowBugReport] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -872,8 +888,90 @@ export function DiceDemoScreen() {
   // Equipped in the Inventory, falling back if it is no longer unlocked
   // (which happens when family tester mode is switched back off).
   const arenaId: ArenaId = activeArena(trophies);
-  const dieBodyColor = activeDieBody(trophies);
-  const equippedSkin = skinById(loadout.skinId);
+  const equippedSkin = activeSkin(trophies);
+  // What the board actually draws. While a preview is open that is the
+  // previewed item, which is the whole trick: there is no second scene and
+  // no painted mock-up, so the preview cannot disagree with the game.
+  const sceneArenaId: ArenaId =
+    preview?.kind === 'arena' ? preview.id : arenaId;
+  const sceneSkin =
+    preview?.kind === 'die' ? skinById(preview.id) : equippedSkin;
+  const dieBodyColor = sceneSkin.body;
+
+  const openPreview = (target: PreviewTarget) => setPreview(target);
+
+  /**
+   * Everything the preview bar needs to draw itself, worked out from the
+   * item being looked at. Null when nothing is open.
+   *
+   * The rules live in game/itemPreview.ts; this only looks up the name,
+   * the price and whether it is already yours.
+   */
+  const previewView = (() => {
+    if (!preview) return null;
+
+    if (preview.kind === 'arena') {
+      const arena = ARENAS[preview.id];
+      const need = TIERS.find((t) => t.id === ARENA_UNLOCKS[preview.id])?.at ?? 0;
+      return {
+        name: arena.name,
+        note: 'Every battlefield plays the same — only the view changes.',
+        action: previewAction({
+          trophies,
+          coins: wallet.coins,
+          owned: false,
+          unlocked: isArenaUnlocked(preview.id, trophies),
+          equipped: arenaId === preview.id,
+          needTrophies: need,
+        }),
+      };
+    }
+
+    const skin = skinById(preview.id);
+    return {
+      name: `${skin.emoji} ${skin.name} dice`,
+      note: 'The shell is all that changes — the six face colours never do.',
+      action: previewAction({
+        trophies,
+        coins: wallet.coins,
+        owned: skin.price !== undefined && wallet.owned.includes(skin.id),
+        // The board's own question, not a re-derivation of it. Asking
+        // "does it have a price?" instead would have charged a family
+        // tester for Store dice that tester mode had already opened.
+        unlocked: isSkinUnlocked(skin.id, trophies),
+        equipped: loadout.skinId === skin.id,
+        price: skin.price,
+        needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
+      }),
+    };
+  })();
+
+  /**
+   * The one button. Buying leaves the preview open on purpose — you have
+   * just paid for the thing, so the next tap should be putting it on, not
+   * finding it again in a list.
+   */
+  const commitPreview = () => {
+    if (!preview || !previewView) return;
+    const action = previewView.action;
+
+    if (action.kind === 'buy') {
+      const skin = skinById(preview.id);
+      const result = buyWithCoins(skin.id, action.price);
+      if (!result.ok) return;
+      setWallet({ ...getWallet() });
+      playFanfare();
+      return;
+    }
+
+    if (action.kind !== 'equip') return;
+    playEquip();
+    setLoadout(
+      preview.kind === 'arena'
+        ? { ...equipArena(preview.id) }
+        : { ...equipSkin(preview.id) },
+    );
+  };
   // In Color War both sides stand in the retreat row, so each side's
   // score is its own colour rather than everyone standing there.
   const inRetreat = (colorId: PrisonerColorId) =>
@@ -1003,7 +1101,7 @@ export function DiceDemoScreen() {
     return (
       <TwoPlayerScreen
         arenaId={arenaId}
-        dieBodyColor={dieBodyColor}
+        dieBodyColor={equippedSkin.body}
         mode={mode}
         difficulty={difficulty}
         symbols={colorblind}
@@ -1023,20 +1121,20 @@ export function DiceDemoScreen() {
          * so there is nothing to keep animating, and a phone should not
          * be running a 3D scene nobody can see.
          */
-        frameloop={menuTab === null ? 'always' : 'never'}
+        frameloop={menuTab === null || preview !== null ? 'always' : 'never'}
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
           camera.lookAt(0, 0, -0.2);
         }}
       >
-        <color attach="background" args={[ARENAS[arenaId].skyColor]} />
+        <color attach="background" args={[ARENAS[sceneArenaId].skyColor]} />
         <DiceScene
-          key={`${difficulty}-${round}-${arenaId}`}
+          key={`${difficulty}-${round}-${sceneArenaId}`}
           layout={layout}
-          arenaId={arenaId}
+          arenaId={sceneArenaId}
           dieBodyColor={dieBodyColor}
-          diePattern={equippedSkin.pattern}
-          diePatternInk={equippedSkin.ink}
+          diePattern={sceneSkin.pattern}
+          diePatternInk={sceneSkin.ink}
           dieSymbols={colorblind}
           showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}
@@ -1263,37 +1361,49 @@ export function DiceDemoScreen() {
         buttons stay for the phone's own back gesture habits, and drop you
         on Battle.
       */}
-      {menuTab === 'store' && (
-        <StoreScreen
-          onPurchase={(bought) => {
-            setWallet({ ...getWallet() });
-            if (bought) setRewards((queue) => [...queue, bought]);
-          }}
-        />
+      {/*
+        The menu pages step aside while a preview is open. They are opaque
+        by design — the board used to glow through them — so leaving one up
+        would hide the very thing the preview exists to show.
+      */}
+      {menuTab === 'store' && preview === null && (
+        <StoreScreen wallet={wallet} onPreview={(id) => openPreview({ kind: 'die', id })} />
       )}
-      {menuTab === 'leaderboard' && (
+      {menuTab === 'leaderboard' && preview === null && (
         <LeaderboardScreen
           trophies={trophies}
           wins={wins}
           modeWins={modeWins}
         />
       )}
-      {menuTab === 'inventory' && (
+      {menuTab === 'inventory' && preview === null && (
         <InventoryScreen
           trophies={trophies}
           arenaId={arenaId}
           skinId={loadout.skinId}
-          onEquipArena={(id) => setLoadout({ ...equipArena(id) })}
-          onEquipSkin={(id) => setLoadout({ ...equipSkin(id) })}
+          onPreview={openPreview}
         />
       )}
-      {menuTab === 'cups' && (
+      {menuTab === 'cups' && preview === null && (
         <TournamentScreen
           coins={wallet.coins}
           run={run}
           onEnter={enterTournament}
           onPlayRound={playCupRound}
           onAbandon={() => setRun(null)}
+        />
+      )}
+
+      {previewView && (
+        <ItemPreviewBar
+          name={previewView.name}
+          note={previewView.note}
+          action={previewView.action}
+          onAct={commitPreview}
+          onClose={() => {
+            playClick();
+            setPreview(null);
+          }}
         />
       )}
 
@@ -1304,7 +1414,7 @@ export function DiceDemoScreen() {
         game-name bar had. The result screen reports the trophies and
         coins won in its own text anyway.
       */}
-      {phase === 'pick' && menuTab !== 'leaderboard' && (
+      {phase === 'pick' && menuTab !== 'leaderboard' && preview === null && (
         <StatsHud trophies={trophies} coins={wallet.coins} />
       )}
 
@@ -1313,7 +1423,7 @@ export function DiceDemoScreen() {
         the menus are up — mid-battle the board wants the whole screen, and
         a stray tap on a gear during a throw would be its own bug.
       */}
-      {phase === 'pick' && (
+      {phase === 'pick' && preview === null && (
         <TopButtons
           onSettings={() => setPopup('settings')}
           onNews={() => setPopup('news')}
@@ -1321,9 +1431,11 @@ export function DiceDemoScreen() {
       )}
 
       {/* The bar itself. Gone during a battle — the board wants the room. */}
-      {phase !== 'battle' && phase !== 'arm' && phase !== 'go' && phase !== 'matching' && (
-        <BottomNav active={tab} onSelect={setTab} />
-      )}
+      {phase !== 'battle' &&
+        phase !== 'arm' &&
+        phase !== 'go' &&
+        phase !== 'matching' &&
+        preview === null && <BottomNav active={tab} onSelect={setTab} />}
 
       {rewards.length > 0 && (
         <RewardPopup
@@ -1412,9 +1524,14 @@ export function DiceDemoScreen() {
               }}
             >
               <View style={styles.toggleText}>
-                <Text style={styles.toggleLabel}>
-                  {colorblind ? '🔷' : '⬜'} Colorblind mode
-                </Text>
+                {/*
+                  Always the shape, on or off. It used to swap to a blank
+                  white square when the mode was off, which read as a second
+                  empty checkbox next to the real one — and a setting called
+                  "shapes" losing its shape whenever it was off was the one
+                  state where the icon had nothing to say.
+                */}
+                <Text style={styles.toggleLabel}>🔷 Colorblind mode</Text>
                 <Text style={styles.toggleNote}>
                   Every colour gets its own shape, on the dice and the
                   prisoners.

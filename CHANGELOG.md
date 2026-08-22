@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.17.0 — 2026-08-21 · requested by David
+
+### Changed
+- **Every item opens as a preview now, and that is where you buy and equip
+  it.** Tapping a card in the Store or the Inventory no longer changes
+  anything — it puts that item out on the real battlefield at full size,
+  with the buy or use button underneath. A 58pt thumbnail was never enough
+  to choose from, and it was certainly not enough to tell Frost from
+  Starry.
+- The preview is not a picture of the game, it IS the game: the board is
+  already on screen, so opening a preview steps the menu aside and swaps
+  the previewed dice or battlefield into the scene you were already
+  looking at. Nothing is drawn twice, so nothing can disagree with the
+  table. Locked items open too — seeing the battlefield you are saving for
+  is the reason a locked card is shown at all.
+- The button says one of five things and only two of them can be pressed:
+  use it, buy it, or how many coins or trophies you still need. Coins and
+  trophies stay separate on purpose — one means keep saving, the other
+  means keep playing, and telling a five-year-old the wrong one is worse
+  than saying nothing.
+- **New wording for the dice in the Store**, which used to talk only about
+  how coins are earned and never about the dice themselves.
+- **The colourblind setting keeps its shape icon when it is off.** It used
+  to swap to a blank white square, which read as a second empty checkbox
+  beside the real one — and a setting about shapes losing its shape is the
+  one state where the icon has nothing to say.
+
+### Fixed
+- A dice skin that was locked again (after family tester mode went off)
+  drew as ivory wearing the locked skin's pattern. The board took the
+  shell colour from a resolver that falls back and the pattern straight
+  from the stored id, which does not. One resolved skin now feeds both.
+
 ## v1.16.1 — 2026-08-21 · requested by David
 
 ### Fixed
