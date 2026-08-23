@@ -37,7 +37,10 @@ export function ItemPreviewBar({
 }) {
   const pressable = isActionPressable(action);
   const label = actionLabel(action);
-  const showsCoin = action.kind === 'buy' || action.kind === 'unaffordable';
+  const showsCoin =
+    action.kind === 'buy' ||
+    action.kind === 'unaffordable' ||
+    action.kind === 'in-store';
 
   return (
     // Not a backdrop: the board behind is the whole point, so only the
@@ -80,9 +83,13 @@ export function ItemPreviewBar({
           )}
         </Pressable>
         <Text style={styles.hint}>
-          {pressable
-            ? 'Tap ✕ to go back without changing anything.'
-            : 'This is what it looks like on the board.'}
+          {action.kind === 'in-store'
+            ? // The one dead button that has somewhere to send you, so it
+              // says where rather than only that you cannot do it here.
+              'Dice are bought on the Store tab, not in your bag.'
+            : pressable
+              ? 'Tap ✕ to go back without changing anything.'
+              : 'This is what it looks like on the board.'}
         </Text>
       </View>
     </View>

@@ -18,10 +18,20 @@ import { ArenaId } from '../arena/arenas';
  * questions the screen must never get wrong.
  */
 
+/**
+ * Which shelf the preview was opened from.
+ *
+ * It decides whether the button can take money. Coins are spent in the
+ * Store and nowhere else — the Inventory is the cupboard, and a cupboard
+ * that quietly charges you is how a child spends 450 coins meaning to
+ * look at something.
+ */
+export type PreviewSource = 'store' | 'inventory';
+
 /** What is being looked at. Ids stay strings — the screens resolve them. */
 export type PreviewTarget =
-  | { kind: 'die'; id: string }
-  | { kind: 'arena'; id: ArenaId };
+  | { kind: 'die'; id: string; from: PreviewSource }
+  | { kind: 'arena'; id: ArenaId; from: PreviewSource };
 
 /**
  * What the button at the bottom of the preview offers.
@@ -35,6 +45,8 @@ export type PreviewAction =
   | { kind: 'equip' }
   | { kind: 'buy'; price: number }
   | { kind: 'unaffordable'; price: number; short: number }
+  /** For sale, but not from here — you are in the Inventory. */
+  | { kind: 'in-store'; price: number }
   | { kind: 'locked'; needTrophies: number; short: number };
 
 export interface PreviewState {
@@ -48,6 +60,11 @@ export interface PreviewState {
   equipped: boolean;
   /** Coin price, for Store items only. */
   price?: number;
+  /**
+   * Whether this preview is allowed to take coins. True only in the
+   * Store. Everywhere else a priced item points at the Store instead.
+   */
+  canBuy: boolean;
   /** Trophy cost, for ladder items only. */
   needTrophies?: number;
 }
@@ -64,6 +81,9 @@ export function previewAction(state: PreviewState): PreviewAction {
   if (state.owned || state.unlocked) return { kind: 'equip' };
 
   if (state.price !== undefined) {
+    // Checked before affordability on purpose: whether you happen to have
+    // the coins is not the question when you are stood in the cupboard.
+    if (!state.canBuy) return { kind: 'in-store', price: state.price };
     return state.coins >= state.price
       ? { kind: 'buy', price: state.price }
       : {
@@ -88,6 +108,8 @@ export function actionLabel(action: PreviewAction): string {
       return `Buy for ${action.price}`;
     case 'unaffordable':
       return `${action.short} more coins to go`;
+    case 'in-store':
+      return `In the Store for ${action.price}`;
     case 'locked':
       return `${action.short} more trophies to go`;
   }

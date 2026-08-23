@@ -17,6 +17,9 @@ const base: PreviewState = {
   owned: false,
   unlocked: false,
   equipped: false,
+  // The Store is where coins are spent, so that is the default these
+  // cases describe; the Inventory cases below say so explicitly.
+  canBuy: true,
 };
 
 suite('preview · what the button offers', () => {
@@ -92,5 +95,77 @@ suite('preview · what the button offers', () => {
       const label = actionLabel(previewAction(state));
       assert(label.length > 0, `${previewAction(state).kind} has a blank button`);
     }
+  });
+});
+
+/**
+ * Where coins may be spent. The Inventory is the cupboard: it shows what a
+ * Store die costs, but the button there must never take the money — a
+ * child looking at a 450-coin die in their own bag should not be one tap
+ * from having spent it.
+ */
+suite('preview · only the Store can take coins', () => {
+  test('a Store die previewed from the Inventory points at the Store', () => {
+    const action = previewAction({ ...base, canBuy: false, price: 300, coins: 9999 });
+    assertEqual(action.kind, 'in-store', 'must not offer to sell it');
+    assertEqual(actionLabel(action), 'In the Store for 300', 'names the price and the place');
+    assertEqual(isActionPressable(action), false, 'must not be pressable');
+  });
+
+  test('being able to afford it changes nothing in the Inventory', () => {
+    // The bug this guards is the tempting one: reading affordability first
+    // and only then asking where you are, so a rich player CAN buy from
+    // the cupboard and a poor one cannot.
+    for (const coins of [0, 299, 300, 100000]) {
+      assertEqual(
+        previewAction({ ...base, canBuy: false, price: 300, coins }).kind,
+        'in-store',
+        `with ${coins} coins, the Inventory still cannot sell`,
+      );
+    }
+  });
+
+  test('the same die in the Store behaves exactly as before', () => {
+    assertEqual(
+      previewAction({ ...base, canBuy: true, price: 300, coins: 300 }).kind,
+      'buy',
+      'the Store still sells',
+    );
+    assertEqual(
+      previewAction({ ...base, canBuy: true, price: 300, coins: 12 }).kind,
+      'unaffordable',
+      'and still says how far off you are',
+    );
+  });
+
+  test('what you already own is still usable from the Inventory', () => {
+    // The cupboard's whole job. Blocking the purchase must not block this.
+    assertEqual(
+      previewAction({ ...base, canBuy: false, price: 300, owned: true }).kind,
+      'equip',
+      'a die you bought is usable from your bag',
+    );
+    assertEqual(
+      previewAction({ ...base, canBuy: false, needTrophies: 40, unlocked: true }).kind,
+      'equip',
+      'and so is one you earned',
+    );
+  });
+
+  test('a battlefield is never for sale from anywhere', () => {
+    // Arenas carry no price at all, so they must fall through to the
+    // trophy answer rather than to a Store that does not stock them.
+    for (const canBuy of [true, false]) {
+      assertEqual(
+        previewAction({ ...base, canBuy, needTrophies: 290, trophies: 100 }).kind,
+        'locked',
+        'battlefields are earned, not bought',
+      );
+    }
+  });
+
+  test('every action still has words on it', () => {
+    const label = actionLabel(previewAction({ ...base, canBuy: false, price: 250 }));
+    assert(label.length > 0, 'in-store has a blank button');
   });
 });

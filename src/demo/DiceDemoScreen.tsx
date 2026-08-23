@@ -947,6 +947,9 @@ export function DiceDemoScreen() {
           unlocked: isArenaUnlocked(preview.id, trophies),
           equipped: arenaId === preview.id,
           needTrophies: need,
+          // Battlefields are earned, never sold, so there is no price for
+          // this to gate. Said out loud rather than left to be inferred.
+          canBuy: false,
         }),
       };
     }
@@ -966,14 +969,18 @@ export function DiceDemoScreen() {
         equipped: loadout.skinId === skin.id,
         price: skin.price,
         needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
+        canBuy: preview.from === 'store',
       }),
     };
   })();
 
   /**
-   * The one button. Buying leaves the preview open on purpose — you have
-   * just paid for the thing, so the next tap should be putting it on, not
-   * finding it again in a list.
+   * The one button.
+   *
+   * Buying closes the preview and hands over to the reward popup. Spending
+   * coins is the biggest thing that happens in this game, and it deserves
+   * the same moment as earning an unlock rather than a button quietly
+   * changing what it says.
    */
   const commitPreview = () => {
     if (!preview || !previewView) return;
@@ -984,6 +991,16 @@ export function DiceDemoScreen() {
       const result = buyWithCoins(skin.id, action.price);
       if (!result.ok) return;
       setWallet({ ...getWallet() });
+      showPreview(null);
+      setRewards((queue) => [
+        ...queue,
+        {
+          emoji: skin.emoji,
+          name: `${skin.name} dice`,
+          kicker: 'PURCHASED',
+          note: 'Tap it again to put it on.',
+        },
+      ]);
       playFanfare();
       return;
     }
@@ -1400,7 +1417,7 @@ export function DiceDemoScreen() {
         would hide the very thing the preview exists to show.
       */}
       {menuTab === 'store' && preview === null && (
-        <StoreScreen wallet={wallet} onPreview={(id) => showPreview({ kind: 'die', id })} />
+        <StoreScreen wallet={wallet} onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })} />
       )}
       {menuTab === 'leaderboard' && preview === null && (
         <LeaderboardScreen

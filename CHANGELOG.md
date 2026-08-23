@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.18.0 — 2026-08-23 · requested by David
+
+### Changed
+- **Coins are spent in the Store and nowhere else.** Previewing a Store
+  die from your Inventory now says "In the Store for 300" and cannot be
+  pressed, instead of quietly selling it to you. The Inventory is the
+  cupboard: it should show what a die costs without putting a child one
+  tap away from having spent 450 coins they meant to look at.
+- Whether you can afford it is checked *after* where you are standing, not
+  before — otherwise a rich player could buy from the cupboard and a poor
+  one could not, which is the version of this bug that would have looked
+  like it worked.
+- **Buying closes the preview and shows the PURCHASED popup.** The button
+  used to flip from "Buy for 300" to "Use this one" in place, so the
+  biggest thing that happens in this game — spending coins you played for
+  — passed with nothing to mark it. It gets the same moment as earning an
+  unlock now, and the popup says to tap the die again to put it on.
+
 ## v1.17.1 — 2026-08-23 · requested by David
 
 ### Fixed

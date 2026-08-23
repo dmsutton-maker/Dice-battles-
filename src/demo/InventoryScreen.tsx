@@ -78,7 +78,7 @@ export function InventoryScreen({
                 // saving for is the reason a locked card is shown at all.
                 onPress={() => {
                   playClick();
-                  onPreview({ kind: 'arena', id });
+                  onPreview({ kind: 'arena', id, from: 'inventory' });
                 }}
                 style={[
                   styles.card,
@@ -127,7 +127,7 @@ export function InventoryScreen({
                 key={skin.id}
                 onPress={() => {
                   playClick();
-                  onPreview({ kind: 'die', id: skin.id });
+                  onPreview({ kind: 'die', id: skin.id, from: 'inventory' });
                 }}
                 style={[
                   styles.card,

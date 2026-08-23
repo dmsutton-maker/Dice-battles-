@@ -48,3 +48,44 @@ suite('preview · the throw gesture cannot fire through an open preview', () => 
     );
   });
 });
+
+/**
+ * Buying is a moment, not a state change. The button used to flip from
+ * "Buy for 300" to "Use this one" in place, which meant the biggest thing
+ * that happens in this game — spending coins you played for — passed
+ * without anything happening on screen.
+ */
+suite('preview · buying closes the preview and celebrates', () => {
+  const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+  // The body of the buy branch, up to its return.
+  const branch = source.match(/if \(action\.kind === 'buy'\) \{([\s\S]*?)\n      return;/);
+
+  test('the buy branch exists where the tests think it does', () => {
+    assert(branch !== null, 'the buy branch has moved — this whole suite is now blind');
+  });
+
+  test('a purchase closes the preview', () => {
+    assert(
+      /showPreview\(null\)/.test(branch![1]),
+      'the preview stays open after buying, so nothing marks the purchase',
+    );
+  });
+
+  test('a purchase queues the reward popup', () => {
+    assert(
+      /setRewards\(/.test(branch![1]) && /PURCHASED/.test(branch![1]),
+      'buying does not raise the PURCHASED popup',
+    );
+  });
+
+  test('nothing is spent before the purchase is known to have worked', () => {
+    // buyWithCoins refuses rather than going negative, so acting on its
+    // result is the difference between a popup for something you own and a
+    // popup for something you could not afford.
+    const order = branch![1];
+    assert(
+      order.indexOf('if (!result.ok) return;') < order.indexOf('setRewards('),
+      'the popup is queued before the purchase is confirmed',
+    );
+  });
+});
