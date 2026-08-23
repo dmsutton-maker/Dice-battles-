@@ -39,7 +39,10 @@ export const DICE_SKINS: DiceSkin[] = [
     name: 'Gold',
     emoji: '✨',
     body: '#ffd76a',
-    pattern: 'plain',
+    // The dice are drawn unlit, so gold got no highlight from the scene
+    // and read as a flat yellow cube. The sweep of light is painted in.
+    pattern: 'sheen',
+    ink: '#fff8dc',
     unlock: 'golden-dice',
   },
   { id: 'mint', name: 'Mint', emoji: '🍃', body: '#a8f0d8', pattern: 'plain', unlock: 'mint-dice' },
@@ -97,8 +100,10 @@ export const DICE_SKINS: DiceSkin[] = [
     name: 'Timber',
     emoji: '🪵',
     body: '#c49a68',
-    pattern: 'grain',
-    ink: '#8a5f38',
+    // Growth rings rather than the old wavy bands, which were the same
+    // painter marble would have used and read as neither.
+    pattern: 'wood',
+    ink: '#7d5228',
     price: 400,
   },
   {
@@ -109,6 +114,39 @@ export const DICE_SKINS: DiceSkin[] = [
     pattern: 'frost',
     ink: '#9fd3f0',
     price: 350,
+  },
+  {
+    id: 'marble',
+    name: 'Marble',
+    emoji: '🏛️',
+    body: '#f2efe8',
+    pattern: 'marble',
+    // Grey-blue veining. Warm veins on warm stone disappeared at the size
+    // a die is actually seen.
+    ink: '#7f8792',
+    price: 500,
+  },
+  {
+    id: 'granite',
+    name: 'Granite',
+    emoji: '🪨',
+    body: '#9aa0a6',
+    pattern: 'granite',
+    // Pale quartz. The dark flecks come from the shading side of the mask
+    // rather than from a second colour.
+    ink: '#eef1f4',
+    price: 550,
+  },
+  {
+    id: 'silver',
+    name: 'Silver',
+    emoji: '🥈',
+    body: '#c3cad1',
+    // Brushed, not polished like gold. Sharing gold's pattern would make
+    // the two one picture in two tints.
+    pattern: 'brushed',
+    ink: '#ffffff',
+    price: 650,
   },
 ];
 

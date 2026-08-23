@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   await import('./previewGesture.test');
   await import('./itemPreviewContrast.test');
   await import('./preview.test');
+  await import('./textures.test');
   await import('./arena.test');
   await import('./layout.test');
   await import('./popupLayout.test');

@@ -17,13 +17,36 @@ export type PatternId =
   | 'stars'
   | 'grain'
   | 'bubbles'
-  | 'frost';
+  | 'frost'
+  | 'wood'
+  | 'marble'
+  | 'granite'
+  | 'sheen'
+  | 'brushed';
 
 const SIZE = 64;
 
 type Painter = (x: number, y: number) => number;
 
-/** Returns a 0..1 mask: 1 = full pattern colour, 0 = base shell colour. */
+/**
+ * How dark a mask of -1 makes the shell. The dice are rendered UNLIT (see
+ * DieMesh — two dice under real lights rendered as different whites on
+ * device, so lighting was taken off them entirely), which means a shell
+ * gets no highlight or shadow from the scene. Anything that should look
+ * like a material rather than a flat colour has to have its light painted
+ * into the texture.
+ */
+const SHADE_DEPTH = 0.55;
+
+/**
+ * Returns a mask from -1 to 1.
+ *
+ * Positive blends the shell toward the ink colour; 1 is full ink. Negative
+ * darkens the shell toward its own shadow; -1 is the darkest. Two
+ * directions from one ink is what lets gold have a bright band AND the
+ * dark trough beside it, which is the whole of what makes metal read as
+ * metal. Every pattern written before this returns 0..1 and is unaffected.
+ */
 const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
   // Diagonal stripes.
   stripes: (x, y) => (Math.floor((x + y) / 8) % 2 === 0 ? 1 : 0),
@@ -135,10 +158,141 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
     return 0;
   },
 
-  // Soft wood/marble grain: wavy bands with a little noise.
+  // Soft wavy bands. Kept for the skins that already use it.
   grain: (x, y) => {
     const wave = Math.sin(x / 5 + Math.sin(y / 11) * 1.6);
     return wave > 0.35 ? 0.75 : 0;
+  },
+
+  /**
+   * Wood: growth rings, not stripes.
+   *
+   * The difference is that rings run along the length of the grain and
+   * BEND — they are the annual rings of a tree cut at a slight angle, so
+   * the spacing tightens and loosens across the face. Straight even bands
+   * read as a painted pattern; wandering ones read as a plank.
+   *
+   * Late wood (the dark line laid down at the end of a season) is narrow
+   * and hard-edged; early wood between the lines is wide and pale. Getting
+   * that ratio the wrong way round is what makes fake wood look fake.
+   */
+  wood: (x, y) => {
+    // The ring coordinate wanders across the plank so the spacing varies.
+    const drift = Math.sin(x / 21) * 5.5 + Math.sin(x / 7.3) * 1.4;
+    const ring = Math.sin((y + drift) / 3.1);
+    // Fine fibres running the length of the grain, under the rings.
+    const fibre = Math.sin(y * 0.9 + Math.sin(x / 3.1) * 2.4) * 0.12;
+    const v = ring + fibre;
+
+    if (v > 0.86) return 0.95; // the hard dark ring line
+    if (v > 0.55) return 0.5; // its softer shoulder
+    if (v < -0.9) return 0.18; // an occasional pale streak
+    // Everything else is early wood, very slightly shaded so the surface
+    // is not a flat colour between the rings.
+    return v < -0.4 ? -0.08 : 0;
+  },
+
+  /**
+   * Marble: veins that wander, on cloudy stone.
+   *
+   * A vein is thin and sharp with a soft halo either side — that halo is
+   * where the mineral bled into the stone, and leaving it off is what
+   * makes marble look like someone drew on it with a pen. The wandering
+   * comes from warping the coordinate before the wave, so the bands cannot
+   * run parallel the way stripes do.
+   */
+  marble: (x, y) => {
+    // The band coordinate has to keep a clear DIRECTION or the veins close
+    // into loops and the whole thing reads as a contour map — which is
+    // exactly what the first attempt did. So the direction term dominates
+    // and the warp only nudges it off straight.
+    const warp = Math.sin(y / 9.5) * 2.4 + Math.sin(x / 15) * 1.7;
+    // Tighter than it reads at full size on purpose: a die face is small,
+    // and at 7.5 a face could come up carrying no vein at all.
+    const vein = Math.abs(Math.sin((x * 0.9 + y * 0.4) / 5 + warp));
+
+    if (vein < 0.045) return 1; // the vein itself
+    if (vein < 0.14) return 0.4; // where it bleeds into the stone
+    // Broad cloudiness, far softer than the veins, so the stone between
+    // them is not dead flat.
+    const cloud = Math.sin(x / 19 + Math.sin(y / 23) * 1.2);
+    return cloud > 0.55 ? -0.14 : cloud < -0.7 ? 0.1 : 0;
+  },
+
+  /**
+   * Granite: mottled stone under a scatter of mineral flecks.
+   *
+   * Two scales at once, which is what tells stone from noise: big soft
+   * blotches of lighter and darker rock, and on top of them individual
+   * bright quartz and dark mica specks. The specks come from a hash of the
+   * pixel position, so the texture is identical every time it is built —
+   * no Math.random, which would make the shelf and the table disagree.
+   */
+  granite: (x, y) => {
+    const hash = Math.abs((Math.sin(x * 127.1 + y * 311.7) * 43758.5453) % 1);
+    if (hash > 0.955) return 0.95; // quartz fleck
+    if (hash < 0.045) return -0.85; // dark mica fleck
+    if (hash > 0.9) return 0.35;
+    if (hash < 0.1) return -0.3;
+
+    const blotch =
+      Math.sin(x / 11 + Math.sin(y / 8) * 1.6) + Math.sin(y / 13.5) * 0.7;
+    return blotch > 0.8 ? -0.22 : blotch < -0.9 ? 0.2 : 0;
+  },
+
+  /**
+   * Polished metal: a bright band with dark either side, brushed.
+   *
+   * This is the one pattern that exists purely because the dice are drawn
+   * unlit. On a lit die, gold would catch a highlight as it turned; with
+   * lighting off it is a flat yellow cube. So the highlight is painted in:
+   * a band of light rolling diagonally across the face, with the surface
+   * falling away to shadow on both sides of it, plus fine brush lines
+   * along the direction of the sheen.
+   */
+  sheen: (x, y) => {
+    // Diagonal position across the face, roughly 0..1.4.
+    const d = (x * 0.62 + y * 0.78) / SIZE;
+    // ONE highlight sweeping the face, not a repeating band. A cosine here
+    // gave a striped ribbon — a Gaussian gives a single soft bar of light
+    // with the metal falling away to shadow on both sides, which is what
+    // one light source on a polished surface actually looks like.
+    const bar = (centre: number, width: number, strength: number) =>
+      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
+    // The main highlight, plus a much weaker one where the far edge
+    // catches the light again.
+    const light = bar(0.4, 0.19, 1.5) + bar(1.02, 0.12, 0.5) - 0.5;
+    // Brushing runs ALONG the highlight, so it uses the other diagonal.
+    // Fine — at the first attempt's frequency it read as corduroy.
+    const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.05;
+    return light + brush;
+  },
+
+  /**
+   * Brushed metal: silver, and deliberately NOT the same picture as gold.
+   *
+   * Sharing `sheen` and only changing the colour would have made two skins
+   * that are one picture in two tints — the exact thing that made Frost
+   * and Starry indistinguishable, and the reason the suite refuses to let
+   * two skins share a pattern.
+   *
+   * So this is a different surface rather than a different metal: polished
+   * gold gets one soft bar of light, brushed silver gets thousands of fine
+   * scratches running one way, each catching the light slightly
+   * differently, under a much gentler overall falloff.
+   */
+  brushed: (x, y) => {
+    // Distance along the brushing direction.
+    const along = x * 0.78 - y * 0.62;
+    // Each scratch line is its own brightness, so the surface glitters
+    // finely instead of banding. Hashed, not random, so it is identical
+    // every time the texture is built.
+    const hash = Math.abs((Math.sin(Math.floor(along) * 91.7) * 43758.5453) % 1);
+    const scratches = (hash - 0.5) * 0.7 + Math.sin(along * 1.7) * 0.22;
+    // A wide, shallow roll of light across the face, under the scratches.
+    const across = (x * 0.62 + y * 0.78) / SIZE;
+    const falloff = Math.cos((across - 0.45) * Math.PI * 1.15) * 0.42;
+    return scratches + falloff - 0.08;
   },
 };
 
@@ -169,14 +323,17 @@ export function patternPixels(
   const out: number[] = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      const mask = Math.max(0, Math.min(1, paint(x, y)));
+      const mask = Math.max(-1, Math.min(1, paint(x, y)));
+      // Positive tints toward the ink, negative darkens the shell itself.
+      const mix = (base: number, ink: number) =>
+        mask >= 0 ? base + (ink - base) * mask : base * (1 + mask * SHADE_DEPTH);
       // Rounded to whole bytes. A Uint8Array used to truncate these for
       // free; the PNG encoder takes a plain array and a fractional byte
       // corrupts the stream.
       out.push(
-        Math.round(br + (ir - br) * mask),
-        Math.round(bg + (ig - bg) * mask),
-        Math.round(bb + (ib - bb) * mask),
+        Math.round(mix(br, ir)),
+        Math.round(mix(bg, ig)),
+        Math.round(mix(bb, ib)),
       );
     }
   }

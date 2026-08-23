@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.20.0 — 2026-08-23 · requested by David
+
+### Added
+- **Dice made of real materials.** Three new sets in the Store — Marble
+  (500), Granite (550) and Silver (650) — and two existing sets rebuilt:
+  - **Gold** was a flat yellow cube. It now has a sweep of light rolling
+    across it like polished metal.
+  - **Silver** is brushed rather than polished: thousands of fine
+    scratches running one way, each catching the light differently.
+  - **Marble** has veins that wander, each with the soft halo where the
+    mineral bled into the stone — leaving that off is what makes marble
+    look drawn on with a pen.
+  - **Granite** is mottled rock under a scatter of quartz and mica flecks.
+  - **Timber** has growth rings that bend and vary in spacing, instead of
+    the even wavy bands it had, which read as a painted pattern.
+
+### Changed
+- Shell textures can now darken as well as tint. The dice are drawn unlit
+  on purpose (two dice under real lights once rendered as different whites
+  on a phone), so nothing on a shell gets a highlight or a shadow from the
+  scene — it has to be painted in. Being able to go both ways from one ink
+  colour is what lets gold have a bright band and the dark trough beside
+  it. Every pattern written before this is untouched.
+- Silver deliberately does not share gold's pattern. Two skins that are
+  one picture in two tints is what made Frost and Starry indistinguishable,
+  and the suite refuses it — so silver is a different SURFACE, not a
+  different metal.
+
 ## v1.19.0 — 2026-08-23 · requested by David
 
 ### Changed
