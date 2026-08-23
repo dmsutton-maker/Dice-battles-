@@ -59,6 +59,7 @@ import {
   OBSTACLE_HINTS,
   ObstacleLayout,
 } from '../game/obstacles';
+import { sync as syncGameCenter } from '../game/gameCenter';
 import {
   applyMatchResult,
   parseTrophyCode,
@@ -549,6 +550,10 @@ export function DiceDemoScreen() {
       setWins(getProgress().wins);
       setModeWins(getProgress().modeWins);
       setLastDelta(result.delta);
+      // Game Center gets the whole picture after every battle, win or
+      // lose. Deliberately not awaited: it reaches the network, and the
+      // victory fanfare must not wait on Apple to answer.
+      syncGameCenter();
       if (outcome === 'won') {
         playFanfare();
         showCallout('Victory!', 'win');

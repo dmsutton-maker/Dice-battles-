@@ -1,5 +1,63 @@
 # Changelog
 
+## v1.23.0 — 2026-08-23 · requested by David
+
+### Added
+- **Game Center.** The Ranks page has had a "Not live yet" note on it since
+  the beginning; it is live now. Trophies and battles won go onto two real
+  leaderboards, ten achievements are reported as you earn them, and two
+  buttons open Apple's own world-ranking and achievement screens. It uses
+  the phone's Apple account, so there is still no login, no password and
+  nothing personal stored by this game.
+- The ten achievements: First Victory, Ten Battles, Fifty Battles, The Hard
+  Way, Every Way to Play, one for each of the four arena unlocks (Sunset
+  Castle, Jungle Clearing, Space Station, Midnight), and Collector for
+  owning ten sets of dice. 500 points of Apple's 1000, leaving room for new
+  achievements when new dice and arenas ship.
+
+### Changed
+- **Collector is ten sets, not every set.** It was going to be "own every
+  set of dice", which quietly changes meaning every time a die is added —
+  a moving finish line, worth less to whoever got there first. A fixed
+  number means the same thing in five years. New dice get their own
+  achievement out of the spare 500 points instead of stretching this one.
+- **A save with a typed-in number stays off the shared board.** The trophy
+  and coin codes set a count to whatever you type, which is right for
+  looking at a locked arena on your own phone and wrong for a ranking that
+  puts you above people who actually played. Such a save keeps every local
+  reward, every unlock and every record, and simply does not post. Family
+  tester mode does NOT count: it unlocks cosmetics and invents no number,
+  so testing an arena never costs you your place.
+
+### Under the hood
+- Everything Game Center is told is a QUESTION ABOUT THE CURRENT SAVE
+  ("does this player have ten sets?"), never an event ("a set was just
+  bought"). Event-shaped reporting loses an achievement for good if the one
+  moment it could fire happens offline; asking again after the next battle
+  heals itself.
+- A report is only remembered as sent once Apple has accepted it. Marking
+  it at the point of sending looks equivalent and silently destroys the
+  retry — a report lost to a dropped connection would be remembered as
+  delivered and never tried again. That bug was written and then caught by
+  a test that fails when it is reintroduced.
+- Nothing outside `src/game/gameCenter.ts` imports the Game Center package,
+  which still reports scores through `GKScore` — soft-deprecated by Apple
+  in iOS 14. Replacing it is a one-file job.
+- The achievement identifiers are checked in the test suite against the
+  ones read back from Apple's own API. They are the one part of this that
+  can never be fixed later: an identifier cannot be renamed or deleted once
+  it has shipped, so a typo would be a dead achievement for the life of the
+  app.
+- The Game Center entitlement is set directly in `app.json` rather than
+  through the package's config plugin, which Expo cannot resolve (no
+  `app.plugin.js` at its root). All the plugin did was set that one key.
+
+### Needs a new build
+- This is the first change in a long while that an over-the-air update
+  cannot deliver. Apple bakes entitlements into the binary, so Game Center
+  does nothing until a new build reaches TestFlight. On the current build
+  the code detects there is no Game Center and quietly does nothing.
+
 ## v1.22.0 — 2026-08-23 · requested by David
 
 ### Changed

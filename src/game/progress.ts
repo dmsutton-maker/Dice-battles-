@@ -20,6 +20,24 @@ export interface Progress {
    * code in Settings; trophies still count normally underneath.
    */
   unlockAll?: boolean;
+  /**
+   * A number on this save was typed in rather than played for.
+   *
+   * Set by the trophy and coin codes ONLY — the two that invent a figure
+   * Game Center would go on to rank people by. Family tester mode is
+   * deliberately not counted: it unlocks cosmetics and fabricates no
+   * count, so the people who use it most are not shut out of their own
+   * leaderboard for testing an arena.
+   *
+   * Nothing a player sees on their own phone changes. Flagged saves keep
+   * every reward, every unlock and every local record, and simply stop
+   * posting to the shared board.
+   *
+   * There is no undo. `RESET` empties the Store cupboard but leaves the
+   * typed trophies and coins sitting there, so clearing the flag would
+   * just be a two-step way of posting the typed number.
+   */
+  cheated?: boolean;
 }
 
 /**
@@ -196,7 +214,7 @@ export function parseCoinCode(raw: string): CoinCode | null {
 export function setTrophies(trophies: number): MatchResult {
   const before = current.trophies;
   const after = Math.max(0, Math.min(Math.floor(trophies), TROPHY_CODE_MAX));
-  current = { ...current, trophies: after };
+  current = { ...current, trophies: after, cheated: true };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
   return {
     trophies: after,
@@ -214,6 +232,18 @@ export function setUnlockAll(on: boolean): Progress {
 export function hasUnlockAll(): boolean {
   return !!current.unlockAll;
 }
+
+/** Record that a typed-in number landed on this save. One way. */
+export function markCheated(): void {
+  if (current.cheated) return;
+  current = { ...current, cheated: true };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+}
+
+export function hasCheated(): boolean {
+  return !!current.cheated;
+}
+
 
 const STORAGE_KEY = 'dice-battles:progress';
 
@@ -254,6 +284,21 @@ export async function loadProgress(): Promise<Progress> {
     // Defaults are fine if storage is unavailable.
   }
   return current;
+}
+
+/**
+ * Test-only reset so suites do not leak state into each other.
+ *
+ * There is deliberately no in-game way to clear `cheated` — see the field
+ * — so this is the only thing that puts it back, and only in node.
+ */
+export function resetProgressForTests(progress: Partial<Progress> = {}): void {
+  current = {
+    trophies: 0,
+    wins: { ...EMPTY_WINS },
+    modeWins: { ...EMPTY_MODE_WINS },
+    ...progress,
+  };
 }
 
 export function isUnlocked(id: UnlockId, trophies: number): boolean {

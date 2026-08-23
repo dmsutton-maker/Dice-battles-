@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AiDifficultyId } from './ai';
-import { COIN_CODE_MAX } from './progress';
+import { COIN_CODE_MAX, markCheated } from './progress';
 import { RewardRange, rollReward } from './rewards';
 
 /**
@@ -107,6 +107,9 @@ export function setCoins(coins: number): number {
   const asked = Number.isFinite(coins) ? Math.floor(coins) : 0;
   current = { ...current, coins: Math.max(0, Math.min(asked, COIN_CODE_MAX)) };
   persist();
+  // Typed coins buy real dice, and dice are what the Collector achievement
+  // counts, so this has to flag the save exactly as the trophy code does.
+  markCheated();
   return current.coins;
 }
 

@@ -6,6 +6,12 @@ import { getWallet } from '../game/currency';
 import { CoinLabel } from './GoldCoin';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
+import {
+  isAvailable as gameCenterAvailable,
+  mayPost,
+  openAchievements,
+  openLeaderboard,
+} from '../game/gameCenter';
 
 /**
  * The Leaderboard.
@@ -41,6 +47,8 @@ export function LeaderboardScreen({
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
   const totalWins = DIFFICULTY_MEDALS.reduce((sum, d) => sum + wins[d.id], 0);
+  const gameCenterReady = gameCenterAvailable();
+  const posting = mayPost();
 
   // Your league is the highest rung of the ladder you have reached.
   const reached = TIERS.filter((t) => trophies >= t.at);
@@ -148,21 +156,39 @@ export function LeaderboardScreen({
         })}
 
         <Text style={styles.sectionTitle}>WORLD RANKINGS</Text>
-        <View style={styles.pending}>
-          <Text style={styles.pendingTitle}>Not live yet</Text>
-          <Text style={styles.pendingBody}>
-            Ranking players against each other means every score has to meet
-            in one place, and right now your trophies live only on this
-            phone — which is also why the game needs no login and collects
-            nothing about you.
-          </Text>
-          <Text style={styles.pendingBody}>
-            The plan is Game Center, so the phone's own Apple account does
-            the work: still no new password, still nothing personal stored
-            by this game. It switches on once the app is installed properly
-            rather than through Expo Go.
-          </Text>
-        </View>
+        {gameCenterReady ? (
+          <View style={styles.pending}>
+            <Text style={styles.pendingBody}>
+              Your trophies and battles won go up against everyone else's,
+              through the phone's own Apple account — no new password, and
+              nothing personal stored by this game.
+            </Text>
+            {posting ? null : (
+              <Text style={styles.pendingWarn}>
+                A trophy or coin code was used on this save, so it stays off
+                the shared board. Everything you have unlocked is still
+                yours — this only affects the world ranking.
+              </Text>
+            )}
+            <View style={styles.gcButtons}>
+              <Pressable style={styles.gcButton} onPress={openLeaderboard}>
+                <Text style={styles.gcButtonText}>🌍 World ranking</Text>
+              </Pressable>
+              <Pressable style={styles.gcButton} onPress={openAchievements}>
+                <Text style={styles.gcButtonText}>🎖️ Achievements</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.pending}>
+            <Text style={styles.pendingTitle}>Not on this device</Text>
+            <Text style={styles.pendingBody}>
+              World rankings run on Game Center, which is part of iPhone and
+              iPad. Everything above is your own record and works
+              everywhere.
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/*
@@ -231,6 +257,26 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
     marginLeft: 4,
+  },
+  gcButtons: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  gcButton: {
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingVertical: 11,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  gcButtonText: { color: '#fff', fontSize: 13.5, fontWeight: '900' },
+  // Amber, not red: nothing is broken and nothing was taken away.
+  pendingWarn: {
+    color: '#ffd479',
+    fontSize: 12.5,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginTop: 8,
   },
   sectionNote: {
     color: 'rgba(255,255,255,0.6)',

@@ -3,7 +3,7 @@
     "name": "Dice Battles: Color Rush",
     "slug": "dice-battles",
     "backgroundColor": "#1b1430",
-    "version": "1.22.0",
+    "version": "1.23.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -12,6 +12,9 @@
       "bundleIdentifier": "com.dmsutton.dicebattles",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.game-center": true
       }
     },
     "android": {
