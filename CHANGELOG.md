@@ -33,6 +33,20 @@
   shell colour from a resolver that falls back and the pattern straight
   from the stored id, which does not. One resolved skin now feeds both.
 
+### Caught before release
+Both of these were found by testing the preview rather than by playing it,
+and neither would have been obvious until somebody hit it:
+- **A tap on the see-through middle of a preview started a real battle.**
+  The menu pages used to be opaque and swallowed every touch; a preview
+  takes that away on purpose, and the throw gesture underneath had no idea
+  a preview was open. It now refuses the touch outright, and a preview is
+  closed by anything that moves the game off the home screen — otherwise
+  its buy button would have stayed live on top of the match.
+- **"3 more trophies to go" could not be read.** That button was a white
+  wash over the live board with white text on it, which on the sunlit
+  castle floor came out at 1.65:1. It is dark-backed now, like the title
+  and the hint, and reads at better than 15:1 on every battlefield.
+
 ## v1.16.1 — 2026-08-21 · requested by David
 
 ### Fixed

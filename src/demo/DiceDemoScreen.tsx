@@ -252,6 +252,16 @@ export function DiceDemoScreen() {
    * of the equipped one until the preview closes.
    */
   const [preview, setPreview] = useState<PreviewTarget | null>(null);
+  /**
+   * The same value, for the throw gesture to read.
+   *
+   * The PanResponder is built once and closes over its first render, so it
+   * cannot see `preview` changing. It has to, because the preview bar is
+   * deliberately see-through in the middle: without this, a stray tap on
+   * the open part of a preview fell straight through to the gesture layer
+   * and started a real battle behind it.
+   */
+  const previewRef = useRef<PreviewTarget | null>(null);
   const [showBugReport, setShowBugReport] = useState(false);
   const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -307,6 +317,13 @@ export function DiceDemoScreen() {
   const setPhaseBoth = useCallback((next: Phase) => {
     phaseRef.current = next;
     setPhase(next);
+    // A preview belongs to the home screen. If anything at all moves the
+    // game off it, the preview goes too — otherwise its buy button would
+    // still be live, and pressable, on top of a battle.
+    if (next !== 'pick' && previewRef.current !== null) {
+      previewRef.current = null;
+      setPreview(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -855,8 +872,11 @@ export function DiceDemoScreen() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      // Refused outright rather than ignored in the handlers: a claimed
+      // gesture is one the board owns, and owning a touch that belongs to
+      // the preview is how a tap on an open preview started a battle.
+      onStartShouldSetPanResponder: () => previewRef.current === null,
+      onMoveShouldSetPanResponder: () => previewRef.current === null,
       // Once the throw gesture is claimed, nothing may take it away
       // mid-flick — a stolen gesture never reaches release and the dice
       // simply never move.
@@ -864,6 +884,7 @@ export function DiceDemoScreen() {
       onPanResponderGrant: (event) => {
         samples.current = [];
         sample(event);
+        if (previewRef.current !== null) return;
         if (phaseRef.current === 'pick') startCountdown();
         // battle: the throw waits for release, so a flick can carry the
         // player's own direction and speed into the dice. arm/go: inputs
@@ -898,7 +919,10 @@ export function DiceDemoScreen() {
     preview?.kind === 'die' ? skinById(preview.id) : equippedSkin;
   const dieBodyColor = sceneSkin.body;
 
-  const openPreview = (target: PreviewTarget) => setPreview(target);
+  const showPreview = (target: PreviewTarget | null) => {
+    previewRef.current = target;
+    setPreview(target);
+  };
 
   /**
    * Everything the preview bar needs to draw itself, worked out from the
@@ -1367,7 +1391,7 @@ export function DiceDemoScreen() {
         would hide the very thing the preview exists to show.
       */}
       {menuTab === 'store' && preview === null && (
-        <StoreScreen wallet={wallet} onPreview={(id) => openPreview({ kind: 'die', id })} />
+        <StoreScreen wallet={wallet} onPreview={(id) => showPreview({ kind: 'die', id })} />
       )}
       {menuTab === 'leaderboard' && preview === null && (
         <LeaderboardScreen
@@ -1381,7 +1405,7 @@ export function DiceDemoScreen() {
           trophies={trophies}
           arenaId={arenaId}
           skinId={loadout.skinId}
-          onPreview={openPreview}
+          onPreview={showPreview}
         />
       )}
       {menuTab === 'cups' && preview === null && (
@@ -1402,7 +1426,7 @@ export function DiceDemoScreen() {
           onAct={commitPreview}
           onClose={() => {
             playClick();
-            setPreview(null);
+            showPreview(null);
           }}
         />
       )}

@@ -153,14 +153,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.2)',
   },
   actionEquipped: { backgroundColor: '#33cc6b' },
+  // Dark, like the title bar and the hint. It used to be a white wash —
+  // rgba(255,255,255,0.16) — with white text on top, which over a sunlit
+  // castle floor came out at 1.65:1 and simply could not be read. This is
+  // the button that says how many trophies you still need, so it is the
+  // one that most has to be legible.
   actionDead: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(12,8,28,0.86)',
+    borderColor: 'rgba(255,255,255,0.24)',
   },
   actionText: { color: '#1b1330', fontSize: 16, fontWeight: '900' },
-  // The dead button is a dark translucent slab over the board, so its
-  // words have to go the other way or they vanish into it.
-  actionTextDead: { color: 'rgba(255,255,255,0.92)' },
+  actionTextDead: { color: '#ffffff' },
   hint: {
     color: 'rgba(255,255,255,0.75)',
     fontSize: 11,
