@@ -2,7 +2,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { ColorDef } from '../game/colors';
 import { TUNING } from '../game/tuning';
-import { topFaceColor } from './die';
+import { topFaceAlignment, topFaceColor } from './die';
 
 /**
  * The rule that decides when a roll is over.
@@ -27,17 +27,47 @@ export function allStill(bodies: CANNON.Body[]): boolean {
 }
 
 /**
+ * Is this die lying flat enough, and moving slowly enough, that the face
+ * on top is genuinely the face it has landed on?
+ *
+ * Speed alone is not enough. A die can be barely moving and still balanced
+ * on an edge on its way over, where "the top face" is a coin toss between
+ * two colours — so the orientation is checked as well.
+ */
+export function isReadable(body: CANNON.Body): boolean {
+  const s = TUNING.settle;
+  if (body.position.y > TUNING.dieSize * 1.1) return false;
+  if (dieSpeed(body) > s.hurriedSpeed) return false;
+  const q = new THREE.Quaternion(
+    body.quaternion.x,
+    body.quaternion.y,
+    body.quaternion.z,
+    body.quaternion.w,
+  );
+  return topFaceAlignment(q) >= s.hurriedFlatness;
+}
+
+/**
  * Should the roll be called now? `stillFrames` is the caller's running
  * count of consecutive frames where `allStill` held.
+ *
+ * `hurried` means the player has already tapped for the next throw. It
+ * does NOT cancel this roll — every roll is binding, which is what stops
+ * a bad result being thrown away mid-air — it only stops the counting
+ * waiting for the dice to come to a dead stop when they have already
+ * landed on a readable face.
  */
 export function shouldCallRoll(
   bodies: CANNON.Body[],
   elapsedMs: number,
   stillFrames: number,
+  hurried = false,
 ): boolean {
   const s = TUNING.settle;
   if (bodies.every((body) => body.sleepState === CANNON.Body.SLEEPING)) return true;
   if (stillFrames >= s.stillFrames) return true;
+
+  if (hurried && bodies.every(isReadable)) return true;
 
   // Past the cap a roll is called where it lies, but only once the dice
   // are down and slow, so it is never snapped still mid-tumble.

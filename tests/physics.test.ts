@@ -1,5 +1,11 @@
 import { createDieBody, throwDie } from '../src/dice/die';
-import { allStill, freezeDice, readFaces, shouldCallRoll } from '../src/dice/settle';
+import {
+  allStill,
+  freezeDice,
+  isReadable,
+  readFaces,
+  shouldCallRoll,
+} from '../src/dice/settle';
 import { AiDifficultyId } from '../src/game/ai';
 import { PRISONER_COLORS } from '../src/game/colors';
 import {
@@ -11,7 +17,7 @@ import {
 } from '../src/game/obstacles';
 import { TUNING } from '../src/game/tuning';
 import { addTrayBodies, createPhysicsWorld } from '../src/physics/world';
-import { assert, assertAtMost, note, suite, test } from './harness';
+import { assert, assertAtMost, assertEqual, note, suite, test } from './harness';
 
 /**
  * Headless physics tests. These run the REAL settle rule from
@@ -41,7 +47,7 @@ interface RollOutcome {
 /** Simulates one throw through the shipping settle rule. */
 function simulateRoll(
   layout: ObstacleLayout,
-  options: { flick?: { x: number; z: number } } = {},
+  options: { flick?: { x: number; z: number }; hurried?: boolean } = {},
 ): RollOutcome {
   const physics = createPhysicsWorld();
   addTrayBodies(physics, layout);
@@ -113,7 +119,7 @@ function simulateRoll(
 
     stillFrames = allStill(bodies) ? stillFrames + 1 : 0;
 
-    if (shouldCallRoll(bodies, elapsed - clockStart, stillFrames)) {
+    if (shouldCallRoll(bodies, elapsed - clockStart, stillFrames, options.hurried)) {
       const movingWhenCalled = bodies.some(
         (b) => b.velocity.length() + b.angularVelocity.length() * 0.5 > 1.2,
       );
@@ -401,5 +407,82 @@ suite('physics · obstacles', () => {
       }),
     );
     assert(seen.size > 20, `layouts barely vary (${seen.size} distinct in 40)`);
+  });
+});
+
+/**
+ * The hurried roll — a tap arriving while the dice are still going. It
+ * must be faster (that is the whole point) and it must not change what
+ * comes up, because a roll called early that reads a different face from
+ * the one the die actually lands on is a rigged roll.
+ */
+suite('physics · rolling again without waiting', () => {
+  for (const difficulty of DIFFICULTIES) {
+    test(`${difficulty}: a hurried roll is called sooner`, () => {
+      const SAMPLES = 240;
+      const layouts = Array.from({ length: SAMPLES }, () =>
+        generateObstacleLayout(difficulty),
+      );
+      const normal = layouts
+        .map((l) => simulateRoll(l).ms)
+        .sort((a, b) => a - b);
+      const hurried = layouts
+        .map((l) => simulateRoll(l, { hurried: true }).ms)
+        .sort((a, b) => a - b);
+      const mid = (xs: number[]) => xs[Math.floor(xs.length / 2)];
+      const p95 = (xs: number[]) => xs[Math.floor(xs.length * 0.95)];
+      note(
+        `${difficulty}: hurried median ${mid(hurried).toFixed(0)}ms vs ${mid(normal).toFixed(0)}ms, ` +
+          `p95 ${p95(hurried).toFixed(0)}ms vs ${p95(normal).toFixed(0)}ms`,
+      );
+      assert(
+        mid(hurried) < mid(normal),
+        `hurrying saved nothing: ${mid(hurried).toFixed(0)}ms vs ${mid(normal).toFixed(0)}ms`,
+      );
+    });
+
+    test(`${difficulty}: a hurried roll is never called mid-tumble`, () => {
+      // The guard that matters. Every hurried call must land on dice that
+      // are down, slow, and lying flat — never on one balanced on an edge,
+      // where the colour on top is a coin toss between two faces.
+      for (let i = 0; i < 120; i++) {
+        const roll = simulateRoll(generateObstacleLayout(difficulty), {
+          hurried: true,
+        });
+        assertEqual(roll.faces.length, 2, 'a hurried roll must still read two faces');
+      }
+    });
+  }
+});
+
+/**
+ * Hurrying must not become a way to dodge a bad roll. That is the rule the
+ * roll lock exists for: in Ultimate a matched colour sends a rescued
+ * prisoner back to jail, so a roll you can throw away mid-air is a rule
+ * you can opt out of.
+ */
+suite('physics · a hurried roll still counts', () => {
+  test('a hurried roll always produces a result', () => {
+    for (const difficulty of DIFFICULTIES) {
+      for (let i = 0; i < 60; i++) {
+        const roll = simulateRoll(generateObstacleLayout(difficulty), {
+          hurried: true,
+        });
+        assertEqual(roll.faces.length, 2, `${difficulty}: a hurried roll was lost`);
+      }
+    }
+  });
+
+  test('hurrying cannot call a roll before the dice have landed', () => {
+    // isReadable is the whole safety of this feature, so check it directly
+    // rather than only through the roll it feeds.
+    const physics = createPhysicsWorld();
+    addTrayBodies(physics, EMPTY_LAYOUT);
+    const body = createDieBody(physics.dieMaterial, DIE_START[0]);
+    physics.world.addBody(body);
+    throwDie(body, {});
+    // One step: the die is airborne and tumbling, the worst moment to read.
+    physics.world.step(TUNING.physics.timeStep, TUNING.physics.timeStep, 4);
+    assertEqual(isReadable(body), false, 'a die still in the air read as settled');
   });
 });

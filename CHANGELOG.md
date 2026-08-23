@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.19.0 — 2026-08-23 · requested by David
+
+### Changed
+- **Tapping again while the dice are still rolling now speeds the roll up
+  instead of just queueing behind it.** The moment both dice are down and
+  lying flat, the roll is called and the next throw goes out — measured
+  over 240 rolls per difficulty, tap-to-tap drops from about 1.5s to about
+  1.25s, and the slow rolls (95th percentile) from 2.0s to 1.8s. The pause
+  after a result is 60ms rather than 130ms when you have already tapped,
+  because you have seen the result and are waiting.
+- The roll is still binding. Hurrying it changes WHEN it is counted, never
+  whether — a roll you could throw away mid-air would make Ultimate's
+  "matching a rescued colour sends that prisoner back to jail" a rule you
+  could opt out of by tapping.
+- The safety is that a roll is only ever called early on dice that are
+  down, slow, AND lying within about 20° of flat. A die balanced on an
+  edge has two faces it could fall onto, and picking one would be a rigged
+  roll rather than a fast one. Tested by throwing a die and checking it
+  reads as unsettled one physics step in, while airborne.
+- **"Moat" is now "pond"** in the splash message on Hard. The difficulty
+  hint already said pond; this was the last place using the other word.
+
 ## v1.18.0 — 2026-08-23 · requested by David
 
 ### Changed

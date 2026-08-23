@@ -471,7 +471,9 @@ export function DiceDemoScreen() {
     const now = Date.now();
     if (now - lastSplash.current < 2500 || phaseRef.current !== 'battle') return;
     lastSplash.current = now;
-    showCallout('Splash! A die fell in the moat!');
+    // "Pond", not "moat" — the difficulty hint has always called it a
+    // pond, and this was the one place still using the other word.
+    showCallout('Splash! A die fell in the pond!');
   }, [showCallout]);
 
   const quitToMenu = useCallback(() => {

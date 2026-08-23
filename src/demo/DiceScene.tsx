@@ -132,6 +132,12 @@ export function DiceScene({
    * previous roll has been counted.
    */
   const queuedThrow = useRef<{ flick?: Flick } | null>(null);
+  /**
+   * Set when a tap arrives mid-roll. It does not cancel the roll — it asks
+   * for it to be CALLED as soon as there is a real face to read, instead
+   * of when the dice have come to a complete stop. Cleared on every launch.
+   */
+  const hurried = useRef(false);
   const queuedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const launchRef = useRef<((flick?: Flick) => void) | null>(null);
   /** Mirrors the `throwsEnabled` prop for use inside the frame loop. */
@@ -185,6 +191,7 @@ export function DiceScene({
   useEffect(() => {
     const launch = (flick?: Flick) => {
       awaitingSettle.current = true;
+      hurried.current = false;
       stillFrames.current = 0;
       throwStartedAt.current = Date.now();
       sankThisRoll.current = [false, false];
@@ -197,10 +204,15 @@ export function DiceScene({
       throwAll: (flick) => {
         // Every roll is binding: no re-throwing while dice are still
         // tumbling, or players could cancel bad rolls mid-air (which
-        // guts Ultimate's prisoner-exchange rule entirely). The tap is
-        // queued rather than dropped so rapid tapping still feels alive.
+        // guts Ultimate's prisoner-exchange rule entirely).
+        //
+        // But binding never meant slow. The tap is remembered AND it tells
+        // the settle rule to stop waiting for a dead stop: the moment both
+        // dice are down and lying flat, this roll is called and the next
+        // one goes out. The result still counts — it just counts sooner.
         if (awaitingSettle.current) {
           queuedThrow.current = { flick };
+          hurried.current = true;
           return 'queued';
         }
         launch(flick);
@@ -329,7 +341,7 @@ export function DiceScene({
       const elapsed = Date.now() - throwStartedAt.current;
       stillFrames.current = stillNow ? stillFrames.current + 1 : 0;
 
-      if (shouldCallRoll(diceBodies, elapsed, stillFrames.current)) {
+      if (shouldCallRoll(diceBodies, elapsed, stillFrames.current, hurried.current)) {
         awaitingSettle.current = false;
         freezeDice(diceBodies);
         onSettled(readFaces(diceBodies));
@@ -337,14 +349,22 @@ export function DiceScene({
         // Fire a tap that arrived mid-roll, just after the result lands so
         // the player sees what they rolled. Dropped if the round ended.
         const queued = queuedThrow.current;
+        const wasHurried = hurried.current;
         queuedThrow.current = null;
+        hurried.current = false;
         if (queued) {
           if (queuedTimer.current) clearTimeout(queuedTimer.current);
+          // The pause exists so the result registers before the dice go
+          // out again. Somebody who has already tapped has seen it and is
+          // waiting, so they get the short one.
+          const delay = wasHurried
+            ? TUNING.settle.hurriedThrowDelayMs
+            : TUNING.settle.queuedThrowDelayMs;
           queuedTimer.current = setTimeout(() => {
             if (throwsEnabledRef.current && !awaitingSettle.current) {
               launchRef.current?.(queued.flick);
             }
-          }, TUNING.settle.queuedThrowDelayMs);
+          }, delay);
         }
       }
     }

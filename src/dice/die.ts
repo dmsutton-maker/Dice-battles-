@@ -15,6 +15,24 @@ const FACE_NORMALS: readonly THREE.Vector3[] = [
 
 const scratchNormal = new THREE.Vector3();
 
+/**
+ * How squarely a face is pointing up: 1 is dead flat, 0.707 is balanced on
+ * an edge, 0.577 on a corner.
+ *
+ * A settled die is always near 1. This exists for the case where a roll is
+ * called before the dice have fully stopped — see `shouldCallRoll`. Reading
+ * a colour off a die at 45° would be picking one of two faces at random and
+ * calling it a result.
+ */
+export function topFaceAlignment(quaternion: THREE.Quaternion): number {
+  let bestDot = -Infinity;
+  for (let i = 0; i < FACE_NORMALS.length; i++) {
+    const dot = scratchNormal.copy(FACE_NORMALS[i]).applyQuaternion(quaternion).y;
+    if (dot > bestDot) bestDot = dot;
+  }
+  return bestDot;
+}
+
 /** Which color face is pointing up for the given body orientation. */
 export function topFaceColor(quaternion: THREE.Quaternion): ColorDef {
   let bestIndex = 0;

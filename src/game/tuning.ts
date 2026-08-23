@@ -121,6 +121,20 @@ export const TUNING = {
     hardMaxRollMs: 3200,
     /** Delay before a tap queued mid-roll fires, so the result registers. */
     queuedThrowDelayMs: 130,
+    /**
+     * The hurried roll: the player has tapped again while the dice are
+     * still going, so the roll is called as soon as there is a real face
+     * to read rather than when the dice have fully stopped.
+     *
+     * A roll is still binding — it is counted, never cancelled — this only
+     * decides how long the counting waits. Both bars have to be cleared:
+     * moving slowly enough to have stopped tumbling, and lying flat enough
+     * that the face on top is not one of two the die could fall onto.
+     * 0.94 is about 20 degrees off flat.
+     */
+    hurriedThrowDelayMs: 60,
+    hurriedSpeed: 1.1,
+    hurriedFlatness: 0.94,
   },
 
   haptics: {
