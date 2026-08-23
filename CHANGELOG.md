@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.21.0 — 2026-08-23 · requested by David
+
+### Added
+- **How to play.** Six short pages: the six prisoners, how to throw, the
+  one rule the whole game is built on (both dice the same frees that
+  prisoner), that it is a race, the four modes, and what trophies and
+  coins are for. It opens by itself the first time the game is ever
+  launched, and after that it lives behind a ❓ next to the gear — because
+  the person who most needs it is whoever gets handed the phone in six
+  months.
+- Each page has a picture, which for a game whose signal is COLOUR does
+  more work than the words. If colourblind mode is on, those pictures wear
+  the shapes too — teaching somebody the colours-only game when they have
+  asked for shapes would be teaching a game they are not going to see.
+- The words live in `src/game/tutorial.ts` rather than inside the screen,
+  so the test suite can check them against the rules the game actually
+  implements. A tutorial is the one part of a game that can be WRONG
+  rather than broken: nothing crashes when it describes a rule that has
+  changed, it just quietly misleads the one person who cannot tell. The
+  suite now fails if a mode exists that the tutorial never mentions, if
+  the matching rule stops being stated, or if the palette stops having six
+  colours in it while a page says "six".
+- Measured on an iPhone SE with the real layout engine: the page gets
+  389pt and the Back / Let's play buttons keep their full height. A
+  first-time player who could not reach the button that closes the
+  tutorial would be stuck in it.
+
 ## v1.20.0 — 2026-08-23 · requested by David
 
 ### Added

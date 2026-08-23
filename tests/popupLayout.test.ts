@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Align, Justify, loadYoga } from 'yoga-layout/load';
-import { assert, note, suite, test } from './harness';
+import { assert, assertEqual, note, suite, test } from './harness';
 
 /**
  * Does the Settings popup actually have room for its contents?
@@ -285,6 +285,119 @@ suite('popup layout · Settings sits inside its panel', () => {
     assert(
       /onLayout=\{onLayout\}/.test(slider),
       'the slider never runs its layout handler',
+    );
+  });
+});
+
+/**
+ * The tutorial popup is a harder case than Settings: it has a scrolling
+ * page AND two fixed rows under it — the dots and the two buttons — that
+ * must never be squeezed out. "Let's play" being pushed off the bottom
+ * would leave a first-time player stuck on a tutorial with no way out
+ * except the ✕, which is the exact shape of bug this file exists for.
+ */
+suite('popup layout · the tutorial can always be finished', () => {
+  /** Dots row, then the Back / Next row with its padding. */
+  const DOTS = 27;
+  const BUTTONS = 61;
+
+  async function tutorialLayout(pageContentHeight: number) {
+    const Y = await loadYoga();
+    const root = Y.Node.create();
+    root.setWidth(SE.width);
+    root.setHeight(SE.height);
+    root.setJustifyContent(Justify.Center);
+    root.setAlignItems(Align.Center);
+
+    const panel = Y.Node.create();
+    panel.setWidth('100%');
+    panel.setMaxHeightPercent(78);
+    panel.setFlexShrink(1);
+    root.insertChild(panel, 0);
+
+    const header = Y.Node.create();
+    header.setWidth('100%');
+    header.setHeight(HEADER);
+    header.setFlexShrink(0);
+    panel.insertChild(header, 0);
+
+    // TutorialScreen's own outer View, which is flexShrink — never flex:1,
+    // because the panel above it is capped by maxHeight and so never
+    // proves a definite height for a flex basis of 0 to resolve against.
+    const body = Y.Node.create();
+    body.setWidth('100%');
+    body.setFlexShrink(1);
+    panel.insertChild(body, 1);
+
+    const scroll = Y.Node.create();
+    scroll.setWidth('100%');
+    scroll.setFlexShrink(1);
+    const content = Y.Node.create();
+    content.setWidth('100%');
+    content.setHeight(pageContentHeight);
+    scroll.insertChild(content, 0);
+    body.insertChild(scroll, 0);
+
+    const dots = Y.Node.create();
+    dots.setWidth('100%');
+    dots.setHeight(DOTS);
+    dots.setFlexShrink(0);
+    body.insertChild(dots, 1);
+
+    const buttons = Y.Node.create();
+    buttons.setWidth('100%');
+    buttons.setHeight(BUTTONS);
+    buttons.setFlexShrink(0);
+    body.insertChild(buttons, 2);
+
+    root.calculateLayout(SE.width, SE.height);
+    return {
+      panel: panel.getComputedHeight(),
+      scroll: scroll.getComputedHeight(),
+      buttons: buttons.getComputedHeight(),
+      buttonsBottom:
+        buttons.getComputedTop() +
+        body.getComputedTop() +
+        panel.getComputedTop() +
+        buttons.getComputedHeight(),
+    };
+  }
+
+  test('the buttons keep their full height on the longest page', async () => {
+    // The modes page is the tallest: four lines plus a row of emoji.
+    const built = await tutorialLayout(560);
+    note(
+      `iPhone SE tutorial: panel ${built.panel.toFixed(0)}pt, ` +
+        `page ${built.scroll.toFixed(0)}pt, buttons ${built.buttons.toFixed(0)}pt`,
+    );
+    assert(built.panel > 400, `the panel collapsed to ${built.panel.toFixed(0)}pt`);
+    assertEqual(
+      Math.round(built.buttons),
+      BUTTONS,
+      'the Back / Next row got squeezed — a first-time player could not finish',
+    );
+    assert(
+      built.scroll > 200,
+      `only ${built.scroll.toFixed(0)}pt left for the page itself`,
+    );
+  });
+
+  test('the buttons stay on the screen', async () => {
+    const built = await tutorialLayout(560);
+    assert(
+      built.buttonsBottom <= SE.height,
+      `"Let's play" ends ${(built.buttonsBottom - SE.height).toFixed(0)}pt below the screen`,
+    );
+  });
+
+  test('a short page does not stretch the panel to fill the screen', async () => {
+    // Page one is two lines. A popup that is always 78% tall regardless of
+    // what is in it reads as a page, not a card.
+    const built = await tutorialLayout(180);
+    note(`iPhone SE tutorial, short page: panel ${built.panel.toFixed(0)}pt`);
+    assert(
+      built.panel < SE.height * 0.78,
+      'the panel is pinned at its cap even with almost nothing in it',
     );
   });
 });

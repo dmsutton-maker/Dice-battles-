@@ -117,6 +117,11 @@ import { NewsScreen } from './NewsScreen';
 import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
 import { ItemPreviewBar } from './ItemPreviewBar';
+import { TutorialScreen } from './TutorialScreen';
+import {
+  loadTutorialSeen,
+  markTutorialSeen,
+} from '../game/tutorial';
 import {
   previewAction,
   PreviewTarget,
@@ -170,8 +175,9 @@ export function DiceDemoScreen() {
       loadProgress(),
       loadWallet(),
       loadColorblindMode(),
+      loadTutorialSeen(),
     ])
-      .then(([audio, saved, progress, purse, cb]) => {
+      .then(([audio, saved, progress, purse, cb, tutorialSeen]) => {
         setAudioPrefs(audio);
         setLoadout(saved);
         setWallet(purse);
@@ -180,6 +186,10 @@ export function DiceDemoScreen() {
         setModeWins(progress.modeWins);
         setUnlockAll(!!progress.unlockAll);
         setColorblind(cb);
+        // First launch opens the tutorial on its own. Never again after
+        // that — it stays behind the ❓ for whoever picks the phone up in
+        // six months and has no idea what any of this is.
+        if (!tutorialSeen) setPopup('howto');
       })
       .catch(() => {
         // Defaults are fine if storage is unavailable.
@@ -201,7 +211,7 @@ export function DiceDemoScreen() {
     seventh value of `tab`. Only one can be open at a time; there is
     nowhere to open the second from while the first is covering the screen.
   */
-  const [popup, setPopup] = useState<'settings' | 'news' | null>(null);
+  const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | null>(null);
   // The cup being played, if any. A round started from a cup reports back
   // to it when it finishes.
   const [run, setRun] = useState<RunState | null>(null);
@@ -1477,6 +1487,7 @@ export function DiceDemoScreen() {
       */}
       {phase === 'pick' && preview === null && (
         <TopButtons
+          onHowToPlay={() => setPopup('howto')}
           onSettings={() => setPopup('settings')}
           onNews={() => setPopup('news')}
         />
@@ -1494,6 +1505,27 @@ export function DiceDemoScreen() {
           reward={rewards[0]}
           onClose={() => setRewards((queue) => queue.slice(1))}
         />
+      )}
+
+      {popup === 'howto' && (
+        <Popup
+          title="❓ HOW TO PLAY"
+          onClose={() => {
+            // Seen counts as seen whether they read to the end or shut it
+            // on page one. A tutorial that keeps coming back because you
+            // did not finish it is worse than one you never opened.
+            markTutorialSeen();
+            setPopup(null);
+          }}
+        >
+          <TutorialScreen
+            symbols={colorblind}
+            onClose={() => {
+              markTutorialSeen();
+              setPopup(null);
+            }}
+          />
+        </Popup>
       )}
 
       {popup === 'news' && (

@@ -15,13 +15,18 @@ import { playClick } from '../audio/sounds';
  * being told, and a label would make these as big as the tabs they left.
  */
 export function TopButtons({
+  onHowToPlay,
   onSettings,
   onNews,
 }: {
+  onHowToPlay: () => void;
   onSettings: () => void;
   onNews: () => void;
 }) {
   const buttons: { icon: string; label: string; press: () => void }[] = [
+    // First in the row: it opens on its own the first time, and after that
+    // the person reaching for it is the one who does not know how to play.
+    { icon: '❓', label: 'How to play', press: onHowToPlay },
     { icon: '📰', label: 'News', press: onNews },
     { icon: '⚙️', label: 'Settings', press: onSettings },
   ];
