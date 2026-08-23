@@ -710,6 +710,33 @@ suite('screen · the board belongs to the battle screen', () => {
     note(`home-screen blocks hidden during a preview: ${sites.length}`);
   });
 
+  /**
+   * Where a preview was opened FROM decides what its button may do — the
+   * Store can take coins, the Inventory cannot. It must never decide what
+   * the board looks like, or the same die would be staged differently
+   * depending on which shelf you tapped it on, and two dice compared one
+   * after the other would not be compared fairly.
+   */
+  test('the Store and the Inventory stage a preview identically', () => {
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    const scene = source.match(
+      /const sceneArenaId[\s\S]*?const dieBodyColor = sceneSkin\.body;/,
+    );
+    assert(scene !== null, 'the scene resolution has moved — this guard is blind');
+    assert(
+      !/\bfrom\b/.test(scene![0]),
+      'what the board draws depends on which shelf the preview came from',
+    );
+    // One board, one scene: a second Canvas here would be a second place
+    // for the two shelves to diverge, and a second GL context on a phone
+    // David has already reported as slow.
+    assertEqual(
+      (source.match(/<Canvas/g) ?? []).length,
+      1,
+      'the battle screen mounts more than one 3D canvas',
+    );
+  });
+
   test('the previewed item is what the board draws', () => {
     const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
     // If the scene read the equipped ids directly, the preview would show
