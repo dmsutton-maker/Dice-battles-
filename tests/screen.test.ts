@@ -685,6 +685,31 @@ suite('screen · the board belongs to the battle screen', () => {
     );
   });
 
+  /**
+   * The general rule, rather than a list of the things that were wrong
+   * once: a preview exists to show one item on the board, so NOTHING that
+   * belongs to the home screen may still be drawn over it.
+   *
+   * This was written after shipping a preview that hid the tab bar and the
+   * pills but left the whole home screen up — the mode picker, the
+   * difficulty picker and the START button, sitting across the item they
+   * were meant to be showing.
+   */
+  test('nothing that belongs to the home screen is drawn during a preview', () => {
+    const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    // Every render site guarded on the home screen, up to the ( that opens
+    // what it draws.
+    const sites = [...source.matchAll(/\{phase === 'pick' &&[^(]*\(/g)];
+    assert(sites.length > 0, 'no home-screen render sites found — has the guard been renamed?');
+    for (const [site] of sites) {
+      assert(
+        site.includes('preview === null'),
+        `this home-screen block still draws over a preview: ${site.trim()}`,
+      );
+    }
+    note(`home-screen blocks hidden during a preview: ${sites.length}`);
+  });
+
   test('the previewed item is what the board draws', () => {
     const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
     // If the scene read the equipped ids directly, the preview would show

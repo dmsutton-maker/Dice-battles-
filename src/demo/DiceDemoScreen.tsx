@@ -1272,8 +1272,17 @@ export function DiceDemoScreen() {
         </View>
       )}
 
-      {/* Pick / countdown / result overlays */}
-      {phase === 'pick' && (
+      {/*
+        Pick / countdown / result overlays.
+
+        The home screen goes away during a preview along with the tab bar
+        and the pills. It is the biggest thing on this screen — the mode
+        picker, the difficulty picker, the next-unlock line and the START
+        button — and leaving it up meant a preview showed the item behind a
+        full set of controls that have nothing to do with it. The point of
+        opening one is to see the item and nothing else.
+      */}
+      {phase === 'pick' && preview === null && (
         <View style={styles.overlay}>
           {/* The floating gear moved to the bottom bar. */}
           {/*

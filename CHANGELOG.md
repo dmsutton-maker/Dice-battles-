@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.17.1 — 2026-08-23 · requested by David
+
+### Fixed
+- **A preview now shows the item and nothing else.** The tab bar and the
+  trophy and coin pills were already stepping aside for it, but the home
+  screen itself was not — so the mode picker, the difficulty picker, the
+  next-unlock line and the START button all stayed sitting across the very
+  thing the preview existed to show. All of it goes away now; you get the
+  battlefield, the item on it, its name, and the one button.
+- The test for this asks the general question rather than listing the
+  pieces that happened to be wrong: every part of the screen drawn on the
+  home screen must be hidden during a preview. Adding a new control to the
+  home screen and forgetting it now fails before it ships.
+
 ## v1.17.0 — 2026-08-21 · requested by David
 
 ### Changed
