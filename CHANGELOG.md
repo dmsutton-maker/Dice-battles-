@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.22.0 — 2026-08-23 · requested by David
+
+### Changed
+- **The battlefields stop being the same building.** David said the themes
+  all just looked like the castle in different colours, and he was right:
+  every arena was four full-height box walls at the tray edge with a
+  different ornament on top — merlons on one, light strips on another,
+  cracked slabs on a third — and four round corner towers. The props
+  differed (palms, solar panels, tiki parasols) but the SKYLINE did not,
+  and a skyline is what you recognise a place by.
+  - **Jungle Clearing** is now ringed by a log palisade driven into a low
+    earth bank: 88 logs, every one a different height and lean, cut to a
+    point, bound with vine lashings. The corners are buttress trees that
+    flare into roots and carry a canopy well above the wall, instead of
+    round towers with a cap.
+  - **Space Station** is mostly open. The hull is knee-high now, and what
+    stops the dice above it is a see-through containment field hung
+    between emitter studs — so you look out across the deck rather than
+    standing in a grey keep. The corner pylons are thin masts on small
+    bases rather than towers.
+- The physics boundary has not moved on either. The tray walls are the
+  same invisible full-height boxes they always were; only what is drawn in
+  front of them changed. The field panel spans the full height on purpose,
+  so a die still visibly stops where it always did.
+- The jungle's palisade lives in `src/arena/palisade.ts` as data rather
+  than inside the component, so its shape can be measured. Nothing in this
+  project can render a 3D scene to look at, which is exactly how a
+  palisade could quietly become an even picket fence with every test still
+  green. The suite now checks it has enough logs to be a palisade, that
+  the tops are ragged rather than level, that some clear the wall the dice
+  actually bounce off, and that it is identical between builds.
+
 ## v1.21.0 — 2026-08-23 · requested by David
 
 ### Added

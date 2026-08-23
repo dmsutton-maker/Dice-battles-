@@ -11,6 +11,7 @@ import {
 } from '../game/stations';
 
 import { createFlagstoneTexture } from './flagstoneTexture';
+import { palisadeLogs } from './palisade';
 
 /**
  * Jungle Clearing arena — ancient mossy temple ruins deep in a rainforest.
@@ -369,27 +370,49 @@ export function JungleArena() {
     () => new THREE.MeshStandardMaterial({ color: '#2f7a38', roughness: 0.9 }),
     [],
   );
+  const trunkMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: TRUNK, roughness: 0.95 }),
+    [],
+  );
+  const bankMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#4a3a26', roughness: 1 }),
+    [],
+  );
 
-  // Cracked slab teeth along the wall tops — like the castle merlons but
-  // irregular, so the ruins read as crumbling rather than fortified.
-  const slabs = useMemo(() => {
+  /**
+   * A log palisade instead of a battlement — the thing that stopped every
+   * battlefield looking like the castle. The shape itself lives in
+   * ./palisade so it can be measured; nothing here can render a scene to
+   * look at, so an unmeasurable shape is one that can quietly go wrong.
+   *
+   * The physics wall is untouched and still a full-height box (see
+   * src/physics/world.ts). The logs stand in front of it.
+   */
+  const logs = useMemo(() => palisadeLogs(), []);
+
+  /** Vine lashings binding the palisade, at two heights. */
+  const lashings = useMemo(() => {
     const list: { pos: [number, number, number]; size: [number, number, number] }[] = [];
-    const y = wallHeight + 0.1;
-    let k = 0;
-    for (let x = -halfW + 0.4; x <= halfW - 0.3; x += 1.15) {
-      const h = 0.16 + ((k * 37) % 10) * 0.02;
-      list.push({ pos: [x, y, -(halfD + wallThickness / 2)], size: [0.5, h, wallThickness] });
-      list.push({ pos: [x + 0.1, y, halfD + wallThickness / 2], size: [0.45, h, wallThickness] });
-      k++;
-    }
-    for (let z = -halfD + 0.6; z <= halfD - 0.4; z += 1.2) {
-      const h = 0.14 + ((k * 53) % 10) * 0.022;
-      list.push({ pos: [-(halfW + wallThickness / 2), y, z], size: [wallThickness, h, 0.5] });
-      list.push({ pos: [halfW + wallThickness / 2, y, z + 0.08], size: [wallThickness, h, 0.46] });
-      k++;
+    for (const y of [wallHeight * 0.3, wallHeight * 0.72]) {
+      list.push({
+        pos: [0, y, -(halfD + wallThickness / 2)],
+        size: [innerWidth + wallThickness * 2, 0.07, wallThickness + 0.08],
+      });
+      list.push({
+        pos: [0, y, halfD + wallThickness / 2],
+        size: [innerWidth + wallThickness * 2, 0.07, wallThickness + 0.08],
+      });
+      list.push({
+        pos: [-(halfW + wallThickness / 2), y, 0],
+        size: [wallThickness + 0.08, 0.07, innerDepth + wallThickness * 2],
+      });
+      list.push({
+        pos: [halfW + wallThickness / 2, y, 0],
+        size: [wallThickness + 0.08, 0.07, innerDepth + wallThickness * 2],
+      });
     }
     return list;
-  }, [halfW, halfD, wallHeight, wallThickness]);
+  }, [halfW, halfD, innerWidth, innerDepth, wallHeight, wallThickness]);
 
   // Vine patches climbing the outer wall faces.
   const vines = useMemo(() => {
@@ -430,34 +453,41 @@ export function JungleArena() {
       <JungleJailPen />
       <JungleRetreat />
 
-      {/* Ruin walls */}
-      <mesh
-        material={wallMaterial}
-        position={[-(halfW + wallThickness / 2), wallHeight / 2, 0]}
-      >
-        <boxGeometry
-          args={[wallThickness, wallHeight, innerDepth + wallThickness * 2]}
-        />
-      </mesh>
-      <mesh
-        material={wallMaterial}
-        position={[halfW + wallThickness / 2, wallHeight / 2, 0]}
-      >
-        <boxGeometry
-          args={[wallThickness, wallHeight, innerDepth + wallThickness * 2]}
-        />
-      </mesh>
-      <mesh material={wallMaterial} position={[0, wallHeight / 2, -(halfD + wallThickness / 2)]}>
-        <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-      </mesh>
-      <mesh material={wallMaterial} position={[0, wallHeight / 2, halfD + wallThickness / 2]}>
-        <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-      </mesh>
+      {/*
+        A low earth bank the logs are driven into, only knee-high, so what
+        you see above it is the palisade and not a wall. The full-height
+        collision box is separate and invisible.
+      */}
+      {(
+        [
+          [-(halfW + wallThickness / 2), 0, wallThickness, innerDepth + wallThickness * 2],
+          [halfW + wallThickness / 2, 0, wallThickness, innerDepth + wallThickness * 2],
+          [0, -(halfD + wallThickness / 2), innerWidth + wallThickness * 2, wallThickness],
+          [0, halfD + wallThickness / 2, innerWidth + wallThickness * 2, wallThickness],
+        ] as const
+      ).map(([x, z, w, d], i) => (
+        <mesh key={`bank-${i}`} material={bankMaterial} position={[x, 0.16, z]}>
+          <boxGeometry args={[w, 0.32, d]} />
+        </mesh>
+      ))}
 
-      {/* Cracked slab tops */}
-      {slabs.map((s, i) => (
-        <mesh key={`slab-${i}`} material={slabMaterial} position={s.pos}>
-          <boxGeometry args={s.size} />
+      {/* The palisade itself */}
+      {logs.map((log, i) => (
+        <group key={`log-${i}`} position={log.position} rotation={log.rotation}>
+          <mesh material={i % 3 === 0 ? slabMaterial : wallMaterial}>
+            <cylinderGeometry args={[log.radius * 0.86, log.radius, log.height, 7]} />
+          </mesh>
+          {/* Cut at an angle, so the tops are points rather than a line. */}
+          <mesh material={slabMaterial} position={[0, log.height / 2 + 0.06, 0]}>
+            <coneGeometry args={[log.radius * 0.92, 0.18, 7]} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Vine lashings binding the logs together */}
+      {lashings.map((l, i) => (
+        <mesh key={`lash-${i}`} material={vineMaterial} position={l.pos}>
+          <boxGeometry args={l.size} />
         </mesh>
       ))}
 
@@ -468,18 +498,42 @@ export function JungleArena() {
         </mesh>
       ))}
 
-      {/* Corner pillars: stacked carved stone with a leafy crown */}
+      {/*
+        Buttress trees at the corners, where the castle has round towers.
+        A tower is the other half of what made every arena read as a
+        castle — four cylinders with a cap on, one at each corner, is a
+        keep whatever colour it is painted. These flare outward at the
+        base into roots, which no tower does.
+      */}
       {pillarPositions.map(([x, z], i) => (
-        <group key={`pillar-${i}`} position={[x, 0, z]}>
-          <mesh material={wallMaterial} position={[0, wallHeight / 2 + 0.2, 0]}>
-            <cylinderGeometry args={[0.48, 0.58, wallHeight + 0.4, 8]} />
+        <group key={`buttress-${i}`} position={[x, 0, z]} rotation={[0, i * 0.9, 0]}>
+          {/* Roots spreading out where a tower would meet the ground. */}
+          {[0, 1, 2, 3, 4].map((r) => (
+            <mesh
+              key={`root-${r}`}
+              material={trunkMaterial}
+              position={[
+                Math.cos((r / 5) * Math.PI * 2) * 0.42,
+                0.16,
+                Math.sin((r / 5) * Math.PI * 2) * 0.42,
+              ]}
+              rotation={[0, -(r / 5) * Math.PI * 2, 0.5]}
+            >
+              <boxGeometry args={[0.7, 0.26, 0.2]} />
+            </mesh>
+          ))}
+          <mesh material={trunkMaterial} position={[0, wallHeight * 0.9, 0]}>
+            <cylinderGeometry args={[0.3, 0.52, wallHeight * 1.8, 7]} />
           </mesh>
-          <mesh material={slabMaterial} position={[0, wallHeight + 0.5, 0]}>
-            <boxGeometry args={[0.85, 0.22, 0.85]} />
-          </mesh>
-          <mesh position={[0, wallHeight + 0.85, 0]} scale={[1, 0.65, 1]}>
-            <sphereGeometry args={[0.52, 10, 8]} />
+          {/* Canopy well above the wall, so the corners break the skyline
+              upward instead of capping it flat like a battlement. */}
+          <mesh position={[0, wallHeight * 1.95, 0]} scale={[1, 0.62, 1]}>
+            <sphereGeometry args={[0.86, 10, 8]} />
             <meshStandardMaterial color="#3f8f3f" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.3, wallHeight * 1.7, -0.24]} scale={[1, 0.6, 1]}>
+            <sphereGeometry args={[0.52, 9, 7]} />
+            <meshStandardMaterial color="#357b35" roughness={0.9} />
           </mesh>
         </group>
       ))}

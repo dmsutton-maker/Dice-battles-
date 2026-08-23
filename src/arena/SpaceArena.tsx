@@ -25,6 +25,13 @@ import { createFlagstoneTexture } from './flagstoneTexture';
 const HULL = '#8a93a8';
 const HULL_DARK = '#5c6478';
 const GLOW_CYAN = '#3ff2ff';
+/**
+ * How much of the boundary is solid hull. The rest is the containment
+ * field: see-through, so the deck reads as open rather than walled in.
+ * Knee-high on the dice, which is enough to look like a real edge you
+ * could trip over without becoming a wall.
+ */
+const RIM_HEIGHT = 0.42;
 const GLOW_MAGENTA = '#ff5fd0';
 
 /** Starfield: one Points draw call, ~320 stars on a big sphere shell. */
@@ -354,22 +361,63 @@ export function SpaceArena() {
     () => new THREE.MeshBasicMaterial({ color: GLOW_CYAN, toneMapped: false }),
     [],
   );
+  /**
+   * The containment field. Unlit and see-through, drawn on both sides so
+   * it reads the same looking out from the deck as looking in — a
+   * one-sided panel would vanish from whichever side the camera is on.
+   */
+  const fieldMaterial = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: GLOW_CYAN,
+        transparent: true,
+        opacity: 0.17,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    [],
+  );
+
+  /** Studs along the rim, evenly spaced, that the field hangs between. */
+  const emitters = useMemo(() => {
+    const list: [number, number, number][] = [];
+    for (let x = -halfW - wallThickness / 2; x <= halfW + wallThickness / 2 + 0.01; x += 0.72) {
+      list.push([x, RIM_HEIGHT, -(halfD + wallThickness / 2)]);
+      list.push([x, RIM_HEIGHT, halfD + wallThickness / 2]);
+    }
+    for (let z = -halfD - wallThickness / 2 + 0.72; z <= halfD + wallThickness / 2 - 0.5; z += 0.78) {
+      list.push([-(halfW + wallThickness / 2), RIM_HEIGHT, z]);
+      list.push([halfW + wallThickness / 2, RIM_HEIGHT, z]);
+    }
+    return list;
+  }, [halfW, halfD, wallThickness]);
 
   // Glowing light strips along every wall top — the station's "battlements".
   const strips = useMemo(() => {
-    const y = wallHeight + 0.06;
+    // On the rim, not at wall height: the wall above the rim is a
+    // see-through field now, so a light strip up there would be a glowing
+    // line floating in the air.
+    const y = RIM_HEIGHT + 0.04;
     return [
       { pos: [0, y, -(halfD + wallThickness / 2)] as const, size: [innerWidth, 0.08, 0.12] as const },
       { pos: [0, y, halfD + wallThickness / 2] as const, size: [innerWidth, 0.08, 0.12] as const },
       { pos: [-(halfW + wallThickness / 2), y, 0] as const, size: [0.12, 0.08, innerDepth] as const },
       { pos: [halfW + wallThickness / 2, y, 0] as const, size: [0.12, 0.08, innerDepth] as const },
     ];
-  }, [halfW, halfD, wallHeight, wallThickness, innerWidth, innerDepth]);
+  }, [halfW, halfD, wallThickness, innerWidth, innerDepth]);
 
-  // Porthole dots on the inner wall faces.
+  /**
+   * Vents low on the rim, where the portholes used to be.
+   *
+   * Portholes need a wall to be set into. They sat at 55% of wall height,
+   * which is now open field — they would have hung in mid-air. Dropped to
+   * the rim they read as deck vents, which is what a low hull edge would
+   * actually carry.
+   */
   const portholes = useMemo(() => {
     const list: { pos: [number, number, number]; rotY: number }[] = [];
-    const y = wallHeight * 0.55;
+    const y = RIM_HEIGHT * 0.55;
     for (let i = 0; i < 4; i++) {
       const x = -halfW + 0.9 + i * 1.0;
       list.push({ pos: [x, y, -(halfD - 0.01)], rotY: 0 });
@@ -381,7 +429,7 @@ export function SpaceArena() {
       list.push({ pos: [halfW - 0.01, y, z], rotY: -Math.PI / 2 });
     }
     return list;
-  }, [halfW, halfD, wallHeight]);
+  }, [halfW, halfD]);
 
   const pylonPositions: [number, number][] = [
     [-(halfW + wallThickness), -(halfD + wallThickness)],
@@ -404,29 +452,57 @@ export function SpaceArena() {
       <SpaceJailPen />
       <SpaceRetreat />
 
-      {/* Hull walls */}
-      <mesh
-        material={wallMaterial}
-        position={[-(halfW + wallThickness / 2), wallHeight / 2, 0]}
-      >
-        <boxGeometry
-          args={[wallThickness, wallHeight, innerDepth + wallThickness * 2]}
-        />
-      </mesh>
-      <mesh
-        material={wallMaterial}
-        position={[halfW + wallThickness / 2, wallHeight / 2, 0]}
-      >
-        <boxGeometry
-          args={[wallThickness, wallHeight, innerDepth + wallThickness * 2]}
-        />
-      </mesh>
-      <mesh material={wallMaterial} position={[0, wallHeight / 2, -(halfD + wallThickness / 2)]}>
-        <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-      </mesh>
-      <mesh material={wallMaterial} position={[0, wallHeight / 2, halfD + wallThickness / 2]}>
-        <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-      </mesh>
+      {/*
+        A knee-high hull rim, and above it a containment field.
+        
+        The station used to be four full-height solid walls — the castle's
+        walls in grey, which is why it read as a castle in space. It is now
+        mostly OPEN: you can see out across the deck in every direction,
+        and what stops the dice is light rather than stone.
+        
+        The physics boundary has not moved. It is still a full-height
+        invisible box (src/physics/world.ts), and the field panel is drawn
+        at exactly that height so a die visibly stops where it always did
+        rather than appearing to halt in mid-air.
+      */}
+      {(
+        [
+          [-(halfW + wallThickness / 2), 0, wallThickness, innerDepth + wallThickness * 2],
+          [halfW + wallThickness / 2, 0, wallThickness, innerDepth + wallThickness * 2],
+          [0, -(halfD + wallThickness / 2), innerWidth + wallThickness * 2, wallThickness],
+          [0, halfD + wallThickness / 2, innerWidth + wallThickness * 2, wallThickness],
+        ] as const
+      ).map(([x, z, w, d], i) => (
+        <mesh key={`rim-${i}`} material={wallMaterial} position={[x, RIM_HEIGHT / 2, z]}>
+          <boxGeometry args={[w, RIM_HEIGHT, d]} />
+        </mesh>
+      ))}
+
+      {/* Emitter studs along the rim, which is what the field hangs off. */}
+      {emitters.map((e, i) => (
+        <group key={`emitter-${i}`} position={e}>
+          <mesh material={wallMaterial} position={[0, 0.09, 0]}>
+            <cylinderGeometry args={[0.07, 0.09, 0.18, 6]} />
+          </mesh>
+          <mesh material={stripMaterial} position={[0, 0.2, 0]}>
+            <sphereGeometry args={[0.055, 8, 6]} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* The containment field: full height, and you can see through it. */}
+      {(
+        [
+          [-(halfW + wallThickness / 2), 0, 0.06, innerDepth + wallThickness * 2],
+          [halfW + wallThickness / 2, 0, 0.06, innerDepth + wallThickness * 2],
+          [0, -(halfD + wallThickness / 2), innerWidth + wallThickness * 2, 0.06],
+          [0, halfD + wallThickness / 2, innerWidth + wallThickness * 2, 0.06],
+        ] as const
+      ).map(([x, z, w, d], i) => (
+        <mesh key={`field-${i}`} material={fieldMaterial} position={[x, wallHeight / 2 + RIM_HEIGHT / 2, z]}>
+          <boxGeometry args={[w, wallHeight - RIM_HEIGHT, d]} />
+        </mesh>
+      ))}
 
       {/* Light strips along the wall tops */}
       {strips.map((s, i) => (
@@ -446,8 +522,18 @@ export function SpaceArena() {
       {/* Corner antenna pylons */}
       {pylonPositions.map(([x, z], i) => (
         <group key={`pylon-${i}`} position={[x, 0, z]}>
-          <mesh material={wallMaterial} position={[0, wallHeight / 2 + 0.2, 0]}>
-            <cylinderGeometry args={[0.42, 0.55, wallHeight + 0.4, 8]} />
+          {/*
+            A thin mast on a small base, not a tower. At 0.42-0.55 radius
+            and full wall height these were the castle's corner towers in
+            grey — four cylinders with a cap on is a keep whatever colour
+            it is painted, and it was half of why this read as a castle in
+            space.
+          */}
+          <mesh material={wallMaterial} position={[0, 0.12, 0]}>
+            <cylinderGeometry args={[0.34, 0.44, 0.24, 8]} />
+          </mesh>
+          <mesh material={wallMaterial} position={[0, wallHeight * 0.85, 0]}>
+            <cylinderGeometry args={[0.07, 0.11, wallHeight * 1.5, 6]} />
           </mesh>
           <mesh material={wallMaterial} position={[0, wallHeight + 0.75, 0]}>
             <cylinderGeometry args={[0.05, 0.08, 0.7, 6]} />
