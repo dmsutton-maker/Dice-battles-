@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.34.0 — 2026-08-24 · requested by David
+
+### Changed
+- **The trophy symbol is golden.** The drawn trophy that counts your
+  trophies — in the HUD, the Inventory, the ladder prices and the Cups
+  tab — was a plain ink outline; its cup is now filled gold under the
+  same outline, so the game's prize looks like one.
+- **The coin looks like a struck coin.** The drawn coin gained a milled
+  inset ring and an embossed sparkle stamped in its face, on top of the
+  raised rim and highlight it already had — a coin now, not a gold dot.
+
+
 ## v1.33.0 — 2026-08-24 · requested by David
 
 ### Changed

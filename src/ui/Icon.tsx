@@ -158,8 +158,19 @@ export function DieIcon({ size = 22, color = THEME.ink }: IconProps) {
   );
 }
 
-/** A trophy — the Cups. */
-export function TrophyIcon({ size = 22, color = THEME.ink }: IconProps) {
+/**
+ * A trophy — the Cups tab, and the trophy count everywhere.
+ *
+ * The cup is GOLD by default (David, 24 Aug 2026): as the game's own
+ * currency it should look like the prize it is, the way the coin is
+ * gold. The ink outline keeps it a drawing rather than a yellow blob;
+ * pass fill='transparent' for a pure line icon.
+ */
+export function TrophyIcon({
+  size = 22,
+  color = THEME.ink,
+  fill = THEME.gold,
+}: IconProps & { fill?: string }) {
   const s = w(size);
   return (
     <View style={{ width: size, height: size }}>
@@ -171,6 +182,7 @@ export function TrophyIcon({ size = 22, color = THEME.ink }: IconProps) {
           top: size * 0.12,
           width: size * 0.48,
           height: size * 0.4,
+          backgroundColor: fill,
           borderWidth: s,
           borderColor: color,
           borderTopLeftRadius: size * 0.04,

@@ -6,12 +6,15 @@ import { StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-n
  *
  * 🪙 renders differently on every platform and version — silver on some,
  * a flat disc on others — so "gold coins" was never guaranteed to be gold.
- * Three circles always are: a darker rim, a bright face, and a highlight
- * off the top left so it reads as metal rather than a yellow dot.
+ * This one always is: a darker raised rim, a bright face with a milled
+ * inset ring, an embossed sparkle stamped in the middle, and a highlight
+ * off the top left so it reads as struck metal rather than a yellow dot.
  */
 export function GoldCoin({ size = 16 }: { size?: number }) {
-  const face = size * 0.66;
-  const shine = size * 0.26;
+  const face = size * 0.7;
+  const shine = size * 0.22;
+  const bar = Math.max(1, size * 0.1);
+  const star = size * 0.34;
   return (
     <View
       style={[
@@ -19,12 +22,25 @@ export function GoldCoin({ size = 16 }: { size?: number }) {
         { width: size, height: size, borderRadius: size / 2, borderWidth: Math.max(1, size * 0.09) },
       ]}
     >
+      {/*
+        The face carries its own inset ring — the milled edge every real
+        coin has, and the thing that separates "a coin" from "a yellow
+        dot" at 13 points.
+      */}
       <View
         style={[
           styles.face,
-          { width: face, height: face, borderRadius: face / 2 },
+          {
+            width: face,
+            height: face,
+            borderRadius: face / 2,
+            borderWidth: Math.max(1, size * 0.05),
+          },
         ]}
       />
+      {/* The embossed mark: a four-point sparkle stamped into the face. */}
+      <View style={[styles.emboss, { width: bar, height: star, borderRadius: bar }]} />
+      <View style={[styles.emboss, { width: star, height: bar, borderRadius: bar }]} />
       <View
         style={[
           styles.shine,
@@ -32,8 +48,8 @@ export function GoldCoin({ size = 16 }: { size?: number }) {
             width: shine,
             height: shine,
             borderRadius: shine / 2,
-            top: size * 0.16,
-            left: size * 0.18,
+            top: size * 0.14,
+            left: size * 0.17,
           },
         ]}
       />
@@ -92,9 +108,14 @@ const styles = StyleSheet.create({
   },
   face: {
     backgroundColor: '#ffd75e',
+    borderColor: '#e8b32a',
+  },
+  emboss: {
+    position: 'absolute',
+    backgroundColor: '#c8890f',
   },
   shine: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'rgba(255,255,255,0.85)',
   },
 });
