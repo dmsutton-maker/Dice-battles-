@@ -5,7 +5,7 @@ one read instead of reconstructing it from conversation history. Keep it
 current — a stale map is worse than none. `AGENTS.md` holds the *rules*;
 this holds the *facts*.
 
-Last updated: 19 August 2026.
+Last updated: 24 August 2026.
 
 ## The two things being built
 
@@ -80,6 +80,20 @@ All on David's personal accounts. Never employer-linked.
 `/admin/support` · Support tickets, with draft-and-approve replies
 `/admin/automation` · What runs on its own, and what it has actually done
 `/admin/activity` · Full history
+
+## The game's look — Paper & Ink (since v1.32.0, 24 Aug 2026)
+
+David chose "Paper & Ink", **light mode only, no dark mode**, from
+side-by-side mockups (`design-concept/`). Everything the interface is
+made of lives in `src/ui/`: `theme.ts` (the only place colours, shapes
+and type sizes are decided), `Icon.tsx` (icons drawn with Views — no
+react-native-svg, it would need a native build), `Card.tsx` (outline +
+drawn hard shadow). White cards, 2px ink outlines, warm paper ground;
+emoji stay only where they are content (arenas, cups, tiers, tutorial
+art, news). The launch title card is deliberately still ink-dark — the
+bundled paper-ship mark is the light-on-dark variant. A custom typeface
+is the one part not shipped: font files ride in the binary, so it waits
+for the next native build.
 
 ## Known-open, as of the last update
 
