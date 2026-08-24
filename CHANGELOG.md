@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.33.0 — 2026-08-24 · requested by David
+
+### Changed
+- **The home screen background is solid now.** The new paper look shipped
+  with the 3D board ghosting through a translucent wash behind the home
+  and round-over screens; David asked for solid. They are full paper
+  pages now — the board appears only during a round and in item
+  previews.
+- Because nothing shows it any more, the 3D scene also stops rendering
+  behind those screens instead of burning battery invisibly, the same
+  rule the menu pages have always had.
+
+
 ## v1.32.0 — 2026-08-24 · requested by David
 
 ### Changed

@@ -1195,12 +1195,21 @@ export function DiceDemoScreen() {
       <Canvas
         style={styles.canvas}
         /*
-         * The board is not just hidden behind a menu — it stops rendering.
-         * Menus are only reachable from 'pick', where nothing is moving,
-         * so there is nothing to keep animating, and a phone should not
-         * be running a 3D scene nobody can see.
+         * The board is not just hidden — it stops rendering. Now that the
+         * home and round-over overlays are solid paper, the scene is only
+         * ever visible during a round (matching's dim still lets it ghost
+         * through) or in an item preview, and a phone should not be
+         * running a 3D scene nobody can see.
          */
-        frameloop={menuTab === null || preview !== null ? 'always' : 'never'}
+        frameloop={
+          preview !== null ||
+          phase === 'matching' ||
+          phase === 'arm' ||
+          phase === 'go' ||
+          phase === 'battle'
+            ? 'always'
+            : 'never'
+        }
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
           camera.lookAt(0, 0, -0.2);
@@ -2003,7 +2012,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(253,246,236,0.88)',
+    // SOLID paper, David's call (24 Aug 2026): the board ghosting through
+    // the wash made the home screen read as transparent. The home and
+    // round-over screens are full paper pages now; the board belongs to
+    // the battle and the previews.
+    backgroundColor: THEME.ground,
     paddingHorizontal: 28,
   },
   pickScroll: {

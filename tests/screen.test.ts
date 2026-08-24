@@ -658,17 +658,24 @@ suite('screen · the board belongs to the battle screen', () => {
     assertEqual(ids[(ids.length - 1) / 2], 'play', `Battle is not centred: ${ids.join(', ')}`);
   });
 
-  test('the board stops rendering while a menu is open', () => {
+  test('the board stops rendering when nothing shows it', () => {
     const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
-    // A preview is the exception, and the only one: it shows the board
-    // deliberately, with the item you tapped swapped in. Everything else
-    // behind a menu is a 3D scene nobody can see.
-    assert(
-      /frameloop=\{menuTab === null \|\| preview !== null \? 'always' : 'never'\}/.test(
-        source,
-      ),
-      'the 3D scene keeps running behind menus nobody can see',
-    );
+    // Since the home and round-over overlays went solid (David, 24 Aug
+    // 2026), the scene is visible only during a round or in a preview —
+    // everywhere else it must pause rather than burn battery invisibly.
+    const frameloop = source.match(/frameloop=\{([^}]*)\}/);
+    assert(frameloop !== null, 'the Canvas no longer controls its frameloop');
+    for (const needed of [
+      "preview !== null",
+      "phase === 'matching'",
+      "phase === 'battle'",
+      ": 'never'",
+    ]) {
+      assert(
+        frameloop![1].includes(needed),
+        `the frameloop rule lost "${needed}" — the 3D scene either runs behind solid paper or freezes mid-round`,
+      );
+    }
   });
 
   /**
