@@ -1,16 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { NEWS } from '../game/news';
+import { fetchNews, NEWS, NewsItem } from '../game/news';
 
 /**
- * What's new, newest first. Bundled with the app — see src/game/news.ts
- * for why there is no feed behind it.
+ * What's new, newest first.
+ *
+ * Opens instantly on the posts bundled with the app, then quietly fills in
+ * anything written on the HQ board since this version shipped. That order
+ * matters: the tab is readable the moment it opens, with no spinner and no
+ * empty state, and the network is an improvement rather than a
+ * requirement. If it never answers, nobody can tell.
  *
  * The list only; the panel, the title and the ✕ come from Popup. News used
  * to be a whole page behind a tab of its own, which was a lot of ceremony
  * for something you read once when something changes.
  */
 export function NewsScreen() {
+  const [items, setItems] = useState<NewsItem[]>(NEWS);
+
+  useEffect(() => {
+    let alive = true;
+    fetchNews().then((fresh) => {
+      // Guard against the popup being closed mid-request — setting state
+      // on a screen nobody is looking at is a warning at best and a leak
+      // at worst.
+      if (alive) setItems(fresh);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   return (
     <View>
       <ScrollView
@@ -30,7 +50,7 @@ export function NewsScreen() {
           Everything that has changed in the game, in plain words.
         </Text>
 
-        {NEWS.map((item) => (
+        {items.map((item) => (
           <View key={item.id} style={styles.card}>
             <View style={styles.cardHead}>
               <Text style={styles.cardEmoji}>{item.emoji}</Text>

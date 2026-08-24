@@ -55,6 +55,9 @@ export default async function AdminLayout({
         <Link className="button button-quiet button-small" href="/admin/content">
           ✏️ Website
         </Link>
+        <Link className="button button-quiet button-small" href="/admin/news">
+          📣 Game news
+        </Link>
         <Link className="button button-quiet button-small" href="/admin/schedule">
           🗓️ Schedule
         </Link>

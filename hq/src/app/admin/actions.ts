@@ -864,3 +864,84 @@ export async function updateTermsContent(
   revalidatePath('/admin/content/terms');
   return saved('The Terms of Use');
 }
+
+/* ---------------------------------------------------------------------
+   Game news — posts written here appear in the game's News tab.
+   --------------------------------------------------------------------- */
+
+/**
+ * A stable id for a post, made from its title.
+ *
+ * The game dedupes on this and prefers the board's copy, which is what
+ * lets a published post be CORRECTED — fix a typo here and the fixed
+ * wording reaches players without shipping anything. It follows that the
+ * slug must not change when the title is edited, so it is generated once
+ * on create and never touched again.
+ */
+function slugFrom(title: string): string {
+  const base = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+  // Two posts can legitimately share a title across months, so the slug
+  // carries the date it was written.
+  const stamp = new Date().toISOString().slice(0, 10);
+  return `${base || 'post'}-${stamp}`;
+}
+
+/** How the date is printed in the game, if nobody types one. */
+function todayInWords(): string {
+  const now = new Date();
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+export async function saveNewsPost(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
+  await requireMember();
+  const supabase = supabaseAdmin();
+
+  const id = field(formData, 'id');
+  const title = field(formData, 'title').trim();
+  const body = field(formData, 'body').trim();
+  if (!title) return { ok: false, message: 'A post needs a title.' };
+  if (!body) return { ok: false, message: 'A post needs something to say.' };
+
+  const row = {
+    shown_date: field(formData, 'shown_date').trim() || todayInWords(),
+    title,
+    emoji: field(formData, 'emoji').trim() || '📣',
+    body,
+    version: field(formData, 'version').trim() || null,
+    published: formData.get('published') === 'on',
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = id
+    ? await supabase.from('game_news').update(row).eq('id', id)
+    : await supabase.from('game_news').insert({ ...row, slug: slugFrom(title) });
+
+  if (error) return { ok: false, message: `Could not save: ${error.message}` };
+
+  revalidatePath('/admin/news');
+  return saved(row.published ? 'Published' : 'Saved as a draft');
+}
+
+export async function deleteNewsPost(
+  _prev: SaveResult | null,
+  formData: FormData,
+): Promise<SaveResult> {
+  await requireMember();
+  const id = field(formData, 'id');
+  if (!id) return { ok: false, message: 'Nothing to delete.' };
+  const { error } = await supabaseAdmin().from('game_news').delete().eq('id', id);
+  if (error) return { ok: false, message: `Could not delete: ${error.message}` };
+  revalidatePath('/admin/news');
+  return saved('The post');
+}

@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.30.0 — 2026-08-24 · requested by David
+
+### Fixed
+- **The News tab was eighteen releases out of date.** Its newest post was
+  v1.11.0, from 19 August, while the game was on v1.29.0 — so it was
+  quietly telling players nothing had changed in five days, during which
+  the game changed more than in the fortnight before. Ten catch-up posts
+  written: the dice materials, the snowflakes, the tutorial, rolling again
+  without waiting, the rebuilt battlefields, the themed hazards, and Game
+  Center on its way.
+
+### Added
+- **News can now be written on the HQ board and appears in the game.**
+  A new page at `/admin/news`: write a post, tick "Show in the game", and
+  it is there the next time anyone opens the tab. No release needed.
+- The bundled posts are the FLOOR, not the ceiling. The tab opens
+  instantly on the posts the app shipped with — no spinner, no empty state
+  — and fills in from the board afterwards. Offline, on a plane, on a
+  fresh install, or if the site is down, a player sees the news the game
+  came with and cannot tell anything was attempted.
+- A fetched post replaces a bundled one with the same id, which is what
+  makes a correction possible: fix the wording on the board and the fixed
+  version reaches players without shipping anything.
+- The last feed successfully read is kept on the device, so a cold start
+  with no network still shows what the board said yesterday.
+
+### Under the hood
+- **No key of any kind is in the app.** The game reads a plain public URL
+  on the website, and the website holds the database credentials. A token
+  shipped inside an app is not a token — it is a string anybody can pull
+  out of the binary. Drafts are filtered out server-side for the same
+  reason: an unpublished post is not reachable by guessing a query string.
+- Every failure path was written as a test first: no network, a 500, a
+  reply that is not JSON, JSON of the wrong shape, an empty feed, and a
+  single malformed post among good ones. That last one costs only itself.
+  `fetchNews` never rejects — the screen calls it without a catch, and an
+  unhandled rejection inside a popup is a red screen on a device.
+- A test now checks the News tab has not fallen more than three minor
+  versions behind the game, so this cannot silently happen again.
+- Posts are ordered by the board's own order, then the bundle. Deliberately
+  not sorted by date: the dates are free text so they read properly on
+  every phone, and parsing them back to sort would invent a contract the
+  person writing them never agreed to.
+
 ## v1.29.0 — 2026-08-24 · requested by David
 
 ### Changed
