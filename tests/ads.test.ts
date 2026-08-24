@@ -189,7 +189,7 @@ suite('ads · an ad can never cost a player anything', () => {
     );
   });
 
-  test('the real ad unit is empty until David sends one, so tests ads are used', () => {
+  test('the configured ad unit is an ad unit, not the App ID', () => {
     /*
       An App ID (…~…) is not an ad unit id (…/…). Shipping with the wrong
       one would fail at request time with a misleading error, and asking

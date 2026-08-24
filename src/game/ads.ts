@@ -63,20 +63,24 @@ interface LoadedInterstitial {
 /**
  * The real interstitial unit, from David's AdMob account.
  *
- * EMPTY until he creates the ad unit and sends the id — an App ID
- * (`ca-app-pub-…~…`, tilde) is not an ad unit id (`ca-app-pub-…/…`,
- * slash), and putting the App ID here would fail at request time with a
- * misleading error. While it is empty the game asks for GOOGLE'S TEST
- * INTERSTITIAL instead, which always fills and is the only safe thing to
- * develop against: requesting real ads from a device that is not a
- * registered test device is what gets an AdMob account suspended for
- * invalid traffic.
+ * Note the SLASH. An App ID (`ca-app-pub-…~…`, tilde) identifies the app
+ * and lives in app.json; an ad unit id (`ca-app-pub-…/…`, slash)
+ * identifies this one placement. They look nearly identical and the App
+ * ID was pasted here first, which is why `hasRealAdUnit()` checks for the
+ * slash and a test fails on anything else — the wrong one would not error
+ * loudly, it would simply never serve an ad.
+ *
+ * If this is ever emptied again the game falls back to GOOGLE'S TEST
+ * INTERSTITIAL, which always fills and is the only safe thing to develop
+ * against: requesting real ads from a device that is not a registered
+ * test device is what gets an AdMob account suspended for invalid
+ * traffic.
  *
  * Both ids are public by design — they are compiled into the binary and
  * readable by anyone who downloads it. The AdMob ACCOUNT is the secret;
  * these are not, which is why they may live in this public repo.
  */
-export const INTERSTITIAL_AD_UNIT_ID = '';
+export const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-5310885665976703/5594525845';
 
 /** True once a real unit is configured — the launch checklist reads this. */
 export function hasRealAdUnit(): boolean {

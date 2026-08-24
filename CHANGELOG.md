@@ -19,6 +19,8 @@
   answers true rather than merely filed.
 - EU users get Google's own consent form before any ad is requested, and
   a consent failure means no ads at all rather than ads anyway.
+- The real AdMob interstitial unit is configured, so this build serves
+  live ads rather than Google's test ones.
 
 ### Under the hood
 - `src/game/ads.ts` is the only file that touches the ad SDK, the way
