@@ -2,15 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { initSounds, playStartup } from '../audio/sounds';
 import { loadAudioSettings } from '../audio/settings';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { DieIcon } from '../ui/Icon';
+import { THEME } from '../ui/theme';
 
 /** How long the title card is held before the game appears. */
 export const BOOT_SPLASH_MS = 1900;
 
-const textShadow = {
-  textShadowColor: 'rgba(0,0,0,0.55)',
-  textShadowOffset: { width: 0, height: 2 },
-  textShadowRadius: 8,
-};
 
 /**
  * The title card on launch: the game's name, and who made it.
@@ -52,7 +49,10 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.dice}>🎲</Text>
+      {/* Drawn, not 🎲 — the same die the tab bar draws, at title size. */}
+      <View style={styles.dice}>
+        <DieIcon size={72} color={THEME.onInk} />
+      </View>
       <Text style={styles.title}>DICE BATTLES</Text>
       <Text style={styles.subtitle}>COLOR RUSH</Text>
       <View style={styles.rule} />
@@ -88,43 +88,45 @@ const styles = StyleSheet.create({
     zIndex: 100,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#140c28',
+    /*
+     * INK, deliberately, in a light-mode game: the title card is the one
+     * brand moment, and the bundled ship mark is the reversed variant —
+     * a paper-white hull that needs a dark ground or it vanishes. The
+     * interface proper starts on paper the moment this card leaves.
+     */
+    backgroundColor: THEME.ink,
     paddingHorizontal: 32,
   },
   dice: {
-    fontSize: 68,
     marginBottom: 14,
   },
   title: {
-    color: '#ffe521',
+    color: THEME.gold,
     fontSize: 40,
     fontWeight: '900',
     letterSpacing: 1.5,
     textAlign: 'center',
-    ...textShadow,
   },
   subtitle: {
-    color: '#fc8403',
+    color: THEME.onInk,
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 4.5,
     marginTop: 6,
     textAlign: 'center',
-    ...textShadow,
   },
   rule: {
     width: 74,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#fc8403',
+    backgroundColor: THEME.gold,
     marginTop: 16,
   },
   tagline: {
-    color: 'rgba(255,255,255,0.88)',
+    color: 'rgba(253,246,236,0.88)',
     fontSize: 16,
     fontWeight: '700',
     marginTop: 16,
-    ...textShadow,
   },
   studio: {
     position: 'absolute',
@@ -138,17 +140,16 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   studioLabel: {
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(253,246,236,0.55)',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   studioName: {
-    color: '#ffffff',
+    color: THEME.onInk,
     fontSize: 19,
     fontWeight: '800',
     marginTop: 6,
-    ...textShadow,
   },
 });

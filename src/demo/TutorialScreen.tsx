@@ -6,6 +6,7 @@ import { MODES, MODE_ORDER } from '../game/modes';
 import { TUTORIAL_PAGES, TutorialArt } from '../game/tutorial';
 import { playClick } from '../audio/sounds';
 import { GoldCoin } from './GoldCoin';
+import { SHAPE, THEME } from '../ui/theme';
 
 /**
  * How to play, one screen at a time.
@@ -281,17 +282,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.22)',
   },
   bigEmoji: { fontSize: 30 },
-  verdict: { color: '#fff', fontSize: 15, fontWeight: '900', marginLeft: 4 },
+  verdict: { color: THEME.ink, fontSize: 15, fontWeight: '900', marginLeft: 4 },
 
   title: {
-    color: '#fff',
+    color: THEME.ink,
     fontSize: 19,
     fontWeight: '900',
     textAlign: 'center',
     marginBottom: 8,
   },
   line: {
-    color: 'rgba(255,255,255,0.86)',
+    color: THEME.inkSoft,
     fontSize: 13.5,
     fontWeight: '600',
     lineHeight: 19,
@@ -309,9 +310,9 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(29,26,46,0.25)',
   },
-  dotOn: { backgroundColor: '#ffe521' },
+  dotOn: { backgroundColor: THEME.ink },
 
   buttons: {
     flexDirection: 'row',
@@ -323,15 +324,18 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: 0,
     paddingVertical: 13,
-    borderRadius: 16,
+    borderRadius: SHAPE.radius,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
-  buttonMain: { backgroundColor: '#ffe521', borderColor: 'rgba(0,0,0,0.2)' },
-  buttonDead: { opacity: 0.35 },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: '900' },
-  buttonTextMain: { color: '#1b1330' },
-  buttonTextDead: { color: 'rgba(255,255,255,0.7)' },
+  buttonMain: { backgroundColor: THEME.accent, borderColor: THEME.ink },
+  buttonDead: {
+    backgroundColor: THEME.sunk,
+    borderColor: 'rgba(29,26,46,0.30)',
+  },
+  buttonText: { color: THEME.ink, fontSize: 15, fontWeight: '900' },
+  buttonTextMain: { color: THEME.onAccent },
+  buttonTextDead: { color: THEME.inkFaint },
 });

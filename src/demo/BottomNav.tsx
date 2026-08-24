@@ -2,6 +2,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
 import { BOTTOM_INSET } from '../game/safeArea';
+import { BagIcon, CrateIcon, DieIcon, RanksIcon, TrophyIcon } from '../ui/Icon';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 
 /**
  * The menu bar along the bottom — the way Clash Royale does it.
@@ -25,12 +27,21 @@ export type Tab = 'store' | 'inventory' | 'play' | 'cups' | 'leaderboard';
  * about 53pt each on a small phone; five leave 75, which is room for a
  * comfortable tap rather than a careful one.
  */
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'store', label: 'Store', icon: '🛒' },
-  { id: 'inventory', label: 'Items', icon: '🎒' },
-  { id: 'play', label: 'Battle', icon: '⚔️' },
-  { id: 'cups', label: 'Cups', icon: '🏆' },
-  { id: 'leaderboard', label: 'Ranks', icon: '🏅' },
+type IconFn = (props: { size?: number; color?: string }) => React.ReactElement;
+
+/**
+ * The icons are DRAWN (src/ui/Icon.tsx), not emoji.
+ *
+ * 🛒 🎒 ⚔️ 🏆 🏅 was the loudest single reason the game read as one from
+ * 2010, and emoji also render differently on every platform and version —
+ * so the game could not be sure what its own navigation looked like.
+ */
+const TABS: { id: Tab; label: string; Icon: IconFn }[] = [
+  { id: 'store', label: 'Store', Icon: BagIcon },
+  { id: 'inventory', label: 'Items', Icon: CrateIcon },
+  { id: 'play', label: 'Battle', Icon: DieIcon },
+  { id: 'cups', label: 'Cups', Icon: TrophyIcon },
+  { id: 'leaderboard', label: 'Ranks', Icon: RanksIcon },
 ];
 
 export function BottomNav({
@@ -55,7 +66,7 @@ export function BottomNav({
             }}
           >
             <View style={[styles.pill, on && styles.pillOn]}>
-              <Text style={styles.icon}>{tab.icon}</Text>
+              <tab.Icon size={21} color={on ? THEME.onGold : THEME.inkFaint} />
             </View>
             <Text
               style={[styles.label, on && styles.labelOn]}
@@ -122,9 +133,9 @@ const styles = StyleSheet.create({
     // indicator on top of it.
     paddingBottom: 18 + BOTTOM_INSET,
     paddingTop: 6,
-    backgroundColor: 'rgba(16,11,34,0.97)',
-    borderTopWidth: 2,
-    borderTopColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: THEME.surface,
+    borderTopWidth: SHAPE.line,
+    borderTopColor: THEME.ink,
     // Above the menu pages (20) and the stats HUD (30), below the reward
     // popup (40) — the bar should never be the thing covering a reward.
     zIndex: 35,
@@ -138,22 +149,21 @@ const styles = StyleSheet.create({
     // Back to a generous pill now there are five cells rather than seven.
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: SHAPE.radiusSm,
+    borderWidth: SHAPE.line,
+    // Every cell carries the border so the selected one does not grow by
+    // 4pt when it gains one and shove the row sideways.
+    borderColor: 'transparent',
   },
   pillOn: {
-    backgroundColor: 'rgba(255,229,33,0.18)',
-  },
-  icon: {
-    fontSize: 20,
+    backgroundColor: THEME.gold,
+    borderColor: THEME.ink,
   },
   label: {
-    color: 'rgba(255,255,255,0.5)',
-    // 75pt cells hold a bigger label than 53pt ones did.
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0,
+    color: THEME.inkFaint,
+    ...TYPE.nav,
   },
   labelOn: {
-    color: '#ffe521',
+    color: THEME.ink,
   },
 });

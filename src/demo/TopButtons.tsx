@@ -1,18 +1,22 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { playClick } from '../audio/sounds';
+import { GearIcon, HelpIcon, NewsIcon } from '../ui/Icon';
+import { SHAPE, THEME } from '../ui/theme';
 
 /**
- * Settings and News, as two small buttons in the top corner.
+ * How to play, News and Settings, as three small buttons in the top corner.
  *
- * They used to be two of seven tabs along the bottom. Neither is somewhere
- * you go during play — one you visit once to turn the music down, the
- * other you read when something changes — so they were taking prime thumb
- * space from the five things you actually move between. Up here they are
- * out of the way but still one tap.
+ * They used to be tabs along the bottom. None is somewhere you go during
+ * play — one you visit once to turn the music down, another you read when
+ * something changes — so they were taking prime thumb space from the five
+ * things you actually move between. Up here they are out of the way but
+ * still one tap.
  *
  * Icon only, no label: the gear and the newspaper are understood without
  * being told, and a label would make these as big as the tabs they left.
+ * The icons are drawn (src/ui/Icon.tsx), not emoji — same reason as the
+ * tab bar.
  */
 export function TopButtons({
   onHowToPlay,
@@ -23,12 +27,13 @@ export function TopButtons({
   onSettings: () => void;
   onNews: () => void;
 }) {
-  const buttons: { icon: string; label: string; press: () => void }[] = [
+  type IconFn = (props: { size?: number; color?: string }) => React.ReactElement;
+  const buttons: { Icon: IconFn; label: string; press: () => void }[] = [
     // First in the row: it opens on its own the first time, and after that
     // the person reaching for it is the one who does not know how to play.
-    { icon: '❓', label: 'How to play', press: onHowToPlay },
-    { icon: '📰', label: 'News', press: onNews },
-    { icon: '⚙️', label: 'Settings', press: onSettings },
+    { Icon: HelpIcon, label: 'How to play', press: onHowToPlay },
+    { Icon: NewsIcon, label: 'News', press: onNews },
+    { Icon: GearIcon, label: 'Settings', press: onSettings },
   ];
 
   return (
@@ -44,7 +49,7 @@ export function TopButtons({
             b.press();
           }}
         >
-          <Text style={styles.icon}>{b.icon}</Text>
+          <b.Icon size={19} />
         </Pressable>
       ))}
     </View>
@@ -66,16 +71,13 @@ const styles = StyleSheet.create({
   button: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: SHAPE.radiusSm,
     alignItems: 'center',
     justifyContent: 'center',
-    // Matches the trophy/coin pills opposite, so the top of the screen
+    // Matches the trophy/coin cards opposite, so the top of the screen
     // reads as one row of furniture rather than two designs.
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.16)',
-  },
-  icon: {
-    fontSize: 18,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
 });

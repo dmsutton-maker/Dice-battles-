@@ -44,6 +44,7 @@ function contrastRatio(a: RGB, b: RGB): number {
 }
 
 const BAR_SOURCE = readFileSync('src/demo/ItemPreviewBar.tsx', 'utf8');
+import { THEME } from '../src/ui/theme';
 
 /** `#rrggbb` or `rgba(r,g,b,a)` → colour plus its alpha. */
 function parseColor(text: string): { rgb: RGB; alpha: number } {
@@ -71,9 +72,16 @@ function styleColor(styleName: string, prop: string): { rgb: RGB; alpha: number 
     new RegExp(`\\n  ${styleName}: \\{([^}]*)\\}`),
   );
   assert(block !== null, `styles.${styleName} is gone from ItemPreviewBar`);
-  const line = block![1].match(new RegExp(`${prop}:\\s*'([^']+)'`));
+  // Either a literal ('#fff' / 'rgba(...)') or a THEME token — resolved
+  // through the real theme object, so this test still reads the code it
+  // guards rather than a transcription of it.
+  const line = block![1].match(
+    new RegExp(`${prop}:\\s*(?:'([^']+)'|THEME\\.(\\w+))`),
+  );
   assert(line !== null, `styles.${styleName} has no ${prop}`);
-  return parseColor(line![1]);
+  const raw = line![1] ?? (THEME as Record<string, string>)[line![2]];
+  assert(raw !== undefined, `THEME.${line![2]} does not exist`);
+  return parseColor(raw);
 }
 
 /**
@@ -111,17 +119,15 @@ suite('preview bar · the dead button reads over the live board behind it', () =
     });
   }
 
-  test('the dead button is backed darkly, like the rest of the bar', () => {
-    // The title and the hint both solved this with a dark, nearly opaque
-    // backing. The dead button is the only piece that ever drifted, and it
-    // drifted by being light, so name that rule rather than only its
-    // numeric consequence.
+  test('the dead button is a solid card, not a wash over the board', () => {
+    // The rule is SOLIDITY, not darkness. A translucent tint's contrast
+    // depends on whatever battlefield is behind it — that is how the
+    // original white wash reached 1.65:1 — so the backing must be opaque
+    // enough that the floor cannot participate. Which side of light/dark
+    // it lands on is the theme's business; the per-arena text checks
+    // above hold it to 4.5:1 either way.
     assert(
-      relativeLuminance(button.rgb) < 0.1,
-      'the dead button tint is light again — white text over it will not read',
-    );
-    assert(
-      button.alpha >= 0.8,
+      button.alpha >= 0.9,
       `the dead button is only ${button.alpha} opaque, so the board shows through it`,
     );
   });

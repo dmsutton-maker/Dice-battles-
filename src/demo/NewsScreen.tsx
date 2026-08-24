@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { fetchNews, NEWS, NewsItem } from '../game/news';
+import { SHAPE, THEME } from '../ui/theme';
 
 /**
  * What's new, newest first.
@@ -84,14 +85,16 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   note: {
-    color: 'rgba(255,255,255,0.6)',
+    color: THEME.inkSoft,
     fontSize: 13.5,
     fontWeight: '600',
     marginBottom: 16,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    borderRadius: 18,
+    backgroundColor: THEME.tile,
+    borderWidth: SHAPE.line,
+    borderColor: 'rgba(29,26,46,0.25)',
+    borderRadius: SHAPE.radius,
     padding: 16,
     marginBottom: 12,
   },
@@ -108,24 +111,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitle: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 16.5,
     fontWeight: '800',
   },
   cardMeta: {
-    color: '#ffe521',
+    color: THEME.inkFaint,
     fontSize: 12,
     fontWeight: '700',
     marginTop: 2,
   },
   cardBody: {
-    color: 'rgba(255,255,255,0.85)',
+    color: THEME.ink,
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 20,
   },
   footer: {
-    color: 'rgba(255,255,255,0.5)',
+    color: THEME.inkFaint,
     fontSize: 12.5,
     fontWeight: '600',
     lineHeight: 18,

@@ -1,11 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-
-const textShadow = {
-  textShadowColor: 'rgba(0,0,0,0.55)',
-  textShadowOffset: { width: 0, height: 2 },
-  textShadowRadius: 6,
-};
+import { SHAPE, THEME } from '../ui/theme';
 
 export interface Reward {
   /** The big picture at the top — the item's own emoji. */
@@ -37,7 +32,9 @@ export function RewardPopup({
 }) {
   return (
     <View style={styles.backdrop}>
-      <View style={styles.card}>
+      <View style={styles.stack}>
+        <View pointerEvents="none" style={styles.shadow} />
+        <View style={styles.card}>
         <Text style={styles.kicker}>{reward.kicker}</Text>
         <View style={styles.burst}>
           <Text style={styles.emoji}>{reward.emoji}</Text>
@@ -45,8 +42,9 @@ export function RewardPopup({
         <Text style={styles.name}>{reward.name}</Text>
         <Text style={styles.note}>{reward.note}</Text>
         <Pressable style={styles.button} onPress={onClose}>
-          <Text style={styles.buttonText}>NICE!</Text>
+          <Text style={styles.buttonText}>Nice!</Text>
         </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -57,52 +55,65 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(12,8,26,0.78)',
+    backgroundColor: 'rgba(29,26,46,0.66)',
     paddingHorizontal: 30,
     // Above the Store and Inventory overlays (20) and the HUD (30).
     zIndex: 40,
   },
+  stack: {
+    alignSelf: 'stretch',
+    maxWidth: 340,
+  },
+  // The hard offset shadow, drawn — see src/ui/Card.tsx for why.
+  shadow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: SHAPE.drop,
+    bottom: -SHAPE.drop,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.ink,
+  },
   card: {
     alignItems: 'center',
     alignSelf: 'stretch',
-    maxWidth: 340,
     paddingVertical: 28,
     paddingHorizontal: 26,
-    borderRadius: 26,
-    backgroundColor: '#241a44',
-    borderWidth: 3,
-    borderColor: '#ffe521',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   kicker: {
-    color: '#ffe521',
+    color: THEME.inkSoft,
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 1.6,
     marginBottom: 14,
   },
+  // The one place gold gets to be loud: the reward moment.
   burst: {
     width: 96,
     height: 96,
     borderRadius: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,229,33,0.16)',
-    borderWidth: 3,
-    borderColor: 'rgba(255,229,33,0.45)',
+    backgroundColor: 'rgba(255,210,31,0.30)',
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   emoji: {
     fontSize: 52,
   },
   name: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 24,
     fontWeight: '900',
     marginTop: 16,
     textAlign: 'center',
-    ...textShadow,
   },
   note: {
-    color: 'rgba(255,255,255,0.82)',
+    color: THEME.inkSoft,
     fontSize: 14.5,
     fontWeight: '600',
     lineHeight: 21,
@@ -112,15 +123,17 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 22,
     alignSelf: 'stretch',
-    backgroundColor: '#ffe521',
-    borderRadius: 22,
+    backgroundColor: THEME.gold,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radiusLg,
     paddingVertical: 14,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#241a44',
+    color: THEME.onGold,
     fontSize: 16,
     fontWeight: '900',
-    letterSpacing: 1.2,
+    letterSpacing: 0.6,
   },
 });

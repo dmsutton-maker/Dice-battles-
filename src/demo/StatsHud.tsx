@@ -1,5 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { TrophyIcon } from '../ui/Icon';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
 
 /**
@@ -25,13 +27,13 @@ export function StatsHud({
   return (
     <View style={styles.row} pointerEvents="none">
       <View style={styles.pill}>
-        <Text style={styles.icon}>🏆</Text>
+        <TrophyIcon size={15} />
         <Text style={styles.value}>{trophies}</Text>
       </View>
       <View style={styles.pill}>
         {/* Drawn, not 🪙 — see GoldCoin for why. */}
         <GoldCoin size={16} />
-        <Text style={[styles.value, styles.coinValue]}>{coins}</Text>
+        <Text style={styles.value}>{coins}</Text>
       </View>
     </View>
   );
@@ -49,26 +51,26 @@ const styles = StyleSheet.create({
     gap: 8,
     zIndex: 30,
   },
+  /*
+   * A small white card, not a glass pill: the HUD sits over the live 3D
+   * board on the home screen and over paper pages everywhere else, and a
+   * solid card with an ink outline reads on both — translucency is the
+   * old design's habit.
+   */
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.16)',
-  },
-  icon: {
-    fontSize: 15,
+    borderRadius: SHAPE.radiusSm,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   value: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 15,
-    fontWeight: '900',
-  },
-  coinValue: {
-    color: '#ffd54a',
+    fontWeight: TYPE.cardTitle.fontWeight,
   },
 });

@@ -30,6 +30,7 @@ import {
   velocityFromSamples,
 } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
+import { SHAPE, THEME } from '../ui/theme';
 
 /**
  * Same-device 2-player split screen — the original tabletop face-off.
@@ -198,15 +199,15 @@ function ZoneView({
       {phase === 'over' && (
         <View style={styles.zoneOverlay}>
           <Text style={styles.zoneBig}>
-            {won === null ? "🤝 IT'S A DRAW" : won ? '🏆 YOU WIN!' : '😤 DEFEAT'}
+            {won === null ? "It's a draw" : won ? 'You win!' : 'Defeat'}
           </Text>
           {/* One set per zone, so each player has upright buttons. */}
           <View style={styles.endButtons}>
             <Pressable style={styles.playAgainButton} onPress={onRematch}>
-              <Text style={styles.playAgainText}>▶ PLAY AGAIN</Text>
+              <Text style={styles.playAgainText}>Play again</Text>
             </Pressable>
             <Pressable style={styles.homeButton} onPress={onExitToMenu}>
-              <Text style={styles.homeText}>🏠 HOME</Text>
+              <Text style={styles.homeText}>Home</Text>
             </Pressable>
           </View>
         </View>
@@ -428,14 +429,14 @@ export function TwoPlayerScreen({
       {phase === 'ready' && (
         <Pressable style={styles.readyOverlay} onPress={startMatch}>
           <View style={styles.readyCardFlipped}>
-            <Text style={styles.readyTitle}>⚔️ split screen</Text>
+            <Text style={styles.readyTitle}>Split screen</Text>
             <Text style={styles.readyBody}>This side is yours, Player 2!</Text>
           </View>
           <Text style={styles.readyPrompt}>
             Lay the phone flat between you.{'\n'}Tap anywhere to battle!
           </Text>
           <View style={styles.readyCard}>
-            <Text style={styles.readyTitle}>⚔️ split screen</Text>
+            <Text style={styles.readyTitle}>Split screen</Text>
             <Text style={styles.readyBody}>
               First to rescue all six prisoners wins.{'\n'}Tap fast. No mercy.
             </Text>
@@ -449,7 +450,7 @@ export function TwoPlayerScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#241c40',
+    backgroundColor: THEME.ink,
   },
   zone: {
     flex: 1,
@@ -461,21 +462,24 @@ const styles = StyleSheet.create({
   canvas: {
     flex: 1,
   },
+  // The table's centre line: ink, like every other line in the game.
   divider: {
     height: 3,
-    backgroundColor: '#ffe521',
+    backgroundColor: THEME.ink,
   },
   zoneHud: {
     position: 'absolute',
     top: 10,
     right: 14,
-    backgroundColor: 'rgba(20,16,40,0.55)',
-    borderRadius: 12,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radiusSm,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   zoneScore: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -483,19 +487,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(20,12,40,0.35)',
+    backgroundColor: 'rgba(253,246,236,0.85)',
   },
   zoneBig: {
-    color: '#ffe521',
+    color: THEME.ink,
     fontSize: 30,
     fontWeight: '900',
     textAlign: 'center',
-    textShadowColor: 'rgba(20,20,40,0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 5,
   },
   zoneSmall: {
-    color: '#ffffff',
+    color: THEME.inkSoft,
     fontSize: 14,
     fontWeight: '700',
     marginTop: 8,
@@ -509,24 +510,26 @@ const styles = StyleSheet.create({
   playAgainButton: {
     paddingHorizontal: 18,
     paddingVertical: 11,
-    borderRadius: 20,
-    backgroundColor: '#ffe521',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.accent,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   playAgainText: {
-    color: '#241c40',
+    color: THEME.onAccent,
     fontSize: 14,
     fontWeight: '900',
   },
   homeButton: {
     paddingHorizontal: 16,
     paddingVertical: 11,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.45)',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   homeText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 13,
     fontWeight: '800',
   },
@@ -538,18 +541,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(20,16,40,0.7)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   exitText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 17,
     fontWeight: '800',
   },
   readyOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,12,40,0.72)',
+    backgroundColor: 'rgba(253,246,236,0.92)',
     justifyContent: 'space-between',
     paddingVertical: 60,
     paddingHorizontal: 24,
@@ -562,12 +567,12 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '180deg' }],
   },
   readyTitle: {
-    color: '#ffe521',
+    color: THEME.ink,
     fontSize: 26,
     fontWeight: '900',
   },
   readyBody: {
-    color: '#ffffff',
+    color: THEME.inkSoft,
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
@@ -575,7 +580,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   readyPrompt: {
-    color: 'rgba(255,255,255,0.9)',
+    color: THEME.inkSoft,
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',

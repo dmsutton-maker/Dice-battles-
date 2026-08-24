@@ -91,6 +91,7 @@ import {
   Station,
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
 import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
 import {
@@ -417,7 +418,7 @@ export function DiceDemoScreen() {
     if (code === TESTER_CODE) {
       persistUnlockAll(true);
       setUnlockAll(true);
-      setCodeFeedback('🔓 Everything unlocked — have fun testing!');
+      setCodeFeedback('Everything unlocked — have fun testing!');
       playFanfare();
     } else if (coinCode) {
       // Checked before the catch-all, so "500 COIN" is never met with
@@ -443,7 +444,7 @@ export function DiceDemoScreen() {
       setCodeFeedback(
         removed === 0
           ? 'Nothing bought yet — the Store is already untouched.'
-          : `🧹 ${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
+          : `${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
       );
       playClick();
     } else if (trophyCode) {
@@ -468,14 +469,14 @@ export function DiceDemoScreen() {
       }
       setCodeFeedback(
         trophyCode.clamped
-          ? `🏆 That is more trophies than the game holds — set to ${TROPHY_CODE_MAX.toLocaleString()}.`
-          : `🏆 Trophies set to ${result.trophies.toLocaleString()}.`,
+          ? `That is more trophies than the game holds — set to ${TROPHY_CODE_MAX.toLocaleString()}.`
+          : `Trophies set to ${result.trophies.toLocaleString()}.`,
       );
       playFanfare();
     } else if (code === TESTER_LOCK_CODE) {
       persistUnlockAll(false);
       setUnlockAll(false);
-      setCodeFeedback('🔒 Tester mode off — back to earning unlocks.');
+      setCodeFeedback('Tester mode off — back to earning unlocks.');
     } else if (code) {
       setCodeFeedback("Hmm, that's not the secret code…");
     }
@@ -1150,7 +1151,7 @@ export function DiceDemoScreen() {
         {obstacleHint(difficulty, obstacleLook(arenaId).words)}
       </Text>
       <Text style={styles.stakesText}>
-        Win +{rangeLabel(stakes.win)} 🏆 · Lose −{rangeLabel(stakes.loss)} 🏆
+        Win +{rangeLabel(stakes.win)} · Lose −{rangeLabel(stakes.loss)} trophies
       </Text>
     </View>
   );
@@ -1162,10 +1163,10 @@ export function DiceDemoScreen() {
   const roundOverButtons = (
     <View style={styles.endButtons}>
       <Pressable style={styles.playAgainButton} onPress={startCountdown}>
-        <Text style={styles.playAgainText}>▶ PLAY AGAIN</Text>
+        <Text style={styles.playAgainText}>Play again</Text>
       </Pressable>
       <Pressable style={styles.homeButton} onPress={quitToMenu}>
-        <Text style={styles.homeText}>🏠 HOME</Text>
+        <Text style={styles.homeText}>Home</Text>
       </Pressable>
     </View>
   );
@@ -1190,7 +1191,7 @@ export function DiceDemoScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Canvas
         style={styles.canvas}
         /*
@@ -1245,7 +1246,7 @@ export function DiceDemoScreen() {
             )}
             <Text style={styles.scoreNumber}>{playerScore}</Text>
           </View>
-          <Text style={styles.scoreVs}>⚔️</Text>
+          <Text style={styles.scoreVs}>vs</Text>
           <View style={[styles.scoreSide, aiFlash && styles.scoreFlashAi]}>
             <Text style={styles.scoreNumber}>{aiScore}</Text>
             {warColors && (
@@ -1353,25 +1354,25 @@ export function DiceDemoScreen() {
             onLayout={(e) => measurePick({ viewport: e.nativeEvent.layout.height })}
             onContentSizeChange={(_w, h) => measurePick({ content: h })}
           >
-            <Text style={styles.overlayTitle}>⚔️ DICE BATTLES ⚔️</Text>
+            <Text style={styles.overlayTitle}>Dice Battles</Text>
             <Text style={styles.tagline}>
               Race other players to free your prisoners!
             </Text>
             {unlockAll ? (
               <Text style={styles.trophyNext} numberOfLines={1}>
-                🔓 Family tester mode — everything unlocked
+                Family tester mode — everything unlocked
               </Text>
             ) : (
               upNext && (
                 <Text style={styles.trophyNext} numberOfLines={1}>
-                  Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} 🏆
+                  Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
                 </Text>
               )
             )}
             {modeRow}
             {difficultyRow}
             <Pressable style={styles.startButton} onPress={startCountdown}>
-              <Text style={styles.startText}>▶ START BATTLE</Text>
+              <Text style={styles.startText}>Start battle</Text>
             </Pressable>
             <Pressable
               style={styles.twoPlayerButton}
@@ -1393,7 +1394,7 @@ export function DiceDemoScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.75}
               >
-                👥 2 Players · {MODES[mode].name} · {AI_DIFFICULTIES[difficulty].label}
+                2 Players · {MODES[mode].name} · {AI_DIFFICULTIES[difficulty].label}
               </Text>
             </Pressable>
           </ScrollView>
@@ -1415,13 +1416,13 @@ export function DiceDemoScreen() {
       )}
       {phase === 'won' && (
         <View style={styles.overlay}>
-          <Text style={styles.overlayTitle}>🏆 VICTORY!</Text>
+          <Text style={styles.overlayTitle}>Victory!</Text>
           <Text style={styles.trophyLine}>
-            {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} 🏆 → {trophies}
+            {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} trophies → {trophies}
           </Text>
           {upNext && (
             <Text style={styles.trophyNext} numberOfLines={1}>
-              Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} 🏆
+              Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
             </Text>
           )}
           <Text style={styles.overlayBody}>
@@ -1434,7 +1435,7 @@ export function DiceDemoScreen() {
       )}
       {phase === 'tie' && (
         <View style={styles.overlay}>
-          <Text style={styles.overlayTitle}>🤝 IT'S A TIE!</Text>
+          <Text style={styles.overlayTitle}>It's a tie!</Text>
           <Text style={styles.overlayBody}>
             {playerScore}–{aiScore} — nobody loses trophies.{'\n'}Settle it in a
             rematch!
@@ -1540,7 +1541,7 @@ export function DiceDemoScreen() {
 
       {popup === 'howto' && (
         <Popup
-          title="❓ HOW TO PLAY"
+          title="How to play"
           onClose={() => {
             // Seen counts as seen whether they read to the end or shut it
             // on page one. A tutorial that keeps coming back because you
@@ -1560,13 +1561,13 @@ export function DiceDemoScreen() {
       )}
 
       {popup === 'news' && (
-        <Popup title="📰 NEWS" onClose={() => setPopup(null)}>
+        <Popup title="News" onClose={() => setPopup(null)}>
           <NewsScreen />
         </Popup>
       )}
 
       {popup === 'settings' && (
-        <Popup title="⚙️ SETTINGS" onClose={() => setPopup(null)}>
+        <Popup title="Settings" onClose={() => setPopup(null)}>
           {/*
             Shrinks the panel by the keyboard's height, so there is
             somewhere to scroll the code box TO. Scrolling alone would not
@@ -1658,8 +1659,8 @@ export function DiceDemoScreen() {
             </Pressable>
             <View style={styles.settingsDividerLine} />
             <Text style={styles.settingsStats}>
-              🏆 {trophies} trophies{'\n'}🥉 Easy ×{wins.easy}   🥈 Medium ×
-              {wins.medium}   🥇 Hard ×{wins.hard}
+              {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×
+              {wins.medium}   Hard ×{wins.hard}
             </Text>
             <View style={styles.settingsDividerLine} />
             <View
@@ -1683,7 +1684,7 @@ export function DiceDemoScreen() {
                   codeFocused.current = false;
                 }}
                 placeholder="Secret code…"
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholderTextColor="rgba(29,26,46,0.45)"
                 autoCapitalize="characters"
                 autoCorrect={false}
                 returnKeyType="go"
@@ -1692,9 +1693,9 @@ export function DiceDemoScreen() {
                 <Text style={styles.codeGoText}>OK</Text>
               </Pressable>
             </View>
-            {(codeFeedback ?? (unlockAll ? '🔓 Tester mode ON' : null)) && (
+            {(codeFeedback ?? (unlockAll ? 'Tester mode ON' : null)) && (
               <Text style={styles.codeStatus}>
-                {codeFeedback ?? '🔓 Tester mode ON'}
+                {codeFeedback ?? 'Tester mode ON'}
               </Text>
             )}
             <View style={styles.settingsDividerLine} />
@@ -1702,7 +1703,7 @@ export function DiceDemoScreen() {
               style={styles.bugReportButton}
               onPress={() => setShowBugReport(true)}
             >
-              <Text style={styles.bugReportButtonText}>🐞 Report a Bug</Text>
+              <Text style={styles.bugReportButtonText}>Report a bug</Text>
             </Pressable>
             </ScrollView>
             {/*
@@ -1721,8 +1722,8 @@ export function DiceDemoScreen() {
       />
       {phase === 'lost' && (
         <View style={styles.overlay}>
-          <Text style={styles.overlayTitle}>😤 DEFEAT!</Text>
-          <Text style={styles.trophyLine}>{lastDelta} 🏆 → {trophies}</Text>
+          <Text style={styles.overlayTitle}>Defeat!</Text>
+          <Text style={styles.trophyLine}>{lastDelta} trophies → {trophies}</Text>
           <Text style={styles.overlayBody}>
             {opponent.name} wins this {MODES[mode].name} battle {aiScore}–{playerScore}.{'\n'}
             Avenge your prisoners!
@@ -1735,11 +1736,12 @@ export function DiceDemoScreen() {
   );
 }
 
-const textShadow = {
-  textShadowColor: 'rgba(20,20,40,0.55)',
-  textShadowOffset: { width: 0, height: 1 },
-  textShadowRadius: 3,
-} as const;
+/*
+ * No text shadows anywhere on this screen any more. Everything that
+ * floats over the live board sits on its own solid paper chip instead —
+ * a shadow under white text was the dark theme's way of surviving an
+ * unknown background, and Paper & Ink's way is to bring the paper.
+ */
 
 const styles = StyleSheet.create({
   container: {
@@ -1748,7 +1750,7 @@ const styles = StyleSheet.create({
   },
   hydrating: {
     flex: 1,
-    backgroundColor: '#1b1430',
+    backgroundColor: THEME.ground,
   },
   canvas: {
     flex: 1,
@@ -1761,8 +1763,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(20,16,40,0.6)',
-    borderRadius: 18,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radius,
     paddingHorizontal: 14,
     paddingVertical: 7,
     gap: 10,
@@ -1776,24 +1780,26 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   scoreFlashYou: {
-    backgroundColor: 'rgba(51,204,107,0.55)',
+    backgroundColor: 'rgba(28,122,72,0.30)',
   },
   scoreFlashAi: {
-    backgroundColor: 'rgba(204,37,51,0.6)',
+    backgroundColor: 'rgba(179,52,26,0.30)',
   },
   scoreLabel: {
-    color: 'rgba(255,255,255,0.85)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
   },
   scoreNumber: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 24,
     fontWeight: '900',
   },
   scoreVs: {
-    fontSize: 16,
+    color: THEME.inkFaint,
+    fontSize: 13,
+    fontWeight: '800',
   },
   aiMeta: {
     alignItems: 'center',
@@ -1808,13 +1814,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   calloutText: {
-    color: '#ffe521',
+    color: THEME.ink,
     fontSize: 20,
     fontWeight: '900',
     textAlign: 'center',
-    textShadowColor: 'rgba(20,20,40,0.85)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 5,
+    backgroundColor: 'rgba(253,246,236,0.94)',
+    overflow: 'hidden',
+    borderRadius: SHAPE.radiusSm,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
   audioRow: {
     flexDirection: 'row',
@@ -1825,18 +1833,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: THEME.surface,
   },
   audioButtonOff: {
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: THEME.sunk,
   },
   audioText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 12,
     fontWeight: '700',
   },
   audioTextOff: {
-    color: 'rgba(255,255,255,0.45)',
+    color: THEME.inkFaint,
   },
   quitButton: {
     position: 'absolute',
@@ -1845,12 +1853,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(20,16,40,0.55)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quitText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 22,
     fontWeight: '800',
     marginTop: -2,
@@ -1861,13 +1871,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.45)',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   twoPlayerText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 15,
     fontWeight: '800',
     // Fixed, so shrinking the font to fit cannot change the button's
@@ -1875,29 +1885,26 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   tagline: {
-    color: 'rgba(255,255,255,0.9)',
+    color: THEME.inkSoft,
     fontSize: 14.5,
     fontWeight: '600',
     marginTop: 8,
     textAlign: 'center',
-    ...textShadow,
   },
   trophyLine: {
-    color: '#ffe521',
+    color: THEME.ink,
     fontSize: 24,
     fontWeight: '900',
     marginTop: 10,
-    ...textShadow,
   },
   medalLine: {
-    color: 'rgba(255,255,255,0.9)',
+    color: THEME.inkSoft,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 6,
-    ...textShadow,
   },
   trophyNext: {
-    color: 'rgba(255,255,255,0.85)',
+    color: THEME.inkSoft,
     fontSize: 13.5,
     fontWeight: '700',
     lineHeight: 18,
@@ -1905,10 +1912,9 @@ const styles = StyleSheet.create({
     // the mode picker, so a wrap would push the whole column down.
     height: 18,
     marginTop: 4,
-    ...textShadow,
   },
   stakesText: {
-    color: 'rgba(255,255,255,0.75)',
+    color: THEME.inkSoft,
     fontSize: 12.5,
     fontWeight: '700',
     marginTop: 6,
@@ -1934,7 +1940,9 @@ const styles = StyleSheet.create({
     height: 13,
     borderRadius: 3,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
+    // These sit on the white scoreboard card now, where a white border
+    // was invisible.
+    borderColor: 'rgba(29,26,46,0.35)',
   },
   bottomHud: {
     position: 'absolute',
@@ -1948,17 +1956,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rescueCount: {
-    color: '#ffe521',
+    color: THEME.ink,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
     marginTop: 6,
-    ...textShadow,
+    backgroundColor: 'rgba(253,246,236,0.92)',
+    overflow: 'hidden',
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 30,
+    backgroundColor: 'rgba(253,246,236,0.92)',
+    borderRadius: SHAPE.radiusSm,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
   swatch: {
     width: 24,
@@ -1966,30 +1982,28 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginHorizontal: 4,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: 'rgba(29,26,46,0.35)',
   },
   resultText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
-    ...textShadow,
   },
   matchText: {
-    color: '#ffe521',
+    color: THEME.good,
     fontWeight: '900',
   },
   hint: {
-    color: 'rgba(255,255,255,0.95)',
+    color: THEME.inkSoft,
     fontSize: 15,
     fontWeight: '500',
-    ...textShadow,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(20,12,40,0.6)',
+    backgroundColor: 'rgba(253,246,236,0.88)',
     paddingHorizontal: 28,
   },
   pickScroll: {
@@ -2004,16 +2018,18 @@ const styles = StyleSheet.create({
   startButton: {
     marginTop: 24,
     alignSelf: 'stretch',
-    backgroundColor: '#ffe521',
-    borderRadius: 26,
+    backgroundColor: THEME.accent,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radiusLg,
     paddingVertical: 15,
     alignItems: 'center',
   },
   startText: {
-    color: '#241c40',
+    color: THEME.onAccent,
     fontSize: 20,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   /*
    * Settings is a page of its own now, not a card floating over the game.
@@ -2075,7 +2091,7 @@ const styles = StyleSheet.create({
   // Same header as Store, Cups, Items, Ranks and News — it is one of
   // them now, so it should not look like a leftover dialog.
   settingsSectionTitle: {
-    color: 'rgba(255,255,255,0.7)',
+    color: THEME.inkFaint,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 2,
@@ -2083,11 +2099,11 @@ const styles = StyleSheet.create({
   },
   settingsDividerLine: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(29,26,46,0.15)',
     marginVertical: 12,
   },
   settingsStats: {
-    color: 'rgba(255,255,255,0.9)',
+    color: THEME.inkSoft,
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
@@ -2097,12 +2113,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingVertical: 12,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     alignItems: 'center',
   },
   bugReportButtonText: {
-    color: 'rgba(255,255,255,0.75)',
+    color: THEME.ink,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -2113,7 +2129,7 @@ const styles = StyleSheet.create({
     // short and centred; not invisible the first time it is not.
     paddingHorizontal: 18,
     marginTop: 10,
-    color: 'rgba(255,255,255,0.38)',
+    color: THEME.inkFaint,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -2128,40 +2144,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   overlayTitle: {
-    color: '#ffe521',
+    color: THEME.ink,
     fontSize: 34,
     fontWeight: '900',
+    letterSpacing: -0.5,
     textAlign: 'center',
-    ...textShadow,
   },
   overlayBody: {
-    color: '#ffffff',
+    color: THEME.inkSoft,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 14,
     lineHeight: 23,
-    ...textShadow,
   },
   overlayPrompt: {
-    color: 'rgba(255,255,255,0.85)',
+    color: THEME.inkSoft,
     fontSize: 15,
     fontWeight: '600',
     marginTop: 26,
-    ...textShadow,
   },
+  // ARM YOUR DICE! / BATTLE! flash over the bare board, so each carries
+  // its own paper chip — the same trick as the callout banner.
   countdownText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 40,
     fontWeight: '900',
     letterSpacing: 2,
     textAlign: 'center',
-    textShadowColor: 'rgba(20,20,40,0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    backgroundColor: 'rgba(253,246,236,0.94)',
+    overflow: 'hidden',
+    borderRadius: SHAPE.radius,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
   },
   battleText: {
-    color: '#ffe521',
+    color: THEME.accent,
     fontSize: 52,
   },
   modeBlock: {
@@ -2179,19 +2197,19 @@ const styles = StyleSheet.create({
   modeButton: {
     width: '46%',
     paddingVertical: 10,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: SHAPE.radius,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     alignItems: 'center',
   },
   modeText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 14,
     fontWeight: '800',
   },
   modeRules: {
-    color: 'rgba(255,255,255,0.9)',
+    color: THEME.inkSoft,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
@@ -2210,7 +2228,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   difficultyHint: {
-    color: 'rgba(255,255,255,0.8)',
+    color: THEME.inkSoft,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
@@ -2222,22 +2240,22 @@ const styles = StyleSheet.create({
   difficultyButton: {
     paddingHorizontal: 18,
     paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   difficultyButtonActive: {
-    backgroundColor: '#ffe521',
-    borderColor: '#ffe521',
+    backgroundColor: THEME.gold,
+    borderColor: THEME.ink,
   },
   difficultyText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 14,
     fontWeight: '700',
   },
   difficultyTextActive: {
-    color: '#241c40',
+    color: THEME.onGold,
   },
   codeRow: {
     flexDirection: 'row',
@@ -2255,12 +2273,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   toggleLabel: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 15,
     fontWeight: '700',
   },
   toggleNote: {
-    color: 'rgba(255,255,255,0.6)',
+    color: THEME.inkSoft,
     fontSize: 12.5,
     fontWeight: '600',
     marginTop: 2,
@@ -2269,14 +2287,15 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 9,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    backgroundColor: THEME.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   toggleBoxOn: {
-    backgroundColor: '#33cc6b',
-    borderColor: '#33cc6b',
+    backgroundColor: THEME.good,
+    borderColor: THEME.ink,
   },
   toggleTick: {
     color: '#ffffff',
@@ -2285,24 +2304,26 @@ const styles = StyleSheet.create({
   },
   codeInput: {
     flex: 1,
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 15,
     fontWeight: '700',
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: SHAPE.radiusSm,
+    backgroundColor: THEME.sunk,
+    borderWidth: SHAPE.line,
+    borderColor: 'rgba(29,26,46,0.35)',
   },
   codeGo: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#ffe521',
+    borderRadius: SHAPE.radiusSm,
+    backgroundColor: THEME.gold,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   codeGoText: {
-    color: '#241c40',
+    color: THEME.onGold,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -2315,11 +2336,13 @@ const styles = StyleSheet.create({
   playAgainButton: {
     paddingHorizontal: 26,
     paddingVertical: 14,
-    borderRadius: 24,
-    backgroundColor: '#ffe521',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.accent,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   playAgainText: {
-    color: '#241c40',
+    color: THEME.onAccent,
     fontSize: 17,
     fontWeight: '900',
     letterSpacing: 0.5,
@@ -2327,18 +2350,18 @@ const styles = StyleSheet.create({
   homeButton: {
     paddingHorizontal: 22,
     paddingVertical: 14,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.45)',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   homeText: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 16,
     fontWeight: '800',
   },
   codeStatus: {
-    color: '#ffe521',
+    color: THEME.good,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 8,

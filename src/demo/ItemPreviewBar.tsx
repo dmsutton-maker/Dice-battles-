@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BOTTOM_INSET } from '../game/safeArea';
+import { CloseIcon } from '../ui/Icon';
+import { SHAPE, THEME } from '../ui/theme';
 import { CoinLabel } from './GoldCoin';
 import {
   actionLabel,
@@ -48,7 +50,7 @@ export function ItemPreviewBar({
     <View style={styles.layer} pointerEvents="box-none">
       <View style={styles.top}>
         <Pressable style={styles.back} onPress={onClose} hitSlop={14}>
-          <Text style={styles.backText}>✕</Text>
+          <CloseIcon size={15} />
         </Pressable>
         <View style={styles.titleBlock}>
           <Text style={styles.name} numberOfLines={1}>
@@ -77,7 +79,13 @@ export function ItemPreviewBar({
               {label}
             </CoinLabel>
           ) : (
-            <Text style={[styles.actionText, !pressable && action.kind !== 'equipped' && styles.actionTextDead]}>
+            <Text
+              style={[
+                styles.actionText,
+                action.kind === 'equipped' && styles.actionTextEquipped,
+                !pressable && action.kind !== 'equipped' && styles.actionTextDead,
+              ]}
+            >
               {label}
             </Text>
           )}
@@ -104,6 +112,13 @@ const styles = StyleSheet.create({
     zIndex: 38,
     justifyContent: 'space-between',
   },
+  /*
+   * Solid paper, not a dark glass wash. These bars float over the live
+   * board — any arena, any sky — and a translucent bar's contrast depends
+   * on whatever happens to be behind it. That is how the old white-wash
+   * button ended up at 1.65:1 over the sunlit castle. A solid card cannot
+   * be undermined by its background.
+   */
   top: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -112,12 +127,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 18,
-    // Dark enough to read a white name against any sky, still letting the
-    // battlefield show through.
-    backgroundColor: 'rgba(12,8,28,0.82)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: SHAPE.radius,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   back: {
     width: 34,
@@ -125,18 +138,19 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
-  backText: { color: '#fff', fontSize: 16, fontWeight: '900' },
   titleBlock: { flex: 1 },
   name: {
-    color: '#fff',
+    color: THEME.ink,
     fontSize: 17,
     fontWeight: '900',
     textAlign: 'center',
   },
   note: {
-    color: 'rgba(255,255,255,0.72)',
+    color: THEME.inkSoft,
     fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
@@ -153,31 +167,31 @@ const styles = StyleSheet.create({
     minWidth: 220,
     paddingVertical: 15,
     paddingHorizontal: 26,
-    borderRadius: 22,
+    borderRadius: SHAPE.radiusLg,
     alignItems: 'center',
-    backgroundColor: '#ffe521',
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: THEME.gold,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
-  actionEquipped: { backgroundColor: '#33cc6b' },
-  // Dark, like the title bar and the hint. It used to be a white wash —
-  // rgba(255,255,255,0.16) — with white text on top, which over a sunlit
-  // castle floor came out at 1.65:1 and simply could not be read. This is
-  // the button that says how many trophies you still need, so it is the
-  // one that most has to be legible.
+  actionEquipped: { backgroundColor: THEME.good },
+  // Solid white with soft ink text: the button that says how many
+  // trophies you still need is the one that most has to be legible, on
+  // every battlefield.
   actionDead: {
-    backgroundColor: 'rgba(12,8,28,0.86)',
-    borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: THEME.surface,
+    borderColor: 'rgba(29,26,46,0.45)',
   },
-  actionText: { color: '#1b1330', fontSize: 16, fontWeight: '900' },
-  actionTextDead: { color: '#ffffff' },
+  actionText: { color: THEME.onGold, fontSize: 16, fontWeight: '900' },
+  actionTextDead: { color: THEME.inkSoft },
+  // EQUIPPED sits on the deep green, where ink would vanish.
+  actionTextEquipped: { color: '#ffffff' },
   hint: {
-    color: 'rgba(255,255,255,0.75)',
+    color: THEME.ink,
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
     // The board is behind this, so the words need their own backing.
-    backgroundColor: 'rgba(12,8,28,0.7)',
+    backgroundColor: 'rgba(253,246,236,0.92)',
     borderRadius: 10,
     overflow: 'hidden',
     paddingHorizontal: 10,

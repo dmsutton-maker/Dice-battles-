@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { THEME } from '../ui/theme';
 import {
   fillPercent,
   knobLeft,
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   label: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -144,41 +145,43 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   value: {
-    color: '#ffe521',
+    color: THEME.inkSoft,
     fontSize: 13,
     fontWeight: '800',
     minWidth: 46,
     textAlign: 'right',
   },
   valueMuted: {
-    color: 'rgba(255,255,255,0.45)',
+    color: THEME.inkFaint,
   },
   touchStrip: {
     height: 44,
     justifyContent: 'center',
   },
+  // An inset track sunk into the panel, filled with good green — the same
+  // reading as a progress rail anywhere else in the game.
   track: {
     height: 12,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: THEME.sunk,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
     borderRadius: 6,
-    backgroundColor: '#33cc6b',
+    backgroundColor: THEME.good,
   },
   fillEmphasis: {
-    backgroundColor: '#ffe521',
+    backgroundColor: THEME.gold,
   },
   knob: {
     position: 'absolute',
     width: KNOB,
     height: KNOB,
     borderRadius: KNOB / 2,
-    backgroundColor: '#ffffff',
+    backgroundColor: THEME.surface,
     borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.25)',
+    borderColor: THEME.ink,
     // No negative margin: knobLeft already keeps the whole knob on the
     // track, so it can no longer hang off the ends of the panel.
   },

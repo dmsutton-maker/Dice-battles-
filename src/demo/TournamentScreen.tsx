@@ -14,6 +14,8 @@ import {
   tournamentById,
 } from '../game/tournament';
 import { MENU_PAGE_AREA } from './BottomNav';
+import { PrimaryButton } from '../ui/Card';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
 
 /**
@@ -41,7 +43,7 @@ export function TournamentScreen({
   return (
     <View style={styles.overlay}>
       <View style={styles.header}>
-        <Text style={styles.title}>🏆 CUPS</Text>
+        <Text style={styles.title}>Cups</Text>
       </View>
 
       <ScrollView
@@ -75,7 +77,7 @@ export function TournamentScreen({
               the run is over — there is no second chance in a cup.
             </Text>
 
-            <Pressable
+            <PrimaryButton
               style={styles.playButton}
               onPress={() => {
                 playClick();
@@ -83,9 +85,9 @@ export function TournamentScreen({
               }}
             >
               <Text style={styles.playText}>
-                ▶ PLAY THE {roundName(active.size, run.wins).toUpperCase()}
+                Play the {roundName(active.size, run.wins)}
               </Text>
-            </Pressable>
+            </PrimaryButton>
             <Pressable
               style={styles.quietButton}
               onPress={() => {
@@ -159,23 +161,21 @@ const styles = StyleSheet.create({
     ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
-    backgroundColor: '#141028',
+    backgroundColor: THEME.ground,
     zIndex: 20,
     paddingTop: 100,
   },
   header: { paddingHorizontal: 22, marginBottom: 10 },
   title: {
-    color: '#ffffff',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1.5,
+    color: THEME.ink,
+    ...TYPE.title,
   },
   scroll: {
     paddingHorizontal: 22,
     paddingBottom: 24,
   },
   note: {
-    color: 'rgba(255,255,255,0.6)',
+    color: THEME.inkSoft,
     fontSize: 13.5,
     fontWeight: '600',
     marginBottom: 16,
@@ -185,52 +185,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    borderRadius: 18,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radius,
     padding: 16,
     marginBottom: 12,
   },
-  cardLocked: { opacity: 0.45 },
+  /*
+   * Sunk, not faded: opacity dragged every line under the contrast floor,
+   * and "40 short" is exactly the line the card exists to say.
+   */
+  cardLocked: {
+    backgroundColor: THEME.sunk,
+    borderColor: 'rgba(29,26,46,0.35)',
+  },
   cardEmoji: { fontSize: 34 },
   cardText: { flex: 1 },
-  cardTitle: { color: '#ffffff', fontSize: 17, fontWeight: '800' },
+  cardTitle: { color: THEME.ink, ...TYPE.cardTitle },
   cardMeta: {
-    color: 'rgba(255,255,255,0.65)',
+    color: THEME.inkSoft,
     fontSize: 12.5,
     fontWeight: '600',
     marginTop: 2,
   },
   cardPrize: {
-    color: '#ffd54a',
+    color: THEME.ink,
     fontSize: 13,
     fontWeight: '800',
-    marginTop: 5,
   },
   entry: { alignItems: 'flex-end' },
   prizeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
-  entryLabel: { color: '#ffe521', fontSize: 15, fontWeight: '900' },
+  entryLabel: { color: THEME.ink, fontSize: 15, fontWeight: '900' },
   entryShort: {
-    color: 'rgba(255,255,255,0.5)',
+    color: THEME.inkFaint,
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2,
   },
+  // The hero card: the run you are in, on a gold wash under the ink line.
   runCard: {
-    backgroundColor: 'rgba(255,229,33,0.10)',
-    borderWidth: 2.5,
-    borderColor: '#ffe521',
-    borderRadius: 22,
+    backgroundColor: 'rgba(255,210,31,0.30)',
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radiusLg,
     padding: 20,
     alignItems: 'center',
   },
   runEyebrow: {
-    color: '#ffe521',
-    fontSize: 11.5,
-    fontWeight: '900',
+    color: THEME.inkSoft,
+    ...TYPE.label,
     letterSpacing: 1.4,
   },
   runName: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 23,
     fontWeight: '900',
     marginTop: 6,
@@ -241,21 +249,22 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: SHAPE.line,
+    borderColor: 'rgba(29,26,46,0.35)',
+    backgroundColor: THEME.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pipWon: { backgroundColor: '#33cc6b', borderColor: '#33cc6b' },
+  pipWon: { backgroundColor: THEME.good, borderColor: THEME.ink },
   pipText: { color: '#ffffff', fontSize: 16, fontWeight: '900' },
   runRound: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 16,
     fontWeight: '800',
     marginTop: 14,
   },
   runNote: {
-    color: 'rgba(255,255,255,0.75)',
+    color: THEME.inkSoft,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 19,
@@ -264,21 +273,17 @@ const styles = StyleSheet.create({
   },
   playButton: {
     alignSelf: 'stretch',
-    backgroundColor: '#ffe521',
-    borderRadius: 22,
-    paddingVertical: 14,
-    alignItems: 'center',
     marginTop: 18,
   },
   playText: {
-    color: '#241a44',
+    color: THEME.onAccent,
     fontSize: 15,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.4,
   },
   quietButton: { paddingVertical: 12, marginTop: 4 },
   quietText: {
-    color: 'rgba(255,255,255,0.55)',
+    color: THEME.inkSoft,
     fontSize: 13,
     fontWeight: '700',
   },

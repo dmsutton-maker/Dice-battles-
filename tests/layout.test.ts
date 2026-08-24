@@ -136,7 +136,7 @@ suite('layout · the version line is the last row of the Settings popup', () => 
   });
 
   test('Settings sits inside the popup, so it has a bottom of its own', () => {
-    const settingsAt = screen.indexOf('<Popup title="⚙️ SETTINGS"');
+    const settingsAt = screen.indexOf('<Popup title="Settings"');
     assert(settingsAt > 0, 'Settings is not in a popup');
     assert(
       screen.indexOf('{GAME_VERSION}') > settingsAt,

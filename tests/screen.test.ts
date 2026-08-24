@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { THEME } from '../src/ui/theme';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../src/arena/arenas';
@@ -347,8 +348,8 @@ suite('screen · round flow', () => {
   test('every round ends with both play-again and home offered', () => {
     for (const file of ['src/demo/DiceDemoScreen.tsx', 'src/demo/TwoPlayerScreen.tsx']) {
       const source = readFileSync(file, 'utf8');
-      assert(source.includes('PLAY AGAIN'), `${file} offers no rematch button`);
-      assert(source.includes('HOME'), `${file} offers no way back to the menu`);
+      assert(source.includes('Play again'), `${file} offers no rematch button`);
+      assert(source.includes('>Home</Text>'), `${file} offers no way back to the menu`);
     }
   });
 
@@ -568,11 +569,15 @@ suite('screen · the board belongs to the battle screen', () => {
     for (const page of pages) {
       const source = readFileSync(join('src/demo', `${page}.tsx`), 'utf8');
       const overlay = source.slice(source.indexOf('overlay: {'));
-      const bg = /backgroundColor:\s*'([^']+)'/.exec(overlay);
+      // A literal, or a THEME token resolved through the real theme — so
+      // the check survives the palette living in one place.
+      const bg = /backgroundColor:\s*(?:'([^']+)'|THEME\.(\w+))/.exec(overlay);
       assert(bg !== null, `${page} sets no background at all`);
+      const value = bg![1] ?? (THEME as Record<string, string>)[bg![2]];
+      assert(value !== undefined, `${page}: THEME.${bg![2]} does not exist`);
       assert(
-        !bg![1].startsWith('rgba'),
-        `${page} is see-through (${bg![1]}) — the board shows through it`,
+        !value.startsWith('rgba'),
+        `${page} is see-through (${value}) — the board shows through it`,
       );
     }
   });
@@ -592,10 +597,10 @@ suite('screen · the board belongs to the battle screen', () => {
     const nav = readFileSync('src/demo/BottomNav.tsx', 'utf8');
 
     assert(
-      /<Popup title="⚙️ SETTINGS"/.test(source),
+      /<Popup title="Settings"/.test(source),
       'Settings is not a popup',
     );
-    assert(/<Popup title="📰 NEWS"/.test(source), 'News is not a popup');
+    assert(/<Popup title="News"/.test(source), 'News is not a popup');
     assert(
       /onSettings=\{\(\) => setPopup\('settings'\)\}/.test(source),
       'the top button does not open Settings',
@@ -1043,8 +1048,8 @@ suite('screen · the tabs belong to the home screen', () => {
 
   test('every end-of-game screen still has its own way out', () => {
     // Removing the bar strands the player unless these remain.
-    assert(source.includes('PLAY AGAIN'), 'no rematch button after a game');
-    assert(source.includes('🏠 HOME'), 'no way home after a game');
+    assert(source.includes('Play again'), 'no rematch button after a game');
+    assert(source.includes('>Home</Text>'), 'no way home after a game');
     for (const phase of ['won', 'lost', 'tie']) {
       const at = source.indexOf(`phase === '${phase}' && (`);
       assert(at > 0, `no ${phase} screen`);

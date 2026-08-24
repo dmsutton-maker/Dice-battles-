@@ -2,6 +2,8 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiDifficultyId } from '../game/ai';
 import { MENU_PAGE_AREA } from './BottomNav';
+import { TrophyIcon } from '../ui/Icon';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { getWallet } from '../game/currency';
 import { CoinLabel } from './GoldCoin';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
@@ -34,10 +36,10 @@ interface LeaderboardScreenProps {
   modeWins: Record<ModeId, number>;
 }
 
-const DIFFICULTY_MEDALS: { id: AiDifficultyId; label: string; medal: string }[] = [
-  { id: 'easy', label: 'Easy', medal: '🥉' },
-  { id: 'medium', label: 'Medium', medal: '🥈' },
-  { id: 'hard', label: 'Hard', medal: '🥇' },
+const DIFFICULTIES: { id: AiDifficultyId; label: string }[] = [
+  { id: 'easy', label: 'Easy' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'hard', label: 'Hard' },
 ];
 
 export function LeaderboardScreen({
@@ -46,7 +48,7 @@ export function LeaderboardScreen({
   modeWins,
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
-  const totalWins = DIFFICULTY_MEDALS.reduce((sum, d) => sum + wins[d.id], 0);
+  const totalWins = DIFFICULTIES.reduce((sum, d) => sum + wins[d.id], 0);
   const gameCenterReady = gameCenterAvailable();
   const posting = mayPost();
 
@@ -60,7 +62,7 @@ export function LeaderboardScreen({
   return (
     <View style={styles.overlay}>
       <View style={styles.header}>
-        <Text style={styles.title}>🏅 LEADERBOARD</Text>
+        <Text style={styles.title}>Leaderboard</Text>
       </View>
 
       <ScrollView
@@ -87,11 +89,11 @@ export function LeaderboardScreen({
 
         <Text style={styles.sectionTitle}>YOUR RECORD</Text>
         <View style={styles.statRow}>
-          {DIFFICULTY_MEDALS.map((d) => (
+          {DIFFICULTIES.map((d) => (
             <View key={d.id} style={styles.statCard}>
               <Text style={styles.statValue}>{wins[d.id]}</Text>
               <Text style={styles.statLabel}>
-                {d.medal} {d.label} {wins[d.id] === 1 ? 'win' : 'wins'}
+                {d.label} {wins[d.id] === 1 ? 'win' : 'wins'}
               </Text>
             </View>
           ))}
@@ -99,11 +101,11 @@ export function LeaderboardScreen({
         <View style={styles.statRow}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{trophies}</Text>
-            <Text style={styles.statLabel}>🏆 Trophies</Text>
+            <Text style={styles.statLabel}>Trophies</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{totalWins}</Text>
-            <Text style={styles.statLabel}>⚔️ Battles won</Text>
+            <Text style={styles.statLabel}>Battles won</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{wallet.coins}</Text>
@@ -113,7 +115,7 @@ export function LeaderboardScreen({
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{wallet.owned.length}</Text>
-            <Text style={styles.statLabel}>🛒 Bought</Text>
+            <Text style={styles.statLabel}>Bought</Text>
           </View>
         </View>
 
@@ -122,9 +124,7 @@ export function LeaderboardScreen({
           {MODE_ORDER.map((id) => (
             <View key={id} style={styles.statCard}>
               <Text style={styles.statValue}>{modeWins[id] ?? 0}</Text>
-              <Text style={styles.statLabel}>
-                {MODES[id].emoji} {MODES[id].name}
-              </Text>
+              <Text style={styles.statLabel}>{MODES[id].name}</Text>
             </View>
           ))}
         </View>
@@ -148,9 +148,14 @@ export function LeaderboardScreen({
               >
                 {label.name}
               </Text>
-              <Text style={[styles.rungAt, isCurrent && styles.rungAtCurrent]}>
-                {isCurrent ? 'YOU' : `${tier.at} 🏆`}
-              </Text>
+              {isCurrent ? (
+                <Text style={[styles.rungAt, styles.rungAtCurrent]}>YOU</Text>
+              ) : (
+                <View style={styles.rungPrice}>
+                  <TrophyIcon size={11} color={THEME.inkFaint} />
+                  <Text style={styles.rungAt}>{tier.at}</Text>
+                </View>
+              )}
             </View>
           );
         })}
@@ -172,10 +177,10 @@ export function LeaderboardScreen({
             )}
             <View style={styles.gcButtons}>
               <Pressable style={styles.gcButton} onPress={openLeaderboard}>
-                <Text style={styles.gcButtonText}>🌍 World ranking</Text>
+                <Text style={styles.gcButtonText}>World ranking</Text>
               </Pressable>
               <Pressable style={styles.gcButton} onPress={openAchievements}>
-                <Text style={styles.gcButtonText}>🎖️ Achievements</Text>
+                <Text style={styles.gcButtonText}>Achievements</Text>
               </Pressable>
             </View>
           </View>
@@ -208,7 +213,7 @@ const styles = StyleSheet.create({
     ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
-    backgroundColor: '#141028',
+    backgroundColor: THEME.ground,
     // Above the Home screen's settings gear (zIndex 5), which used to
     // float on top of these screens and sit over their headers.
     zIndex: 20,
@@ -222,37 +227,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     marginBottom: 12,
   },
-  title: { color: '#ffffff', fontSize: 22, fontWeight: '900', letterSpacing: 1.5 },
-  trophies: { color: '#ffe521', fontSize: 18, fontWeight: '800' },
+  title: { color: THEME.ink, ...TYPE.title },
   scroll: { paddingHorizontal: 16, paddingBottom: 16 },
 
+  // The hero card: your league, on a gold wash under the same ink line.
   leagueCard: {
-    backgroundColor: 'rgba(255,229,33,0.14)',
-    borderColor: '#ffe521',
-    borderWidth: 2,
-    borderRadius: 16,
+    backgroundColor: 'rgba(255,210,31,0.30)',
+    borderColor: THEME.ink,
+    borderWidth: SHAPE.line,
+    borderRadius: SHAPE.radius,
     padding: 16,
     alignItems: 'center',
     gap: 4,
   },
   leagueEyebrow: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    fontWeight: '800',
+    color: THEME.inkSoft,
+    ...TYPE.label,
     letterSpacing: 2,
   },
-  leagueName: { color: '#ffffff', fontSize: 22, fontWeight: '900' },
+  leagueName: { color: THEME.ink, fontSize: 22, fontWeight: '900' },
   leagueNext: {
-    color: 'rgba(255,255,255,0.75)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
 
   sectionTitle: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontWeight: '800',
+    color: THEME.inkFaint,
+    ...TYPE.label,
     letterSpacing: 2,
     marginTop: 20,
     marginBottom: 8,
@@ -265,21 +268,22 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 14,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
-  gcButtonText: { color: '#fff', fontSize: 13.5, fontWeight: '900' },
-  // Amber, not red: nothing is broken and nothing was taken away.
+  gcButtonText: { color: THEME.ink, fontSize: 13.5, fontWeight: '900' },
+  // Amber, not red: nothing is broken and nothing was taken away. Dark
+  // enough to read on white — bright amber was a dark-theme colour.
   pendingWarn: {
-    color: '#ffd479',
+    color: '#7a5200',
     fontSize: 12.5,
     fontWeight: '700',
     lineHeight: 18,
     marginTop: 8,
   },
   sectionNote: {
-    color: 'rgba(255,255,255,0.6)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 10,
@@ -299,15 +303,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: 72,
     minWidth: 72,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     borderRadius: 14,
     paddingVertical: 12,
     alignItems: 'center',
     gap: 2,
   },
-  statValue: { color: '#ffffff', fontSize: 22, fontWeight: '900' },
+  statValue: { color: THEME.ink, fontSize: 22, fontWeight: '900' },
   statLabel: {
-    color: 'rgba(255,255,255,0.65)',
+    color: THEME.inkFaint,
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
@@ -319,36 +325,38 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 9,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: SHAPE.radiusSm,
     marginBottom: 6,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    // Quiet rows: the ladder is a list, not thirteen shouting cards. The
+    // ink border is saved for the rung you are actually on.
+    borderColor: 'rgba(29,26,46,0.25)',
   },
   rungCurrent: {
-    backgroundColor: 'rgba(255,229,33,0.18)',
-    borderWidth: 1.5,
-    borderColor: '#ffe521',
+    backgroundColor: 'rgba(255,210,31,0.30)',
+    borderColor: THEME.ink,
   },
   rungEmoji: { fontSize: 18 },
-  rungName: { color: '#ffffff', fontSize: 14, fontWeight: '700', flex: 1 },
-  rungNameLocked: { color: 'rgba(255,255,255,0.5)' },
-  rungAt: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '800' },
-  rungAtCurrent: { color: '#ffe521' },
+  rungName: { color: THEME.ink, fontSize: 14, fontWeight: '700', flex: 1 },
+  rungNameLocked: { color: THEME.inkFaint },
+  rungPrice: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rungAt: { color: THEME.inkFaint, fontSize: 12, fontWeight: '800' },
+  rungAtCurrent: { color: THEME.ink },
 
   pending: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: THEME.tile,
+    borderRadius: SHAPE.radius,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     padding: 14,
     gap: 8,
   },
-  pendingTitle: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  pendingTitle: { color: THEME.ink, fontSize: 14, fontWeight: '800' },
   pendingBody: {
-    color: 'rgba(255,255,255,0.65)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 17,
   },
-
-  doneText: { color: '#241c40', fontSize: 16, fontWeight: '900' },
 });

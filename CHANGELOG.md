@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.32.0 — 2026-08-24 · requested by David
+
+### Changed
+- **The whole interface is redrawn in "Paper & Ink".** David picked the
+  direction from mockups (light mode only, no dark mode): white cards
+  with clean ink outlines and hard offset shadows on a warm paper table,
+  in place of the dark purple glass the game launched with. Every screen
+  is converted — home, Store, Items, Cups, Ranks, News, Settings, the
+  tutorial, the battle scoreboard and callouts, the round-over screens,
+  the reward popup, the opponent-finding screen, the item preview and the
+  2-player split screen.
+- **The emoji icons are gone.** The tab bar's 🛒 🎒 ⚔️ 🏆 🏅, the top
+  buttons and the price tags are now drawn icons, so navigation looks the
+  same on every phone and stops reading as a 2010 game. Emoji stay only
+  where they are content: arena and cup pictures, ladder tiers, tutorial
+  art and news posts.
+- **Everything readable was measured, not eyeballed.** All text on the new
+  paper surfaces holds at least the 4.5:1 WCAG contrast floor — including
+  the two grey ink tones, which were re-derived against the darkest paper
+  they sit on rather than against white.
+- The title card on launch stays ink-dark on purpose: it is the one brand
+  moment, and the paper-ship mark is the light-on-dark variant.
+- The colours of the game itself — the six prisoner colours, the dice
+  faces, the battlefields — are untouched. This is a new outfit, not a
+  new game.
+
+
 ## v1.31.0 — 2026-08-24 · requested by AJ (bug board)
 
 ### Fixed

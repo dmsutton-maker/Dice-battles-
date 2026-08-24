@@ -30,6 +30,33 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-32-0-paper-ink',
+    date: '24 August 2026',
+    version: 'v1.32.0',
+    title: 'A whole new look: Paper & Ink',
+    emoji: '🎨',
+    body:
+      'Every menu, button and popup has been redrawn. The game now looks ' +
+      'like pieces of white card laid out on a warm paper table — clean ' +
+      'outlines, real shadows, and hand-drawn icons instead of emoji. ' +
+      'The dice, the battlefields and the six colours are exactly as they ' +
+      'were: this is a new outfit, not a new game. Picked by the family, ' +
+      'built the same day.',
+  },
+  {
+    id: 'v1-31-0-same-spot',
+    date: '24 August 2026',
+    version: 'v1.31.0',
+    title: 'Ultimate soldiers stop sharing a spot',
+    emoji: '🐛',
+    body:
+      'AJ spotted that in Ultimate two rescued soldiers could end up ' +
+      'standing on exactly the same spot. It happened after a prisoner ' +
+      'was sent back to jail: the next rescue counted heads instead of ' +
+      'looking for an empty space. Rescued soldiers now fill the first ' +
+      'free spot in the line. Thanks AJ!',
+  },
+  {
     id: 'v1-29-0-hazards',
     date: '24 August 2026',
     version: 'v1.29.0',

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STORE_SKINS } from '../game/diceSkins';
 import { MENU_PAGE_AREA } from './BottomNav';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { COIN_REWARDS, Wallet } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
 import { playClick } from '../audio/sounds';
@@ -33,7 +34,7 @@ export function StoreScreen({ wallet, onPreview }: StoreScreenProps) {
     <View style={styles.overlay}>
       {/* No coin count here — the shared HUD shows it on every screen. */}
       <View style={styles.header}>
-        <Text style={styles.title}>🛒 STORE</Text>
+        <Text style={styles.title}>Store</Text>
       </View>
 
       <ScrollView
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
     ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
-    backgroundColor: '#141028',
+    backgroundColor: THEME.ground,
     // Above the Home screen's settings gear (zIndex 5), which used to
     // float on top of these screens and sit over their headers.
     zIndex: 20,
@@ -138,27 +139,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     marginBottom: 10,
   },
-  title: { color: '#ffffff', fontSize: 22, fontWeight: '900', letterSpacing: 1.5 },
-  coins: { color: '#ffe521', fontSize: 18, fontWeight: '800' },
+  title: { color: THEME.ink, ...TYPE.title },
   scroll: { paddingHorizontal: 16, paddingBottom: 16 },
   note: {
-    color: 'rgba(255,255,255,0.65)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
     marginLeft: 4,
   },
   sectionTitle: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontWeight: '800',
+    color: THEME.inkFaint,
+    ...TYPE.label,
     letterSpacing: 2,
     marginTop: 16,
     marginBottom: 6,
     marginLeft: 4,
   },
   sectionNote: {
-    color: 'rgba(255,255,255,0.6)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 10,
@@ -167,49 +166,46 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   card: {
     width: '31%',
-    borderRadius: 16,
+    borderRadius: SHAPE.radius,
     paddingVertical: 10,
     paddingHorizontal: 6,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
-  cardOwned: { borderColor: '#33cc6b', backgroundColor: 'rgba(51,204,107,0.14)' },
-  cardLocked: { opacity: 0.6 },
-  swatch: {
-    width: 58,
-    height: 58,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.15)',
+  cardOwned: { borderColor: THEME.good },
+  /*
+   * Sunk into the table rather than dimmed: opacity would drag the name's
+   * contrast under 4.5:1 on paper, and a price you cannot pay yet is
+   * information, not something to squint at.
+   */
+  cardLocked: {
+    backgroundColor: THEME.sunk,
+    borderColor: 'rgba(29,26,46,0.35)',
   },
-  swatchEmoji: { fontSize: 24 },
-  cardName: { color: '#ffffff', fontSize: 12, fontWeight: '800', textAlign: 'center' },
-  priceText: { color: '#ffe521', fontSize: 12, fontWeight: '900' },
+  cardName: { color: THEME.ink, fontSize: 12, fontWeight: '800', textAlign: 'center' },
+  priceText: { color: THEME.ink, fontSize: 12, fontWeight: '900' },
   priceRow: { marginTop: 3 },
-  priceShort: { color: 'rgba(255,255,255,0.55)' },
+  priceShort: { color: THEME.inkFaint },
   ownedTag: {
-    color: '#33cc6b',
+    color: THEME.good,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.6,
     marginTop: 3,
   },
   comingSoon: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: THEME.tile,
+    borderRadius: SHAPE.radius,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     padding: 14,
     gap: 6,
   },
-  comingTitle: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  comingTitle: { color: THEME.ink, fontSize: 14, fontWeight: '800' },
   comingBody: {
-    color: 'rgba(255,255,255,0.65)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 17,

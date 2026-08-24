@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { SHAPE, THEME } from '../ui/theme';
 import { AI_ROSTER, AiOpponent } from '../game/ai';
 import {
   MATCH_TOTAL_MS,
@@ -10,11 +11,6 @@ import {
   stageAt,
 } from '../game/matchmaking';
 
-const textShadow = {
-  textShadowColor: 'rgba(0,0,0,0.55)',
-  textShadowOffset: { width: 0, height: 2 },
-  textShadowRadius: 6,
-};
 
 /**
  * Shown for a couple of seconds at the top of every round: names shuffle
@@ -89,16 +85,17 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(20,12,40,0.82)',
+    // Ink over the board — solid enough that nothing under it competes
+    // with the reveal, so the card needs no text shadows.
+    backgroundColor: 'rgba(29,26,46,0.85)',
     paddingHorizontal: 28,
   },
   kicker: {
-    color: '#ffe521',
+    color: THEME.onInk,
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 1.2,
     marginBottom: 20,
-    ...textShadow,
   },
   card: {
     alignItems: 'center',
@@ -106,37 +103,33 @@ const styles = StyleSheet.create({
     minWidth: 230,
     paddingVertical: 26,
     paddingHorizontal: 30,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   cardFound: {
-    backgroundColor: 'rgba(255,229,33,0.16)',
-    borderColor: '#ffe521',
+    backgroundColor: THEME.gold,
   },
   emoji: {
     fontSize: 54,
   },
   name: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 27,
     fontWeight: '900',
     marginTop: 8,
     textAlign: 'center',
-    ...textShadow,
   },
   nameFound: {
-    color: '#ffe521',
     fontSize: 31,
   },
   footer: {
-    color: 'rgba(255,255,255,0.9)',
+    color: THEME.onInk,
     fontSize: 16,
     fontWeight: '700',
     marginTop: 20,
     minHeight: 22,
-    ...textShadow,
   },
   track: {
     marginTop: 22,
@@ -144,11 +137,11 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 4,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(253,246,236,0.30)',
   },
   fill: {
     height: '100%',
     borderRadius: 4,
-    backgroundColor: '#ffe521',
+    backgroundColor: THEME.gold,
   },
 });

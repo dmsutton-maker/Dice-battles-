@@ -3,6 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
 import { playClick } from '../audio/sounds';
 import { MENU_PAGE_AREA } from './BottomNav';
+import { TrophyIcon } from '../ui/Icon';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { PreviewTarget } from '../game/itemPreview';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
@@ -48,8 +50,11 @@ export function InventoryScreen({
   return (
     <View style={styles.overlay}>
       <View style={styles.header}>
-        <Text style={styles.title}>🎒 INVENTORY</Text>
-        <Text style={styles.trophies}>🏆 {trophies}</Text>
+        <Text style={styles.title}>Inventory</Text>
+        <View style={styles.trophies}>
+          <TrophyIcon size={16} />
+          <Text style={styles.trophiesText}>{trophies}</Text>
+        </View>
       </View>
 
       <ScrollView
@@ -102,9 +107,12 @@ export function InventoryScreen({
                 ) : unlocked ? (
                   <Text style={styles.tapTag}>Tap to see</Text>
                 ) : (
-                  <Text style={styles.priceTag}>
-                    🔒 {priceFor(ARENA_UNLOCKS[id])} 🏆
-                  </Text>
+                  <View style={styles.priceTagRow}>
+                    <TrophyIcon size={11} color={THEME.inkFaint} />
+                    <Text style={styles.priceTag}>
+                      {priceFor(ARENA_UNLOCKS[id])}
+                    </Text>
+                  </View>
                 )}
               </Pressable>
             );
@@ -138,7 +146,7 @@ export function InventoryScreen({
                 {/* The real shell, same painter as the dice in play. */}
                 <DiceSwatch skin={skin} size={58} />
                 <Text style={[styles.cardName, !unlocked && styles.lockedText]}>
-                  {skin.emoji} {skin.name}
+                  {skin.name}
                 </Text>
                 {equipped ? (
                   <Text style={styles.equippedTag}>EQUIPPED</Text>
@@ -151,12 +159,15 @@ export function InventoryScreen({
                     style={styles.priceTagText}
                     containerStyle={styles.priceTagRow}
                   >
-                    🛒 {skin.price}
+                    {skin.price}
                   </CoinLabel>
                 ) : (
-                  <Text style={styles.priceTag}>
-                    🔒 {priceFor(skin.unlock!)} 🏆
-                  </Text>
+                  <View style={styles.priceTagRow}>
+                    <TrophyIcon size={11} color={THEME.inkFaint} />
+                    <Text style={styles.priceTag}>
+                      {priceFor(skin.unlock!)}
+                    </Text>
+                  </View>
                 )}
               </Pressable>
             );
@@ -181,7 +192,7 @@ const styles = StyleSheet.create({
     ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
-    backgroundColor: '#141028',
+    backgroundColor: THEME.ground,
     // Above the Home screen's settings gear (zIndex 5), which used to
     // float on top of these screens and sit over their headers.
     zIndex: 20,
@@ -196,13 +207,16 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   title: {
-    color: '#ffffff',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1.5,
+    color: THEME.ink,
+    ...TYPE.title,
   },
   trophies: {
-    color: '#ffe521',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  trophiesText: {
+    color: THEME.ink,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -211,16 +225,15 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   sectionTitle: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontWeight: '800',
+    color: THEME.inkFaint,
+    ...TYPE.label,
     letterSpacing: 2,
     marginTop: 14,
     marginBottom: 10,
     marginLeft: 4,
   },
   sectionNote: {
-    color: 'rgba(255,255,255,0.6)',
+    color: THEME.inkSoft,
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 10,
@@ -234,20 +247,27 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '31%',
-    borderRadius: 16,
+    borderRadius: SHAPE.radius,
     paddingVertical: 10,
     paddingHorizontal: 6,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   cardEquipped: {
-    borderColor: '#ffe521',
-    backgroundColor: 'rgba(255,229,33,0.16)',
+    // A gold wash under the same ink outline — the BottomNav's selected
+    // treatment, so "chosen" looks the same everywhere.
+    backgroundColor: 'rgba(255,210,31,0.30)',
   },
+  /*
+   * Sunk into the table rather than dimmed with opacity: fading the whole
+   * card dragged its name under the 4.5:1 floor on paper. The price is
+   * the thing a locked card exists to say.
+   */
   cardLocked: {
-    opacity: 0.55,
+    backgroundColor: THEME.sunk,
+    borderColor: 'rgba(29,26,46,0.35)',
   },
   swatch: {
     width: 58,
@@ -257,7 +277,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.15)',
+    borderColor: 'rgba(29,26,46,0.25)',
   },
   swatchEmoji: {
     fontSize: 26,
@@ -272,41 +292,43 @@ const styles = StyleSheet.create({
     borderRadius: 7,
   },
   cardName: {
-    color: '#ffffff',
+    color: THEME.ink,
     fontSize: 12,
     fontWeight: '800',
     textAlign: 'center',
   },
   lockedText: {
-    color: 'rgba(255,255,255,0.7)',
+    color: THEME.inkSoft,
   },
   equippedTag: {
-    color: '#ffe521',
+    color: THEME.ink,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.6,
     marginTop: 3,
   },
   tapTag: {
-    color: 'rgba(255,255,255,0.5)',
+    color: THEME.inkFaint,
     fontSize: 10,
     fontWeight: '700',
     marginTop: 3,
   },
   priceTagText: {
-    color: 'rgba(255,255,255,0.7)',
+    color: THEME.inkFaint,
     fontSize: 10,
     fontWeight: '800',
   },
   priceTag: {
-    color: 'rgba(255,255,255,0.7)',
+    color: THEME.inkFaint,
     fontSize: 10,
     fontWeight: '800',
-    marginTop: 3,
   },
-  // The drawn coin sits beside the text rather than inside it, so the gap
-  // under the card belongs to the row, not to the number.
+  // The drawn coin or trophy sits beside the text rather than inside it,
+  // so the gap under the card belongs to the row, not to the number.
   priceTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 3,
   },
 });

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
+import { CloseIcon } from '../ui/Icon';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 
 /**
  * A panel that opens over the game rather than replacing it.
@@ -40,21 +42,29 @@ export function Popup({
         accessibilityLabel={`Close ${title}`}
       />
 
-      <View style={styles.panel}>
-        <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-          <Pressable
-            style={styles.close}
-            onPress={close}
-            // The ✕ glyph is small; the tappable area is not.
-            hitSlop={14}
-          >
-            <Text style={styles.closeText}>✕</Text>
-          </Pressable>
+      {/*
+        A piece of card on the table, like every other surface: white, an
+        ink outline, and a hard offset shadow drawn as a View underneath
+        (Android has no unblurred shadow — see src/ui/Card.tsx).
+      */}
+      <View style={styles.stack}>
+        <View pointerEvents="none" style={styles.shadow} />
+        <View style={styles.panel}>
+          <View style={styles.header}>
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+            <Pressable
+              style={styles.close}
+              onPress={close}
+              // The ✕ glyph is small; the tappable area is not.
+              hitSlop={14}
+            >
+              <CloseIcon size={16} />
+            </Pressable>
+          </View>
+          {children}
         </View>
-        {children}
       </View>
     </View>
   );
@@ -63,9 +73,9 @@ export function Popup({
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    // Dark, but you can still see the game through it — that is what says
+    // Ink, but you can still see the game through it — that is what says
     // "this is on top of where you were" rather than "you have left".
-    backgroundColor: 'rgba(8,5,20,0.72)',
+    backgroundColor: 'rgba(29,26,46,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
@@ -77,15 +87,28 @@ const styles = StyleSheet.create({
     */
     zIndex: 38,
   },
-  panel: {
+  stack: {
     width: '100%',
     // Tall enough to be worth opening, short enough to read as a panel
     // sitting on the game rather than another full page.
     maxHeight: '78%',
-    backgroundColor: '#221a44',
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  shadow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: SHAPE.drop,
+    bottom: -SHAPE.drop,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.ink,
+  },
+  panel: {
+    width: '100%',
+    maxHeight: '100%',
+    backgroundColor: THEME.surface,
+    borderRadius: SHAPE.radiusLg,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
     paddingTop: 14,
     paddingBottom: 16,
     overflow: 'hidden',
@@ -99,10 +122,8 @@ const styles = StyleSheet.create({
   },
   title: {
     flexShrink: 1,
-    color: '#ffffff',
-    fontSize: 19,
-    fontWeight: '900',
-    letterSpacing: 1.2,
+    color: THEME.ink,
+    ...TYPE.heading,
   },
   close: {
     width: 34,
@@ -110,14 +131,8 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.28)',
-  },
-  closeText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '900',
-    lineHeight: 18,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
 });
