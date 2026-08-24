@@ -97,3 +97,24 @@ export function makeUnits(
     station: { kind: 'jail', index: i },
   }));
 }
+
+/**
+ * The lowest free slot index at a station kind — where the next arriving
+ * figure should stand.
+ *
+ * Placement used to use the COUNT of figures already at the station, which
+ * is the next free slot only while nobody ever leaves. Ultimate breaks that
+ * assumption: a prisoner exchange sends a rescued figure BACK to jail,
+ * leaving a hole in the retreat row — and the count then points at a slot
+ * that is still occupied, standing two soldiers on the same spot (AJ's bug
+ * report, 24 Aug 2026). Filling the first hole instead keeps the row tidy
+ * and cannot collide.
+ */
+export function firstFreeIndex(units: PrisonerUnit[], kind: Station['kind']): number {
+  const taken = new Set(
+    units.filter((u) => u.station.kind === kind).map((u) => u.station.index),
+  );
+  let i = 0;
+  while (taken.has(i)) i++;
+  return i;
+}

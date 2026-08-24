@@ -82,6 +82,7 @@ import {
 } from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
+  firstFreeIndex,
   makeUnits,
   MODE_ORDER,
   MODES,
@@ -807,7 +808,13 @@ export function DiceDemoScreen() {
           }
           return;
         }
-        moveUnit(jailUnit.key, { kind: 'retreat', index: retreatCount() });
+        // First FREE spot, not the count: in Ultimate an exchange can have
+        // sent a figure back to jail, leaving a hole mid-row — and the
+        // count would then stand this rescue on an occupied slot.
+        moveUnit(jailUnit.key, {
+          kind: 'retreat',
+          index: firstFreeIndex(unitsRef.current, 'retreat'),
+        });
         celebrate();
         const n = retreatCount();
         const ac = aiFreedRef.current.length;
@@ -833,7 +840,10 @@ export function DiceDemoScreen() {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
           return;
         }
-        moveUnit(unit.key, { kind: 'retreat', index: retreatCount() });
+        moveUnit(unit.key, {
+          kind: 'retreat',
+          index: firstFreeIndex(unitsRef.current, 'retreat'),
+        });
         celebrate();
         const pc = retreatCount();
         const ac = wallCount();

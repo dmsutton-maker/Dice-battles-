@@ -1,7 +1,7 @@
 import { AI_DIFFICULTIES, AI_ROSTER, pickOpponent, rollAiDice } from '../src/game/ai';
 import { OBSTACLES_BY_DIFFICULTY } from '../src/game/obstacles';
 import { DIE_FACE_COLORS, PRISONER_COLORS } from '../src/game/colors';
-import { makeUnits, MODE_ORDER, MODES, ModeId } from '../src/game/modes';
+import { firstFreeIndex, makeUnits, MODE_ORDER, MODES, ModeId } from '../src/game/modes';
 import {
   TIERS,
   TROPHY_STAKES,
@@ -111,6 +111,25 @@ suite('game · modes', () => {
     const theirs = units.filter((u) => u.colorId === ai.id).length;
     assertEqual(mine, 3, 'player fighters');
     assertEqual(theirs, 3, 'opponent fighters');
+  });
+
+  test('the next figure stands in the first hole, not on the count', () => {
+    const units = makeUnits('classic', PRISONER_COLORS, null, null);
+    const at = (i: number, kind: 'jail' | 'retreat') => ({
+      ...units[i],
+      station: { kind, index: kind === 'retreat' ? i : units[i].jailIndex },
+    });
+
+    // Nobody out yet: the row starts at 0.
+    assertEqual(firstFreeIndex(units, 'retreat'), 0, 'empty row');
+
+    // 0 and 2 are taken, 1 went back to jail — the hole comes first.
+    const holed = [at(0, 'retreat'), at(1, 'jail'), at(2, 'retreat'), ...units.slice(3)];
+    assertEqual(firstFreeIndex(holed, 'retreat'), 1, 'should fill the hole');
+
+    // A solid row appends, exactly as the old count did.
+    const solid = [at(0, 'retreat'), at(1, 'retreat'), at(2, 'retreat'), ...units.slice(3)];
+    assertEqual(firstFreeIndex(solid, 'retreat'), 3, 'solid row should append');
   });
 });
 

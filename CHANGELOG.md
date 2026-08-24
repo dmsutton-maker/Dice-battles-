@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.31.0 — 2026-08-24 · requested by AJ (bug board)
+
+### Fixed
+- **In Ultimate, two soldiers could end up standing on the same spot.**
+  Rescued figures line up along the bottom of the board, and each new
+  rescue stood at position "number already rescued". Ultimate is the one
+  mode where a figure can LEAVE that line — matching a rescued color sends
+  it back to jail — and after that the line had a gap, the count pointed
+  at a spot someone was already standing on, and the next rescue landed on
+  top of them. A rescue now takes the first empty spot, so the gap gets
+  filled and nobody shares. Fixed in single player and in 2-player split
+  screen, which had the same flaw.
+
 ## v1.30.0 — 2026-08-24 · requested by David
 
 ### Fixed

@@ -74,6 +74,35 @@ suite('splitRules · ultimate', () => {
     const out = applySplitMatch('ultimate', boards, 1, 'blue');
     assertEqual(scoreOf(out.boards.a), 0, 'player one was affected');
   });
+
+  /**
+   * AJ's bug report, 24 Aug 2026: "The soldiers sometimes in ultimate go
+   * to the same spot." An exchange leaves a hole in the retreat row, and
+   * placing the next rescue at index = count stood it on an occupied slot.
+   */
+  test('a rescue after an exchange fills the hole, never an occupied spot', () => {
+    const [c0, c1, c2, c3] = PRISONER_COLORS.map((c) => c.id);
+    let boards = fresh('ultimate');
+    boards = applySplitMatch('ultimate', boards, 0, c0).boards;
+    boards = applySplitMatch('ultimate', boards, 0, c1).boards;
+    boards = applySplitMatch('ultimate', boards, 0, c2).boards;
+    // The middle rescue goes back to jail: the row is now 0, _, 2.
+    boards = applySplitMatch('ultimate', boards, 0, c1).boards;
+
+    boards = applySplitMatch('ultimate', boards, 0, c3).boards;
+    const landed = boards.a.find((u) => u.colorId === c3)!;
+    assertEqual(landed.station.kind, 'retreat', 'the rescue did not land');
+    assertEqual(landed.station.index, 1, 'should have filled the hole at 1');
+
+    const spots = boards.a
+      .filter((u) => u.station.kind === 'retreat')
+      .map((u) => u.station.index);
+    assertEqual(
+      new Set(spots).size,
+      spots.length,
+      `two soldiers share a spot: ${spots.join(',')}`,
+    );
+  });
 });
 
 suite('splitRules · skirmish', () => {
