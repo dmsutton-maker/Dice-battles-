@@ -11,6 +11,7 @@ import {
 } from '../game/stations';
 
 import { createFlagstoneTexture } from './flagstoneTexture';
+import { cachedTexture } from './textureCache';
 
 /**
  * Space Station arena — the 700🏆 Mystery Arena. A dice deck floating in
@@ -344,14 +345,18 @@ export function SpaceArena() {
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
 
-  const floorTexture = useMemo(() => {
+  const floorTexture = useMemo(
+    () =>
+      cachedTexture('space-floor', () => {
     // Steel deck panels with dark seams.
     const texture = createFlagstoneTexture({ r: 118, g: 124, b: 138 }, 0.45);
     const floorW = innerWidth + wallThickness * 2;
     const floorD = innerDepth + wallThickness * 2;
     texture.repeat.set(1, floorD / floorW);
-    return texture;
-  }, [innerWidth, innerDepth, wallThickness]);
+        return texture;
+      }),
+    [innerWidth, innerDepth, wallThickness],
+  );
 
   const wallMaterial = useMemo(
     () => new THREE.MeshStandardMaterial({ color: HULL, roughness: 0.45, metalness: 0.5 }),

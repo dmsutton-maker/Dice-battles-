@@ -11,6 +11,7 @@ import {
 } from '../game/stations';
 
 import { createJungleFloorTexture } from './jungleFloorTexture';
+import { cachedTexture } from './textureCache';
 import { palisadeLogs } from './palisade';
 
 /**
@@ -37,7 +38,6 @@ const LOG_DARK = '#5d3f22';
 const LOG_MOSSY = '#6a6f43';
 /** How many timber shades the logs are drawn from. */
 const LOG_SHADES = 5;
-const JUNGLE_FLOOR = '#4d7a3a';
 const TRUNK = '#6b4a2c';
 
 /** Palm tree: leaning trunk + a fan of bent frond boxes. */
@@ -264,18 +264,28 @@ function JungleWorld() {
   // is 34x40 rather than the tray's few units across. It used to be one
   // flat green — the biggest unbroken surface in the arena, and the sort
   // of thing that reads as a backdrop rather than as a place.
-  const groundTexture = useMemo(() => {
-    const texture = createJungleFloorTexture();
-    texture.repeat.set(10, 12);
-    return texture;
-  }, []);
+  const groundTexture = useMemo(
+    () =>
+      cachedTexture('jungle-ground', () => {
+        const texture = createJungleFloorTexture();
+        texture.repeat.set(10, 12);
+        return texture;
+      }),
+    [],
+  );
 
   return (
     <group>
       {/* Jungle floor */}
       <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[34, 40]} />
-        <meshStandardMaterial map={groundTexture} color={JUNGLE_FLOOR} roughness={1} />
+        {/*
+          No colour tint. The texture is already green; multiplying a
+          second green over it made the clearing far more saturated than
+          the tray floor beside it, and the two met in a hard bright band
+          around the arena. Same pixels, same colour, no seam.
+        */}
+        <meshStandardMaterial map={groundTexture} roughness={1} />
       </mesh>
 
       {/* Worn dirt trail out toward the player */}
@@ -378,12 +388,14 @@ export function JungleArena() {
     // Forest floor, not the castle's slabs in green. Repeated a few times
     // across the tray: at one repeat a single leaf would be the size of a
     // die, which reads as wallpaper rather than as ground.
-    const texture = createJungleFloorTexture();
-    const floorW = innerWidth + wallThickness * 2;
-    const floorD = innerDepth + wallThickness * 2;
-    const acrossTray = 2.5;
-    texture.repeat.set(acrossTray, (acrossTray * floorD) / floorW);
-    return texture;
+    return cachedTexture('jungle-tray-floor', () => {
+      const texture = createJungleFloorTexture();
+      const floorW = innerWidth + wallThickness * 2;
+      const floorD = innerDepth + wallThickness * 2;
+      const acrossTray = 2.5;
+      texture.repeat.set(acrossTray, (acrossTray * floorD) / floorW);
+      return texture;
+    });
   }, [innerWidth, innerDepth, wallThickness]);
 
   const wallMaterial = useMemo(
@@ -521,20 +533,30 @@ export function JungleArena() {
         </mesh>
       ))}
 
-      {/* The palisade itself */}
+      {/*
+        The palisade: rails lying along each run, and a stout post at each
+        corner. Upright posts were what made this read as a ring of sawn
+        stumps — the camera looks down, so a standing log shows you its
+        top and nothing else.
+      */}
       {logs.map((log, i) => (
         <group key={`log-${i}`} position={log.position} rotation={log.rotation}>
-          <mesh material={logMaterials[Math.round(log.tone * (LOG_SHADES - 1))]}>
-            <cylinderGeometry args={[log.radius * 0.92, log.radius, log.height, 8]} />
+          <mesh
+            material={
+              logMaterials[
+                Math.max(0, Math.min(LOG_SHADES - 1, Math.round(log.tone * (LOG_SHADES - 1))))
+              ]
+            }
+          >
+            <cylinderGeometry args={[log.radius, log.radius, log.length, 10]} />
           </mesh>
-          {/*
-            Sharpened tops. Shallower than they were: at 0.18 on posts that
-            already varied by half the wall height, the whole top edge was
-            spikes on sticks.
-          */}
-          <mesh material={logCapMaterial} position={[0, log.height / 2 + 0.05, 0]}>
-            <coneGeometry args={[log.radius * 0.95, 0.14, 8]} />
-          </mesh>
+          {/* Only the corner posts are capped — a rail's ends are hidden
+              inside the post it runs into. */}
+          {log.upright && (
+            <mesh material={logCapMaterial} position={[0, log.length / 2 + 0.03, 0]}>
+              <cylinderGeometry args={[log.radius * 0.99, log.radius, 0.07, 10]} />
+            </mesh>
+          )}
         </group>
       ))}
 

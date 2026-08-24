@@ -1,5 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { jungleFloorPixels, JUNGLE_FLOOR_SIZE } from '../src/arena/jungleFloorTexture';
+import {
+  clearJungleFloorCacheForTests,
+  jungleFloorPixels,
+  JUNGLE_FLOOR_SIZE,
+} from '../src/arena/jungleFloorTexture';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../src/arena/arenas';
@@ -281,5 +285,68 @@ suite('arena · the jungle rolls on ground, not on the castle floor', () => {
     for (let i = 1; i < floor.length; i += 3) greens.add(floor[i]);
     note(`jungle floor: ${greens.size} distinct green levels`);
     assert(greens.size > 40, 'the forest floor is flat');
+  });
+});
+
+suite('arena · switching battlefields does not repaint the world', () => {
+  /**
+   * Why the previous arena stayed on screen for a moment after tapping a
+   * new one. Every procedural texture is painted pixel by pixel in
+   * JavaScript — React Native has no canvas — and each arena built its own
+   * inside `useMemo`, which caches only for the life of one component
+   * instance. Every switch blocked the JavaScript thread long enough for
+   * the old frame to sit there, and returning to an arena already viewed
+   * paid the entire cost over again.
+   */
+  test('the jungle floor is painted once, however many times it is asked for', () => {
+    clearJungleFloorCacheForTests();
+
+    const first = process.hrtime.bigint();
+    jungleFloorPixels();
+    const paintMs = Number(process.hrtime.bigint() - first) / 1e6;
+
+    const second = process.hrtime.bigint();
+    for (let i = 0; i < 20; i++) jungleFloorPixels();
+    const cachedMs = Number(process.hrtime.bigint() - second) / 1e6;
+
+    note(`jungle floor: ${paintMs.toFixed(0)}ms to paint, ${cachedMs.toFixed(2)}ms for 20 more`);
+    // The painting is real work — this is not a test that passes because
+    // the function is cheap.
+    assert(paintMs > 3, `the floor painted in ${paintMs.toFixed(1)}ms — is it still being painted?`);
+    assert(
+      cachedMs < paintMs,
+      `twenty cached reads cost ${cachedMs.toFixed(1)}ms against ${paintMs.toFixed(1)}ms to paint one`,
+    );
+  });
+
+  test('the same bytes come back every time', () => {
+    // A cache that returned something different would be worse than none.
+    clearJungleFloorCacheForTests();
+    const a = jungleFloorPixels();
+    const b = jungleFloorPixels();
+    assertEqual(a === b, true, 'the cache handed back a different array');
+  });
+
+  test('every arena builds its floor through the cache', () => {
+    // The cache only helps for textures that actually go through it, and
+    // a new arena added later would silently miss it.
+    for (const file of ['CastleArena.tsx', 'JungleArena.tsx', 'SpaceArena.tsx']) {
+      const source = readFileSync(join('src', 'arena', file), 'utf8');
+      const builds = [...source.matchAll(/create(FlagstoneTexture|JungleFloorTexture|SkyGradient)\(/g)];
+      assert(builds.length > 0, `${file} builds no texture at all`);
+      assert(
+        source.includes('cachedTexture('),
+        `${file} paints a texture on every mount instead of going through the cache`,
+      );
+    }
+  });
+
+  test('two textures from the same painting do not collide in the cache', () => {
+    // The jungle asks for two: the tray floor and the clearing around it,
+    // painted from the same bytes but repeated differently. One cache key
+    // for both would hand the clearing's repeat to the tray floor.
+    const source = readFileSync(join('src', 'arena', 'JungleArena.tsx'), 'utf8');
+    const keys = [...source.matchAll(/cachedTexture\('([^']+)'/g)].map((m) => m[1]);
+    assertEqual(new Set(keys).size, keys.length, `the jungle reuses a cache key: ${keys.join(', ')}`);
   });
 });

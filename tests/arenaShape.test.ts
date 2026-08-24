@@ -1,6 +1,7 @@
+import * as THREE from 'three';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { palisadeLogs } from '../src/arena/palisade';
+import { palisadeLogs, palisadeTopHeight } from '../src/arena/palisade';
 import { TUNING } from '../src/game/tuning';
 import { assert, assertEqual, note, suite, test } from './harness';
 
@@ -47,93 +48,94 @@ suite('arenas · no two battlefields are the same building', () => {
   test('the jungle boundary is a palisade, not a wall', () => {
     const logs = palisadeLogs();
     note(`${logs.length} logs around the jungle boundary`);
-    // Four planks is a fence; a wall is one box. A palisade is many.
-    assert(logs.length > 60, `only ${logs.length} logs — that is a fence, not a palisade`);
+    // One box is a wall. A palisade is many separate pieces of timber.
+    assert(logs.length >= 16, `only ${logs.length} logs — that is not a built wall`);
   });
 
-  test('the palisade is a stockade: ragged on top, but not a heap of sticks', () => {
+  test('the logs lie down, because the camera looks down', () => {
+    // The whole reason the boundary was rebuilt. An upright log presents
+    // its TOP to a camera above, so eighty-eight of them read as a ring of
+    // sawn stumps — which is what the screenshot showed. A log on its side
+    // presents its length.
     const logs = palisadeLogs();
-    const heights = logs.map((l) => l.height);
-    const spread = Math.max(...heights) - Math.min(...heights);
-    const { wallHeight } = TUNING.tray;
-    note(
-      `log heights ${Math.min(...heights).toFixed(2)}-${Math.max(...heights).toFixed(2)} ` +
-        `against a ${wallHeight} wall, spread ${(spread / wallHeight * 100).toFixed(0)}% of it`,
-    );
-    // BOTH ends matter, which is what this test was missing. It only had
-    // the lower bound, so the posts varied by half the wall height and the
-    // boundary read as a pile of sticks rather than a wall of logs.
-    assert(
-      spread > wallHeight * 0.12,
-      `the tops only vary by ${spread.toFixed(2)} — that is a level picket fence`,
-    );
-    assert(
-      spread < wallHeight * 0.35,
-      `the tops vary by ${spread.toFixed(2)} — that is a heap, not a stockade`,
-    );
+    const upright = logs.filter((l) => l.upright);
+    const rails = logs.filter((l) => !l.upright);
+    note(`${rails.length} rails lying down, ${upright.length} upright corner posts`);
+    assert(rails.length > upright.length * 2, 'most of the boundary is still standing on end');
+    // The corners are the exception, and there are exactly four of them.
+    assertEqual(upright.length, 4, 'the corner posts are not four');
   });
 
-  test('no log stands shorter than the wall the dice bounce off', () => {
-    // A post below the invisible collision wall makes a die look like it
-    // stopped against thin air.
-    const { wallHeight } = TUNING.tray;
+  test('every log actually points the way it is meant to', () => {
+    // A cylinder's axis is +Y, so a rail has to be TURNED onto its side —
+    // and the Euler order that does it is easy to get wrong in a way
+    // nothing else would catch. A rail rotated wrongly lies across the
+    // middle of the arena instead of along its edge, and no other test
+    // here looks at rotation at all.
     for (const log of palisadeLogs()) {
-      assert(
-        log.height >= wallHeight,
-        `a log only ${log.height.toFixed(2)} tall against a ${wallHeight} wall`,
-      );
-    }
-  });
-
-  test('there is no daylight between the logs', () => {
-    // A palisade with gaps is a picket fence. Neighbours have to overlap,
-    // which means the spacing must be under the sum of the two radii.
-    const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
-    const logs = palisadeLogs();
-    // Which run a log belongs to, by whichever coordinate is pinned to the
-    // boundary. Deliberately not "whichever is bigger" — that misfiles
-    // every log near a corner and was quietly comparing posts on
-    // different walls to each other.
-    const zRun = innerDepth / 2 + wallThickness / 2;
-    const xRun = innerWidth / 2 + wallThickness / 2;
-    const runs = new Map<string, typeof logs>();
-    for (const log of logs) {
+      const axis = new THREE.Vector3(0, 1, 0)
+        .applyEuler(new THREE.Euler(...log.rotation))
+        .round();
       const [x, , z] = log.position;
-      const key =
-        Math.abs(Math.abs(z) - zRun) < 1e-6
-          ? `alongX${z > 0 ? '+' : '-'}`
-          : `alongZ${x > 0 ? '+' : '-'}`;
-      if (!runs.has(key)) runs.set(key, []);
-      runs.get(key)!.push(log);
-    }
-    assertEqual(runs.size, 4, 'the palisade is not four runs of logs');
-
-    let worst = -Infinity;
-    for (const [key, run] of runs) {
-      const alongX = key.startsWith('alongX');
-      run.sort((a, b) => (alongX ? a.position[0] - b.position[0] : a.position[2] - b.position[2]));
-      for (let i = 1; i < run.length; i++) {
-        const a = run[i - 1];
-        const b = run[i];
-        const apart = Math.hypot(
-          a.position[0] - b.position[0],
-          a.position[2] - b.position[2],
-        );
-        worst = Math.max(worst, apart - a.radius - b.radius);
+      if (log.upright) {
+        assertEqual(Math.abs(axis.y), 1, 'a corner post is not standing up');
+      } else if (x === 0) {
+        // A rail on the front or back run: it must lie along X.
+        assertEqual(Math.abs(axis.x), 1, `a rail at z ${z} does not lie along its run`);
+      } else {
+        assertEqual(Math.abs(axis.z), 1, `a rail at x ${x} does not lie along its run`);
       }
     }
-    note(`palisade: worst neighbour gap ${worst.toFixed(3)} (negative means overlapping)`);
-    assert(worst < 0, `${worst.toFixed(2)} of daylight between two logs — that is a fence`);
   });
 
-  test('the rank leans together rather than every post its own way', () => {
-    // Independent random leans made neighbouring posts fall against each
-    // other, which is most of what made this look like a heap.
-    const logs = palisadeLogs();
-    const leans = logs.map((l) => Math.max(Math.abs(l.rotation[0]), Math.abs(l.rotation[2])));
-    const worstDeg = (Math.max(...leans) * 180) / Math.PI;
-    note(`palisade: steepest lean ${worstDeg.toFixed(1)} degrees`);
-    assert(worstDeg < 4, `a log leaning ${worstDeg.toFixed(1)} degrees looks fallen, not driven`);
+  test('the timber stands proud of the wall the dice bounce off', () => {
+    // A boundary drawn shorter than the invisible collision wall makes a
+    // die look like it stopped against nothing.
+    const { wallHeight } = TUNING.tray;
+    const top = palisadeTopHeight();
+    note(`palisade stands ${top.toFixed(2)} against a ${wallHeight} wall`);
+    assert(top >= wallHeight, `timber only reaches ${top.toFixed(2)} of a ${wallHeight} wall`);
+    // But not so tall it walls the player out of their own arena.
+    assert(top < wallHeight * 1.6, `timber towers ${top.toFixed(2)} over a ${wallHeight} wall`);
+  });
+
+  test('the courses stack without daylight between them', () => {
+    // Gaps between the rails would show the dark ground straight through
+    // the wall, which is worse than a fence.
+    const rails = palisadeLogs().filter((l) => !l.upright);
+    const bySide = new Map<string, typeof rails>();
+    for (const rail of rails) {
+      const [x, , z] = rail.position;
+      const key = rail.rotation[0] === 0 ? `alongX${z > 0 ? '+' : '-'}` : `alongZ${x > 0 ? '+' : '-'}`;
+      if (!bySide.has(key)) bySide.set(key, []);
+      bySide.get(key)!.push(rail);
+    }
+    assertEqual(bySide.size, 4, 'the boundary is not four runs of rails');
+    let worst = -Infinity;
+    for (const run of bySide.values()) {
+      run.sort((a, b) => a.position[1] - b.position[1]);
+      for (let i = 1; i < run.length; i++) {
+        worst = Math.max(
+          worst,
+          run[i].position[1] - run[i - 1].position[1] - run[i].radius - run[i - 1].radius,
+        );
+      }
+    }
+    note(`palisade: worst gap between courses ${worst.toFixed(3)} (negative means overlapping)`);
+    assert(worst < 0, `${worst.toFixed(2)} of daylight between two courses`);
+  });
+
+  test('every run reaches its corner posts', () => {
+    // A rail short of the corner leaves a notch of daylight at each end.
+    const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+    for (const rail of palisadeLogs().filter((l) => !l.upright)) {
+      const alongX = rail.rotation[0] === 0;
+      const span = alongX ? innerWidth + wallThickness * 2 : innerDepth + wallThickness * 2;
+      assert(
+        rail.length >= span,
+        `a rail spans ${rail.length.toFixed(2)} of a ${span.toFixed(2)} run`,
+      );
+    }
   });
 
   test('the logs are timber, not the temple stone', () => {
@@ -141,9 +143,9 @@ suite('arenas · no two battlefields are the same building', () => {
     // from, so the whole boundary was grey-green posts. That is most of
     // why it did not read as a wall of logs at all.
     const source = readFileSync(join('src', 'arena', 'JungleArena.tsx'), 'utf8');
-    const at = source.indexOf('{/* The palisade itself */}');
+    const at = source.indexOf('The palisade: rails lying along each run');
     assert(at > 0, 'the palisade is gone');
-    const block = source.slice(at, at + 900);
+    const block = source.slice(at, at + 1200);
     for (const stone of ['MOSS_STONE', 'wallMaterial', 'slabMaterial']) {
       assert(
         !block.includes(stone),
@@ -153,15 +155,19 @@ suite('arenas · no two battlefields are the same building', () => {
     assert(block.includes('logMaterials'), 'the palisade is not using timber shades');
   });
 
-  test('no two neighbouring logs are the same', () => {
+  test('no two neighbouring rails are identical', () => {
     // Repeating pairs would read as a manufactured panel rather than
-    // something somebody cut and drove into the ground.
-    const logs = palisadeLogs();
+    // something somebody cut and stacked.
+    //
+    // Rails only. The four corner posts are deliberately the same as each
+    // other — matching posts at the corners is what a built structure
+    // looks like, and this test failed on them until it said so.
+    const rails = palisadeLogs().filter((l) => !l.upright);
     let identical = 0;
-    for (let i = 1; i < logs.length; i++) {
-      if (Math.abs(logs[i].height - logs[i - 1].height) < 0.001) identical++;
+    for (let i = 1; i < rails.length; i++) {
+      if (Math.abs(rails[i].radius - rails[i - 1].radius) < 1e-6) identical++;
     }
-    assert(identical === 0, `${identical} neighbouring logs are exactly the same height`);
+    assert(identical === 0, `${identical} neighbouring rails are exactly the same thickness`);
   });
 
   test('the palisade is stable between builds', () => {
@@ -170,7 +176,12 @@ suite('arenas · no two battlefields are the same building', () => {
     const a = palisadeLogs();
     const b = palisadeLogs();
     assert(
-      a.every((log, i) => log.height === b[i].height && log.position[0] === b[i].position[0]),
+      a.every(
+        (log, i) =>
+          log.length === b[i].length &&
+          log.radius === b[i].radius &&
+          log.position[0] === b[i].position[0],
+      ),
       'the palisade is different every time it is built',
     );
   });

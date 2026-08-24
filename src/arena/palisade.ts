@@ -1,28 +1,39 @@
 import { TUNING } from '../game/tuning';
 
 /**
- * The jungle's boundary, as data.
+ * The jungle's boundary: a wall of logs laid HORIZONTALLY, log-cabin
+ * fashion, with a stout post at each corner.
  *
- * Every battlefield used to be four full-height box walls with a different
- * ornament on top, so all three read as the castle in another colour. The
- * jungle's edge is now a run of logs driven into a low earth bank —
- * different heights, different leans, cut to points — because a skyline is
- * what you recognise a place by.
+ * It was eighty-eight logs standing upright, and from a screenshot the
+ * reason that never looked right is obvious: the camera looks DOWN at the
+ * arena, so an upright post shows you its top and almost nothing else. The
+ * boundary read as a ring of sawn tree stumps. Every property being tuned
+ * — heights, lean, overlap, timber shades — was on the parts of the log
+ * you cannot see from up there.
+ *
+ * Logs on their sides solve it, because what a horizontal log presents to
+ * a camera above is its LENGTH. Each run reads as a few long rounded rails
+ * stacked into a wall, which is unmistakably built rather than grown, and
+ * unmistakably not the castle's battlements.
  *
  * It lives out here rather than inside the component so the shape can be
- * MEASURED. Nothing in this project can render a 3D scene to look at it,
- * which is exactly how a palisade could quietly become an even picket
- * fence, or collapse back to a wall, with every test still green.
+ * MEASURED. Nothing in this project can render a 3D scene, which is
+ * exactly how a boundary can quietly become a heap of sticks with every
+ * test still green — as it did.
  */
 
+/** One log lying along a run, or one upright corner post. */
 export interface PalisadeLog {
   position: [number, number, number];
-  height: number;
+  /** How long the log is, along its own axis. */
+  length: number;
   radius: number;
-  /** Euler rotation: a slight lean, and a spin so the facets differ. */
+  /** Euler rotation. A rail is turned to lie along its run. */
   rotation: [number, number, number];
-  /** 0..1, how light this log's timber is. Smooth between neighbours. */
+  /** 0..1, how light this log's timber is. */
   tone: number;
+  /** Corner posts still stand upright, to tie the runs together. */
+  upright: boolean;
 }
 
 /** Deterministic wobble. No Math.random — the arena must be identical every build. */
@@ -31,58 +42,79 @@ function jitter(n: number): number {
 }
 
 /**
- * Where every log stands.
+ * How many courses are stacked, and how thick each log is.
  *
- * The first version was too wild in every direction at once, and it looked
- * it: heights from 0.86 to 1.36 of the wall, leans of five degrees each
- * way chosen independently so neighbours fell against each other, and gaps
- * between the posts because the spacing was wider than the logs. Painted
- * grey-green stone rather than timber on top of that, it read as a heap of
- * sticks — David's word for the arena was garbage dump.
- *
- * A stockade is a SOLID wall of timber with a ragged top. So: the logs
- * overlap rather than leaving daylight between them, every one stands at
- * least as tall as the invisible wall the dice bounce off (a post shorter
- * than the wall makes a die look like it hit thin air), the top edge still
- * varies but by a quarter rather than by half, and the lean is a slow wave
- * along the run so the whole rank leans together the way driven posts do.
+ * Four courses of 0.21 radius covers 1.68 of wall, against a tray wall of
+ * 1.4 — so the timber always stands a little proud of the invisible
+ * surface the dice actually bounce off. A boundary drawn shorter than that
+ * makes a die look like it stopped against nothing.
  */
+const COURSES = 4;
+const LOG_RADIUS = 0.21;
+
 export function palisadeLogs(): PalisadeLog[] {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
   const list: PalisadeLog[] = [];
+
+  const outerW = innerWidth + wallThickness * 2;
+  const outerD = innerDepth + wallThickness * 2;
+  // The rails run corner to corner, overlapping the corner posts so no
+  // daylight shows where a run ends.
+  const alongXLength = outerW + LOG_RADIUS * 2;
+  const alongZLength = outerD + LOG_RADIUS * 2;
+
   let k = 0;
-
-  const place = (x: number, z: number, alongX: boolean) => {
-    const j = jitter(k * 3.7 + 1);
-    const j2 = jitter(k * 7.1 + 5);
-    // Never below the wall the dice actually stop against.
-    const height = wallHeight * (1.02 + j * 0.26);
-    // A slow wave along the run, with only a whisper of per-log jitter, so
-    // the rank leans together instead of every post picking its own angle.
-    const lean = Math.sin(k * 0.5) * 0.03 + (j2 - 0.5) * 0.02;
-    list.push({
-      position: [x, height / 2, z],
-      height,
-      // Wider than half the spacing, so neighbouring logs overlap and the
-      // palisade is a wall rather than a picket fence with gaps in it.
-      radius: 0.2 + j2 * 0.045,
-      rotation: alongX ? [0, j * 0.6, lean] : [lean, j * 0.6, 0],
-      // Smoothly varying timber, not a hard switch every third log — that
-      // switch put a repeating stripe of dark posts around the arena.
-      tone: 0.5 + Math.sin(k * 0.9) * 0.32 + (j - 0.5) * 0.2,
-    });
-    k++;
-  };
-
-  for (let x = -halfW - wallThickness + 0.18; x <= halfW + wallThickness - 0.1; x += 0.34) {
-    place(x, -(halfD + wallThickness / 2), true);
-    place(x, halfD + wallThickness / 2, true);
+  for (let course = 0; course < COURSES; course++) {
+    // Courses stack with a little squash, the way logs settle onto each
+    // other rather than balancing exactly.
+    const y = LOG_RADIUS + course * LOG_RADIUS * 1.78;
+    for (const [side, alongX] of [
+      [-(halfD + wallThickness / 2), true],
+      [halfD + wallThickness / 2, true],
+      [-(halfW + wallThickness / 2), false],
+      [halfW + wallThickness / 2, false],
+    ] as [number, boolean][]) {
+      const j = jitter(k * 3.7 + 1);
+      list.push({
+        position: alongX ? [0, y, side] : [side, y, 0],
+        length: alongX ? alongXLength : alongZLength,
+        // Each log a slightly different thickness, so the stack is timber
+        // rather than moulding.
+        radius: LOG_RADIUS * (0.94 + j * 0.12),
+        // A cylinder stands up the Y axis by default, so a rail is tipped
+        // a quarter turn onto its side and then swung to face its run.
+        rotation: alongX ? [0, 0, Math.PI / 2] : [Math.PI / 2, Math.PI / 2, 0],
+        tone: 0.5 + Math.sin(course * 1.7 + (alongX ? 0 : 1.1)) * 0.34 + (j - 0.5) * 0.16,
+        upright: false,
+      });
+      k++;
+    }
   }
-  for (let z = -halfD - wallThickness + 0.2; z <= halfD + wallThickness - 0.1; z += 0.36) {
-    place(-(halfW + wallThickness / 2), z, false);
-    place(halfW + wallThickness / 2, z, false);
+
+  // Corner posts. Stouter than the rails and standing a little above them,
+  // which is what stops the four runs looking like they merely meet.
+  const postHeight = wallHeight * 1.32;
+  for (const x of [-(halfW + wallThickness / 2), halfW + wallThickness / 2]) {
+    for (const z of [-(halfD + wallThickness / 2), halfD + wallThickness / 2]) {
+      const j = jitter(k * 3.7 + 1);
+      list.push({
+        position: [x, postHeight / 2, z],
+        length: postHeight,
+        radius: LOG_RADIUS * 1.55,
+        rotation: [0, j * 0.5, 0],
+        tone: 0.35 + j * 0.2,
+        upright: true,
+      });
+      k++;
+    }
   }
+
   return list;
+}
+
+/** How high the timber stands, for the tests and for anything stacked on it. */
+export function palisadeTopHeight(): number {
+  return LOG_RADIUS + (COURSES - 1) * LOG_RADIUS * 1.78 + LOG_RADIUS;
 }

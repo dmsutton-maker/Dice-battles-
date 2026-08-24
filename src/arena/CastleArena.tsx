@@ -13,6 +13,7 @@ import {
 } from '../game/stations';
 
 import { createFlagstoneTexture } from './flagstoneTexture';
+import { cachedTexture } from './textureCache';
 
 const STONE = '#9a8a72';
 const STONE_DARK = '#7d6e58';
@@ -260,13 +261,15 @@ function RetreatGarden({ palette }: { palette: Palette }) {
 function SunsetSky() {
   const gradient = useMemo(
     () =>
-      createSkyGradient([
-        '#ffd27a', // right at the horizon, where the sun is
-        '#ff8f52',
-        '#e2557f',
-        '#7b3f8f',
-        '#2e2050', // overhead, already night
-      ]),
+      cachedTexture('castle-sunset-sky', () =>
+        createSkyGradient([
+          '#ffd27a', // right at the horizon, where the sun is
+          '#ff8f52',
+          '#e2557f',
+          '#7b3f8f',
+          '#2e2050', // overhead, already night
+        ]),
+      ),
     [],
   );
 
@@ -443,14 +446,19 @@ export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
 
-  const floorTexture = useMemo(() => {
-    const texture = createFlagstoneTexture();
-    // Keep the stones square on the non-square floor.
-    const floorW = innerWidth + wallThickness * 2;
-    const floorD = innerDepth + wallThickness * 2;
-    texture.repeat.set(1, floorD / floorW);
-    return texture;
-  }, [innerWidth, innerDepth, wallThickness]);
+  const floorTexture = useMemo(
+    () =>
+      // Cached across mounts, not just within one — see textureCache.ts.
+      cachedTexture('castle-floor', () => {
+        const texture = createFlagstoneTexture();
+        // Keep the stones square on the non-square floor.
+        const floorW = innerWidth + wallThickness * 2;
+        const floorD = innerDepth + wallThickness * 2;
+        texture.repeat.set(1, floorD / floorW);
+        return texture;
+      }),
+    [innerWidth, innerDepth, wallThickness],
+  );
 
   const wallMaterial = useMemo(
     () => new THREE.MeshStandardMaterial({ color: STONE, roughness: 0.9 }),

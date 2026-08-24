@@ -77,7 +77,13 @@ const LEAF_COLORS = [
  * way the dice patterns are built — so the floor can be measured in the
  * test suite without a GPU or a THREE image buffer to unwrap.
  */
+let pixelCache: number[] | null = null;
+
 export function jungleFloorPixels(): number[] {
+  // Painted once per app run. Two textures are built from these bytes (the
+  // tray floor and the clearing around it, at different repeats), and the
+  // painting is 65-120ms of pure JavaScript — worth doing exactly once.
+  if (pixelCache) return pixelCache;
   const out: number[] = [];
 
   for (let y = 0; y < SIZE; y++) {
@@ -98,10 +104,15 @@ export function jungleFloorPixels(): number[] {
       // Bare earth, only where the growth has genuinely worn thin. The
       // threshold is high on purpose so this is the exception across the
       // clearing rather than the rule.
-      const wear = wrappedNoise(x + 57, y + 23, 32);
-      const bare = Math.max(0, Math.min(1, (wear - 0.72) * 3.2));
+      // Rarer, softer, and never reaching full earth. On a screenshot
+      // these read as dirty smears across the clearing rather than as
+      // ground wearing thin — a hard-edged brown patch on green is a
+      // stain. Capped at just over half strength so a patch is always
+      // still recognisably the ground it is part of.
+      const wear = wrappedNoise(x + 57, y + 23, 32) * 0.7 + wrappedNoise(x + 11, y + 5, 16) * 0.3;
+      const bare = Math.max(0, Math.min(1, (wear - 0.78) * 2.2)) * 0.55;
       if (bare > 0) {
-        const speckle = 0.9 + hash2(x * 3.1, y * 3.1) * 0.2;
+        const speckle = 0.92 + hash2(x * 3.1, y * 3.1) * 0.16;
         r += (EARTH.r * speckle - r) * bare;
         g += (EARTH.g * speckle - g) * bare;
         b += (EARTH.b * speckle - b) * bare;
@@ -158,7 +169,13 @@ export function jungleFloorPixels(): number[] {
       );
     }
   }
+  pixelCache = out;
   return out;
+}
+
+/** Test-only: forget the painted bytes so a suite can time a fresh build. */
+export function clearJungleFloorCacheForTests(): void {
+  pixelCache = null;
 }
 
 export function createJungleFloorTexture(): THREE.DataTexture {

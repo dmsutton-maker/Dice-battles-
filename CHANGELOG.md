@@ -1,5 +1,56 @@
 # Changelog
 
+## v1.28.0 — 2026-08-24 · requested by David
+
+David sent a screenshot, which changed the diagnosis completely. Three
+rounds of tuning the jungle had been spent on parts of it the camera
+cannot see.
+
+### Fixed
+- **The boundary is logs lying DOWN now, not standing up.** The camera
+  looks down at the arena, so an upright post presents its top and almost
+  nothing else — eighty-eight of them read as a ring of sawn tree stumps,
+  which is exactly what the screenshot showed. Heights, lean, overlap,
+  timber shades: every property tuned over the last two releases was on
+  the side of the log nobody can see from up there. It is a log-cabin wall
+  now — four courses of long rails stacked along each run, with a stout
+  post at each corner — because what a horizontal log shows a camera above
+  is its LENGTH.
+- **The bright green frame around the arena is gone.** The clearing was
+  drawn with a green tint multiplied over an already-green texture, so it
+  came out far more saturated than the tray floor beside it and the two
+  met in a hard band. Same pixels, same colour, no seam.
+- **The dark smudges are gone.** The worn-earth patches reached full
+  brown against green, which on a screen reads as stains rather than as
+  ground wearing thin. Rarer, softer, and capped at half strength, so a
+  patch is always still recognisably the ground it is part of.
+
+### Fixed — the arena preview lag
+- **Switching battlefields showed you the previous one for a moment.** Every
+  procedural texture is painted pixel by pixel in JavaScript, because React
+  Native has no canvas — and the jungle floor alone takes 65 to 120ms on a
+  desktop, several hundred on a phone. Each arena built its own inside
+  `useMemo`, which caches only for the life of one component instance: every
+  switch blocked the JavaScript thread long enough for the old frame to sit
+  there, and returning to an arena already viewed paid the whole cost again.
+- They are cached at module level now, built once per app run. Measured in
+  the suite: **75ms to paint, 0.08ms for the next twenty**. The first view
+  of an arena pays once; every view after it is free.
+- The jungle asks for two textures from the same painting (the tray floor
+  and the clearing, at different repeats), so the painted bytes are cached
+  as well as the textures.
+
+### Under the hood
+- A test now checks each log actually points the way it is meant to. A
+  cylinder's axis is +Y, so a rail has to be turned onto its side, and the
+  Euler order that does it is easy to get wrong in a way that lays rails
+  across the middle of the arena — nothing else here looked at rotation at
+  all. It fails when the rotation is swapped.
+- Four more guards on the new boundary: most of it lies down and exactly
+  four posts stand, the courses stack without daylight, every rail reaches
+  its corner posts, and the timber stands proud of the wall the dice
+  actually bounce off.
+
 ## v1.27.0 — 2026-08-24 · requested by David
 
 ### Fixed
