@@ -10,7 +10,7 @@ import {
   RETREAT_Z,
 } from '../game/stations';
 
-import { createFlagstoneTexture } from './flagstoneTexture';
+import { createJungleFloorTexture } from './jungleFloorTexture';
 import { palisadeLogs } from './palisade';
 
 /**
@@ -245,12 +245,22 @@ function JungleRetreat() {
 
 /** The rainforest world beyond the ruins. */
 function JungleWorld() {
+  // The same ground as the tray, tiled far more times because this plane
+  // is 34x40 rather than the tray's few units across. It used to be one
+  // flat green — the biggest unbroken surface in the arena, and the sort
+  // of thing that reads as a backdrop rather than as a place.
+  const groundTexture = useMemo(() => {
+    const texture = createJungleFloorTexture();
+    texture.repeat.set(10, 12);
+    return texture;
+  }, []);
+
   return (
     <group>
       {/* Jungle floor */}
       <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[34, 40]} />
-        <meshStandardMaterial color={JUNGLE_FLOOR} roughness={1} />
+        <meshStandardMaterial map={groundTexture} color={JUNGLE_FLOOR} roughness={1} />
       </mesh>
 
       {/* Worn dirt trail out toward the player */}
@@ -350,11 +360,14 @@ export function JungleArena() {
   const halfD = innerDepth / 2;
 
   const floorTexture = useMemo(() => {
-    // Mossy green stone slabs with dark, damp grout.
-    const texture = createFlagstoneTexture({ r: 148, g: 162, b: 118 }, 0.55);
+    // Forest floor, not the castle's slabs in green. Repeated a few times
+    // across the tray: at one repeat a single leaf would be the size of a
+    // die, which reads as wallpaper rather than as ground.
+    const texture = createJungleFloorTexture();
     const floorW = innerWidth + wallThickness * 2;
     const floorD = innerDepth + wallThickness * 2;
-    texture.repeat.set(1, floorD / floorW);
+    const acrossTray = 2.5;
+    texture.repeat.set(acrossTray, (acrossTray * floorD) / floorW);
     return texture;
   }, [innerWidth, innerDepth, wallThickness]);
 

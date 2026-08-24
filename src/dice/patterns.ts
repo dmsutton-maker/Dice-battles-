@@ -106,32 +106,65 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
   },
 
   /**
-   * Frost: thin needles crossing on a grid, the way ice grows on a window.
+   * Frost: actual snowflakes, six-armed and branched.
    *
-   * Frost used to share the `stars` painter with Starry, so the two skins
-   * were the same picture in two colours — indistinguishable in the
-   * Inventory and on the table. This is deliberately a different SHAPE,
-   * not a different tint.
+   * This used to be three needles crossed through a point — a six-pointed
+   * asterisk, which is a star with no branches on it, and at a glance it
+   * read as a sparkle rather than as snow. A snowflake is six-fold
+   * symmetric with DENDRITES: shorter arms angled forward off the spine,
+   * longest near the middle and shortest near the tip. Those branches are
+   * the whole silhouette; without them it is a star.
+   *
+   * The symmetry is done by folding the angle into one sixty-degree
+   * sector and mirroring it, so a single arm drawn here comes out six
+   * times. Every flake gets its own size and its own spin from a hash of
+   * its cell, because a grid of identical flakes at identical angles reads
+   * as wallpaper — the same trap the old bubbles fell into.
    */
   frost: (x, y) => {
-    const cell = 16;
-    const cx = ((x % cell) - cell / 2) / (cell / 2);
-    const cy = ((y % cell) - cell / 2) / (cell / 2);
-    const r = Math.hypot(cx, cy);
-    if (r > 1) return 0;
+    const cell = 32;
+    const row = Math.floor(y / cell);
+    const col = Math.floor(x / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
 
-    // Three needles at 0deg, 60deg and 120deg through the centre.
-    const ARMS = 3;
-    const THICKNESS = 0.17;
-    for (let i = 0; i < ARMS; i++) {
-      const t = (Math.PI * i) / ARMS;
-      // Perpendicular distance from the line through the centre.
-      const across = Math.abs(-Math.sin(t) * cx + Math.cos(t) * cy);
-      // Needles taper: wide at the middle, fine at the tips.
-      if (across < THICKNESS * (1 - r * 0.65)) return 1;
-    }
-    // A small bright core where the needles meet.
-    return r < 0.13 ? 1 : 0;
+    // Deterministic per-cell variation. No Math.random — the shelf and the
+    // table have to show the same dice.
+    const hash = Math.abs((Math.sin(row * 12.9898 + col * 78.233) * 43758.5453) % 1);
+    const reach = (cell / 2) * (0.66 + hash * 0.26);
+    const spin = hash * Math.PI;
+
+    const r = Math.hypot(cx, cy);
+    if (r > reach) return 0;
+
+    const sector = Math.PI / 3;
+    const angle = Math.atan2(cy, cx) + spin;
+    const folded = (((angle % sector) + sector) % sector) - sector / 2;
+    // Along the arm, and across it — mirrored, so one branch covers both
+    // sides of the spine.
+    const along = r * Math.cos(folded);
+    const across = Math.abs(r * Math.sin(folded));
+
+    const ARM = 0.62;
+    if (along <= reach && across < ARM) return 1;
+
+    // Dendrites, angled sixty degrees forward off the spine.
+    const branch = (at: number, length: number) => {
+      const px = along - at * reach;
+      const py = across;
+      const dx = 0.5;
+      const dy = 0.866;
+      const t = Math.max(0, Math.min(length, px * dx + py * dy));
+      return Math.hypot(px - dx * t, py - dy * t);
+    };
+    if (branch(0.3, reach * 0.36) < 0.52) return 1;
+    if (branch(0.55, reach * 0.26) < 0.48) return 1;
+    if (branch(0.78, reach * 0.16) < 0.44) return 1;
+
+    // The hexagonal heart every flake grows out from.
+    if (along < reach * 0.17) return 1;
+    return 0;
   },
 
   /**

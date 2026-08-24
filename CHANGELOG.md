@@ -1,5 +1,50 @@
 # Changelog
 
+## v1.25.0 — 2026-08-24 · requested by David
+
+### Changed
+- **Frost is snowflakes now.** It was three needles crossed through a
+  point — a six-armed asterisk, which is a star with nothing on it, and at
+  a glance it read as a sparkle rather than as snow. A snowflake is
+  six-fold symmetric with DENDRITES: shorter arms angled forward off each
+  spine, longest near the middle and shortest near the tip. Those branches
+  are the whole silhouette. Every flake gets its own size and its own spin
+  so no two in view are the same one.
+- **The jungle rolls on ground instead of on the castle's floor.** Jungle
+  Clearing was using the castle's flagstone texture tinted green — laid
+  slabs, grout and all. That is the surface the camera is centred on and
+  the dice come to rest on, so of everything in the arena it was doing the
+  most to make the jungle look like the castle repainted. It is a forest
+  floor now: damp earth mottled at two scales, moss in patches with soft
+  edges, and fallen leaves scattered where they fell, each one turned to
+  its own angle with a darker midrib. The clearing around the tray gets it
+  too — that was one flat green plane, 34 by 40, the biggest unbroken
+  surface in the arena.
+
+### Tutorial
+- Slide 2 says **swipe** rather than flick. (The physics code still calls
+  it a flick internally; this is the word a player reads.)
+- Slide 3's heading is **"Match two colours to free a prisoner"**. It read
+  "Two the same frees one", which needs you to already know what "two" and
+  "one" refer to — on the page that teaches the only rule in the game.
+- Slide 4 is **"It's a race"**.
+
+### Under the hood
+- The new floor is deterministic, unlike the flagstone it replaces, which
+  used `Math.random` and so was different on every launch and could not be
+  checked at all. It is measured instead: no row is dark enough to be a
+  grout line, it meets itself no worse at the wrap than anywhere inside
+  the tile, and it is identical between builds.
+- The moss needed three octaves of noise. One octave is interpolated
+  across an 8x8 grid, and the blend between cells leaves diamond and
+  square corners on every patch — the moss came out looking like
+  camouflage.
+- Two frost tests were written that passed on nothing: they thresholded
+  ink at a fixed brightness, and frost's shell is a very pale blue that
+  fell on the ink side of it, so the whole texture counted as ink. The
+  threshold comes from the painter's own tone range now. Both fail on the
+  old asterisk.
+
 ## v1.24.0 — 2026-08-24 · requested by David
 
 ### Changed

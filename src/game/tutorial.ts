@@ -49,13 +49,13 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
     title: 'Throw the dice',
     lines: [
       'Tap anywhere on the battlefield to roll.',
-      'Or flick, and the dice go the way you flicked — harder for a bigger throw.',
+      'Or swipe, and the dice go the way you swiped — harder for a bigger throw.',
       'You do not have to wait for them to stop. Tap again and the next roll is on its way.',
     ],
     art: { kind: 'throw' },
   },
   {
-    title: 'Two the same frees one',
+    title: 'Match two colours to free a prisoner',
     lines: [
       'When BOTH dice land on the same colour, that prisoner runs free.',
       'Two different colours does nothing — just roll again.',
@@ -64,7 +64,7 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
     art: { kind: 'match' },
   },
   {
-    title: 'It is a race',
+    title: "It's a race",
     lines: [
       'Somebody is rolling against you, and they are trying to empty their jail too.',
       'Free all six before they do and you win the battle.',

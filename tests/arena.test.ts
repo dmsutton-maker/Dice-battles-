@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { jungleFloorPixels, JUNGLE_FLOOR_SIZE } from '../src/arena/jungleFloorTexture';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../src/arena/arenas';
@@ -186,5 +187,99 @@ suite('split screen · difficulty reaches both players', () => {
       body.includes('setLayout(generateObstacleLayout(difficulty))'),
       'a rematch does not roll fresh obstacles',
     );
+  });
+});
+
+suite('arena · the jungle rolls on ground, not on the castle floor', () => {
+  /**
+   * The jungle used to use `createFlagstoneTexture` tinted green — the
+   * castle's laid slabs, grout and all. That is the surface the camera is
+   * centred on and the dice come to rest on, so it was doing more than
+   * anything else in the arena to make the jungle look like the castle
+   * repainted.
+   */
+  const floor = jungleFloorPixels();
+  const S = JUNGLE_FLOOR_SIZE;
+  const at = (x: number, y: number) => {
+    const i = ((y % S) * S + (x % S)) * 3;
+    return [floor[i], floor[i + 1], floor[i + 2]];
+  };
+
+  test('the arena asks for the forest floor and not the flagstone', () => {
+    const source = readFileSync('src/arena/JungleArena.tsx', 'utf8');
+    assert(
+      source.includes('createJungleFloorTexture'),
+      'the jungle is not using the forest floor',
+    );
+    assert(
+      !source.includes('createFlagstoneTexture'),
+      'the jungle is still laying the castle flagstones',
+    );
+  });
+
+  test('it has no grid ruled through it', () => {
+    // A flagstone floor has grout: whole rows and columns that are darker
+    // than everything around them. That is exactly the regularity a forest
+    // floor must not have, and it is measurable without looking.
+    const rowMean = (y: number) => {
+      let sum = 0;
+      for (let x = 0; x < S; x++) sum += at(x, y)[0] + at(x, y)[1] + at(x, y)[2];
+      return sum / (S * 3);
+    };
+    const means = Array.from({ length: S }, (_, y) => rowMean(y));
+    const avg = means.reduce((a, b) => a + b, 0) / means.length;
+    // How far the darkest row falls below the average. Grout lines drop a
+    // long way; earth and moss drift.
+    const darkest = Math.min(...means);
+    const drop = ((avg - darkest) / avg) * 100;
+    note(`jungle floor: darkest row sits ${drop.toFixed(1)}% below average`);
+    assert(drop < 22, `a row ${drop.toFixed(0)}% darker than its neighbours is a grout line`);
+  });
+
+  test('it tiles without a seam', () => {
+    // The floor repeats several times across the tray, so an edge that
+    // does not meet its opposite draws a straight line across the clearing
+    // — the very grid this replaced.
+    const step = (a: number[], b: number[]) =>
+      Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+
+    // The bound is the texture's OWN worst internal step, not a number
+    // chosen to fit. A leaf edge is a big jump wherever it falls, and one
+    // landing on the boundary is a correctly tiling texture, not a seam —
+    // so the question is only whether the wrap is worse than the picture.
+    let worstInside = 0;
+    for (let y = 0; y < S; y++) {
+      for (let x = 1; x < S; x++) worstInside = Math.max(worstInside, step(at(x, y), at(x - 1, y)));
+    }
+
+    let worstWrap = 0;
+    for (let i = 0; i < S; i++) {
+      worstWrap = Math.max(worstWrap, step(at(0, i), at(S - 1, i)));
+      worstWrap = Math.max(worstWrap, step(at(i, 0), at(i, S - 1)));
+    }
+
+    note(`jungle floor: worst wrap step ${worstWrap} against ${worstInside} inside the tile`);
+    assert(
+      worstWrap <= worstInside,
+      `the floor meets itself worse than it meets anything inside — ${worstWrap} vs ${worstInside}`,
+    );
+  });
+
+  test('it is the same floor every launch', () => {
+    // The flagstone it replaced used Math.random, so it was different on
+    // every build and could not be checked at all.
+    const again = jungleFloorPixels();
+    assertEqual(
+      floor.join(',') === again.join(','),
+      true,
+      'the jungle floor changes between builds',
+    );
+  });
+
+  test('it is earth and moss, not one flat colour', () => {
+    const greens = new Set<number>();
+    for (let i = 1; i < floor.length; i += 3) greens.add(floor[i]);
+    note(`jungle floor: ${greens.size} distinct green levels`);
+    assert(greens.size > 40, 'the forest floor is flat');
   });
 });

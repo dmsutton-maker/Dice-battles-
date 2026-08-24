@@ -166,3 +166,62 @@ function variationAlong(t: number[], axis: 'row' | 'column'): number {
   }
   return total / n;
 }
+
+suite('textures · frost is snow, not a sparkle', () => {
+  /**
+   * Frost used to be three needles crossed through a point — a six-pointed
+   * asterisk. David asked for snowflakes, and the difference between the
+   * two is BRANCHES: a snowflake has dendrites angled off each arm.
+   */
+  const S = PATTERN_SIZE;
+  const t = tones('frost', '#e8f6ff', '#9fd3f0');
+  // Halfway between the palest and darkest tone the painter actually
+  // produces. A fixed number does not work here: frost's shell is a very
+  // pale blue at tone 243 and its ink only reaches 199, so a threshold
+  // picked by eye counted the whole texture as ink and both of these
+  // tests passed on nothing.
+  const midTone = (Math.max(...t) + Math.min(...t)) / 2;
+  const lit = (x: number, y: number) => t[(y % S) * S + (x % S)] < midTone;
+
+  test('the arms carry branches, not bare spikes', () => {
+    // Walk a ring around a flake's centre and count how many separate runs
+    // of ink it crosses. A bare six-armed asterisk crosses six times at
+    // every radius. A branched flake crosses MORE than six part way out,
+    // because the dendrites are out there beside the arms.
+    const crossingsAt = (cx: number, cy: number, radius: number) => {
+      let runs = 0;
+      let prev = false;
+      const steps = 180;
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const on = lit(Math.round(cx + Math.cos(a) * radius), Math.round(cy + Math.sin(a) * radius));
+        if (on && !prev) runs++;
+        prev = on;
+      }
+      return runs;
+    };
+    // The flake centred in the first cell — cell is 32, so its middle is 16,16.
+    const near = crossingsAt(16, 16, 5);
+    const mid = crossingsAt(16, 16, 7);
+    note(`frost: ${near} ink runs close in, ${mid} further out`);
+    assert(
+      Math.max(near, mid) > 6,
+      'frost crosses six arms and nothing else — it is an asterisk, not a snowflake',
+    );
+  });
+
+  test('flakes differ from one another', () => {
+    // A grid of identical flakes at identical angles reads as wallpaper.
+    // Two cells of the texture, compared pixel for pixel.
+    const cell = 32;
+    let same = 0;
+    for (let y = 0; y < cell; y++) {
+      for (let x = 0; x < cell; x++) {
+        if (lit(x, y) === lit(x + cell, y)) same++;
+      }
+    }
+    const agreement = (same / (cell * cell)) * 100;
+    note(`frost: two neighbouring flakes agree on ${agreement.toFixed(0)}% of pixels`);
+    assert(agreement < 97, 'every flake is the same flake');
+  });
+});
