@@ -1,17 +1,17 @@
 {
   "artboards": [
-    { "file": "Today.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Today — what it looks like now" },
-    { "file": "Main.dc.html", "x": 530, "y": 0, "w": 390, "h": 844, "title": "Direction A — Deep Table" },
-    { "file": "DirectionB.dc.html", "x": 1060, "y": 0, "w": 390, "h": 844, "title": "Direction B — Paper & Ink" },
-    { "file": "Store.dc.html", "x": 530, "y": 1000, "w": 390, "h": 844, "title": "A · Store" },
-    { "file": "Result.dc.html", "x": 1060, "y": 1000, "w": 390, "h": 844, "title": "A · After a battle" },
-    { "file": "Battle.dc.html", "x": 1590, "y": 1000, "w": 390, "h": 844, "title": "A · During a battle" }
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Home — light" },
+    { "file": "Store.dc.html", "x": 530, "y": 0, "w": 390, "h": 844, "title": "Store — light" },
+    { "file": "Result.dc.html", "x": 1060, "y": 0, "w": 390, "h": 844, "title": "After a battle — light" },
+    { "file": "HomeDark.dc.html", "x": 0, "y": 1010, "w": 390, "h": 844, "title": "Home — dark" },
+    { "file": "StoreDark.dc.html", "x": 530, "y": 1010, "w": 390, "h": 844, "title": "Store — dark" },
+    { "file": "ResultDark.dc.html", "x": 1060, "y": 1010, "w": 390, "h": 844, "title": "After a battle — dark" }
   ],
   "annotations": [
-    { "id": "the-ask", "x": 0, "y": -190, "w": 420, "text": "What makes it read as 2010:\n\n1. Emoji as icons (🛒 🎒 ⚔️ 🏆 🏅)\n2. Saturated yellow slab buttons, 900 weight\n3. ALL CAPS everywhere, no hierarchy\n4. No typeface — system font throughout\n5. Hard borders, flat panels, no depth" },
-    { "id": "direction-a", "x": 530, "y": -190, "w": 420, "text": "DIRECTION A — Deep Table\n\nA premium tabletop. Depth and glow, glass panels, one restrained gold accent kept for the single primary action. Gabarito + Manrope.\n\nTradeoff: quieter. Less immediately \"fun\" in a store screenshot, and the dark ground makes the six colours work harder." },
-    { "id": "direction-b", "x": 1060, "y": -190, "w": 420, "text": "DIRECTION B — Paper & Ink\n\nBright, tactile, colour-blocked. Ink outlines and hard drop shadows — physical, like pieces on a table. Fredoka + Nunito.\n\nTradeoff: reads younger. Closer to a children's app, which cuts against \"a grandparent should play this too\"." },
-    { "id": "scope", "x": 1590, "y": -190, "w": 400, "text": "The three screens below are Direction A carried through, so you can judge it on more than a home screen.\n\nThe board itself is a rough stand-in — the real one is 3D and rendered live. Everything AROUND it is the actual proposal." }
+    { "id": "direction", "x": 0, "y": -230, "w": 430, "text": "PAPER & INK — both modes\n\nThe character comes from SHAPE, not light: a 2px outline and a hard offset shadow, so every card reads as a physical piece on a table.\n\nThat is exactly why it inverts cleanly. Flip the ground and the ink, keep the geometry, and it is the same design at night — not a second design to maintain." },
+    { "id": "same", "x": 530, "y": -230, "w": 430, "text": "TWO THINGS DELIBERATELY DO NOT FLIP\n\n1. The six prisoner colours. They are the game's signal. If a match looked different at night, the one rule of the game would change with the time of day.\n\n2. The geometry. Same radii, same 2px line, same 4px drop, both modes." },
+    { "id": "build", "x": 1060, "y": -230, "w": 430, "text": "BOTH MODES COME FROM ONE DRAWING\n\nEach screen is written once with token names and emitted twice — see _build.py and _tokens.md beside these files.\n\nHand-drawing the second set is how a dark mode drifts: someone nudges a radius in light, forgets the dark file, and six months later they are two designs." },
+    { "id": "next", "x": 1590, "y": -230, "w": 400, "text": "NOT SHOWN: the battle screen.\n\nIts chrome is only the two score pills and a hint line — the screen is almost entirely the 3D board, which does not change with the theme.\n\nWorth deciding: does the theme follow the phone's own light/dark setting, or is it a switch in Settings? I would follow the phone and offer an override." }
   ],
   "launch": { "view": "canvas" }
 }
