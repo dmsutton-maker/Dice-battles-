@@ -45,8 +45,8 @@ TAIL = '''</x-dc>
 </html>
 '''
 
-def emit(name, body):
-    for theme, pal in (('', LIGHT), ('Dark', DARK)):
+def emit(name, body, pair=None):
+    for theme, pal in (pair or (('', LIGHT), ('Dark', DARK))):
         out = HEAD + body + TAIL
         # Longest first, so `inkSoft` is never eaten by `ink`.
         for key in sorted(pal, key=len, reverse=True):
@@ -294,3 +294,144 @@ RESULT = '''
 
 emit('Store', STORE)
 emit('Result', RESULT)
+
+
+# ---------------------------------------------------------------------
+# Direction A — "Deep Table". Its character is glow and glass, which is
+# native to dark and has to be TRANSLATED for light rather than inverted:
+# a soft cast shadow does in daylight what a glow does at night.
+# ---------------------------------------------------------------------
+
+A_DARK = {
+    'ground': 'radial-gradient(120% 62% at 50% 8%, #3b2a63 0%, #241a44 42%, #150f2c 100%)',
+    'halo': 'radial-gradient(circle, rgba(255,216,77,0.16) 0%, rgba(255,216,77,0) 68%)',
+    'panel': 'rgba(255,255,255,0.05)', 'panelLine': 'rgba(255,255,255,0.09)',
+    'chip': 'rgba(255,255,255,0.07)', 'chipLine': 'rgba(255,255,255,0.11)',
+    'sel': 'rgba(255,255,255,0.11)',
+    'ink': '#ffffff', 'inkSoft': 'rgba(255,255,255,0.66)', 'inkFaint': 'rgba(255,255,255,0.49)',
+    'gold': 'linear-gradient(180deg, #ffe268 0%, #ffc93a 100%)', 'goldFlat': '#ffd84d',
+    'goldInk': '#241a44', 'lift': '0 10px 28px rgba(255,201,58,0.28)',
+    'navFace': 'rgba(16,11,32,0.72)', 'navLine': 'rgba(255,255,255,0.07)',
+    'navPill': 'rgba(255,216,77,0.15)',
+    'accent': '#ffd84d',
+}
+A_LIGHT = {
+    'ground': 'radial-gradient(120% 62% at 50% 8%, #fffaf0 0%, #f6f1e6 44%, #ece5d8 100%)',
+    'halo': 'radial-gradient(circle, rgba(216,158,26,0.13) 0%, rgba(216,158,26,0) 68%)',
+    'panel': '#ffffff', 'panelLine': 'rgba(36,26,68,0.09)',
+    'chip': '#ffffff', 'chipLine': 'rgba(36,26,68,0.1)',
+    'sel': '#f0ebe0',
+    'ink': '#241a44', 'inkSoft': 'rgba(36,26,68,0.68)', 'inkFaint': 'rgba(36,26,68,0.62)',
+    'gold': 'linear-gradient(180deg, #ffd githubPLACEHOLDER 0%, #e8ae1c 100%)', 'goldFlat': '#f0bd2a',
+    'goldInk': '#241a44', 'lift': '0 8px 22px rgba(36,26,68,0.14)',
+    'navFace': '#ffffff', 'navLine': 'rgba(36,26,68,0.08)',
+    'navPill': 'rgba(232,174,28,0.16)',
+    'accent': '#8a6308',
+}
+A_LIGHT['gold'] = 'linear-gradient(180deg, #ffdd6e 0%, #e8ae1c 100%)'
+
+HOME_A = '''
+<div style="width: 390px; height: 844px; background: $ground; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+  <div style="position: absolute; top: 96px; left: 50%; transform: translateX(-50%); width: 300px; height: 300px; border-radius: 150px; background: $halo;"></div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 58px 20px 0; position: relative;">
+    <div style="display: flex; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 7px; background: $chip; border: 1px solid $chipLine; border-radius: 12px; padding: 8px 12px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="$goldFlat" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/><path d="M9 20h6"/><path d="M12 14v6"/></svg>
+        <span style="color: $ink; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">128</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; background: $chip; border: 1px solid $chipLine; border-radius: 12px; padding: 8px 12px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="$goldFlat" stroke-width="1.9"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>
+        <span style="color: $ink; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">420</span>
+      </div>
+    </div>
+    <div style="width: 44px; height: 44px; border-radius: 13px; background: $chip; border: 1px solid $chipLine; display: grid; place-items: center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="$inkSoft" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3.4"/><path d="M12 2.6v3M12 18.4v3M21.4 12h-3M5.6 12h-3M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1M18.6 18.6l-2.1-2.1M7.5 7.5 5.4 5.4"/></svg>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 22px; position: relative;">
+
+    <div style="display: flex; gap: 7px; margin-bottom: 22px;">
+      <div style="width: 15px; height: 15px; border-radius: 5px; background: #cc2533;"></div>
+      <div style="width: 15px; height: 15px; border-radius: 5px; background: #fc8403;"></div>
+      <div style="width: 15px; height: 15px; border-radius: 5px; background: #ffd21f;"></div>
+      <div style="width: 15px; height: 15px; border-radius: 5px; background: #33cc6b;"></div>
+      <div style="width: 15px; height: 15px; border-radius: 5px; background: #3f6bff;"></div>
+      <div style="width: 15px; height: 15px; border-radius: 5px; background: #b866f0;"></div>
+    </div>
+
+    <div class="dsp" style="color: $ink; font-size: 46px; font-weight: 900; letter-spacing: -1.6px; line-height: 0.94; text-align: center;">Dice<br>Battles</div>
+    <div style="color: $inkFaint; font-size: 12px; font-weight: 700; letter-spacing: 3.4px; text-transform: uppercase; margin-top: 10px;">Color Rush</div>
+
+    <div style="align-self: stretch; margin-top: 38px; background: $panel; border: 1px solid $panelLine; border-radius: 20px; padding: 6px; display: flex; gap: 4px;">
+      <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 14px 0; border-radius: 15px; background: $sel; color: $ink; font-size: 13.5px; font-weight: 700;">Rush</div>
+      <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 14px 0; border-radius: 15px; color: $inkFaint; font-size: 13.5px; font-weight: 600;">Ultimate</div>
+      <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 14px 0; border-radius: 15px; color: $inkFaint; font-size: 13.5px; font-weight: 600;">Skirmish</div>
+      <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 14px 0; border-radius: 15px; color: $inkFaint; font-size: 13.5px; font-weight: 600;">War</div>
+    </div>
+
+    <div style="align-self: stretch; display: flex; align-items: center; justify-content: space-between; margin-top: 14px;">
+      <div style="color: $inkFaint; font-size: 12.5px; font-weight: 600;">Opponent</div>
+      <div style="display: flex; gap: 6px;">
+        <div style="padding: 13px 15px; border-radius: 12px; color: $inkFaint; font-size: 12.5px; font-weight: 600;">Easy</div>
+        <div style="padding: 13px 15px; border-radius: 12px; background: $goldFlat; color: $goldInk; font-size: 12.5px; font-weight: 800;">Medium</div>
+        <div style="padding: 13px 15px; border-radius: 12px; color: $inkFaint; font-size: 12.5px; font-weight: 600;">Hard</div>
+      </div>
+    </div>
+
+    <div style="align-self: stretch; display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 13px 15px; background: $panel; border: 1px solid $panelLine; border-radius: 15px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="$goldFlat" stroke-width="2" stroke-linecap="round" style="flex: none; margin-top: 1px;"><path d="M4 18l6-9 4 5 2-3 4 7z"/></svg>
+      <div style="color: $inkSoft; font-size: 12.5px; line-height: 1.45; font-weight: 500;">A hill in a new spot every battle — the dice bounce off it.</div>
+    </div>
+
+    <div style="align-self: stretch; margin-top: 24px; background: $gold; border-radius: 19px; padding: 18px; text-align: center; box-shadow: $lift;">
+      <span class="dsp" style="color: $goldInk; font-size: 19px; font-weight: 700; letter-spacing: -0.2px;">Start battle</span>
+    </div>
+  </div>
+
+  <div style="display: flex; background: $navFace; border-top: 1px solid $navLine; padding: 12px 0 30px;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="$inkFaint" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 7V5.5a3 3 0 0 1 6 0V7"/></svg>
+      <span style="color: $inkFaint; font-size: 10px; font-weight: 600;">Store</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="$inkFaint" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/><path d="M4 8.5 12 13l8-4.5M12 13v7"/></svg>
+      <span style="color: $inkFaint; font-size: 10px; font-weight: 600;">Items</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 0;">
+      <div style="width: 40px; height: 26px; border-radius: 9px; background: $navPill; display: grid; place-items: center;">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="$goldFlat" stroke-width="1.9" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><circle cx="8.6" cy="8.6" r="1.5" fill="$goldFlat" stroke="none"/><circle cx="15.4" cy="15.4" r="1.5" fill="$goldFlat" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="$goldFlat" stroke="none"/></svg>
+      </div>
+      <span style="color: $ink; font-size: 10px; font-weight: 700;">Battle</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="$inkFaint" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/><path d="M9 20h6"/><path d="M12 14v6"/></svg>
+      <span style="color: $inkFaint; font-size: 10px; font-weight: 600;">Cups</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="$inkFaint" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11"/><path d="M12 20V4"/><path d="M19 20v-6"/></svg>
+      <span style="color: $inkFaint; font-size: 10px; font-weight: 600;">Ranks</span>
+    </div>
+  </div>
+
+</div>
+'''
+
+# Direction A uses Gabarito + Manrope, not Fredoka + Nunito.
+_A_HEAD = HEAD.replace(
+    'family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800',
+    'family=Gabarito:wght@500;600;700;900&family=Manrope:wght@500;600;700;800',
+).replace('font-family: Nunito,', 'font-family: Manrope,').replace(
+    'font-family: Fredoka, Nunito,', 'font-family: Gabarito, Manrope,')
+
+_orig_head = HEAD
+HEAD = _A_HEAD
+emit('HomeA', HOME_A, pair=(('Light', A_LIGHT), ('Dark', A_DARK)))
+HEAD = _orig_head
+
+import os
+if os.path.exists('Home.dc.html'):
+    os.replace('Home.dc.html', 'Main.dc.html')
+    print('  Home.dc.html -> Main.dc.html (entry artboard)')
