@@ -47,6 +47,56 @@ export function topFaceColor(quaternion: THREE.Quaternion): ColorDef {
   return DIE_FACE_COLORS[bestIndex];
 }
 
+/**
+ * Turn a die so the face nearest to upward is squarely up, and drop it to
+ * rest on the tray floor.
+ *
+ * This is what lets a roll be called the instant a player swipes again,
+ * with the dice still in the air. The old rule made the player WAIT until
+ * both dice happened to be slow and flat, because reading a colour off a
+ * die at 45 degrees is picking one of two faces at random. Snapping
+ * removes the problem instead of waiting it out: the die is put onto the
+ * face it was nearest, so the colour counted is the colour shown. Nothing
+ * is invented — the same face `topFaceColor` would have reported is the
+ * one the die comes to rest on.
+ */
+export function snapDieToNearestFace(body: CANNON.Body): void {
+  const quaternion = new THREE.Quaternion(
+    body.quaternion.x,
+    body.quaternion.y,
+    body.quaternion.z,
+    body.quaternion.w,
+  );
+
+  let bestIndex = 0;
+  let bestDot = -Infinity;
+  for (let i = 0; i < FACE_NORMALS.length; i++) {
+    const dot = scratchNormal.copy(FACE_NORMALS[i]).applyQuaternion(quaternion).y;
+    if (dot > bestDot) {
+      bestDot = dot;
+      bestIndex = i;
+    }
+  }
+
+  // The shortest rotation taking that face's normal to straight up. Only
+  // the tilt is corrected — the die keeps the heading it had, so it does
+  // not visibly spin on the spot as it settles.
+  const worldNormal = scratchNormal
+    .copy(FACE_NORMALS[bestIndex])
+    .applyQuaternion(quaternion)
+    .normalize();
+  const correction = new THREE.Quaternion().setFromUnitVectors(
+    worldNormal,
+    new THREE.Vector3(0, 1, 0),
+  );
+  quaternion.premultiply(correction).normalize();
+
+  body.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+  body.position.y = TUNING.dieSize / 2;
+  body.velocity.setZero();
+  body.angularVelocity.setZero();
+}
+
 /** One material per face, in BoxGeometry group order. Shared per die. */
 export function createDieMaterials(): THREE.MeshStandardMaterial[] {
   return DIE_FACE_COLORS.map(

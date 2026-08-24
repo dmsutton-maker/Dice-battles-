@@ -679,8 +679,14 @@ suite('screen · the board belongs to the battle screen', () => {
         `the ${tab} page stays up during a preview and hides the board`,
       );
     }
+    // Read the guard in front of the bar rather than matching an exact
+    // line: this used to be a literal `preview === null && <BottomNav`,
+    // which broke the moment the guard grew a second clause and wrapped
+    // onto its own line — a formatting change failing a behaviour test.
+    const barAt = source.indexOf('<BottomNav');
+    assert(barAt > 0, 'the tab bar is gone entirely');
     assert(
-      /preview === null && <BottomNav/.test(source),
+      /preview === null/.test(source.slice(Math.max(0, barAt - 260), barAt)),
       'the tab bar stays over the preview, across its button',
     );
   });
@@ -1006,5 +1012,47 @@ suite('screen · the keyboard does not cover the code box', () => {
       /onBlur=\{\(\) => \{\s*codeFocused\.current = false;/.test(source),
       'blur is not tracked, so the page would keep jumping to the code box',
     );
+  });
+});
+
+suite('screen · the tabs belong to the home screen', () => {
+  /**
+   * David asked for the bottom tabs to be gone after a game. They used to
+   * be hidden for the battle and the countdown but left up over the
+   * victory, defeat and tie screens, so the tabs sat under a result and
+   * invited you into the Store from a match that had just ended.
+   */
+  const source = readFileSync(join('src', 'demo', 'DiceDemoScreen.tsx'), 'utf8');
+
+  test('the bar renders on the home phase only', () => {
+    const at = source.indexOf('<BottomNav');
+    assert(at > 0, 'the bottom bar is gone entirely');
+    // The guard immediately before the bar decides when it is drawn.
+    const guard = source.slice(Math.max(0, at - 260), at);
+    assert(
+      /phase === 'pick'/.test(guard),
+      'the bottom bar is no longer gated on the home phase',
+    );
+    for (const over of ['won', 'lost', 'tie', 'battle']) {
+      assert(
+        !new RegExp(`phase !== '${over}'`).test(guard),
+        `the bar is still gated by excluding '${over}' rather than by naming the home phase`,
+      );
+    }
+  });
+
+  test('every end-of-game screen still has its own way out', () => {
+    // Removing the bar strands the player unless these remain.
+    assert(source.includes('PLAY AGAIN'), 'no rematch button after a game');
+    assert(source.includes('🏠 HOME'), 'no way home after a game');
+    for (const phase of ['won', 'lost', 'tie']) {
+      const at = source.indexOf(`phase === '${phase}' && (`);
+      assert(at > 0, `no ${phase} screen`);
+      const block = source.slice(at, at + 1400);
+      assert(
+        block.includes('roundOverButtons'),
+        `the ${phase} screen has no buttons now that the tab bar is gone`,
+      );
+    }
   });
 });

@@ -7,7 +7,7 @@ import { playClack, playThrow } from '../audio/sounds';
 import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { TreasureChest } from '../arena/TreasureChest';
-import { createDieBody, throwDie } from '../dice/die';
+import { createDieBody, snapDieToNearestFace, throwDie } from '../dice/die';
 import {
   dieSpeed,
   freezeDice,
@@ -343,6 +343,12 @@ export function DiceScene({
 
       if (shouldCallRoll(diceBodies, elapsed, stillFrames.current, hurried.current)) {
         awaitingSettle.current = false;
+        // A hurried call happens the instant the player swipes again, so
+        // the dice can be anywhere — mid-air, on an edge, still spinning.
+        // Snapping them onto the face they were nearest is what makes that
+        // safe: the colour counted is then the colour showing, rather than
+        // one of two the die might have toppled onto.
+        if (hurried.current) diceBodies.forEach(snapDieToNearestFace);
         freezeDice(diceBodies);
         onSettled(readFaces(diceBodies));
 

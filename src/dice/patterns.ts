@@ -106,65 +106,85 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
   },
 
   /**
-   * Frost: actual snowflakes, six-armed and branched.
+   * Frost: classic six-armed snowflakes, the paper-cutout kind.
    *
-   * This used to be three needles crossed through a point — a six-pointed
-   * asterisk, which is a star with no branches on it, and at a glance it
-   * read as a sparkle rather than as snow. A snowflake is six-fold
-   * symmetric with DENDRITES: shorter arms angled forward off the spine,
-   * longest near the middle and shortest near the tip. Those branches are
-   * the whole silhouette; without them it is a star.
+   * Two goes at this were wrong in the same way. First it was three
+   * needles crossed through a point — an asterisk. Then it grew branches
+   * but read as a mess of stars, and rendering it at ten times size showed
+   * exactly why: the ONE flake that happened to sit axis-aligned looked
+   * fine, and every rotated one had been shredded into disconnected
+   * stair-steps. A one-pixel arm cannot survive rotation on a 64-pixel
+   * grid when each pixel is either ink or not.
    *
-   * The symmetry is done by folding the angle into one sixty-degree
-   * sector and mirroring it, so a single arm drawn here comes out six
-   * times. Every flake gets its own size and its own spin from a hash of
-   * its cell, because a grid of identical flakes at identical angles reads
-   * as wallpaper — the same trap the old bubbles fell into.
+   * So the shape is SUPERSAMPLED: sampled on a 4x4 grid inside every pixel
+   * and averaged, which gives partial coverage along every edge. That is
+   * what lets a thin diagonal arm hold together, and it is why the flakes
+   * can be delicate rather than chunky.
+   *
+   * The shape itself is the traditional one: six arms, three pairs of
+   * dendrites angled forward off each, a bar across each tip, and a
+   * hexagonal heart.
    */
   frost: (x, y) => {
     const cell = 32;
     const row = Math.floor(y / cell);
     const col = Math.floor(x / cell);
     const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
 
     // Deterministic per-cell variation. No Math.random — the shelf and the
     // table have to show the same dice.
     const hash = Math.abs((Math.sin(row * 12.9898 + col * 78.233) * 43758.5453) % 1);
-    const reach = (cell / 2) * (0.66 + hash * 0.26);
+    const reach = (cell / 2) * (0.82 + hash * 0.16);
     const spin = hash * Math.PI;
-
-    const r = Math.hypot(cx, cy);
-    if (r > reach) return 0;
-
     const sector = Math.PI / 3;
-    const angle = Math.atan2(cy, cx) + spin;
-    const folded = (((angle % sector) + sector) % sector) - sector / 2;
-    // Along the arm, and across it — mirrored, so one branch covers both
-    // sides of the spine.
-    const along = r * Math.cos(folded);
-    const across = Math.abs(r * Math.sin(folded));
 
-    const ARM = 0.62;
-    if (along <= reach && across < ARM) return 1;
+    /** Is this exact point inside the flake? Coordinates are in pixels. */
+    const inside = (px: number, py: number): boolean => {
+      const dx = ((px + offset) % cell) - cell / 2;
+      const dy = (py % cell) - cell / 2;
+      const r = Math.hypot(dx, dy);
+      if (r > reach * 1.02) return false;
 
-    // Dendrites, angled sixty degrees forward off the spine.
-    const branch = (at: number, length: number) => {
-      const px = along - at * reach;
-      const py = across;
-      const dx = 0.5;
-      const dy = 0.866;
-      const t = Math.max(0, Math.min(length, px * dx + py * dy));
-      return Math.hypot(px - dx * t, py - dy * t);
+      // Everything below is in units of `reach`, so a big flake and a
+      // small one are the same drawing at two sizes.
+      const angle = Math.atan2(dy, dx) + spin;
+      const folded = (((angle % sector) + sector) % sector) - sector / 2;
+      const along = (r * Math.cos(folded)) / reach;
+      const across = Math.abs(r * Math.sin(folded)) / reach;
+
+      // The hexagonal heart.
+      if (along < 0.14) return true;
+      // The spine, running the full length of the arm.
+      if (along <= 1 && across < 0.055) return true;
+      // The bar across the tip, which is most of what says "snowflake"
+      // rather than "spike".
+      if (Math.abs(along - 0.9) < 0.05 && across < 0.13) return true;
+
+      // Three pairs of dendrites, longest nearest the middle.
+      const branch = (at: number, length: number, width: number) => {
+        const bx = along - at;
+        const by = across;
+        const ux = 0.5;
+        const uy = 0.866;
+        const t = Math.max(0, Math.min(length, bx * ux + by * uy));
+        return Math.hypot(bx - ux * t, by - uy * t) < width;
+      };
+      if (branch(0.28, 0.34, 0.05)) return true;
+      if (branch(0.52, 0.25, 0.045)) return true;
+      if (branch(0.72, 0.16, 0.04)) return true;
+      return false;
     };
-    if (branch(0.3, reach * 0.36) < 0.52) return 1;
-    if (branch(0.55, reach * 0.26) < 0.48) return 1;
-    if (branch(0.78, reach * 0.16) < 0.44) return 1;
 
-    // The hexagonal heart every flake grows out from.
-    if (along < reach * 0.17) return 1;
-    return 0;
+    // Supersample. Without this the thin arms break up wherever a flake is
+    // not axis-aligned, which is what made the last version read as stars.
+    const N = 4;
+    let hits = 0;
+    for (let sy = 0; sy < N; sy++) {
+      for (let sx = 0; sx < N; sx++) {
+        if (inside(x + (sx + 0.5) / N, y + (sy + 0.5) / N)) hits++;
+      }
+    }
+    return hits / (N * N);
   },
 
   /**

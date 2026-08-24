@@ -132,7 +132,7 @@ export const TUNING = {
      * that the face on top is not one of two the die could fall onto.
      * 0.94 is about 20 degrees off flat.
      */
-    hurriedThrowDelayMs: 60,
+    hurriedThrowDelayMs: 34,
     hurriedSpeed: 1.1,
     hurriedFlatness: 0.94,
   },

@@ -26,36 +26,31 @@ export function allStill(bodies: CANNON.Body[]): boolean {
   return bodies.every((body) => dieSpeed(body) <= TUNING.settle.speedThreshold);
 }
 
-/**
- * Is this die lying flat enough, and moving slowly enough, that the face
- * on top is genuinely the face it has landed on?
- *
- * Speed alone is not enough. A die can be barely moving and still balanced
- * on an edge on its way over, where "the top face" is a coin toss between
- * two colours — so the orientation is checked as well.
+/*
+ * `isReadable` used to live here: it answered "has this die landed flat
+ * enough that the top face is genuinely the face it landed on?", and the
+ * hurried roll waited until it was true of both dice. That wait was most
+ * of the delay David asked twice to be rid of, and `snapDieToNearestFace`
+ * makes the question moot — the die is PUT onto a definite face instead of
+ * being watched until it reaches one. Deleted rather than left behind, so
+ * nothing reaches for a safety check that no longer guards anything.
  */
-export function isReadable(body: CANNON.Body): boolean {
-  const s = TUNING.settle;
-  if (body.position.y > TUNING.dieSize * 1.1) return false;
-  if (dieSpeed(body) > s.hurriedSpeed) return false;
-  const q = new THREE.Quaternion(
-    body.quaternion.x,
-    body.quaternion.y,
-    body.quaternion.z,
-    body.quaternion.w,
-  );
-  return topFaceAlignment(q) >= s.hurriedFlatness;
-}
 
 /**
  * Should the roll be called now? `stillFrames` is the caller's running
  * count of consecutive frames where `allStill` held.
  *
- * `hurried` means the player has already tapped for the next throw. It
- * does NOT cancel this roll — every roll is binding, which is what stops
- * a bad result being thrown away mid-air — it only stops the counting
- * waiting for the dice to come to a dead stop when they have already
- * landed on a readable face.
+ * `hurried` means the player has already swiped for the next throw, and
+ * the roll is called THERE AND THEN — no waiting at all. David asked for
+ * this twice; the first version still made you wait until both dice
+ * happened to be slow and lying flat, which is most of the wait.
+ *
+ * It does NOT cancel this roll. Every roll is binding, which is what stops
+ * a bad result being thrown away mid-air — in Ultimate a matched colour
+ * sends a rescued prisoner back to jail, so a roll you can dodge is a rule
+ * you can opt out of. The dice are snapped onto the face they were nearest
+ * (see `snapDieToNearestFace`) so the colour counted is the colour shown,
+ * which is what the wait used to be buying.
  */
 export function shouldCallRoll(
   bodies: CANNON.Body[],
@@ -67,7 +62,7 @@ export function shouldCallRoll(
   if (bodies.every((body) => body.sleepState === CANNON.Body.SLEEPING)) return true;
   if (stillFrames >= s.stillFrames) return true;
 
-  if (hurried && bodies.every(isReadable)) return true;
+  if (hurried) return true;
 
   // Past the cap a roll is called where it lies, but only once the dice
   // are down and slow, so it is never snapped still mid-tumble.

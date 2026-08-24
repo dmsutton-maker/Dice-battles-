@@ -1498,12 +1498,18 @@ export function DiceDemoScreen() {
         />
       )}
 
-      {/* The bar itself. Gone during a battle — the board wants the room. */}
-      {phase !== 'battle' &&
-        phase !== 'arm' &&
-        phase !== 'go' &&
-        phase !== 'matching' &&
-        preview === null && <BottomNav active={tab} onSelect={setTab} />}
+      {/*
+        The bar itself, and ONLY on the home screen.
+
+        It used to be hidden for the battle and the countdown but left up
+        over the victory, defeat and tie screens — so the tabs sat under a
+        result, inviting you into the Store from the middle of a match that
+        had just finished. Those screens carry their own PLAY AGAIN and
+        HOME, which is the way out of them; HOME is where the tabs live.
+      */}
+      {phase === 'pick' && preview === null && (
+        <BottomNav active={tab} onSelect={setTab} />
+      )}
 
       {rewards.length > 0 && (
         <RewardPopup

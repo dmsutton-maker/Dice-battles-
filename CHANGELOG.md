@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.26.0 — 2026-08-24 · requested by David
+
+### Changed
+- **Rolling again no longer waits at all.** This was asked for twice and
+  the first version only half did it: a swipe mid-roll was remembered, but
+  the roll was still not called until BOTH dice happened to be moving
+  slowly and lying within about 20 degrees of flat. That wait is most of
+  the wait. Median time from swiping to the roll being called has gone from
+  **1483ms to 17ms** — one frame.
+  - The wait existed for a real reason: reading a colour off a die balanced
+    on an edge is picking one of two faces at random. That is solved now by
+    SNAPPING the die onto the face it was already nearest instead of
+    waiting for it to get there, so the colour counted is the colour shown.
+  - A roll is still binding. It is counted, never cancelled — in Ultimate a
+    matched colour sends a rescued prisoner back to jail, so a roll you can
+    throw away mid-air is a rule you can opt out of. Hurrying reads the
+    roll sooner; it cannot dodge it.
+- **Frost is classic snowflakes.** The last attempt grew branches but still
+  read as stars, and rendering it at ten times size showed exactly why: the
+  one flake that happened to sit axis-aligned looked fine, and every
+  rotated one had been shredded into disconnected stair-steps. A one-pixel
+  arm cannot survive rotation on a 64-pixel grid when each pixel is either
+  ink or not. The shape is supersampled now — sampled on a 4x4 grid inside
+  every pixel — which holds the thin diagonal arms together. Six arms,
+  three pairs of dendrites, a bar across each tip, a hexagonal heart.
+- **The tab bar is gone after a game.** It was hidden for the battle and
+  the countdown but left up over the victory, defeat and tie screens, so
+  the tabs sat under a result and invited you into the Store from a match
+  that had just finished. It is the home screen's bar now, and only the
+  home screen's. Those screens keep their own PLAY AGAIN and HOME.
+
+### Under the hood
+- `isReadable` is deleted rather than left behind. It answered "has this
+  die landed flat enough to read?", which is the question snapping makes
+  moot, and a safety check that no longer guards anything is worse than no
+  check at all.
+- Two tests went with it and were replaced by the invariant that is now
+  load-bearing: after a hurried call every die is lying flat, and snapping
+  never changes which colour is up — checked over 400 orientations,
+  including the awkward ones balanced on an edge and on a corner. If
+  snapping could turn a die onto a different face, hurrying would be
+  changing results rather than reading them sooner.
+- One screen test matched an exact source line rather than behaviour and
+  failed the moment the guard in front of the tab bar grew a second clause.
+  It reads the guard now.
+
 ## v1.25.0 — 2026-08-24 · requested by David
 
 ### Changed

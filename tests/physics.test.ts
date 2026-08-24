@@ -1,8 +1,8 @@
-import { createDieBody, throwDie } from '../src/dice/die';
+import * as THREE from 'three';
+import { createDieBody, snapDieToNearestFace, throwDie, topFaceAlignment, topFaceColor } from '../src/dice/die';
 import {
   allStill,
   freezeDice,
-  isReadable,
   readFaces,
   shouldCallRoll,
 } from '../src/dice/settle';
@@ -42,6 +42,8 @@ interface RollOutcome {
   faces: string[];
   restZ: number[];
   restX: number[];
+  /** Each die's orientation at the moment the roll was called. */
+  orientations: THREE.Quaternion[];
 }
 
 /** Simulates one throw through the shipping settle rule. */
@@ -123,22 +125,31 @@ function simulateRoll(
       const movingWhenCalled = bodies.some(
         (b) => b.velocity.length() + b.angularVelocity.length() * 0.5 > 1.2,
       );
+      // Mirrors DiceScene: a hurried call snaps the dice onto the face
+      // they were nearest before anything is read off them.
+      if (options.hurried) bodies.forEach(snapDieToNearestFace);
       freezeDice(bodies);
       return {
         ms: elapsed,
         movingWhenCalled,
         escaped,
+        orientations: bodies.map(
+          (b) => new THREE.Quaternion(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w),
+        ),
         faces: readFaces(bodies).map((c) => c.id),
         restZ: bodies.map((b) => b.position.z),
         restX: bodies.map((b) => b.position.x),
       };
     }
   }
+  // The roll never resolved inside the frame budget. Reported with no
+  // faces, which every caller already treats as a failure.
   return {
     ms: (maxFrames / 60) * 1000,
     movingWhenCalled: true,
     escaped,
     faces: [],
+    orientations: [],
     restZ: bodies.map((b) => b.position.z),
     restX: bodies.map((b) => b.position.x),
   };
@@ -441,17 +452,26 @@ suite('physics · rolling again without waiting', () => {
       );
     });
 
-    test(`${difficulty}: a hurried roll is never called mid-tumble`, () => {
-      // The guard that matters. Every hurried call must land on dice that
-      // are down, slow, and lying flat — never on one balanced on an edge,
-      // where the colour on top is a coin toss between two faces.
+    test(`${difficulty}: a hurried roll leaves the dice lying flat`, () => {
+      // The guard that matters now. A hurried call can arrive with the
+      // dice anywhere — mid-air, on an edge, still spinning — so what
+      // makes it safe is that they are SNAPPED onto a face before anything
+      // is read. A die left at 45 degrees would be showing a colour that
+      // is not the one the game counted.
       for (let i = 0; i < 120; i++) {
         const roll = simulateRoll(generateObstacleLayout(difficulty), {
           hurried: true,
         });
         assertEqual(roll.faces.length, 2, 'a hurried roll must still read two faces');
+        for (const q of roll.orientations) {
+          assert(
+            topFaceAlignment(q) > 0.999,
+            `a hurried roll left a die at ${topFaceAlignment(q).toFixed(3)} — not flat`,
+          );
+        }
       }
     });
+
   }
 });
 
@@ -473,16 +493,45 @@ suite('physics · a hurried roll still counts', () => {
     }
   });
 
-  test('hurrying cannot call a roll before the dice have landed', () => {
-    // isReadable is the whole safety of this feature, so check it directly
-    // rather than only through the roll it feeds.
+  test('snapping never changes which colour is up', () => {
+    // The honesty of the whole feature. Snapping is only defensible if it
+    // puts the die onto the face it was ALREADY nearest — if it could
+    // rotate a die onto a different colour, hurrying would be changing
+    // results, not just reading them sooner.
     const physics = createPhysicsWorld();
     addTrayBodies(physics, EMPTY_LAYOUT);
-    const body = createDieBody(physics.dieMaterial, DIE_START[0]);
+    const body = createDieBody(physics.dieMaterial, [0, 3, 0]);
     physics.world.addBody(body);
-    throwDie(body, {});
-    // One step: the die is airborne and tumbling, the worst moment to read.
-    physics.world.step(TUNING.physics.timeStep, TUNING.physics.timeStep, 4);
-    assertEqual(isReadable(body), false, 'a die still in the air read as settled');
+
+    for (let i = 0; i < 400; i++) {
+      // A fresh arbitrary orientation each time, including the awkward
+      // ones — balanced on an edge, and on a corner.
+      const q = new THREE.Quaternion()
+        .setFromEuler(new THREE.Euler((i * 0.618) % Math.PI, (i * 1.211) % Math.PI, (i * 0.317) % Math.PI))
+        .normalize();
+      body.quaternion.set(q.x, q.y, q.z, q.w);
+      body.position.set(0, 3, 0);
+
+      const before = topFaceColor(q);
+      snapDieToNearestFace(body);
+      const after = topFaceColor(
+        new THREE.Quaternion(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w),
+      );
+      assertEqual(after.id, before.id, `snapping turned ${before.id} into ${after.id}`);
+    }
+  });
+
+  test('a snapped die is left resting on the floor, not hanging in the air', () => {
+    // It is thrown again a frame or two later, but a die that stayed at
+    // the height it was called at would visibly hang there first.
+    const physics = createPhysicsWorld();
+    addTrayBodies(physics, EMPTY_LAYOUT);
+    const body = createDieBody(physics.dieMaterial, [0, 5, 0]);
+    physics.world.addBody(body);
+    body.velocity.set(3, 4, -2);
+    body.angularVelocity.set(9, 4, 7);
+    snapDieToNearestFace(body);
+    assertEqual(Math.abs(body.position.y - TUNING.dieSize / 2) < 1e-6, true, 'die not set down');
+    assertEqual(body.velocity.length() < 1e-9, true, 'die still moving after being called');
   });
 });
