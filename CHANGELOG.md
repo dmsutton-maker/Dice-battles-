@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.24.0 — 2026-08-24 · requested by David
+
+### Changed
+- **Timber, Marble and Granite are smooth now.** All three picked their
+  tone from a ladder of thresholds, so a whole 64x64 face was painted in
+  five tones and every threshold crossing was a hard cliff — the blocky,
+  staircased edges that made the wood read as corduroy and the marble as
+  cut paper. They ramp between the same tones instead. Wood went from 5
+  distinct tones to 63, marble 5 to 95, granite 7 to 69.
+  - **Timber**: one continuous fade from pale early wood into the dark
+    late-wood ring, and the fine grain fibres halved — at their old
+    strength they chewed a ragged edge into every ring, which was most of
+    what made the plank look coarse.
+  - **Marble**: the vein and the halo it bleeds into the stone are one
+    falloff rather than a sharp line inside a second hard band. That pair
+    of edges was what made the veins look drawn on with a pen and a
+    highlighter.
+  - **Granite**: the flecks were jumping most of the full range per pixel,
+    which at this size is television static rather than stone. They are a
+    third of that now, over two smooth scales of mottling.
+- **Silver is the silver version of Gold.** It was brushed — thousands of
+  fine scratches running one way — deliberately a different SHAPE from
+  gold so the two could never be one picture in two tints. David asked for
+  them to match, so silver is a polished sweep of light now. It is still
+  not gold repainted: silver is a harder, cooler mirror, so the bar of
+  light is tighter and brighter and the catch off the far edge is
+  stronger. Gold spreads its highlight; silver snaps it.
+
+### Under the hood
+- The rule that no two skins may share a pattern is deliberately overruled
+  for these two, and the test that enforced it now says so. It still
+  passes — they are separate painters with separate ids — but it passes on
+  a technicality, and anyone tightening it to compare pixels needs to know
+  gold and silver are meant to match.
+- The granite test used to require 200 pixel-to-pixel jumps of more than
+  25 tone, and granite obligingly produced 1258 of them. A guard written
+  to protect one quality had quietly mandated the fault David was looking
+  at. It now checks both ends: enough gentle flecks that granite is not
+  fog, few enough harsh ones that it cannot go back to static.
+- A new test counts how many distinct tones each material paints, which is
+  the one number that separates a ramp from a staircase. It fails on the
+  old painters.
+
 ## v1.23.0 — 2026-08-23 · requested by David
 
 ### Added

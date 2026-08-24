@@ -39,6 +39,20 @@ type Painter = (x: number, y: number) => number;
 const SHADE_DEPTH = 0.55;
 
 /**
+ * A smooth 0..1 ramp between two edges.
+ *
+ * The materials used to pick their tone with a ladder of `if (v > 0.86)
+ * return 0.95` thresholds, which puts a hard cliff wherever the value
+ * crosses an edge — and at 64px those cliffs are the jagged, blocky
+ * staircases that made wood read as corduroy and marble as cut paper.
+ * Ramping between the same numbers is what "smoother" means here.
+ */
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/**
  * Returns a mask from -1 to 1.
  *
  * Positive blends the shell toward the ink colour; 1 is full ink. Negative
@@ -180,16 +194,19 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
     // The ring coordinate wanders across the plank so the spacing varies.
     const drift = Math.sin(x / 21) * 5.5 + Math.sin(x / 7.3) * 1.4;
     const ring = Math.sin((y + drift) / 3.1);
-    // Fine fibres running the length of the grain, under the rings.
-    const fibre = Math.sin(y * 0.9 + Math.sin(x / 3.1) * 2.4) * 0.12;
+    // Fine fibres running the length of the grain, under the rings. Half
+    // what they were: at the old strength they chewed a ragged edge into
+    // every ring, which is most of what made the wood look coarse.
+    const fibre = Math.sin(y * 0.9 + Math.sin(x / 3.1) * 2.4) * 0.06;
     const v = ring + fibre;
 
-    if (v > 0.86) return 0.95; // the hard dark ring line
-    if (v > 0.55) return 0.5; // its softer shoulder
-    if (v < -0.9) return 0.18; // an occasional pale streak
-    // Everything else is early wood, very slightly shaded so the surface
-    // is not a flat colour between the rings.
-    return v < -0.4 ? -0.08 : 0;
+    // One continuous ramp from pale early wood into the dark late-wood
+    // line, instead of four stepped tones. Same rings, no staircase.
+    const line = smoothstep(0.28, 0.98, v) * 0.88;
+    // A shallow dip on the far side of each ring so the surface still has
+    // some roll to it rather than going flat between the lines.
+    const trough = smoothstep(-0.35, -1, v) * 0.1;
+    return line - trough;
   },
 
   /**
@@ -211,12 +228,14 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
     // and at 7.5 a face could come up carrying no vein at all.
     const vein = Math.abs(Math.sin((x * 0.9 + y * 0.4) / 5 + warp));
 
-    if (vein < 0.045) return 1; // the vein itself
-    if (vein < 0.14) return 0.4; // where it bleeds into the stone
-    // Broad cloudiness, far softer than the veins, so the stone between
-    // them is not dead flat.
-    const cloud = Math.sin(x / 19 + Math.sin(y / 23) * 1.2);
-    return cloud > 0.55 ? -0.14 : cloud < -0.7 ? 0.1 : 0;
+    // The vein and the halo it bleeds into the stone are ONE falloff now,
+    // not a sharp line inside a second hard band. That pair of edges was
+    // what made the veins look drawn on with a pen and a highlighter.
+    const line = (1 - smoothstep(0.02, 0.3, vein)) * 0.8;
+    // Broad cloudiness, continuous, so the stone between the veins drifts
+    // gently instead of stepping between three flat tones.
+    const cloud = Math.sin(x / 19 + Math.sin(y / 23) * 1.2) * 0.1;
+    return line - cloud;
   },
 
   /**
@@ -229,15 +248,19 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
    * no Math.random, which would make the shelf and the table disagree.
    */
   granite: (x, y) => {
+    // Flecks, but a fraction of what they were. Every fleck used to jump
+    // the mask most of its full range, which at this size reads as
+    // television static rather than as stone — David asked for smoother
+    // and this is where nearly all of the coarseness was.
     const hash = Math.abs((Math.sin(x * 127.1 + y * 311.7) * 43758.5453) % 1);
-    if (hash > 0.955) return 0.95; // quartz fleck
-    if (hash < 0.045) return -0.85; // dark mica fleck
-    if (hash > 0.9) return 0.35;
-    if (hash < 0.1) return -0.3;
+    const fleck = (hash - 0.5) * 0.34;
 
-    const blotch =
-      Math.sin(x / 11 + Math.sin(y / 8) * 1.6) + Math.sin(y / 13.5) * 0.7;
-    return blotch > 0.8 ? -0.22 : blotch < -0.9 ? 0.2 : 0;
+    // Two smooth scales of mottling under the flecks. Two rather than one
+    // is what still tells stone from noise: broad patches of lighter and
+    // darker rock, with a finer drift inside them.
+    const coarse = Math.sin(x / 11 + Math.sin(y / 8) * 1.6) * 0.16;
+    const fine = Math.sin(x / 5.5 + y / 6.5 + Math.sin(x / 17) * 1.3) * 0.08;
+    return coarse + fine + fleck;
   },
 
   /**
@@ -269,30 +292,30 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
   },
 
   /**
-   * Brushed metal: silver, and deliberately NOT the same picture as gold.
+   * Polished silver: the same surface as gold, in the other metal.
    *
-   * Sharing `sheen` and only changing the colour would have made two skins
-   * that are one picture in two tints — the exact thing that made Frost
-   * and Starry indistinguishable, and the reason the suite refuses to let
-   * two skins share a pattern.
+   * This used to be brushed — thousands of fine scratches running one way
+   * — deliberately a different SHAPE from gold so the two could never be
+   * one picture in two tints. David asked on 24 Aug 2026 for silver to be
+   * the silver version of the gold skin, which is that rule overruled on
+   * purpose, so it is a polished sweep of light now.
    *
-   * So this is a different surface rather than a different metal: polished
-   * gold gets one soft bar of light, brushed silver gets thousands of fine
-   * scratches running one way, each catching the light slightly
-   * differently, under a much gentler overall falloff.
+   * They still cannot be confused, and not only because of the colour:
+   * silver is a harder, cooler mirror than gold, so the bar of light is
+   * tighter and brighter and the second reflection off the far edge is
+   * stronger. Gold spreads its highlight; silver snaps it.
    */
   brushed: (x, y) => {
-    // Distance along the brushing direction.
-    const along = x * 0.78 - y * 0.62;
-    // Each scratch line is its own brightness, so the surface glitters
-    // finely instead of banding. Hashed, not random, so it is identical
-    // every time the texture is built.
-    const hash = Math.abs((Math.sin(Math.floor(along) * 91.7) * 43758.5453) % 1);
-    const scratches = (hash - 0.5) * 0.7 + Math.sin(along * 1.7) * 0.22;
-    // A wide, shallow roll of light across the face, under the scratches.
-    const across = (x * 0.62 + y * 0.78) / SIZE;
-    const falloff = Math.cos((across - 0.45) * Math.PI * 1.15) * 0.42;
-    return scratches + falloff - 0.08;
+    const d = (x * 0.62 + y * 0.78) / SIZE;
+    const bar = (centre: number, width: number, strength: number) =>
+      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
+    // Tighter (0.15 against gold's 0.19) and a touch brighter, with a
+    // stronger far-edge catch — the difference between a mirror and a
+    // warm metal, at the same shape.
+    const light = bar(0.4, 0.15, 1.65) + bar(1.02, 0.13, 0.62) - 0.52;
+    // The same faint polishing marks along the highlight that gold has.
+    const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.045;
+    return light + brush;
   },
 };
 

@@ -196,6 +196,15 @@ suite('currency · items are telling apart-able', () => {
     // Frost and Starry both used to draw the `stars` pattern, so they were
     // one picture in two tints — indistinguishable in the Inventory and on
     // the table. A skin has to differ in SHAPE, not just colour.
+    //
+    // ONE DELIBERATE EXCEPTION, and this test can no longer see it. David
+    // asked on 24 Aug 2026 for Silver to be the silver version of Gold, so
+    // `brushed` was rewritten from scratches into the same polished sweep
+    // of light that `sheen` paints. They are still separate painters with
+    // separate ids, so this check passes — but it passes on a technicality
+    // now, not because the two pictures differ the way Frost and Starry
+    // were made to. Anyone tightening this to compare PIXELS should know
+    // that gold and silver are meant to match and everything else is not.
     const patterned = DICE_SKINS.filter((s) => s.pattern !== 'plain');
     const patterns = patterned.map((s) => s.pattern);
     assertEqual(

@@ -97,14 +97,49 @@ suite('textures · every patterned die actually has a picture on it', () => {
     assert(crossings <= 4, `gold reads as ${crossings / 2} stripes, not one sweep of light`);
   });
 
-  test('granite is speckled at the scale of single pixels', () => {
-    // Its whole character is per-pixel flecks. A blurry version would pass
-    // the flat-square test while looking like fog.
+  test('granite is flecked, but no longer television static', () => {
+    // Two bounds, because both failures are real and they are opposite.
+    //
+    // Too smooth and granite is fog: its whole character is per-pixel
+    // flecks, and a blurred version would still pass the flat-square test.
+    // Too harsh and it is static: this test used to demand 200 jumps of
+    // more than 25 tone, and granite duly delivered 1258 of them, which is
+    // what David was looking at when he asked for smoother stone. A guard
+    // written to protect one quality had quietly mandated the fault.
     const t = tones('granite', '#9aa0a6', '#eef1f4');
-    let jumps = 0;
-    for (let i = 1; i < t.length; i++) if (Math.abs(t[i] - t[i - 1]) > 25) jumps++;
-    note(`granite: ${jumps} hard pixel-to-pixel jumps`);
-    assert(jumps > 200, 'granite has lost its flecks');
+    const jumpsOver = (delta: number) => {
+      let n = 0;
+      for (let i = 1; i < t.length; i++) if (Math.abs(t[i] - t[i - 1]) > delta) n++;
+      return n;
+    };
+    const gentle = jumpsOver(8);
+    const harsh = jumpsOver(25);
+    note(`granite: ${gentle} gentle flecks, ${harsh} harsh ones`);
+    assert(gentle > 800, `granite has lost its flecks — only ${gentle} left`);
+    assert(harsh < 400, `granite is back to static — ${harsh} hard jumps`);
+  });
+
+  test('the materials are ramps, not staircases', () => {
+    // What "smoother" actually meant. Wood, marble and granite each used
+    // to pick a tone from a ladder of `if (v > 0.86) return 0.95`
+    // thresholds, so the whole 64x64 face was painted in FIVE tones and
+    // every threshold crossing was a hard cliff — the blocky staircase
+    // edges that made wood read as corduroy and marble as cut paper.
+    // Counting how many distinct tones a painter actually produces
+    // separates a ramp from a ladder in one number.
+    const MATERIALS_UNDER_TEST: [Exclude<PatternId, 'plain'>, string, string][] = [
+      ['wood', '#c49a68', '#7d5228'],
+      ['marble', '#f2efe8', '#7f8792'],
+      ['granite', '#9aa0a6', '#eef1f4'],
+    ];
+    for (const [pattern, body, ink] of MATERIALS_UNDER_TEST) {
+      const levels = new Set(tones(pattern, body, ink)).size;
+      note(`${pattern}: ${levels} distinct tones`);
+      // Before this change these were 5, 5 and 7. Stripes, which is meant
+      // to be flat, is 2 — so this genuinely distinguishes the two kinds
+      // of pattern rather than passing everything.
+      assert(levels > 40, `${pattern} paints only ${levels} tones — it is stepping, not ramping`);
+    }
   });
 
   test('every pattern the skins use is one a painter knows', () => {
