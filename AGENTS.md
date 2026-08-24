@@ -69,6 +69,32 @@ sometimes got stuck in the moat, that's fixed" — not "resolved a race
 condition in the settle handler". This is separate from `CHANGELOG.md`,
 which stays versioned and technical for the game's own releases.
 
+## The gate in front of every App Store submission
+
+**David asked on 24 Aug 2026: before ANY App Store submission, run a full
+test of everything, on Fable, and make it the LAST thing before
+submitting.**
+
+Read that literally — both halves are the point.
+
+- **On Fable.** Switch the session with `/model claude-fable-5` and run
+  the pass there. Not on whatever model happens to be serving.
+- **LAST.** After the pass, nothing else changes. No "one small fix"
+  afterwards, no version bump, no OTA publish, no copy edit. If anything
+  at all changes, the pass is void and gets run again on the new state —
+  otherwise the thing that was tested is not the thing being submitted.
+- **Everything**, not just the diff: `npx tsc --noEmit`, the full suite
+  (`npm test`), the Metro bundle check, the ad rules, the store copy and
+  its character limits, the screenshot dimensions, `app.json` version
+  against `CHANGELOG.md` and `GAME_VERSION`, and the App Store Connect
+  fields against what the app actually does — particularly the App
+  Privacy answers, which are only true while the child-directed ad flags
+  are on.
+
+Report what actually ran and what it said. A submission is the one thing
+here that cannot be rolled back in seconds, so an unverified claim of
+"all green" is worse than saying a check was skipped.
+
 ## Releasing
 
 **Shipping is automatic now.** David asked on 20 Aug 2026 for changes to
