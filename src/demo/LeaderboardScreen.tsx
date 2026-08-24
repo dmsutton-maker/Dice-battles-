@@ -101,7 +101,12 @@ export function LeaderboardScreen({
         <View style={styles.statRow}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{trophies}</Text>
-            <Text style={styles.statLabel}>Trophies</Text>
+            {/* The golden trophy beside the word, the way Coins wears its
+                coin two cards over. */}
+            <View style={styles.statLabelRow}>
+              <TrophyIcon size={12} />
+              <Text style={styles.statLabel}>Trophies</Text>
+            </View>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{totalWins}</Text>
@@ -317,6 +322,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  statLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 
   rung: {

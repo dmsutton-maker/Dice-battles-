@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.35.0 — 2026-08-24 · requested by David
+
+### Changed
+- **The golden trophy now sits beside the Trophies count on the Ranks
+  screen**, matching the coin that already sits beside the Coins count
+  two cards over.
+
+
 ## v1.34.0 — 2026-08-24 · requested by David
 
 ### Changed
