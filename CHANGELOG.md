@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.36.0 — 2026-08-24 · requested by David
+
+### Added
+- **Advertising, for the 1.0 App Store release.** David asked for ads
+  from launch rather than a later update, and accepted delaying the
+  release to get them. One interstitial after every third finished
+  game — no banners, no rewarded video, nothing mid-round.
+  - Counted at the end of a game but shown on the way OUT of the result
+    screen, so an ad can never land on top of the victory fanfare or an
+    unlock reward.
+  - Quitting a battle early does not count toward an ad, and a brand-new
+    player gets three clean games before the first one.
+  - An ad that has not loaded is skipped, never waited for.
+- Every request is child-directed, non-personalised and capped at
+  G-rated creative. The game asks for no tracking permission and touches
+  no advertising identifier — which is what makes the App Store privacy
+  answers true rather than merely filed.
+- EU users get Google's own consent form before any ad is requested, and
+  a consent failure means no ads at all rather than ads anyway.
+
+### Under the hood
+- `src/game/ads.ts` is the only file that touches the ad SDK, the way
+  `gameCenter.ts` is for Game Center — so swapping networks, or removing
+  ads, stays a one-file job.
+- The SDK is required lazily rather than imported. Ads are native code
+  but JavaScript ships over the air to binaries built before the SDK
+  existed; a top-level import would crash every one of those installs.
+  13 new tests cover the interval, the child-directed flags, and that
+  nothing else in the game imports the SDK.
+
+
 ## v1.35.0 — 2026-08-24 · requested by David
 
 ### Changed

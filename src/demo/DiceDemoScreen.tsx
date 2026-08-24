@@ -91,6 +91,7 @@ import {
   Station,
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
+import { initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
 import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
@@ -199,6 +200,15 @@ export function DiceDemoScreen() {
         // Defaults are fine if storage is unavailable.
       })
       .finally(() => setHydrated(true));
+
+    /*
+      Ads start themselves up in the background, deliberately outside the
+      chain above: initAds gathers consent, which in the EU puts Google's
+      own form on screen, and reaches the network to fetch the first
+      interstitial. Neither may hold up the first frame of the game, and
+      neither can fail in a way the player sees — see src/game/ads.ts.
+    */
+    initAds();
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
@@ -498,11 +508,19 @@ export function DiceDemoScreen() {
     resetRace();
     setCallout(null);
     setPhaseBoth('pick');
+    // Leaving the result screen is the moment for an ad, if one is due.
+    // Not awaited: the menu appears immediately either way, and an ad
+    // that is not ready is skipped rather than waited for.
+    showAdIfDue();
   }, [resetRace, setPhaseBoth]);
 
   const finishRound = useCallback(
     (outcome: 'won' | 'lost' | 'tie') => {
       setPhaseBoth(outcome);
+      // Counted here, at the real end of the game, but NOT shown here —
+      // see src/game/ads.ts. An interstitial over the fanfare and the
+      // trophy count would bury the reward the player just earned.
+      noteGameFinished();
       const coins = awardCoins(outcome, difficultyRef.current);
       setWallet({ ...getWallet() });
       setLastCoins(coins);
@@ -616,6 +634,9 @@ export function DiceDemoScreen() {
   }, []);
 
   const startCountdown = useCallback(() => {
+    // Same moment as quitToMenu: the player is leaving the result screen,
+    // this time straight into another battle.
+    showAdIfDue();
     const rival = pickOpponent(opponentRef.current ?? undefined);
     opponentRef.current = rival;
     setOpponent(rival);

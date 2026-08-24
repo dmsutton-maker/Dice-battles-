@@ -30,6 +30,33 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-36-0-ads',
+    date: '24 August 2026',
+    version: 'v1.36.0',
+    title: 'Ads are coming, and here is the deal',
+    emoji: '📺',
+    body:
+      'To pay for the game being free, an ad now shows after every third ' +
+      'finished game. Never in the middle of a battle, never on top of a ' +
+      'prize you just won, and never on your first few games. They are ' +
+      'set to child-friendly ads only, and the game does not track you or ' +
+      'collect anything about you to choose them. Quitting a battle early ' +
+      'does not count toward one.',
+  },
+  {
+    id: 'v1-34-0-gold',
+    date: '24 August 2026',
+    version: 'v1.34.0',
+    title: 'A golden trophy and a proper coin',
+    emoji: '🏆',
+    body:
+      'The trophy symbol is gold now instead of a plain outline, and the ' +
+      'coin got a raised rim, an inner ring and a little sparkle stamped ' +
+      'in the middle, so it looks like a real coin. The home screen ' +
+      'background is solid too — the board no longer shows faintly ' +
+      'through the menus.',
+  },
+  {
     id: 'v1-32-0-paper-ink',
     date: '24 August 2026',
     version: 'v1.32.0',

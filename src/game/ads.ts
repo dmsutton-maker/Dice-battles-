@@ -1,0 +1,274 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { gamesUntilAd, shouldShowAd } from './adRules';
+
+/**
+ * Advertising, behind one door.
+ *
+ * Nothing else in the game imports the AdMob package. Every call goes
+ * through this file — the same arrangement Game Center has, and for the
+ * same two reasons: the SDK stays swappable, and no entry point here may
+ * be able to break a battle.
+ *
+ * THE RULE, exactly as in gameCenter.ts: nothing here may throw, reject,
+ * or block. No network, no consent, no fill, an old build without the
+ * native code compiled in — every one of those must end with the player
+ * simply not seeing an ad, and never with a crash or a wait.
+ *
+ * WHY THE MODULE IS REQUIRED LAZILY, and why it matters more here than
+ * anywhere else in this codebase.
+ *
+ * AdMob is a NATIVE module: it only exists in a binary built after it was
+ * added. But JavaScript ships over the air to binaries built BEFORE it,
+ * and the runtime version is pinned to the Expo SDK, which adding a
+ * package does not change. So this file's code lands on build 6 — a
+ * binary with no AdMob inside it — the moment anything is published.
+ * Requiring the package at module scope would resolve on startup and take
+ * the whole app down for every one of those players. Required lazily and
+ * caught, the same update is simply a game with no ads in it, which is
+ * exactly right until the new binary arrives.
+ */
+
+/** Only the parts of the SDK this file uses. Declared so nothing else needs its types. */
+interface NativeAds {
+  default: () => {
+    initialize(): Promise<unknown>;
+    setRequestConfiguration(config: {
+      maxAdContentRating?: string;
+      tagForChildDirectedTreatment?: boolean;
+      tagForUnderAgeOfConsent?: boolean;
+    }): Promise<void>;
+  };
+  MaxAdContentRating: { G: string };
+  AdsConsent: {
+    requestInfoUpdate(): Promise<{ canRequestAds: boolean }>;
+    loadAndShowConsentFormIfRequired(): Promise<{ canRequestAds: boolean }>;
+    getConsentInfo(): Promise<{ canRequestAds: boolean }>;
+  };
+  AdEventType: { LOADED: string; ERROR: string; CLOSED: string };
+  TestIds: { INTERSTITIAL: string };
+  InterstitialAd: {
+    createForAdRequest(
+      adUnitId: string,
+      options?: { requestNonPersonalizedAdsOnly?: boolean },
+    ): LoadedInterstitial;
+  };
+}
+
+interface LoadedInterstitial {
+  load(): void;
+  show(): Promise<void>;
+  addAdEventListener(type: string, listener: (arg?: unknown) => void): () => void;
+}
+
+/**
+ * The real interstitial unit, from David's AdMob account.
+ *
+ * EMPTY until he creates the ad unit and sends the id — an App ID
+ * (`ca-app-pub-…~…`, tilde) is not an ad unit id (`ca-app-pub-…/…`,
+ * slash), and putting the App ID here would fail at request time with a
+ * misleading error. While it is empty the game asks for GOOGLE'S TEST
+ * INTERSTITIAL instead, which always fills and is the only safe thing to
+ * develop against: requesting real ads from a device that is not a
+ * registered test device is what gets an AdMob account suspended for
+ * invalid traffic.
+ *
+ * Both ids are public by design — they are compiled into the binary and
+ * readable by anyone who downloads it. The AdMob ACCOUNT is the secret;
+ * these are not, which is why they may live in this public repo.
+ */
+export const INTERSTITIAL_AD_UNIT_ID = '';
+
+/** True once a real unit is configured — the launch checklist reads this. */
+export function hasRealAdUnit(): boolean {
+  return INTERSTITIAL_AD_UNIT_ID.startsWith('ca-app-pub-')
+    && INTERSTITIAL_AD_UNIT_ID.includes('/');
+}
+
+const STORAGE_KEY = 'dice-battles/games-finished';
+
+let native: NativeAds | null | undefined;
+let ready = false;
+let interstitial: LoadedInterstitial | null = null;
+let loaded = false;
+let gamesFinished = 0;
+let adDue = false;
+
+/** The SDK, or null forever if this binary does not contain it. */
+function moduleOrNull(): NativeAds | null {
+  if (native !== undefined) return native;
+  native = null;
+  try {
+    // Required, never imported — see the note at the top of this file.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Platform } = require('react-native');
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return native;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('react-native-google-mobile-ads') as NativeAds;
+    if (mod && typeof mod.default === 'function') native = mod;
+  } catch {
+    // No native module in this binary. Nothing to do, ever.
+  }
+  return native;
+}
+
+/**
+ * Start the SDK, gather consent, and remember how many games have been
+ * played. Called once on launch; safe to call again.
+ *
+ * WHY CHILD-DIRECTED AND NON-PERSONALISED.
+ *
+ * This game is built for ages 5+, so COPPA applies to it whatever
+ * category the App Store listing sits in. `tagForChildDirectedTreatment`
+ * tells Google to treat every request as a child's, which turns off
+ * personalised advertising and ad-tech that profiles a user. That is why
+ * the game asks for no App Tracking Transparency permission and declares
+ * "not used for tracking" in App Store Connect: those answers are true
+ * BECAUSE of this call, and changing it silently would make them lies.
+ *
+ * `MaxAdContentRating.G` is the second half: G-rated creative only, so
+ * what actually appears on screen suits the youngest person holding the
+ * phone.
+ */
+export async function initAds(): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const n = Number(raw);
+    gamesFinished = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  } catch {
+    gamesFinished = 0;
+  }
+
+  const mod = moduleOrNull();
+  if (!mod) return;
+
+  try {
+    // Consent FIRST. In the EU an ad may not be requested before the user
+    // has answered, and Google's own form is the thing that asks. Outside
+    // the EU there is nothing to show and this returns immediately.
+    let canRequestAds = false;
+    try {
+      await mod.AdsConsent.requestInfoUpdate();
+      const info = await mod.AdsConsent.loadAndShowConsentFormIfRequired();
+      canRequestAds = info?.canRequestAds ?? false;
+    } catch {
+      // A consent failure means NO ads, never ads-anyway: the whole point
+      // of the form is that skipping it is not allowed.
+      canRequestAds = false;
+    }
+    if (!canRequestAds) return;
+
+    await mod.default().setRequestConfiguration({
+      maxAdContentRating: mod.MaxAdContentRating.G,
+      tagForChildDirectedTreatment: true,
+      tagForUnderAgeOfConsent: true,
+    });
+    await mod.default().initialize();
+    ready = true;
+    preload();
+  } catch {
+    ready = false;
+  }
+}
+
+/** Fetch the next interstitial so it is ready before its turn comes. */
+function preload(): void {
+  const mod = moduleOrNull();
+  if (!mod || !ready || interstitial) return;
+  try {
+    const unitId = hasRealAdUnit() ? INTERSTITIAL_AD_UNIT_ID : mod.TestIds.INTERSTITIAL;
+    const ad = mod.InterstitialAd.createForAdRequest(unitId, {
+      // Belt and braces with tagForChildDirectedTreatment above: this
+      // says the same thing at the request level.
+      requestNonPersonalizedAdsOnly: true,
+    });
+    ad.addAdEventListener(mod.AdEventType.LOADED, () => {
+      loaded = true;
+    });
+    ad.addAdEventListener(mod.AdEventType.ERROR, () => {
+      // No fill, no network, a bad unit id — drop it and try again after
+      // the next game rather than holding a dead object forever.
+      loaded = false;
+      interstitial = null;
+    });
+    ad.addAdEventListener(mod.AdEventType.CLOSED, () => {
+      loaded = false;
+      interstitial = null;
+      preload();
+    });
+    interstitial = ad;
+    ad.load();
+  } catch {
+    interstitial = null;
+    loaded = false;
+  }
+}
+
+/**
+ * Record that a game finished. Cheap, synchronous, never shows anything.
+ *
+ * Counting and SHOWING are deliberately two calls. A game ends on a
+ * fanfare, a trophy count and sometimes an unlock popup, and an
+ * interstitial slammed over that moment is the single worst place to put
+ * one — the player would lose the reward they just earned behind an
+ * advert. So the count happens here, at the true end of the game, and
+ * the ad waits for `showAdIfDue()` on the way OUT of the result screen.
+ */
+export function noteGameFinished(): void {
+  gamesFinished += 1;
+  AsyncStorage.setItem(STORAGE_KEY, String(gamesFinished)).catch(() => {});
+  if (shouldShowAd(gamesFinished)) {
+    adDue = true;
+    preload();
+  } else if (gamesUntilAd(gamesFinished) <= 1) {
+    // Fetch one game early, so it is in hand when its turn comes.
+    preload();
+  }
+}
+
+/**
+ * Show the interstitial if one is due and one is ready.
+ *
+ * Called when the player leaves the result screen. Returns true only if
+ * an ad actually went on screen, so a caller can tell "none was due"
+ * from "one was due and none had loaded" — from the player's side those
+ * are identical, and neither may delay anything by even a frame.
+ */
+export async function showAdIfDue(): Promise<boolean> {
+  if (!adDue) return false;
+
+  const mod = moduleOrNull();
+  if (!mod || !ready || !interstitial || !loaded) {
+    // Due, but nothing ready: SKIP it. Never make a child wait on a
+    // network fetch to get back to their game — the next one comes
+    // around in three more games anyway.
+    adDue = false;
+    preload();
+    return false;
+  }
+
+  adDue = false;
+  try {
+    await interstitial.show();
+    return true;
+  } catch {
+    loaded = false;
+    interstitial = null;
+    preload();
+    return false;
+  }
+}
+
+/** Total finished games on this device. Exposed for the tests. */
+export function gamesPlayed(): number {
+  return gamesFinished;
+}
+
+/** Test seam: forget everything this module has cached. */
+export function resetAdsForTest(): void {
+  native = undefined;
+  ready = false;
+  interstitial = null;
+  loaded = false;
+  gamesFinished = 0;
+  adDue = false;
+}

@@ -22,8 +22,29 @@ before writing any code — Expo APIs change between SDK versions.
 - All dice-feel constants belong in `src/game/tuning.ts` — never scatter
   magic physics numbers through components.
 - Dice faces are COLORS (see `src/game/colors.ts`), never pips/numbers.
-- Family-friendly, ages 5+. No ad SDKs, analytics, accounts, or data
-  collection in v1.
+- Family-friendly, ages 5+. No analytics, no accounts, no data collection
+  beyond what advertising requires.
+- **Advertising, as of 24 Aug 2026.** David asked for ads in 1.0 rather
+  than a later release, and accepted delaying the App Store launch to get
+  them. One interstitial after every third FINISHED game, and nothing
+  else — no banners, no rewarded video, no ads mid-round.
+  - Every request is tagged `tagForChildDirectedTreatment` and
+    `requestNonPersonalizedAdsOnly`, capped at `MaxAdContentRating.G`.
+    This is not a preference: the App Store Connect privacy filing says
+    "not used for tracking" and the app asks for no App Tracking
+    Transparency permission, and both of those are only TRUE because of
+    those flags. Turning personalised ads on means re-filing App Privacy
+    and adding an ATT prompt, in the same change or not at all.
+  - `src/game/ads.ts` is the ONLY file that may import the ad SDK, the
+    way `gameCenter.ts` is for Game Center. Nothing in it may throw,
+    reject, or block, and an ad that is not loaded is skipped rather
+    than waited for.
+  - The SDK is required lazily, never imported at module scope: ads are
+    native code, but JS ships over the air to binaries built before the
+    SDK existed, and a top-level import crashes every one of them.
+  - Never put the app in App Store **Kids Category** while ads are in
+    it — Apple forbids third-party ad SDKs there. Games → Family/Board
+    is where it belongs.
 - Validate changes with `npx tsc --noEmit` and
   `npx expo export --platform ios --output-dir /tmp/export-test`
   (Metro bundle check) — there is no device in CI.
