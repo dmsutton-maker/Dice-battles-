@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.29.0 — 2026-08-24 · requested by David
+
+### Changed
+- **The hazards belong to their battlefield now.** Both were drawn
+  identically everywhere: a green grassy sphere, and a blue pool inside a
+  square of cut kerbstone. That is a castle lawn and a castle moat, and it
+  was being placed in a rainforest and on an orbiting station alike — a
+  grass hill on a space station, as David put it. They are the most
+  looked-at things on the board after the dice, because they are what you
+  are trying to roll around, so drawing them the same everywhere undid a
+  good deal of the work of making the arenas different.
+  - **Jungle** — a lake rather than a swimming pool. The giveaway was the
+    square of cut stone running round the water; nothing in a rainforest
+    has that. A low soft bank of earth instead, and the water is the
+    green-brown of standing water under a canopy. The bump is a mossy
+    hillock.
+  - **Space Station** — no grass and no water anywhere. The bump is a
+    metal bulkhead dome in the deck plating, and the pit is an open hatch
+    onto the drop with a lit warning strip round it.
+  - **Sunset Castle** — the same castle later in the day: grass gone
+    blue-green as the light leaves it, water picking up the sky instead of
+    staying noon-blue.
+- **The words follow the picture.** The Hard hint and the splash callout
+  said "pond" on every battlefield. They now name what is actually there —
+  and on the station a die does not sink at all, it falls out: "Gone! A die
+  fell through the hatch!"
+
+### Under the hood
+- The PHYSICS is untouched. Same sphere in the same place, same square
+  hole in the floor, on every battlefield — Hard is Hard wherever you play
+  it. A test enforces that the dressing carries no dimensions at all, only
+  colours and finishes, because a hazard that behaved differently by arena
+  would make choosing a battlefield a way of secretly choosing a
+  difficulty. The Store sells battlefields.
+- The splash callout reads the arena from a ref. It fires from a callback
+  created on the first render, so reading the value directly would have
+  announced every lake as the castle's pond.
+
 ## v1.28.0 — 2026-08-24 · requested by David
 
 David sent a screenshot, which changed the diagnosis completely. Three

@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../src/arena/arenas';
 import { createSkyGradient } from '../src/arena/skyGradient';
+import { OBSTACLE_LOOKS, obstacleLook } from '../src/arena/obstacleLooks';
+import { MOAT, MOUND, obstacleHint } from '../src/game/obstacles';
 import { assert, assertEqual, note, suite, test } from './harness';
 
 /**
@@ -348,5 +350,84 @@ suite('arena · switching battlefields does not repaint the world', () => {
     const source = readFileSync(join('src', 'arena', 'JungleArena.tsx'), 'utf8');
     const keys = [...source.matchAll(/cachedTexture\('([^']+)'/g)].map((m) => m[1]);
     assertEqual(new Set(keys).size, keys.length, `the jungle reuses a cache key: ${keys.join(', ')}`);
+  });
+});
+
+suite('arena · the hazards belong to the battlefield', () => {
+  /**
+   * Both hazards used to be drawn identically everywhere: a green grassy
+   * sphere and a blue pool inside a square of cut kerbstone. That is a
+   * castle lawn and a castle moat, and it was being placed in a rainforest
+   * and on an orbiting station alike — a grass hill on a space station, as
+   * David put it.
+   */
+  test('every arena dresses its own hazards', () => {
+    const ids = Object.keys(ARENAS) as ArenaId[];
+    for (const id of ids) {
+      assert(OBSTACLE_LOOKS[id] !== undefined, `${id} has no hazard dressing`);
+    }
+    assertEqual(
+      Object.keys(OBSTACLE_LOOKS).length,
+      ids.length,
+      'the hazard dressings and the arenas have drifted apart',
+    );
+  });
+
+  test('the jungle has a lake, not a swimming pool', () => {
+    // The giveaway was a square of cut stone running round the water.
+    const jungle = obstacleLook('jungle');
+    assertEqual(jungle.pit.border?.kind, 'bank', 'the jungle lake still has a cut kerb round it');
+    assertEqual(jungle.words.pit, 'lake', 'the jungle still calls it a pond');
+  });
+
+  test('the space station has no grass and no water', () => {
+    const space = obstacleLook('space');
+    // Green grass on a station is the thing David actually pointed at.
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(space.mound.color.slice(i, i + 2), 16));
+    assert(
+      !(g > r + 20 && g > b + 20),
+      `the station's bump is still green (${space.mound.color})`,
+    );
+    assert(space.mound.metalness > 0.3, 'the station bump is not metal');
+    // And what it falls into is a drop, not a pond.
+    assert(space.pit.surfaceOpacity < 0.4, 'the hatch still has a liquid surface');
+    assert(!/pond|lake|water/i.test(space.words.sink), `station callout says "${space.words.sink}"`);
+  });
+
+  test('the words follow the picture', () => {
+    // A hint telling somebody on the station to watch out for the pond
+    // describes a different game from the one on their screen.
+    for (const id of Object.keys(OBSTACLE_LOOKS) as ArenaId[]) {
+      const look = obstacleLook(id);
+      const hard = obstacleHint('hard', look.words);
+      assert(hard.includes(look.words.pit), `${id}: the Hard hint does not name its own hazard`);
+      assert(hard.includes(look.words.mound), `${id}: the Hard hint does not name its own bump`);
+      const medium = obstacleHint('medium', look.words);
+      assert(medium.includes(look.words.mound), `${id}: the Medium hint names the wrong bump`);
+      assert(
+        !medium.includes(look.words.pit) || look.words.pit === look.words.mound,
+        `${id}: Medium mentions a hazard that only Hard has`,
+      );
+    }
+  });
+
+  test('dressing a hazard never changes the difficulty', () => {
+    // The whole point. If a hazard behaved differently by arena, picking a
+    // battlefield would secretly be picking a difficulty — and the Store
+    // sells battlefields.
+    const sizes = new Set<string>();
+    for (const id of Object.keys(OBSTACLE_LOOKS) as ArenaId[]) {
+      const look = obstacleLook(id);
+      // Nothing in the dressing may carry a dimension. Colours, opacity
+      // and roughness are all it is allowed to say.
+      const fields = JSON.stringify(look);
+      sizes.add(fields.replace(/"#[0-9a-f]{6}"/gi, '"C"'));
+      assert(
+        !('radius' in look.mound) && !('size' in look.pit) && !('depth' in look.pit),
+        `${id}'s dressing carries a dimension — that would change the physics`,
+      );
+    }
+    // MOUND and MOAT stay the single source of the shapes.
+    assert(MOUND.radius > 0 && MOAT.size > 0, 'the hazard dimensions have moved');
   });
 });

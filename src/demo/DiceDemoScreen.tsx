@@ -17,6 +17,7 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import { ArenaId, ARENAS } from '../arena/arenas';
+import { obstacleLook } from '../arena/obstacleLooks';
 import {
   activeArena,
   activeSkin,
@@ -56,7 +57,7 @@ import {
 import {
   EMPTY_LAYOUT,
   generateObstacleLayout,
-  OBSTACLE_HINTS,
+  obstacleHint,
   ObstacleLayout,
 } from '../game/obstacles';
 import { sync as syncGameCenter } from '../game/gameCenter';
@@ -302,6 +303,7 @@ export function DiceDemoScreen() {
   // Refs mirroring state that gesture/timer callbacks need synchronously.
   const phaseRef = useRef<Phase>('pick');
   const difficultyRef = useRef<AiDifficultyId>('easy');
+  const arenaIdRef = useRef<ArenaId>('castle');
   const modeRef = useRef<ModeId>('classic');
   const opponentRef = useRef<AiOpponent | null>(null);
   const runRef = useRef<RunState | null>(null);
@@ -482,9 +484,10 @@ export function DiceDemoScreen() {
     const now = Date.now();
     if (now - lastSplash.current < 2500 || phaseRef.current !== 'battle') return;
     lastSplash.current = now;
-    // "Pond", not "moat" — the difficulty hint has always called it a
-    // pond, and this was the one place still using the other word.
-    showCallout('Splash! A die fell in the pond!');
+    // In the words of the battlefield: a pond at the castle, a lake in
+    // the jungle, and on the station a die does not sink at all — it
+    // falls out through the hatch.
+    showCallout(obstacleLook(arenaIdRef.current).words.sink);
   }, [showCallout]);
 
   const quitToMenu = useCallback(() => {
@@ -926,6 +929,13 @@ export function DiceDemoScreen() {
   // Equipped in the Inventory, falling back if it is no longer unlocked
   // (which happens when family tester mode is switched back off).
   const arenaId: ArenaId = activeArena(trophies);
+  // The splash callout fires from a callback created on the first render,
+  // so it reads the battlefield from a ref rather than from the value
+  // above — otherwise a die falling in the lake would always be announced
+  // as the castle's pond.
+  useEffect(() => {
+    arenaIdRef.current = arenaId;
+  }, [arenaId]);
   const equippedSkin = activeSkin(trophies);
   // What the board actually draws. While a preview is open that is the
   // previewed item, which is the whole trick: there is no second scene and
@@ -1127,7 +1137,7 @@ export function DiceDemoScreen() {
         rules had.
       */}
       <Text style={styles.difficultyHint} numberOfLines={2}>
-        {OBSTACLE_HINTS[difficulty]}
+        {obstacleHint(difficulty, obstacleLook(arenaId).words)}
       </Text>
       <Text style={styles.stakesText}>
         Win +{rangeLabel(stakes.win)} 🏆 · Lose −{rangeLabel(stakes.loss)} 🏆

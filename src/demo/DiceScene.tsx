@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { playClack, playThrow } from '../audio/sounds';
 import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
+import { obstacleLook } from '../arena/obstacleLooks';
 import { TreasureChest } from '../arena/TreasureChest';
 import { createDieBody, snapDieToNearestFace, throwDie } from '../dice/die';
 import {
@@ -96,6 +97,8 @@ export function DiceScene({
   throwsEnabled = true,
 }: DiceSceneProps) {
   const ArenaComponent = ARENAS[arenaId].Component;
+  // How this battlefield dresses its hazards. See obstacleLooks.ts.
+  const look = obstacleLook(arenaId);
   const lighting = ARENAS[arenaId].lighting;
   // The parent remounts this scene (key includes the round) whenever the
   // layout changes, so building the world once per mount is correct.
@@ -409,11 +412,19 @@ export function DiceScene({
       {showTreasure && <TreasureChest />}
       <Prisoners units={units} symbols={dieSymbols} />
 
-      {/* Difficulty obstacles */}
+      {/*
+        Difficulty obstacles, dressed for the battlefield they are on.
+        The physics is identical everywhere — same sphere, same hole — so
+        Hard is Hard whichever arena you pick. Only the look changes.
+      */}
       {obstacles.mound && (
         <mesh position={[obstacles.mound.x, -MOUND.buried, obstacles.mound.z]}>
           <sphereGeometry args={[MOUND.radius, 20, 14]} />
-          <meshStandardMaterial color="#7fae66" roughness={0.85} />
+          <meshStandardMaterial
+            color={look.mound.color}
+            roughness={look.mound.roughness}
+            metalness={look.mound.metalness}
+          />
         </mesh>
       )}
       {obstacles.moat && (
@@ -421,22 +432,23 @@ export function DiceScene({
           {/* Dark depths below, so a sinking die silhouettes against it */}
           <mesh position={[0, -1.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[MOAT.size + 0.3, MOAT.size + 0.3]} />
-            <meshBasicMaterial color="#0a2c4a" />
+            <meshBasicMaterial color={look.pit.depths} />
           </mesh>
-          {/* Translucent water surface — the die is visible sinking under */}
+          {/* The surface: water in three of the four arenas, and on the
+              station a near-transparent look down into the drop. */}
           <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[MOAT.size + 0.25, MOAT.size + 0.25]} />
             <meshStandardMaterial
-              color="#2f9be2"
-              roughness={0.12}
+              color={look.pit.surface}
+              roughness={look.pit.surfaceRoughness}
               transparent
-              opacity={0.62}
+              opacity={look.pit.surfaceOpacity}
             />
           </mesh>
-          {/* Foam ring marks it unmistakably as water */}
+          {/* The edge — foam on water, a lit warning strip on the hatch */}
           <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[MOAT.size / 2 - 0.06, MOAT.size / 2 + 0.06, 4, 1]} />
-            <meshBasicMaterial color="#dff2ff" transparent opacity={0.85} />
+            <meshBasicMaterial color={look.pit.edge} transparent opacity={0.85} />
           </mesh>
           {/* Splash ring (animated on sink) */}
           <mesh
@@ -450,29 +462,38 @@ export function DiceScene({
             <ringGeometry args={[0.42, 0.55, 24]} />
             <meshBasicMaterial color="#ffffff" transparent opacity={0} />
           </mesh>
-          {/* Stone rim */}
-          {(
-            [
-              [0, -(MOAT.size / 2 + 0.2), MOAT.size + 0.55, 0.16],
-              [0, MOAT.size / 2 + 0.2, MOAT.size + 0.55, 0.16],
-            ] as const
-          ).map(([x, z, w, d], i) => (
-            <mesh key={`rimz-${i}`} position={[x, 0.06, z]}>
-              <boxGeometry args={[w, 0.12, d]} />
-              <meshStandardMaterial color="#8a7c66" roughness={0.9} />
-            </mesh>
-          ))}
-          {(
-            [
-              [-(MOAT.size / 2 + 0.2), 0],
-              [MOAT.size / 2 + 0.2, 0],
-            ] as const
-          ).map(([x, z], i) => (
-            <mesh key={`rimx-${i}`} position={[x, 0.06, z]}>
-              <boxGeometry args={[0.16, 0.12, MOAT.size + 0.25]} />
-              <meshStandardMaterial color="#8a7c66" roughness={0.9} />
-            </mesh>
-          ))}
+          {/*
+            The border. A square of cut kerb round a pool of water is what
+            made the jungle's lake read as a swimming pool, so the shape
+            changes with the arena: sharp stone at the castle, a low soft
+            bank of earth at the lake, a raised coaming round the hatch.
+          */}
+          {look.pit.border !== null &&
+            (
+              [
+                [0, -(MOAT.size / 2 + 0.2), MOAT.size + 0.55, 0.16],
+                [0, MOAT.size / 2 + 0.2, MOAT.size + 0.55, 0.16],
+                [-(MOAT.size / 2 + 0.2), 0, 0.16, MOAT.size + 0.25],
+                [MOAT.size / 2 + 0.2, 0, 0.16, MOAT.size + 0.25],
+              ] as const
+            ).map(([x, z, w, d], i) => {
+              const bank = look.pit.border!.kind === 'bank';
+              const hull = look.pit.border!.kind === 'hull';
+              // An earth bank sits low and wide; a hull coaming stands
+              // proud of the deck; cut stone is what it always was.
+              const height = bank ? 0.07 : hull ? 0.16 : 0.12;
+              const spread = bank ? 1.9 : 1;
+              return (
+                <mesh key={`rim-${i}`} position={[x, height / 2, z]}>
+                  <boxGeometry args={[w * (w < d ? spread : 1), height, d * (d < w ? spread : 1)]} />
+                  <meshStandardMaterial
+                    color={look.pit.border!.color}
+                    roughness={hull ? 0.45 : 0.95}
+                    metalness={hull ? 0.5 : 0}
+                  />
+                </mesh>
+              );
+            })}
         </group>
       )}
 

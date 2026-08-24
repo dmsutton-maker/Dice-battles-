@@ -128,8 +128,23 @@ export const OBSTACLES_BY_DIFFICULTY: Record<AiDifficultyId, ObstacleConfig> = {
   hard: { mound: true, moat: true },
 };
 
-export const OBSTACLE_HINTS: Record<AiDifficultyId, string> = {
-  easy: 'A clear courtyard — nothing in your way. Just outroll them!',
-  medium: 'A hill in a new spot every battle — dice bounce off it.',
-  hard: 'The hill AND a pond that swallows dice whole.',
-};
+/**
+ * What each difficulty puts in your way, in the words of the battlefield
+ * you are on.
+ *
+ * The hazards are dressed per arena (see src/arena/obstacleLooks.ts), so
+ * the hint has to follow — telling somebody on the space station to watch
+ * out for the pond describes a different game from the one on screen.
+ */
+export function obstacleHint(
+  difficulty: AiDifficultyId,
+  words: { pit: string; mound: string },
+): string {
+  if (difficulty === 'easy') {
+    return 'A clear battlefield — nothing in your way. Just outroll them!';
+  }
+  if (difficulty === 'medium') {
+    return `A ${words.mound} in a new spot every battle — dice bounce off it.`;
+  }
+  return `The ${words.mound} AND a ${words.pit} that swallows dice whole.`;
+}
