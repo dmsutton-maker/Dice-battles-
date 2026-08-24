@@ -42,3 +42,8 @@ yarn-error.*
 
 credentials.json
 .vercel
+
+# The published design canvas — 2.3MB of editor payload wrapped around the
+# .dc.html working files beside it, and rebuilt from them on every change.
+# The artboards are the source; this is the build output.
+design-concept/dice-battles-redesign.html
