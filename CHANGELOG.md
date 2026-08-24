@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.27.0 — 2026-08-24 · requested by David
+
+### Fixed
+- **The jungle is green again.** The forest floor shipped in v1.25.0 had it
+  backwards: brown earth everywhere, moss in patches, and leaf litter
+  scattered thickly over the lot. David's word for it was garbage dump, and
+  he was right — a rainforest clearing is overwhelmingly green, and a floor
+  that is mostly dirt and debris reads as mud with rubbish on it at the
+  size a phone draws it. Green ground is the base now, with bare earth
+  showing through only where growth has worn thin, and about a fifth as
+  many leaves, blended into the grass rather than stamped on top of it.
+- **The arena border was being painted in stone.** The palisade logs were
+  drawn with `MOSS_STONE` and `MOSS_STONE_DARK` — the two greens the temple
+  ruins are built from — so eighty-eight posts of varying height stood
+  around the arena in grey-green and never read as timber at all. They are
+  wood now, five shades of it, picked per log.
+- **And it was built like a heap rather than a wall.** Three things at
+  once: heights ran from 0.86 to 1.36 of the wall, so the top edge was
+  jagged; each post chose its lean independently, up to five degrees either
+  way, so neighbours fell against each other; and the logs were narrower
+  than half their spacing, so there was daylight between them. Now they
+  overlap into a solid run, the whole rank leans together in a slow wave
+  under two and a half degrees, and the tops vary by a quarter of the wall
+  height instead of half. Every log also stands at least as tall as the
+  invisible wall the dice bounce off — some used to be shorter, which made
+  a die look like it had stopped against nothing.
+
+### Under the hood
+- The test guarding the palisade had only a LOWER bound on how much the
+  tops vary, so "more ragged" always passed and the boundary drifted into a
+  pile of sticks with the suite green. It is bounded at both ends now, and
+  joined by four more: every log clears the wall, no two neighbours leave
+  daylight, no post leans more than four degrees, and the logs are not
+  painted with the temple's stone. All five fail on the old palisade.
+- One of those tests was written wrong first and caught in the writing: it
+  filed each log onto a wall by whichever coordinate was larger, which
+  misfiles every log near a corner and silently compares posts on different
+  walls. It keys off the coordinate pinned to the boundary instead.
+
 ## v1.26.0 — 2026-08-24 · requested by David
 
 ### Changed

@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { palisadeLogs } from '../src/arena/palisade';
 import { TUNING } from '../src/game/tuning';
-import { assert, note, suite, test } from './harness';
+import { assert, assertEqual, note, suite, test } from './harness';
 
 /**
  * Every battlefield used to be the same building.
@@ -51,27 +51,106 @@ suite('arenas · no two battlefields are the same building', () => {
     assert(logs.length > 60, `only ${logs.length} logs — that is a fence, not a palisade`);
   });
 
-  test('the palisade has a ragged top, not a level one', () => {
+  test('the palisade is a stockade: ragged on top, but not a heap of sticks', () => {
     const logs = palisadeLogs();
     const heights = logs.map((l) => l.height);
     const spread = Math.max(...heights) - Math.min(...heights);
     const { wallHeight } = TUNING.tray;
     note(
       `log heights ${Math.min(...heights).toFixed(2)}-${Math.max(...heights).toFixed(2)} ` +
-        `against a ${wallHeight} wall`,
+        `against a ${wallHeight} wall, spread ${(spread / wallHeight * 100).toFixed(0)}% of it`,
     );
-    // An even row of posts reads as a picket fence and would put the flat
-    // castle skyline straight back.
+    // BOTH ends matter, which is what this test was missing. It only had
+    // the lower bound, so the posts varied by half the wall height and the
+    // boundary read as a pile of sticks rather than a wall of logs.
     assert(
-      spread > wallHeight * 0.3,
-      `the tops only vary by ${spread.toFixed(2)} — that is a level fence`,
+      spread > wallHeight * 0.12,
+      `the tops only vary by ${spread.toFixed(2)} — that is a level picket fence`,
     );
-    // And some must clear the wall, or the boundary reads as lower than it
-    // physically is and dice appear to stop against nothing.
     assert(
-      Math.max(...heights) > wallHeight,
-      'no log stands above the wall the dice actually bounce off',
+      spread < wallHeight * 0.35,
+      `the tops vary by ${spread.toFixed(2)} — that is a heap, not a stockade`,
     );
+  });
+
+  test('no log stands shorter than the wall the dice bounce off', () => {
+    // A post below the invisible collision wall makes a die look like it
+    // stopped against thin air.
+    const { wallHeight } = TUNING.tray;
+    for (const log of palisadeLogs()) {
+      assert(
+        log.height >= wallHeight,
+        `a log only ${log.height.toFixed(2)} tall against a ${wallHeight} wall`,
+      );
+    }
+  });
+
+  test('there is no daylight between the logs', () => {
+    // A palisade with gaps is a picket fence. Neighbours have to overlap,
+    // which means the spacing must be under the sum of the two radii.
+    const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+    const logs = palisadeLogs();
+    // Which run a log belongs to, by whichever coordinate is pinned to the
+    // boundary. Deliberately not "whichever is bigger" — that misfiles
+    // every log near a corner and was quietly comparing posts on
+    // different walls to each other.
+    const zRun = innerDepth / 2 + wallThickness / 2;
+    const xRun = innerWidth / 2 + wallThickness / 2;
+    const runs = new Map<string, typeof logs>();
+    for (const log of logs) {
+      const [x, , z] = log.position;
+      const key =
+        Math.abs(Math.abs(z) - zRun) < 1e-6
+          ? `alongX${z > 0 ? '+' : '-'}`
+          : `alongZ${x > 0 ? '+' : '-'}`;
+      if (!runs.has(key)) runs.set(key, []);
+      runs.get(key)!.push(log);
+    }
+    assertEqual(runs.size, 4, 'the palisade is not four runs of logs');
+
+    let worst = -Infinity;
+    for (const [key, run] of runs) {
+      const alongX = key.startsWith('alongX');
+      run.sort((a, b) => (alongX ? a.position[0] - b.position[0] : a.position[2] - b.position[2]));
+      for (let i = 1; i < run.length; i++) {
+        const a = run[i - 1];
+        const b = run[i];
+        const apart = Math.hypot(
+          a.position[0] - b.position[0],
+          a.position[2] - b.position[2],
+        );
+        worst = Math.max(worst, apart - a.radius - b.radius);
+      }
+    }
+    note(`palisade: worst neighbour gap ${worst.toFixed(3)} (negative means overlapping)`);
+    assert(worst < 0, `${worst.toFixed(2)} of daylight between two logs — that is a fence`);
+  });
+
+  test('the rank leans together rather than every post its own way', () => {
+    // Independent random leans made neighbouring posts fall against each
+    // other, which is most of what made this look like a heap.
+    const logs = palisadeLogs();
+    const leans = logs.map((l) => Math.max(Math.abs(l.rotation[0]), Math.abs(l.rotation[2])));
+    const worstDeg = (Math.max(...leans) * 180) / Math.PI;
+    note(`palisade: steepest lean ${worstDeg.toFixed(1)} degrees`);
+    assert(worstDeg < 4, `a log leaning ${worstDeg.toFixed(1)} degrees looks fallen, not driven`);
+  });
+
+  test('the logs are timber, not the temple stone', () => {
+    // They were drawn in the two mossy-stone greens the ruins are built
+    // from, so the whole boundary was grey-green posts. That is most of
+    // why it did not read as a wall of logs at all.
+    const source = readFileSync(join('src', 'arena', 'JungleArena.tsx'), 'utf8');
+    const at = source.indexOf('{/* The palisade itself */}');
+    assert(at > 0, 'the palisade is gone');
+    const block = source.slice(at, at + 900);
+    for (const stone of ['MOSS_STONE', 'wallMaterial', 'slabMaterial']) {
+      assert(
+        !block.includes(stone),
+        `the palisade is still being painted with ${stone} — that is the temple's stone`,
+      );
+    }
+    assert(block.includes('logMaterials'), 'the palisade is not using timber shades');
   });
 
   test('no two neighbouring logs are the same', () => {

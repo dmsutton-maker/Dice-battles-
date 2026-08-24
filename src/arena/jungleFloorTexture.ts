@@ -47,13 +47,27 @@ function wrappedNoise(x: number, y: number, period: number): number {
   return top + (bottom - top) * sy;
 }
 
-const EARTH = { r: 74, g: 58, b: 38 };
-const MOSS = { r: 78, g: 108, b: 56 };
+/**
+ * GREEN is the ground and earth is what shows through it, not the other
+ * way round.
+ *
+ * The first version had this backwards: brown earth everywhere with moss
+ * in patches and leaf litter scattered thickly over the lot. David's word
+ * for it was garbage dump, and he was right — a clearing in a rainforest
+ * is overwhelmingly green, and a floor that is mostly dirt and debris
+ * reads as mud with rubbish on it, especially at the size a phone draws it.
+ */
+const GROUND = { r: 74, g: 112, b: 52 };
+/** A deeper green in the damp hollows. */
+const GROUND_DEEP = { r: 56, g: 92, b: 42 };
+/** Bare earth, and only in small patches where the growth has worn away. */
+const EARTH = { r: 92, g: 74, b: 48 };
+/** Leaves, kept close to the green so they settle into it. */
 const LEAF_COLORS = [
-  { r: 138, g: 106, b: 46 },
-  { r: 116, g: 82, b: 38 },
-  { r: 158, g: 132, b: 58 },
-  { r: 96, g: 116, b: 52 },
+  { r: 96, g: 124, b: 52 },
+  { r: 118, g: 132, b: 58 },
+  { r: 84, g: 106, b: 46 },
+  { r: 126, g: 112, b: 52 },
 ];
 
 /**
@@ -68,29 +82,29 @@ export function jungleFloorPixels(): number[] {
 
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      // Damp earth, mottled at two scales so it is never a flat brown.
-      const damp = wrappedNoise(x, y, 32) * 0.7 + wrappedNoise(x, y, 8) * 0.3;
-      let r = EARTH.r * (0.72 + damp * 0.5);
-      let g = EARTH.g * (0.72 + damp * 0.5);
-      let b = EARTH.b * (0.72 + damp * 0.5);
-
-      // Moss, in patches with soft edges rather than a wash over the lot.
-      // Moss grows where it is damp, so it follows the same noise.
-      //
-      // THREE octaves, not one. A single octave is interpolated across an
-      // 8x8 grid of cells, and the bilinear blend between them leaves
-      // diamond and square corners on every patch — the moss came out
-      // looking like camouflage. The finer octaves break those edges up.
-      const mossNoise =
+      // Green ground, shaded between the light growth and the damp
+      // hollows. THREE octaves, not one: a single octave is interpolated
+      // across an 8x8 grid of cells and the bilinear blend between them
+      // leaves diamond and square corners on every patch, which came out
+      // looking like camouflage.
+      const shade =
         wrappedNoise(x, y, 32) * 0.55 +
         wrappedNoise(x, y, 16) * 0.3 +
         wrappedNoise(x, y, 8) * 0.15;
-      const mossAmount = Math.max(0, Math.min(1, (mossNoise - 0.44) * 3.4));
-      if (mossAmount > 0) {
-        const speckle = 0.86 + hash2(x * 3.1, y * 3.1) * 0.28;
-        r += (MOSS.r * speckle - r) * mossAmount;
-        g += (MOSS.g * speckle - g) * mossAmount;
-        b += (MOSS.b * speckle - b) * mossAmount;
+      let r = GROUND.r + (GROUND_DEEP.r - GROUND.r) * shade;
+      let g = GROUND.g + (GROUND_DEEP.g - GROUND.g) * shade;
+      let b = GROUND.b + (GROUND_DEEP.b - GROUND.b) * shade;
+
+      // Bare earth, only where the growth has genuinely worn thin. The
+      // threshold is high on purpose so this is the exception across the
+      // clearing rather than the rule.
+      const wear = wrappedNoise(x + 57, y + 23, 32);
+      const bare = Math.max(0, Math.min(1, (wear - 0.72) * 3.2));
+      if (bare > 0) {
+        const speckle = 0.9 + hash2(x * 3.1, y * 3.1) * 0.2;
+        r += (EARTH.r * speckle - r) * bare;
+        g += (EARTH.g * speckle - g) * bare;
+        b += (EARTH.b * speckle - b) * bare;
       }
 
       // Fallen leaves. Cell-based so they scatter without overlapping into
@@ -104,9 +118,11 @@ export function jungleFloorPixels(): number[] {
           const cx = ((cx0 + ox) % cells + cells) % cells;
           const cy = ((cy0 + oy) % cells + cells) % cells;
           const h = hash2(cx, cy);
-          // Only about half the cells carry a leaf, so the litter is
-          // scattered rather than laid out on a grid.
-          if (h < 0.45) continue;
+          // Roughly one cell in five, not one in two. The litter is meant
+          // to be a hint of leaves fallen on grass, not a covering of
+          // debris — thick litter is most of what made this read as a
+          // rubbish heap.
+          if (h < 0.78) continue;
           const h2 = hash2(cx + 41, cy + 17);
           const h3 = hash2(cx + 7, cy + 91);
           const lx = (cx0 + ox) * CELL + 3 + h2 * (CELL - 6);
@@ -121,15 +137,20 @@ export function jungleFloorPixels(): number[] {
           if ((u * u) / (len * len) + (v * v) / (wide * wide) > 1) continue;
           const leaf = LEAF_COLORS[Math.floor(h3 * LEAF_COLORS.length) % LEAF_COLORS.length];
           // The midrib: a slightly darker line down the leaf.
-          const rib = Math.abs(v) < 0.5 ? 0.82 : 1;
-          r = leaf.r * rib;
-          g = leaf.g * rib;
-          b = leaf.b * rib;
+          const rib = Math.abs(v) < 0.5 ? 0.86 : 1;
+          // Blended, not stamped. A leaf painted at full strength sat on
+          // the ground like a sticker; at three quarters it lies IN the
+          // grass, which is where a fallen leaf actually is.
+          const MIX = 0.75;
+          r += (leaf.r * rib - r) * MIX;
+          g += (leaf.g * rib - g) * MIX;
+          b += (leaf.b * rib - b) * MIX;
         }
       }
 
-      // Fine soil grain over everything.
-      const grain = 0.94 + hash2(x * 7.7, y * 5.3) * 0.12;
+      // Fine blade-and-grain texture over everything, so the green is
+      // growth rather than a painted surface.
+      const grain = 0.93 + hash2(x * 7.7, y * 5.3) * 0.14;
       out.push(
         Math.round(Math.min(255, r * grain)),
         Math.round(Math.min(255, g * grain)),

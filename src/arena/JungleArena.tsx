@@ -22,6 +22,21 @@ import { palisadeLogs } from './palisade';
 
 const MOSS_STONE = '#6f8257';
 const MOSS_STONE_DARK = '#59694a';
+
+/**
+ * The palisade is TIMBER.
+ *
+ * It was being drawn in the two mossy-stone greens above — the colours the
+ * temple ruins are made of — so eighty-eight posts of varying height stood
+ * around the arena in grey-green, reading as a heap of sticks rather than
+ * as a wall of logs. Wood, with the mossy green kept for the weathered
+ * tops where damp actually collects.
+ */
+const LOG_PALE = '#8a6338';
+const LOG_DARK = '#5d3f22';
+const LOG_MOSSY = '#6a6f43';
+/** How many timber shades the logs are drawn from. */
+const LOG_SHADES = 5;
 const JUNGLE_FLOOR = '#4d7a3a';
 const TRUNK = '#6b4a2c';
 
@@ -379,6 +394,28 @@ export function JungleArena() {
     () => new THREE.MeshStandardMaterial({ color: MOSS_STONE_DARK, roughness: 0.95 }),
     [],
   );
+  /**
+   * A short ramp of timber shades, picked per log from its own tone. One
+   * material per shade rather than one per log: eighty-eight materials
+   * would be eighty-eight draw setups for a fence.
+   */
+  const logMaterials = useMemo(
+    () =>
+      Array.from({ length: LOG_SHADES }, (_, i) => {
+        const t = i / (LOG_SHADES - 1);
+        return new THREE.MeshStandardMaterial({
+          color: new THREE.Color(LOG_DARK).lerp(new THREE.Color(LOG_PALE), t),
+          roughness: 0.95,
+        });
+      }),
+    [],
+  );
+  /** Weathered green on the cut tops, where the damp sits. */
+  const logCapMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: LOG_MOSSY, roughness: 1 }),
+    [],
+  );
+
   const vineMaterial = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#2f7a38', roughness: 0.9 }),
     [],
@@ -487,12 +524,16 @@ export function JungleArena() {
       {/* The palisade itself */}
       {logs.map((log, i) => (
         <group key={`log-${i}`} position={log.position} rotation={log.rotation}>
-          <mesh material={i % 3 === 0 ? slabMaterial : wallMaterial}>
-            <cylinderGeometry args={[log.radius * 0.86, log.radius, log.height, 7]} />
+          <mesh material={logMaterials[Math.round(log.tone * (LOG_SHADES - 1))]}>
+            <cylinderGeometry args={[log.radius * 0.92, log.radius, log.height, 8]} />
           </mesh>
-          {/* Cut at an angle, so the tops are points rather than a line. */}
-          <mesh material={slabMaterial} position={[0, log.height / 2 + 0.06, 0]}>
-            <coneGeometry args={[log.radius * 0.92, 0.18, 7]} />
+          {/*
+            Sharpened tops. Shallower than they were: at 0.18 on posts that
+            already varied by half the wall height, the whole top edge was
+            spikes on sticks.
+          */}
+          <mesh material={logCapMaterial} position={[0, log.height / 2 + 0.05, 0]}>
+            <coneGeometry args={[log.radius * 0.95, 0.14, 8]} />
           </mesh>
         </group>
       ))}
