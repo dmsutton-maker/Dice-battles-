@@ -30,6 +30,25 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-41-0-dice-must-land',
+    date: '25 August 2026',
+    version: 'v1.41.0',
+    title: 'The dice have to actually land now',
+    emoji: '🎲',
+    body:
+      'You could tap as fast as your thumb would go and the game would ' +
+      'read the dice while they were still in the air — so a whole board ' +
+      'could be cleared in about a minute. It waits for them to come to ' +
+      'rest now, and a colour only counts once the die has settled on it. ' +
+      'Tapping early still works exactly as before: your next throw goes ' +
+      'out the moment the dice land, it just cannot cut short the roll ' +
+      'that is still going.\n\n' +
+      'While we were in there we found a die could stop leaning against ' +
+      'one of the obstacles, showing one colour while the game counted ' +
+      'another. It gets straightened up before you see the result.\n\n' +
+      'The Cups picture is plain ink now to match the rest of the bar.',
+  },
+  {
     id: 'v1-39-0-icons-grain',
     date: '25 August 2026',
     version: 'v1.39.0',
