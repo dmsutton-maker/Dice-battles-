@@ -292,11 +292,22 @@ export function TrophyIcon({
  * at the end of it. Wide where a cup is tall, open where a cup is solid,
  * lines where a cup is a mass — nothing about it can be mistaken for a
  * trophy at any size, which is the entire requirement.
+ *
+ * ALL ONE INK. The champion used to be a gold disc, and David asked on
+ * 25 Aug 2026 for it to be black and white like the rest of the bar. It
+ * was the odd one out: a diagram is not an object, so it has no material
+ * to be the colour OF — the leather of the bag and the wood of the crate
+ * are things, and a bracket is a drawing of a fixture list. It also put
+ * a third gold spot on a screen that already has the coin and the trophy.
+ *
+ * `fill` therefore defaults to `color` rather than to a colour of its
+ * own, so the icon is still one instruction away from being drawn on a
+ * dark ground, and there is no second colour to keep in step.
  */
 export function BracketIcon({
   size = 22,
   color = THEME.ink,
-  fill = THEME.gold,
+  fill = color,
 }: IconProps) {
   const s = Math.max(1.5, w(size) * 0.9);
   const xIn = size * 0.14;
@@ -304,7 +315,10 @@ export function BracketIcon({
   const xOut = size * 0.78;
   const yTop = size * 0.2;
   const yBottom = size * 0.8;
-  const dot = size * 0.24;
+  // 0.21, not the 0.24 the ring used. A ring's weight is its outline; a
+  // solid disc of the same diameter reads a step heavier, and at 21pt
+  // 0.24 turned the champion into a blob on the end of the line.
+  const dot = size * 0.21;
 
   const across = (y: number, from: number, to: number) => (
     <View
@@ -340,7 +354,9 @@ export function BracketIcon({
       />
       {/* The winner's line out to the final. */}
       {across(size * 0.5, xJoin, xOut)}
-      {/* The champion. */}
+      {/* The champion. A solid disc now: the ring existed to hold gold
+          in, and with nothing to hold it would only read as a smudge at
+          21pt. Same outer size, so the balance of the drawing is kept. */}
       <View
         style={{
           position: 'absolute',
@@ -350,8 +366,6 @@ export function BracketIcon({
           height: dot,
           borderRadius: dot / 2,
           backgroundColor: fill,
-          borderWidth: s * 0.85,
-          borderColor: color,
         }}
       />
     </View>

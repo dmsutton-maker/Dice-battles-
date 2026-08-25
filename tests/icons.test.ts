@@ -104,6 +104,29 @@ suite('icons · Cups and trophies are different pictures', () => {
     );
   });
 
+  test('the bracket is drawn in ink only', () => {
+    /*
+      David asked on 25 Aug 2026 for the Cups icon to be black and white
+      like the rest of the bar. Its champion dot was gold, which made it
+      the one diagram on screen pretending to be an object — and a third
+      gold spot beside the coin and the trophy.
+
+      Guarded as "no colour token anywhere in the drawing" rather than
+      "not gold": the failure mode is somebody reaching for ICON.bronze
+      to make the winner feel like a prize, which is the same mistake
+      wearing a different hex.
+    */
+    const bracket = drawingOf('BracketIcon', 'RanksIcon');
+    assert(
+      !/THEME\.gold|ICON\./.test(bracket),
+      'the Cups icon has been given a colour again — a bracket is a diagram, not an object',
+    );
+    assert(
+      /fill = color/.test(bracket),
+      'the bracket fill no longer follows its ink, so it can drift to a colour of its own',
+    );
+  });
+
   test('Cups is not drawn as any kind of award', () => {
     // The medal was the second failed attempt. Naming it here means the
     // next person reaching for "just use a different trophy" is stopped
@@ -117,10 +140,11 @@ suite('icons · Cups and trophies are different pictures', () => {
   });
 
   test('the trophy does not collide with the coin either', () => {
-    // Three gold things share the interface now: the coin, the trophy and
-    // the bracket's champion dot. The coin is a plain disc with a
-    // four-point sparkle struck into it; the trophy has to stay a cup
-    // with handles or it becomes a third gold circle.
+    // Two gold things share the interface: the coin and the trophy. (The
+    // bracket's champion was a third until David asked for it to go back
+    // to ink.) The coin is a plain disc with a four-point sparkle struck
+    // into it; the trophy has to stay a cup with handles or it becomes a
+    // second gold circle.
     const coin = readFileSync('src/demo/GoldCoin.tsx', 'utf8');
     assert(/emboss/.test(coin), 'the coin lost its struck mark');
     const trophy = drawingOf('TrophyIcon', 'BracketIcon');

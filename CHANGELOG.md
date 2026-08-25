@@ -2,6 +2,18 @@
 
 ## v1.41.0 — 2026-08-25 · requested by David (a crash he reported)
 
+### Changed
+- **The Cups icon is black and white now**, at David's request. Its
+  champion was a gold dot, which made it the only diagram on the bar
+  pretending to be an object — the bag is leather and the crate is wood
+  because those are things, and a knockout bracket is a drawing of a
+  fixture list. It was also a third gold spot on a screen that already
+  has the coin and the trophy. The dot came down from 0.24 of the box to
+  0.21 in the same change: a ring's weight is its outline, so a solid
+  disc of the same diameter read a step heavier and turned into a blob
+  on the end of the line at the 21pt the bar actually draws it. Checked
+  by rendering it at that size rather than by reading the numbers.
+
 ### Fixed
 - **The game crashed on launch after the last update, and it was my
   mistake.** v1.40.0 went out over the air to a binary built before the
