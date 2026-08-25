@@ -2,6 +2,27 @@
 
 ## v1.40.0 — 2026-08-25 · requested by David
 
+### Added
+- **A light, a dark and a tinted app icon**, so the iPhone Customize
+  screen has all three instead of iOS inventing the missing ones by
+  machine. All three are the Paper & Ink drawing David picked: two dice
+  showing the same colour, on cream, with the six colours beneath.
+  - There was an oddity worth recording: the OLD icon was already the
+    dark one — a purple gradient left from before the game was redrawn —
+    so it was the light version that had been missing all along, and the
+    app it opened was cream.
+  - Each variant is built differently on purpose, because Expo treats
+    them differently: light is opaque and carries its own paper ground,
+    dark is TRANSPARENT so iOS supplies the backdrop rather than doubling
+    it, and tinted is greyscale on a light ground.
+- **The Android icon matches now too.** It was still the old artwork on
+  a pale blue ground, so the two platforms were shipping visibly
+  different icons.
+- The layers Apple's Icon Composer needs are kept in `assets/icon/layers`
+  with a note on how to build the Liquid Glass version. A flat PNG cannot
+  have Liquid Glass — the depth is rendered from layered artwork in a
+  `.icon` bundle, and those are made in Icon Composer on a Mac.
+
 ### Fixed
 - **Opening the app flashed white before anything else.** The native
   splash screen — the one iOS shows before a single line of the game has
