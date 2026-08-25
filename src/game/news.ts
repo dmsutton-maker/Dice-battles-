@@ -30,6 +30,32 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-39-0-icons-grain',
+    date: '25 August 2026',
+    version: 'v1.39.0',
+    title: 'A bracket for Cups, and real wood and stone',
+    emoji: '🪵',
+    body:
+      'The Cups tab had the same trophy picture as your trophy count, so ' +
+      'there was no telling which one meant what. It is a tournament ' +
+      'bracket now. The Timber dice were redrawn with real grain and a ' +
+      'knot in it instead of even stripes, and the Marble dice have veins ' +
+      'that branch and wander through the stone.',
+  },
+  {
+    id: 'v1-38-0-spam',
+    date: '24 August 2026',
+    version: 'v1.38.0',
+    title: 'No more winning by swiping as fast as you can',
+    emoji: '🎲',
+    body:
+      'You could spam the screen and free all six colours in about three ' +
+      'seconds, because a new swipe ended the previous roll instantly. ' +
+      'The dice now have to actually roll for a moment before the result ' +
+      'counts. You still never wait for them to stop — swipe whenever you ' +
+      'like and it is remembered.',
+  },
+  {
     id: 'v1-36-0-ads',
     date: '24 August 2026',
     version: 'v1.36.0',

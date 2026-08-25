@@ -3,7 +3,7 @@
     "name": "Dice Battles: Color Rush",
     "slug": "dice-battles",
     "backgroundColor": "#1b1430",
-    "version": "1.39.0",
+    "version": "1.40.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -42,6 +42,14 @@
       "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1d1a2e",
+          "image": "./assets/paper-ship-mark.png",
+          "imageWidth": 150
+        }
+      ],
       "expo-audio",
       "expo-asset",
       [

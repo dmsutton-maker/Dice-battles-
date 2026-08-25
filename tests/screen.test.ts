@@ -1068,3 +1068,56 @@ suite('screen · the tabs belong to the home screen', () => {
     }
   });
 });
+
+/**
+ * The launch, end to end.
+ *
+ * Three screens run before the game appears and only one of them is
+ * React. Unconfigured, the native splash was plain WHITE while the title
+ * card that takes over from it is near-black and the game behind that is
+ * cream — so opening the app flashed white, then ink, then paper. The
+ * first of those jumps was nobody's decision; the splash simply had no
+ * configuration at all, and `expo-splash-screen` was not even installed.
+ */
+suite('screen · the launch does not flash', () => {
+  const app = JSON.parse(readFileSync('app.json', 'utf8')).expo;
+  const boot = readFileSync('src/demo/BootSplash.tsx', 'utf8');
+
+  const splashConfig = (): Record<string, unknown> => {
+    const entry = (app.plugins ?? []).find(
+      (p: unknown) => Array.isArray(p) && p[0] === 'expo-splash-screen',
+    );
+    assert(Array.isArray(entry), 'the native splash is unconfigured again');
+    return (entry as [string, Record<string, unknown>])[1];
+  };
+
+  test('the native splash is the same colour as the card that follows it', () => {
+    /*
+      BootSplash paints THEME.ink. Whatever the native splash is, it has
+      to be that too, or the very first thing anyone sees when they open
+      the game is a colour nobody chose.
+    */
+    assert(
+      /backgroundColor: THEME\.ink/.test(boot),
+      'the title card no longer paints THEME.ink — the splash below needs to follow it',
+    );
+    const bg = String(splashConfig().backgroundColor ?? '').toLowerCase();
+    assertEqual(
+      bg,
+      THEME.ink.toLowerCase(),
+      'the native splash and the title card are different colours, so the app flashes on launch',
+    );
+  });
+
+  test('the splash does not still show Expo’s placeholder art', () => {
+    // assets/splash-icon.png is the stock grid-and-circles image that
+    // ships with a new Expo project. It was never replaced, and for a
+    // long time was never referenced either.
+    const image = String(splashConfig().image ?? '');
+    assert(image.length > 0, 'the splash shows no mark at all');
+    assert(
+      !image.includes('splash-icon'),
+      'the splash is back on Expo’s placeholder artwork',
+    );
+  });
+});

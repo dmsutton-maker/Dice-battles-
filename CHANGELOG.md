@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.40.0 — 2026-08-25 · requested by David
+
+### Fixed
+- **Opening the app flashed white before anything else.** The native
+  splash screen — the one iOS shows before a single line of the game has
+  run — had no configuration at all, and `expo-splash-screen` was not
+  even installed. So launching went white, then the near-black title
+  card, then the cream game: two jarring jumps, and nobody chose the
+  first one. The splash is now the same ink as the title card, carrying
+  the Paper Ship mark, so the launch has one deliberate transition
+  instead of two accidental ones.
+- The splash also stops pointing at Expo's stock placeholder artwork —
+  the grid-and-circles image every new project ships with, which was
+  never replaced.
+
+### Under the hood
+- Two tests hold the native splash to the same colour as the title card
+  and off the placeholder art, so the two cannot drift apart again.
+- This is native configuration, so it arrives with the next build rather
+  than over the air.
+
+
 ## v1.39.0 — 2026-08-24 · requested by David
 
 ### Changed
