@@ -40,7 +40,9 @@
       }
     },
     "owner": "dmsutton",
-    "runtimeVersion": "1.1.0",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "updates": {
       "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
     },

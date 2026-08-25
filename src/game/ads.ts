@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loadAdSdk } from './adSdk';
 import { gamesUntilAd, shouldShowAd } from './adRules';
 
 /**
@@ -40,11 +41,22 @@ import { gamesUntilAd, shouldShowAd } from './adRules';
  * is never reached. No `try`/`catch` around a `require` can survive a
  * module whose top-level code throws.
  *
- * What actually keeps old binaries safe is `runtimeVersion` in app.json,
- * which is now an explicit "1.1.0" rather than the sdkVersion policy.
- * Builds without the ad SDK compiled in report the OLD runtime and are
- * never offered this JavaScript at all. That is the gate; the require
- * below is only tidiness on top of it.
+ * TWO THINGS KEEP OLD BINARIES SAFE, and neither of them is a catch.
+ *
+ * 1. `src/game/adSdk.ts` is the single file holding the require, and it
+ *    is currently OFF — so the SDK is not in the over-the-air bundle at
+ *    all. Provable by grepping the built bundle, not by argument.
+ * 2. `runtimeVersion` in app.json. While ads are OFF it is back on the
+ *    sdkVersion policy, because there is nothing native to gate and the
+ *    family needs the rest of the fixes. When ads are turned on it must
+ *    become an explicit version in the SAME change, so builds without the
+ *    SDK compiled in are never offered this JavaScript.
+ *
+ * Those two must agree, and `tests/ads.test.ts` fails if they do not.
+ *
+ * Everything below still runs on a build with no ads: the games-finished
+ * tally is kept, and every entry point returns quietly. That is what
+ * makes turning ads on later a change of one line rather than a feature.
  */
 
 /** Only the parts of the SDK this file uses. Declared so nothing else needs its types. */
@@ -125,8 +137,10 @@ function moduleOrNull(): NativeAds | null {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { Platform } = require('react-native');
     if (Platform.OS !== 'ios' && Platform.OS !== 'android') return native;
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('react-native-google-mobile-ads') as NativeAds;
+    // The require lives in adSdk.ts, alone, so that whether the SDK is in
+    // the bundle at all is a one-line decision in one file — see the note
+    // at the top of this one.
+    const mod = loadAdSdk() as NativeAds | null;
     if (mod && typeof mod.default === 'function') native = mod;
   } catch {
     // No native module in this binary. Nothing to do, ever.

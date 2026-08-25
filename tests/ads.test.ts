@@ -66,6 +66,28 @@ suite('ads · when one is shown', () => {
   });
 });
 
+/** Every source file in src/, with comments stripped so prose never counts. */
+function liveSourceFiles(): [string, string][] {
+  const { execSync } = require('node:child_process') as typeof import('node:child_process');
+  return execSync("find src -name '*.ts' -o -name '*.tsx'", { encoding: 'utf8' })
+    .split('\n')
+    .filter((f) => f.trim().length > 0)
+    .map((file) => [
+      file,
+      readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, ''),
+    ]);
+}
+
+/** Is the ad SDK switch on? The one line that decides everything else. */
+function adsOn(): boolean {
+  const code = readFileSync('src/game/adSdk.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '');
+  return /require\('react-native-google-mobile-ads'\)/.test(code);
+}
+
 suite('ads · the promises made to Apple and Google', () => {
   const source = readFileSync('src/game/ads.ts', 'utf8');
 
@@ -108,7 +130,7 @@ suite('ads · the promises made to Apple and Google', () => {
     );
   });
 
-  test('a build without the ad SDK is never offered this JavaScript', () => {
+  test('the SDK switch and the runtime version always agree', () => {
     /*
       The one that took the game down, on 25 Aug 2026, on David's phone.
 
@@ -131,68 +153,85 @@ suite('ads · the promises made to Apple and Google', () => {
       bundle — that was checked in the built output — and the app crashed
       anyway.
 
-      What DOES keep old binaries safe is `runtimeVersion`. An update is
-      only offered to a binary reporting the same runtime, so pinning an
-      explicit version and raising it whenever native code changes is the
-      whole gate. The sdkVersion POLICY is the trap that caused this: it
-      derives the runtime from the Expo SDK, so adding a native package
-      does not change it and every old build is offered the new JS.
+      So there are two states, and this asserts they are never mixed:
+
+        ADS OFF  — no require anywhere, so the SDK is not in the bundle.
+                   runtimeVersion may be the sdkVersion policy, because
+                   there is nothing native to gate.
+        ADS ON   — the require is back, so the bundle needs the SDK
+                   compiled in. runtimeVersion MUST be an explicit version
+                   string, raised for the new binary, or every old install
+                   is offered JavaScript it cannot run.
+
+      Half of either state is the crash. That is why this is a test and
+      not a line in a checklist.
     */
+    const on = adsOn();
     const app = JSON.parse(readFileSync('app.json', 'utf8'));
     const runtime = app.expo.runtimeVersion;
-    note(`runtimeVersion: ${JSON.stringify(runtime)}`);
-    assert(
-      typeof runtime === 'string',
-      'runtimeVersion is a policy again — a policy cannot know that native code changed, which is what crashed build 6',
-    );
-    assert(
-      /^\d+\.\d+\.\d+$/.test(runtime as string),
-      `runtimeVersion "${runtime}" is not an explicit version number`,
-    );
+    note(`ads ${on ? 'ON' : 'OFF'}, runtimeVersion ${JSON.stringify(runtime)}`);
 
-    // And the ad SDK must be a native dependency of THAT runtime: if the
-    // plugin is not in app.json the package is not compiled in at all.
-    const plugins = JSON.stringify(app.expo.plugins ?? []);
-    assert(
-      plugins.includes('react-native-google-mobile-ads'),
-      'the ad SDK config plugin is gone — the native module would not be in the binary',
-    );
+    if (on) {
+      assert(
+        typeof runtime === 'string' && /^\d+\.\d+\.\d+$/.test(runtime),
+        `the ad SDK is in the bundle but runtimeVersion is ${JSON.stringify(runtime)} — ` +
+          'a policy cannot know that native code changed, which is what crashed build 6',
+      );
+      const plugins = JSON.stringify(app.expo.plugins ?? []);
+      assert(
+        plugins.includes('react-native-google-mobile-ads'),
+        'the ad SDK config plugin is gone — the native module would not be in the binary',
+      );
+    } else {
+      // Nothing to gate, so the policy is correct and is what lets the
+      // family receive everything else over the air.
+      assert(
+        runtime !== undefined,
+        'runtimeVersion is missing entirely — updates would not be gated at all',
+      );
+    }
   });
 
-  test('the SDK is still required lazily, for the reasons that remain', () => {
+  test('while ads are off, the SDK is in no file Metro will follow', () => {
     /*
-      Not the crash guard — see above. Two smaller things: the ad code
-      does no work at startup, and a hand-run of this suite in plain node
-      (no React Native anywhere) can still exercise every entry point.
+      Metro includes a module because something `require`s it with a
+      literal string, whether or not that line ever runs. So "ads are off"
+      has to mean the string is in no LIVE code anywhere in src — not just
+      that the one call site is behind a flag. A guarded require still
+      ships the SDK, and anything that ever reached it would still crash.
+
+      Comments are stripped before looking, because adSdk.ts explains all
+      of this in prose and names the package several times. Grepping the
+      raw text finds its own documentation and fails, which is how the
+      first version of this test failed.
     */
-    assert(
-      !/^import .*react-native-google-mobile-ads/m.test(source),
-      'the ad SDK is imported at module scope — this runs SDK code before the game has drawn',
+    if (adsOn()) return;
+    const named = liveSourceFiles().filter(([, code]) =>
+      code.includes('react-native-google-mobile-ads'),
     );
-    assert(
-      /require\('react-native-google-mobile-ads'\)/.test(source),
-      'the lazy require is gone',
-    );
-    assert(
-      /guardedLoadModule/.test(source),
-      'the note explaining why the try/catch is NOT the crash guard has been dropped — the next person will trust it again',
+    assertEqual(
+      named.map(([file]) => file).join(', '),
+      '',
+      'the ad SDK is named in live code while ads are meant to be off — that ships it to builds without it',
     );
   });
 
   test('nothing else in the game touches the SDK directly', () => {
-    // One door, like gameCenter.ts: the swap to another ad network, or
-    // ripping ads out again, stays a one-file job.
-    const { execSync } = require('node:child_process') as typeof import('node:child_process');
-    const hits = execSync(
-      "grep -rl 'react-native-google-mobile-ads' src/ || true",
-      { encoding: 'utf8' },
-    )
-      .split('\n')
-      .filter((f) => f.trim().length > 0);
+    /*
+      One door, like gameCenter.ts, and now a narrower one: the swap to
+      another ad network, or ripping ads out again, has to stay a one-file
+      job. With ads ON that file is adSdk.ts and nothing else — ads.ts
+      itself no longer names the package.
+    */
+    if (!adsOn()) return; // covered by the test above
+    const named = liveSourceFiles()
+      .filter(([, code]) => code.includes('react-native-google-mobile-ads'))
+      .map(([file]) => file)
+      .sort();
     assertEqual(
-      hits.join(','),
-      'src/game/ads.ts',
-      'something outside src/game/ads.ts imports the ad SDK',
+      named.join(','),
+      'src/game/adSdk.ts',
+      'the ad SDK is named outside src/game/adSdk.ts — the switch is only one line if only one file has it',
     );
   });
 });

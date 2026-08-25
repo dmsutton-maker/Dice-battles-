@@ -59,16 +59,29 @@
     React Native's own module loader catches that failure first, treats
     it as fatal, and never hands it back for the wrapper to ignore. So
     the protection was real in the source and absent on the phone.
-  - The actual fix is a version stamp on the app's native side
-    (`runtimeVersion`, now an explicit "1.1.0" instead of one derived
-    automatically from the Expo SDK). Updates are only offered to phones
-    whose native side matches, so JavaScript that needs ads can no
-    longer land on a build without them. The old builds simply stay on
-    the last update they can run, which is what should have happened.
   - The tests could never have caught it: they run in plain node, where
     a missing module throws an ordinary error that IS catchable. Only
     Metro, on a device, behaves differently. That is now written down in
     AGENTS.md so the next person does not trust the same pattern.
+
+### Ads are switched off for now, so everything else can go out
+- **The advertising code is out of the update, and ads wait for the next
+  App Store build.** Pinning the app's native version was the correct fix
+  for the crash, but it had a cost nobody would have chosen: it meant
+  NOTHING could reach the family's phones until a new build existed, and
+  that build is stuck on a signing problem. Five versions of work —
+  including the dice fix above — would have sat on a shelf.
+  - So the ad code is behind a single switch, `src/game/adSdk.ts`, which
+    is currently off. With it off the advertising library is not in the
+    update at all, which is checked by building the bundle and searching
+    it rather than by reasoning about it: zero occurrences.
+  - Turning ads back on is two lines that must move together — restore
+    the switch, and pin the native version again — and a test now fails
+    if only one of them is done. That pairing is the thing that was
+    missing when the app crashed.
+  - Nothing about the ad rules changed: still one interstitial after
+    every third finished game, still tagged as a child's request, still
+    G-rated only. It is a delivery decision, not a policy one.
 
 ## v1.40.0 — 2026-08-25 · requested by David
 
