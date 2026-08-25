@@ -19,10 +19,13 @@ const scratchNormal = new THREE.Vector3();
  * How squarely a face is pointing up: 1 is dead flat, 0.707 is balanced on
  * an edge, 0.577 on a corner.
  *
- * A settled die is always near 1. This exists for the case where a roll is
- * called before the dice have fully stopped — see `shouldCallRoll`. Reading
- * a colour off a die at 45° would be picking one of two faces at random and
- * calling it a result.
+ * "A settled die is always near 1" is what this comment used to claim, and
+ * it is not true. 720 simulated rolls on 25 Aug 2026 found a die resting
+ * DEAD STILL at 0.58 — about 54 degrees off flat, perched on an obstacle
+ * on Hard. Stopped and flat are two different questions, and reading a
+ * colour off a die at 45° is picking one of two faces at random and
+ * calling it a result. That is what this measures and `TUNING.settle
+ * .flatEnough` is the bar it is measured against.
  */
 export function topFaceAlignment(quaternion: THREE.Quaternion): number {
   let bestDot = -Infinity;
@@ -51,14 +54,19 @@ export function topFaceColor(quaternion: THREE.Quaternion): ColorDef {
  * Turn a die so the face nearest to upward is squarely up, and drop it to
  * rest on the tray floor.
  *
- * This is what lets a roll be called the instant a player swipes again,
- * with the dice still in the air. The old rule made the player WAIT until
- * both dice happened to be slow and flat, because reading a colour off a
- * die at 45 degrees is picking one of two faces at random. Snapping
- * removes the problem instead of waiting it out: the die is put onto the
- * face it was nearest, so the colour counted is the colour shown. Nothing
- * is invented — the same face `topFaceColor` would have reported is the
- * one the die comes to rest on.
+ * NOTHING IS INVENTED. `topFaceColor` reports the nearest-up face, and
+ * this turns that same face square, so the result is identical either way
+ * — what changes is only what the player sees.
+ *
+ * That distinction is the whole reason this is safe, and it was also how
+ * it got misused. It used to run whenever a player tapped again, which
+ * let a roll be called with the dice still IN THE AIR: a die put onto a
+ * face mid-flight looks perfectly landed afterwards, so nothing
+ * downstream could tell. David reported the result of that twice as
+ * "you can just spam and get the dice". A roll now ends only when the
+ * dice have come to rest, and this is left for the case it was always
+ * good for — a die that stops cocked on an obstacle, which really does
+ * happen (see `topFaceAlignment`).
  */
 export function snapDieToNearestFace(body: CANNON.Body): void {
   const quaternion = new THREE.Quaternion(

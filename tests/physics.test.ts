@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createDieBody, snapDieToNearestFace, throwDie, topFaceAlignment, topFaceColor } from '../src/dice/die';
 import {
@@ -49,7 +50,7 @@ interface RollOutcome {
 /** Simulates one throw through the shipping settle rule. */
 function simulateRoll(
   layout: ObstacleLayout,
-  options: { flick?: { x: number; z: number }; hurried?: boolean } = {},
+  options: { flick?: { x: number; z: number } } = {},
 ): RollOutcome {
   const physics = createPhysicsWorld();
   addTrayBodies(physics, layout);
@@ -121,13 +122,24 @@ function simulateRoll(
 
     stillFrames = allStill(bodies) ? stillFrames + 1 : 0;
 
-    if (shouldCallRoll(bodies, elapsed - clockStart, stillFrames, options.hurried)) {
+    if (shouldCallRoll(bodies, elapsed - clockStart, stillFrames)) {
       const movingWhenCalled = bodies.some(
         (b) => b.velocity.length() + b.angularVelocity.length() * 0.5 > 1.2,
       );
-      // Mirrors DiceScene: a hurried call snaps the dice onto the face
-      // they were nearest before anything is read off them.
-      if (options.hurried) bodies.forEach(snapDieToNearestFace);
+      // Mirrors DiceScene: a die that has come to rest cocked — perched
+      // on an obstacle — is turned square, so the colour counted is the
+      // colour showing. A properly landed die is left alone.
+      bodies.forEach((body) => {
+        const q = new THREE.Quaternion(
+          body.quaternion.x,
+          body.quaternion.y,
+          body.quaternion.z,
+          body.quaternion.w,
+        );
+        if (topFaceAlignment(q) < TUNING.settle.flatEnough) {
+          snapDieToNearestFace(body);
+        }
+      });
       freezeDice(bodies);
       return {
         ms: elapsed,
@@ -422,34 +434,161 @@ suite('physics · obstacles', () => {
 });
 
 /**
- * The hurried roll — a tap arriving while the dice are still going. It
- * must be faster (that is the whole point) and it must not change what
- * comes up, because a roll called early that reads a different face from
- * the one the die actually lands on is a rigged roll.
- */
-/**
  * How fast the board can be cleared by a player doing nothing but
  * swiping as fast as their thumb allows.
  *
- * David, 24 Aug 2026: "you're able to just spam as fast as you can and get
- * every color in only a matter of seconds." This is that sentence turned
- * into a number, because "a matter of seconds" is the thing that has to
- * stay untrue — not the internals that happened to cause it this time.
+ * David reported this twice.
+ *
+ *   24 Aug 2026: "you're able to just spam as fast as you can and get
+ *   every color in only a matter of seconds."
+ *   25 Aug 2026: "you're still able to just spam and get the dice. They
+ *   should have to fully land for it to count as getting the color."
+ *
+ * The first fix put a 650ms floor under the hurried path. It was not
+ * enough, and the notes THIS SUITE PRINTED said so in one line: hurried
+ * rolls measured median 650ms and p95 650ms — the same number every roll,
+ * which is the signature of a clock rather than of physics. The floor was
+ * not a floor, it was the duration.
+ *
+ * The lesson, and the reason the tests below are written the way they
+ * are: the old ones asked whether hurrying was FASTER and whether it
+ * cleared a CONSTANT. Both passed while the bug was live. So these
+ * measure the thing David can actually see — how long a real roll takes
+ * and whether the dice are moving when their colour is read — and derive
+ * the cadence from that measurement instead of from a tuning value.
  */
-suite('physics · spamming cannot clear the board in seconds', () => {
-  /** Fastest a scoring roll can possibly come round, thumb speed aside. */
-  const cadenceMs =
-    TUNING.settle.minRollMs + TUNING.settle.hurriedThrowDelayMs;
+suite('physics · a roll is over when the dice are, not when a thumb says so', () => {
+  test('a cocked die is still turned square before it is read', () => {
+    /*
+      Not a formality. Removing the old blanket snap exposed something
+      that had been hidden by it: a die can come to REST cocked, perched
+      on an obstacle. In 720 rolls the worst was 0.58 — roughly 54 degrees
+      — sitting motionless on Hard. "It has stopped" and "it is lying
+      flat" are two different questions, and only the second one decides
+      whether the player can see the colour that was counted.
+    */
+    assert(
+      TUNING.settle.flatEnough >= 0.99,
+      `flatEnough is ${TUNING.settle.flatEnough} — a die can be visibly cocked and still pass`,
+    );
+  });
 
-  test('a scoring roll cannot come round faster than the floor', () => {
+  test('the settle rule cannot be told a roll is finished', () => {
+    /*
+      The exploit was an ARGUMENT: `shouldCallRoll(bodies, elapsed,
+      stillFrames, hurried)`, where hurried meant "the player tapped
+      again" and returned true on the spot. Deleting it, rather than
+      tightening what it did, is what makes the fix hold — a threshold
+      can be tuned back down by anyone who finds the game slow.
+    */
+    assertEqual(
+      shouldCallRoll.length,
+      3,
+      'shouldCallRoll has grown a fourth argument — the only inputs it may have are the dice and the clock',
+    );
+    const source = readFileSync('src/dice/settle.ts', 'utf8');
+    const body = source.slice(source.indexOf('export function shouldCallRoll'));
+    assert(
+      !/hurried/.test(body.slice(0, body.indexOf('\n}'))),
+      'the settle rule reads the player\u2019s input again',
+    );
+  });
+
+  for (const difficulty of DIFFICULTIES) {
+    test(`${difficulty}: the dice have stopped before their colour is read`, () => {
+      /*
+        David's sentence, as an assertion: "they should have to fully land
+        for it to count as getting the color."
+
+        `movingWhenCalled` is measured inside the harness at the instant
+        the roll is called, before anything is frozen or snapped. It was
+        the snapping that hid this before — a die put onto a face in
+        mid-air LOOKS landed in every later check, which is why the old
+        "leaves the dice lying flat" test passed throughout.
+      */
+      const SAMPLES = 240;
+      let moving = 0;
+      let worstFlatness = 1;
+      for (let i = 0; i < SAMPLES; i++) {
+        const roll = simulateRoll(generateObstacleLayout(difficulty));
+        assertEqual(roll.faces.length, 2, 'a roll was lost');
+        if (roll.movingWhenCalled) moving++;
+        for (const q of roll.orientations) {
+          worstFlatness = Math.min(worstFlatness, topFaceAlignment(q));
+        }
+      }
+      note(
+        `${difficulty}: ${moving}/${SAMPLES} rolls read while still moving, ` +
+          `worst flatness ${worstFlatness.toFixed(4)}`,
+      );
+      assert(
+        moving === 0,
+        `${difficulty}: ${moving} of ${SAMPLES} rolls had their colour read off a moving die`,
+      );
+      /*
+        And every die is square enough that the colour counted is plainly
+        the colour on top. This used to be guaranteed by SNAPPING every
+        die, which is a very different claim — a die put onto a face in
+        mid-air is flat too.
+
+        The bar here is 0.99 (about 8 degrees) rather than the 0.999 the
+        snap threshold uses, deliberately. Asserting the threshold back at
+        itself would be circular and would sit one ULP from failing: dice
+        that legitimately land just inside the bar measure 0.9990. 0.99 is
+        an independent statement about what a player can read — an edge is
+        0.707 and a corner 0.577, so this is nowhere near ambiguous.
+      */
+      assert(
+        worstFlatness > 0.99,
+        `${difficulty}: a die was read at ${worstFlatness.toFixed(4)} off flat — ` +
+          'the colour counted is not the one showing',
+      );
+    });
+  }
+});
+
+suite('physics · spamming cannot clear the board in seconds', () => {
+  /**
+   * The fastest a SCORING roll can come round for a player swiping
+   * flat out: however long the dice take to land, plus the short pause
+   * before a queued tap goes back out.
+   *
+   * Measured, not read off a constant. The previous version of this suite
+   * computed the cadence from `minRollMs`, so it was really asking "is the
+   * tuning value big enough" — a question that stays true no matter what
+   * the dice do.
+   */
+  const measured = (() => {
+    const times: number[] = [];
+    for (const difficulty of DIFFICULTIES) {
+      for (let i = 0; i < 120; i++) {
+        times.push(simulateRoll(generateObstacleLayout(difficulty)).ms);
+      }
+    }
+    times.sort((a, b) => a - b);
+    return times[Math.floor(times.length / 2)];
+  })();
+  const cadenceMs = measured + TUNING.settle.hurriedThrowDelayMs;
+
+  test('a scoring roll cannot come round faster than the dice can land', () => {
     // The exploit was not "matches are too likely" — it was that the
     // CYCLE was free. One swipe ended the previous roll and began the
     // next, so rolls-per-second was a property of the player's hand.
+    note(`median roll ${measured.toFixed(0)}ms, fastest scoring roll one per ${cadenceMs.toFixed(0)}ms`);
     assert(
-      cadenceMs >= 600,
-      `a scored roll every ${cadenceMs}ms is fast enough to spam the board clear`,
+      cadenceMs >= 1200,
+      `a scored roll every ${cadenceMs.toFixed(0)}ms is fast enough to spam the board clear`,
     );
-    note(`fastest possible scoring roll: one per ${cadenceMs}ms`);
+    /*
+      And the cadence must be the DICE, not a timer sitting under them. If
+      the median lands exactly on minRollMs again, the floor has become the
+      duration a second time and this whole fix has been undone.
+    */
+    assert(
+      measured > TUNING.settle.minRollMs + 200,
+      `the median roll is ${measured.toFixed(0)}ms against a ${TUNING.settle.minRollMs}ms floor — ` +
+        'rolls are resolving on the clock again, not on the dice',
+    );
   });
 
   test('clearing all six colours takes a real game, not a few seconds', () => {
@@ -468,79 +607,29 @@ suite('physics · spamming cannot clear the board in seconds', () => {
         `(the AI needs ~${((rolls * AI_ROLL_INTERVAL_MS) / 1000).toFixed(0)}s)`,
     );
     assert(
-      seconds >= 45,
+      seconds >= 100,
       `six colours fall in ~${seconds.toFixed(0)}s of spamming — that is the bug David reported`,
     );
   });
 
-  test('but rolling again is still much faster than waiting it out', () => {
-    // The floor must not quietly undo what David asked for twice: no
-    // sitting watching dice that have obviously finished.
+  test('tapping early still gets you back out faster', () => {
+    /*
+      What David asked for twice — no sitting watching dice that have
+      obviously finished — survives all of this, because it was never the
+      roll that needed shortening. A tap during a roll is remembered and
+      fires `hurriedThrowDelayMs` after the dice land instead of the full
+      pause, so the input is heard and the wait afterwards is a third of
+      what a patient player gets.
+    */
     assert(
-      cadenceMs < 1000,
-      `waiting ${cadenceMs}ms to roll again brings back the dead-input feel`,
+      TUNING.settle.hurriedThrowDelayMs < TUNING.settle.queuedThrowDelayMs,
+      'tapping early no longer shortens anything at all',
+    );
+    note(
+      `pause after landing: ${TUNING.settle.hurriedThrowDelayMs}ms if you already tapped, ` +
+        `${TUNING.settle.queuedThrowDelayMs}ms if you had not`,
     );
   });
-});
-
-suite('physics · rolling again without waiting', () => {
-  for (const difficulty of DIFFICULTIES) {
-    test(`${difficulty}: a hurried roll is called sooner`, () => {
-      const SAMPLES = 240;
-      const layouts = Array.from({ length: SAMPLES }, () =>
-        generateObstacleLayout(difficulty),
-      );
-      const normal = layouts
-        .map((l) => simulateRoll(l).ms)
-        .sort((a, b) => a - b);
-      const hurried = layouts
-        .map((l) => simulateRoll(l, { hurried: true }).ms)
-        .sort((a, b) => a - b);
-      const mid = (xs: number[]) => xs[Math.floor(xs.length / 2)];
-      const p95 = (xs: number[]) => xs[Math.floor(xs.length * 0.95)];
-      note(
-        `${difficulty}: hurried median ${mid(hurried).toFixed(0)}ms vs ${mid(normal).toFixed(0)}ms, ` +
-          `p95 ${p95(hurried).toFixed(0)}ms vs ${p95(normal).toFixed(0)}ms`,
-      );
-      assert(
-        mid(hurried) < mid(normal),
-        `hurrying saved nothing: ${mid(hurried).toFixed(0)}ms vs ${mid(normal).toFixed(0)}ms`,
-      );
-      /*
-        The half this test was missing, and the reason David could "spam as
-        fast as you can and get every color in only a matter of seconds".
-        One-sided "faster than a normal roll" was satisfied by 17ms — one
-        frame — which is what it printed here for five releases while a
-        swipe both ended the previous roll and started the next.
-      */
-      assert(
-        mid(hurried) >= TUNING.settle.minRollMs,
-        `a hurried roll resolved in ${mid(hurried).toFixed(0)}ms, under the ` +
-          `${TUNING.settle.minRollMs}ms floor — the dice are being read before they have rolled`,
-      );
-    });
-
-    test(`${difficulty}: a hurried roll leaves the dice lying flat`, () => {
-      // The guard that matters now. A hurried call can arrive with the
-      // dice anywhere — mid-air, on an edge, still spinning — so what
-      // makes it safe is that they are SNAPPED onto a face before anything
-      // is read. A die left at 45 degrees would be showing a colour that
-      // is not the one the game counted.
-      for (let i = 0; i < 120; i++) {
-        const roll = simulateRoll(generateObstacleLayout(difficulty), {
-          hurried: true,
-        });
-        assertEqual(roll.faces.length, 2, 'a hurried roll must still read two faces');
-        for (const q of roll.orientations) {
-          assert(
-            topFaceAlignment(q) > 0.999,
-            `a hurried roll left a die at ${topFaceAlignment(q).toFixed(3)} — not flat`,
-          );
-        }
-      }
-    });
-
-  }
 });
 
 /**
@@ -549,14 +638,12 @@ suite('physics · rolling again without waiting', () => {
  * prisoner back to jail, so a roll you can throw away mid-air is a rule
  * you can opt out of.
  */
-suite('physics · a hurried roll still counts', () => {
-  test('a hurried roll always produces a result', () => {
+suite('physics · every roll counts', () => {
+  test('a roll always produces a result', () => {
     for (const difficulty of DIFFICULTIES) {
       for (let i = 0; i < 60; i++) {
-        const roll = simulateRoll(generateObstacleLayout(difficulty), {
-          hurried: true,
-        });
-        assertEqual(roll.faces.length, 2, `${difficulty}: a hurried roll was lost`);
+        const roll = simulateRoll(generateObstacleLayout(difficulty));
+        assertEqual(roll.faces.length, 2, `${difficulty}: a roll was lost`);
       }
     }
   });

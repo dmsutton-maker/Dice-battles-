@@ -29,62 +29,81 @@ export function allStill(bodies: CANNON.Body[]): boolean {
 /*
  * `isReadable` used to live here: it answered "has this die landed flat
  * enough that the top face is genuinely the face it landed on?", and the
- * hurried roll waited until it was true of both dice. That wait was most
- * of the delay David asked twice to be rid of, and `snapDieToNearestFace`
- * makes the question moot — the die is PUT onto a definite face instead of
- * being watched until it reaches one. Deleted rather than left behind, so
- * nothing reaches for a safety check that no longer guards anything.
+ * hurried roll waited until it was true of both dice.
+ *
+ * It is not needed now for the opposite reason to the one written here
+ * before. The old note said `snapDieToNearestFace` made the question moot
+ * because the die is PUT onto a face rather than watched until it reaches
+ * one — which was true, and was exactly the problem: a die can be put onto
+ * a face in mid-air. A roll now ends only when the dice are actually at
+ * rest, and a die at rest is already flat, so there is nothing left to
+ * ask. Snapping survives only on the stuck-die backstops.
  */
 
 /**
  * Should the roll be called now? `stillFrames` is the caller's running
  * count of consecutive frames where `allStill` held.
  *
- * `hurried` means the player has already swiped for the next throw, so
- * this roll is called as soon as it is allowed to be, rather than waiting
- * for a dead stop. David asked for that twice.
+ * THE DICE HAVE TO LAND. That is the whole rule, and it is deliberately
+ * the ONLY thing this function will accept as a finished roll — asleep,
+ * or still for `stillFrames` frames in a row. Nothing a player does with
+ * their thumb appears anywhere below.
  *
- * BUT NOT INSTANTLY. `minRollMs` is a floor under every path here, and it
- * is the whole reason this function was rewritten on 24 Aug 2026. Without
- * it, `hurried` returned true on the very next frame — the suite has been
- * printing "hurried median 17ms" all along — so one swipe both ended the
- * previous roll and launched the next. That made the rate of SCORING
- * rolls a function of thumb speed instead of physics, and David could
- * "spam as fast as you can and get every color in only a matter of
- * seconds". A roll that resolves in one frame is not a roll.
+ * It did once, and it was wrong twice over. There used to be a `hurried`
+ * argument meaning "the player has already swiped for the next throw, so
+ * stop waiting", and it returned true on the spot. The first version of
+ * this bug resolved a roll in a single frame; the fix on 24 Aug 2026 put
+ * a 650ms floor under it, and David reported the same thing again:
  *
- * The floor costs nothing in responsiveness, because a swipe inside the
- * window is not dropped: DiceScene queues it and fires it the instant the
- * roll lands. The player's input is always heard; the dice are simply
- * still in the air, which is an honest thing to be waiting for.
+ *   "You're still able to just spam and get the dice. They should have to
+ *    fully land for it to count as getting the color."
  *
- * A roll still does NOT cancel. Every roll is binding, which is what stops
- * a bad result being thrown away mid-air — in Ultimate a matched colour
- * sends a rescued prisoner back to jail, so a roll you can dodge is a rule
- * you can opt out of. The dice are snapped onto the face they were nearest
- * (see `snapDieToNearestFace`) so the colour counted is the colour shown.
+ * He was right both times, and the second time the suite proved it in one
+ * line — hurried rolls came out at median 650ms AND p95 650ms, exactly
+ * the floor, every roll, because `hurried` fired on the first frame past
+ * it. The floor was not a floor at all; it was the duration of a spammed
+ * roll. Dice that take ~1500ms to come to rest were being read at 650ms
+ * and SNAPPED onto whichever face they happened to be nearest, mid-air.
+ * The colour you got was decided by a clock, not by the throw.
+ *
+ * So the argument is gone rather than tightened. A number can be tuned
+ * back down by anybody who finds the game slow; an argument that does not
+ * exist cannot be re-wired into an early exit.
+ *
+ * NONE OF THIS COSTS RESPONSIVENESS, because the thing David asked for
+ * twice was never "call the roll early" — it was "don't leave me waiting
+ * with nothing happening". A swipe during a roll is not dropped: DiceScene
+ * queues it and fires it `hurriedThrowDelayMs` after the dice land, which
+ * is a third of the normal pause. The input is always heard. What changed
+ * is that it no longer reaches back and ends the roll that is still in the
+ * air.
+ *
+ * `minRollMs` stays as a genuine floor now — cover for a feather-light
+ * throw that could satisfy `stillFrames` almost immediately.
+ *
+ * A roll does NOT cancel. Every roll is binding, which is what stops a bad
+ * result being thrown away mid-air — in Ultimate a matched colour sends a
+ * rescued prisoner back to jail, so a roll you can dodge is a rule you can
+ * opt out of.
  */
 export function shouldCallRoll(
   bodies: CANNON.Body[],
   elapsedMs: number,
   stillFrames: number,
-  hurried = false,
 ): boolean {
   const s = TUNING.settle;
 
-  // Before anything else: nothing counts as a roll until the dice have
-  // actually rolled. This gates the sleeping and still-frames paths too,
-  // not just `hurried` — otherwise a feather-light tap that happens to
-  // settle in 200ms becomes the new way to spam.
+  // Nothing counts as a roll until the dice have actually rolled.
   if (elapsedMs < s.minRollMs) return false;
 
+  // The two honest endings: the physics engine put the dice to sleep, or
+  // they have measured as still for several frames running.
   if (bodies.every((body) => body.sleepState === CANNON.Body.SLEEPING)) return true;
   if (stillFrames >= s.stillFrames) return true;
 
-  if (hurried) return true;
-
-  // Past the cap a roll is called where it lies, but only once the dice
-  // are down and slow, so it is never snapped still mid-tumble.
+  // Backstops, for a die wedged against a wall or grinding forever on a
+  // corner. These are the only paths that can call a roll while something
+  // is still moving, which is why DiceScene snaps the faces afterwards.
   const grounded = bodies.every(
     (body) => body.position.y <= TUNING.dieSize * 1.1,
   );

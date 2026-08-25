@@ -123,39 +123,56 @@ export const TUNING = {
      * The floor under every roll: dice must actually ROLL for this long
      * before a result may be read off them.
      *
-     * David, 24 Aug 2026: "you're able to just spam as fast as you can and
-     * get every color in only a matter of seconds." He was right, and this
-     * is the number that was missing. The hurried path (below) called a
-     * roll the instant the player swiped again — the test suite has been
-     * printing "hurried median 17ms" the whole time, one single frame — so
-     * a swipe both ENDED the previous roll and started the next. The rate
-     * of scoring rolls was bounded by how fast a thumb moves, not by
-     * physics, and six colours fell in a few seconds.
+     * This was the 24 Aug 2026 answer to David's "you're able to just spam
+     * as fast as you can and get every color in only a matter of seconds",
+     * and on 25 Aug he reported the same bug again: "they should have to
+     * fully land for it to count as getting the color."
      *
-     * 650ms is deliberately well under the ~1450ms a roll takes to come to
-     * rest on its own, because the thing David asked for twice — not
-     * waiting around for dice that have obviously finished — still has to
-     * be true. A swipe during this window is not dropped; it is queued and
-     * fires the moment the roll lands, so the input is always heard. The
-     * dice are visibly still rolling, which is the honest reason to wait.
+     * He was right, and the suite had the proof in it the whole time —
+     * hurried rolls measured median 650ms AND p95 650ms, exactly this
+     * number, on every single roll. That is not what a floor looks like.
+     * It was the DURATION of a spammed roll: the hurried path fired on the
+     * first frame past the floor, so dice needing ~1500ms to come to rest
+     * were read at 650 and snapped onto a face in mid-air. Trading one
+     * frame for 650ms made the exploit slower, not gone.
+     *
+     * So the hurried early-exit is deleted (see `shouldCallRoll`) and a
+     * roll now ends when the dice are at REST. This number goes back to
+     * being what it claims to be: cover for a feather-light throw that
+     * could satisfy `stillFrames` almost immediately. In ordinary play
+     * nothing reaches it — the dice are still tumbling at 650ms.
      */
     minRollMs: 650,
     /** Delay before a tap queued mid-roll fires, so the result registers. */
     queuedThrowDelayMs: 130,
     /**
-     * The hurried roll: the player has tapped again while the dice are
-     * still going, so the roll is called as soon as there is a real face
-     * to read rather than when the dice have fully stopped.
+     * The pause after the dice land before a tap that arrived mid-roll
+     * goes out, for a player who has already tapped: they have been
+     * watching and are waiting on it, so they get a short one rather than
+     * `queuedThrowDelayMs`.
      *
-     * A roll is still binding — it is counted, never cancelled — this only
-     * decides how long the counting waits. Both bars have to be cleared:
-     * moving slowly enough to have stopped tumbling, and lying flat enough
-     * that the face on top is not one of two the die could fall onto.
-     * 0.94 is about 20 degrees off flat.
+     * This is now the ONLY thing tapping early changes. It used to also
+     * end the roll in flight, which is the bug above.
+     *
+     * `hurriedSpeed` and `hurriedFlatness` used to sit here, described as
+     * bars a hurried roll had to clear — "moving slowly enough" and "lying
+     * flat enough". Nothing read them. They were left behind when
+     * `isReadable` was deleted, and they made the file describe a safety
+     * check the game had not performed for weeks, which is worse than
+     * having no comment at all. Removed with the path they belonged to.
      */
     hurriedThrowDelayMs: 34,
-    hurriedSpeed: 1.1,
-    hurriedFlatness: 0.94,
+    /**
+     * Flat enough that the top face is unambiguous. 1 is square, 0.707 is
+     * balanced on an edge, 0.577 on a corner.
+     *
+     * A die that has stopped is NOT automatically flat, which is easy to
+     * assume and wrong: 720 simulated rolls on 25 Aug 2026 turned up a die
+     * resting motionless at 0.58 — perched on an obstacle at about 54
+     * degrees. Anything below this bar gets turned square before the
+     * result is shown, so the player sees the colour the game counted.
+     */
+    flatEnough: 0.999,
   },
 
   haptics: {

@@ -2,6 +2,38 @@
 
 ## v1.41.0 — 2026-08-25 · requested by David (a crash he reported)
 
+### Fixed — spamming, properly this time
+- **The dice now have to actually land before their colour counts.**
+  David reported this twice: "you're able to just spam as fast as you can
+  and get every color in only a matter of seconds", and then, after the
+  first fix, "you're still able to just spam and get the dice. They
+  should have to fully land for it to count as getting the color."
+  - The first fix put a 650ms floor under a spammed roll. It was not
+    enough, and this project's own test suite had said so in one line the
+    whole time: spammed rolls measured **median 650ms and p95 650ms** —
+    the same number on every single roll, which is what a clock looks
+    like, not what dice look like. The floor was not a floor, it was the
+    duration. Dice that need about 1500ms to come to rest were being read
+    at 650ms and turned onto a face in mid-air.
+  - So the shortcut is gone rather than tightened. A roll ends when the
+    dice are asleep or have measured still for several frames, and there
+    is no longer any way for tapping to end one — the settle rule is not
+    told whether the player tapped at all. A number can be tuned back
+    down by anyone who finds the game slow; a missing argument cannot.
+  - Spamming Classic now takes about **134 seconds** rather than 60, and
+    it is the dice setting that pace instead of a thumb.
+  - **Tapping early still gets you out faster.** That was never the roll's
+    job: a tap during a roll is remembered and the next throw goes out
+    34ms after the dice land instead of 130ms.
+- **A die that stopped leaning on an obstacle could show one colour and
+  count another.** Found while checking the above, and it had been hidden
+  by the bug: the old code turned every die square, including ones in
+  mid-air, so nothing downstream could tell the difference. With that
+  removed, 720 test rolls turned up a die sitting **dead still at 54
+  degrees** off flat on Hard. It is turned square now before the result
+  is shown — which never changes which colour is counted, only whether
+  you can see it.
+
 ### Changed
 - **The Cups icon is black and white now**, at David's request. Its
   champion was a gold dot, which made it the only diagram on the bar

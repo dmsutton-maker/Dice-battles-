@@ -8,7 +8,7 @@ import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { obstacleLook } from '../arena/obstacleLooks';
 import { TreasureChest } from '../arena/TreasureChest';
-import { createDieBody, snapDieToNearestFace, throwDie } from '../dice/die';
+import { createDieBody, snapDieToNearestFace, throwDie, topFaceAlignment } from '../dice/die';
 import {
   dieSpeed,
   freezeDice,
@@ -209,10 +209,12 @@ export function DiceScene({
         // tumbling, or players could cancel bad rolls mid-air (which
         // guts Ultimate's prisoner-exchange rule entirely).
         //
-        // But binding never meant slow. The tap is remembered AND it tells
-        // the settle rule to stop waiting for a dead stop: the moment both
-        // dice are down and lying flat, this roll is called and the next
-        // one goes out. The result still counts — it just counts sooner.
+        // The tap is REMEMBERED, not obeyed. It no longer tells the settle
+        // rule anything — that reach-back is what let a player spam the
+        // board clear, because ending the roll early is the same thing as
+        // deciding its colour with a clock. All `hurried` does now is make
+        // the pause AFTER the dice land a short one, since somebody who
+        // has already tapped has seen the result and is waiting on it.
         if (awaitingSettle.current) {
           queuedThrow.current = { flick };
           hurried.current = true;
@@ -344,14 +346,33 @@ export function DiceScene({
       const elapsed = Date.now() - throwStartedAt.current;
       stillFrames.current = stillNow ? stillFrames.current + 1 : 0;
 
-      if (shouldCallRoll(diceBodies, elapsed, stillFrames.current, hurried.current)) {
+      if (shouldCallRoll(diceBodies, elapsed, stillFrames.current)) {
         awaitingSettle.current = false;
-        // A hurried call happens the instant the player swipes again, so
-        // the dice can be anywhere — mid-air, on an edge, still spinning.
-        // Snapping them onto the face they were nearest is what makes that
-        // safe: the colour counted is then the colour showing, rather than
-        // one of two the die might have toppled onto.
-        if (hurried.current) diceBodies.forEach(snapDieToNearestFace);
+        // Right a die that has come to rest COCKED — perched on an
+        // obstacle or leaning on a wall. Measured on 25 Aug 2026: the
+        // worst case in 720 simulated rolls was 0.58, a die sitting dead
+        // still at about 54 degrees off flat, so "it has stopped" and "it
+        // is lying flat" are genuinely two different questions on Hard.
+        //
+        // This never changes the RESULT: `topFaceColor` already reports
+        // the nearest-up face, which is the same face `snapDieToNearestFace`
+        // turns squarely upward. It changes what the player SEES, so the
+        // colour counted is the colour on top of the die in front of them.
+        //
+        // Keyed off the dice, not off the player. It used to run whenever
+        // somebody had tapped again, which is how a die still in the air
+        // got put onto a face and counted as a roll.
+        diceBodies.forEach((body) => {
+          const q = new THREE.Quaternion(
+            body.quaternion.x,
+            body.quaternion.y,
+            body.quaternion.z,
+            body.quaternion.w,
+          );
+          if (topFaceAlignment(q) < TUNING.settle.flatEnough) {
+            snapDieToNearestFace(body);
+          }
+        });
         freezeDice(diceBodies);
         onSettled(readFaces(diceBodies));
 
