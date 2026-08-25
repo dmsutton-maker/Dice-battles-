@@ -556,6 +556,121 @@ suite('screen · nothing shows through the title card', () => {
   });
 });
 
+suite('screen · solid on the home screen, glass after a game', () => {
+  const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+
+  /** The declared background of one style in DiceDemoScreen. */
+  function background(styleName: string): string {
+    const at = source.indexOf(`  ${styleName}: {`);
+    assert(at > 0, `${styleName} is gone from DiceDemoScreen`);
+    const block = source.slice(at, source.indexOf('\n  },', at));
+    const bg = /backgroundColor:\s*(?:'([^']+)'|THEME\.(\w+))/.exec(block);
+    assert(bg !== null, `${styleName} sets no background`);
+    return bg![1] ?? (THEME as Record<string, string>)[bg![2]];
+  }
+
+  test('the home screen is solid paper', () => {
+    // David, 24 Aug 2026. The board ghosting through made the home screen
+    // read as an unfinished transparency rather than a page.
+    const bg = background('overlay');
+    assert(
+      !bg.startsWith('rgba'),
+      `the home screen is see-through (${bg}) — the board shows through it`,
+    );
+  });
+
+  test('the screen after a game is not', () => {
+    /*
+      David, 25 Aug 2026: "make the screen after each game transparent, it
+      should only be solid on the Home Screen." The home screen is a page
+      you are ON; the result screen is a note laid over the battle you just
+      finished, and hiding the final board behind solid paper threw away
+      the thing the player wants to look at.
+    */
+    const bg = background('roundOver');
+    assert(
+      bg.startsWith('rgba'),
+      `the result screen is solid again (${bg}) — the final board is hidden behind it`,
+    );
+    for (const phase of ['won', 'tie']) {
+      const at = source.indexOf(`{phase === '${phase}' && (`);
+      assert(at > 0, `the ${phase} screen is gone`);
+      assert(
+        source.slice(at, at + 120).includes('styles.roundOver'),
+        `the ${phase} screen is back on the solid home-screen style`,
+      );
+    }
+  });
+
+  test('every word on that glass is still readable, on every arena', () => {
+    /*
+      The reason the wash is 0.62 and not lower. The SPACE arena's sky is
+      #0a0e2a — nearly black — so text there has far less to work with than
+      on the blue, dusk or jungle boards, and it is the only one that ever
+      binds.
+
+      Two compositing steps, both of which matter: the paper wash over the
+      arena, and then the text over THAT. THEME.inkSoft is ink at 70%, so
+      it composites twice and lands at 3.6:1 on space — which is why the
+      result screen paints its body text in full ink instead.
+    */
+    const srgb = (c: number) => {
+      const v = c / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    const lum = ([r, g, b]: number[]) =>
+      0.2126 * srgb(r) + 0.7152 * srgb(g) + 0.0722 * srgb(b);
+    const parse = (c: string): number[] => {
+      const rgba = /rgba?\(([^)]+)\)/.exec(c);
+      if (rgba) return rgba[1].split(',').slice(0, 3).map((n) => Number(n.trim()));
+      const h = c.replace('#', '');
+      return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    };
+    const alphaOf = (c: string) => {
+      const rgba = /rgba\(([^)]+)\)/.exec(c);
+      const parts = rgba ? rgba[1].split(',') : [];
+      return parts.length === 4 ? Number(parts[3]) : 1;
+    };
+    const over = (fg: number[], bg: number[], a: number) =>
+      fg.map((v, i) => v * a + bg[i] * (1 - a));
+    const contrast = (a: number[], b: number[]) => {
+      const [hi, lo] = [lum(a) + 0.05, lum(b) + 0.05].sort((x, y) => y - x);
+      return hi / lo;
+    };
+
+    const glass = background('roundOver');
+    const wash = parse(glass);
+    const alpha = alphaOf(glass);
+    assert(alpha < 1, 'the result screen stopped being glass');
+
+    let worst = Infinity;
+    let worstWhere = '';
+    for (const [id, arena] of Object.entries(ARENAS)) {
+      const paper = over(wash, parse(arena.skyColor), alpha);
+      // Full ink, which is what `onGlass` paints every line in.
+      const ratio = contrast(over(parse(THEME.ink), paper, 1), paper);
+      note(`${id}: ink on the result glass ${ratio.toFixed(2)}:1`);
+      if (ratio < worst) {
+        worst = ratio;
+        worstWhere = id;
+      }
+    }
+    assert(
+      worst >= 4.5,
+      `on ${worstWhere} the result screen reads at ${worst.toFixed(2)}:1 — the wash is too thin`,
+    );
+
+    // And the reason the body text is not inkSoft. If somebody puts it
+    // back, this is the number they will be undoing.
+    const space = ARENAS.space;
+    if (space) {
+      const paper = over(wash, parse(space.skyColor), alpha);
+      const soft = contrast(over(parse(THEME.inkSoft), paper, 0.7), paper);
+      note(`space: inkSoft would read ${soft.toFixed(2)}:1 — below 4.5, hence onGlass`);
+    }
+  });
+});
+
 suite('screen · the board belongs to the battle screen', () => {
   test('every menu page is fully opaque', () => {
     // They sat at 96%, so the arena showed faintly through all of them.

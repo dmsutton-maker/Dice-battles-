@@ -1445,17 +1445,17 @@ export function DiceDemoScreen() {
         </View>
       )}
       {phase === 'won' && (
-        <View style={styles.overlay}>
+        <View style={styles.roundOver}>
           <Text style={styles.overlayTitle}>Victory!</Text>
           <Text style={styles.trophyLine}>
             {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} trophies → {trophies}
           </Text>
           {upNext && (
-            <Text style={styles.trophyNext} numberOfLines={1}>
+            <Text style={[styles.trophyNext, styles.onGlass]} numberOfLines={1}>
               Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
             </Text>
           )}
-          <Text style={styles.overlayBody}>
+          <Text style={[styles.overlayBody, styles.onGlass]}>
             {MODES[mode].name} victory!{'\n'}
             You {playerScore} — {opponent.name} {aiScore}.
           </Text>
@@ -1464,9 +1464,9 @@ export function DiceDemoScreen() {
         </View>
       )}
       {phase === 'tie' && (
-        <View style={styles.overlay}>
+        <View style={styles.roundOver}>
           <Text style={styles.overlayTitle}>It's a tie!</Text>
-          <Text style={styles.overlayBody}>
+          <Text style={[styles.overlayBody, styles.onGlass]}>
             {playerScore}–{aiScore} — nobody loses trophies.{'\n'}Settle it in a
             rematch!
           </Text>
@@ -1751,10 +1751,10 @@ export function DiceDemoScreen() {
         onClose={() => setShowBugReport(false)}
       />
       {phase === 'lost' && (
-        <View style={styles.overlay}>
+        <View style={styles.roundOver}>
           <Text style={styles.overlayTitle}>Defeat!</Text>
           <Text style={styles.trophyLine}>{lastDelta} trophies → {trophies}</Text>
-          <Text style={styles.overlayBody}>
+          <Text style={[styles.overlayBody, styles.onGlass]}>
             {opponent.name} wins this {MODES[mode].name} battle {aiScore}–{playerScore}.{'\n'}
             Avenge your prisoners!
           </Text>
@@ -2034,11 +2034,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     // SOLID paper, David's call (24 Aug 2026): the board ghosting through
-    // the wash made the home screen read as transparent. The home and
-    // round-over screens are full paper pages now; the board belongs to
-    // the battle and the previews.
+    // the wash made the home screen read as transparent. This is the HOME
+    // screen only now — see `roundOver` below, which he asked on 25 Aug to
+    // go back to glass.
     backgroundColor: THEME.ground,
     paddingHorizontal: 28,
+  },
+  /**
+   * The screen after a game: paper you can see the board through.
+   *
+   * David, 25 Aug 2026: "make the screen after each game transparent, it
+   * should only be solid on the Home Screen." Which is the right split —
+   * the home screen is a page you are ON, and the result screen is a note
+   * laid over the battle you just played. Hiding the final board behind
+   * solid paper threw away the thing the player wants to look at.
+   *
+   * 0.62 is solved, not picked. The worst case is the SPACE arena, whose
+   * sky is #0a0e2a — nearly black — so text on this wash has far less to
+   * work with there than on the blue or jungle boards:
+   *
+   *     alpha   classic   dusk   jungle   space
+   *      0.50     12.28  10.29    13.00    4.47   <- fails
+   *      0.62     13.05  11.48    13.66    6.36
+   *      0.76     14.01  12.92    14.40    9.23
+   *
+   * 0.55 is the true floor for 4.5:1 on space; 0.62 keeps headroom while
+   * still letting well over a third of the board through. Anything that
+   * makes this MORE transparent has to re-solve that column.
+   */
+  roundOver: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(253,246,236,0.62)',
+    paddingHorizontal: 28,
+  },
+  /**
+   * Text sitting on `roundOver` rather than on solid paper.
+   *
+   * THEME.inkSoft is ink at 70%, so on a translucent wash it composites
+   * twice and the space arena drags it to 3.6:1 — under the bar for body
+   * text, and the smallest line here is 13.5pt. Full ink costs nothing on
+   * a result screen, which has no dense hierarchy to hold apart.
+   */
+  onGlass: {
+    color: THEME.ink,
   },
   pickScroll: {
     flexGrow: 1,

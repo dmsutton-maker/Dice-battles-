@@ -16,6 +16,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  *
  * Newest first. Dates are plain strings so they read the same on every
  * device regardless of locale settings.
+ *
+ * NO NAMES. David asked on 25 Aug 2026, and it applies to everyone in the
+ * family, not only the post it came from. The News tab is read by every
+ * stranger who installs the game, so "AJ spotted that..." publishes a
+ * child's name to the App Store. Credit a reporter as "somebody" or
+ * "a player" and thank them without naming them; the person who found it
+ * knows which one they are. `tests/news.test.ts` fails on a first name.
  */
 
 export interface NewsItem {
@@ -122,11 +129,11 @@ export const NEWS: NewsItem[] = [
     title: 'Ultimate soldiers stop sharing a spot',
     emoji: '🐛',
     body:
-      'AJ spotted that in Ultimate two rescued soldiers could end up ' +
-      'standing on exactly the same spot. It happened after a prisoner ' +
+      'Somebody spotted that in Ultimate two rescued soldiers could end ' +
+      'up standing on exactly the same spot. It happened after a prisoner ' +
       'was sent back to jail: the next rescue counted heads instead of ' +
       'looking for an empty space. Rescued soldiers now fill the first ' +
-      'free spot in the line. Thanks AJ!',
+      'free spot in the line. Thank you for reporting it!',
   },
   {
     id: 'v1-29-0-hazards',

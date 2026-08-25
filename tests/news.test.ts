@@ -49,6 +49,35 @@ suite('news · the bundled posts', () => {
     note(`${NEWS.length} bundled posts`);
   });
 
+  test('no post names anybody in the family', () => {
+    /*
+      David asked on 25 Aug 2026, about a post that read "AJ spotted
+      that..." and thanked him by name at the end.
+
+      The News tab is not a family changelog — it ships inside the app to
+      every stranger who installs it, so a credit like that publishes a
+      child's first name on the App Store. Reporters get thanked as
+      "somebody" or "a player" instead; the person who found the bug knows
+      which one they are.
+
+      Word boundaries matter here: "AJ" must not match "major" and "Marc"
+      must not match "March", or this fails on innocent prose and the next
+      person deletes the test rather than the name.
+    */
+    const NAMES = ['AJ', 'Marc', 'David', 'Sutton'];
+    for (const item of NEWS) {
+      const text = `${item.title} ${item.body}`;
+      for (const name of NAMES) {
+        const found = new RegExp(`\\b${name}\\b`).test(text);
+        assert(
+          !found,
+          `${item.id} names ${name} — the News tab ships to everyone who installs the game`,
+        );
+      }
+    }
+    note(`${NEWS.length} posts checked for ${NAMES.join(', ')}`);
+  });
+
   test('the news keeps up with what has shipped', () => {
     // The failure that prompted all of this: the newest post was v1.11.0
     // while the game was on v1.29.0, so the News tab was telling players

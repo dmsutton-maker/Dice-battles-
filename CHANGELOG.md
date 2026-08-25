@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.42.0 — 2026-08-25 · requested by David
+
+### Changed
+- **The screen after a game is see-through now.** David: "make the screen
+  after each game transparent, it should only be solid on the Home
+  Screen." That is the right split — the home screen is a page you are
+  ON, and the result screen is a note laid over the battle you just
+  played, so hiding the final board behind solid paper threw away the
+  thing you actually want to look at. The home screen stays solid, which
+  is what it was changed to on 24 August and for the same reason.
+  - The wash is 62% paper, solved rather than picked. The Space arena is
+    the one that decides it: its sky is nearly black, so text there has
+    far less to work with than on the blue, dusk or jungle boards. Below
+    about 55% the small "next unlock" line stops being readable there.
+  - The result screen's body text is full ink rather than the softer grey
+    used elsewhere. That grey is ink at 70%, so on a see-through panel it
+    fades twice over and lands at 3.7:1 on Space — under the readable
+    bar. Full ink measures 6.4:1 on the same board.
+- **No more names in the News tab.** It read "AJ spotted that..." and
+  thanked him by name. The News tab ships inside the app to everyone who
+  installs it, so that was publishing a child's name on the App Store.
+  Bug reporters are thanked without being named, and a test now fails on
+  any family name in a post.
+
 ## v1.41.0 — 2026-08-25 · requested by David (a crash he reported)
 
 ### Fixed — spamming, properly this time
