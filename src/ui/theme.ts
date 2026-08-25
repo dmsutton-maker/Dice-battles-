@@ -62,6 +62,49 @@ export const THEME = {
 } as const;
 
 /**
+ * What the ICONS are made of.
+ *
+ * David asked on 24 Aug 2026 to colour anything that could be coloured.
+ * These are OBJECT colours — the leather of a bag, the wood of a crate,
+ * the metal of a medal — not another set of UI accents, which is what
+ * keeps a coloured icon from competing with the one accent button on a
+ * screen. Every icon still carries its ink outline over the fill, so the
+ * silhouette reads at 11pt and on any background, and the direction stays
+ * ink-on-paper rather than flat colour.
+ *
+ * The six PRISONER colours are deliberately not repeated here. The die
+ * icon imports them from src/game/colors.ts directly, because its pips
+ * showing the game's real signal is the point — a second copy would drift.
+ */
+export const ICON = {
+  /** The Store bag. */
+  leather: '#c2410c',
+  /** The Items crate. */
+  wood: '#a86b32',
+  /** A trophy cup, and the medal's disc — a shade deeper than THEME.gold
+   *  so a gold medal still separates from the gold selected-tab pill. */
+  medal: '#e0a415',
+  /** The medal's ribbon. */
+  ribbon: '#c2410c',
+  /** The three Ranks bars, shortest to tallest. */
+  bronze: '#a86b32',
+  silver: '#8f9aa8',
+  /** The Settings gear. */
+  steel: '#6f7f95',
+  /**
+   * How to play. Blue is what a question mark wears everywhere.
+   *
+   * Solved rather than picked: #2563a8 was the first choice and left the
+   * ink outline at 2.77:1 against it, so the drawn edge dissolved into
+   * the disc. This one clears 3:1 against ink AND 4.5:1 against the white
+   * mark reversed out of it, on paper.
+   */
+  info: '#3478c8',
+  /** A mark reversed OUT of a filled icon — the ? on the blue disc. */
+  onFill: '#ffffff',
+} as const;
+
+/**
  * The shapes. Every card in the game is built from these three numbers, so
  * the interface cannot drift into having four kinds of corner.
  */

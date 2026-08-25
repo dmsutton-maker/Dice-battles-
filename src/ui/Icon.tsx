@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
-import { THEME } from './theme';
+import { PRISONER_COLORS } from '../game/colors';
+import { ICON, THEME } from './theme';
 
 /**
  * The icon set, drawn rather than typed.
@@ -22,14 +23,21 @@ import { THEME } from './theme';
 
 interface IconProps {
   size?: number;
+  /** The ink outline. Every icon keeps one, whatever it is filled with. */
   color?: string;
+  /**
+   * The fill under the outline. Each icon defaults to its own object
+   * colour (see ICON in theme.ts); pass 'transparent' for a line-only
+   * version — which is what the launch card does, drawing on ink.
+   */
+  fill?: string;
 }
 
 /** The stroke weight every icon shares, scaled to its box. */
 const w = (size: number) => Math.max(1.5, Math.round(size * 0.095));
 
 /** A bag with a handle — the Store. */
-export function BagIcon({ size = 22, color = THEME.ink }: IconProps) {
+export function BagIcon({ size = 22, color = THEME.ink, fill = ICON.leather }: IconProps) {
   const s = w(size);
   const bodyTop = size * 0.34;
   return (
@@ -58,7 +66,7 @@ export function BagIcon({ size = 22, color = THEME.ink }: IconProps) {
           borderRadius: size * 0.13,
           borderWidth: s,
           borderColor: color,
-          backgroundColor: 'transparent',
+          backgroundColor: fill,
         }}
       />
       {/* Masks the handle where it passes behind the bag's top edge. */}
@@ -77,7 +85,7 @@ export function BagIcon({ size = 22, color = THEME.ink }: IconProps) {
 }
 
 /** A crate — the Inventory. */
-export function CrateIcon({ size = 22, color = THEME.ink }: IconProps) {
+export function CrateIcon({ size = 22, color = THEME.ink, fill = ICON.wood }: IconProps) {
   const s = w(size);
   return (
     <View style={{ width: size, height: size }}>
@@ -91,6 +99,7 @@ export function CrateIcon({ size = 22, color = THEME.ink }: IconProps) {
           borderRadius: size * 0.11,
           borderWidth: s,
           borderColor: color,
+          backgroundColor: fill,
         }}
       />
       {/* The lid seam, which is what stops it reading as a plain square. */}
@@ -120,12 +129,25 @@ export function CrateIcon({ size = 22, color = THEME.ink }: IconProps) {
   );
 }
 
-/** A die — Battle. The game's own object, so it needs no metaphor. */
-export function DieIcon({ size = 22, color = THEME.ink }: IconProps) {
+/**
+ * A die — Battle. The game's own object, so it needs no metaphor.
+ *
+ * The three pips wear the game's REAL prisoner colours, read straight
+ * from src/game/colors.ts rather than copied into the palette. A game
+ * whose whole idea is "match the colours" should say so on the tab that
+ * starts a battle, and reading the true source means the icon cannot
+ * drift away from what the dice actually show.
+ */
+export function DieIcon({
+  size = 22,
+  color = THEME.ink,
+  fill = THEME.surface,
+}: IconProps) {
   const s = w(size);
-  const pip = size * 0.13;
-  const at = (left: number, top: number) => (
+  const pip = size * 0.15;
+  const at = (left: number, top: number, hex: string) => (
     <View
+      key={hex}
       style={{
         position: 'absolute',
         left: size * left,
@@ -133,10 +155,14 @@ export function DieIcon({ size = 22, color = THEME.ink }: IconProps) {
         width: pip,
         height: pip,
         borderRadius: pip / 2,
-        backgroundColor: color,
+        backgroundColor: hex,
       }}
     />
   );
+  // Red, green and blue: the three furthest apart in the palette, so they
+  // stay tellable from each other down at 11pt.
+  const hex = (id: string) =>
+    PRISONER_COLORS.find((c) => c.id === id)?.hex ?? color;
   return (
     <View style={{ width: size, height: size }}>
       <View
@@ -149,28 +175,35 @@ export function DieIcon({ size = 22, color = THEME.ink }: IconProps) {
           borderRadius: size * 0.22,
           borderWidth: s,
           borderColor: color,
+          backgroundColor: fill,
         }}
       />
-      {at(0.26, 0.26)}
-      {at(0.435, 0.435)}
-      {at(0.61, 0.61)}
+      {at(0.25, 0.25, hex('red'))}
+      {at(0.425, 0.425, hex('green'))}
+      {at(0.6, 0.6, hex('blue'))}
     </View>
   );
 }
 
 /**
- * A trophy — the Cups tab, and the trophy count everywhere.
+ * A trophy cup — the TROPHY COUNT, everywhere it appears: the HUD, the
+ * Inventory header, the ladder prices, the Ranks screen.
  *
- * The cup is GOLD by default (David, 24 Aug 2026): as the game's own
- * currency it should look like the prize it is, the way the coin is
- * gold. The ink outline keeps it a drawing rather than a yellow blob;
- * pass fill='transparent' for a pure line icon.
+ * NOT the Cups tab any more. Both were this same drawing until David
+ * pointed out (24 Aug 2026) that the currency and the tournaments tab
+ * should not be the same picture — a player seeing a trophy could not
+ * tell whether it meant "your trophies" or "go to Cups". Cups has
+ * MedalIcon now.
+ *
+ * The cup is GOLD by default: the game's own prize should look like one,
+ * the way the coin does. The ink outline keeps it a drawing rather than a
+ * yellow blob; pass fill='transparent' for a pure line icon.
  */
 export function TrophyIcon({
   size = 22,
   color = THEME.ink,
   fill = THEME.gold,
-}: IconProps & { fill?: string }) {
+}: IconProps) {
   const s = w(size);
   return (
     <View style={{ width: size, height: size }}>
@@ -246,33 +279,121 @@ export function TrophyIcon({
   );
 }
 
-/** Three rising bars — Ranks. */
-export function RanksIcon({ size = 22, color = THEME.ink }: IconProps) {
+/**
+ * A medal on a ribbon — the CUPS tab.
+ *
+ * Cups used to share the trophy drawing with the trophy count, which
+ * meant one picture answered two different questions. A medal is the
+ * furthest thing from a cup that still says "you won something": a round
+ * disc hanging from a V of ribbon, where a trophy is a wide bowl on a
+ * narrow stem. At 21pt in the tab bar the two silhouettes cannot be
+ * confused, which is the whole point of the change.
+ *
+ * The disc is a shade deeper than THEME.gold on purpose — the selected
+ * tab sits on a gold pill, and a THEME.gold disc would vanish into it.
+ */
+export function MedalIcon({
+  size = 22,
+  color = THEME.ink,
+  fill = ICON.medal,
+}: IconProps) {
   const s = w(size);
-  const bar = (left: number, top: number) => (
+  const disc = size * 0.52;
+  // The two ribbon tails, angled out from the top like a V.
+  const tail = (side: -1 | 1) => (
     <View
+      key={side}
       style={{
         position: 'absolute',
-        left: size * left,
-        top: size * top,
-        bottom: size * 0.14,
-        width: s * 1.3,
-        borderRadius: s,
-        backgroundColor: color,
+        left: size * 0.5 - s * 1.1 + side * size * 0.13,
+        top: size * 0.02,
+        width: s * 2.2,
+        height: size * 0.42,
+        backgroundColor: ICON.ribbon,
+        borderWidth: s * 0.7,
+        borderColor: color,
+        transform: [{ rotate: `${side * 16}deg` }],
       }}
     />
   );
   return (
     <View style={{ width: size, height: size }}>
-      {bar(0.16, 0.52)}
-      {bar(0.44, 0.18)}
-      {bar(0.72, 0.38)}
+      {tail(-1)}
+      {tail(1)}
+      {/* The disc, drawn over the ribbon ends so they tuck behind it. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: (size - disc) / 2,
+          bottom: size * 0.04,
+          width: disc,
+          height: disc,
+          borderRadius: disc / 2,
+          backgroundColor: fill,
+          borderWidth: s,
+          borderColor: color,
+        }}
+      />
+      {/*
+        A ring struck into the face — NOT the coin's four-point sparkle.
+        Fixing one collision by making a second one would be no fix: the
+        coin is a plain disc with a sparkle, the medal is a disc on a
+        ribbon with a ring, and the trophy is a bowl on a stem.
+      */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: size * 0.5 - disc * 0.29,
+          bottom: size * 0.04 + disc / 2 - disc * 0.29,
+          width: disc * 0.58,
+          height: disc * 0.58,
+          borderRadius: disc * 0.29,
+          borderWidth: s * 0.8,
+          borderColor: color,
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Three bars — Ranks.
+ *
+ * Coloured by HEIGHT rather than by position: the tallest bar is gold,
+ * the middle one silver, the shortest bronze. That is what a ranking IS,
+ * so the icon now says the same thing its screen does instead of being
+ * three anonymous strokes.
+ */
+export function RanksIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const bar = (left: number, top: number, tint: string) => (
+    <View
+      key={left}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * top,
+        bottom: size * 0.14,
+        width: s * 1.6,
+        borderRadius: s * 0.6,
+        backgroundColor: tint,
+        borderWidth: s * 0.55,
+        borderColor: color,
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {bar(0.14, 0.52, ICON.bronze)}
+      {bar(0.42, 0.18, THEME.gold)}
+      {bar(0.7, 0.38, ICON.silver)}
     </View>
   );
 }
 
 /** A gear — Settings. */
-export function GearIcon({ size = 22, color = THEME.ink }: IconProps) {
+export function GearIcon({ size = 22, color = THEME.ink, fill = ICON.steel }: IconProps) {
   const s = w(size);
   const teeth = [0, 45, 90, 135];
   return (
@@ -297,7 +418,9 @@ export function GearIcon({ size = 22, color = THEME.ink }: IconProps) {
           width: size * 0.56,
           height: size * 0.56,
           borderRadius: size * 0.28,
-          backgroundColor: color,
+          backgroundColor: fill,
+          borderWidth: s * 0.7,
+          borderColor: color,
         }}
       />
       {/* The hole. Ground-coloured, because a View cannot punch a hole. */}
@@ -315,8 +438,10 @@ export function GearIcon({ size = 22, color = THEME.ink }: IconProps) {
 }
 
 /** A question mark — How to play. */
-export function HelpIcon({ size = 22, color = THEME.ink }: IconProps) {
+export function HelpIcon({ size = 22, color = THEME.ink, fill = ICON.info }: IconProps) {
   const s = w(size);
+  // A filled disc carries a reversed mark; an unfilled one keeps ink.
+  const mark = fill === 'transparent' ? color : ICON.onFill;
   return (
     <View style={{ width: size, height: size }}>
       <View
@@ -329,9 +454,14 @@ export function HelpIcon({ size = 22, color = THEME.ink }: IconProps) {
           borderRadius: size * 0.46,
           borderWidth: s,
           borderColor: color,
+          backgroundColor: fill,
         }}
       />
-      {/* The hook of the question mark: a ring with its bottom-left open. */}
+      {/*
+        The question mark, REVERSED OUT of the disc rather than drawn in
+        ink. Ink on this blue measured 2.77:1 — the mark that matters most
+        would have been the hardest thing to see on it.
+      */}
       <View
         style={{
           position: 'absolute',
@@ -340,7 +470,7 @@ export function HelpIcon({ size = 22, color = THEME.ink }: IconProps) {
           width: size * 0.36,
           height: size * 0.3,
           borderWidth: s,
-          borderColor: color,
+          borderColor: mark,
           borderRadius: size * 0.18,
           borderBottomColor: 'transparent',
           borderLeftColor: 'transparent',
@@ -353,7 +483,7 @@ export function HelpIcon({ size = 22, color = THEME.ink }: IconProps) {
           top: size * 0.48,
           width: s * 1.3,
           height: size * 0.14,
-          backgroundColor: color,
+          backgroundColor: mark,
         }}
       />
       <View
@@ -364,7 +494,7 @@ export function HelpIcon({ size = 22, color = THEME.ink }: IconProps) {
           width: s * 1.6,
           height: s * 1.6,
           borderRadius: s,
-          backgroundColor: color,
+          backgroundColor: mark,
         }}
       />
     </View>
@@ -372,7 +502,7 @@ export function HelpIcon({ size = 22, color = THEME.ink }: IconProps) {
 }
 
 /** A newspaper — News: a page with a front-page block and text lines. */
-export function NewsIcon({ size = 22, color = THEME.ink }: IconProps) {
+export function NewsIcon({ size = 22, color = THEME.ink, fill = THEME.surface }: IconProps) {
   const s = w(size);
   const line = (top: number, left: number, rightInset: number) => (
     <View
@@ -400,9 +530,10 @@ export function NewsIcon({ size = 22, color = THEME.ink }: IconProps) {
           borderRadius: size * 0.11,
           borderWidth: s,
           borderColor: color,
+          backgroundColor: fill,
         }}
       />
-      {/* The front-page photo: a solid block, with its story beside it. */}
+      {/* The front-page photo: the one splash of colour on the page. */}
       <View
         style={{
           position: 'absolute',
@@ -411,7 +542,7 @@ export function NewsIcon({ size = 22, color = THEME.ink }: IconProps) {
           width: size * 0.22,
           height: size * 0.2,
           borderRadius: s * 0.8,
-          backgroundColor: color,
+          backgroundColor: ICON.leather,
         }}
       />
       {line(0.29, 0.56, 0.26)}

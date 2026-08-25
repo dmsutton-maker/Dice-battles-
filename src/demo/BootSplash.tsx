@@ -49,9 +49,14 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
 
   return (
     <View style={styles.screen}>
-      {/* Drawn, not 🎲 — the same die the tab bar draws, at title size. */}
+      {/*
+        Drawn, not 🎲 — the same die the tab bar draws, at title size.
+        Filled paper-white on the ink card, so it reads as a solid die
+        carrying the game's own six colours rather than an outline that
+        would half-vanish against the dark.
+      */}
       <View style={styles.dice}>
-        <DieIcon size={72} color={THEME.onInk} />
+        <DieIcon size={72} color={THEME.onInk} fill={THEME.onInk} />
       </View>
       <Text style={styles.title}>DICE BATTLES</Text>
       <Text style={styles.subtitle}>COLOR RUSH</Text>

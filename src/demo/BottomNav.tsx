@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
 import { BOTTOM_INSET } from '../game/safeArea';
-import { BagIcon, CrateIcon, DieIcon, RanksIcon, TrophyIcon } from '../ui/Icon';
+import { BagIcon, CrateIcon, DieIcon, MedalIcon, RanksIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 
 /**
@@ -40,7 +40,7 @@ const TABS: { id: Tab; label: string; Icon: IconFn }[] = [
   { id: 'store', label: 'Store', Icon: BagIcon },
   { id: 'inventory', label: 'Items', Icon: CrateIcon },
   { id: 'play', label: 'Battle', Icon: DieIcon },
-  { id: 'cups', label: 'Cups', Icon: TrophyIcon },
+  { id: 'cups', label: 'Cups', Icon: MedalIcon },
   { id: 'leaderboard', label: 'Ranks', Icon: RanksIcon },
 ];
 
@@ -66,7 +66,7 @@ export function BottomNav({
             }}
           >
             <View style={[styles.pill, on && styles.pillOn]}>
-              <tab.Icon size={21} color={on ? THEME.onGold : THEME.inkFaint} />
+              <tab.Icon size={21} />
             </View>
             <Text
               style={[styles.label, on && styles.labelOn]}

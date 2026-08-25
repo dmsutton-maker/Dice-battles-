@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.37.0 — 2026-08-24 · requested by David
+
+### Changed
+- **The Cups tab is a medal now, not a trophy.** It was the same drawing
+  as the trophy count, so one picture was answering two questions — a
+  trophy on screen could mean "your trophies" or "go to Cups", and there
+  was no way to tell which. A medal on a ribbon is the furthest thing
+  from a cup that still means you won something, and the two silhouettes
+  cannot be confused at tab size. Its face is a ring rather than the
+  coin's sparkle, so it does not collide with the coin either.
+- **The icons are coloured.** A leather Store bag, a wooden crate, a
+  steel gear, a blue How-to-play, a white newspaper with a colour
+  headline, and Ranks bars in bronze, silver and gold by height — which
+  is what a ranking actually is. Every one keeps its ink outline, so
+  they stay drawings rather than becoming flat blobs.
+- **The Battle die shows the game's own colours.** Its three pips are
+  real prisoner colours read from the palette itself, not copies, so the
+  tab that starts a battle says what the game is about and cannot drift
+  from what the dice show.
+- The tab bar no longer tints its icons grey when unselected — the gold
+  pill and the label weight already say which tab you are on, and the
+  icons stay themselves.
+
+### Under the hood
+- Colours live in one new `ICON` block in the theme rather than being
+  scattered through the drawings.
+- The first blue chosen for How-to-play left the ink outline at 2.77:1
+  against it and the mark unreadable; it was solved for rather than
+  nudged, and eight new tests hold every fill to 3:1 for its outline and
+  4.5:1 for anything reversed out of it.
+
+
 ## v1.36.0 — 2026-08-24 · requested by David
 
 ### Added
