@@ -6,7 +6,7 @@ import {
   readFaces,
   shouldCallRoll,
 } from '../src/dice/settle';
-import { AiDifficultyId } from '../src/game/ai';
+import { AI_ROLL_INTERVAL_MS, AiDifficultyId } from '../src/game/ai';
 import { PRISONER_COLORS } from '../src/game/colors';
 import {
   EMPTY_LAYOUT,
@@ -427,6 +427,62 @@ suite('physics · obstacles', () => {
  * comes up, because a roll called early that reads a different face from
  * the one the die actually lands on is a rigged roll.
  */
+/**
+ * How fast the board can be cleared by a player doing nothing but
+ * swiping as fast as their thumb allows.
+ *
+ * David, 24 Aug 2026: "you're able to just spam as fast as you can and get
+ * every color in only a matter of seconds." This is that sentence turned
+ * into a number, because "a matter of seconds" is the thing that has to
+ * stay untrue — not the internals that happened to cause it this time.
+ */
+suite('physics · spamming cannot clear the board in seconds', () => {
+  /** Fastest a scoring roll can possibly come round, thumb speed aside. */
+  const cadenceMs =
+    TUNING.settle.minRollMs + TUNING.settle.hurriedThrowDelayMs;
+
+  test('a scoring roll cannot come round faster than the floor', () => {
+    // The exploit was not "matches are too likely" — it was that the
+    // CYCLE was free. One swipe ended the previous roll and began the
+    // next, so rolls-per-second was a property of the player's hand.
+    assert(
+      cadenceMs >= 600,
+      `a scored roll every ${cadenceMs}ms is fast enough to spam the board clear`,
+    );
+    note(`fastest possible scoring roll: one per ${cadenceMs}ms`);
+  });
+
+  test('clearing all six colours takes a real game, not a few seconds', () => {
+    /*
+      Coupon collector. A roll matches with probability 1/6, and a match
+      frees a uniformly chosen colour, so freeing all six needs 6·H(6)
+      matches ≈ 14.7, and 6 rolls per match ≈ 88 rolls. At the cadence
+      above that is the shortest a spammed Classic game can realistically
+      run. Held well clear of "a matter of seconds".
+    */
+    const H6 = [1, 2, 3, 4, 5, 6].reduce((sum, k) => sum + 1 / k, 0);
+    const rolls = 6 * H6 * 6;
+    const seconds = (rolls * cadenceMs) / 1000;
+    note(
+      `spamming Classic: ~${rolls.toFixed(0)} rolls, ~${seconds.toFixed(0)}s ` +
+        `(the AI needs ~${((rolls * AI_ROLL_INTERVAL_MS) / 1000).toFixed(0)}s)`,
+    );
+    assert(
+      seconds >= 45,
+      `six colours fall in ~${seconds.toFixed(0)}s of spamming — that is the bug David reported`,
+    );
+  });
+
+  test('but rolling again is still much faster than waiting it out', () => {
+    // The floor must not quietly undo what David asked for twice: no
+    // sitting watching dice that have obviously finished.
+    assert(
+      cadenceMs < 1000,
+      `waiting ${cadenceMs}ms to roll again brings back the dead-input feel`,
+    );
+  });
+});
+
 suite('physics · rolling again without waiting', () => {
   for (const difficulty of DIFFICULTIES) {
     test(`${difficulty}: a hurried roll is called sooner`, () => {
@@ -449,6 +505,18 @@ suite('physics · rolling again without waiting', () => {
       assert(
         mid(hurried) < mid(normal),
         `hurrying saved nothing: ${mid(hurried).toFixed(0)}ms vs ${mid(normal).toFixed(0)}ms`,
+      );
+      /*
+        The half this test was missing, and the reason David could "spam as
+        fast as you can and get every color in only a matter of seconds".
+        One-sided "faster than a normal roll" was satisfied by 17ms — one
+        frame — which is what it printed here for five releases while a
+        swipe both ended the previous roll and started the next.
+      */
+      assert(
+        mid(hurried) >= TUNING.settle.minRollMs,
+        `a hurried roll resolved in ${mid(hurried).toFixed(0)}ms, under the ` +
+          `${TUNING.settle.minRollMs}ms floor — the dice are being read before they have rolled`,
       );
     });
 

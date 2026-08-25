@@ -1,3 +1,4 @@
+import './storageMock';
 import { readFileSync } from 'node:fs';
 import { assert, assertEqual, note, suite, test } from './harness';
 import {
@@ -6,6 +7,13 @@ import {
   gamesUntilAd,
   shouldShowAd,
 } from '../src/game/adRules';
+import {
+  gamesPlayed,
+  initAds,
+  noteGameFinished,
+  resetAdsForTest,
+  showAdIfDue,
+} from '../src/game/ads';
 
 /**
  * The advertising rules, and the promises the App Store listing makes
@@ -212,5 +220,58 @@ suite('ads · an ad can never cost a player anything', () => {
         'no real unit AND no test unit: nothing would ever load',
       );
     }
+  });
+});
+
+suite('ads · a build without the SDK compiled in must not notice', () => {
+  /**
+   * The one that would take the game down for the whole family.
+   *
+   * This node process has no React Native and no AdMob, which is exactly
+   * the shape of build 6 on Marc's and AJ's phones: JavaScript that knows
+   * about ads, running on a binary that does not contain them. Every call
+   * below therefore takes the "module absent" path for real, rather than
+   * against a mock of it — so this is evidence the guard degrades, not an
+   * assertion that it was written to.
+   */
+  test('every entry point resolves quietly with no SDK present', async () => {
+    resetAdsForTest();
+    await initAds();
+    for (let i = 0; i < GAMES_PER_AD * 2; i++) {
+      noteGameFinished();
+      const shown = await showAdIfDue();
+      assert(shown === false, `an ad claimed to show on a build with no ad SDK (game ${i + 1})`);
+    }
+    assertEqual(gamesPlayed(), GAMES_PER_AD * 2, 'games stopped being counted');
+  });
+
+  test('the tally survives a restart, so the new binary picks up mid-count', async () => {
+    /*
+      The tally is kept even where ads cannot run. That matters for the
+      real sequence ahead of us: the family plays build 6, which counts
+      games and shows none, and then installs the binary that has the SDK
+      in it. Their count has to carry over, or the very first game after
+      updating could land on a multiple of three and serve an advert
+      immediately.
+
+      resetAdsForTest() clears only what is in memory — initAds() reads
+      the device back, which is exactly what relaunching the app does.
+    */
+    resetAdsForTest();
+    await initAds();
+    const before = gamesPlayed();
+    noteGameFinished();
+    noteGameFinished();
+    assertEqual(gamesPlayed(), before + 2, 'games stopped being counted');
+
+    // Relaunch: memory gone, storage read back.
+    resetAdsForTest();
+    assertEqual(gamesPlayed(), 0, 'the reset seam did not clear memory');
+    await initAds();
+    assertEqual(
+      gamesPlayed(),
+      before + 2,
+      'the tally did not survive a restart — updating could serve an ad on the first game',
+    );
   });
 });

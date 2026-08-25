@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.38.0 — 2026-08-24 · requested by David
+
+### Fixed
+- **You could swipe as fast as your thumb moved and free every colour in
+  seconds.** David found it; it was mine, from v1.29.0. Rolling again
+  without waiting was built so that a new swipe called the previous roll
+  immediately — and "immediately" turned out to mean the very next frame.
+  The test suite has been printing "hurried median 17ms" ever since,
+  because it only ever checked that hurrying was FASTER than waiting, not
+  that a roll still took long enough to be a roll. So one swipe both
+  ended a roll and started the next, and the number of scoring rolls per
+  second was set by how fast a person can tap.
+- Dice must now genuinely roll for 650ms before a result can be read off
+  them. Spamming a Classic game to a win takes about a minute instead of
+  about three seconds.
+- **Rolling again is still fast.** 650ms is well under the ~1450ms a roll
+  takes to stop on its own, and a swipe inside that window is not thrown
+  away — it is remembered and fires the instant the roll lands, exactly
+  as before. Nothing about the dead-input feel David asked twice to be
+  rid of has come back.
+
+### Under the hood
+- The floor applies to every path, not just the hurried one, so a
+  feather-light tap that happened to settle in 200ms cannot become the
+  new way to spam.
+- The hurried-roll test is two-sided now. Three new tests state the bug
+  in David's own terms — how many seconds it takes to clear the board by
+  spamming — so the next regression is caught by the symptom rather than
+  by the internals that happened to cause it this time.
+- Two new tests run the ad code with no ad SDK present, which is the real
+  shape of the builds already on the family's phones, proving it stays
+  silent rather than only asserting it was written to.
+
+
 ## v1.37.0 — 2026-08-24 · requested by David
 
 ### Changed

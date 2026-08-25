@@ -119,6 +119,27 @@ export const TUNING = {
     maxRollMs: 2200,
     /** Absolute backstop if a die is somehow still moving at maxRollMs. */
     hardMaxRollMs: 3200,
+    /**
+     * The floor under every roll: dice must actually ROLL for this long
+     * before a result may be read off them.
+     *
+     * David, 24 Aug 2026: "you're able to just spam as fast as you can and
+     * get every color in only a matter of seconds." He was right, and this
+     * is the number that was missing. The hurried path (below) called a
+     * roll the instant the player swiped again — the test suite has been
+     * printing "hurried median 17ms" the whole time, one single frame — so
+     * a swipe both ENDED the previous roll and started the next. The rate
+     * of scoring rolls was bounded by how fast a thumb moves, not by
+     * physics, and six colours fell in a few seconds.
+     *
+     * 650ms is deliberately well under the ~1450ms a roll takes to come to
+     * rest on its own, because the thing David asked for twice — not
+     * waiting around for dice that have obviously finished — still has to
+     * be true. A swipe during this window is not dropped; it is queued and
+     * fires the moment the roll lands, so the input is always heard. The
+     * dice are visibly still rolling, which is the honest reason to wait.
+     */
+    minRollMs: 650,
     /** Delay before a tap queued mid-roll fires, so the result registers. */
     queuedThrowDelayMs: 130,
     /**

@@ -40,17 +40,29 @@ export function allStill(bodies: CANNON.Body[]): boolean {
  * Should the roll be called now? `stillFrames` is the caller's running
  * count of consecutive frames where `allStill` held.
  *
- * `hurried` means the player has already swiped for the next throw, and
- * the roll is called THERE AND THEN — no waiting at all. David asked for
- * this twice; the first version still made you wait until both dice
- * happened to be slow and lying flat, which is most of the wait.
+ * `hurried` means the player has already swiped for the next throw, so
+ * this roll is called as soon as it is allowed to be, rather than waiting
+ * for a dead stop. David asked for that twice.
  *
- * It does NOT cancel this roll. Every roll is binding, which is what stops
+ * BUT NOT INSTANTLY. `minRollMs` is a floor under every path here, and it
+ * is the whole reason this function was rewritten on 24 Aug 2026. Without
+ * it, `hurried` returned true on the very next frame — the suite has been
+ * printing "hurried median 17ms" all along — so one swipe both ended the
+ * previous roll and launched the next. That made the rate of SCORING
+ * rolls a function of thumb speed instead of physics, and David could
+ * "spam as fast as you can and get every color in only a matter of
+ * seconds". A roll that resolves in one frame is not a roll.
+ *
+ * The floor costs nothing in responsiveness, because a swipe inside the
+ * window is not dropped: DiceScene queues it and fires it the instant the
+ * roll lands. The player's input is always heard; the dice are simply
+ * still in the air, which is an honest thing to be waiting for.
+ *
+ * A roll still does NOT cancel. Every roll is binding, which is what stops
  * a bad result being thrown away mid-air — in Ultimate a matched colour
  * sends a rescued prisoner back to jail, so a roll you can dodge is a rule
  * you can opt out of. The dice are snapped onto the face they were nearest
- * (see `snapDieToNearestFace`) so the colour counted is the colour shown,
- * which is what the wait used to be buying.
+ * (see `snapDieToNearestFace`) so the colour counted is the colour shown.
  */
 export function shouldCallRoll(
   bodies: CANNON.Body[],
@@ -59,6 +71,13 @@ export function shouldCallRoll(
   hurried = false,
 ): boolean {
   const s = TUNING.settle;
+
+  // Before anything else: nothing counts as a roll until the dice have
+  // actually rolled. This gates the sleeping and still-frames paths too,
+  // not just `hurried` — otherwise a feather-light tap that happens to
+  // settle in 200ms becomes the new way to spam.
+  if (elapsedMs < s.minRollMs) return false;
+
   if (bodies.every((body) => body.sleepState === CANNON.Body.SLEEPING)) return true;
   if (stillFrames >= s.stillFrames) return true;
 
