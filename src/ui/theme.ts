@@ -66,7 +66,7 @@ export const THEME = {
  *
  * David asked on 24 Aug 2026 to colour anything that could be coloured.
  * These are OBJECT colours — the leather of a bag, the wood of a crate,
- * the metal of a medal — not another set of UI accents, which is what
+ * the steel of a gear — not another set of UI accents, which is what
  * keeps a coloured icon from competing with the one accent button on a
  * screen. Every icon still carries its ink outline over the fill, so the
  * silhouette reads at 11pt and on any background, and the direction stays
@@ -81,11 +81,6 @@ export const ICON = {
   leather: '#c2410c',
   /** The Items crate. */
   wood: '#a86b32',
-  /** A trophy cup, and the medal's disc — a shade deeper than THEME.gold
-   *  so a gold medal still separates from the gold selected-tab pill. */
-  medal: '#e0a415',
-  /** The medal's ribbon. */
-  ribbon: '#c2410c',
   /** The three Ranks bars, shortest to tallest. */
   bronze: '#a86b32',
   silver: '#8f9aa8',

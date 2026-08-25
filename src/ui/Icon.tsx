@@ -189,90 +189,89 @@ export function DieIcon({
  * A trophy cup — the TROPHY COUNT, everywhere it appears: the HUD, the
  * Inventory header, the ladder prices, the Ranks screen.
  *
- * NOT the Cups tab any more. Both were this same drawing until David
- * pointed out (24 Aug 2026) that the currency and the tournaments tab
- * should not be the same picture — a player seeing a trophy could not
- * tell whether it meant "your trophies" or "go to Cups". Cups has
- * MedalIcon now.
- *
- * The cup is GOLD by default: the game's own prize should look like one,
- * the way the coin does. The ink outline keeps it a drawing rather than a
- * yellow blob; pass fill='transparent' for a pure line icon.
+ * MOSTLY GOLD, thinly outlined. The first version outlined every part in
+ * ink and filled only the bowl, which at 15pt came out as a dark blob
+ * with a gold speck in it — and the Cups tab, drawn the same way, came
+ * out as the SAME dark blob. David said twice they still looked
+ * identical. They did. Making the cup, stem and foot all gold under one
+ * thin outline is what turns it back into a recognisable trophy at the
+ * size it is actually used.
  */
 export function TrophyIcon({
   size = 22,
   color = THEME.ink,
   fill = THEME.gold,
 }: IconProps) {
-  const s = w(size);
+  const s = w(size) * 0.85;
   return (
     <View style={{ width: size, height: size }}>
-      {/* The bowl: square at the shoulders, round at the bottom. */}
+      {/* Handles first, so the bowl is drawn over where they meet it. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.05,
+          top: size * 0.17,
+          width: size * 0.25,
+          height: size * 0.26,
+          borderRadius: size * 0.13,
+          borderWidth: s,
+          borderColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: size * 0.05,
+          top: size * 0.17,
+          width: size * 0.25,
+          height: size * 0.26,
+          borderRadius: size * 0.13,
+          borderWidth: s,
+          borderColor: color,
+        }}
+      />
+      {/* Foot and stem, gold like the bowl — an ink stem was half the blob. */}
       <View
         style={{
           position: 'absolute',
           left: size * 0.26,
-          top: size * 0.12,
+          top: size * 0.76,
           width: size * 0.48,
-          height: size * 0.4,
+          height: size * 0.15,
+          borderRadius: size * 0.06,
           backgroundColor: fill,
           borderWidth: s,
           borderColor: color,
-          borderTopLeftRadius: size * 0.04,
-          borderTopRightRadius: size * 0.04,
-          borderBottomLeftRadius: size * 0.24,
-          borderBottomRightRadius: size * 0.24,
         }}
       />
-      {/* Handles, one either side. */}
       <View
         style={{
           position: 'absolute',
-          left: size * 0.09,
-          top: size * 0.16,
-          width: size * 0.2,
-          height: size * 0.22,
+          left: size * 0.42,
+          top: size * 0.54,
+          width: size * 0.16,
+          height: size * 0.26,
+          backgroundColor: fill,
+          borderLeftWidth: s,
+          borderRightWidth: s,
+          borderColor: color,
+        }}
+      />
+      {/* The bowl: square shoulders, deeply rounded underneath. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.2,
+          top: size * 0.11,
+          width: size * 0.6,
+          height: size * 0.47,
+          backgroundColor: fill,
           borderWidth: s,
           borderColor: color,
-          borderTopLeftRadius: size * 0.1,
-          borderBottomLeftRadius: size * 0.1,
-          borderRightWidth: 0,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          right: size * 0.09,
-          top: size * 0.16,
-          width: size * 0.2,
-          height: size * 0.22,
-          borderWidth: s,
-          borderColor: color,
-          borderTopRightRadius: size * 0.1,
-          borderBottomRightRadius: size * 0.1,
-          borderLeftWidth: 0,
-        }}
-      />
-      {/* Stem and foot. */}
-      <View
-        style={{
-          position: 'absolute',
-          left: size * 0.455,
-          top: size * 0.52,
-          width: s * 1.4,
-          height: size * 0.2,
-          backgroundColor: color,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          left: size * 0.28,
-          bottom: size * 0.1,
-          width: size * 0.44,
-          height: s * 1.4,
-          borderRadius: s,
-          backgroundColor: color,
+          borderTopLeftRadius: size * 0.06,
+          borderTopRightRadius: size * 0.06,
+          borderBottomLeftRadius: size * 0.3,
+          borderBottomRightRadius: size * 0.3,
         }}
       />
     </View>
@@ -280,76 +279,78 @@ export function TrophyIcon({
 }
 
 /**
- * A medal on a ribbon — the CUPS tab.
+ * A knockout BRACKET — the Cups tab.
  *
- * Cups used to share the trophy drawing with the trophy count, which
- * meant one picture answered two different questions. A medal is the
- * furthest thing from a cup that still says "you won something": a round
- * disc hanging from a V of ribbon, where a trophy is a wide bowl on a
- * narrow stem. At 21pt in the tab bar the two silhouettes cannot be
- * confused, which is the whole point of the change.
+ * Cups was a trophy, then a medal, and David said both times that it
+ * still looked the same as the trophy count. He was right both times:
+ * rendering the two at their real 21pt showed a compact gold-and-ink
+ * lozenge either way, because a cup and a medal are both "round object,
+ * outlined, centred" once they are 21 pixels wide.
  *
- * The disc is a shade deeper than THEME.gold on purpose — the selected
- * tab sits on a gold pill, and a THEME.gold disc would vanish into it.
+ * So this is not another award. It is the shape of the thing the tab
+ * actually opens: two contenders feeding into one line, and a champion
+ * at the end of it. Wide where a cup is tall, open where a cup is solid,
+ * lines where a cup is a mass — nothing about it can be mistaken for a
+ * trophy at any size, which is the entire requirement.
  */
-export function MedalIcon({
+export function BracketIcon({
   size = 22,
   color = THEME.ink,
-  fill = ICON.medal,
+  fill = THEME.gold,
 }: IconProps) {
-  const s = w(size);
-  const disc = size * 0.52;
-  // The two ribbon tails, angled out from the top like a V.
-  const tail = (side: -1 | 1) => (
+  const s = Math.max(1.5, w(size) * 0.9);
+  const xIn = size * 0.14;
+  const xJoin = size * 0.5;
+  const xOut = size * 0.78;
+  const yTop = size * 0.2;
+  const yBottom = size * 0.8;
+  const dot = size * 0.24;
+
+  const across = (y: number, from: number, to: number) => (
     <View
-      key={side}
+      key={`${y}-${from}`}
       style={{
         position: 'absolute',
-        left: size * 0.5 - s * 1.1 + side * size * 0.13,
-        top: size * 0.02,
-        width: s * 2.2,
-        height: size * 0.42,
-        backgroundColor: ICON.ribbon,
-        borderWidth: s * 0.7,
-        borderColor: color,
-        transform: [{ rotate: `${side * 16}deg` }],
+        left: from,
+        top: y - s / 2,
+        width: to - from,
+        height: s,
+        borderRadius: s / 2,
+        backgroundColor: color,
       }}
     />
   );
+
   return (
     <View style={{ width: size, height: size }}>
-      {tail(-1)}
-      {tail(1)}
-      {/* The disc, drawn over the ribbon ends so they tuck behind it. */}
+      {/* The two contenders. */}
+      {across(yTop, xIn, xJoin)}
+      {across(yBottom, xIn, xJoin)}
+      {/* The joiner they meet on. */}
       <View
         style={{
           position: 'absolute',
-          left: (size - disc) / 2,
-          bottom: size * 0.04,
-          width: disc,
-          height: disc,
-          borderRadius: disc / 2,
-          backgroundColor: fill,
-          borderWidth: s,
-          borderColor: color,
+          left: xJoin - s / 2,
+          top: yTop,
+          width: s,
+          height: yBottom - yTop,
+          borderRadius: s / 2,
+          backgroundColor: color,
         }}
       />
-      {/*
-        A ring struck into the face — NOT the coin's four-point sparkle.
-        Fixing one collision by making a second one would be no fix: the
-        coin is a plain disc with a sparkle, the medal is a disc on a
-        ribbon with a ring, and the trophy is a bowl on a stem.
-      */}
+      {/* The winner's line out to the final. */}
+      {across(size * 0.5, xJoin, xOut)}
+      {/* The champion. */}
       <View
-        pointerEvents="none"
         style={{
           position: 'absolute',
-          left: size * 0.5 - disc * 0.29,
-          bottom: size * 0.04 + disc / 2 - disc * 0.29,
-          width: disc * 0.58,
-          height: disc * 0.58,
-          borderRadius: disc * 0.29,
-          borderWidth: s * 0.8,
+          left: xOut - dot * 0.3,
+          top: size * 0.5 - dot / 2,
+          width: dot,
+          height: dot,
+          borderRadius: dot / 2,
+          backgroundColor: fill,
+          borderWidth: s * 0.85,
           borderColor: color,
         }}
       />

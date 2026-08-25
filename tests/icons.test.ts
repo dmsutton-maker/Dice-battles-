@@ -63,50 +63,71 @@ suite('icons · Cups and trophies are different pictures', () => {
     */
     const cups = /\{ id: 'cups'[^}]*Icon: (\w+) \}/.exec(NAV);
     assert(cups !== null, 'the Cups tab is gone from the bar');
-    assertEqual(cups![1], 'MedalIcon', 'Cups is back on the trophy drawing');
+    assertEqual(cups![1], 'BracketIcon', 'Cups is back on an award drawing');
     assert(
       !/Icon: TrophyIcon/.test(NAV),
       'the trophy is being used as a tab icon again',
     );
   });
 
-  test('the medal and the trophy are drawn from different shapes', () => {
+  test('the bracket and the trophy share no geometry at all', () => {
     /*
-      Not just different names: a medal that happened to be drawn as a cup
-      would pass the test above and still fail the player. So this checks
-      the geometry that makes each one itself — the trophy's two handles
-      are Views with one border side switched off, and the medal's ribbon
-      tails are the only rotated parts in either.
+      Not just different names. Cups was a trophy, then a MEDAL, and both
+      times David said it still looked the same — because a cup and a
+      medal are both "round object, outlined, centred" once they are 21
+      pixels wide. The rule now is stronger than "a different award": the
+      Cups icon must be made of LINES where the trophy is made of filled
+      masses, so the two cannot converge again.
     */
-    const trophy = drawingOf('TrophyIcon', 'MedalIcon');
-    const medal = drawingOf('MedalIcon', 'RanksIcon');
+    const trophy = drawingOf('TrophyIcon', 'BracketIcon');
+    const bracket = drawingOf('BracketIcon', 'RanksIcon');
 
-    const handles = (body: string) =>
-      /borderRightWidth: 0/.test(body) && /borderLeftWidth: 0/.test(body);
-    assert(handles(trophy), 'the trophy lost the handles either side of its bowl');
-    assert(!handles(medal), 'the medal grew a trophy’s handles');
+    // The trophy is a body: a bowl, a stem and a foot, all filled.
+    const fills = (body: string) => (body.match(/backgroundColor: fill/g) ?? []).length;
+    assert(fills(trophy) >= 3, 'the trophy is no longer a filled gold cup');
+    assert(
+      /borderBottomLeftRadius/.test(trophy),
+      'the trophy lost the rounded underside of its bowl',
+    );
 
-    assert(/ICON\.ribbon/.test(medal), 'the medal lost its ribbon');
-    assert(!/ICON\.ribbon/.test(trophy), 'the trophy grew a ribbon');
-    assert(/rotate:/.test(medal), 'the medal’s ribbon tails no longer splay');
-    assert(!/rotate:/.test(trophy), 'the trophy is being rotated like a medal');
+    // The bracket is a diagram: thin bars, and only ONE filled thing —
+    // the champion at the end of it.
+    assert(fills(bracket) <= 1, 'the bracket has grown filled masses like a cup');
+    assert(
+      !/borderBottomLeftRadius/.test(bracket),
+      'the bracket has grown a bowl',
+    );
+    // Its lines run the full width; a cup never does.
+    assert(
+      /xJoin/.test(bracket) && /xOut/.test(bracket),
+      'the bracket no longer runs across the box',
+    );
   });
 
-  test('the medal does not collide with the coin either', () => {
-    // The coin is a plain disc with a four-point sparkle. Fixing the
-    // trophy collision by making a coin collision would be no fix.
+  test('Cups is not drawn as any kind of award', () => {
+    // The medal was the second failed attempt. Naming it here means the
+    // next person reaching for "just use a different trophy" is stopped
+    // by a test rather than by David noticing on his phone.
+    assert(
+      !/export function MedalIcon/.test(SOURCE),
+      'a medal is back — Cups needs a different KIND of picture, not a different award',
+    );
+    const bracket = drawingOf('BracketIcon', 'RanksIcon');
+    assert(!/ribbon/i.test(bracket), 'the Cups icon has grown a ribbon again');
+  });
+
+  test('the trophy does not collide with the coin either', () => {
+    // Three gold things share the interface now: the coin, the trophy and
+    // the bracket's champion dot. The coin is a plain disc with a
+    // four-point sparkle struck into it; the trophy has to stay a cup
+    // with handles or it becomes a third gold circle.
     const coin = readFileSync('src/demo/GoldCoin.tsx', 'utf8');
     assert(/emboss/.test(coin), 'the coin lost its struck mark');
+    const trophy = drawingOf('TrophyIcon', 'BracketIcon');
+    assert(!/emboss/.test(trophy), 'the trophy is now struck like the coin');
     assert(
-      !/emboss/.test(drawingOf('MedalIcon', 'RanksIcon')),
-      'the medal is now struck like the coin',
-    );
-    // Widened past the literal types on purpose: TypeScript can see these
-    // differ TODAY, which is exactly why the check has to survive to the
-    // day somebody edits theme.ts and makes them the same.
-    assert(
-      (ICON.medal as string) !== (THEME.gold as string),
-      'the medal disc matches the gold selected-tab pill it sits on',
+      (trophy.match(/borderRadius: size \* 0\.13/g) ?? []).length >= 2,
+      'the trophy lost the handles that keep it from reading as a coin',
     );
   });
 });
@@ -120,8 +141,6 @@ suite('icons · colour that still reads as a drawing', () => {
   const FILLS: { name: string; hex: string; mark?: string }[] = [
     { name: 'leather (Store bag)', hex: ICON.leather },
     { name: 'wood (Items crate)', hex: ICON.wood },
-    { name: 'medal disc (Cups)', hex: ICON.medal },
-    { name: 'ribbon (Cups)', hex: ICON.ribbon },
     { name: 'bronze (Ranks)', hex: ICON.bronze },
     { name: 'silver (Ranks)', hex: ICON.silver },
     { name: 'gold (Ranks, trophy)', hex: THEME.gold },
@@ -181,7 +200,7 @@ suite('icons · colour that still reads as a drawing', () => {
   test('every icon still accepts a fill, so it can be drawn on ink', () => {
     // The launch card draws the die on a near-black ground. An icon that
     // could not be told what to fill with would be a white-on-white hole.
-    for (const icon of ['BagIcon', 'CrateIcon', 'DieIcon', 'TrophyIcon', 'MedalIcon']) {
+    for (const icon of ['BagIcon', 'CrateIcon', 'DieIcon', 'TrophyIcon', 'BracketIcon']) {
       const start = SOURCE.indexOf(`export function ${icon}`);
       assert(start > 0, `${icon} is gone`);
       const signature = SOURCE.slice(start, start + 260);

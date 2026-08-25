@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.39.0 — 2026-08-24 · requested by David
+
+### Changed
+- **The Cups tab is a bracket now.** David said twice that Cups and the
+  trophy count still looked identical, and he was right twice — because
+  this was the first time either was actually RENDERED at the 21pt it is
+  used at. A trophy and a medal are both "round object, outlined,
+  centred" at that size, and both came out as a dark ink lozenge with a
+  gold speck in it. So Cups is no longer another award: it is two
+  contenders feeding into one line with a champion at the end — wide
+  where a cup is tall, lines where a cup is a mass.
+- **The trophy is a trophy again.** It was outlined in ink on every part
+  and filled only in the bowl, which is why it read as a blob. The cup,
+  stem and foot are all gold under one thin outline now.
+- **Timber looks like wood.** Its rings came from a single sine, so they
+  were all the same width and evenly spaced — a striped jumper. Ring
+  spacing now varies across the face the way a real board's does, each
+  ring is soft on one side and sharp on the other, and there is a knot
+  with the grain bending round it.
+- **Marble looks like stone.** Its veins were evenly spaced parallel
+  curves and read as a contour map. They are now a fracture network that
+  forks and wanders, running with the stone's bedding, and each vein
+  swells and thins along its length instead of being one weight.
+
+### Under the hood
+- Both painters, and the icons, were rendered to an image and looked at
+  before being changed. The icon was wrong twice for exactly the want of
+  that.
+- The die's shell texture clamps to the edge of each face instead of
+  repeat-wrapping. A cube's faces show it once and never tile it, so
+  repeat was bleeding the far edge of the pattern into every rim.
+- A first attempt at guarding this asserted every pattern tiles, which
+  three other skins failed — on a wrong premise, since nothing tiles
+  them. Replaced rather than satisfied.
+
+
 ## v1.38.0 — 2026-08-24 · requested by David
 
 ### Fixed

@@ -39,6 +39,61 @@ type Painter = (x: number, y: number) => number;
 const SHADE_DEPTH = 0.55;
 
 /**
+ * Value noise that TILES at the texture's own size.
+ *
+ * Every painter here is sampled over a 64x64 square that wraps round a
+ * die face, so anything built from `Math.sin(x / 21)` meets its own far
+ * edge mid-stride and leaves a visible seam. Rendering the old wood and
+ * marble tiled 2x2 showed exactly that: a hard vertical join straight
+ * down the middle. This lattice is indexed modulo the tile, so the left
+ * edge genuinely is the right edge.
+ */
+function hashCell(ix: number, iy: number): number {
+  return Math.abs((Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453) % 1);
+}
+
+function wrappedNoise(x: number, y: number, period: number): number {
+  const cells = SIZE / period;
+  const gx = Math.floor(x / period);
+  const gy = Math.floor(y / period);
+  const fx = x / period - gx;
+  const fy = y / period - gy;
+  const at = (ix: number, iy: number) =>
+    hashCell(((ix % cells) + cells) % cells, ((iy % cells) + cells) % cells);
+  const ease = (t: number) => t * t * (3 - 2 * t);
+  const sx = ease(fx);
+  const sy = ease(fy);
+  const top = at(gx, gy) + (at(gx + 1, gy) - at(gx, gy)) * sx;
+  const bot = at(gx, gy + 1) + (at(gx + 1, gy + 1) - at(gx, gy + 1)) * sx;
+  return top + (bot - top) * sy;
+}
+
+/**
+ * Octaves of it, centred on zero.
+ *
+ * `periods` must all DIVIDE the tile, which is why this takes periods
+ * rather than a frequency multiplier. Scaling the coordinate instead —
+ * `wrappedNoise(x * 1.6, ...)` — silently breaks the wrap, because the
+ * lattice only repeats when x advances by a whole tile. Displacing the
+ * coordinate is fine and is how the veins get their turbulence: any
+ * offset that is itself tile-periodic carries the periodicity with it.
+ */
+function fbm(x: number, y: number, periods: number[], weights: number[]): number {
+  let sum = 0;
+  let total = 0;
+  for (let i = 0; i < periods.length; i++) {
+    sum += (wrappedNoise(x, y, periods[i]) - 0.5) * 2 * weights[i];
+    total += weights[i];
+  }
+  return sum / total;
+}
+
+/** A sine that completes whole turns across the tile, so it wraps. */
+function tiling(v: number, turns: number): number {
+  return Math.sin((v / SIZE) * turns * Math.PI * 2);
+}
+
+/**
  * A smooth 0..1 ramp between two edges.
  *
  * The materials used to pick their tone with a ladder of `if (v > 0.86)
@@ -244,22 +299,54 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
    * that ratio the wrong way round is what makes fake wood look fake.
    */
   wood: (x, y) => {
-    // The ring coordinate wanders across the plank so the spacing varies.
-    const drift = Math.sin(x / 21) * 5.5 + Math.sin(x / 7.3) * 1.4;
-    const ring = Math.sin((y + drift) / 3.1);
-    // Fine fibres running the length of the grain, under the rings. Half
-    // what they were: at the old strength they chewed a ragged edge into
-    // every ring, which is most of what made the wood look coarse.
-    const fibre = Math.sin(y * 0.9 + Math.sin(x / 3.1) * 2.4) * 0.06;
-    const v = ring + fibre;
+    /*
+      Real grain, not corduroy.
 
-    // One continuous ramp from pale early wood into the dark late-wood
-    // line, instead of four stepped tones. Same rings, no staircase.
-    const line = smoothstep(0.28, 0.98, v) * 0.88;
-    // A shallow dip on the far side of each ring so the surface still has
-    // some roll to it rather than going flat between the lines.
-    const trough = smoothstep(-0.35, -1, v) * 0.1;
-    return line - trough;
+      The old version made rings from `sin((y + drift) / 3.1)`: one fixed
+      frequency, so every band came out the same width, evenly spaced and
+      flat across the face. Rendered and tiled it read as a striped
+      jumper, and it did not wrap, so the die carried a seam.
+
+      Wood does two things this has to do too. Ring SPACING varies a lot
+      across a plank — tight where the tree grew slowly, wide where it
+      grew fast — and each ring is soft on one side and hard on the
+      other, because early wood is pale and open and late wood is dark
+      and dense. The first comes from warping the ring coordinate with
+      tiling noise; the second from a sawtooth rather than a sine.
+    */
+    // A knot, and the rings crowding around it. Displacing the ring
+    // coordinate radially is what makes them bend into it, rather than a
+    // dark smudge sitting on top of straight bands.
+    const kx = x - SIZE * 0.66;
+    const ky = y - SIZE * 0.34;
+    const kd = Math.sqrt(kx * kx + ky * ky);
+    const pull = Math.exp(-(kd * kd) / 420) * 9;
+
+    // Ring coordinate: across the plank, warped so spacing opens and
+    // closes, then pulled around the knot.
+    //
+    // TWO scales of warp, and the slow one carries most of the weight.
+    // With only the fast one every ring wandered by the same amount and
+    // the plank came out as even ripples, like water. A board has
+    // REGIONS — a stretch of tight rings, then a stretch of wide ones —
+    // and that is what the low-frequency term buys.
+    const warp =
+      fbm(x, y, [32], [1]) * 13 + fbm(x + 19, y + 7, [16, 8], [1, 0.5]) * 3.5;
+    const rings = 7;
+    const phase = ((((y + warp + pull) * rings) / SIZE) % 1 + 1) % 1;
+
+    // Sawtooth: a slow pale rise into a sharp dark edge is the whole
+    // character of a growth ring, and a sine is symmetric.
+    const late = smoothstep(0.55, 0.9, phase) * (1 - smoothstep(0.9, 1, phase));
+
+    // Fibres running WITH the grain — long and fine, so hairs rather
+    // than speckle.
+    const fibre = fbm(x, y, [16, 8], [0.5, 1]) * 0.07;
+
+    // The knot's own dark heart, on top of the rings bending into it.
+    const heart = Math.exp(-(kd * kd) / 55) * 0.5;
+
+    return Math.min(1, late * 0.9 + fibre + heart);
   },
 
   /**
@@ -272,23 +359,70 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
    * run parallel the way stripes do.
    */
   marble: (x, y) => {
-    // The band coordinate has to keep a clear DIRECTION or the veins close
-    // into loops and the whole thing reads as a contour map — which is
-    // exactly what the first attempt did. So the direction term dominates
-    // and the warp only nudges it off straight.
-    const warp = Math.sin(y / 9.5) * 2.4 + Math.sin(x / 15) * 1.7;
-    // Tighter than it reads at full size on purpose: a die face is small,
-    // and at 7.5 a face could come up carrying no vein at all.
-    const vein = Math.abs(Math.sin((x * 0.9 + y * 0.4) / 5 + warp));
+    /*
+      Veins that branch and vary, not contour lines and not blobs.
 
-    // The vein and the halo it bleeds into the stone are ONE falloff now,
-    // not a sharp line inside a second hard band. That pair of edges was
-    // what made the veins look drawn on with a pen and a highlighter.
-    const line = (1 - smoothstep(0.02, 0.3, vein)) * 0.8;
-    // Broad cloudiness, continuous, so the stone between the veins drifts
-    // gently instead of stepping between three flat tones.
-    const cloud = Math.sin(x / 19 + Math.sin(y / 23) * 1.2) * 0.1;
-    return line - cloud;
+      Three attempts got here, and the two failures are worth naming.
+      Banding a single sine gave every vein the same width and spacing —
+      a topographic map. Thresholding the RIDGE of a noise field,
+      `1 - |noise|`, gave one enormous island, because noise sits near
+      zero most of the time so "close to the ridge" was most of the tile.
+
+      A vein is where the field CROSSES zero, not where it is near it.
+      Thresholding |field| against a small width draws a thin line along
+      every zero contour, and because the field is displaced by its own
+      turbulence those contours fork, wander and vary in thickness —
+      which is what a fracture network in stone actually looks like.
+    */
+    // Turbulence. Tile-periodic itself, so displacing by it keeps the
+    // wrap: see the note on fbm.
+    const dx = fbm(x, y, [32, 16], [1, 0.5]) * 13;
+    const dy = fbm(x + 31, y + 17, [32, 16], [1, 0.5]) * 13;
+    const px = x + dx;
+    const py = y + dy;
+
+    /*
+      DIRECTION, which the very first version of this painter had and
+      which every rewrite since has done without — to its cost.
+
+      Pure noise contours close on themselves. Four attempts produced
+      islands, paisley and, most recently, a repeating bird shape,
+      because a field with no bias has zero-crossings that loop. Marble
+      is BEDDED: its veins run broadly one way across the stone, wandering
+      hard but not curling back. So the field is a diagonal wave that
+      tiles (integer turns, or the die grows a seam) with the turbulence
+      bending it, rather than turbulence alone.
+    */
+    const bedding = Math.sin(((2 * px + py) / SIZE) * Math.PI * 2);
+    const field = bedding * 0.62 + fbm(px, py, [32, 16], [1, 0.6]) * 0.8;
+
+    /*
+      VARYING width, which is most of what separates marble from a wiring
+      diagram. A real vein swells and thins along its length, so the
+      threshold is itself a slow noise rather than one number.
+    */
+    const width = 0.03 + wrappedNoise(x + 5, y + 41, 32) * 0.08;
+    const vein = (1 - smoothstep(0, width, Math.abs(field))) * 0.82;
+    // A soft bleed either side, so a vein sits IN the stone rather than
+    // being painted on top of it.
+    const halo = (1 - smoothstep(width, width + 0.22, Math.abs(field))) * 0.16;
+
+    /*
+      One hairline network, drawn from the SAME field at an offset so it
+      runs parallel to the main veins the way a real seam's outriders do.
+      A separate finer octave produced isolated dots instead: a period-4
+      lattice on a 64px tile is 16 cells across, and its contours were
+      shorter than the cells they lived in.
+    */
+    // Widened from 0.02: where the field's gradient is steep, a threshold
+    // that tight fell between pixels and the hairline came out as a
+    // dotted line rather than a faint one.
+    const hair = (1 - smoothstep(0, 0.045, Math.abs(field - 0.52))) * 0.22;
+
+    // Broad cloudiness in the stone itself, darkening rather than inking.
+    const cloud = (wrappedNoise(x, y, 32) - 0.5) * 0.13;
+
+    return Math.min(1, vein + halo + hair) - cloud;
   },
 
   /**
@@ -439,8 +573,21 @@ export function createPatternTexture(
 
   const texture = new THREE.DataTexture(data, SIZE, SIZE);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
+  /*
+   * CLAMP, not repeat.
+   *
+   * A cube's UVs run 0..1 on every face and `repeat` is never set, so
+   * each face shows this image exactly once — the texture is not tiled
+   * anywhere, and its left edge only ever meets its right edge at a
+   * physical corner of the die, where a change is invisible.
+   *
+   * Repeat wrapping was therefore buying nothing and costing a little:
+   * with linear filtering the outermost row of texels blends with the
+   * row from the OPPOSITE edge, bleeding a sliver of the far side of the
+   * pattern into the rim of every face. Clamping samples the edge itself.
+   */
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.generateMipmaps = true;

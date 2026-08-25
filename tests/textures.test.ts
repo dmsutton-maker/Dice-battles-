@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { patternPixels, PATTERN_SIZE, PatternId } from '../src/dice/patterns';
 import { DICE_SKINS } from '../src/game/diceSkins';
 import { assert, assertEqual, note, suite, test } from './harness';
@@ -223,5 +224,36 @@ suite('textures · frost is snow, not a sparkle', () => {
     const agreement = (same / (cell * cell)) * 100;
     note(`frost: two neighbouring flakes agree on ${agreement.toFixed(0)}% of pixels`);
     assert(agreement < 97, 'every flake is the same flake');
+  });
+});
+
+/**
+ * How the shell texture meets the edges of a face.
+ *
+ * A 2x2 tiled render of Timber and Marble on 25 Aug 2026 showed a hard
+ * line down the join, and the first instinct was to call it a seam bug
+ * and make every painter tile. It is not one: a cube's UVs run 0..1 per
+ * face and `repeat` is never set on this texture, so each face shows the
+ * image once and its edges only ever meet at a physical corner of the
+ * die. Three other skins "failed" a tiling test written on that wrong
+ * premise, and fixing them would have been work in service of nothing.
+ *
+ * What IS true is that repeat wrapping made linear filtering blend the
+ * outermost texels with the opposite edge of the pattern. Clamping is
+ * both correct for a 0..1 map and free.
+ */
+suite('textures · the shell clamps to the edge of each face', () => {
+  test('the die texture is not set up to tile', () => {
+    const source = readFileSync('src/dice/patterns.ts', 'utf8');
+    const setup = source.slice(source.indexOf('export function createPatternTexture'));
+    assert(
+      /wrapS = THREE\.ClampToEdgeWrapping/.test(setup) &&
+        /wrapT = THREE\.ClampToEdgeWrapping/.test(setup),
+      'the die shell is back on repeat wrapping, which bleeds the far edge of the pattern into the rim of every face',
+    );
+    assert(
+      !/repeat\.set/.test(setup),
+      'the die texture is being tiled — every painter would then need to wrap, which none of them promises',
+    );
   });
 });
