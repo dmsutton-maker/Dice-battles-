@@ -3,7 +3,7 @@
     "name": "Dice Battles: Color Rush",
     "slug": "dice-battles",
     "backgroundColor": "#1b1430",
-    "version": "1.40.0",
+    "version": "1.41.0",
     "orientation": "portrait",
     "icon": "./assets/icon/light.png",
     "userInterfaceStyle": "light",
@@ -40,9 +40,7 @@
       }
     },
     "owner": "dmsutton",
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
+    "runtimeVersion": "1.1.0",
     "updates": {
       "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
     },

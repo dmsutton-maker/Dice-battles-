@@ -108,21 +108,74 @@ suite('ads · the promises made to Apple and Google', () => {
     );
   });
 
-  test('the SDK is required lazily, never imported', () => {
+  test('a build without the ad SDK is never offered this JavaScript', () => {
     /*
-      The one that would take the game down for everybody. Ads are native
-      code, but JavaScript ships over the air to binaries built before the
-      SDK existed — and the runtime version is pinned to the Expo SDK,
-      which adding a package does not change. A top-level import resolves
-      at startup and crashes every one of those installs.
+      The one that took the game down, on 25 Aug 2026, on David's phone.
+
+      Ads are native code; JavaScript ships over the air. So the danger is
+      JS that knows about AdMob landing on a binary built before AdMob
+      existed — `TurboModuleRegistry.getEnforcing` throws at module scope
+      and the app dies on the red screen before the menu draws.
+
+      The defence used to be `try { require(...) } catch {}`, and this
+      test used to assert exactly that. IT DOES NOT WORK. Metro's own
+      loader catches a throwing module factory before the caller's catch
+      can (metro-runtime/src/polyfills/require.js, `guardedLoadModule`):
+
+          try  { returnValue = loadModuleImplementation(moduleId, module); }
+          catch (e) { global.ErrorUtils.reportFatalError(e); }
+          return returnValue;
+
+      It reports the error as FATAL and returns undefined without
+      rethrowing. The require really was inside the try in the shipped
+      bundle — that was checked in the built output — and the app crashed
+      anyway.
+
+      What DOES keep old binaries safe is `runtimeVersion`. An update is
+      only offered to a binary reporting the same runtime, so pinning an
+      explicit version and raising it whenever native code changes is the
+      whole gate. The sdkVersion POLICY is the trap that caused this: it
+      derives the runtime from the Expo SDK, so adding a native package
+      does not change it and every old build is offered the new JS.
+    */
+    const app = JSON.parse(readFileSync('app.json', 'utf8'));
+    const runtime = app.expo.runtimeVersion;
+    note(`runtimeVersion: ${JSON.stringify(runtime)}`);
+    assert(
+      typeof runtime === 'string',
+      'runtimeVersion is a policy again — a policy cannot know that native code changed, which is what crashed build 6',
+    );
+    assert(
+      /^\d+\.\d+\.\d+$/.test(runtime as string),
+      `runtimeVersion "${runtime}" is not an explicit version number`,
+    );
+
+    // And the ad SDK must be a native dependency of THAT runtime: if the
+    // plugin is not in app.json the package is not compiled in at all.
+    const plugins = JSON.stringify(app.expo.plugins ?? []);
+    assert(
+      plugins.includes('react-native-google-mobile-ads'),
+      'the ad SDK config plugin is gone — the native module would not be in the binary',
+    );
+  });
+
+  test('the SDK is still required lazily, for the reasons that remain', () => {
+    /*
+      Not the crash guard — see above. Two smaller things: the ad code
+      does no work at startup, and a hand-run of this suite in plain node
+      (no React Native anywhere) can still exercise every entry point.
     */
     assert(
       !/^import .*react-native-google-mobile-ads/m.test(source),
-      'the ad SDK is imported at module scope — this crashes every build without it compiled in',
+      'the ad SDK is imported at module scope — this runs SDK code before the game has drawn',
     );
     assert(
       /require\('react-native-google-mobile-ads'\)/.test(source),
       'the lazy require is gone',
+    );
+    assert(
+      /guardedLoadModule/.test(source),
+      'the note explaining why the try/catch is NOT the crash guard has been dropped — the next person will trust it again',
     );
   });
 
@@ -223,16 +276,22 @@ suite('ads · an ad can never cost a player anything', () => {
   });
 });
 
-suite('ads · a build without the SDK compiled in must not notice', () => {
+suite('ads · nothing here can break a game when the SDK is absent', () => {
   /**
-   * The one that would take the game down for the whole family.
+   * What this proves, and what it does NOT.
    *
-   * This node process has no React Native and no AdMob, which is exactly
-   * the shape of build 6 on Marc's and AJ's phones: JavaScript that knows
-   * about ads, running on a binary that does not contain them. Every call
-   * below therefore takes the "module absent" path for real, rather than
-   * against a mock of it — so this is evidence the guard degrades, not an
-   * assertion that it was written to.
+   * This node process has no React Native and no AdMob, so every call
+   * below takes the "module absent" path for real: the counting keeps
+   * working, no entry point throws, nothing claims an ad was shown.
+   *
+   * It is NOT proof that an old binary survives this JavaScript, and it
+   * was read that way once, which is how a crashing build reached David's
+   * phone on 25 Aug 2026. Node resolves modules itself and throws an
+   * ordinary Error that the catch in ads.ts really does catch. Metro does
+   * not: it catches a throwing module factory before that catch is
+   * reached and escalates it to a fatal. A test running in node can never
+   * see the difference. The gate that does protect old binaries is
+   * `runtimeVersion`, asserted above.
    */
   test('every entry point resolves quietly with no SDK present', async () => {
     resetAdsForTest();

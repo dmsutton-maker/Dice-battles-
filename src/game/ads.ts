@@ -18,14 +18,33 @@ import { gamesUntilAd, shouldShowAd } from './adRules';
  * anywhere else in this codebase.
  *
  * AdMob is a NATIVE module: it only exists in a binary built after it was
- * added. But JavaScript ships over the air to binaries built BEFORE it,
- * and the runtime version is pinned to the Expo SDK, which adding a
- * package does not change. So this file's code lands on build 6 — a
- * binary with no AdMob inside it — the moment anything is published.
- * Requiring the package at module scope would resolve on startup and take
- * the whole app down for every one of those players. Required lazily and
- * caught, the same update is simply a game with no ads in it, which is
- * exactly right until the new binary arrives.
+ * added. JavaScript, though, ships over the air.
+ *
+ * THE LAZY REQUIRE BELOW DOES NOT PROTECT AGAINST THAT, and believing it
+ * did cost David a crashing app on 25 Aug 2026.
+ *
+ * `react-native-google-mobile-ads` calls `TurboModuleRegistry.getEnforcing`
+ * at MODULE SCOPE, which throws when the native side is missing. The
+ * obvious defence is `try { require(...) } catch {}`, and it looks right
+ * — the require sits inside the try in the shipped bundle; that was
+ * checked. It does not work, because of what Metro's own module loader
+ * does with a factory that throws
+ * (metro-runtime/src/polyfills/require.js, `guardedLoadModule`):
+ *
+ *     try  { returnValue = loadModuleImplementation(moduleId, module); }
+ *     catch (e) { global.ErrorUtils.reportFatalError(e); }
+ *     return returnValue;
+ *
+ * Metro catches the error ITSELF, escalates it to a FATAL — the red
+ * screen — and returns undefined without rethrowing. The caller's catch
+ * is never reached. No `try`/`catch` around a `require` can survive a
+ * module whose top-level code throws.
+ *
+ * What actually keeps old binaries safe is `runtimeVersion` in app.json,
+ * which is now an explicit "1.1.0" rather than the sdkVersion policy.
+ * Builds without the ad SDK compiled in report the OLD runtime and are
+ * never offered this JavaScript at all. That is the gate; the require
+ * below is only tidiness on top of it.
  */
 
 /** Only the parts of the SDK this file uses. Declared so nothing else needs its types. */

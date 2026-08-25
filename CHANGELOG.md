@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.41.0 — 2026-08-25 · requested by David (a crash he reported)
+
+### Fixed
+- **The game crashed on launch after the last update, and it was my
+  mistake.** v1.40.0 went out over the air to a binary built before the
+  advertising code existed. Ads are native — they have to be compiled
+  into the app — so the phone ran JavaScript asking for something that
+  was not in it, and died on the red error screen before the menu drew.
+  - The update has been rolled back. Force-close the app and reopen it
+    twice and it comes back on the last good version.
+  - There WAS a guard for this, and it did not work. The code politely
+    asked for the ad module inside a "if this fails, carry on" wrapper.
+    React Native's own module loader catches that failure first, treats
+    it as fatal, and never hands it back for the wrapper to ignore. So
+    the protection was real in the source and absent on the phone.
+  - The actual fix is a version stamp on the app's native side
+    (`runtimeVersion`, now an explicit "1.1.0" instead of one derived
+    automatically from the Expo SDK). Updates are only offered to phones
+    whose native side matches, so JavaScript that needs ads can no
+    longer land on a build without them. The old builds simply stay on
+    the last update they can run, which is what should have happened.
+  - The tests could never have caught it: they run in plain node, where
+    a missing module throws an ordinary error that IS catchable. Only
+    Metro, on a device, behaves differently. That is now written down in
+    AGENTS.md so the next person does not trust the same pattern.
+
 ## v1.40.0 — 2026-08-25 · requested by David
 
 ### Added

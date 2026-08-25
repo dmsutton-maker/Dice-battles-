@@ -49,6 +49,33 @@ before writing any code — Expo APIs change between SDK versions.
   `npx expo export --platform ios --output-dir /tmp/export-test`
   (Metro bundle check) — there is no device in CI.
 
+## Native code and over-the-air updates
+
+Learned the hard way on 25 Aug 2026, when an OTA update crashed the game
+on David's phone before the menu drew.
+
+**A `try`/`catch` around a `require` does NOT protect a binary that lacks
+the native module.** It looks like it does, and the require really is
+inside the try in the shipped bundle. Metro's loader catches a throwing
+module factory first (`metro-runtime/src/polyfills/require.js`,
+`guardedLoadModule`), reports it via `ErrorUtils.reportFatalError` — the
+red screen — and returns undefined without rethrowing, so the catch is
+never reached. This applies to `gameCenter.ts` exactly as it does to
+`ads.ts`; neither pattern is a safety net.
+
+**`runtimeVersion` is the only real gate.** It is an explicit string in
+`app.json` (`"1.1.0"`), never the `sdkVersion` policy — that policy
+derives the runtime from the Expo SDK, so adding a native package does
+not change it and every old build gets offered JavaScript it cannot run.
+
+- **Raise `runtimeVersion` in the same change that adds or removes native
+  code**, then build. Until that binary exists, old installs stay on the
+  last update that matched their runtime, which is correct.
+- **A test that passes in node proves nothing about this.** Node resolves
+  modules itself and throws an ordinary catchable Error; Metro does not.
+  Anything about module loading has to be checked in a real bundle on a
+  real build, or not claimed at all.
+
 ## Every change gets written down, in plain words
 
 **After anything ships — game, website or admin — add a row to the
