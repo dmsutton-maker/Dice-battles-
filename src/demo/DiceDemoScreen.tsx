@@ -1154,7 +1154,7 @@ export function DiceDemoScreen() {
                 selected chip is GOLD and its text is ink too — there is
                 no reversed-out version of this chip to match.
               */}
-              {React.createElement(MODE_ICONS[id], { size: 16 })}
+              {React.createElement(MODE_ICONS[id], { size: 21 })}
               <Text
                 style={[
                   styles.modeText,

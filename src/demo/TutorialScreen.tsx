@@ -152,12 +152,12 @@ function Art({ art, symbols }: { art: TutorialArt; symbols: boolean }) {
   }
 
   if (art.kind === 'modes') {
-    // 30 matches the old emoji's font size, so the row keeps the height
-    // the tutorial popup's layout was measured against.
+    // A touch larger than the 30pt emoji these replaced — David asked
+    // for the mode icons to be bigger, and this page is their showcase.
     return (
       <View style={styles.artRow}>
         {MODE_ORDER.map((id) =>
-          React.createElement(MODE_ICONS[id], { key: id, size: 30 }),
+          React.createElement(MODE_ICONS[id], { key: id, size: 36 }),
         )}
       </View>
     );

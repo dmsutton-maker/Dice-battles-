@@ -158,13 +158,14 @@ suite('icons · Cups and trophies are different pictures', () => {
 
 suite('icons · the four game modes', () => {
   /**
-   * They were emoji — ⚔️ 🔁 🤼 🎯 — and David asked on 26 Aug 2026 for
-   * drawn icons "in the same style as everything else".
-   *
-   * Two things are guarded, and they are the two that went wrong when
-   * Cups and the trophy were both a cup: the drawings must be different
-   * KINDS of shape rather than four variations on one, and each must
-   * still be legible on the SELECTED chip, which is gold.
+   * Second design, and the reversal is the thing to understand before
+   * editing these. The first drawn set depicted each mode's RULE — a
+   * matching pair, a returning arrow, two arrows on one prisoner, a
+   * divided field. David: "the game mode icons need to be bigger and
+   * look very similar to the original emojis so they're easily
+   * identifiable." The family already KNEW ⚔️ 🔁 🤼 🎯; recognition the
+   * player has learned beats semantics the designer likes. So these pin
+   * the emoji shapes, not the rule diagrams.
    */
   const MODE_ICONS = ['RushIcon', 'UltimateIcon', 'SkirmishIcon', 'ColorWarIcon'];
 
@@ -182,77 +183,86 @@ suite('icons · the four game modes', () => {
       assert(map.includes(icon), `${icon} is not in the mode map`);
       assert(SOURCE.includes(`export function ${icon}`), `${icon} is gone`);
     }
-    // Both places modes are shown draw from the same map.
     assert(screen.includes('MODE_ICONS[id]'), 'the mode picker is not using the drawings');
     assert(tutorial.includes('MODE_ICONS[id]'), 'the tutorial is not using the drawings');
   });
 
-  test('the four are different KINDS of picture, not four of one', () => {
+  test('they are drawn at the sizes David asked for', () => {
     /*
-      The lesson from Cups: a trophy and a medal are both "round object,
-      outlined, centred" once they are 14 pixels wide, and David said so
-      twice. So each mode draws its RULE, and the shapes are checked to be
-      built from different primitives — a pair of tiles, a ring, two
-      triangles, a divided box.
+      "Bigger" was half the request. The picker held them at 16pt and the
+      tutorial at 30; they are 21 and 36 now. Floors rather than exact
+      numbers, so a future nudge upward does not fail this.
     */
+    const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    const tutorial = readFileSync('src/demo/TutorialScreen.tsx', 'utf8');
+    const picker = /MODE_ICONS\[id\], \{ size: (\d+) \}/.exec(screen);
+    const tut = /MODE_ICONS\[id\], \{ key: id, size: (\d+) \}/.exec(tutorial);
+    assert(picker !== null && tut !== null, 'a mode icon call site lost its size');
+    note(`picker ${picker![1]}pt, tutorial ${tut![1]}pt`);
+    assert(Number(picker![1]) >= 20, `picker icons are ${picker![1]}pt — back below the size David asked for`);
+    assert(Number(tut![1]) >= 34, `tutorial icons are ${tut![1]}pt — back below the size David asked for`);
+  });
+
+  test('each one is its emoji, not a diagram', () => {
     const rush = drawingOf('RushIcon', 'UltimateIcon');
     const ultimate = drawingOf('UltimateIcon', 'SkirmishIcon');
     const skirmish = drawingOf('SkirmishIcon', 'ColorWarIcon');
     const war = drawingOf('ColorWarIcon', 'CloseIcon');
 
-    // Color Rush: two identical tiles. The match IS the game.
-    assertEqual(
-      (rush.match(/tile\(/g) ?? []).length,
-      2,
-      'Color Rush no longer shows a matching PAIR',
-    );
-    /*
-      Ultimate: a RING, which nothing else here has. Checked by its radius
-      rather than by a transparent border side — the first version of this
-      looked for `borderTopColor: 'transparent'` and failed on Skirmish,
-      because that is simply how every CSS triangle is built. A radius of
-      about a third of the box is a circle; every other mode icon here is
-      a rounded rectangle at 0.09 to 0.11.
-    */
+    // ⚔️ Two crossed swords: two mirrored rotations, a silver blade, a
+    // leather grip.
     assert(
-      /borderRadius: size \* 0\.3\d/.test(ultimate),
-      'Ultimate is no longer built on a ring — a returning arrow needs something to travel round',
+      /'45deg'/.test(rush) && /'-45deg'/.test(rush),
+      'Color Rush lost its crossed swords',
+    );
+    assert(/ICON\.silver/.test(rush), 'the blades are no longer steel');
+    assert(/ICON\.leather/.test(rush), 'the swords lost their grips');
+
+    // 🔁 A loop with two chasing arrowheads: gaps on BOTH sides, and two
+    // heads pointing opposite ways.
+    assert(
+      /borderLeftColor: 'transparent'/.test(ultimate) &&
+        /borderRightColor: 'transparent'/.test(ultimate),
+      'Ultimate is a closed ring — the emoji is two chasing arrows, so the loop needs both gaps',
+    );
+    assertEqual(
+      (ultimate.match(/head\(/g) ?? []).length,
+      2,
+      'Ultimate no longer has two arrowheads',
+    );
+
+    // 🤼 Two figures: two heads and two leaning bodies, in two colours.
+    assertEqual(
+      (skirmish.match(/figure\(/g) ?? []).length,
+      2,
+      'Skirmish no longer shows two figures',
     );
     assert(
-      /borderTopColor: 'transparent'/.test(ultimate),
-      'Ultimate lost the opening in its ring — a closed circle is not a returning arrow',
+      /'14deg'/.test(skirmish) && /'-14deg'/.test(skirmish),
+      'the wrestlers stopped leaning into each other — standing figures read as a crowd, not a bout',
     );
-    // Skirmish: two arrows closing on ONE thing.
+    assert(
+      /hex\('green'\)/.test(skirmish) && /hex\('purple'\)/.test(skirmish),
+      'the two wrestlers are no longer two different prisoner colours',
+    );
+
+    // 🎯 A bullseye: three concentric rings, red-white-red.
     assertEqual(
-      (skirmish.match(/arrow\(/g) ?? []).length,
-      2,
-      'Skirmish no longer shows two sides reaching for the same prisoner',
+      (war.match(/ring\(/g) ?? []).length,
+      3,
+      'Color War is no longer a three-ring bullseye',
     );
-    // Color War: a field split in two.
-    assertEqual(
-      (war.match(/half\(/g) ?? []).length,
-      2,
-      'Color War is no longer a board split between two colours',
+    assert(
+      (war.match(/hex\('red'\)/g) ?? []).length === 2 && /THEME\.surface/.test(war),
+      'the bullseye lost its red-white-red rings',
     );
-    // And none of the others has quietly become a ring too.
-    for (const [name, body] of [['rush', rush], ['skirmish', skirmish], ['war', war]] as const) {
-      assert(
-        !/borderRadius: size \* 0\.3\d/.test(body),
-        `${name} has grown a ring — it is converging on Ultimate`,
-      );
-    }
   });
 
   test('nothing vanishes on the selected chip, which is gold', () => {
     /*
-      The one that is invisible in a diff. The picked mode's chip is
-      THEME.gold, and yellow is 1.14:1 against it AND the same hue, so a
-      yellow fill would read as a hole punched in the chip at exactly the
-      moment the icon matters most.
-
-      Every prisoner colour is low-contrast on gold — the ink outline is
-      what carries the silhouette there, as everywhere. This forbids only
-      the one that is also the same COLOUR.
+      The picked mode's chip is THEME.gold; yellow is 1.14:1 against it
+      and the same hue, so a yellow FILL would read as a hole in the chip.
+      Blue cannot hold the ink outline (2.25:1) anywhere.
     */
     const bodies = [
       drawingOf('RushIcon', 'UltimateIcon'),
@@ -260,27 +270,11 @@ suite('icons · the four game modes', () => {
       drawingOf('SkirmishIcon', 'ColorWarIcon'),
       drawingOf('ColorWarIcon', 'CloseIcon'),
     ].join('\n');
-
     const yellow = PRISONER_COLORS.find((c) => c.id === 'yellow')!;
-    const ratio = contrast(yellow.hex, THEME.gold);
-    note(`yellow on the selected chip: ${ratio.toFixed(2)}:1`);
-    assert(
-      !/hex\('yellow'\)/.test(bodies),
-      `a mode icon is filled yellow, which is ${ratio.toFixed(2)}:1 on the gold chip it sits on`,
-    );
-    assert(
-      !/hex\('blue'\)/.test(bodies),
-      'a mode icon is filled blue — the ink outline is only 2.25:1 on it and the drawing dissolves',
-    );
-    /*
-      Every fill they DO use has to hold the ink outline.
-
-      Matched by looking for each colour's NAME as a quoted string, not by
-      hunting for `hex('…')`. Color War passes its two colours as
-      arguments to a local helper — `half(0, 'orange')` — so a regex tied
-      to the hex() call site found nothing in it and the check silently
-      passed on an empty set, which is worse than not having it.
-    */
+    note(`yellow on the selected chip: ${contrast(yellow.hex, THEME.gold).toFixed(2)}:1`);
+    assert(!/hex\('yellow'\)/.test(bodies), 'a mode icon is filled yellow — invisible on the gold chip');
+    assert(!/hex\('blue'\)/.test(bodies), 'a mode icon is filled blue — the ink outline dissolves on it');
+    // The fills they do use hold the outline.
     let checked = 0;
     for (const c of PRISONER_COLORS) {
       if (!new RegExp(`'${c.id}'`).test(bodies)) continue;
@@ -289,10 +283,7 @@ suite('icons · the four game modes', () => {
       note(`${c.id}: ink outline ${r.toFixed(2)}:1`);
       assert(r >= 3, `the ink outline is only ${r.toFixed(2)}:1 on ${c.id}`);
     }
-    assert(
-      checked >= 4,
-      `only ${checked} colours were found in the mode icons — the check is looking in the wrong place again`,
-    );
+    assert(checked >= 3, `only ${checked} colours found — the check is looking in the wrong place`);
   });
 });
 

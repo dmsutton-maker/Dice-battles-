@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.51.0 — 2026-08-26 · requested by David
+
+### Changed
+- **The game mode icons are the emoji shapes again, drawn — and bigger.**
+  David: "the game mode icons need to be bigger and look very similar to
+  the original emojis so they're easily identifiable for each mode." The
+  previous drawn set depicted each mode's rule (a matching pair, a
+  returning arrow, and so on), which was tidy and wrong: the family had
+  weeks of knowing ⚔️ meant Color Rush, and an icon that throws away
+  learned recognition makes the picker harder to use, not cleverer.
+  - Color Rush is two crossed swords with steel blades and leather grips;
+    Ultimate is the two chasing arrows of the repeat loop; Skirmish is
+    two little figures leaning into a grapple, one green and one purple;
+    Color War is a red-and-white bullseye.
+  - They grew from 16pt to 21pt in the mode picker and from 30pt to 36pt
+    in How to Play, and all four were rendered at both sizes — and on the
+    gold selected chip — before shipping.
+
 ## v1.50.0 — 2026-08-26 · requested by David
 
 ### Added
