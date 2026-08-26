@@ -11,7 +11,7 @@ import {
   RETREAT_XS,
   RETREAT_Z,
 } from '../game/stations';
-import { createFlagstoneTexture } from './flagstoneTexture';
+import { createGroundSurface, createTraySurface } from './groundTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
 
@@ -39,13 +39,17 @@ import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
  */
 
 const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
+
+/**
+ * How far the ground plane reaches.
+ *
+ * Cut from 70 to 26: the camera cannot see past z -10.5 or |x| 4.5, so
+ * the other 44 units were a very large quad rendered for nobody.
+ */
+const GROUND_SPAN = 26;
 const halfW = innerWidth / 2;
 const halfD = innerDepth / 2;
 
-function hexRgb(hex: string): { r: number; g: number; b: number } {
-  const n = parseInt(hex.slice(1), 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
 
 /* ── the prop library ─────────────────────────────────────────────── */
 
@@ -616,73 +620,23 @@ function ThemedRetreat({ theme }: { theme: ArenaTheme }) {
   );
 }
 
-/** Sky dressing: sun, stars, and the one big celestial body. */
-function ThemedSky({ theme }: { theme: ArenaTheme }) {
-  const stars = useMemo(() => {
-    if (!theme.sky.stars) return [];
-    // Deterministic: the same sky every visit, and no Math.random in render.
-    const out: [number, number, number][] = [];
-    for (let i = 0; i < 60; i++) {
-      const h = Math.abs(Math.sin(i * 127.1) * 43758.5453) % 1;
-      const v = Math.abs(Math.sin(i * 311.7) * 27183.29) % 1;
-      out.push([(h - 0.5) * 60, 6 + v * 18, -24 - (h * 7 + v * 5) % 10]);
-    }
-    return out;
-  }, [theme.sky.stars]);
+/*
+  The sky component used to live here: a sun disc at (9, 13, -22), sixty
+  stars at z -24, and one big celestial body — a moon, the Earth, an
+  aurora, a rainbow — at z -23.
 
-  const body = theme.sky.body;
-  return (
-    <group>
-      {theme.sky.sun && (
-        <mesh position={[9, 13, -22]}>
-          <sphereGeometry args={[theme.sky.sun.size, 14, 12]} />
-          <meshBasicMaterial color={theme.sky.sun.color} />
-        </mesh>
-      )}
-      {stars.map((p, i) => (
-        <mesh key={`star-${i}`} position={p}>
-          <sphereGeometry args={[0.09, 4, 4]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-      ))}
-      {body?.kind === 'moon' && (
-        <mesh position={[-8, 13, -23]}>
-          <sphereGeometry args={[1.5, 14, 12]} />
-          <meshBasicMaterial color={body.color} />
-        </mesh>
-      )}
-      {body?.kind === 'earth' && (
-        <group position={[-8, 12, -23]}>
-          <mesh>
-            <sphereGeometry args={[2, 16, 14]} />
-            <meshBasicMaterial color={body.color} />
-          </mesh>
-          <mesh position={[0.5, 0.5, 1.6]} scale={[1, 0.6, 0.4]}>
-            <sphereGeometry args={[0.8, 10, 8]} />
-            <meshBasicMaterial color="#ffffff" />
-          </mesh>
-        </group>
-      )}
-      {body?.kind === 'aurora' && (
-        // Three broad emissive ribbons leaning across the sky.
-        <group position={[0, 14, -24]}>
-          {[-9, 0, 9].map((x, i) => (
-            <mesh key={i} position={[x, i * 1.5, 0]} rotation={[0.2, 0, 0.35 - i * 0.3]}>
-              <planeGeometry args={[3, 14]} />
-              <meshBasicMaterial color={body.color} transparent opacity={0.35} side={THREE.DoubleSide} />
-            </mesh>
-          ))}
-        </group>
-      )}
-      {body?.kind === 'rainbow' && (
-        <mesh position={[0, 6, -24]} rotation={[0, 0, 0]}>
-          <torusGeometry args={[10, 0.9, 8, 40, Math.PI]} />
-          <meshBasicMaterial color={body.color} transparent opacity={0.6} />
-        </mesh>
-      )}
-    </group>
-  );
-}
+  It is gone because none of it was ever visible. The camera looks almost
+  straight down from (0, 19.5, 5.8) with a 17-degree tilt and a 46-degree
+  lens; anything past z -10.5 falls outside that cone no matter how high
+  it is hung, because height moves a distant object further UP the frame
+  and out of it rather than into view. Sixteen arenas were each building
+  a sky nobody could see.
+
+  The theme data still describes one (ArenaTheme.sky), and deliberately:
+  the Inventory thumbnails are drawn wide and DO show the sun, the stars
+  and the aurora — see assets/arenas/make-themed-art.py, which reads
+  those very fields. What was wrong was rendering it in 3D.
+*/
 
 /* ── what the tray is BUILT of ────────────────────────────────────── */
 
@@ -1346,16 +1300,40 @@ function ThemedCorners({
 /* ── the arena itself ─────────────────────────────────────────────── */
 
 export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
+  /*
+    The tray floor, painted for THIS battlefield.
+
+    It used to be `createFlagstoneTexture(theme.floor.a)` — one colour,
+    one painter — so all sixteen arenas rolled their dice on the same
+    grey eight-by-eight grid, and `theme.floor.b` was never read by
+    anything. That grid is most of what is on screen, which is a large
+    part of why David called the new maps unfinished.
+  */
+  const floorW = innerWidth + wallThickness * 2;
+  const floorD = innerDepth + wallThickness * 2;
   const floorTexture = useMemo(
     () =>
-      cachedTexture(`themed-floor-${id}`, () => {
-        const texture = createFlagstoneTexture(hexRgb(theme.floor.a), 0.78);
-        const floorW = innerWidth + wallThickness * 2;
-        const floorD = innerDepth + wallThickness * 2;
-        texture.repeat.set(1, floorD / floorW);
-        return texture;
-      }),
-    [id, theme.floor.a],
+      cachedTexture(`themed-floor-${id}`, () =>
+        createTraySurface(
+          theme.structure,
+          { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
+          [floorW / 4.2, floorD / 4.2],
+        ),
+      ),
+    [id, theme.structure, theme.floor.a, theme.floor.b, theme.wall.cap, floorW, floorD],
+  );
+
+  /* The ground outside it, in the same material family a shade duller. */
+  const groundTexture = useMemo(
+    () =>
+      cachedTexture(`themed-ground-${id}`, () =>
+        createGroundSurface(
+          theme.structure,
+          { a: theme.meadow, b: theme.hill, accent: theme.mountain ?? theme.wall.cap },
+          GROUND_SPAN / 5,
+        ),
+      ),
+    [id, theme.structure, theme.meadow, theme.hill, theme.mountain, theme.wall.cap],
   );
 
   const wallMaterial = useMemo(
@@ -1369,15 +1347,33 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
   );
 
   const rim = useMemo(() => {
+    /*
+      Evenly spaced the whole way round, at the same pitch on the ends as
+      on the sides.
+
+      It used to step 1.1 across the ends and 1.15 down the sides, from
+      inset starts — four pieces on each end against eight on each side,
+      with gaps wider than the pieces. On screen that read as scattered
+      rubble rather than a built rim, and the ends looked bare next to
+      the sides. One pitch, measured from the wall's own corners, fixes
+      both at once.
+    */
     const list: RimSpot[] = [];
     const y = wallHeight + 0.12;
-    for (let x = -halfW + 0.4; x <= halfW - 0.3; x += 1.1) {
-      list.push({ pos: [x, y, -(halfD + wallThickness / 2)], alongX: true });
-      list.push({ pos: [x, y, halfD + wallThickness / 2], alongX: true });
+    const PITCH = 0.62;
+    const endX = halfW + wallThickness / 2;
+    const endZ = halfD + wallThickness / 2;
+    const across = Math.max(2, Math.round((innerWidth - 0.3) / PITCH));
+    for (let i = 0; i <= across; i++) {
+      const x = -(innerWidth / 2 - 0.15) + (i * (innerWidth - 0.3)) / across;
+      list.push({ pos: [x, y, -endZ], alongX: true });
+      list.push({ pos: [x, y, endZ], alongX: true });
     }
-    for (let z = -halfD + 0.6; z <= halfD - 0.4; z += 1.15) {
-      list.push({ pos: [-(halfW + wallThickness / 2), y, z], alongX: false });
-      list.push({ pos: [halfW + wallThickness / 2, y, z], alongX: false });
+    const down = Math.max(2, Math.round((innerDepth + wallThickness) / PITCH));
+    for (let i = 0; i <= down; i++) {
+      const z = -(innerDepth + wallThickness) / 2 + (i * (innerDepth + wallThickness)) / down;
+      list.push({ pos: [-endX, y, z], alongX: false });
+      list.push({ pos: [endX, y, z], alongX: false });
     }
     return list;
   }, []);
@@ -1390,51 +1386,40 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         <meshStandardMaterial map={floorTexture} roughness={0.95} />
       </mesh>
 
-      {/* The world's ground, out to the horizon. */}
+      {/*
+        The world's ground.
+
+        Everything that used to stand on it — five hills at |x| 12, three
+        mountain cones at z -19, clouds at z -13, the sun, the stars and
+        the one big sky body — is gone, and its going is the point rather
+        than a saving. The camera (cameraFit.ts) frames x ±3.9 and z from
+        -10.5 to 7.8. Not one of those things was ever inside that box on
+        any phone, so all of them were cost with no picture: the arenas
+        really were a tray in a wash of flat colour, which is what David
+        was looking at.
+
+        What replaces them is a textured ground and a bank at the very
+        back — both of which ARE in frame.
+      */}
       <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[70, 70]} />
-        <meshStandardMaterial color={theme.meadow} roughness={1} />
+        <planeGeometry args={[GROUND_SPAN, GROUND_SPAN]} />
+        <meshStandardMaterial map={groundTexture} roughness={1} />
       </mesh>
 
-      {/* Soft mounds. */}
-      {([[-12, -9, 5], [12.5, -10, 5.2], [0, -17, 8.5], [-13, 4, 4.8], [13.5, 6, 5]] as const).map(
-        ([x, z, r], i) => (
-          <mesh key={`hill-${i}`} position={[x, -1.8, z]} scale={[1, 0.45, 1]}>
-            <sphereGeometry args={[r, 14, 10]} />
-            <meshStandardMaterial color={theme.hill} roughness={1} />
-          </mesh>
-        ),
+      {/* The horizon: a low bank behind the jail, at the last z the
+          camera can still see. Gives the world an edge to end at
+          instead of running to a flat nothing. */}
+      <mesh position={[0, -0.45, -10.4]} scale={[1, 0.5, 1]}>
+        <sphereGeometry args={[7.5, 20, 10]} />
+        <meshStandardMaterial color={theme.hill} roughness={1} />
+      </mesh>
+      {theme.mountain && (
+        <mesh position={[0, -0.7, -11.6]} scale={[1, 0.42, 1]}>
+          <sphereGeometry args={[9.5, 20, 10]} />
+          <meshStandardMaterial color={theme.mountain} roughness={1} />
+        </mesh>
       )}
 
-      {/* Horizon cones. */}
-      {theme.mountain &&
-        ([[-9.5, -19, 5, 6.5], [0.5, -23, 7.5, 9], [9.5, -18, 4.6, 5.5]] as const).map(
-          ([x, z, r, h], i) => (
-            <mesh key={`mtn-${i}`} position={[x, h / 2 - 1.2, z]}>
-              <coneGeometry args={[r, h, 10]} />
-              <meshStandardMaterial color={theme.mountain!} roughness={1} />
-            </mesh>
-          ),
-        )}
-
-      {/* Clouds. */}
-      {theme.cloud &&
-        ([[-8, 7.5, -13, 1.6], [7.5, 8.5, -15, 2], [-2.5, 9.5, -19, 2.6]] as const).map(
-          ([x, y, z, s], i) => (
-            <group key={`cloud-${i}`} position={[x, y, z]} scale={[s, s * 0.5, s]}>
-              <mesh>
-                <sphereGeometry args={[1, 10, 8]} />
-                <meshBasicMaterial color={theme.cloud!} />
-              </mesh>
-              <mesh position={[1.1, -0.1, 0.2]} scale={0.7}>
-                <sphereGeometry args={[1, 10, 8]} />
-                <meshBasicMaterial color={theme.cloud!} />
-              </mesh>
-            </group>
-          ),
-        )}
-
-      <ThemedSky theme={theme} />
       <ThemedJailPen platform={theme.jail.platform} bars={theme.jail.bars} />
       <ThemedRetreat theme={theme} />
 

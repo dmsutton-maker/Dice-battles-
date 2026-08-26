@@ -37,6 +37,30 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-56-0-arenas-in-frame',
+    date: '26 August 2026',
+    version: 'v1.56.0',
+    title: 'The new battlefields were being decorated off screen',
+    emoji: '🔭',
+    body:
+      'Somebody said the new maps looked unfinished, and they were ' +
+      'right for a reason nobody had spotted: all the scenery was ' +
+      'outside the camera. The trees, rocks, lava pools, cacti and ' +
+      'barns were all placed far enough out that the game never showed ' +
+      'a single one of them, along with the hills, the mountains, the ' +
+      'clouds, the sun, the stars and the moon. Every battlefield was ' +
+      'really just a bare tray.\n\n' +
+      'Everything has been moved in close where you can actually see ' +
+      'it — a row down each side of the board and more behind the jail.\n\n' +
+      'And the floor you roll on is different in every battlefield now. ' +
+      'It used to be the same grey stone grid in all sixteen. There is ' +
+      'packed snow, rippled desert sand, cracked lava with the heat ' +
+      'still glowing in it, fallen leaves, riveted metal decking, cave ' +
+      'rock, moon dust, wet beach sand, iced squares, moss with ' +
+      'stepping stones, ship planks, straw, a rippled seabed, a city ' +
+      'rooftop and a toy play mat.',
+  },
+  {
     id: 'v1-55-0-dice-and-arena-polish',
     date: '26 August 2026',
     version: 'v1.55.0',

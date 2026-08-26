@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.56.0 — 2026-08-26 · reported by David
+
+### Fixed
+- **The new battlefields were being dressed outside the camera.** David,
+  looking at three of them on his phone: "every new map, not just these,
+  look either unfinished, off centered, or only half done." He was right,
+  and measuring the camera said why.
+  - The board is framed almost straight down, and the visible world is a
+    narrow box: x from -3.9 to 3.9 and z from -10.5 to 7.8 on a modern
+    iPhone, of which the tray itself takes x ±2.8 and z ±5.1. **Every
+    prop in all sixteen themed arenas sat at |x| between 7 and 10.** Not
+    one had ever been on screen, on any phone, since the day it was
+    written — and nor had the five hills at |x| 12, the three mountains
+    at z -19, the clouds at z -13, the sun, the sixty stars, or the moon
+    and the Earth and the aurora. Sixteen battlefields were a bare tray
+    in a wash of flat colour, and everything meant to dress them was
+    being rendered into the dark.
+  - All two hundred props are re-placed inside the frame: a row down each
+    side just outside the wall, and a bank of three behind the jail. The
+    sky and the far landscape are gone from the 3D scene entirely, since
+    height cannot rescue them — a distant object hung higher moves further
+    UP the frame and out of it, not into view. The theme data still
+    describes a sky and still should: the Inventory thumbnails are drawn
+    wide and do show it.
+  - `npm test` now projects every prop through the real fitted camera at
+    the two extreme phone shapes and fails if it lands outside. Nothing
+    could have caught this before: a prop off screen throws nothing, and
+    reads in the source exactly like a prop that works.
+- **All sixteen rolled on the same floor.** The renderer passed
+  `theme.floor.a` to the shared flagstone painter and never read
+  `theme.floor.b` at all, so every themed arena had the same grey
+  eight-by-eight grid — the largest single thing on screen, identical
+  sixteen times. There is a painter per battlefield now: packed snow,
+  wind-rippled sand, cracked lava with the heat still in the seams,
+  fallen leaves, riveted deck plate, mineral cave rock, flagstone,
+  regolith, wet beach sand, iced squares, moss with stepping stones,
+  ship's planking, straw on bare earth, rippled seabed under caustics,
+  gravelled roofing felt and a printed play mat. The ground outside the
+  tray is painted from the same family a shade duller.
+- **The rim looked like scattered rubble.** It stepped 1.1 across the
+  ends and 1.15 down the sides from inset starts — four pieces on each
+  end against eight on each side, with gaps wider than the pieces. One
+  pitch, measured from the wall's own corners, gives eight on the ends
+  and seventeen down the sides, evenly.
+- The ground plane was 70 by 70 and is now 26 — the other 44 units were
+  a very large quad drawn for nobody.
+
 ## v1.55.0 — 2026-08-26 · requested by David
 
 ### Changed

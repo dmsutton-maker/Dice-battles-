@@ -4,7 +4,9 @@ import { join } from 'node:path';
 import { palisadeLogs, palisadeTopHeight } from '../src/arena/palisade';
 import { TUNING } from '../src/game/tuning';
 import { ARENA_THEMES, ThemedArenaId } from '../src/arena/themeData';
+import { surfacePixels } from '../src/arena/groundTexture';
 import { FIGURE_RADIUS, JAIL_SLOTS, RETREAT_SLOTS } from '../src/game/stations';
+import { fitCamera } from '../src/demo/cameraFit';
 import { assert, assertEqual, note, suite, test } from './harness';
 
 /**
@@ -353,5 +355,244 @@ suite('arenas · the themed sixteen are not all castles', () => {
         }
       }
     }
+  });
+});
+
+/**
+ * Everything a battlefield is dressed with is inside the camera.
+ *
+ * David, 26 Aug 2026, looking at three of the new arenas on his phone:
+ * "every new map, not just these, look either unfinished, off centered,
+ * or only half done."
+ *
+ * He was right and the cause was measurable. The board is framed almost
+ * straight down (cameraFit.ts) and the visible world is a narrow box —
+ * roughly x ±3.9 and z from -10.5 to 7.8 on a modern iPhone, of which
+ * the tray takes x ±2.8 and z ±5.1. Every prop the sixteen themed
+ * arenas placed sat at |x| between 7 and 10. Not one of them had ever
+ * been on screen, on any phone, since the day they were written; nor
+ * had the five hills at |x| 12, the mountains at z -19, the clouds, the
+ * sun, the stars or the moon. Sixteen battlefields were a bare tray in a
+ * wash of flat colour, and the work that was meant to dress them was
+ * being rendered into the dark.
+ *
+ * This is the check that was missing. It projects every prop through the
+ * real fitted camera at the two extreme phone shapes the game supports
+ * and fails if it lands outside the frame. Nothing else in the suite
+ * could have caught it: a prop off screen throws nothing, looks like
+ * nothing, and reads in the source exactly like a prop that works.
+ */
+suite('arenas · the scenery is where the camera is pointing', () => {
+  const ASPECTS: [string, number][] = [
+    ['iPhone 15 portrait', 393 / 852],
+    ['iPhone SE portrait', 375 / 667],
+  ];
+
+  /** Screen position of a world point through the fitted camera. */
+  function project(aspect: number, x: number, y: number, z: number): THREE.Vector3 {
+    const camera = new THREE.PerspectiveCamera();
+    fitCamera(camera, aspect);
+    return new THREE.Vector3(x, y, z).project(camera);
+  }
+
+  test('every prop in every theme is on screen', () => {
+    for (const [label, aspect] of ASPECTS) {
+      let worst = 0;
+      let worstLabel = '';
+      for (const [id, theme] of Object.entries(ARENA_THEMES)) {
+        for (const p of theme.props) {
+          // A prop's base. Tops are allowed to crop — a tree leaning over
+          // the wall is fine — but if the FOOT of it is outside the
+          // frame the whole prop is somewhere nobody will ever look.
+          const ndc = project(aspect, p.x, 0, p.z);
+          const off = Math.max(Math.abs(ndc.x), Math.abs(ndc.y));
+          if (off > worst) {
+            worst = off;
+            worstLabel = `${id}'s ${p.kind} at (${p.x}, ${p.z})`;
+          }
+        }
+      }
+      note(`${label}: furthest prop reaches ${worst.toFixed(2)} of the frame (${worstLabel})`);
+      assert(
+        worst <= 1,
+        `${worstLabel} is off screen on ${label} — it is being rendered for nobody`,
+      );
+    }
+  });
+
+  test('the props are spread around the board, not stacked in one place', () => {
+    /*
+      The other way to pass the test above is to put all thirteen props
+      in a heap at the origin. Each theme has to reach down both sides
+      and across the back.
+    */
+    for (const [id, theme] of Object.entries(ARENA_THEMES)) {
+      const left = theme.props.filter((p) => p.x < -2.9).length;
+      const right = theme.props.filter((p) => p.x > 2.9).length;
+      const back = theme.props.filter((p) => p.z < -8).length;
+      assert(left >= 3, `${id} has only ${left} props down its left side`);
+      assert(right >= 3, `${id} has only ${right} props down its right side`);
+      assert(back >= 2, `${id} has only ${back} props behind the jail`);
+    }
+  });
+
+  test('no prop stands inside the tray or on a figure', () => {
+    const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+    const outerX = innerWidth / 2 + wallThickness;
+    const outerZ = innerDepth / 2 + wallThickness;
+    const slots = [...JAIL_SLOTS, ...RETREAT_SLOTS];
+    for (const [id, theme] of Object.entries(ARENA_THEMES)) {
+      for (const p of theme.props) {
+        assert(
+          Math.abs(p.x) > outerX || Math.abs(p.z) > outerZ,
+          `${id}'s ${p.kind} at (${p.x}, ${p.z}) is standing in the tray`,
+        );
+        for (const slot of slots) {
+          assert(
+            Math.hypot(p.x - slot.x, p.z - slot.z) > FIGURE_RADIUS + 0.9,
+            `${id}'s ${p.kind} at (${p.x}, ${p.z}) stands on a figure`,
+          );
+        }
+      }
+    }
+  });
+
+  test('the renderer stopped building the sky nobody can see', () => {
+    /*
+      Pinned, because it is the kind of thing that gets "restored" by
+      someone reading the theme data and noticing the renderer ignores
+      half of it. ArenaTheme still DESCRIBES a sky, and correctly — the
+      Inventory thumbnails are drawn wide and do show the sun, the stars
+      and the aurora (assets/arenas/make-themed-art.py reads those very
+      fields). What was wrong was hanging it in a 3D scene whose camera
+      cannot include it.
+    */
+    const source = readFileSync('src/arena/ThemedArena.tsx', 'utf8');
+    assert(!/<ThemedSky/.test(source), 'the invisible sky is back in the 3D scene');
+    assert(
+      !/coneGeometry args=\{\[r, h, 10\]\}/.test(source),
+      'the mountains at z -19 are back',
+    );
+  });
+});
+
+/**
+ * The floor under the dice is a different floor in every battlefield.
+ *
+ * It was not. The renderer called `createFlagstoneTexture(theme.floor.a)`
+ * — one colour, one painter — so all sixteen themed arenas rolled on the
+ * same grey eight-by-eight stone grid, and `theme.floor.b` was declared,
+ * documented and never read by anything at all. The floor is the largest
+ * thing on screen by a wide margin under this camera, so one floor
+ * sixteen times is most of what "unfinished" meant.
+ */
+suite('arenas · every battlefield has its own surface', () => {
+  const IDS = Object.keys(ARENA_THEMES) as ThemedArenaId[];
+
+  /** A 4x4x4 histogram over the colour cube, as the thumbnails use. */
+  function histogram(px: number[]): number[] {
+    const bins = new Array(64).fill(0);
+    for (let i = 0; i < px.length; i += 3) {
+      bins[Math.floor(px[i] / 64) * 16 + Math.floor(px[i + 1] / 64) * 4 + Math.floor(px[i + 2] / 64)]++;
+    }
+    const total = px.length / 3;
+    return bins.map((b) => b / total);
+  }
+
+  const floors = Object.fromEntries(
+    IDS.map((id) => {
+      const t = ARENA_THEMES[id];
+      return [
+        id,
+        surfacePixels(t.structure, { a: t.floor.a, b: t.floor.b, accent: t.wall.cap }),
+      ];
+    }),
+  ) as Record<ThemedArenaId, number[]>;
+
+  test('no floor is a flat wash', () => {
+    // The failure this replaces was the opposite — all detail, no
+    // variety — but a painter that returns one colour would pass the
+    // distinctness test below on palette alone.
+    for (const id of IDS) {
+      const px = floors[id];
+      const tones = new Set<number>();
+      for (let i = 0; i < px.length; i += 3) {
+        tones.add(Math.round((px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722) / 3));
+      }
+      note(`${id}: ${tones.size} tone steps in its floor`);
+      assert(tones.size >= 8, `${id}'s floor paints only ${tones.size} tones — it is a flat colour`);
+    }
+  });
+
+  test('both floor tones are used, not just the first', () => {
+    /*
+      The specific bug. `floor.b` existed on all sixteen themes and was
+      dead — so changing it changed nothing, and a designer adjusting a
+      floor would have seen no effect and had no way to find out why.
+    */
+    for (const id of IDS) {
+      const t = ARENA_THEMES[id];
+      const withB = surfacePixels(t.structure, {
+        a: t.floor.a,
+        b: t.floor.b,
+        accent: t.wall.cap,
+      });
+      const swapped = surfacePixels(t.structure, {
+        a: t.floor.a,
+        b: '#ff00ff',
+        accent: t.wall.cap,
+      });
+      let changed = 0;
+      for (let i = 0; i < withB.length; i++) if (withB[i] !== swapped[i]) changed++;
+      assert(
+        changed > withB.length * 0.05,
+        `${id}'s floor ignores floor.b — changing it moved only ${changed} of ${withB.length} channels`,
+      );
+    }
+  });
+
+  test('no two battlefields roll on the same floor', () => {
+    const hists = Object.fromEntries(IDS.map((id) => [id, histogram(floors[id])]));
+    const pairs: { d: number; label: string }[] = [];
+    for (let i = 0; i < IDS.length; i++) {
+      for (let j = i + 1; j < IDS.length; j++) {
+        const a = hists[IDS[i]];
+        const b = hists[IDS[j]];
+        pairs.push({
+          d: a.reduce((sum, v, k) => sum + Math.abs(v - b[k]), 0) / 2,
+          label: `${IDS[i]} vs ${IDS[j]}`,
+        });
+      }
+    }
+    pairs.sort((a, b) => a.d - b.d);
+    for (const p of pairs.slice(0, 3)) note(`closest floors: ${p.label} ${p.d.toFixed(2)} apart`);
+    /*
+      A low bar, and deliberately. This measures COLOUR only, and the
+      closest pair — the snowfield and the Sky Kingdom — are both meant
+      to be very nearly white; no palette bar can separate two pale
+      arenas without banning pale arenas. What separates those two is
+      their pattern, which is covered by the structures being unique
+      (every structure has its own painter) and by the tone-step test
+      above. This one is here to catch two arenas sharing a palette
+      outright.
+    */
+    assert(
+      pairs[0].d > 0.1,
+      `${pairs[0].label} roll on the same floor (${pairs[0].d.toFixed(2)} apart)`,
+    );
+  });
+
+  test('the flagstone painter is no longer wired to the themed arenas', () => {
+    const source = readFileSync('src/arena/ThemedArena.tsx', 'utf8');
+    // The import, not the name: the comment explaining what went wrong
+    // names the old painter, and should.
+    assert(
+      !/from '\.\/flagstoneTexture'/.test(source),
+      'ThemedArena is back on the one shared stone floor',
+    );
+    assert(
+      /createTraySurface/.test(source) && /createGroundSurface/.test(source),
+      'ThemedArena has stopped painting its own floor or its own ground',
+    );
   });
 });
