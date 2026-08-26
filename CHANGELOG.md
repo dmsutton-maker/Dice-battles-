@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.46.0 — 2026-08-26
+
+### Fixed
+- **The News tab had fallen four versions behind the game.** v1.42 to
+  v1.45 all shipped without a word in it, so anyone opening News saw
+  nothing about the see-through result screen or the new How to Play
+  demonstration — the two changes they are most likely to notice. There
+  is a post covering both now.
+  - This is exactly what the "news keeps up with what has shipped" test
+    exists for, and it did its job: it allows the News tab to run up to
+    three minor versions behind and failed the moment the fourth landed.
+    The tab had gone eighteen releases stale once before, which is why
+    the rule is there at all.
+
 ## v1.45.0 — 2026-08-26 · requested by David
 
 ### Changed

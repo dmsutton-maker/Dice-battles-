@@ -37,6 +37,23 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-46-0-see-through-and-a-finger',
+    date: '26 August 2026',
+    version: 'v1.46.0',
+    title: 'See your board again, and a proper How to Play',
+    emoji: '👆',
+    body:
+      'The screen you get after a game used to be solid paper, so the ' +
+      'board you had just played on vanished behind it. It is see-through ' +
+      'now — you can see how it finished while you read what you won. The ' +
+      'Home Screen stays solid, which is how it should be.\n\n' +
+      'How to Play has a proper demonstration on the "Throw the dice" ' +
+      'page instead of three little pictures. A finger comes in and flicks, ' +
+      'two dice tumble across a little battlefield, they land on the same ' +
+      'colour, and that prisoner leaves the jail. It plays over and over, ' +
+      'so you can just watch it until it makes sense.',
+  },
+  {
     id: 'v1-41-0-dice-must-land',
     date: '25 August 2026',
     version: 'v1.41.0',
