@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
 import { playClick } from '../audio/sounds';
 import { MENU_PAGE_AREA } from './BottomNav';
@@ -9,6 +9,7 @@ import { PreviewTarget } from '../game/itemPreview';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
+import { ARENA_ART } from '../arena/arenaArt';
 import {
   ARENA_ORDER,
   ARENA_UNLOCKS,
@@ -72,9 +73,9 @@ export function InventoryScreen({
             const arena = ARENAS[id];
             const unlocked = isArenaUnlocked(id, trophies);
             const equipped = arenaId === id;
-            // Every arena shows its real name and sky, locked or not —
-            // you cannot want what you cannot see.
-            const label = { name: arena.name, emoji: arena.emoji };
+            // Every arena shows its real name and its picture, locked or
+            // not — you cannot want what you cannot see.
+            const label = { name: arena.name };
 
             return (
               <Pressable
@@ -91,14 +92,14 @@ export function InventoryScreen({
                   !unlocked && styles.cardLocked,
                 ]}
               >
-                <View
-                  style={[
-                    styles.swatch,
-                    { backgroundColor: arena.skyColor },
-                  ]}
-                >
-                  <Text style={styles.swatchEmoji}>{label.emoji}</Text>
-                </View>
+                <Image
+                  source={ARENA_ART[id]}
+                  // The sky sits underneath as the colour the picture
+                  // opens on, so a card is never a white hole for the
+                  // frame it takes the image to decode.
+                  style={[styles.swatch, { backgroundColor: arena.skyColor }]}
+                  accessibilityIgnoresInvertColors
+                />
                 <Text style={[styles.cardName, !unlocked && styles.lockedText]}>
                   {label.name}
                 </Text>
@@ -269,18 +270,19 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.sunk,
     borderColor: 'rgba(29,26,46,0.35)',
   },
+  /*
+    The battlefield's picture. `overflow: hidden` matters: the art is a
+    square and this corner radius is what makes it sit in the card rather
+    than on top of it.
+  */
   swatch: {
     width: 58,
     height: 58,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     marginBottom: 8,
     borderWidth: 1,
     borderColor: 'rgba(29,26,46,0.25)',
-  },
-  swatchEmoji: {
-    fontSize: 26,
   },
   pipRow: {
     flexDirection: 'row',

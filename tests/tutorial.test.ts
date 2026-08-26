@@ -342,3 +342,145 @@ suite('tutorial · the throw demo', () => {
     );
   });
 });
+
+/**
+ * The battlefield pictures in the Inventory.
+ *
+ * They were emoji — 🏰 🌅 🌴 🚀 — the last four in the interface after
+ * the Paper & Ink pass took them out of everywhere else. David asked on
+ * 26 Aug 2026 for hand-drawn pictures, "detailed enough to be distinct
+ * and accurate", and the emoji failed both halves at once: 🏰 and 🌅 are
+ * the same building in this game, and every emoji renders differently on
+ * every phone, so the menu could not even be sure what it looked like.
+ *
+ * These read the PNGs and measure them, because the two things asked for
+ * are properties of the pictures rather than of the code.
+ */
+suite('inventory · the battlefield pictures', () => {
+  const { execSync } = require('node:child_process') as typeof import('node:child_process');
+  const IDS = ['castle', 'castle-sunset', 'jungle', 'space'];
+
+  /** A coarse colour histogram of one picture, via Python's PIL. */
+  function stats(id: string): { colours: number; sat: number; dark: number; hue: number[] } {
+    const out = execSync(
+      `python3 -c "
+from PIL import Image
+import colorsys
+im = Image.open('assets/arenas/${id}.png').convert('RGB').resize((64,64))
+px = list(im.getdata())
+q = set((r//24, g//24, b//24) for r,g,b in px)
+hsv = [colorsys.rgb_to_hsv(r/255,g/255,b/255) for r,g,b in px]
+sat = sum(s for _,s,_ in hsv)/len(hsv)
+dark = sum(1 for _,_,v in hsv if v < 0.35)/len(hsv)
+bins = [0]*12
+for h,s,v in hsv:
+    if s > 0.15 and v > 0.15: bins[min(11,int(h*12))] += 1
+print(len(q), round(sat,4), round(dark,4), ' '.join(str(b) for b in bins))
+"`,
+      { encoding: 'utf8' },
+    ).trim().split(' ');
+    return {
+      colours: Number(out[0]),
+      sat: Number(out[1]),
+      dark: Number(out[2]),
+      hue: out.slice(3).map(Number),
+    };
+  }
+
+  test('every battlefield has a picture, and the emoji are gone', () => {
+    const art = readFileSync('src/arena/arenaArt.ts', 'utf8');
+    const inv = readFileSync('src/demo/InventoryScreen.tsx', 'utf8');
+    for (const id of IDS) {
+      assert(existsSync(`assets/arenas/${id}.png`), `${id} has no picture`);
+      assert(art.includes(`assets/arenas/${id}.png`), `${id} is not wired up`);
+    }
+    assert(
+      !/swatchEmoji/.test(inv),
+      'the Inventory is drawing an emoji for a battlefield again',
+    );
+    assert(
+      inv.includes('ARENA_ART[id]'),
+      'the Inventory no longer shows the drawn pictures',
+    );
+    assert(
+      existsSync('assets/arenas/make-arenas.py'),
+      'the generator is gone, so nobody can adjust or redraw these',
+    );
+  });
+
+  test('they have real colour in them, not a flat wash', () => {
+    // "Make sure they have color and are detailed enough" — David. A
+    // two-tone gradient would pass a "does a file exist" check and fail
+    // the actual request.
+    for (const id of IDS) {
+      const s = stats(id);
+      note(`${id}: ${s.colours} colour buckets, saturation ${s.sat.toFixed(2)}`);
+      assert(
+        s.colours >= 18,
+        `${id} has only ${s.colours} distinct colour buckets — it is a flat wash, not a picture`,
+      );
+      assert(
+        s.sat > 0.2,
+        `${id} is nearly grey (saturation ${s.sat.toFixed(2)})`,
+      );
+    }
+  });
+
+  test('no two battlefields could be mistaken for each other', () => {
+    /*
+      The half that has already gone wrong here once: the Sunset Castle
+      was reported as "doesn't really look any different from the regular
+      castle" and had to be rebuilt. The two SHARE a building, so this
+      compares the distribution of hues — what the light and the sky are
+      doing — rather than the shapes, which is the thing that actually
+      differs when you stand in them.
+    */
+    const norm = (h: number[]) => {
+      const total = h.reduce((a, b) => a + b, 0) || 1;
+      return h.map((v) => v / total);
+    };
+    const all = Object.fromEntries(IDS.map((id) => [id, norm(stats(id).hue)]));
+    let closest = Infinity;
+    let pair = '';
+    for (let i = 0; i < IDS.length; i++) {
+      for (let j = i + 1; j < IDS.length; j++) {
+        const a = all[IDS[i]];
+        const b = all[IDS[j]];
+        // Total variation distance: 0 identical, 1 nothing in common.
+        const d = a.reduce((sum, v, k) => sum + Math.abs(v - b[k]), 0) / 2;
+        note(`${IDS[i]} vs ${IDS[j]}: ${d.toFixed(2)} apart`);
+        if (d < closest) {
+          closest = d;
+          pair = `${IDS[i]} and ${IDS[j]}`;
+        }
+      }
+    }
+    assert(
+      closest >= 0.3,
+      `${pair} are only ${closest.toFixed(2)} apart in colour — too alike to tell at 58pt`,
+    );
+  });
+
+  test('each one is made of its own arena’s paint', () => {
+    /*
+      ACCURATE, the third thing asked for. A pretty picture of a castle
+      that is not THIS castle would still be wrong. The generator names
+      the source colours; this checks the ones that carry each place.
+    */
+    const gen = readFileSync('assets/arenas/make-arenas.py', 'utf8');
+    for (const [what, hex] of [
+      ['the castle sky', '#8ec8f7'],
+      ['the castle roofs', '#ff7f66'],
+      ['the castle grass', '#48a457'],
+      ['the jungle canopy', '#3a7a3e'],
+      ['the jungle water', '#7fceb0'],
+      ['the space sky', '#0a0e2a'],
+      ['the space neon', '#3ff2ff'],
+    ] as const) {
+      assert(
+        gen.includes(hex),
+        `${what} (${hex}) is no longer the colour the arena actually uses`,
+      );
+    }
+  });
+});

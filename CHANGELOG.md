@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.47.0 — 2026-08-26 · requested by David
+
+### Changed
+- **The battlefields in Items are drawn pictures now, not emoji.** They
+  were 🏰 🌅 🌴 🚀 — the last four emoji left in the game after the Paper
+  & Ink pass took them out of everywhere else — and they failed in two
+  ways at once. 🏰 and 🌅 are the *same building* in this game, so the
+  Castle and the Sunset Castle told you nothing about which was which;
+  and an emoji is drawn differently on every phone, so the menu could not
+  be sure what its own battlefields looked like.
+  - Each one is a little scene of the place it opens: the castle under a
+    blue sky with its coral roofs, the same castle at dusk with a low sun
+    and long shadows, the jungle clearing with its palm and its pool, and
+    the space station with a ringed planet and a moon.
+  - **Every colour is lifted from the arena itself**, not invented. The
+    roofs are the roofs' colour, the jungle water is the jungle's water,
+    the neon on the station is the station's neon. A test fails if those
+    ever drift apart from the game.
+  - **The two castles are the hard part**, and this project has been
+    caught by it before — the Sunset Castle was once reported as not
+    looking any different from the regular one. They share a building, so
+    the difference is carried by what actually differs when you stand in
+    them: a low huge sun instead of a high small one, warm masonry, lit
+    windows, and long shadows thrown toward you. Measured rather than
+    eyeballed — a test compares every pair and the two castles come out
+    well clear of the bar.
+  - The first jungle had to be redrawn: its palm fronds were flat
+    four-sided shapes and the tree read as a windmill at the size the
+    menu actually draws it. They are leaf-shaped now, with a spine and
+    notched edges.
+
 ## v1.46.0 — 2026-08-26
 
 ### Fixed
