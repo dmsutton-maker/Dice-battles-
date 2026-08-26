@@ -33,6 +33,18 @@ interface IconProps {
   fill?: string;
 }
 
+/**
+ * A prisoner colour by name, straight from the game's palette.
+ *
+ * Every icon that carries a game colour reads it from here rather than
+ * keeping a copy, for the same reason the die icon always did: a second
+ * palette drifts, and then the menu is showing a colour the board does
+ * not have. Falls back to ink so a mistyped id draws a visible shape
+ * instead of nothing at all.
+ */
+const hex = (id: string) =>
+  PRISONER_COLORS.find((c) => c.id === id)?.hex ?? THEME.ink;
+
 /** The stroke weight every icon shares, scaled to its box. */
 const w = (size: number) => Math.max(1.5, Math.round(size * 0.095));
 
@@ -161,8 +173,6 @@ export function DieIcon({
   );
   // Red, green and blue: the three furthest apart in the palette, so they
   // stay tellable from each other down at 11pt.
-  const hex = (id: string) =>
-    PRISONER_COLORS.find((c) => c.id === id)?.hex ?? color;
   return (
     <View style={{ width: size, height: size }}>
       <View
@@ -564,6 +574,235 @@ export function NewsIcon({ size = 22, color = THEME.ink, fill = THEME.surface }:
       {line(0.4, 0.56, 0.26)}
       {line(0.58, 0.26, 0.26)}
       {line(0.69, 0.26, 0.34)}
+    </View>
+  );
+}
+
+/**
+ * THE FOUR GAME MODES.
+ *
+ * They were emoji — ⚔️ 🔁 🤼 🎯 — and David asked on 26 Aug 2026 for drawn
+ * icons "in the same style as everything else", which is this file: Views
+ * with an ink outline over an object colour.
+ *
+ * Each one draws its RULE rather than a mood, because that is what a
+ * player is choosing between and 🤼 (two people wrestling) says nothing
+ * about a shared jail. The four shapes are deliberately of different
+ * KINDS — a pair, a returning arrow, two arrows meeting, a divided field —
+ * so they cannot converge at 14pt the way a trophy and a medal did.
+ *
+ * The colours are the game's own prisoner colours, so these are made of
+ * the same paint as the board. Two are ruled out, and both for reasons
+ * that only show up once you check rather than look:
+ *
+ *   BLUE, on any filled shape. The ink outline reads 2.25:1 on it, so the
+ *   drawing dissolves into its own fill. (Red is 3.13:1, which clears the
+ *   3:1 bar for a graphical object the same way the Store bag's leather
+ *   does at 3.27:1.)
+ *
+ *   YELLOW, in the mode picker specifically. The SELECTED chip is gold
+ *   (#ffd21f) and yellow is #ffe521 — 1.14:1 against it, and the same hue
+ *   besides. A yellow fill would read as a hole punched in the chip the
+ *   moment you picked that mode, which is exactly when the icon most
+ *   needs to be legible. Every fill is low-contrast on gold; yellow is
+ *   the only one that is also the same COLOUR, which is why it is the
+ *   only one banned. The ink outline is what carries the silhouette
+ *   there, as it does on any background.
+ */
+
+/** Color Rush — two dice landing on the SAME colour. That is the game. */
+export function RushIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const tile = (left: number) => (
+    <View
+      key={left}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * 0.3,
+        width: size * 0.34,
+        height: size * 0.4,
+        borderRadius: size * 0.1,
+        borderWidth: s * 0.9,
+        borderColor: color,
+        backgroundColor: hex('green'),
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {tile(0.08)}
+      {tile(0.58)}
+    </View>
+  );
+}
+
+/**
+ * Ultimate — the colour you already freed goes BACK.
+ *
+ * An arrow turning round on itself. Drawn as a ring with one quarter cut
+ * away (a transparent border side) plus a head, which is the only way to
+ * get a curved arrow out of Views.
+ */
+export function UltimateIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  return (
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.16,
+          top: size * 0.16,
+          width: size * 0.68,
+          height: size * 0.68,
+          borderRadius: size * 0.34,
+          borderWidth: s * 0.95,
+          borderColor: color,
+          // The gap the arrow travels through.
+          borderTopColor: 'transparent',
+        }}
+      />
+      {/*
+        The head, diving back down into the ring at the right-hand end of
+        the gap. It points down with no `rotate` at all, deliberately: a
+        rotated CSS triangle turns about its own centre, so where its tip
+        lands is a calculation rather than a coordinate, and it cannot be
+        checked without a device. Straight down is a number you can read.
+      */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.56,
+          top: size * 0.06,
+          width: 0,
+          height: 0,
+          borderLeftWidth: size * 0.14,
+          borderRightWidth: size * 0.14,
+          borderTopWidth: size * 0.2,
+          borderLeftColor: 'transparent',
+          borderRightColor: 'transparent',
+          borderTopColor: color,
+        }}
+      />
+      {/* The prisoner being sent back in. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.38,
+          top: size * 0.38,
+          width: size * 0.24,
+          height: size * 0.24,
+          borderRadius: size * 0.12,
+          borderWidth: s * 0.7,
+          borderColor: color,
+          backgroundColor: hex('red'),
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Skirmish — ONE shared jail, and you are both reaching into it.
+ *
+ * Two arrows closing on a single prisoner from opposite sides. The
+ * contested thing is in the middle and there is only one of it, which is
+ * the entire difference between this mode and Color Rush.
+ */
+export function SkirmishIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const arrow = (left: number, flip: boolean) => (
+    <View
+      key={left}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * 0.38,
+        width: 0,
+        height: 0,
+        borderTopWidth: size * 0.13,
+        borderBottomWidth: size * 0.13,
+        [flip ? 'borderRightWidth' : 'borderLeftWidth']: size * 0.18,
+        borderTopColor: 'transparent',
+        borderBottomColor: 'transparent',
+        [flip ? 'borderRightColor' : 'borderLeftColor']: color,
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {arrow(0.02, false)}
+      {arrow(0.8, true)}
+      {/* The one prisoner both sides want. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.34,
+          top: size * 0.32,
+          width: size * 0.32,
+          height: size * 0.36,
+          borderRadius: size * 0.09,
+          borderWidth: s * 0.9,
+          borderColor: color,
+          backgroundColor: hex('purple'),
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Color War — you each get ONE colour and race to free your three.
+ *
+ * A field split down the middle, one colour a side. Orange and green
+ * rather than the obvious red and blue: blue cannot hold an ink outline
+ * at all (2.25:1), and these two sit 6.8 and 8.1 against it while being
+ * about as far apart in hue as the palette allows.
+ */
+export function ColorWarIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const half = (left: number, id: 'orange' | 'green') => (
+    <View
+      key={id}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * 0.18,
+        width: size * 0.32,
+        height: size * 0.64,
+        backgroundColor: hex(id),
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.14,
+          top: size * 0.18,
+          right: size * 0.14,
+          bottom: size * 0.18,
+          borderRadius: size * 0.11,
+          overflow: 'hidden',
+          borderWidth: s * 0.9,
+          borderColor: color,
+        }}
+      >
+        {half(0, 'orange')}
+        {half(0.32, 'green')}
+      </View>
+      {/* The line the two sides meet on. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.5 - s * 0.45,
+          top: size * 0.18,
+          width: s * 0.9,
+          bottom: size * 0.18,
+          backgroundColor: color,
+        }}
+      />
     </View>
   );
 }

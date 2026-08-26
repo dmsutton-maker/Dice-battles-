@@ -156,6 +156,146 @@ suite('icons · Cups and trophies are different pictures', () => {
   });
 });
 
+suite('icons · the four game modes', () => {
+  /**
+   * They were emoji — ⚔️ 🔁 🤼 🎯 — and David asked on 26 Aug 2026 for
+   * drawn icons "in the same style as everything else".
+   *
+   * Two things are guarded, and they are the two that went wrong when
+   * Cups and the trophy were both a cup: the drawings must be different
+   * KINDS of shape rather than four variations on one, and each must
+   * still be legible on the SELECTED chip, which is gold.
+   */
+  const MODE_ICONS = ['RushIcon', 'UltimateIcon', 'SkirmishIcon', 'ColorWarIcon'];
+
+  test('every mode has a drawing, and no mode has an emoji', () => {
+    const modes = readFileSync('src/game/modes.ts', 'utf8');
+    const map = readFileSync('src/ui/modeIcons.ts', 'utf8');
+    const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    const tutorial = readFileSync('src/demo/TutorialScreen.tsx', 'utf8');
+
+    assert(
+      !/^\s*emoji:/m.test(modes),
+      'a mode carries an emoji again — a string on the definition is an invitation to render it',
+    );
+    for (const icon of MODE_ICONS) {
+      assert(map.includes(icon), `${icon} is not in the mode map`);
+      assert(SOURCE.includes(`export function ${icon}`), `${icon} is gone`);
+    }
+    // Both places modes are shown draw from the same map.
+    assert(screen.includes('MODE_ICONS[id]'), 'the mode picker is not using the drawings');
+    assert(tutorial.includes('MODE_ICONS[id]'), 'the tutorial is not using the drawings');
+  });
+
+  test('the four are different KINDS of picture, not four of one', () => {
+    /*
+      The lesson from Cups: a trophy and a medal are both "round object,
+      outlined, centred" once they are 14 pixels wide, and David said so
+      twice. So each mode draws its RULE, and the shapes are checked to be
+      built from different primitives — a pair of tiles, a ring, two
+      triangles, a divided box.
+    */
+    const rush = drawingOf('RushIcon', 'UltimateIcon');
+    const ultimate = drawingOf('UltimateIcon', 'SkirmishIcon');
+    const skirmish = drawingOf('SkirmishIcon', 'ColorWarIcon');
+    const war = drawingOf('ColorWarIcon', 'CloseIcon');
+
+    // Color Rush: two identical tiles. The match IS the game.
+    assertEqual(
+      (rush.match(/tile\(/g) ?? []).length,
+      2,
+      'Color Rush no longer shows a matching PAIR',
+    );
+    /*
+      Ultimate: a RING, which nothing else here has. Checked by its radius
+      rather than by a transparent border side — the first version of this
+      looked for `borderTopColor: 'transparent'` and failed on Skirmish,
+      because that is simply how every CSS triangle is built. A radius of
+      about a third of the box is a circle; every other mode icon here is
+      a rounded rectangle at 0.09 to 0.11.
+    */
+    assert(
+      /borderRadius: size \* 0\.3\d/.test(ultimate),
+      'Ultimate is no longer built on a ring — a returning arrow needs something to travel round',
+    );
+    assert(
+      /borderTopColor: 'transparent'/.test(ultimate),
+      'Ultimate lost the opening in its ring — a closed circle is not a returning arrow',
+    );
+    // Skirmish: two arrows closing on ONE thing.
+    assertEqual(
+      (skirmish.match(/arrow\(/g) ?? []).length,
+      2,
+      'Skirmish no longer shows two sides reaching for the same prisoner',
+    );
+    // Color War: a field split in two.
+    assertEqual(
+      (war.match(/half\(/g) ?? []).length,
+      2,
+      'Color War is no longer a board split between two colours',
+    );
+    // And none of the others has quietly become a ring too.
+    for (const [name, body] of [['rush', rush], ['skirmish', skirmish], ['war', war]] as const) {
+      assert(
+        !/borderRadius: size \* 0\.3\d/.test(body),
+        `${name} has grown a ring — it is converging on Ultimate`,
+      );
+    }
+  });
+
+  test('nothing vanishes on the selected chip, which is gold', () => {
+    /*
+      The one that is invisible in a diff. The picked mode's chip is
+      THEME.gold, and yellow is 1.14:1 against it AND the same hue, so a
+      yellow fill would read as a hole punched in the chip at exactly the
+      moment the icon matters most.
+
+      Every prisoner colour is low-contrast on gold — the ink outline is
+      what carries the silhouette there, as everywhere. This forbids only
+      the one that is also the same COLOUR.
+    */
+    const bodies = [
+      drawingOf('RushIcon', 'UltimateIcon'),
+      drawingOf('UltimateIcon', 'SkirmishIcon'),
+      drawingOf('SkirmishIcon', 'ColorWarIcon'),
+      drawingOf('ColorWarIcon', 'CloseIcon'),
+    ].join('\n');
+
+    const yellow = PRISONER_COLORS.find((c) => c.id === 'yellow')!;
+    const ratio = contrast(yellow.hex, THEME.gold);
+    note(`yellow on the selected chip: ${ratio.toFixed(2)}:1`);
+    assert(
+      !/hex\('yellow'\)/.test(bodies),
+      `a mode icon is filled yellow, which is ${ratio.toFixed(2)}:1 on the gold chip it sits on`,
+    );
+    assert(
+      !/hex\('blue'\)/.test(bodies),
+      'a mode icon is filled blue — the ink outline is only 2.25:1 on it and the drawing dissolves',
+    );
+    /*
+      Every fill they DO use has to hold the ink outline.
+
+      Matched by looking for each colour's NAME as a quoted string, not by
+      hunting for `hex('…')`. Color War passes its two colours as
+      arguments to a local helper — `half(0, 'orange')` — so a regex tied
+      to the hex() call site found nothing in it and the check silently
+      passed on an empty set, which is worse than not having it.
+    */
+    let checked = 0;
+    for (const c of PRISONER_COLORS) {
+      if (!new RegExp(`'${c.id}'`).test(bodies)) continue;
+      checked += 1;
+      const r = contrast(THEME.ink, c.hex);
+      note(`${c.id}: ink outline ${r.toFixed(2)}:1`);
+      assert(r >= 3, `the ink outline is only ${r.toFixed(2)}:1 on ${c.id}`);
+    }
+    assert(
+      checked >= 4,
+      `only ${checked} colours were found in the mode icons — the check is looking in the wrong place again`,
+    );
+  });
+});
+
 suite('icons · colour that still reads as a drawing', () => {
   /**
    * Every fill an icon can carry, and what has to stay legible on it.

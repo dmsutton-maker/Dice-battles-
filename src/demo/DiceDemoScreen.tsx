@@ -123,6 +123,7 @@ import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
 import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
+import { MODE_ICONS } from '../ui/modeIcons';
 import { FirstFrame } from './FirstFrame';
 import {
   loadTutorialSeen,
@@ -1132,14 +1133,22 @@ export function DiceDemoScreen() {
             }}
             style={[styles.modeButton, mode === id && styles.difficultyButtonActive]}
           >
-            <Text
-              style={[
-                styles.modeText,
-                mode === id && styles.difficultyTextActive,
-              ]}
-            >
-              {MODES[id].emoji} {MODES[id].name}
-            </Text>
+            <View style={styles.modeLabel}>
+              {/*
+                The icon is always ink, in both states, because the
+                selected chip is GOLD and its text is ink too — there is
+                no reversed-out version of this chip to match.
+              */}
+              {React.createElement(MODE_ICONS[id], { size: 16 })}
+              <Text
+                style={[
+                  styles.modeText,
+                  mode === id && styles.difficultyTextActive,
+                ]}
+              >
+                {MODES[id].name}
+              </Text>
+            </View>
           </Pressable>
         ))}
       </View>
@@ -2329,6 +2338,12 @@ const styles = StyleSheet.create({
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
     alignItems: 'center',
+  },
+  /** The icon and the name, side by side, centred in the chip. */
+  modeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   modeText: {
     color: THEME.ink,

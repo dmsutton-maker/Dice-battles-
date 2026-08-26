@@ -10,36 +10,41 @@ export type ModeId = 'classic' | 'ultimate' | 'skirmish' | 'colorwar';
 export interface ModeDef {
   id: ModeId;
   name: string;
-  emoji: string;
   /** One-line rules, kid-readable, shown under the mode picker. */
   rules: string;
 }
 
+/*
+  There is no `emoji` here any more.
+
+  Every mode carried one — ⚔️ 🔁 🤼 🎯 — and David asked on 26 Aug 2026 for
+  drawn icons instead. The field is deleted rather than left unused,
+  because a string sitting on the mode definition is an invitation to
+  render it again somewhere new, and then half the game has icons and
+  half has emoji. The drawings live in src/ui/modeIcons.ts, which is a
+  Record<ModeId, …> so a fifth mode cannot be added without one.
+*/
 export const MODES: Record<ModeId, ModeDef> = {
   classic: {
     // The id stays 'classic' on purpose: it is the key saved progress and
     // per-mode win counts are stored under. Only the shown name changed.
     id: 'classic',
     name: 'Color Rush',
-    emoji: '⚔️',
     rules: 'Match a color to rescue that prisoner. First to all six wins!',
   },
   ultimate: {
     id: 'ultimate',
     name: 'Ultimate',
-    emoji: '🔁',
     rules: 'Careful! Matching a rescued color sends that prisoner BACK to jail!',
   },
   skirmish: {
     id: 'skirmish',
     name: 'Skirmish',
-    emoji: '🤼',
     rules: 'ONE shared jail! Grab prisoners before your opponent — most wins!',
   },
   colorwar: {
     id: 'colorwar',
     name: 'Color War',
-    emoji: '🎯',
     rules: 'You each get ONE color. Rescue your three first!',
   },
 };

@@ -4,6 +4,7 @@ import { PRISONER_COLORS } from '../game/colors';
 import { COLOR_SYMBOLS } from '../game/colorblind';
 import { SymbolId } from '../game/colorblind';
 import { ShapeMark } from '../ui/ShapeMark';
+import { MODE_ICONS } from '../ui/modeIcons';
 import { MODES, MODE_ORDER } from '../game/modes';
 import { TUTORIAL_PAGES, TutorialArt } from '../game/tutorial';
 import { playClick } from '../audio/sounds';
@@ -151,13 +152,13 @@ function Art({ art, symbols }: { art: TutorialArt; symbols: boolean }) {
   }
 
   if (art.kind === 'modes') {
+    // 30 matches the old emoji's font size, so the row keeps the height
+    // the tutorial popup's layout was measured against.
     return (
       <View style={styles.artRow}>
-        {MODE_ORDER.map((id) => (
-          <Text key={id} style={styles.bigEmoji}>
-            {MODES[id].emoji}
-          </Text>
-        ))}
+        {MODE_ORDER.map((id) =>
+          React.createElement(MODE_ICONS[id], { key: id, size: 30 }),
+        )}
       </View>
     );
   }

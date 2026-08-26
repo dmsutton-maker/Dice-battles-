@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.49.0 — 2026-08-26 · requested by David
+
+### Changed
+- **The four game modes have drawn icons now**, in place of ⚔️ 🔁 🤼 🎯.
+  They show up on the mode picker and on the How to Play page.
+  - Each one draws its RULE rather than a mood, because that is what you
+    are choosing between: Color Rush is two dice landing on the SAME
+    colour, Ultimate is an arrow turning back on itself with a prisoner
+    being sent in, Skirmish is two sides reaching for the ONE prisoner
+    between them, and Color War is a field split down the middle with a
+    colour each. 🤼 — two people wrestling — said nothing at all about a
+    shared jail.
+  - The four are deliberately different KINDS of picture: a pair, a ring,
+    two arrows meeting, a divided box. That is the lesson from the Cups
+    tab, where a trophy and a medal both came out as "round outlined
+    thing" at menu size and had to be redone twice.
+  - **The selected mode's chip is gold, and that decided one colour.**
+    Yellow is 1.14:1 against it and the same hue, so a yellow prisoner in
+    the Skirmish icon would have read as a hole punched in the chip at
+    the exact moment the icon matters most. It is purple instead. Blue is
+    out of all four for a different reason: the ink outline reads 2.25:1
+    on it and the drawing dissolves into its own fill.
+  - The `emoji` field is deleted from the mode definitions rather than
+    left unused, so nothing can quietly start rendering one again.
+
 ## v1.48.0 — 2026-08-26 · reported by David
 
 ### Fixed
