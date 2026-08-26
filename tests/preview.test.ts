@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { assert, assertEqual, suite, test } from './harness';
+import { recallScroll, rememberScroll, resetScrollForTests } from '../src/demo/menuScroll';
 import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
 import { shellPreviewUri } from '../src/dice/preview';
 import { PATTERN_SIZE, patternPixels } from '../src/dice/patterns';
@@ -98,5 +100,83 @@ suite('preview · the picture is a real PNG', () => {
   test('previews are built once and reused', () => {
     const skin = DICE_SKINS.find((s) => s.pattern !== 'plain')!;
     assert(shellPreviewUri(skin) === shellPreviewUri(skin), 'not cached');
+  });
+});
+
+/**
+ * Where the shelf was when you opened a preview.
+ *
+ * David, 26 Aug 2026: "after you exit a preview it should keep you where
+ * you were on the screen and not put you back to the top of the screen."
+ *
+ * The cause is structural rather than a mistake: opening a preview
+ * UNMOUNTS the menu page, because the Store and the Inventory only render
+ * while nothing is being previewed, so the board behind is visible. A
+ * ScrollView that is unmounted and mounted again is a NEW ScrollView, and
+ * a new one starts at the top. That was survivable with a dozen items; it
+ * is not with fifty-three dice and twenty battlefields, where the thing
+ * you just tapped can be most of a screen's worth of scrolling away.
+ *
+ * So the offset is kept in a module, outside the component that goes
+ * away. These tests are about that module and the two screens using it.
+ */
+suite('preview · the shelf stays where you left it', () => {
+  test('a page opens again where it was scrolled to', () => {
+    resetScrollForTests();
+    assertEqual(recallScroll('inventory'), 0, 'a page never scrolled starts at the top');
+    rememberScroll('inventory', 1840);
+    assertEqual(recallScroll('inventory'), 1840, 'the offset came back changed');
+  });
+
+  test('the Store and the Inventory remember separately', () => {
+    // One shared number would scroll the Store to wherever the Inventory
+    // happened to be, which is worse than starting at the top.
+    resetScrollForTests();
+    rememberScroll('inventory', 900);
+    rememberScroll('store', 120);
+    assertEqual(recallScroll('inventory'), 900, 'the Inventory lost its place');
+    assertEqual(recallScroll('store'), 120, 'the Store lost its place');
+  });
+
+  test('a bounce past the top does not become a negative offset', () => {
+    /*
+      iOS reports a negative contentOffset while the list is rubber-banded
+      past its own top. Restoring to one leaves the page hanging below its
+      header with a gap above it, which reads as a broken screen.
+    */
+    resetScrollForTests();
+    rememberScroll('store', -64);
+    assertEqual(recallScroll('store'), 0, 'a rubber-band offset was stored as-is');
+  });
+
+  test('both shelves are actually wired to it', () => {
+    /*
+      The module can be perfect and the screens can still not use it.
+      This checks the three parts each screen needs: it reports where it
+      is as it scrolls, it asks where it was on the way back, and it has
+      a ref to scroll with.
+    */
+    for (const [file, page] of [
+      ['src/demo/InventoryScreen.tsx', 'inventory'],
+      ['src/demo/StoreScreen.tsx', 'store'],
+    ] as const) {
+      const source = readFileSync(file, 'utf8');
+      assert(
+        source.includes(`rememberScroll('${page}'`),
+        `${file} never records where it is scrolled to`,
+      );
+      assert(
+        source.includes(`recallScroll('${page}')`),
+        `${file} never asks where it was`,
+      );
+      assert(
+        /ref=\{scrollRef\}/.test(source) && /scrollEventThrottle/.test(source),
+        `${file} has no way to scroll itself back`,
+      );
+      assert(
+        /animated: false/.test(source),
+        `${file} animates back to where it was — the jump is the point of not having one`,
+      );
+    }
   });
 });

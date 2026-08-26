@@ -1,5 +1,62 @@
 # Changelog
 
+## v1.53.0 — 2026-08-26 · requested by David
+
+### Changed
+- **The dark battlefields can be seen now.** David: "a lot of these new
+  maps are way too dark and you can't really tell what it is." He was
+  right and it was measurable — five of the sixteen had most of their
+  picture in the bottom third of the brightness range, and at the size
+  the Items shelf draws them that is a smudge, not a mood.
+  - Rooftop City is dusk instead of midnight, lit from the streets below.
+    The volcano's rock is warm grey rather than near-black, so the lava
+    has something to run down. The crystal cavern's stone is lit violet.
+    Frozen Lights swapped ground and sky: the ground is SNOW, which is
+    what ground under an aurora is, and the dark now lives in the sky
+    where it belongs. Glow Glade became a mossy green clearing under a
+    moon, which also moved it away from the coral reef — the two were the
+    closest pair of colours in the set.
+  - `npm test` now measures every picture's brightness and how much of it
+    sits in shadow, so this cannot quietly creep back. The Space Station
+    is the one exception, and only it: it is deep space, it is one of the
+    four originals, and not seeing much is the subject there.
+- **The battlefields are not all castles any more.** David: "the arenas
+  all don't have to look like castles. They can be something that makes
+  sense for the arena name, like how the space station doesn't look like
+  a castle." The shared renderer had been putting notched battlements and
+  cone-roofed corner turrets on every one of them, so a coral reef, a
+  rooftop and a moon base were the same fortress in different paint.
+  - There are four kinds of building now. The moon base, the polar
+    station, the rooftop and the beached pirate hull have panelled walls
+    with a lit strip and masts at the corners. The desert, the volcano,
+    the cavern, the glade and the reef are heaped boulders with cairns.
+    The snowy hollow, the autumn woods, the farm and the beach are timber
+    fences with gateposts. Only the Sky Kingdom, the candy meadow's
+    gingerbread and the toy room's building blocks kept their merlons —
+    those three are castles on purpose.
+  - The tray the dice bounce in is byte-for-byte identical in all four.
+    Nothing about which battlefield you pick can change how the game
+    plays, and a test now checks that the wall geometry never learns
+    about the structure.
+- **Extra decoration everywhere.** David: "add some extra decorations on
+  them to make them look better." Five new kinds of scenery — flowers,
+  bushes, pebbles, torches and banners — are placed around all sixteen
+  battlefields, and every thumbnail gained detail: gulls over the beach,
+  sparks over the volcano, a treasure chest at the cove, a lander and a
+  flag on the moon, a fence and flowers on the farm, sprinkles in the
+  candy meadow.
+
+### Fixed
+- **Leaving a preview drops you back where you were.** David: "after you
+  exit a preview it should keep you where you were on the screen and not
+  put you back to the top of the screen." Opening a preview takes the
+  shelf off the screen entirely so you can see the item behind it, and
+  the shelf that comes back is a brand new one, which starts at the top.
+  With fifty-three dice and twenty battlefields on those shelves, that
+  was a long scroll back to the thing you had just tapped. Where you were
+  is now remembered outside the shelf and put back the instant it
+  returns, with no animation, so there is nothing to watch.
+
 ## v1.52.0 — 2026-08-26 · reported by David
 
 ### Fixed

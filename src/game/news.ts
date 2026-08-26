@@ -37,6 +37,31 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-53-0-brighter-battlefields',
+    date: '26 August 2026',
+    version: 'v1.53.0',
+    title: 'Brighter battlefields, and not a castle in sight',
+    emoji: '🏞️',
+    body:
+      'Some of the new battlefields were so dark you could not tell what ' +
+      'you were looking at. Rooftop City is dusk now instead of ' +
+      'midnight, the volcano rim is lit from the lava running down it, ' +
+      'the crystal cavern glows, Frozen Lights stands on snow under the ' +
+      'green sky, and Glow Glade is a mossy clearing in the moonlight.\n\n' +
+      'They have also stopped all being castles. The moon base, the ' +
+      'polar station, the rooftop and the pirate cove are built things ' +
+      'with panelled walls and lit strips. The desert, volcano, cavern, ' +
+      'glade and reef are ringed with boulders and cairns. The snowy ' +
+      'hollow, autumn woods, farm and beach have timber fences. Only ' +
+      'three of them kept their battlements, and those three are ' +
+      'castles on purpose.\n\n' +
+      'There is more to look at in all of them too: flowers, bushes, ' +
+      'torches, banners, gulls over the beach, sparks over the volcano ' +
+      'and a treasure chest down at the cove.\n\n' +
+      'And a small annoyance is gone — leaving a preview now puts you ' +
+      'back exactly where you were on the shelf instead of at the top.',
+  },
+  {
     id: 'v1-50-0-big-content',
     date: '26 August 2026',
     version: 'v1.50.0',

@@ -52,7 +52,14 @@ export type PropKind =
   | 'toyBlock'      // big coloured cube
   | 'balloon'
   | 'moonRock'      // pale crater boulder
-  | 'lantern';      // post + warm glow head
+  | 'lantern'       // post + warm glow head
+  // Added 26 Aug 2026 when David asked for "some extra decorations on
+  // them to make them look better". All cheap; sixteen arenas multiply.
+  | 'flowers'       // a little clump of stems with coloured heads
+  | 'bush'          // rounded shrub, optionally berried
+  | 'pebbles'       // a low scatter of stones
+  | 'torch'         // post with a flame, for the fiery and the dark
+  | 'banner';       // pole and hanging cloth
 
 export interface PropPlacement {
   kind: PropKind;
@@ -65,7 +72,28 @@ export interface PropPlacement {
   color?: string;
 }
 
+/**
+ * What the tray is BUILT of.
+ *
+ * David, 26 Aug 2026: "the arenas all don't have to look like castles.
+ * They can be something that makes sense for the arena name, like how the
+ * space station doesn't look like a castle." He is right, and the first
+ * sixteen were all castles wearing different paint — merlons and
+ * cone-roofed corner turrets on a coral reef and a rooftop at night.
+ *
+ *   battlement — notched stone teeth, round turrets with cone roofs.
+ *   rocks      — boulders heaped along the rim, cairns at the corners.
+ *   posts      — a fence of timber uprights, taller posts with finials.
+ *   hull       — flat panelled walls, a lit strip, slim corner masts.
+ *
+ * The physics tray is identical in all four; only the dressing changes,
+ * exactly as with the hazards.
+ */
+export type ArenaStructure = 'battlement' | 'rocks' | 'posts' | 'hull';
+
 export interface ArenaTheme {
+  /** What the walls and corners are made of. */
+  structure: ArenaStructure;
   /** Ground plane outside the tray. */
   meadow: string;
   /** Soft mounds on that ground. */
@@ -140,9 +168,11 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   /* ── TROPHY LADDER ─────────────────────────────────────────────── */
 
   snow: {
+    // A hollow in the woods, fenced with timber. Not a fortress.
+    structure: 'posts',
     meadow: '#e9f1f6', hill: '#dae7f0', mountain: '#b9c9d8', cloud: '#ffffff',
     floor: { a: '#dfe9f0', b: '#cfdde8' },
-    wall: { color: '#b7c6d2', cap: '#9dafbe' },
+    wall: { color: '#b7c6d2', cap: '#8a6a4a' },
     tower: { body: '#b7c6d2', roof: '#5b87b0' },
     jail: { platform: '#9dafbe', bars: '#4b5866' },
     retreat: { padA: '#f3f8fb', padB: '#d8e6f0', post: '#8a5a34', canopy: '#d95f5f', pool: '#9fd3f0' },
@@ -152,6 +182,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'pine', x: -9, z: 2, scale: 1.2 }, { kind: 'pine', x: 9, z: 5, scale: 1.5 },
       { kind: 'pine', x: -7.5, z: 9 }, { kind: 'snowman', x: 7.6, z: 9.4 },
       { kind: 'rock', x: -10, z: -3, color: '#c7d6e2' },
+      { kind: 'bush', x: -10.6, z: 6.2, color: '#9db8a8' },
+      { kind: 'pebbles', x: 7, z: -10.5, color: '#c7d6e2' },
+      { kind: 'banner', x: -6.9, z: -10.5, color: '#5b87b0' },
     ],
     look: look(
       { color: '#eef5fa', roughness: 0.6, metalness: 0 },
@@ -163,6 +196,8 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   desert: {
+    // Sandstone heaped along the rim, cairns at the corners.
+    structure: 'rocks',
     meadow: '#e8c987', hill: '#dcb968', mountain: '#c4924e', cloud: null,
     floor: { a: '#e3c384', b: '#d4b06a' },
     wall: { color: '#c9a05c', cap: '#b08a48' },
@@ -174,6 +209,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'cactus', x: -8, z: -7, scale: 1.3 }, { kind: 'cactus', x: 8.4, z: -4 },
       { kind: 'cactus', x: -9.2, z: 4 }, { kind: 'cactus', x: 8.8, z: 8, scale: 1.2 },
       { kind: 'rock', x: 9.6, z: 1, color: '#c4924e' }, { kind: 'rock', x: -7.4, z: 10, color: '#b08549' },
+      { kind: 'pebbles', x: -10.4, z: -1.5, color: '#c4924e' },
+      { kind: 'bush', x: 7, z: -10.4, color: '#93a35c' },
+      { kind: 'flowers', x: -6.8, z: 11, color: '#e85c7a' },
     ],
     look: look(
       { color: '#d9b268', roughness: 1, metalness: 0 },
@@ -185,30 +223,44 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   volcano: {
-    meadow: '#3a3038', hill: '#2c242c', mountain: '#4d3540', cloud: '#5c4048',
-    floor: { a: '#4a3d42', b: '#3b3036' },
-    wall: { color: '#54424a', cap: '#3d2f36' },
-    tower: { body: '#54424a', roof: '#e05a2b' },
-    jail: { platform: '#3d2f36', bars: '#1d161b' },
-    retreat: { padA: '#5e4a50', padB: '#4a3a40', post: '#2c242c', canopy: '#e05a2b', pool: '#ff7a2f' },
+    /*
+      Basalt boulders, not battlements. The palette was lifted on 26 Aug
+      2026 — David: "a lot of these new maps are way too dark and you
+      can't really tell what it is." It was 53% of its pixels below a
+      third brightness. It is still NIGHT and still lit from below; the
+      rock is now warm grey-plum rather than near-black, which is what
+      rock beside an open lava flow actually looks like.
+    */
+    structure: 'rocks',
+    meadow: '#6b4a48', hill: '#573b3d', mountain: '#7d4a48', cloud: '#8a5450',
+    floor: { a: '#7a5a54', b: '#67494a' },
+    wall: { color: '#8a6660', cap: '#6e4e4c' },
+    tower: { body: '#8a6660', roof: '#ff6b2b' },
+    jail: { platform: '#6e4e4c', bars: '#33232a' },
+    retreat: { padA: '#94706a', padB: '#7a5a54', post: '#4a3336', canopy: '#ff6b2b', pool: '#ff7a2f' },
     sky: { sun: null, stars: false, body: null },
     props: [
       { kind: 'lavaPool', x: -8, z: -6, scale: 1.4 }, { kind: 'lavaPool', x: 8.6, z: 3 },
       { kind: 'lavaPool', x: -8.6, z: 8, scale: 1.1 },
-      { kind: 'rock', x: 8, z: -8, color: '#2c242c', scale: 1.5 },
-      { kind: 'rock', x: -10, z: 1, color: '#241d23', scale: 1.2 },
-      { kind: 'rock', x: 8.8, z: 9.4, color: '#33282f' },
+      { kind: 'rock', x: 8, z: -8, color: '#5c4042', scale: 1.5 },
+      { kind: 'rock', x: -10, z: 1, color: '#4a3336', scale: 1.2 },
+      { kind: 'rock', x: 8.8, z: 9.4, color: '#67494a' },
+      { kind: 'torch', x: -6.9, z: -10.6, color: '#ff9440' },
+      { kind: 'torch', x: 7.1, z: -10.4, color: '#ff9440' },
+      { kind: 'pebbles', x: -10.6, z: 5.5, color: '#573b3d' },
     ],
     look: look(
-      { color: '#43333c', roughness: 1, metalness: 0 },
+      { color: '#7a5a54', roughness: 1, metalness: 0 },
       { depths: '#3a0c00', surface: '#ff8c2e', surfaceOpacity: 0.85, surfaceRoughness: 0.3,
-        edge: '#ffd23f', border: { kind: 'stone', color: '#2c242c' } },
+        edge: '#ffd23f', border: { kind: 'stone', color: '#4a3336' } },
       'lava pool', 'boulder', 'Sssss! A die fell in the lava!',
     ),
-    lighting: night('#66303a', '#2a1418', '#ff9440'),
+    lighting: night('#8a4048', '#40222a', '#ffa050'),
   },
 
   autumn: {
+    // A split-rail fence round a clearing in the woods.
+    structure: 'posts',
     meadow: '#c98d4a', hill: '#b3763c', mountain: '#8a6a52', cloud: '#f2ede4',
     floor: { a: '#c9a678', b: '#b8925e' },
     wall: { color: '#9a7a52', cap: '#7d6140' },
@@ -223,6 +275,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'roundTree', x: 9, z: 7, color: '#d0642e' },
       { kind: 'roundTree', x: -7.6, z: 10, color: '#c9903a', scale: 0.9 },
       { kind: 'hayBale', x: 8.8, z: 10 },
+      { kind: 'bush', x: -10.6, z: -1, color: '#a8422e' },
+      { kind: 'pebbles', x: 6.9, z: -10.6, color: '#8a6a52' },
+      { kind: 'flowers', x: -6.8, z: 11, color: '#e8a33a' },
     ],
     look: look(
       { color: '#a5772f', roughness: 1, metalness: 0 },
@@ -234,55 +289,82 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   aurora: {
-    meadow: '#12333d', hill: '#0d272f', mountain: '#1b4450', cloud: null,
-    floor: { a: '#1d4a56', b: '#153a44' },
-    wall: { color: '#245663', cap: '#183f4a' },
-    tower: { body: '#245663', roof: '#57e8a9' },
-    jail: { platform: '#183f4a', bars: '#0a1d23' },
-    retreat: { padA: '#2a6273', padB: '#1d4a56', post: '#0d272f', canopy: '#57e8a9', pool: '#57c9e8' },
+    /*
+      A polar research station under the lights — panelled walls, a lit
+      strip, masts at the corners. It used to be a castle standing on
+      near-black ice, 69% of it below a third brightness and unreadable
+      at thumbnail size. The ground is now SNOW, which is what ground
+      under an aurora is, and the dark is kept where it belongs: the sky.
+      The contrast between pale ground and green curtains is the whole
+      picture.
+    */
+    structure: 'hull',
+    meadow: '#a8cbd4', hill: '#93b8c4', mountain: '#7ba2b0', cloud: null,
+    floor: { a: '#b6d4dc', b: '#a2c3cd' },
+    wall: { color: '#8fb2bf', cap: '#7a9daa', metalness: 0.25 },
+    tower: { body: '#8fb2bf', roof: '#57e8a9' },
+    jail: { platform: '#7a9daa', bars: '#2c4450' },
+    retreat: { padA: '#c9e2e8', padB: '#aecfd8', post: '#4a6470', canopy: '#57e8a9', pool: '#57c9e8' },
     sky: { sun: null, stars: true, body: { kind: 'aurora', color: '#4fe89a' } },
     props: [
-      { kind: 'pine', x: -8, z: -7, scale: 1.3, color: '#123d33' },
-      { kind: 'pine', x: 8.6, z: -5, color: '#123d33' },
-      { kind: 'pine', x: -9, z: 4, color: '#0f332b' },
-      { kind: 'rock', x: 8.8, z: 8, color: '#1b4450', scale: 1.3 },
+      { kind: 'pine', x: -8, z: -7, scale: 1.3, color: '#1a5245' },
+      { kind: 'pine', x: 8.6, z: -5, color: '#1a5245' },
+      { kind: 'pine', x: -9, z: 4, color: '#154438' },
+      { kind: 'rock', x: 8.8, z: 8, color: '#7ba2b0', scale: 1.3 },
       { kind: 'crystal', x: -7.8, z: 9.6, color: '#57e8a9' },
+      { kind: 'pebbles', x: -10.4, z: 5.5, color: '#7ba2b0' },
+      { kind: 'crystal', x: 8.6, z: 10.4, color: '#7fd4e8', scale: 0.8 },
+      { kind: 'bush', x: -6.9, z: -10.6, color: '#2e5c50' },
     ],
     look: look(
-      { color: '#1d4a56', roughness: 0.7, metalness: 0 },
+      { color: '#b6d4dc', roughness: 0.7, metalness: 0 },
       { depths: '#04141a', surface: '#2a8fa8', surfaceOpacity: 0.7, surfaceRoughness: 0.1,
-        edge: '#57e8a9', border: { kind: 'bank', color: '#0d272f' } },
+        edge: '#57e8a9', border: { kind: 'bank', color: '#93b8c4' } },
       'ice hole', 'ice hummock', 'Brrr! A die fell through the ice!',
     ),
-    lighting: night('#1d5a4a', '#0a1d23', '#7fe8c9'),
+    lighting: night('#4a8a90', '#7a9daa', '#cff5e2'),
   },
 
   cavern: {
-    meadow: '#241d2e', hill: '#1b1523', mountain: '#332a40', cloud: null,
-    floor: { a: '#3a3046', b: '#2c2438' },
-    wall: { color: '#443856', cap: '#332a40' },
-    tower: { body: '#443856', roof: '#b06ee8' },
-    jail: { platform: '#332a40', bars: '#161020' },
-    retreat: { padA: '#4a3d5c', padB: '#3a3046', post: '#241d2e', canopy: '#b06ee8', pool: '#7fd4e8' },
+    /*
+      Heaped rock underground — a cave has no battlements. Lifted out of
+      near-black on 26 Aug 2026 for the same reason as the volcano: at
+      55% of pixels below a third brightness, the amethyst read as one
+      dark smudge. The stone is now lit violet-grey; the crystals still
+      glow, and now they glow against something.
+    */
+    structure: 'rocks',
+    meadow: '#4a3d5c', hill: '#3d3350', mountain: '#584a6e', cloud: null,
+    floor: { a: '#5e5075', b: '#4e4263' },
+    wall: { color: '#7a6894', cap: '#63537a' },
+    tower: { body: '#7a6894', roof: '#c98aff' },
+    jail: { platform: '#63537a', bars: '#2a2138' },
+    retreat: { padA: '#6e5f88', padB: '#5e5075', post: '#3d3350', canopy: '#c98aff', pool: '#7fd4e8' },
     sky: { sun: null, stars: false, body: null },
     props: [
-      { kind: 'crystal', x: -8, z: -7, scale: 1.6, color: '#b06ee8' },
-      { kind: 'crystal', x: 8.4, z: -4, scale: 1.2, color: '#8a5ae0' },
-      { kind: 'crystal', x: -9, z: 3, color: '#d093ff' },
-      { kind: 'crystal', x: 8.8, z: 7, scale: 1.4, color: '#b06ee8' },
-      { kind: 'crystal', x: -7.6, z: 10, scale: 0.9, color: '#e8c76e' },
-      { kind: 'rock', x: 9.6, z: 0, color: '#332a40', scale: 1.4 },
+      { kind: 'crystal', x: -8, z: -7, scale: 1.6, color: '#c98aff' },
+      { kind: 'crystal', x: 8.4, z: -4, scale: 1.2, color: '#a37ae8' },
+      { kind: 'crystal', x: -9, z: 3, color: '#dcaeff' },
+      { kind: 'crystal', x: 8.8, z: 7, scale: 1.4, color: '#c98aff' },
+      { kind: 'crystal', x: -7.6, z: 10, scale: 0.9, color: '#f0d68a' },
+      { kind: 'rock', x: 9.6, z: 0, color: '#584a6e', scale: 1.4 },
+      { kind: 'mushroom', x: -10.4, z: 5.5, color: '#7fd4e8' },
+      { kind: 'torch', x: 6.9, z: -10.6, color: '#ffb04a' },
+      { kind: 'pebbles', x: -6.8, z: 11, color: '#584a6e' },
     ],
     look: look(
-      { color: '#3a3046', roughness: 0.9, metalness: 0 },
-      { depths: '#08050e', surface: '#4a3d8a', surfaceOpacity: 0.5, surfaceRoughness: 0.2,
-        edge: '#b06ee8', border: { kind: 'stone', color: '#2c2438' } },
+      { color: '#5e5075', roughness: 0.9, metalness: 0 },
+      { depths: '#08050e', surface: '#5f4fa8', surfaceOpacity: 0.5, surfaceRoughness: 0.2,
+        edge: '#c98aff', border: { kind: 'stone', color: '#4e4263' } },
       'chasm', 'stalagmite stump', 'Whoosh! A die fell down the chasm!',
     ),
-    lighting: night('#4a3670', '#161020', '#c9a3ff'),
+    lighting: night('#6b52a0', '#2a2138', '#d9b8ff'),
   },
 
   sky: {
+    // A kingdom, so this one really is a castle — and the only ladder
+    // arena that keeps its merlons.
+    structure: 'battlement',
     meadow: '#a8d4f0', hill: '#8fc4ea', mountain: null, cloud: '#ffffff',
     floor: { a: '#f2f7fc', b: '#dfebf5' },
     wall: { color: '#c9dff0', cap: '#aecbe3' },
@@ -295,6 +377,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'cloudIsle', x: -9, z: 4, scale: 0.9 }, { kind: 'cloudIsle', x: 9, z: 8 },
       { kind: 'balloon', x: -7.6, z: 9.8, color: '#ff6e6e' },
       { kind: 'balloon', x: 8.2, z: 10.4, color: '#57c9e8' },
+      { kind: 'banner', x: -6.9, z: -10.6, color: '#ff8ab0' },
+      { kind: 'banner', x: 7.1, z: -10.4, color: '#ffd21f' },
+      { kind: 'flowers', x: -10.4, z: 6, color: '#ff6e6e' },
     ],
     look: look(
       { color: '#e9f3fa', roughness: 0.8, metalness: 0 },
@@ -306,9 +391,12 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   moon: {
+    // A base. David's own example of the rule: "like how the space
+    // station doesn't look like a castle."
+    structure: 'hull',
     meadow: '#b9bcc4', hill: '#a3a7b0', mountain: '#8a8e99', cloud: null,
     floor: { a: '#c9ccd4', b: '#b3b7c0' },
-    wall: { color: '#9a9eaa', cap: '#838794' },
+    wall: { color: '#9a9eaa', cap: '#838794', metalness: 0.3 },
     tower: { body: '#9a9eaa', roof: '#ffd21f' },
     jail: { platform: '#838794', bars: '#3d404a' },
     retreat: { padA: '#d4d7de', padB: '#bcc0c9', post: '#6e7280', canopy: '#ffd21f', pool: '#57c9e8' },
@@ -317,6 +405,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'moonRock', x: -8, z: -7, scale: 1.5 }, { kind: 'moonRock', x: 8.6, z: -4 },
       { kind: 'moonRock', x: -9.2, z: 3, scale: 1.2 }, { kind: 'moonRock', x: 9, z: 7, scale: 0.9 },
       { kind: 'lantern', x: -7.6, z: 9.8, color: '#ffd21f' }, { kind: 'lantern', x: 8.2, z: 10.2, color: '#ffd21f' },
+      { kind: 'pebbles', x: -10.4, z: 5.5, color: '#a3a7b0' },
+      { kind: 'pebbles', x: 6.9, z: -10.6, color: '#9a9eaa' },
+      { kind: 'banner', x: -6.8, z: 11, color: '#3f7fd0' },
     ],
     look: look(
       { color: '#b3b7c0', roughness: 1, metalness: 0 },
@@ -330,9 +421,12 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   /* ── BOUGHT IN THE STORE ───────────────────────────────────────── */
 
   beach: {
+    // Driftwood palisade. A castle on a beach is a sandcastle, and this
+    // one is life-sized.
+    structure: 'posts',
     meadow: '#f0dfa8', hill: '#e6d090', mountain: null, cloud: '#ffffff',
     floor: { a: '#efe2b4', b: '#e0cd92' },
-    wall: { color: '#d9c284', cap: '#c2a865' },
+    wall: { color: '#d9c284', cap: '#a8845c' },
     tower: { body: '#d9c284', roof: '#ff8a5c' },
     jail: { platform: '#c2a865', bars: '#6e5a34' },
     retreat: { padA: '#fff3d0', padB: '#efe0ae', post: '#8a5a34', canopy: '#ff6e6e', pool: '#4fd0c9' },
@@ -342,6 +436,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'palm', x: -9, z: 4, scale: 1.1 }, { kind: 'umbrella', x: 8.8, z: 8, color: '#ff6e6e' },
       { kind: 'umbrella', x: -7.6, z: 9.8, color: '#57c9e8' },
       { kind: 'rock', x: 9.6, z: 1, color: '#c2a865' },
+      { kind: 'pebbles', x: -10.4, z: 5.5, color: '#d9c08a' },
+      { kind: 'bush', x: 7.1, z: -10.4, color: '#3a8a4a' },
+      { kind: 'flowers', x: -6.8, z: 11, color: '#ff6e9e' },
     ],
     look: look(
       { color: '#e6d090', roughness: 1, metalness: 0 },
@@ -353,7 +450,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   candy: {
-    meadow: '#f7c9e0', hill: '#f0b3d2', mountain: '#d998c4', cloud: '#fff0f7',
+    // Gingerbread. One of the three places where a castle is the joke.
+    structure: 'battlement',
+    meadow: '#f4b5d6', hill: '#e89cc6', mountain: '#d086b4', cloud: '#ffe8f4',
     floor: { a: '#fbe3ef', b: '#f3cde2' },
     wall: { color: '#e8a8cc', cap: '#d68cb8' },
     tower: { body: '#e8a8cc', roof: '#8ae0c0' },
@@ -367,6 +466,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'lollipop', x: 9, z: 7, scale: 1.2, color: '#b06ee8' },
       { kind: 'rock', x: -7.6, z: 9.8, color: '#f7f0e0', scale: 0.9 },
       { kind: 'rock', x: 8.4, z: 10, color: '#f7f0e0', scale: 0.7 },
+      { kind: 'flowers', x: -10.4, z: 6, color: '#ff8ab0' },
+      { kind: 'flowers', x: 7, z: -10.6, color: '#8ae0c0' },
+      { kind: 'banner', x: -6.8, z: 11, color: '#ff6e6e' },
     ],
     look: look(
       { color: '#f0b3d2', roughness: 0.6, metalness: 0 },
@@ -378,35 +480,49 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   glade: {
-    meadow: '#1d3345', hill: '#152838', mountain: '#26455c', cloud: null,
-    floor: { a: '#2a4a63', b: '#1f3a50' },
-    wall: { color: '#33566e', cap: '#264257' },
-    tower: { body: '#33566e', roof: '#4fd0c9' },
-    jail: { platform: '#264257', bars: '#0d1c28' },
-    retreat: { padA: '#3a607a', padB: '#2a4a63', post: '#152838', canopy: '#4fd0c9', pool: '#4fd0c9' },
+    /*
+      Mossy boulders round a clearing. Was a blue-black castle at 70%
+      below a third brightness; it is now a MOSSY green glade under a
+      moon, which is both brighter and further from the reef — the two
+      were the closest pair of teals in the set.
+    */
+    structure: 'rocks',
+    meadow: '#3f7a58', hill: '#33684a', mountain: '#4a8a66',
+    cloud: null,
+    floor: { a: '#4a8562', b: '#3d7353' },
+    wall: { color: '#528f6b', cap: '#427a58' },
+    tower: { body: '#528f6b', roof: '#4fd0c9' },
+    jail: { platform: '#427a58', bars: '#1d3d2c' },
+    retreat: { padA: '#5f9c78', padB: '#4a8562', post: '#33684a', canopy: '#4fd0c9', pool: '#4fd0c9' },
     sky: { sun: null, stars: true, body: { kind: 'moon', color: '#e9f0f7' } },
     props: [
       { kind: 'mushroom', x: -8, z: -7, scale: 1.5, color: '#4fd0c9' },
       { kind: 'mushroom', x: 8.6, z: -4, color: '#57e8a9' },
       { kind: 'mushroom', x: -9, z: 3, scale: 1.1, color: '#8ad4e8' },
       { kind: 'mushroom', x: 9, z: 7, scale: 1.3, color: '#4fd0c9' },
-      { kind: 'pine', x: -7.6, z: 9.8, color: '#14303e', scale: 1.1 },
-      { kind: 'pine', x: 8.8, z: 10.2, color: '#14303e', scale: 0.9 },
+      { kind: 'pine', x: -7.6, z: 9.8, color: '#245c40', scale: 1.1 },
+      { kind: 'pine', x: 8.8, z: 10.2, color: '#245c40', scale: 0.9 },
+      { kind: 'flowers', x: -10.4, z: 6, color: '#8ad4e8' },
+      { kind: 'bush', x: 7.1, z: -10.4, color: '#2f6b4a' },
+      { kind: 'pebbles', x: -6.8, z: 11, color: '#33684a' },
     ],
     look: look(
-      { color: '#264d5c', roughness: 0.9, metalness: 0 },
-      { depths: '#04141c', surface: '#2a7a8f', surfaceOpacity: 0.7, surfaceRoughness: 0.15,
-        edge: '#4fd0c9', border: { kind: 'bank', color: '#152838' } },
+      { color: '#4a8562', roughness: 0.9, metalness: 0 },
+      { depths: '#0a2418', surface: '#2f8f7a', surfaceOpacity: 0.7, surfaceRoughness: 0.15,
+        edge: '#4fd0c9', border: { kind: 'bank', color: '#33684a' } },
       'glowing pool', 'mossy mound', 'Ploop! A die fell in the glowing pool!',
     ),
-    lighting: night('#2a5a6e', '#0d1c28', '#7fd4e8'),
+    lighting: night('#3f8a6e', '#1d3d2c', '#9fe8dc'),
   },
 
   cove: {
+    // A beached hull with the deck cut away. The one arena where "hull"
+    // is literal rather than a metaphor for something built.
+    structure: 'hull',
     meadow: '#c9b382', hill: '#b89e68', mountain: '#6e7d8a', cloud: '#e9e4d8',
     floor: { a: '#a8845c', b: '#93714a' },
     wall: { color: '#7d5f3d', cap: '#66492c' },
-    tower: { body: '#7d5f3d', roof: '#3d5a74' },
+    tower: { body: '#7d5f3d', roof: '#ffc95c' },
     jail: { platform: '#66492c', bars: '#33241a' },
     retreat: { padA: '#d9c799', padB: '#c2ab78', post: '#66492c', canopy: '#c23b3b', pool: '#2a7a9e' },
     sky: { sun: { color: '#fff0c0', size: 1.4 }, stars: false, body: null },
@@ -417,6 +533,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'rock', x: 9.2, z: 6, color: '#5c6a78' },
       { kind: 'lantern', x: -7.6, z: 9.8, color: '#ffc95c' },
       { kind: 'hayBale', x: 8.4, z: 10 },
+      { kind: 'pebbles', x: -10.4, z: 5.5, color: '#6e7d8a' },
+      { kind: 'banner', x: 6.9, z: -10.6, color: '#c23b3b' },
+      { kind: 'bush', x: -6.8, z: 11, color: '#5c7a3d' },
     ],
     look: look(
       { color: '#b89e68', roughness: 1, metalness: 0 },
@@ -428,6 +547,8 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   farm: {
+    // A fence. Obviously a fence.
+    structure: 'posts',
     meadow: '#a8c45c', hill: '#93b34a', mountain: '#7d9958', cloud: '#ffffff',
     floor: { a: '#d9c799', b: '#c9b380' },
     wall: { color: '#a8845c', cap: '#8f6c44' },
@@ -441,6 +562,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'hayBale', x: -9, z: 3 }, { kind: 'hayBale', x: -8.2, z: 4.2, scale: 0.8 },
       { kind: 'roundTree', x: 9, z: 6, color: '#6eb34a', scale: 1.2 },
       { kind: 'hayBale', x: 8.4, z: 10 },
+      { kind: 'flowers', x: -10.5, z: 6, color: '#ffd21f' },
+      { kind: 'bush', x: 7.1, z: -10.4, color: '#5c9e3d' },
+      { kind: 'flowers', x: -6.8, z: 11, color: '#ff6e6e' },
     ],
     look: look(
       { color: '#93b34a', roughness: 1, metalness: 0 },
@@ -452,6 +576,8 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   reef: {
+    // Coral heads heaped round the rim. Nothing on a reef is squared off.
+    structure: 'rocks',
     meadow: '#1a6673', hill: '#125460', mountain: '#0d4550', cloud: null,
     floor: { a: '#2a8a99', b: '#1f7080' },
     wall: { color: '#33a3b3', cap: '#26858f' },
@@ -465,6 +591,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'seaweed', x: -9, z: 3 }, { kind: 'seaweed', x: 9, z: 6 },
       { kind: 'coral', x: -7.6, z: 9.8, color: '#ffc95c', scale: 1.1 },
       { kind: 'rock', x: 8.8, z: 10, color: '#125460' },
+      { kind: 'seaweed', x: -10.4, z: 5.5 },
+      { kind: 'pebbles', x: 6.9, z: -10.6, color: '#125460' },
+      { kind: 'coral', x: -6.8, z: 11, color: '#8ad4e8', scale: 0.8 },
     ],
     look: look(
       { color: '#1f7080', roughness: 0.8, metalness: 0 },
@@ -476,31 +605,46 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   city: {
-    meadow: '#33364a', hill: '#282b3d', mountain: null, cloud: null,
-    floor: { a: '#4a4d63', b: '#3b3e52' },
-    wall: { color: '#565a73', cap: '#43465c' },
-    tower: { body: '#565a73', roof: '#ffc95c' },
-    jail: { platform: '#43465c', bars: '#1d1f2b' },
-    retreat: { padA: '#63677f', padB: '#4f5268', post: '#282b3d', canopy: '#ffc95c', pool: '#57c9e8' },
+    /*
+      A ROOFTOP: panelled parapet, a lit strip along it, aerial masts at
+      the corners. It was the darkest picture in the set by a distance —
+      88% of its pixels below a third brightness, which is why David
+      could not tell what it was. It is now DUSK rather than midnight,
+      the concrete is lit from the streets below, and the skyline behind
+      still reads as night because the sky and the towers carry that.
+    */
+    structure: 'hull',
+    meadow: '#5a5f7d', hill: '#4c5170', mountain: null, cloud: '#565d80',
+    floor: { a: '#7b8099', b: '#6c7189' },
+    wall: { color: '#8b90a8', cap: '#717691', metalness: 0.25 },
+    tower: { body: '#8b90a8', roof: '#ffc95c' },
+    jail: { platform: '#717691', bars: '#2c2f42' },
+    retreat: { padA: '#9095ad', padB: '#7b8099', post: '#4c5170', canopy: '#ffc95c', pool: '#57c9e8' },
     sky: { sun: null, stars: true, body: { kind: 'moon', color: '#f2ecd8' } },
     props: [
       { kind: 'cityTower', x: -8.6, z: -7, scale: 1.5 }, { kind: 'cityTower', x: 8.6, z: -6, scale: 1.2 },
       { kind: 'cityTower', x: -9.2, z: 2 }, { kind: 'cityTower', x: 9.2, z: 4, scale: 1.4 },
       { kind: 'lantern', x: -7.6, z: 9.8, color: '#ffc95c' }, { kind: 'lantern', x: 8.2, z: 10.2, color: '#ffc95c' },
+      { kind: 'banner', x: -6.9, z: -10.6, color: '#ffc95c' },
+      { kind: 'bush', x: 10.4, z: 8, color: '#3a6b4a' },
+      { kind: 'pebbles', x: -10.6, z: 5.5, color: '#4c5170' },
     ],
     look: look(
-      { color: '#4a4d63', roughness: 0.5, metalness: 0.3 },
-      { depths: '#0a0c14', surface: '#1d1f2b', surfaceOpacity: 0.4, surfaceRoughness: 0.6,
-        edge: '#ffc95c', border: { kind: 'hull', color: '#43465c' } },
+      { color: '#7b8099', roughness: 0.5, metalness: 0.3 },
+      { depths: '#0a0c14', surface: '#3a3d52', surfaceOpacity: 0.4, surfaceRoughness: 0.6,
+        edge: '#ffc95c', border: { kind: 'hull', color: '#717691' } },
       'open manhole', 'rooftop vent', 'Clang! A die fell down the manhole!',
     ),
-    lighting: night('#3d4260', '#16181f', '#ffe0a0'),
+    lighting: night('#5d6488', '#2c2f42', '#ffe0a0'),
   },
 
   toybox: {
+    // Wooden blocks stacked into a toy castle, because that is what a
+    // child builds out of blocks.
+    structure: 'battlement',
     meadow: '#d9a05c', hill: '#c98d4a', mountain: null, cloud: null,
     floor: { a: '#e8c076', b: '#d9a95c' },
-    wall: { color: '#c23b3b', cap: '#9e2f2f' },
+    wall: { color: '#c23b3b', cap: '#3f7fd0' },
     tower: { body: '#3f7fd0', roof: '#ffd21f' },
     jail: { platform: '#9e2f2f', bars: '#4a2a1a' },
     retreat: { padA: '#f0dfb4', padB: '#e0c98e', post: '#8a5a34', canopy: '#3fa35c', pool: '#57c9e8' },
@@ -512,6 +656,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'toyBlock', x: 9, z: 6, color: '#ffd21f' },
       { kind: 'balloon', x: -7.6, z: 9.8, color: '#ff6e6e' },
       { kind: 'toyBlock', x: 8.4, z: 10, color: '#b06ee8', scale: 0.8 },
+      { kind: 'banner', x: -6.9, z: -10.6, color: '#3f7fd0' },
+      { kind: 'flowers', x: -10.4, z: 6, color: '#ff6e6e' },
+      { kind: 'pebbles', x: 7, z: 11, color: '#c98d4a' },
     ],
     look: look(
       { color: '#3fa35c', roughness: 0.5, metalness: 0 },
@@ -546,22 +693,22 @@ export interface ThemedArenaMeta {
 
 export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   // Trophy ladder, in climbing order. Tier thresholds live in progress.ts.
-  snow: { name: 'Snowy Hollow', short: 'Snow', emoji: '⛄', skyColor: '#cfe4f2', tier: 'snow-arena' },
+  snow: { name: 'Snowy Hollow', short: 'Snow', emoji: '⛄', skyColor: '#b6dbf2', tier: 'snow-arena' },
   desert: { name: 'Desert Dunes', short: 'Desert', emoji: '🌵', skyColor: '#ffe8b0', tier: 'desert-arena' },
   autumn: { name: 'Autumn Woods', short: 'Autumn', emoji: '🍂', skyColor: '#d8e2ea', tier: 'autumn-arena' },
-  aurora: { name: 'Frozen Lights', short: 'Aurora', emoji: '🌌', skyColor: '#0d2530', tier: 'aurora-arena' },
-  volcano: { name: 'Volcano Rim', short: 'Volcano', emoji: '🌋', skyColor: '#3a1420', tier: 'volcano-arena' },
-  cavern: { name: 'Crystal Cavern', short: 'Cavern', emoji: '💎', skyColor: '#231539', tier: 'cavern-arena' },
+  aurora: { name: 'Frozen Lights', short: 'Aurora', emoji: '🌌', skyColor: '#16394a', tier: 'aurora-arena' },
+  volcano: { name: 'Volcano Rim', short: 'Volcano', emoji: '🌋', skyColor: '#5c2430', tier: 'volcano-arena' },
+  cavern: { name: 'Crystal Cavern', short: 'Cavern', emoji: '💎', skyColor: '#3a2552', tier: 'cavern-arena' },
   sky: { name: 'Sky Kingdom', short: 'Sky', emoji: '🌈', skyColor: '#7fc4f0', tier: 'sky-arena' },
   moon: { name: 'Moon Base', short: 'Moon', emoji: '🌕', skyColor: '#0a0c16', tier: 'moon-arena' },
 
   // Bought in the Store, cheapest first.
   farm: { name: 'Sunny Farm', short: 'Farm', emoji: '🚜', skyColor: '#bfe0f5', price: 800 },
   beach: { name: 'Treasure Beach', short: 'Beach', emoji: '🏖️', skyColor: '#8fd8f0', price: 1000 },
-  candy: { name: 'Candy Meadow', short: 'Candy', emoji: '🍭', skyColor: '#ffbedd', price: 1200 },
-  glade: { name: 'Glow Glade', short: 'Glade', emoji: '🍄', skyColor: '#122530', price: 1400 },
+  candy: { name: 'Candy Meadow', short: 'Candy', emoji: '🍭', skyColor: '#ffabd6', price: 1200 },
+  glade: { name: 'Glow Glade', short: 'Glade', emoji: '🍄', skyColor: '#1d4450', price: 1400 },
   cove: { name: 'Pirate Cove', short: 'Cove', emoji: '🏴‍☠️', skyColor: '#a8c9d8', price: 1600 },
   reef: { name: 'Coral Reef', short: 'Reef', emoji: '🐠', skyColor: '#0e4e5c', price: 1800 },
-  city: { name: 'Rooftop City', short: 'City', emoji: '🌃', skyColor: '#1a1c2a', price: 2000 },
+  city: { name: 'Rooftop City', short: 'City', emoji: '🌃', skyColor: '#2e3352', price: 2000 },
   toybox: { name: 'Toy Room', short: 'Toys', emoji: '🧸', skyColor: '#f2e2c4', price: 2400 },
 };

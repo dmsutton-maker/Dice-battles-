@@ -3,6 +3,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { palisadeLogs, palisadeTopHeight } from '../src/arena/palisade';
 import { TUNING } from '../src/game/tuning';
+import { ARENA_THEMES, ThemedArenaId } from '../src/arena/themeData';
+import { FIGURE_RADIUS, JAIL_SLOTS, RETREAT_SLOTS } from '../src/game/stations';
 import { assert, assertEqual, note, suite, test } from './harness';
 
 /**
@@ -213,6 +215,139 @@ suite('arenas · no two battlefields are the same building', () => {
         source.includes('wallHeight'),
         `${file} never references the tray wall height — dice will stop at nothing`,
       );
+    }
+  });
+});
+
+/**
+ * The sixteen themed battlefields are not sixteen castles.
+ *
+ * David, 26 Aug 2026: "the arenas all don't have to look like castles.
+ * They can be something that makes sense for the arena name, like how the
+ * space station doesn't look like a castle." He was describing exactly
+ * what had happened: the shared renderer put notched merlons and
+ * cone-roofed corner turrets on every one of them, so a coral reef, a
+ * rooftop at night and a moon base were all the same fortress in
+ * different paint — the same bug the four originals had, reintroduced
+ * sixteen times over by the thing that made sixteen arenas affordable.
+ *
+ * The tray itself is deliberately unchanged: same walls, same height,
+ * same physics in all four structures. Only the crest and the corners
+ * differ, which is the same bargain the hazards already make.
+ */
+suite('arenas · the themed sixteen are not all castles', () => {
+  const themeSource = readFileSync('src/arena/themeData.ts', 'utf8');
+  const rendererSource = readFileSync('src/arena/ThemedArena.tsx', 'utf8');
+  const structures = [...themeSource.matchAll(/^    structure: '(\w+)',$/gm)].map(
+    (m) => m[1],
+  );
+
+  test('every theme says what it is built of', () => {
+    assertEqual(
+      structures.length,
+      Object.keys(ARENA_THEMES).length,
+      'a theme is missing its structure',
+    );
+    for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+      assert(
+        typeof ARENA_THEMES[id].structure === 'string',
+        `${id} has no structure`,
+      );
+    }
+  });
+
+  test('most of them are something other than a castle', () => {
+    const battlements = structures.filter((s) => s === 'battlement').length;
+    note(
+      `structures: ${[...new Set(structures)]
+        .map((s) => `${s} ${structures.filter((x) => x === s).length}`)
+        .join(', ')}`,
+    );
+    /*
+      A majority, not all of them: the Sky KINGDOM, the Candy Meadow's
+      gingerbread and the Toy Room's building blocks are places where a
+      castle is the right answer, and banning it outright would be the
+      same mistake in the other direction. What David objected to was
+      every arena being one, so that is what this measures.
+    */
+    assert(
+      battlements <= structures.length / 2,
+      `${battlements} of ${structures.length} themed arenas are still castles`,
+    );
+    assert(
+      new Set(structures).size >= 3,
+      `only ${new Set(structures).size} kinds of building across sixteen arenas`,
+    );
+  });
+
+  test('the renderer actually draws every structure a theme asks for', () => {
+    // A theme naming a structure the renderer has no branch for would
+    // silently fall through to the castle, which is the bug this whole
+    // change exists to fix — and it would look like it worked.
+    for (const s of new Set(structures)) {
+      assert(
+        rendererSource.includes(`theme.structure === '${s}'`) ||
+          s === 'battlement',
+        `ThemedArena never draws '${s}'`,
+      );
+    }
+    assert(
+      !/\{merlons\.map/.test(rendererSource),
+      'the renderer is back to drawing merlons unconditionally',
+    );
+  });
+
+  test('nothing about the structure reaches the tray the dice bounce in', () => {
+    /*
+      The crest and the corners are decoration. If the choice of
+      structure changed the wall geometry, then picking a battlefield
+      would change how the game PLAYS, and a player who bought the
+      pirate cove with coins would be buying an advantage.
+    */
+    const walls = rendererSource.slice(
+      rendererSource.indexOf('{/* Walls */}'),
+      rendererSource.indexOf('{/* What the rim'),
+    );
+    assert(walls.length > 100, 'the wall block moved — re-check this test');
+    assert(
+      !walls.includes('structure'),
+      'the tray walls now depend on the structure, so the arena changes play',
+    );
+  });
+
+  test('every kind of prop a theme places is a prop the renderer knows', () => {
+    // A typo'd or retired PropKind renders nothing at all: the arena
+    // just quietly loses its decoration, with no error anywhere.
+    const placed = new Set<string>();
+    for (const theme of Object.values(ARENA_THEMES)) {
+      for (const p of theme.props) placed.add(p.kind);
+    }
+    for (const kind of placed) {
+      assert(
+        rendererSource.includes(`case '${kind}':`),
+        `nothing draws the '${kind}' prop`,
+      );
+    }
+    note(`${placed.size} kinds of prop placed across the sixteen`);
+  });
+
+  test('the decorations do not stand where a figure stands', () => {
+    /*
+      The Skirmish-prisoners-in-the-scenery bug, which is why
+      src/game/stations.ts exists at all. Every prop added on 26 Aug 2026
+      is checked against every slot a figure can occupy.
+    */
+    const slots = [...JAIL_SLOTS, ...RETREAT_SLOTS];
+    for (const [id, theme] of Object.entries(ARENA_THEMES)) {
+      for (const p of theme.props) {
+        for (const slot of slots) {
+          const d = Math.hypot(p.x - slot.x, p.z - slot.z);
+          assert(
+            d > FIGURE_RADIUS + 1,
+            `${id}'s ${p.kind} at (${p.x}, ${p.z}) stands on a figure`,
+          );
+        }
+      }
     }
   });
 });

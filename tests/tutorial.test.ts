@@ -449,6 +449,47 @@ print(len(q), round(sat,4), ' '.join(str(b) for b in bins))
     }
   });
 
+  test('none of them is too dark to make out', () => {
+    /*
+      David, 26 Aug 2026: "a lot of these new maps are way too dark and
+      you can't really tell what it is." He was right, and it was
+      measurable: five of the sixteen sat below 0.42 mean brightness with
+      most of their pixels in the bottom third, and at 58pt a dark
+      picture is not a moody picture, it is a smudge.
+
+      The bar is mean HSV value, plus a cap on how much of the picture
+      may sit below a third brightness. The Space Station is exempt and
+      only it: it is one of the four ORIGINALS, it is deep space, David
+      has never complained about it, and it is the one place where "you
+      cannot see much" is the subject rather than a fault.
+    */
+    for (const id of IDS) {
+      if (id === 'space') continue;
+      const out = execSync(
+        `python3 -c "
+from PIL import Image
+import colorsys
+im = Image.open('assets/arenas/${id}.png').convert('RGB').resize((64,64))
+px = list(im.getdata())
+v = [colorsys.rgb_to_hsv(r/255,g/255,b/255)[2] for r,g,b in px]
+print(round(sum(v)/len(v),3), round(sum(1 for x in v if x < 0.32)/len(v),3))
+"`,
+        { encoding: 'utf8' },
+      ).trim().split(' ');
+      const mean = Number(out[0]);
+      const dark = Number(out[1]);
+      note(`${id}: brightness ${mean.toFixed(2)}, ${Math.round(dark * 100)}% in shadow`);
+      assert(
+        mean >= 0.42,
+        `${id} averages ${mean.toFixed(2)} brightness — too dark to read at 58pt`,
+      );
+      assert(
+        dark <= 0.45,
+        `${id} is ${Math.round(dark * 100)}% shadow — the shape is lost in it`,
+      );
+    }
+  });
+
   test('no two battlefields could be mistaken for each other', () => {
     /*
       The half that has already gone wrong here once: the Sunset Castle

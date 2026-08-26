@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
 import { playClick } from '../audio/sounds';
 import { MENU_PAGE_AREA } from './BottomNav';
+import { recallScroll, rememberScroll } from './menuScroll';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { PreviewTarget } from '../game/itemPreview';
@@ -49,6 +50,13 @@ export function InventoryScreen({
   skinId,
   onPreview,
 }: InventoryScreenProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  // Restore before the first paint the player sees.
+  useEffect(() => {
+    const y = recallScroll('inventory');
+    if (y > 0) scrollRef.current?.scrollTo({ y, animated: false });
+  }, []);
+
   return (
     <View style={styles.overlay}>
       <View style={styles.header}>
@@ -60,8 +68,17 @@ export function InventoryScreen({
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        /*
+          Opening a preview unmounts this page, so the offset is kept
+          outside the component (menuScroll.ts) and put back on the way
+          in. `animated: false` because this is not a movement the
+          player made — it is where they already were.
+        */
+        onScroll={(e) => rememberScroll('inventory', e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={64}
       >
         <Text style={styles.sectionTitle}>BATTLEFIELDS</Text>
         <Text style={styles.sectionNote}>

@@ -387,6 +387,100 @@ function Lantern({ color = '#ffc95c' }: { color?: string }) {
   );
 }
 
+function Flowers({ color = '#ff6e6e' }: { color?: string }) {
+  return (
+    <group>
+      {([[-0.22, 0.34, 0.1], [0, 0.46, -0.12], [0.24, 0.38, 0.14]] as const).map(([x, h, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <mesh position={[0, h / 2, 0]}>
+            <cylinderGeometry args={[0.025, 0.03, h, 5]} />
+            <meshStandardMaterial color="#4a8f4f" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, h, 0]}>
+            <sphereGeometry args={[0.11, 8, 6]} />
+            <meshStandardMaterial color={color} roughness={0.6} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function Bush({ color = '#3f7a4a' }: { color?: string }) {
+  return (
+    <group>
+      {([[0, 0.34, 0, 0.42], [0.3, 0.26, 0.1, 0.32], [-0.28, 0.28, -0.08, 0.34]] as const).map(
+        ([x, y, z, r], i) => (
+          <mesh key={i} position={[x, y, z]} scale={[1, 0.82, 1]}>
+            <sphereGeometry args={[r, 10, 8]} />
+            <meshStandardMaterial color={color} roughness={0.95} />
+          </mesh>
+        ),
+      )}
+    </group>
+  );
+}
+
+function Pebbles({ color = '#8a8e99' }: { color?: string }) {
+  return (
+    <group>
+      {([[0, 0, 0.26], [0.42, 0.18, 0.18], [-0.34, -0.22, 0.15], [0.12, -0.4, 0.12]] as const).map(
+        ([x, z, r], i) => (
+          <mesh key={i} position={[x, r * 0.5, z]} scale={[1, 0.6, 0.9]} rotation={[0, i * 0.9, 0]}>
+            <dodecahedronGeometry args={[r, 0]} />
+            <meshStandardMaterial color={color} roughness={1} />
+          </mesh>
+        ),
+      )}
+    </group>
+  );
+}
+
+function Torch({ color = '#ff9440' }: { color?: string }) {
+  return (
+    <group>
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.07, 0.09, 1.2, 6]} />
+        <meshStandardMaterial color="#4a3823" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 1.28, 0]}>
+        <cylinderGeometry args={[0.17, 0.11, 0.26, 8]} />
+        <meshStandardMaterial color="#33281f" roughness={0.9} />
+      </mesh>
+      {/* Basic material, so the flame is the same brightness in a dark
+          world as the lava is — a lit thing, not a lit-up thing. */}
+      <mesh position={[0, 1.6, 0]} scale={[1, 1.5, 1]}>
+        <sphereGeometry args={[0.2, 10, 8]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
+  );
+}
+
+function Banner({ color = '#c23b3b' }: { color?: string }) {
+  return (
+    <group>
+      <mesh position={[0, 1.1, 0]}>
+        <cylinderGeometry args={[0.05, 0.06, 2.2, 6]} />
+        <meshStandardMaterial color="#6b4a2c" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.36, 1.64, 0]}>
+        <boxGeometry args={[0.72, 1, 0.03]} />
+        <meshStandardMaterial color={color} roughness={0.85} side={THREE.DoubleSide} />
+      </mesh>
+      {/* The swallowtail, so it reads as cloth and not a signboard. */}
+      <mesh position={[0.36, 1.04, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.26, 0.26, 0.03]} />
+        <meshStandardMaterial color={color} roughness={0.85} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 2.24, 0]}>
+        <sphereGeometry args={[0.09, 8, 6]} />
+        <meshStandardMaterial color="#e8c76e" roughness={0.4} metalness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
 function Prop({ p }: { p: PropPlacement }) {
   const inner = (() => {
     switch (p.kind) {
@@ -412,6 +506,11 @@ function Prop({ p }: { p: PropPlacement }) {
       case 'balloon': return <Balloon color={p.color} />;
       case 'moonRock': return <MoonRock />;
       case 'lantern': return <Lantern color={p.color} />;
+      case 'flowers': return <Flowers color={p.color} />;
+      case 'bush': return <Bush color={p.color} />;
+      case 'pebbles': return <Pebbles color={p.color} />;
+      case 'torch': return <Torch color={p.color} />;
+      case 'banner': return <Banner color={p.color} />;
     }
   })();
   return (
@@ -585,6 +684,199 @@ function ThemedSky({ theme }: { theme: ArenaTheme }) {
   );
 }
 
+/* ── what the tray is BUILT of ────────────────────────────────────── */
+
+/** One spot along the top of the tray wall. */
+interface RimSpot {
+  pos: [number, number, number];
+  alongX: boolean;
+}
+
+/**
+ * The rim of the tray, in whichever material this world is made of.
+ *
+ * David, 26 Aug 2026: "the arenas all don't have to look like castles.
+ * They can be something that makes sense for the arena name, like how the
+ * space station doesn't look like a castle." He was right — the first
+ * sixteen were one castle wearing sixteen coats of paint, notched merlons
+ * and cone-roofed turrets on a coral reef and on a rooftop at night.
+ *
+ * The tray the dice bounce in is IDENTICAL in all four: same walls, same
+ * thickness, same height, same physics. Only what sits on top of it and
+ * what stands at its corners changes, exactly the way the hazards already
+ * work. Nothing here may affect play, and nothing here does.
+ */
+function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
+  const cap = theme.wall.cap;
+  const y = wallHeight + 0.12;
+
+  if (theme.structure === 'hull') {
+    /*
+      Built, not fortified: a flat panelled coaming with one lit strip
+      running round it. The moon base, the polar station, the rooftop and
+      the beached pirate hull all read as made by somebody.
+    */
+    const long = innerDepth + wallThickness * 2;
+    const sides: [number, number, number, number][] = [
+      [-(halfW + wallThickness / 2), 0, wallThickness, long],
+      [halfW + wallThickness / 2, 0, wallThickness, long],
+      [0, -(halfD + wallThickness / 2), innerWidth, wallThickness],
+      [0, halfD + wallThickness / 2, innerWidth, wallThickness],
+    ];
+    return (
+      <group>
+        {sides.map(([x, z, w, d], i) => (
+          <group key={`coaming-${i}`}>
+            <mesh position={[x, wallHeight + 0.07, z]}>
+              <boxGeometry args={[w, 0.14, d]} />
+              <meshStandardMaterial color={cap} roughness={0.45} metalness={0.35} />
+            </mesh>
+            <mesh position={[x, wallHeight + 0.16, z]}>
+              <boxGeometry args={[w * 0.9, 0.05, d * 0.9]} />
+              <meshBasicMaterial color={theme.tower.roof} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+    );
+  }
+
+  if (theme.structure === 'rocks') {
+    // Boulders heaped along the rim. Sizes vary from the index, so the
+    // line is ragged without any randomness at render time.
+    return (
+      <group>
+        {rim.map((m, i) => {
+          const r = 0.26 + ((i * 37) % 11) / 44;
+          return (
+            <mesh
+              key={`boulder-${i}`}
+              position={[m.pos[0], wallHeight + r * 0.6, m.pos[2]]}
+              rotation={[i * 0.7, i * 1.3, i * 0.4]}
+              scale={[1, 0.78, 1]}
+            >
+              <dodecahedronGeometry args={[r, 0]} />
+              <meshStandardMaterial color={cap} roughness={1} />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  }
+
+  if (theme.structure === 'posts') {
+    // A timber fence: uprights with a rail threaded between them.
+    const long = innerDepth + wallThickness * 2;
+    const rails: [number, number, number, number][] = [
+      [-(halfW + wallThickness / 2), 0, 0.07, long],
+      [halfW + wallThickness / 2, 0, 0.07, long],
+      [0, -(halfD + wallThickness / 2), innerWidth, 0.07],
+      [0, halfD + wallThickness / 2, innerWidth, 0.07],
+    ];
+    return (
+      <group>
+        {rails.map(([x, z, w, d], i) => (
+          <mesh key={`rail-${i}`} position={[x, wallHeight + 0.3, z]}>
+            <boxGeometry args={[w, 0.09, d]} />
+            <meshStandardMaterial color={cap} roughness={0.95} />
+          </mesh>
+        ))}
+        {rim.map((m, i) => (
+          <mesh key={`post-${i}`} position={[m.pos[0], wallHeight + 0.28, m.pos[2]]}>
+            <cylinderGeometry args={[0.1, 0.12, 0.56, 6]} />
+            <meshStandardMaterial color={cap} roughness={0.95} />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+
+  // battlement — notched stone teeth, the original crest.
+  return (
+    <group>
+      {rim.map((m, i) => (
+        <mesh key={`merlon-${i}`} position={[m.pos[0], y, m.pos[2]]}>
+          <boxGeometry args={m.alongX ? [0.45, 0.24, wallThickness] : [wallThickness, 0.24, 0.5]} />
+          <meshStandardMaterial color={cap} roughness={0.85} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** What stands at the four corners, matching the crest. */
+function ThemedCorners({
+  theme,
+  wallMaterial,
+}: {
+  theme: ArenaTheme;
+  wallMaterial: THREE.Material;
+}) {
+  const roof = theme.tower.roof;
+  return (
+    <group>
+      {CORNER_TOWERS.map(({ x, z }, i) => (
+        <group key={`corner-${i}`} position={[x, 0, z]}>
+          {theme.structure === 'battlement' && (
+            <>
+              <mesh material={wallMaterial} position={[0, wallHeight / 2 + 0.2, 0]}>
+                <cylinderGeometry args={[0.5, 0.56, wallHeight + 0.4, 12]} />
+              </mesh>
+              <mesh position={[0, wallHeight + 0.72, 0]}>
+                <coneGeometry args={[0.6, 0.8, 12]} />
+                <meshStandardMaterial color={roof} roughness={0.6} />
+              </mesh>
+            </>
+          )}
+
+          {theme.structure === 'rocks' && (
+            // A cairn: three boulders stacked, the top one the accent
+            // stone this world glows or burns in.
+            <>
+              {([[0.58, 0.34], [0.44, 0.92], [0.3, 1.36]] as const).map(([r, y], k) => (
+                <mesh key={k} position={[0, y, 0]} rotation={[k * 0.8, k * 1.1, k * 0.5]} scale={[1, 0.8, 1]}>
+                  <dodecahedronGeometry args={[r, 0]} />
+                  <meshStandardMaterial
+                    color={k === 2 ? roof : theme.wall.cap}
+                    roughness={1}
+                  />
+                </mesh>
+              ))}
+            </>
+          )}
+
+          {theme.structure === 'posts' && (
+            // A gatepost, taller than the fence, with a turned finial.
+            <>
+              <mesh material={wallMaterial} position={[0, (wallHeight + 0.9) / 2, 0]}>
+                <cylinderGeometry args={[0.24, 0.28, wallHeight + 0.9, 8]} />
+              </mesh>
+              <mesh position={[0, wallHeight + 1.02, 0]}>
+                <sphereGeometry args={[0.28, 10, 8]} />
+                <meshStandardMaterial color={roof} roughness={0.7} />
+              </mesh>
+            </>
+          )}
+
+          {theme.structure === 'hull' && (
+            // A slim mast with a lit head — an aerial, a beacon, a
+            // lantern at the masthead, depending on where you are.
+            <>
+              <mesh material={wallMaterial} position={[0, (wallHeight + 1.6) / 2, 0]}>
+                <cylinderGeometry args={[0.09, 0.14, wallHeight + 1.6, 8]} />
+              </mesh>
+              <mesh position={[0, wallHeight + 1.68, 0]}>
+                <sphereGeometry args={[0.18, 10, 8]} />
+                <meshBasicMaterial color={roof} />
+              </mesh>
+            </>
+          )}
+        </group>
+      ))}
+    </group>
+  );
+}
+
 /* ── the arena itself ─────────────────────────────────────────────── */
 
 export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
@@ -610,8 +902,8 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
     [theme.wall.color, theme.wall.metalness],
   );
 
-  const merlons = useMemo(() => {
-    const list: { pos: [number, number, number]; alongX: boolean }[] = [];
+  const rim = useMemo(() => {
+    const list: RimSpot[] = [];
     const y = wallHeight + 0.12;
     for (let x = -halfW + 0.4; x <= halfW - 0.3; x += 1.1) {
       list.push({ pos: [x, y, -(halfD + wallThickness / 2)], alongX: true });
@@ -699,26 +991,10 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
       </mesh>
 
-      {/* Wall caps */}
-      {merlons.map((m, i) => (
-        <mesh key={`merlon-${i}`} position={m.pos}>
-          <boxGeometry args={m.alongX ? [0.45, 0.24, wallThickness] : [wallThickness, 0.24, 0.5]} />
-          <meshStandardMaterial color={theme.wall.cap} roughness={0.85} />
-        </mesh>
-      ))}
-
-      {/* Corner towers */}
-      {CORNER_TOWERS.map(({ x, z }, i) => (
-        <group key={`tower-${i}`} position={[x, 0, z]}>
-          <mesh material={wallMaterial} position={[0, wallHeight / 2 + 0.2, 0]}>
-            <cylinderGeometry args={[0.5, 0.56, wallHeight + 0.4, 12]} />
-          </mesh>
-          <mesh position={[0, wallHeight + 0.72, 0]}>
-            <coneGeometry args={[0.6, 0.8, 12]} />
-            <meshStandardMaterial color={theme.tower.roof} roughness={0.6} />
-          </mesh>
-        </group>
-      ))}
+      {/* What the rim and the corners are made of — merlons only where
+          the place is actually a castle. */}
+      <ThemedCrest theme={theme} rim={rim} />
+      <ThemedCorners theme={theme} wallMaterial={wallMaterial} />
     </group>
   );
 }
