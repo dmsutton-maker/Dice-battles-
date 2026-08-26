@@ -218,17 +218,42 @@ suite('icons · the four game modes', () => {
     assert(/ICON\.silver/.test(rush), 'the blades are no longer steel');
     assert(/ICON\.leather/.test(rush), 'the swords lost their grips');
 
-    // 🔁 A loop with two chasing arrowheads: gaps on BOTH sides, and two
-    // heads pointing opposite ways.
+    /*
+      🔁 A closed rounded-rectangle loop with two arrowheads chasing round
+      it — one on the top line pointing right, one on the bottom pointing
+      left.
+
+      This asserted the opposite until 26 Aug 2026: that the loop had
+      GAPS, cut by setting borderLeftColor and borderRightColor to
+      transparent. That is not what those do. A rounded box's four border
+      sides each own one 90° quadrant, mitred at the diagonals, so
+      transparent left and right leave two stubby arcs at the TOP and
+      BOTTOM with the heads floating clear of them — which is what David
+      saw. Nothing here may depend on border-side transparency again; the
+      shape has to be one a person can work out from the numbers.
+    */
     assert(
-      /borderLeftColor: 'transparent'/.test(ultimate) &&
-        /borderRightColor: 'transparent'/.test(ultimate),
-      'Ultimate is a closed ring — the emoji is two chasing arrows, so the loop needs both gaps',
+      !/borderLeftColor: 'transparent'|borderRightColor: 'transparent'/.test(ultimate),
+      'Ultimate is cutting its loop with transparent border sides again — those mitre at the diagonals and leave stubs, not gaps',
+    );
+    assert(
+      /borderRadius: size \* 0\.2\b/.test(ultimate),
+      'Ultimate lost its rounded-rectangle loop',
     );
     assertEqual(
       (ultimate.match(/head\(/g) ?? []).length,
       2,
       'Ultimate no longer has two arrowheads',
+    );
+    assert(
+      /'right'\)/.test(ultimate) && /'left'\)/.test(ultimate),
+      'Ultimate\u2019s two heads no longer point opposite ways — that is what makes them chase',
+    );
+    // The heads sit ON the bars, worked out from the stroke rather than
+    // eyeballed, which is what stopped them floating.
+    assert(
+      /topLine/.test(ultimate) && /bottomLine/.test(ultimate),
+      'the arrowheads are no longer aligned to the loop\u2019s own bars',
     );
 
     // 🤼 Two figures: two heads and two leaning bodies, in two colours.

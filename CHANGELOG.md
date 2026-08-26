@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.52.0 — 2026-08-26 · reported by David
+
+### Fixed
+- **The arrows on the Ultimate mode icon.** The loop was meant to be a
+  circle with a gap on each side for the two chasing arrows; what it
+  actually drew was two short stubby arcs at the top and bottom with the
+  arrowheads floating loose beside them.
+  - The cause is a rule about how phones draw borders: a rounded box's
+    four border sides each own one quarter of the shape and are cut off
+    at the diagonals, so making the left and right sides see-through does
+    not open the left and right of a circle — it leaves the top and
+    bottom quarters behind.
+  - It is a closed rounded-rectangle loop now with an arrowhead on the
+    top-right pointing right and one on the bottom-left pointing left,
+    which is what the repeat symbol actually is. Both heads are placed
+    from the loop's own line thickness rather than by eye, so they sit on
+    the bars instead of near them.
+  - **This one is my fault twice over.** I checked the last version by
+    drawing a picture of it — but the picture put the arcs on the left
+    and right, so I approved something the code never made. A check only
+    counts if it follows the same rules the phone does.
+
 ## v1.51.0 — 2026-08-26 · requested by David
 
 ### Changed

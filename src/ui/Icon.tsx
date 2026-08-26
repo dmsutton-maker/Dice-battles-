@@ -664,50 +664,74 @@ export function RushIcon({ size = 22, color = THEME.ink }: IconProps) {
   );
 }
 
-/** Ultimate — 🔁, two arrows chasing round a loop. */
+/**
+ * Ultimate — 🔁, the repeat loop.
+ *
+ * A CLOSED rounded-rectangle loop with an arrowhead on the top-right and
+ * another on the bottom-left, which is what the emoji actually is: a
+ * rectangle of two arrows chasing each other, not a circle.
+ *
+ * The first attempt made the loop a circle and cut gaps in it by setting
+ * `borderLeftColor` and `borderRightColor` to transparent. That does not
+ * do what it reads as. A rounded box's four border SIDES each own one
+ * 90° quadrant, mitred at the diagonals — so transparent left and right
+ * leave two stubby 90° arcs at the TOP and BOTTOM, with the heads
+ * floating off them. (My check drew the arcs on the left and right, so
+ * the picture I approved was not the picture the code makes. Rendering
+ * only helps if the render obeys the same rules as the renderer.)
+ *
+ * Nothing here relies on border-side transparency now. A closed ring and
+ * two triangles are the same shape at every size, on every platform, and
+ * can be reasoned about from the numbers alone.
+ */
 export function UltimateIcon({ size = 22, color = THEME.ink }: IconProps) {
   const s = w(size);
-  const head = (left: number, top: number, dir: 'left' | 'right') => (
+  const stroke = s * 0.9;
+  // Where the top and bottom bars of the loop run, so the heads can sit
+  // exactly on those lines rather than near them.
+  const topLine = size * 0.19 + stroke / 2;
+  const bottomLine = size * 0.81 - stroke / 2;
+  const reach = size * 0.19;
+  const halfHead = size * 0.135;
+
+  const head = (tipX: number, line: number, dir: 'left' | 'right') => (
     <View
       key={dir}
       style={{
         position: 'absolute',
-        left: size * left,
-        top: size * top,
+        // A CSS triangle's tip is at the far side of its border box, so
+        // a right-pointing head starts `reach` back from where it points.
+        left: dir === 'right' ? tipX - reach : tipX,
+        top: line - halfHead,
         width: 0,
         height: 0,
-        borderTopWidth: size * 0.13,
-        borderBottomWidth: size * 0.13,
-        [dir === 'right' ? 'borderLeftWidth' : 'borderRightWidth']: size * 0.2,
+        borderTopWidth: halfHead,
+        borderBottomWidth: halfHead,
         borderTopColor: 'transparent',
         borderBottomColor: 'transparent',
+        [dir === 'right' ? 'borderLeftWidth' : 'borderRightWidth']: reach,
         [dir === 'right' ? 'borderLeftColor' : 'borderRightColor']: color,
       }}
     />
   );
+
   return (
     <View style={{ width: size, height: size }}>
-      {/*
-        The loop, opened at the left and right where the heads sit — the
-        emoji's two chasing arrows. Transparent border SIDES make the
-        gaps; the heads point along the direction of travel.
-      */}
       <View
         style={{
           position: 'absolute',
-          left: size * 0.12,
-          top: size * 0.14,
-          width: size * 0.76,
-          height: size * 0.72,
-          borderRadius: size * 0.36,
-          borderWidth: s * 0.95,
+          left: size * 0.13,
+          top: size * 0.19,
+          width: size * 0.74,
+          height: size * 0.62,
+          borderRadius: size * 0.2,
+          borderWidth: stroke,
           borderColor: color,
-          borderLeftColor: 'transparent',
-          borderRightColor: 'transparent',
         }}
       />
-      {head(0.66, 0.02, 'right')}
-      {head(0.14, 0.72, 'left')}
+      {/* Top arrow runs right, bottom arrow runs left: they chase. */}
+      {head(size * 0.97, topLine, 'right')}
+      {head(size * 0.03, bottomLine, 'left')}
     </View>
   );
 }
