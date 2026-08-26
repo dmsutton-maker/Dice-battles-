@@ -198,25 +198,37 @@ suite('tutorial · the throw demo', () => {
     assert(demo.includes('  spot: {'), 'the die has lost its colour spot');
   });
 
-  test('the hand is a drawing of a hand', () => {
+  test('the finger is a rendered finger, not a shape', () => {
     /*
-      It was a circle on a stick, built from two rounded rectangles, and
-      it did not read as a hand at any size. A hand is curves and
-      overlapping masses; Views cannot make one, and react-native-svg is
-      native code we cannot add. So it is a PNG, which ships over the air
-      with the update like every other asset.
+      Three versions of this. Two rounded rectangles — a circle on a
+      stick, and David said so. Then a drawn cartoon hand. Then, at his
+      asking, "a real looking finger", which is the better object anyway:
+      what a player sees of their own hand on the glass IS a fingertip.
+
+      What makes it real is shading and having no outline, and neither is
+      something a View can do — react-native-svg is native code we cannot
+      add. So it is an image, which ships over the air with the update
+      like every other asset.
     */
     assert(
-      /require\('\.\.\/\.\.\/assets\/tutorial\/hand\.png'\)/.test(demo),
-      'the hand is not the drawn one any more',
+      /require\('\.\.\/\.\.\/assets\/tutorial\/finger\.png'\)/.test(demo),
+      'the finger is not the rendered one any more',
     );
     assert(
-      existsSync('assets/tutorial/hand.png'),
-      'the hand image is missing, so the demo would render an empty box',
+      existsSync('assets/tutorial/finger.png'),
+      'the finger image is missing, so the demo would render an empty box',
     );
     assert(
-      !/fingertip|finger:/.test(demo),
-      'the hand is back to being assembled from rounded rectangles',
+      existsSync('assets/tutorial/make-finger.py'),
+      'the generator is gone, so nobody can regenerate or adjust the finger',
+    );
+    assert(
+      !existsSync('assets/tutorial/hand.png'),
+      'the old cartoon hand is still being shipped as a dead asset',
+    );
+    assert(
+      !/fingertip:|finger:/.test(demo),
+      'the finger is back to being assembled from rounded rectangles',
     );
   });
 

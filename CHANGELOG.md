@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.45.0 — 2026-08-26 · requested by David
+
+### Changed
+- **A real finger flicks the dice in How to Play now**, instead of the
+  drawn cartoon hand. David asked for it, and he was right that a finger
+  is the better object anyway: what you see of your own hand on the glass
+  IS a fingertip, and a whole hand at that size was mostly knuckles
+  taking up the arena.
+  - It is rendered rather than drawn, and everything that makes it look
+    real is shading: the finger is lit as a cylinder with the highlight
+    off the centre line, the tip is flushed redder the way a pressed
+    fingertip is, the nail has a pale half-moon at its base and one bright
+    streak across it, and there is a soft shadow beneath so it sits ON the
+    glass. Most importantly it has **no outline at all** — a black keyline
+    is the one thing that makes anything look drawn.
+  - Two faults found by looking at it rather than at the code: the tip
+    came to a **pencil point** instead of a rounded dome, and the base
+    ended in a **hard horizontal cut** across the middle of the arena.
+    The tip is a proper dome now and the finger fades out as it recedes,
+    so it reaches in from off the edge rather than stopping in mid-air.
+  - It also flicked clean over the jail and out of the arena at first.
+    Fixed by tuning against the rendered frames — the numbers that look
+    right on paper are not the ones that look right on screen, because
+    the fingertip is a long way from the point the animation actually
+    moves.
+  - The picture is 39 kB. It was 81 kB until it was sized for the screen
+    it is drawn on rather than for the maths that made it, which matters
+    when it is an over-the-air update the family downloads on a phone.
+
 ## v1.44.0 — 2026-08-26 · requested by David
 
 ### Fixed

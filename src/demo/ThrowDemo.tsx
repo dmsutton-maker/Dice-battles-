@@ -44,9 +44,18 @@ import { SHAPE, THEME } from '../ui/theme';
  * which is what is currently stuck; and a recording goes stale in silence
  * while the game moves on. This cannot — it reads the live palette.
  *
- * The hand is the one piece that is a PNG (assets/tutorial/hand.png, and
- * the README beside it explains why): a hand is curves and overlapping
- * masses, and rounded rectangles cannot make one.
+ * THE FINGER is the one piece that is an image (assets/tutorial/finger.png,
+ * and the README beside it explains why). It took three goes: a fingertip
+ * made of two rounded rectangles, which was a circle on a stick; a drawn
+ * cartoon hand with an ink outline; and then this, after David asked for
+ * "a real looking finger". He was right that a finger is the better
+ * object — what you see of your own hand on the glass IS a fingertip, and
+ * a whole hand at this size was mostly knuckles taking up the arena.
+ *
+ * What makes it read as real is shading and the absence of an outline,
+ * which is exactly what Views cannot do; react-native-svg is native code
+ * and cannot be added. Image assets ship over the air with the update
+ * like everything else, so this still needs no build.
  */
 
 /** One trip through the whole story, in milliseconds. */
@@ -167,7 +176,14 @@ export function ThrowDemo({ symbols }: { symbols: boolean }) {
   });
   const handY = t.interpolate({
     inputRange: [0, T.handIn, T.swipeStart, T.swipeEnd, T.handOut, 1],
-    outputRange: [130, 58, 58, -10, 70, 130],
+    /*
+      Tuned against the rendered frames, not reasoned about. translateY
+      moves the view's CENTRE, and the fingertip is 52pt above that, so
+      the marks that look right for a fingertip are nowhere near the ones
+      that look right on paper: at -30 the tip flicked clean over the jail
+      and out of the arena. It now stops just below the bars.
+    */
+    outputRange: [104, 48, 48, 4, 60, 104],
     extrapolate: 'clamp',
   });
   const handFade = t.interpolate({
@@ -292,7 +308,7 @@ export function ThrowDemo({ symbols }: { symbols: boolean }) {
 
       {/* The hand. */}
       <Animated.Image
-        source={require('../../assets/tutorial/hand.png')}
+        source={require('../../assets/tutorial/finger.png')}
         resizeMode="contain"
         style={[
           styles.hand,
@@ -301,7 +317,7 @@ export function ThrowDemo({ symbols }: { symbols: boolean }) {
             transform: [
               { translateX: handX },
               { translateY: handY },
-              { rotate: '24deg' },
+              { rotate: '18deg' },
               { scale: handPress },
             ],
           },
@@ -589,10 +605,26 @@ const styles = StyleSheet.create({
   },
 
   // ── the hand ────────────────────────────────────────────────────────
+  /*
+    A finger, not a hand.
+    
+    David asked for "a real looking finger" after seeing the drawn hand.
+    He is right that it is the better object: what a player sees of their
+    own hand on the glass IS a fingertip, and a whole hand at this size
+    was mostly knuckles taking up the arena. The proportions are a real
+    finger's — a shade under half as wide as it is long.
+  */
+  /*
+    43 x 104 is the asset's own aspect ratio, so `contain` fits it exactly
+    with no letterboxing. The length is what it is for a reason: any
+    longer and the flick carried the fingertip up over the jail, because
+    translateY moves the view's CENTRE and a long finger's tip is a long
+    way from that.
+  */
   hand: {
     position: 'absolute',
-    width: 62,
-    height: 83,
+    width: 43,
+    height: 104,
   },
   trail: {
     position: 'absolute',
