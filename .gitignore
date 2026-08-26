@@ -47,3 +47,4 @@ credentials.json
 # .dc.html working files beside it, and rebuilt from them on every change.
 # The artboards are the source; this is the build output.
 design-concept/dice-battles-redesign.html
+tools/arena-preview/bundle.js

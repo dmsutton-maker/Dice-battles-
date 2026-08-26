@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.57.0 — 2026-08-26 · reported by David
+
+### Fixed
+- **The giant blob is gone.** David, on a screenshot with the top third
+  of it filled by a featureless brown dome: "what is this giant blob."
+  It was the "horizon bank" added in v1.56.0 — a squashed sphere of
+  radius 7.5 at z -10.4, meant to give the world an edge to end at. The
+  arithmetic nobody did: a sphere of radius 7.5 centred at z -10.4
+  reaches FORWARD to z -2.9, past the tray's own far wall at -5.1, and
+  stands 3.3 high against a wall 1.4 high. It was never a distant
+  horizon. It was a dome sitting on top of the jail. My mistake, shipped
+  because I could not see it.
+- **The night battlefields were two stops under.** Rendered and measured,
+  Rooftop City came out at 0.26 mean brightness with 54% of the board in
+  deep shadow, and Volcano Rim at 0.28 with 78%. The palettes had already
+  been lifted for exactly this complaint two versions ago; it was the
+  lighting rig undoing them — a third dimmer than daylight, then
+  compressed further by the scene's filmic tone mapping. Night is now
+  carried by the COLOUR of the light rather than by how little of it
+  there is, which is what it should always have been: a volcano at night
+  is not dark, it is orange. City and Volcano now sit at 0.37.
+- **Smaller blobs, same fault.** The Glow Glade's corner toadstools were
+  pale domes most of a world unit across, and its mushrooms were bright
+  enough to blow out to near-white circles. Trees were single spheres,
+  which from a near-overhead camera project to flat coloured discs — they
+  are clumps of foliage now. The city towers were near-black bricks.
+- **The floors were too busy under the dice.** Wall-to-wall leaf litter
+  reads as grit, not leaves; the tiles are larger and calmer, and about
+  half the cells carry a leaf rather than all of them. The Pirate Cove's
+  caulking was strong enough that the sand outside the tray read as
+  blue-grey brick.
+
+### Added
+- **`tools/arena-preview/` — a way to actually look at an arena.** It
+  renders any battlefield in a real browser through the real component
+  and the real camera, at phone dimensions, and writes a PNG.
+  - It exists because of this afternoon. Three rounds of arena work
+    shipped without anyone being able to see the result: two hundred
+    props placed outside the camera, then a dome on top of the jail, then
+    a set of night arenas nobody could read. Every one of those passed a
+    typecheck, a full suite and a Metro bundle check, because none of
+    those can see a picture.
+  - Metro is told to ignore `tools/`, and `react-dom` is installed on
+    demand rather than added to package.json. Nothing in there can reach
+    a phone build.
+
 ## v1.56.0 — 2026-08-26 · reported by David
 
 ### Fixed

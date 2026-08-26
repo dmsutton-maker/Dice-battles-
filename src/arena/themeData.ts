@@ -165,11 +165,25 @@ export type ThemedArenaId =
 /** Shared daylight, matching the rig the originals use. */
 const DAY: ArenaLighting | null = null;
 
-/** A dim rig for night worlds, warm or cool per theme. */
+/**
+ * A rig for the night worlds — moodier than daylight, but still LIT.
+ *
+ * It used to be a third dimmer than this (0.55 / 1.6 / 0.5 against
+ * daylight's 1.0 / 2.4 / 0.7), and rendering the sixteen showed what
+ * that cost: Rooftop City came out at 0.26 mean brightness with 54% of
+ * the board in deep shadow, and the volcano at 0.28 with 78%. The
+ * palettes had already been lifted once for exactly this complaint; it
+ * was the lighting undoing them, and the scene's filmic tone mapping
+ * compressing what was left.
+ *
+ * The moodiness now comes from the COLOUR of the light rather than from
+ * how little of it there is, which is what it should have been doing all
+ * along — a volcano at night is not dark, it is orange.
+ */
 const night = (skyTint: string, groundTint: string, key: string): ArenaLighting => ({
-  hemisphere: { sky: skyTint, ground: groundTint, intensity: 0.55 },
-  key: { position: [4, 12, 6], intensity: 1.6, color: key },
-  fill: { position: [-6, 8, -4], intensity: 0.5, color: skyTint },
+  hemisphere: { sky: skyTint, ground: groundTint, intensity: 0.95 },
+  key: { position: [4, 12, 6], intensity: 2.2, color: key },
+  fill: { position: [-6, 8, -4], intensity: 0.7, color: skyTint },
 });
 
 const look = (
@@ -293,7 +307,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#ffd23f', border: { kind: 'stone', color: '#4a3336' } },
       'lava pool', 'boulder', 'Sssss! A die fell in the lava!',
     ),
-    lighting: night('#8a4048', '#40222a', '#ffa050'),
+    lighting: night('#9e4a54', '#5c3038', '#ffb070'),
   },
 
   autumn: {
@@ -369,7 +383,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#57e8a9', border: { kind: 'bank', color: '#93b8c4' } },
       'ice hole', 'ice hummock', 'Brrr! A die fell through the ice!',
     ),
-    lighting: night('#4a8a90', '#7a9daa', '#cff5e2'),
+    lighting: night('#5a9aa0', '#8aabb8', '#dff8ec'),
   },
 
   cavern: {
@@ -409,7 +423,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#c98aff', border: { kind: 'stone', color: '#4e4263' } },
       'chasm', 'stalagmite stump', 'Whoosh! A die fell down the chasm!',
     ),
-    lighting: night('#6b52a0', '#2a2138', '#d9b8ff'),
+    lighting: night('#7d5eb8', '#3f3054', '#e0c8ff'),
   },
 
   sky: {
@@ -479,7 +493,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#ffd21f', border: { kind: 'hull', color: '#6e7280' } },
       'crater', 'moon boulder', 'Gone! A die fell into the crater!',
     ),
-    lighting: night('#2a2f45', '#14161d', '#e9ecf5'),
+    lighting: night('#3d445f', '#2a2e3a', '#f2f4fa'),
   },
 
   /* ── BOUGHT IN THE STORE ───────────────────────────────────────── */
@@ -570,17 +584,17 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     retreat: { padA: '#5f9c78', padB: '#4a8562', post: '#33684a', canopy: '#4fd0c9', pool: '#4fd0c9' },
     sky: { sun: null, stars: true, body: { kind: 'moon', color: '#e9f0f7' } },
     props: [
-      { kind: 'mushroom', x: -3.44, z: -7.3, scale: 0.8, color: '#4fd0c9' },
+      { kind: 'mushroom', x: -3.44, z: -7.3, scale: 0.55, color: '#3fb0aa' },
       { kind: 'pine', x: -3.38, z: -3.4, scale: 0.58, color: '#245c40' },
-      { kind: 'mushroom', x: -3.46, z: -0.8, scale: 0.65, color: '#57e8a9' },
+      { kind: 'mushroom', x: -3.46, z: -0.8, scale: 0.5, color: '#45c48c' },
       { kind: 'flowers', x: -3.4, z: 1.6, scale: 0.95, color: '#8ad4e8' },
       { kind: 'bush', x: -3.46, z: 3.5, scale: 0.9, color: '#2f6b4a' },
       { kind: 'pine', x: 3.42, z: -7.3, scale: 0.6, color: '#245c40' },
-      { kind: 'mushroom', x: 3.38, z: -3.4, scale: 0.75, color: '#8ad4e8' },
+      { kind: 'mushroom', x: 3.38, z: -3.4, scale: 0.52, color: '#6bb4c9' },
       { kind: 'pebbles', x: 3.46, z: -0.8, scale: 0.95, color: '#33684a' },
-      { kind: 'mushroom', x: 3.4, z: 1.6, scale: 0.68, color: '#4fd0c9' },
+      { kind: 'mushroom', x: 3.4, z: 1.6, scale: 0.48, color: '#3fb0aa' },
       { kind: 'bush', x: 3.46, z: 3.5, scale: 0.85, color: '#2f6b4a' },
-      { kind: 'mushroom', x: -2.4, z: -8.8, scale: 0.55, color: '#57e8a9' },
+      { kind: 'mushroom', x: -2.4, z: -8.8, scale: 0.45, color: '#45c48c' },
       { kind: 'pebbles', x: 0.1, z: -9, scale: 0.9, color: '#33684a' },
       { kind: 'pine', x: 2.5, z: -8.8, scale: 0.46, color: '#245c40' },
     ],
@@ -590,7 +604,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#4fd0c9', border: { kind: 'bank', color: '#33684a' } },
       'glowing pool', 'mossy mound', 'Ploop! A die fell in the glowing pool!',
     ),
-    lighting: night('#3f8a6e', '#1d3d2c', '#9fe8dc'),
+    lighting: night('#4a9a7e', '#2c5a44', '#b8f0e0'),
   },
 
   cove: {
@@ -693,7 +707,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#3fbccc', border: { kind: 'stone', color: '#125460' } },
       'deep trench', 'coral head', 'Blub! A die sank into the trench!',
     ),
-    lighting: night('#1a8095', '#062a30', '#7fd4e8'),
+    lighting: night('#2a90a8', '#0f4450', '#9fe0f0'),
   },
 
   city: {
@@ -706,7 +720,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       still reads as night because the sky and the towers carry that.
     */
     structure: 'parapet',
-    meadow: '#5a5f7d', hill: '#4c5170', mountain: null, cloud: '#565d80',
+    meadow: '#6e7494', hill: '#5d6383', mountain: null, cloud: '#565d80',
     floor: { a: '#7b8099', b: '#6c7189' },
     wall: { color: '#8b90a8', cap: '#717691', metalness: 0.25 },
     tower: { body: '#8b90a8', roof: '#ffc95c' },
@@ -734,7 +748,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#ffc95c', border: { kind: 'hull', color: '#717691' } },
       'open manhole', 'rooftop vent', 'Clang! A die fell down the manhole!',
     ),
-    lighting: night('#5d6488', '#2c2f42', '#ffe0a0'),
+    lighting: night('#6e78a5', '#4a4f6a', '#ffe0a0'),
   },
 
   toybox: {

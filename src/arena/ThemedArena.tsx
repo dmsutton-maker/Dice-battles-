@@ -21,9 +21,9 @@ import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
  * The four original arenas are bespoke five-hundred-line scenes; this
  * component is what lets the other sixteen exist at all. It draws the
  * same furniture every arena must have — the tray, its walls and towers,
- * the jail pen behind the far wall, the retreat row on the player's side,
- * a landscape out to the horizon — from an ArenaTheme (themeData.ts),
- * which is pure data.
+ * the jail pen behind the far wall, the retreat row on the player's
+ * side, and the ground it all stands on — from an ArenaTheme
+ * (themeData.ts), which is pure data.
  *
  * Everything is placed with the shared constants in src/game/stations.ts,
  * for the same reason those constants exist: the prisoner figures stand
@@ -77,10 +77,21 @@ function RoundTree({ color = '#5c9e3d' }: { color?: string }) {
         <cylinderGeometry args={[0.16, 0.22, 0.9, 8]} />
         <meshStandardMaterial color="#6b4a2c" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 1.35, 0]}>
-        <sphereGeometry args={[0.85, 12, 10]} />
-        <meshStandardMaterial color={color} roughness={0.9} />
-      </mesh>
+      {/*
+        Three overlapping clumps rather than one sphere. Seen from almost
+        directly overhead — which is the only way this is ever seen — a
+        sphere projects to a plain circle, and a row of plain circles
+        down the side of the board reads as coloured dots rather than as
+        trees.
+      */}
+      {([[0, 1.4, 0, 0.66], [0.42, 1.18, 0.2, 0.5], [-0.36, 1.24, -0.24, 0.46]] as const).map(
+        ([cx, cy, cz, r], i) => (
+          <mesh key={i} position={[cx, cy, cz]} scale={[1, 0.88, 1]}>
+            <sphereGeometry args={[r, 10, 8]} />
+            <meshStandardMaterial color={color} roughness={0.9} />
+          </mesh>
+        ),
+      )}
     </group>
   );
 }
@@ -141,7 +152,7 @@ function Crystal({ color = '#b06ee8' }: { color?: string }) {
         <mesh key={i} position={[x, h / 2, x * 0.4]} rotation={[0, r, x * 0.3]}>
           <coneGeometry args={[0.22, h, 5]} />
           {/* Emissive so it glows in the dark worlds it decorates. */}
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} roughness={0.3} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} roughness={0.3} />
         </mesh>
       ))}
     </group>
@@ -157,7 +168,7 @@ function GlowMushroom({ color = '#4fd0c9' }: { color?: string }) {
       </mesh>
       <mesh position={[0, 0.95, 0]} scale={[1, 0.62, 1]}>
         <sphereGeometry args={[0.55, 12, 8]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.7} roughness={0.5} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} roughness={0.5} />
       </mesh>
     </group>
   );
@@ -303,14 +314,19 @@ function CityTower() {
     <group>
       <mesh position={[0, 1.6, 0]}>
         <boxGeometry args={[1.2, 3.2, 1.2]} />
-        <meshStandardMaterial color="#1d1f2b" roughness={0.7} />
+        <meshStandardMaterial color="#454a63" roughness={0.7} />
+      </mesh>
+      {/* A lit roof, so the tower is not one flat dark shape from above. */}
+      <mesh position={[0, 3.22, 0]}>
+        <boxGeometry args={[1.24, 0.1, 1.24]} />
+        <meshStandardMaterial color="#5e6480" roughness={0.6} />
       </mesh>
       {/* Lit windows: a few emissive squares, not a texture — cheap. */}
       {[0.6, 1.3, 2.0, 2.7].map((y) =>
         [-0.3, 0.3].map((x) => (
           <mesh key={`${x}-${y}`} position={[x, y, 0.61]}>
             <boxGeometry args={[0.22, 0.28, 0.02]} />
-            <meshBasicMaterial color={(x + y) % 0.9 > 0.45 ? '#ffc95c' : '#5c6478'} />
+            <meshBasicMaterial color={(x + y) % 0.9 > 0.45 ? '#ffd98a' : '#79809c'} />
           </mesh>
         )),
       )}
@@ -748,7 +764,7 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
           {rim.map((m, i) => (
             <mesh
               key={`log-${i}`}
-              position={[m.pos[0], wallHeight + 0.24, m.pos[2]]}
+              position={[m.pos[0], wallHeight + 0.23, m.pos[2]]}
               rotation={m.alongX ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0]}
             >
               <cylinderGeometry args={[0.24, 0.24, m.alongX ? 0.95 : 1, 8]} />
@@ -888,7 +904,7 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
       return (
         <group>
           {rim.map((m, i) => {
-            const r = 0.28 + ((i * 31) % 8) / 34;
+            const r = 0.21 + ((i * 31) % 8) / 48;
             return (
               <group key={`stone-${i}`} position={[m.pos[0], wallHeight + r * 0.62, m.pos[2]]}>
                 <mesh rotation={[i * 0.6, i * 1.1, i * 0.3]} scale={[1, 0.78, 1]}>
@@ -1180,9 +1196,15 @@ function ThemedCorners({
             <mesh material={wallMaterial} position={[0, (wallHeight + 0.5) / 2, 0]}>
               <cylinderGeometry args={[0.2, 0.3, wallHeight + 0.5, 8]} />
             </mesh>
-            <mesh position={[0, wallHeight + 0.62, 0]} scale={[1, 0.6, 1]}>
-              <sphereGeometry args={[0.78, 12, 8]} />
-              <meshStandardMaterial color={roof} emissive={roof} emissiveIntensity={0.4} roughness={0.5} />
+            {/*
+              0.5, down from 0.78. Sat on a stalk at the tray corner it
+              projects to a pale dome most of a world unit across, and
+              four of those at the corners of the board were doing a
+              small-scale version of the horizon blob.
+            */}
+            <mesh position={[0, wallHeight + 0.5, 0]} scale={[1, 0.62, 1]}>
+              <sphereGeometry args={[0.5, 12, 8]} />
+              <meshStandardMaterial color={roof} emissive={roof} emissiveIntensity={0.22} roughness={0.55} />
             </mesh>
           </>
         );
@@ -1317,7 +1339,7 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         createTraySurface(
           theme.structure,
           { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
-          [floorW / 4.2, floorD / 4.2],
+          [floorW / 6.4, floorD / 6.4],
         ),
       ),
     [id, theme.structure, theme.floor.a, theme.floor.b, theme.wall.cap, floorW, floorD],
@@ -1330,7 +1352,7 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         createGroundSurface(
           theme.structure,
           { a: theme.meadow, b: theme.hill, accent: theme.mountain ?? theme.wall.cap },
-          GROUND_SPAN / 5,
+          GROUND_SPAN / 6.5,
         ),
       ),
     [id, theme.structure, theme.meadow, theme.hill, theme.mountain, theme.wall.cap],
@@ -1406,19 +1428,23 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         <meshStandardMaterial map={groundTexture} roughness={1} />
       </mesh>
 
-      {/* The horizon: a low bank behind the jail, at the last z the
-          camera can still see. Gives the world an edge to end at
-          instead of running to a flat nothing. */}
-      <mesh position={[0, -0.45, -10.4]} scale={[1, 0.5, 1]}>
-        <sphereGeometry args={[7.5, 20, 10]} />
-        <meshStandardMaterial color={theme.hill} roughness={1} />
-      </mesh>
-      {theme.mountain && (
-        <mesh position={[0, -0.7, -11.6]} scale={[1, 0.42, 1]}>
-          <sphereGeometry args={[9.5, 20, 10]} />
-          <meshStandardMaterial color={theme.mountain} roughness={1} />
-        </mesh>
-      )}
+      {/*
+        There is no horizon bank here, and there must not be one.
+
+        A previous version put a squashed sphere of radius 7.5 at z -10.4
+        "to give the world an edge to end at". A sphere of radius 7.5 at
+        z -10.4 reaches forward to z -2.9 — past the far wall of the tray
+        at -5.1 — and stood 3.3 high against a wall 1.4 high. It did not
+        read as a horizon. It filled the top third of the screen with a
+        featureless dome sitting on top of the jail, and David's whole
+        reaction to it was "what is this giant blob".
+
+        The lesson is the one this file keeps relearning: the camera is
+        near top-down and very tight, so anything placed BEHIND the board
+        is not far away, it is directly above the part of the board you
+        care about. The ground plane and its texture are the backdrop.
+        Nothing else belongs back there.
+      */}
 
       <ThemedJailPen platform={theme.jail.platform} bars={theme.jail.bars} />
       <ThemedRetreat theme={theme} />

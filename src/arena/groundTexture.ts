@@ -162,10 +162,14 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     const a = h * Math.PI;
     const ux = lx * Math.cos(a) + ly * Math.sin(a);
     const uy = -lx * Math.sin(a) + ly * Math.cos(a);
-    let c = mix(p.a, shade(p.a, 0.88), fbm(x, y, SIZE));
-    if (Math.hypot(ux / 4.2, uy / 2.4) < 1) {
-      c = mix(p.b, p.accent, h);
-      if (Math.abs(uy) < 0.6) c = shade(c, 0.86);
+    let c = mix(p.a, shade(p.a, 0.9), fbm(x, y, SIZE));
+    // Only about half the cells carry a leaf. Every cell carrying one
+    // covered the floor edge to edge, and a floor of small dark marks
+    // reads as grit, not as fallen leaves — it also fights the dice,
+    // which are the thing on it that has to be read.
+    if (hash(col + 11, row + 4) > 0.45 && Math.hypot(ux / 4.6, uy / 2.7) < 1) {
+      c = mix(mix(p.b, p.accent, h), p.a, 0.25);
+      if (Math.abs(uy) < 0.7) c = shade(c, 0.9);
     }
     return c;
   },
@@ -192,8 +196,8 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     // Mineral seams running through the rock, and the wet sheen on top
     // of them. Both lifted rather than tinted: the cavern's accent is
     // another purple, and purple on purple is a flat wash.
-    c = mix(c, lift(p.b, 0.45), smoothstep(0.7, 1, band) * 0.85);
-    c = mix(c, shade(p.a, 0.6), smoothstep(-0.7, -1, band) * 0.7);
+    c = mix(c, lift(p.b, 0.4), smoothstep(0.78, 1, band) * 0.6);
+    c = mix(c, shade(p.a, 0.7), smoothstep(-0.78, -1, band) * 0.5);
     return mix(c, lift(c, 0.3), smoothstep(0.62, 0.9, noise(x / 5, y / 5, SIZE / 5)) * 0.35);
   },
 
@@ -255,7 +259,7 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     const row = Math.floor(y / cell);
     const jx = (hash(col, row) - 0.5) * 13;
     const jy = (hash(col + 5, row + 9) - 0.5) * 13;
-    const radius = 5.5 + hash(col + 2, row + 3) * 4;
+    const radius = hash(col + 8, row + 6) > 0.42 ? 5 + hash(col + 2, row + 3) * 4 : -99;
     const sx = (((x % cell) + cell) % cell) - cell / 2 - jx;
     const sy = (((y % cell) + cell) % cell) - cell / 2 - jy;
     const stone = Math.hypot(sx, sy) + fbm(x, y, SIZE) * 3;
@@ -280,23 +284,23 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     let c = mix(p.a, p.b, hash(row, Math.floor(x / 42)) * 0.7 + 0.15);
     // Grain running the length of the plank.
     c = mix(c, shade(c, 0.9), noise(x / 6, y * 2, SIZE / 6) * 0.55);
-    if (inY < 1.4 || inY > plank - 1.4) c = mix(c, p.accent, 0.85);
+    if (inY < 1.4 || inY > plank - 1.4) c = mix(c, p.accent, 0.45);
     // The butt joints where one plank ends and the next begins.
-    if (Math.abs((((x + row * 17) % 42) + 42) % 42) < 1.2) c = mix(c, p.accent, 0.7);
+    if (Math.abs((((x + row * 17) % 42) + 42) % 42) < 1.2) c = mix(c, p.accent, 0.35);
     return c;
   },
 
   // Bare earth with straw trodden into it.
   picket: (x, y, p) => {
     let c = mix(p.a, p.b, fbm(x * 0.7, y * 0.7, SIZE));
-    for (let k = 0; k < 3; k++) {
-      const cell = 17 + k * 5;
+    for (let k = 0; k < 2; k++) {
+      const cell = 19 + k * 7;
       const cx = ((x + k * 7) % cell) - cell / 2;
       const cy = ((y + k * 11) % cell) - cell / 2;
       const a = hash(Math.floor(x / cell) + k, Math.floor(y / cell)) * Math.PI;
       const ux = cx * Math.cos(a) + cy * Math.sin(a);
       const uy = -cx * Math.sin(a) + cy * Math.cos(a);
-      if (Math.abs(uy) < 0.7 && Math.abs(ux) < 5) c = mix(c, p.accent, 0.7);
+      if (Math.abs(uy) < 0.7 && Math.abs(ux) < 5) c = mix(c, p.accent, 0.5);
     }
     return c;
   },
@@ -325,11 +329,11 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     const roll = 26;
     const inY = ((y % roll) + roll) % roll;
     let c = mix(p.a, p.b, fbm(x, y, SIZE) * 0.7 + 0.15);
-    if (inY < 1.6) c = shade(c, 0.7);
+    if (inY < 1.6) c = shade(c, 0.8);
     // Grit.
     const g = hash(x, y);
-    if (g > 0.93) c = mix(c, p.accent, 0.55);
-    else if (g < 0.08) c = shade(c, 0.84);
+    if (g > 0.93) c = mix(c, lift(p.b, 0.3), 0.5);
+    else if (g < 0.08) c = shade(c, 0.9);
     return c;
   },
 

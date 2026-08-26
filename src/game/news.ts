@@ -37,6 +37,25 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-57-0-no-more-blob',
+    date: '26 August 2026',
+    version: 'v1.57.0',
+    title: 'Sorry about the giant blob',
+    emoji: '🫧',
+    body:
+      'The last update put an enormous brown dome across the top of ' +
+      'every battlefield. It was meant to be a distant horizon and it ' +
+      'was actually sitting right on top of the jail. It is gone.\n\n' +
+      'While fixing it, the night battlefields turned out to be far too ' +
+      'dark — Rooftop City had half its board in deep shadow. The ' +
+      'lighting has been brought up, so night is now carried by the ' +
+      'colour of the light rather than by there being almost none of ' +
+      'it. A volcano at night is not dark, it is orange.\n\n' +
+      'Trees look like trees from above instead of flat coloured ' +
+      'circles, the Glow Glade toadstools are no longer bigger than the ' +
+      'mushrooms, and the floors are calmer under the dice.',
+  },
+  {
     id: 'v1-56-0-arenas-in-frame',
     date: '26 August 2026',
     version: 'v1.56.0',

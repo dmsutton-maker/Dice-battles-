@@ -596,3 +596,68 @@ suite('arenas · every battlefield has its own surface', () => {
     );
   });
 });
+
+/**
+ * Nothing decorative is big enough to loom over the board.
+ *
+ * David, 26 Aug 2026, on a screenshot with the top third of it filled by
+ * a featureless brown dome: "what is this giant blob".
+ *
+ * It was a "horizon bank" — a squashed sphere of radius 7.5 placed at
+ * z -10.4 to give the world an edge to end at. The arithmetic nobody did:
+ * a sphere of radius 7.5 centred at z -10.4 reaches FORWARD to z -2.9,
+ * which is past the tray's own far wall at -5.1, and it stood 3.3 high
+ * against a wall 1.4 high. So it was not a distant horizon at all. It
+ * was a dome sitting directly on top of the jail.
+ *
+ * That is the mistake this file keeps making in different clothes. The
+ * camera is near top-down and very tight (cameraFit.ts), so "far behind
+ * the board" and "directly above the board" are the same place on
+ * screen. Scenery has to be SMALL, and it has to be beside the tray
+ * rather than behind it.
+ */
+suite('arenas · nothing looms over the board', () => {
+  const source = readFileSync('src/arena/ThemedArena.tsx', 'utf8');
+
+  test('no piece of scenery is bigger than the tray wall is tall', () => {
+    /*
+      A blunt rule, and blunt is what is wanted: the tray wall is 1.4
+      high, and a decorative solid whose FIRST dimension is more than
+      about twice that is not decoration, it is a landmass. The ground
+      plane is exempt — it is flat, at y -0.12, and a flat thing cannot
+      loom over anything.
+    */
+    const limit = TUNING.tray.wallHeight * 2;
+    const offenders: string[] = [];
+    for (const m of source.matchAll(
+      /<(sphere|cone|cylinder|box|dodecahedron|torus)Geometry args=\{\[([\d.]+)/g,
+    )) {
+      const size = Number(m[2]);
+      if (size > limit) offenders.push(`${m[1]}Geometry at ${size}`);
+    }
+    note(`largest decorative solid allowed: ${limit}; found ${offenders.length} over it`);
+    assert(
+      offenders.length === 0,
+      `ThemedArena builds something the size of a landscape: ${offenders.join(', ')}`,
+    );
+  });
+
+  test('nothing is built behind the jail at all', () => {
+    /*
+      The other half of the same rule. Behind the jail is not "the
+      distance" under this camera — the jail's own back wall is at
+      z -8.1 and the frame ends at -10.5, so there is about two units of
+      ground back there and no room for a scene. Props are allowed (they
+      sit ON that ground and the camera test frames them); solid
+      landscape is not.
+    */
+    const scene = source.slice(source.indexOf('export function ThemedArena'));
+    for (const m of scene.matchAll(/position=\{\[\s*[-\d.]+,\s*[-\d.]+,\s*(-[\d.]+)\s*\]\}/g)) {
+      const z = Number(m[1]);
+      assert(
+        z > -9.5,
+        `something is placed at z ${z}, behind the jail where the camera has no room for it`,
+      );
+    }
+  });
+});
