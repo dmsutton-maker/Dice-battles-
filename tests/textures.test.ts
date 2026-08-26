@@ -32,9 +32,18 @@ function tones(pattern: Exclude<PatternId, 'plain'>, body: string, ink: string):
   return out;
 }
 
-const MATERIALS = DICE_SKINS.filter(
-  (s): s is typeof s & { ink: string } => s.pattern !== 'plain' && !!s.ink,
-);
+/*
+  Every patterned skin, with the ink the die would actually build it
+  with. This used to filter on `!!s.ink` — which quietly excluded the
+  four skins painted by full-colour painters, since those mix their own
+  paint and carry no ink. Those four were the exact four that shipped
+  rendering as flat cubes, and this is the test that would have caught
+  it and did not, because they had been filtered out of it.
+*/
+const MATERIALS = DICE_SKINS.filter((s) => s.pattern !== 'plain').map((s) => ({
+  ...s,
+  ink: s.ink ?? s.body,
+}));
 
 suite('textures · every patterned die actually has a picture on it', () => {
   test('no pattern comes out as a flat square', () => {

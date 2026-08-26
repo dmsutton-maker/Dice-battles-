@@ -55,11 +55,27 @@ export const DieMesh = forwardRef<
   // (src/game/diceSkins.ts). Skins never touch the sticker colours, which
   // are the game signal.
   const bodyMaterial = useMemo(() => {
-    if (pattern === 'plain' || !patternInk) {
+    /*
+      PLAIN is the only skin without a picture.
+
+      `!patternInk` used to stand in for that, and it was wrong the moment
+      a skin arrived that mixes its own paint: a colour painter takes no
+      ink, so Copper, Ruby, Ocean and Slate all fell through to a flat
+      body colour and rendered as plain brown, plain maroon, plain teal
+      and plain grey — in the preview and on the table. David reported it
+      as "the copper skin doesn't show when previewing it, it's just
+      brown", and it was four skins, not one.
+
+      The same mistake was made and fixed in preview.ts a version
+      earlier. Fixing it in one of the two places is how it survived.
+    */
+    if (pattern === 'plain') {
       return new THREE.MeshBasicMaterial({ color: bodyColor, toneMapped: false });
     }
     return new THREE.MeshBasicMaterial({
-      map: createPatternTexture(pattern, bodyColor, patternInk),
+      // A colour painter ignores the ink; a mask painter cannot do
+      // without one.
+      map: createPatternTexture(pattern, bodyColor, patternInk ?? bodyColor),
       toneMapped: false,
     });
   }, [bodyColor, pattern, patternInk]);

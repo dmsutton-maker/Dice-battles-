@@ -315,3 +315,72 @@ suite('preview · the design goes where the colour is not', () => {
     );
   });
 });
+
+/**
+ * Every patterned skin actually gets its pattern, in the hand as well as
+ * on the shelf.
+ *
+ * David, 26 Aug 2026: "the copper skin doesn't show when previewing it,
+ * it's just brown."
+ *
+ * It was four skins, not one. Copper, Ruby, Ocean and Slate are painted
+ * by full-colour painters, which mix their own paint and take no ink —
+ * and both places that build a picture used `!skin.ink` to mean "this
+ * skin has no picture". So all four fell through to a flat body colour:
+ * plain brown, plain maroon, plain teal, plain grey.
+ *
+ * The Store's copy of that mistake was found and fixed a version
+ * earlier. The die's copy was not, and fixing one of the two is exactly
+ * how the other survived — which is why this checks both against the
+ * same list rather than checking either on its own.
+ */
+suite('preview · a patterned skin is patterned everywhere', () => {
+  /**
+   * A file's CODE, without its comments.
+   *
+   * Every check in this suite looks for a broken expression in the
+   * source, and every comment in this suite explains the bug by quoting
+   * that same expression. Three separate checks here matched their own
+   * documentation before this existed.
+   */
+  const codeOf = (file: string): string =>
+    readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+
+  test('neither the shelf nor the die decides by whether there is an ink', () => {
+    for (const [file, what] of [
+      ['src/dice/DieMesh.tsx', 'the die you roll'],
+      ['src/dice/preview.ts', 'the Store and Inventory picture'],
+    ] as const) {
+      const source = codeOf(file);
+      assert(
+        !/!\s*(skin\.)?(pattern)?[Ii]nk\b/.test(source),
+        `${what} still treats a missing ink as "no pattern" (${file})`,
+      );
+      assert(
+        /pattern === 'plain'/.test(source),
+        `${what} no longer tests for a plain skin at all (${file})`,
+      );
+    }
+  });
+
+  test('no skin is quietly left out of the texture checks', () => {
+    /*
+      The gap that let it ship. tests/textures.test.ts measures that no
+      pattern comes out as a flat square — and its list of skins was
+      built by filtering on `!!skin.ink`, which excluded precisely the
+      four skins that mix their own paint. The four excluded from the
+      flat-square test were the four that were flat.
+    */
+    const source = codeOf('tests/textures.test.ts');
+    assert(
+      !/!!s\.ink/.test(source),
+      'the texture tests are filtering skins out by whether they have an ink again',
+    );
+    const patterned = DICE_SKINS.filter((s) => s.pattern !== 'plain');
+    const withoutInk = patterned.filter((s) => s.ink === undefined);
+    note(`${patterned.length} patterned skins, ${withoutInk.length} of them mixing their own paint`);
+    assert(withoutInk.length > 0, 'no colour-painted skins left — this test has lost its subject');
+  });
+});

@@ -542,8 +542,353 @@ function Prop({ p }: { p: PropPlacement }) {
 
 /* ── shared furniture, themed ─────────────────────────────────────── */
 
+/**
+ * What shelters the retreat, and what the jail is caged with.
+ *
+ * David, 26 Aug 2026: "not every arena needs to have the same castle
+ * toppers on the bottom corners of the screen, make everything about
+ * every arena unique."
+ *
+ * He is describing the retreat canopies. They sit at x ±3.3, z 5.35 —
+ * the two bottom corners of the frame, the closest things to the camera
+ * and among the largest — and they were one cone on one post in all
+ * sixteen battlefields, repainted. A cone on a post is a turret roof, so
+ * every arena had a castle turret in each bottom corner no matter what
+ * the rest of it was built of.
+ *
+ * The same was true of the jail: nine identical iron bars behind every
+ * far wall, in a coral reef and on a rooftop alike.
+ */
+function RetreatShelter({ theme }: { theme: ArenaTheme }) {
+  const r = theme.retreat;
+  switch (theme.structure) {
+    case 'snowFence':
+      // A lean-to board under a load of snow.
+      return (
+        <>
+          <mesh position={[0, 1.34, 0]} rotation={[0.26, 0, 0]}>
+            <boxGeometry args={[1.5, 0.08, 1.1]} />
+            <meshStandardMaterial color={r.post} roughness={0.95} />
+          </mesh>
+          <mesh position={[0, 1.46, -0.06]} rotation={[0.26, 0, 0]} scale={[1, 0.34, 1]}>
+            <sphereGeometry args={[0.72, 12, 8]} />
+            <meshStandardMaterial color="#f7fafc" roughness={0.8} />
+          </mesh>
+        </>
+      );
+    case 'adobe':
+      // A reed sunshade, flat and square against a vertical sun.
+      return (
+        <>
+          <mesh position={[0, 1.4, 0]} rotation={[0, 0.3, 0]}>
+            <boxGeometry args={[1.5, 0.07, 1.5]} />
+            <meshStandardMaterial color={r.canopy} roughness={1} />
+          </mesh>
+          {([-0.45, 0, 0.45] as const).map((o, k) => (
+            <mesh key={k} position={[o, 1.46, 0]} rotation={[0, 0.3, 0]}>
+              <boxGeometry args={[0.09, 0.05, 1.5]} />
+              <meshStandardMaterial color={r.post} roughness={1} />
+            </mesh>
+          ))}
+        </>
+      );
+    case 'basalt':
+      // A brazier: a bowl of embers hung off the post.
+      return (
+        <>
+          <mesh position={[0, 1.36, 0]}>
+            <cylinderGeometry args={[0.5, 0.32, 0.34, 10]} />
+            <meshStandardMaterial color="#2e2226" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 1.52, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.44, 12]} />
+            <meshBasicMaterial color={r.canopy} />
+          </mesh>
+        </>
+      );
+    case 'logPile':
+      // A split-log A-frame.
+      return (
+        <>
+          {([-1, 1] as const).map((s, k) => (
+            <mesh key={k} position={[s * 0.34, 1.36, 0]} rotation={[0, 0, s * 0.55]}>
+              <boxGeometry args={[0.14, 1.1, 1.2]} />
+              <meshStandardMaterial color={k === 0 ? r.post : r.canopy} roughness={1} />
+            </mesh>
+          ))}
+        </>
+      );
+    case 'station':
+      // A floodlight on a bracket, pointing down at the ice.
+      return (
+        <>
+          <mesh position={[0, 1.42, 0.1]} rotation={[0.5, 0, 0]}>
+            <cylinderGeometry args={[0.34, 0.42, 0.4, 10]} />
+            <meshStandardMaterial color={r.post} roughness={0.4} metalness={0.55} />
+          </mesh>
+          <mesh position={[0, 1.28, 0.28]} rotation={[0.5, 0, 0]}>
+            <circleGeometry args={[0.36, 12]} />
+            <meshBasicMaterial color={r.canopy} />
+          </mesh>
+        </>
+      );
+    case 'stalagmite':
+      // A crystal hung point-down, glowing.
+      return (
+        <mesh position={[0, 1.2, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.42, 1, 6]} />
+          <meshStandardMaterial
+            color={r.canopy}
+            emissive={r.canopy}
+            emissiveIntensity={0.4}
+            roughness={0.3}
+          />
+        </mesh>
+      );
+    case 'battlement':
+      // The parasol the other fifteen used to borrow. It belongs here.
+      return (
+        <mesh position={[0, 1.42, 0]}>
+          <coneGeometry args={[0.85, 0.5, 10]} />
+          <meshStandardMaterial color={r.canopy} roughness={0.7} />
+        </mesh>
+      );
+    case 'airlock':
+      // A landing beacon: a ring light on a short mast.
+      return (
+        <>
+          <mesh position={[0, 1.36, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.52, 0.09, 8, 16]} />
+            <meshStandardMaterial color={r.post} roughness={0.35} metalness={0.6} />
+          </mesh>
+          <mesh position={[0, 1.5, 0]}>
+            <sphereGeometry args={[0.17, 10, 8]} />
+            <meshBasicMaterial color={r.canopy} />
+          </mesh>
+        </>
+      );
+    case 'driftwood':
+      // A sail stretched off the post as a windbreak.
+      return (
+        <>
+          <mesh position={[0.02, 1.1, 0]} rotation={[0, 0, -0.22]}>
+            <boxGeometry args={[1.3, 0.9, 0.04]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.9} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 1.56, 0]}>
+            <sphereGeometry args={[0.11, 8, 6]} />
+            <meshStandardMaterial color={r.post} roughness={0.9} />
+          </mesh>
+        </>
+      );
+    case 'gingerbread':
+      // A lollipop, because of course.
+      return (
+        <>
+          <mesh position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.4, 0.16, 8, 16]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.35} />
+          </mesh>
+          <mesh position={[0, 1.5, 0]}>
+            <sphereGeometry args={[0.26, 10, 8]} />
+            <meshStandardMaterial color="#fff0f7" roughness={0.35} />
+          </mesh>
+        </>
+      );
+    case 'mossStone':
+      // A cage of fireflies swinging from the post.
+      return (
+        <>
+          <mesh position={[0, 1.24, 0]}>
+            <sphereGeometry args={[0.3, 10, 8]} />
+            <meshStandardMaterial
+              color={r.canopy}
+              emissive={r.canopy}
+              emissiveIntensity={0.45}
+              roughness={0.4}
+            />
+          </mesh>
+          {([0, 1, 2, 3] as const).map((k) => (
+            <mesh key={k} position={[0, 1.24, 0]} rotation={[0, (k * Math.PI) / 4, 0]}>
+              <torusGeometry args={[0.33, 0.025, 6, 14]} />
+              <meshStandardMaterial color={r.post} roughness={0.8} />
+            </mesh>
+          ))}
+        </>
+      );
+    case 'shipHull':
+      // A ship's lantern on a gallows arm.
+      return (
+        <>
+          <mesh position={[0.22, 1.5, 0]}>
+            <boxGeometry args={[0.5, 0.07, 0.07]} />
+            <meshStandardMaterial color={r.post} roughness={0.9} />
+          </mesh>
+          <mesh position={[0.42, 1.26, 0]}>
+            <cylinderGeometry args={[0.19, 0.22, 0.36, 8]} />
+            <meshBasicMaterial color={r.canopy} />
+          </mesh>
+        </>
+      );
+    case 'picket':
+      // A birdhouse, gable roof and all.
+      return (
+        <>
+          <mesh position={[0, 1.26, 0]}>
+            <boxGeometry args={[0.52, 0.5, 0.5]} />
+            <meshStandardMaterial color="#f7f4ea" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 1.6, 0]} rotation={[0, Math.PI / 4, 0]}>
+            <coneGeometry args={[0.46, 0.32, 4]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.85} />
+          </mesh>
+          <mesh position={[0, 1.28, 0.26]}>
+            <cylinderGeometry args={[0.11, 0.11, 0.03, 10]} />
+            <meshStandardMaterial color={r.post} roughness={0.9} />
+          </mesh>
+        </>
+      );
+    case 'coralRim':
+      // A sea fan, standing edge-on in the current.
+      return (
+        <>
+          <mesh position={[0, 1.2, 0]} scale={[1, 0.9, 0.14]}>
+            <sphereGeometry args={[0.62, 10, 8]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 1.2, 0]} scale={[0.72, 0.66, 0.2]}>
+            <sphereGeometry args={[0.62, 8, 6]} />
+            <meshStandardMaterial color={r.post} roughness={0.75} />
+          </mesh>
+        </>
+      );
+    case 'parapet':
+      // A street lamp: a shade with the bulb glowing under it.
+      return (
+        <>
+          <mesh position={[0, 1.44, 0]}>
+            <cylinderGeometry args={[0.14, 0.5, 0.3, 10]} />
+            <meshStandardMaterial color={r.post} roughness={0.5} metalness={0.4} />
+          </mesh>
+          <mesh position={[0, 1.24, 0]}>
+            <sphereGeometry args={[0.2, 10, 8]} />
+            <meshBasicMaterial color={r.canopy} />
+          </mesh>
+        </>
+      );
+    case 'blocks':
+    default:
+      // A pinwheel, four coloured vanes.
+      return (
+        <>
+          {([0, 1, 2, 3] as const).map((k) => (
+            <mesh
+              key={k}
+              position={[
+                Math.cos((k * Math.PI) / 2) * 0.34,
+                1.42,
+                Math.sin((k * Math.PI) / 2) * 0.34,
+              ]}
+              rotation={[0, (k * Math.PI) / 2, 0.3]}
+            >
+              <boxGeometry args={[0.56, 0.05, 0.34]} />
+              <meshStandardMaterial
+                color={[r.canopy, r.pool, r.padA, r.post][k]}
+                roughness={0.55}
+              />
+            </mesh>
+          ))}
+          <mesh position={[0, 1.42, 0]}>
+            <sphereGeometry args={[0.13, 8, 6]} />
+            <meshStandardMaterial color={r.post} roughness={0.6} />
+          </mesh>
+        </>
+      );
+  }
+}
+
+/**
+ * What the jail is caged with. Nine identical iron bars stood behind the
+ * far wall of every battlefield, including the ones with no iron in them.
+ */
+function jailBarShape(structure: ArenaStructure): {
+  geometry: React.ReactElement;
+  metalness: number;
+  roughness: number;
+} {
+  switch (structure) {
+    case 'snowFence':
+    case 'logPile':
+    case 'picket':
+    case 'driftwood':
+      // Timber stakes, squared off.
+      return { geometry: <boxGeometry args={[0.09, 1.15, 0.09]} />, metalness: 0, roughness: 0.95 };
+    case 'adobe':
+      // Mud pillars, fatter at the foot.
+      return {
+        geometry: <cylinderGeometry args={[0.07, 0.11, 1.15, 6]} />,
+        metalness: 0,
+        roughness: 1,
+      };
+    case 'basalt':
+    case 'stalagmite':
+    case 'coralRim':
+      // Grown, not made: tapering to a point.
+      return { geometry: <coneGeometry args={[0.08, 1.15, 6]} />, metalness: 0, roughness: 0.9 };
+    case 'station':
+    case 'airlock':
+    case 'parapet':
+      // Machined rod.
+      return {
+        geometry: <cylinderGeometry args={[0.035, 0.035, 1.15, 8]} />,
+        metalness: 0.75,
+        roughness: 0.3,
+      };
+    case 'gingerbread':
+      // Candy canes, twisted and fat.
+      return {
+        geometry: <cylinderGeometry args={[0.075, 0.075, 1.15, 6]} />,
+        metalness: 0,
+        roughness: 0.35,
+      };
+    case 'mossStone':
+      // Living saplings.
+      return {
+        geometry: <cylinderGeometry args={[0.05, 0.08, 1.15, 5]} />,
+        metalness: 0,
+        roughness: 1,
+      };
+    case 'shipHull':
+      // Rope, hung between the rails.
+      return {
+        geometry: <cylinderGeometry args={[0.055, 0.055, 1.15, 6]} />,
+        metalness: 0,
+        roughness: 1,
+      };
+    case 'blocks':
+      // A stack of bricks rather than a bar.
+      return { geometry: <boxGeometry args={[0.14, 1.15, 0.14]} />, metalness: 0, roughness: 0.55 };
+    case 'battlement':
+    default:
+      return {
+        geometry: <cylinderGeometry args={[0.045, 0.045, 1.15, 6]} />,
+        metalness: 0.4,
+        roughness: 0.5,
+      };
+  }
+}
+
 /** The jail pen behind the far wall — same geometry as the originals. */
-function ThemedJailPen({ platform, bars }: { platform: string; bars: string }) {
+function ThemedJailPen({
+  platform,
+  bars,
+  structure,
+}: {
+  platform: string;
+  bars: string;
+  structure: ArenaStructure;
+}) {
+  const bar = jailBarShape(structure);
   const pen = TUNING.prison;
   const zNear = -(innerDepth / 2 + wallThickness);
   const zFar = zNear - pen.depth;
@@ -575,8 +920,8 @@ function ThemedJailPen({ platform, bars }: { platform: string; bars: string }) {
       </mesh>
       {sideBars.map((b, i) => (
         <mesh key={`bar-${i}`} position={[b.x, floorY + barHeight / 2, b.z]}>
-          <cylinderGeometry args={[0.045, 0.045, barHeight, 6]} />
-          <meshStandardMaterial color={bars} roughness={0.5} metalness={0.4} />
+          {bar.geometry}
+          <meshStandardMaterial color={bars} roughness={bar.roughness} metalness={bar.metalness} />
         </mesh>
       ))}
       <mesh position={[0, floorY + barHeight, zFar]}>
@@ -610,10 +955,7 @@ function ThemedRetreat({ theme }: { theme: ArenaTheme }) {
             <cylinderGeometry args={[0.06, 0.07, 1.4, 8]} />
             <meshStandardMaterial color={r.post} roughness={0.7} />
           </mesh>
-          <mesh position={[0, 1.42, 0]}>
-            <coneGeometry args={[0.85, 0.5, 10]} />
-            <meshStandardMaterial color={r.canopy} roughness={0.7} />
-          </mesh>
+          <RetreatShelter theme={theme} />
         </group>
       ))}
       <group position={[RETREAT_POOL[0], 0, RETREAT_POOL[1]]}>
@@ -1446,7 +1788,11 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         Nothing else belongs back there.
       */}
 
-      <ThemedJailPen platform={theme.jail.platform} bars={theme.jail.bars} />
+      <ThemedJailPen
+        platform={theme.jail.platform}
+        bars={theme.jail.bars}
+        structure={theme.structure}
+      />
       <ThemedRetreat theme={theme} />
 
       {/* Standing scenery. */}

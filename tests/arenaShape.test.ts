@@ -5,6 +5,11 @@ import { palisadeLogs, palisadeTopHeight } from '../src/arena/palisade';
 import { TUNING } from '../src/game/tuning';
 import { ARENA_THEMES, ThemedArenaId } from '../src/arena/themeData';
 import { surfacePixels } from '../src/arena/groundTexture';
+
+/** Every structure in the set, from the themes themselves. */
+const ARENA_STRUCTURES = [
+  ...new Set(Object.values(ARENA_THEMES).map((t) => t.structure)),
+];
 import { FIGURE_RADIUS, JAIL_SLOTS, RETREAT_SLOTS } from '../src/game/stations';
 import { fitCamera } from '../src/demo/cameraFit';
 import { assert, assertEqual, note, suite, test } from './harness';
@@ -659,5 +664,91 @@ suite('arenas · nothing looms over the board', () => {
         `something is placed at z ${z}, behind the jail where the camera has no room for it`,
       );
     }
+  });
+});
+
+/**
+ * The furniture every battlefield has to carry is different in each one.
+ *
+ * David, 26 Aug 2026: "not every arena needs to have the same castle
+ * toppers on the bottom corners of the screen, make everything about
+ * every arena unique."
+ *
+ * The toppers were the retreat canopies. They stand at x ±3.3, z 5.35 —
+ * the two bottom corners of the frame, the closest things to the camera
+ * and among the biggest — and they were one cone on one post in all
+ * sixteen, repainted. A cone on a post is a turret roof, so every
+ * battlefield had a castle turret in each bottom corner however it was
+ * built. The jail was the same story: nine identical iron bars behind
+ * the far wall of a coral reef and a rooftop alike.
+ *
+ * This is the third round of the same fault — one crest for sixteen,
+ * then four, then one canopy for sixteen. Every SHARED piece of
+ * furniture is a place it can happen again, so the check is on the
+ * pattern rather than on the particular piece.
+ */
+suite('arenas · the shared furniture is not shared', () => {
+  const source = readFileSync('src/arena/ThemedArena.tsx', 'utf8');
+  const structures = [...source.matchAll(/case '(\w+)':/g)].map((m) => m[1]);
+
+  test('the retreat shelter is chosen per battlefield', () => {
+    const shelter = source.slice(
+      source.indexOf('function RetreatShelter'),
+      source.indexOf('function jailBarShape'),
+    );
+    assert(shelter.length > 500, 'RetreatShelter has moved or gone');
+    for (const s of new Set(ARENA_STRUCTURES)) {
+      assert(shelter.includes(`case '${s}':`), `no retreat shelter for '${s}'`);
+    }
+    assert(
+      !/coneGeometry args=\{\[0\.85, 0\.5, 10\]\}/.test(
+        source.slice(source.indexOf('function ThemedRetreat')),
+      ),
+      'the shared turret-roof parasol is back on every retreat',
+    );
+  });
+
+  test('the jail is caged in something that belongs to the place', () => {
+    const cage = source.slice(
+      source.indexOf('function jailBarShape'),
+      source.indexOf('function ThemedJailPen'),
+    );
+    assert(cage.length > 400, 'jailBarShape has moved or gone');
+    // Not one branch per structure here — a timber stake is a timber
+    // stake in four different woods — but the shapes must genuinely
+    // differ, and no battlefield may fall through to iron by accident.
+    const shapes = new Set(
+      [...cage.matchAll(/<(\w+)Geometry args=\{\[([\d., ]+)\]/g)].map((m) => `${m[1]}:${m[2]}`),
+    );
+    note(`${shapes.size} different jail cages across the sixteen`);
+    assert(shapes.size >= 6, `only ${shapes.size} kinds of jail bar in the whole set`);
+    assert(
+      /structure: ArenaStructure/.test(source.slice(source.indexOf('function ThemedJailPen'))),
+      'the jail pen no longer knows what battlefield it is in',
+    );
+  });
+
+  test('nothing that is drawn for every arena is drawn the same way', () => {
+    /*
+      The general form of the fault, stated once. Anything a battlefield
+      MUST have — the crest, the corners, the retreat shelter, the jail —
+      is a place where one implementation can quietly serve sixteen
+      places, and each time it has, David has spotted it before any test
+      did.
+    */
+    for (const [what, from, to] of [
+      ['the retreat shelter', 'function RetreatShelter', 'function jailBarShape'],
+      ['the wall crest', 'function ThemedCrest', 'function ThemedCorners'],
+      ['the corner pieces', 'function ThemedCorners', 'export function ThemedArena'],
+    ] as const) {
+      const block = source.slice(source.indexOf(from), source.indexOf(to));
+      const branches = new Set([...block.matchAll(/case '(\w+)':/g)].map((m) => m[1]));
+      note(`${what}: ${branches.size} branches`);
+      assert(
+        branches.size >= ARENA_STRUCTURES.length - 1,
+        `${what} has only ${branches.size} branches for ${ARENA_STRUCTURES.length} battlefields`,
+      );
+    }
+    assert(structures.length > 40, 'the structure switches have collapsed');
   });
 });

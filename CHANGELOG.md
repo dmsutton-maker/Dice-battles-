@@ -1,5 +1,64 @@
 # Changelog
 
+## v1.58.0 — 2026-08-26 · reported by David
+
+### Fixed
+- **Copper rendered as a plain brown cube — and so did three others.**
+  David: "the copper skin doesn't show when previewing it, it's just
+  brown." Copper, Ruby, Ocean and Slate are painted by full-colour
+  painters, which mix their own paint and carry no ink — and DieMesh
+  used `!patternInk` to mean "this skin has no picture", so all four fell
+  through to a flat body colour, in the hand as well as on the shelf.
+  - The Store's copy of that mistake was found and fixed a version ago.
+    The die's copy was not, and fixing one of two places is exactly how
+    the other survived. Both are checked against the same list now.
+  - The test that should have caught it was excluding them: it built its
+    list of skins by filtering on `!!skin.ink`, so the four skins that
+    mix their own paint were the four left out of the "no pattern comes
+    out as a flat square" check.
+
+### Changed
+- **Copper is a metal like Gold and Silver.** David: "make it look like
+  the gold and silver texture." It was a hammered surface of dimples,
+  accurate and completely invisible at the size a die is seen. It is a
+  polished sweep of light now, in the same family as the other two —
+  what separates the three is the width of the sweep and what the shadow
+  is made of. Gold's shadow is warm brown, Silver's is cold grey,
+  Copper's is the first breath of verdigris.
+- **The thirteen skins David named are remade.** Golf Ball, Cow,
+  Bumblebee, Turtle, Soccer Ball, Denim, Snake, Basketball, Football,
+  Honeycomb, Tiger, Bowling Ball and Volleyball. Ten of them moved off
+  the single-ink painter for the same reason as the batch before: a mask
+  travels from the shell colour toward ONE other, so it can darken or
+  lighten but never both, and none of these can be drawn that way. A
+  golf ball is white on white, so all of it is shading. A basketball's
+  whole surface is pebble. A tiger is hairy. A honeycomb cell is a hole.
+  A bowling ball is gloss. The Bowling Ball was the least visible pattern
+  in the set at a local contrast of seventeen; it now has a swirl through
+  the resin, a hard highlight and three holes with depth.
+- **Every arena's retreat and jail belong to it.** David: "not every
+  arena needs to have the same castle toppers on the bottom corners of
+  the screen, make everything about every arena unique." The toppers
+  were the retreat canopies — one cone on one post in all sixteen,
+  repainted, standing at the two bottom corners of the frame where they
+  are the closest and nearly the largest things on screen. A cone on a
+  post is a turret roof, so every battlefield had a castle turret in each
+  bottom corner however it was built.
+  - There are sixteen shelters now: a snow-laden lean-to, a reed
+    sunshade, a brazier of embers, a log A-frame, a floodlight, a hung
+    crystal, the castle's parasol (which belongs to the Sky Kingdom and
+    only there), a landing beacon, a stretched sail, a lollipop, a cage
+    of fireflies, a ship's lantern, a birdhouse, a sea fan, a street
+    lamp and a pinwheel.
+  - The jail was nine identical iron bars behind the far wall of a coral
+    reef and a rooftop alike. It is timber stakes, mud pillars, grown
+    spires, machined rod, candy canes, saplings, rope and stacked bricks
+    depending on where you are.
+  - This is the third round of one fault — one crest for sixteen, then
+    four, then one canopy for sixteen — so the new test checks the
+    PATTERN rather than the piece: anything every battlefield must carry
+    has to have a branch for every battlefield.
+
 ## v1.57.0 — 2026-08-26 · reported by David
 
 ### Fixed

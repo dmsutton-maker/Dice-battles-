@@ -37,6 +37,32 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-58-0-copper-and-thirteen',
+    date: '26 August 2026',
+    version: 'v1.58.0',
+    title: 'Copper was showing as a plain brown cube',
+    emoji: '🥉',
+    body:
+      'Copper had no pattern on it at all — and nor did Ruby, Ocean or ' +
+      'Slate. All four are painted a different way from the rest and ' +
+      'the die was checking for the wrong thing, so it fell back to a ' +
+      'flat colour. Fixed, and Copper is now a polished metal to match ' +
+      'Gold and Silver.\n\n' +
+      'Thirteen more dice have been redrawn properly: the golf ball has ' +
+      'real dimples, the basketball has pebbled leather, the tiger has ' +
+      'fur, the honeycomb has holes with honey in them, the snake has ' +
+      'shaded scales, the bowling ball has a swirl and a shine, and the ' +
+      'cow, bumblebee, turtle, soccer ball, denim, football and ' +
+      'volleyball all got the same treatment.\n\n' +
+      'And the battlefields have stopped sharing furniture. The two ' +
+      'shelters at the bottom of the screen used to be the same castle ' +
+      'turret roof in all sixteen. Now there is a snowy lean-to, a reed ' +
+      'shade, a brazier, a log A-frame, a floodlight, a hanging crystal, ' +
+      'a landing beacon, a sail, a lollipop, a jar of fireflies, a ' +
+      "ship's lantern, a birdhouse, a sea fan, a street lamp and a " +
+      'pinwheel. The jail bars are different in every one too.',
+  },
+  {
     id: 'v1-57-0-no-more-blob',
     date: '26 August 2026',
     version: 'v1.57.0',
