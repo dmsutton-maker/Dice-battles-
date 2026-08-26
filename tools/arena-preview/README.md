@@ -10,7 +10,21 @@ npx esbuild tools/arena-preview/entry.tsx --bundle \
   --outfile=tools/arena-preview/bundle.js --loader:.tsx=tsx \
   --define:process.env.NODE_ENV='"production"'
 node tools/arena-preview/shoot.js autumn volcano city   # → /tmp/arena-<id>.png
+npm uninstall --no-save react-dom playwright           # ← REQUIRED, see below
 ```
+
+## Take the two packages back out when you are done
+
+Not optional, and not tidiness. Expo infers that a project supports WEB
+from `react-dom` being present in node_modules, and this game is
+native-only on purpose (see AGENTS.md). Leave it installed and
+`eas update` starts exporting a web bundle, fails to find
+`react-native-web`, and the publish dies with a message about the
+platforms array that has nothing to do with what you changed. That
+happened the first time this tool was used.
+
+`--no-save` keeps package.json and the lockfile clean either way; it is
+the contents of node_modules that Expo sniffs.
 
 ## Why this exists
 
