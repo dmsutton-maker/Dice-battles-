@@ -110,3 +110,153 @@ suite('tutorial · it opens once and stays reachable', () => {
     assert(top.includes('How to play'), 'the button has no accessible name');
   });
 });
+
+/**
+ * The throw page, which is a DEMONSTRATION rather than a picture.
+ *
+ * David asked on 26 Aug 2026 for "a little video showing real game play
+ * with a hand on the screen flicking the dice". It is animated rather
+ * than filmed — see the note at the top of src/demo/ThrowDemo.tsx — and
+ * these guard the two ways an animation like this goes wrong without
+ * anybody noticing: it stops agreeing with the game, or its timeline
+ * drifts until the story stops making sense.
+ */
+suite('tutorial · the throw demo', () => {
+  const demo = readFileSync('src/demo/ThrowDemo.tsx', 'utf8');
+  const screen = readFileSync('src/demo/TutorialScreen.tsx', 'utf8');
+
+  /** The named marks, read out of the source rather than duplicated here. */
+  function marks(): Record<string, number> {
+    const block = demo.slice(demo.indexOf('const T = {'), demo.indexOf('};', demo.indexOf('const T = {')));
+    const out: Record<string, number> = {};
+    for (const [, k, v] of block.matchAll(/(\w+): ([0-9.]+),/g)) out[k] = Number(v);
+    return out;
+  }
+
+  test('the page shows the demo, not three emoji', () => {
+    /*
+      It was 👆 💨 🎲 — emoji used as a picture, which is the single thing
+      the Paper & Ink pass set out to remove everywhere else in the game.
+      It also could not show the one thing the page is about: "swipe, and
+      the dice go the way you swiped" is a MOVEMENT.
+    */
+    const at = screen.indexOf("art.kind === 'throw'");
+    assert(at > 0, 'the throw page is gone');
+    const body = screen.slice(at, at + 400);
+    assert(body.includes('<ThrowDemo'), 'the throw page is not showing the demo');
+    assert(
+      !/bigEmoji/.test(body),
+      'the throw page is back on emoji',
+    );
+  });
+
+  test('the dice land square, exactly as the real ones must', () => {
+    /*
+      The one that matters most, because it is the demo CONTRADICTING the
+      game rather than merely looking odd.
+
+      The spin was `lane * 560 + 380`, which lands the right-hand die at
+      940° — 220° once you take the whole turns off — so it came to rest
+      sitting on the table as a diamond. The game refuses to do that: a
+      roll ends only when the dice have landed flat, and a die that stops
+      cocked is turned square before its colour is read (src/dice/settle.ts
+      and snapDieToNearestFace). A tutorial demonstrating the opposite of
+      the rule teaches the wrong thing.
+    */
+    const turns = /const turns = lane === 1 \? (\d+) : (\d+);/.exec(demo);
+    assert(turns !== null, 'the demo no longer states its rotation');
+    for (const total of [Number(turns![1]), Number(turns![2])]) {
+      note(`a die turns ${total}° — ${total / 360} whole turns`);
+      assertEqual(
+        total % 360,
+        0,
+        `a die stops ${total % 360}° off square — it would settle as a diamond`,
+      );
+      assert(total >= 360, `${total}° is less than one turn — that is a nudge, not a throw`);
+    }
+    assert(
+      Number(turns![1]) !== Number(turns![2]),
+      'both dice spin the same amount, so they read as one object thrown twice',
+    );
+  });
+
+  test('the story happens in an order that makes sense', () => {
+    /*
+      Every one of these was wrong at some point while building it, and
+      each was visible only once the frames were actually drawn:
+      the dice sat on the table before the hand had touched it, and the
+      prisoner started leaving while the second die was still bouncing.
+    */
+    const T = marks();
+    const RIGHT_DIE_DELAY = 0.045; // the stagger, so the two do not overlap
+    const LANDING_SQUASH = 0.03;
+    const lastLanding = T.diceLand + RIGHT_DIE_DELAY + LANDING_SQUASH;
+
+    assert(T.handIn < T.swipeStart, 'the hand flicks before it arrives');
+    assert(T.swipeStart < T.swipeEnd, 'the swipe ends before it starts');
+    assert(T.diceFly >= T.swipeStart, 'the dice leave before the finger moves');
+    assert(T.diceFly < T.diceLand, 'the dice land before they are thrown');
+    assert(
+      T.settled >= lastLanding,
+      `the prisoner is freed at ${T.settled} but the second die is still ` +
+        `bouncing until ${lastLanding.toFixed(3)} — the match has to come first`,
+    );
+    assert(T.settled < T.freed && T.freed < T.gone, 'the prisoner leaves out of order');
+    assert(T.gone < T.reset, 'the loop restarts before the prisoner is away');
+    assert(T.reset < 1, 'the loop never resets, so it jump-cuts');
+    note(
+      `throw ${T.diceFly} → land ${lastLanding.toFixed(3)} → freed ${T.settled} → gone ${T.gone}`,
+    );
+  });
+
+  test('it can be stopped by somebody who needs it stopped', () => {
+    /*
+      A loop that never ends, on a page a person may sit on for a while,
+      is exactly what the reduce-motion setting exists for. Holding the
+      FINISHED frame loses nothing — matched dice and an empty cell is the
+      frame that carries the meaning.
+    */
+    assert(
+      /AccessibilityInfo\.isReduceMotionEnabled/.test(demo),
+      'the demo never asks whether motion should be reduced',
+    );
+    assert(
+      /reduceMotionChanged/.test(demo),
+      'the demo does not notice the setting being turned on while it is open',
+    );
+    assert(
+      /if \(reduceMotion\) \{\s*\n\s*t\.setValue\(T\.freed\);/.test(demo),
+      'reduce motion no longer holds the finished frame',
+    );
+    assert(
+      /return \(\) => loop\.stop\(\);/.test(demo),
+      'the loop is never stopped, so it runs on after the tutorial closes',
+    );
+  });
+
+  test('it runs off the JS thread', () => {
+    // A tutorial that stutters while React re-renders is worse than a
+    // still picture. Everything animated here is transform or opacity,
+    // which is what makes the native driver possible.
+    assert(
+      /useNativeDriver: true/.test(demo),
+      'the demo animates on the JS thread',
+    );
+    assert(
+      !/useNativeDriver: false/.test(demo),
+      'something in the demo dropped off the native driver',
+    );
+  });
+
+  test('it shows the game’s real colours and shapes', () => {
+    // Same rule as the die icon: a second copy of the palette drifts.
+    assert(
+      /from '\.\.\/game\/colors'/.test(demo),
+      'the demo no longer reads the real palette',
+    );
+    assert(
+      /COLOR_SYMBOLS/.test(demo) && /symbols &&/.test(demo),
+      'the demo ignores colourblind mode, so it teaches a game the player will not see',
+    );
+  });
+});

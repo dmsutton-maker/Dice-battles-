@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.43.0 — 2026-08-26 · requested by David
+
+### Added
+- **"Throw the dice" in How to Play is a moving demonstration now.** A
+  hand comes in, presses, flicks up the screen; two dice fly off the way
+  it flicked, tumbling through the colours; they land square, both on
+  blue; and the blue prisoner lifts out of the jail and is gone. Then it
+  loops. David asked for "a little video showing real game play with a
+  hand on the screen flicking the dice", and this is that — drawn rather
+  than filmed.
+  - **Why not a real recording.** Nothing here can record a phone, so the
+    footage would have to come off David's handset every time the game
+    changed. Playing a video also needs a native video player, which
+    means a new build — and builds are exactly what is stuck — so a real
+    video could not have shipped at all right now. A recording would also
+    go stale silently, still showing old dice and an old jail long after
+    they changed, with nothing to say so.
+  - It reads the game's real six colours, and it wears the colourblind
+    shapes when that setting is on, so it cannot end up teaching a game
+    the player is not going to see.
+  - It holds still, on the finished frame, for anyone who has asked their
+    phone to reduce motion.
+  - The page it replaces was three emoji in a row — 👆 💨 🎲 — which is the
+    one thing the whole Paper & Ink pass set out to get rid of.
+  - Two things were caught by drawing the frames out and looking at them
+    rather than by reading the code: the dice appeared on the table
+    before the hand had touched it, and the right-hand die came to rest
+    tilted at 220°, sitting there as a diamond. That second one mattered
+    more than it looks — the game itself refuses to end a roll until the
+    dice have landed flat, so the tutorial was demonstrating the opposite
+    of the rule it teaches.
+
 ## v1.42.0 — 2026-08-25 · requested by David
 
 ### Changed

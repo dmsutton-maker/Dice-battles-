@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PRISONER_COLORS } from '../game/colors';
-import { COLOR_SYMBOLS, SymbolId } from '../game/colorblind';
+import { COLOR_SYMBOLS } from '../game/colorblind';
+import { SymbolId } from '../game/colorblind';
+import { ShapeMark } from '../ui/ShapeMark';
 import { MODES, MODE_ORDER } from '../game/modes';
 import { TUTORIAL_PAGES, TutorialArt } from '../game/tutorial';
 import { playClick } from '../audio/sounds';
 import { GoldCoin } from './GoldCoin';
+import { ThrowDemo } from './ThrowDemo';
 import { SHAPE, THEME } from '../ui/theme';
 
 /**
@@ -112,87 +115,6 @@ function Swatch({
   );
 }
 
-/**
- * The colourblind shapes, drawn with plain Views.
- *
- * The dice build theirs as textures (src/dice/symbols.ts) because they go
- * onto a 3D face. Here a handful of borders and rotations gets the same
- * silhouette without dragging a texture painter into a menu — the point is
- * that the shape a player sees in the tutorial is the shape they will look
- * for on the table.
- */
-function ShapeMark({ symbol, size }: { symbol: SymbolId; size: number }) {
-  const ink = 'rgba(0,0,0,0.62)';
-  if (symbol === 'circle') {
-    return <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: ink }} />;
-  }
-  if (symbol === 'square') {
-    return <View style={{ width: size * 0.9, height: size * 0.9, backgroundColor: ink }} />;
-  }
-  if (symbol === 'diamond') {
-    return (
-      <View
-        style={{
-          width: size * 0.72,
-          height: size * 0.72,
-          backgroundColor: ink,
-          transform: [{ rotate: '45deg' }],
-        }}
-      />
-    );
-  }
-  if (symbol === 'triangle') {
-    return (
-      <View
-        style={{
-          width: 0,
-          height: 0,
-          borderLeftWidth: size * 0.5,
-          borderRightWidth: size * 0.5,
-          borderBottomWidth: size * 0.86,
-          borderLeftColor: 'transparent',
-          borderRightColor: 'transparent',
-          borderBottomColor: ink,
-        }}
-      />
-    );
-  }
-  if (symbol === 'hexagon') {
-    // Close enough at this size: a wide rounded slab reads as the hexagon
-    // it stands for, and nobody is telling them apart by corner count.
-    return (
-      <View
-        style={{
-          width: size,
-          height: size * 0.78,
-          borderRadius: size * 0.18,
-          backgroundColor: ink,
-        }}
-      />
-    );
-  }
-  // Star: two crossed bars is the silhouette that survives at this size.
-  return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <View
-        style={{
-          position: 'absolute',
-          width: size * 0.28,
-          height: size,
-          backgroundColor: ink,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          width: size,
-          height: size * 0.28,
-          backgroundColor: ink,
-        }}
-      />
-    </View>
-  );
-}
 
 function Art({ art, symbols }: { art: TutorialArt; symbols: boolean }) {
   const sym = (id: keyof typeof COLOR_SYMBOLS) => (symbols ? COLOR_SYMBOLS[id] : null);
@@ -222,13 +144,10 @@ function Art({ art, symbols }: { art: TutorialArt; symbols: boolean }) {
   }
 
   if (art.kind === 'throw') {
-    return (
-      <View style={styles.artRow}>
-        <Text style={styles.bigEmoji}>👆</Text>
-        <Text style={styles.bigEmoji}>💨</Text>
-        <Text style={styles.bigEmoji}>🎲</Text>
-      </View>
-    );
+    // The one page that is a demonstration rather than a picture, because
+    // "swipe and the dice go the way you swiped" is a MOVEMENT and three
+    // emoji in a row (👆 💨 🎲, which is what was here) cannot show one.
+    return <ThrowDemo symbols={symbols} />;
   }
 
   if (art.kind === 'modes') {
