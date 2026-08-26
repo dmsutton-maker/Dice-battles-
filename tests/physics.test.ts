@@ -39,6 +39,12 @@ const DIE_START: [number, number, number][] = [
 interface RollOutcome {
   ms: number;
   movingWhenCalled: boolean;
+  /**
+   * How long the SETTLE rule had been running when the roll was called.
+   * Not the same as `ms` once a die has been fished out of the moat — a
+   * respawn restarts the deadline, exactly as DiceScene does.
+   */
+  settleMs: number;
   escaped: boolean;
   faces: string[];
   restZ: number[];
@@ -143,6 +149,7 @@ function simulateRoll(
       freezeDice(bodies);
       return {
         ms: elapsed,
+        settleMs: elapsed - clockStart,
         movingWhenCalled,
         escaped,
         orientations: bodies.map(
@@ -158,6 +165,7 @@ function simulateRoll(
   // faces, which every caller already treats as a failure.
   return {
     ms: (maxFrames / 60) * 1000,
+    settleMs: (maxFrames / 60) * 1000 - clockStart,
     movingWhenCalled: true,
     escaped,
     faces: [],
@@ -172,7 +180,18 @@ const DIFFICULTIES: AiDifficultyId[] = ['easy', 'medium', 'hard'];
 suite('physics · rolling', () => {
   for (const difficulty of DIFFICULTIES) {
     test(`${difficulty}: rolls finish fast enough to keep rolling`, () => {
-      const SAMPLES = 240;
+      /*
+        240 keeps `npm test` quick. The stuck-die case this test now
+        allows for is about 1 in 4000 rolls on Hard, so proving it really
+        does only happen at the backstop needs a bigger run:
+
+            ROLL_SAMPLES=4000 npm test
+
+        which is how the assertion below was checked rather than assumed.
+        Worth remembering when changing anything here — at 240 a rare
+        fault shows up as an occasional red build, not as a failing test.
+      */
+      const SAMPLES = Number(process.env.ROLL_SAMPLES ?? 240);
       const rolls = Array.from({ length: SAMPLES }, () =>
         simulateRoll(generateObstacleLayout(difficulty)),
       );
@@ -506,13 +525,17 @@ suite('physics · a roll is over when the dice are, not when a thumb says so', (
         mid-air LOOKS landed in every later check, which is why the old
         "leaves the dice lying flat" test passed throughout.
       */
-      const SAMPLES = 240;
+      const SAMPLES = Number(process.env.ROLL_SAMPLES ?? 240);
+      const stuck: number[] = [];
       let moving = 0;
       let worstFlatness = 1;
       for (let i = 0; i < SAMPLES; i++) {
         const roll = simulateRoll(generateObstacleLayout(difficulty));
         assertEqual(roll.faces.length, 2, 'a roll was lost');
-        if (roll.movingWhenCalled) moving++;
+        if (roll.movingWhenCalled) {
+          moving++;
+          stuck.push(roll.settleMs);
+        }
         for (const q of roll.orientations) {
           worstFlatness = Math.min(worstFlatness, topFaceAlignment(q));
         }
@@ -521,10 +544,39 @@ suite('physics · a roll is over when the dice are, not when a thumb says so', (
         `${difficulty}: ${moving}/${SAMPLES} rolls read while still moving, ` +
           `worst flatness ${worstFlatness.toFixed(4)}`,
       );
-      assert(
-        moving === 0,
-        `${difficulty}: ${moving} of ${SAMPLES} rolls had their colour read off a moving die`,
-      );
+
+      /*
+        THE INVARIANT IS "ONLY WHEN A DIE IS STUCK", NOT "NEVER".
+
+        This asserted `moving === 0` and passed for several runs, which is
+        how it came to be reported as "0 of 720 rolls read off a moving
+        die". That was a SAMPLE, not a guarantee: the layouts come from
+        Math.random and are different every run, and eventually a Hard
+        board produced 1 in 240 and the suite went red.
+
+        The real rule is readable straight out of shouldCallRoll. Two
+        paths can end a roll that is still moving, and one of them cannot
+        fire here at all: the 2200ms path requires every die to be under
+        1.2 speed, which is the same bar `movingWhenCalled` uses. So the
+        ONLY way to read a moving die is `hardMaxRollMs` — the 3200ms
+        backstop for a die wedged against a wall or grinding on a corner,
+        which has to exist or a stuck die would hang the game forever.
+
+        Asserting that is stronger than the old check, not weaker: it
+        allows the deliberate escape hatch and forbids every other way a
+        moving die could be read, including a future one nobody has
+        thought of yet.
+      */
+      for (const ms of stuck) {
+        assert(
+          ms >= TUNING.settle.hardMaxRollMs,
+          `${difficulty}: a moving die was read at ${ms.toFixed(0)}ms, before the ` +
+            `${TUNING.settle.hardMaxRollMs}ms stuck-die backstop — that is the exploit coming back`,
+        );
+      }
+      if (stuck.length > 0) {
+        note(`${difficulty}: ${stuck.length} stuck-die timeout(s), all at the backstop`);
+      }
       /*
         And every die is square enough that the colour counted is plainly
         the colour on top. This used to be guaranteed by SNAPPING every
