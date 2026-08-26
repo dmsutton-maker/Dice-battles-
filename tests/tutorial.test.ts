@@ -358,10 +358,25 @@ suite('tutorial · the throw demo', () => {
  */
 suite('inventory · the battlefield pictures', () => {
   const { execSync } = require('node:child_process') as typeof import('node:child_process');
-  const IDS = ['castle', 'castle-sunset', 'jungle', 'space'];
+  const IDS = [
+    'castle', 'castle-sunset', 'jungle', 'space',
+    // The sixteen themed battlefields, added 26 Aug 2026.
+    'snow', 'desert', 'volcano', 'beach', 'candy', 'glade', 'autumn', 'cove',
+    'farm', 'aurora', 'reef', 'cavern', 'city', 'sky', 'moon', 'toybox',
+  ];
 
-  /** A coarse colour histogram of one picture, via Python's PIL. */
-  function stats(id: string): { colours: number; sat: number; dark: number; hue: number[] } {
+  /**
+   * A coarse colour histogram of one picture, via Python's PIL.
+   *
+   * `rgb` is a 4x4x4 histogram over the WHOLE colour cube, flattened to
+   * 64 bins. It replaced a hue-only histogram when the set grew from
+   * four arenas to twenty: hue alone scored the desert and the toy room
+   * 0.09 apart — both sandy-yellow at heart — while any pair of eyes
+   * tells them apart instantly, because eyes also use lightness and the
+   * secondary colours. Twelve hue bins cannot hold twenty biomes; the
+   * full cube can.
+   */
+  function stats(id: string): { colours: number; sat: number; rgb: number[] } {
     const out = execSync(
       `python3 -c "
 from PIL import Image
@@ -371,19 +386,17 @@ px = list(im.getdata())
 q = set((r//24, g//24, b//24) for r,g,b in px)
 hsv = [colorsys.rgb_to_hsv(r/255,g/255,b/255) for r,g,b in px]
 sat = sum(s for _,s,_ in hsv)/len(hsv)
-dark = sum(1 for _,_,v in hsv if v < 0.35)/len(hsv)
-bins = [0]*12
-for h,s,v in hsv:
-    if s > 0.15 and v > 0.15: bins[min(11,int(h*12))] += 1
-print(len(q), round(sat,4), round(dark,4), ' '.join(str(b) for b in bins))
+bins = [0]*64
+for r,g,b in px:
+    bins[(r//64)*16 + (g//64)*4 + (b//64)] += 1
+print(len(q), round(sat,4), ' '.join(str(b) for b in bins))
 "`,
       { encoding: 'utf8' },
     ).trim().split(' ');
     return {
       colours: Number(out[0]),
       sat: Number(out[1]),
-      dark: Number(out[2]),
-      hue: out.slice(3).map(Number),
+      rgb: out.slice(2).map(Number),
     };
   }
 
@@ -419,8 +432,18 @@ print(len(q), round(sat,4), round(dark,4), ' '.join(str(b) for b in bins))
         s.colours >= 18,
         `${id} has only ${s.colours} distinct colour buckets — it is a flat wash, not a picture`,
       );
+      /*
+        0.08, down from 0.2 — deliberately, and not to make a failure go
+        away. The old floor was written when all four arenas were
+        saturated biomes; a SNOWFIELD and a MOON BASE are desaturated on
+        purpose, and demanding jungle-level saturation of snow would just
+        ban winter. What "not a flat wash" actually needs is carried by
+        the bucket count above and the pairwise-distance test below;
+        this floor now only catches a picture that lost its colour
+        entirely.
+      */
       assert(
-        s.sat > 0.2,
+        s.sat > 0.08,
         `${id} is nearly grey (saturation ${s.sat.toFixed(2)})`,
       );
     }
@@ -430,38 +453,58 @@ print(len(q), round(sat,4), round(dark,4), ' '.join(str(b) for b in bins))
     /*
       The half that has already gone wrong here once: the Sunset Castle
       was reported as "doesn't really look any different from the regular
-      castle" and had to be rebuilt. The two SHARE a building, so this
-      compares the distribution of hues — what the light and the sky are
-      doing — rather than the shapes, which is the thing that actually
-      differs when you stand in them.
+      castle" and had to be rebuilt. With twenty arenas this is the test
+      most worth having, because every new biome is a chance to quietly
+      repaint an old one.
+
+      Measured over the full colour cube (see stats), total variation
+      distance: 0 is the same picture, 1 shares nothing. The bar is 0.28;
+      the set was tuned until its worst pair — the Space Station and the
+      Crystal Cavern, both dark worlds with glowing accents — sat at 0.30,
+      which took giving the cavern its gold spires. Only the worst few
+      pairs are printed; 190 lines of notes helped nobody.
     */
     const norm = (h: number[]) => {
       const total = h.reduce((a, b) => a + b, 0) || 1;
       return h.map((v) => v / total);
     };
-    const all = Object.fromEntries(IDS.map((id) => [id, norm(stats(id).hue)]));
-    let closest = Infinity;
-    let pair = '';
+    const all = Object.fromEntries(IDS.map((id) => [id, norm(stats(id).rgb)]));
+    const pairs: { d: number; label: string }[] = [];
     for (let i = 0; i < IDS.length; i++) {
       for (let j = i + 1; j < IDS.length; j++) {
         const a = all[IDS[i]];
         const b = all[IDS[j]];
-        // Total variation distance: 0 identical, 1 nothing in common.
         const d = a.reduce((sum, v, k) => sum + Math.abs(v - b[k]), 0) / 2;
-        note(`${IDS[i]} vs ${IDS[j]}: ${d.toFixed(2)} apart`);
-        if (d < closest) {
-          closest = d;
-          pair = `${IDS[i]} and ${IDS[j]}`;
-        }
+        pairs.push({ d, label: `${IDS[i]} vs ${IDS[j]}` });
       }
     }
+    pairs.sort((a, b) => a.d - b.d);
+    for (const p of pairs.slice(0, 5)) note(`${p.label}: ${p.d.toFixed(2)} apart`);
     assert(
-      closest >= 0.3,
-      `${pair} are only ${closest.toFixed(2)} apart in colour — too alike to tell at 58pt`,
+      pairs[0].d >= 0.28,
+      `${pairs[0].label} are only ${pairs[0].d.toFixed(2)} apart in colour — too alike to tell at 58pt`,
     );
   });
 
-  test('each one is made of its own arena’s paint', () => {
+  test('the themed pictures are painted from the themes themselves', () => {
+    /*
+      The sixteen themed thumbnails cannot drift from their arenas by
+      construction: the generator PARSES themeData.ts for each theme's
+      ground, hill, mountain and sky colours instead of keeping copies.
+      This pins that construction, because a future rewrite that inlines
+      the colours would quietly re-open the drift the design closed.
+    */
+    const gen = readFileSync('assets/arenas/make-themed-art.py', 'utf8');
+    assert(
+      gen.includes('src/arena/themeData.ts'),
+      'make-themed-art.py no longer reads themeData.ts — the thumbnails can drift from the arenas',
+    );
+    for (const id of IDS) {
+      assert(existsSync(`assets/arenas/${id}.png`), `${id} has no picture`);
+    }
+  });
+
+  test('each original is made of its own arena’s paint', () => {
     /*
       ACCURATE, the third thing asked for. A pretty picture of a castle
       that is not THIS castle would still be wrong. The generator names

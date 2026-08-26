@@ -67,7 +67,23 @@ export type UnlockId =
   | 'bubblegum-dice'
   | 'treasure'
   | 'space'
-  | 'midnight-dice';
+  | 'midnight-dice'
+  // The long ladder, added 26 Aug 2026 — eight themed battlefields and
+  // six dice, still alternating so there is always something close.
+  | 'snow-arena'
+  | 'ruby-dice'
+  | 'desert-arena'
+  | 'ocean-dice'
+  | 'autumn-arena'
+  | 'lavender-dice'
+  | 'aurora-arena'
+  | 'slate-dice'
+  | 'volcano-arena'
+  | 'blossom-dice'
+  | 'cavern-arena'
+  | 'copper-dice'
+  | 'sky-arena'
+  | 'moon-arena';
 
 export interface Tier {
   at: number;
@@ -96,6 +112,31 @@ export const TIERS: Tier[] = [
   { at: 610, name: 'Courtyard Treasure', emoji: '💰', id: 'treasure' },
   { at: 850, name: 'Space Station', emoji: '🚀', id: 'space' },
   { at: 1150, name: 'Midnight Dice', emoji: '🌑', id: 'midnight-dice' },
+  /*
+    The long ladder. David asked on 26 Aug 2026 for many more arenas, some
+    earned with trophies — these are the trophy half (the other half is
+    sold in the Store, deliberately NOT here: one route each, the same
+    rule dice skins follow).
+
+    The gaps keep widening the way the ladder always has, roughly +10% a
+    rung. The top sits at 10,000: a Hard win pays 55-85, so the summit is
+    a season of play, not a weekend — it is meant to be the long game for
+    Marc and AJ, and FAMILY mode still opens everything for testing.
+  */
+  { at: 1500, name: 'Snowy Hollow', emoji: '⛄', id: 'snow-arena' },
+  { at: 1850, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
+  { at: 2250, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
+  { at: 2700, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
+  { at: 3200, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
+  { at: 3750, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
+  { at: 4350, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
+  { at: 5000, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
+  { at: 5700, name: 'Volcano Rim', emoji: '🌋', id: 'volcano-arena' },
+  { at: 6450, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
+  { at: 7250, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
+  { at: 8100, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
+  { at: 9000, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
+  { at: 10000, name: 'Moon Base', emoji: '🌕', id: 'moon-arena' },
 ];
 
 /**

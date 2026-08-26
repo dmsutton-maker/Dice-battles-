@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ARENAS, ArenaId } from '../arena/arenas';
+import { THEMED_ARENA_META, ThemedArenaId } from '../arena/themeData';
 import {
   DEFAULT_SKIN_ID,
   DiceSkin,
@@ -25,16 +26,66 @@ export interface Loadout {
   skinId: string;
 }
 
-/** Which trophy tier gates each battlefield. */
-export const ARENA_UNLOCKS: Record<ArenaId, UnlockId> = {
+/**
+ * How each battlefield is OBTAINED — exactly one route each, the same
+ * rule dice skins follow: a trophy tier on the ladder, or a coin price in
+ * the Store. The themed arenas declare theirs in THEMED_ARENA_META so a
+ * new theme cannot exist without deciding; the four originals stay on the
+ * ladder they have always been on.
+ */
+export const ARENA_UNLOCKS: Partial<Record<ArenaId, UnlockId>> = {
   castle: 'castle',
   castleSunset: 'sunset-castle',
   jungle: 'jungle',
   space: 'space',
+  ...Object.fromEntries(
+    (Object.keys(THEMED_ARENA_META) as ThemedArenaId[])
+      .filter((id) => THEMED_ARENA_META[id].tier !== undefined)
+      .map((id) => [id, THEMED_ARENA_META[id].tier as UnlockId]),
+  ),
 };
 
-/** Display order in the Inventory — cheapest first. */
-export const ARENA_ORDER: ArenaId[] = ['castle', 'castleSunset', 'jungle', 'space'];
+/** Coin price for the battlefields sold in the Store. */
+export const ARENA_PRICES: Partial<Record<ArenaId, number>> = Object.fromEntries(
+  (Object.keys(THEMED_ARENA_META) as ThemedArenaId[])
+    .filter((id) => THEMED_ARENA_META[id].price !== undefined)
+    .map((id) => [id, THEMED_ARENA_META[id].price!]),
+);
+
+/**
+ * The wallet key an arena purchase is stored under.
+ *
+ * Prefixed, because wallet.owned is one flat list shared with dice skins
+ * and nothing stops a future skin and arena sharing a name — 'frost' was
+ * a skin before it could ever be an arena, and a collision would sell two
+ * things for one price.
+ */
+export function arenaKey(id: ArenaId): string {
+  return `arena:${id}`;
+}
+
+/**
+ * Display order in the Inventory: the trophy ladder first in climbing
+ * order, then the Store shelf cheapest first — the same shape the dice
+ * list has, so both halves of the cupboard read the same way.
+ */
+export const ARENA_ORDER: ArenaId[] = (() => {
+  const all = Object.keys(ARENAS) as ArenaId[];
+  const tierAt = (id: ArenaId) =>
+    TIERS.find((t) => t.id === ARENA_UNLOCKS[id])?.at ?? 0;
+  const ladder = all
+    .filter((id) => ARENA_UNLOCKS[id] !== undefined)
+    .sort((a, b) => tierAt(a) - tierAt(b));
+  const store = all
+    .filter((id) => ARENA_PRICES[id] !== undefined)
+    .sort((a, b) => ARENA_PRICES[a]! - ARENA_PRICES[b]!);
+  return [...ladder, ...store];
+})();
+
+/** The battlefields on the Store shelf, cheapest first. */
+export const STORE_ARENAS: ArenaId[] = ARENA_ORDER.filter(
+  (id) => ARENA_PRICES[id] !== undefined,
+);
 
 /** What a ladder skin costs in trophies. Store skins cost none. */
 function trophyCost(skin: DiceSkin): number {
@@ -103,8 +154,15 @@ export function equipSkin(skinId: string): Loadout {
   return current;
 }
 
+/**
+ * A battlefield is available if it is earned on the ladder or bought in
+ * the Store. Family tester mode opens both routes, exactly as it does for
+ * dice — nothing is bought, it is simply usable while the mode is on.
+ */
 export function isArenaUnlocked(arenaId: ArenaId, trophies: number): boolean {
-  return isUnlocked(ARENA_UNLOCKS[arenaId], trophies);
+  const tier = ARENA_UNLOCKS[arenaId];
+  if (tier !== undefined) return isUnlocked(tier, trophies);
+  return hasUnlockAll() || owns(arenaKey(arenaId));
 }
 
 /**

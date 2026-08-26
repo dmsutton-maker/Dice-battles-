@@ -28,6 +28,8 @@ import {
   isSkinUnlocked,
   getLoadout,
   loadLoadout,
+  ARENA_PRICES,
+  arenaKey,
 } from '../game/loadout';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
@@ -1017,19 +1019,22 @@ export function DiceDemoScreen() {
     if (preview.kind === 'arena') {
       const arena = ARENAS[preview.id];
       const need = TIERS.find((t) => t.id === ARENA_UNLOCKS[preview.id])?.at ?? 0;
+      const price = ARENA_PRICES[preview.id];
       return {
         name: arena.name,
         note: 'Every battlefield plays the same — only the view changes.',
         action: previewAction({
           trophies,
           coins: wallet.coins,
-          owned: false,
+          // The wallet key is prefixed — see arenaKey.
+          owned: price !== undefined && wallet.owned.includes(arenaKey(preview.id)),
           unlocked: isArenaUnlocked(preview.id, trophies),
           equipped: arenaId === preview.id,
           needTrophies: need,
-          // Battlefields are earned, never sold, so there is no price for
-          // this to gate. Said out loud rather than left to be inferred.
-          canBuy: false,
+          price,
+          // Coins are spent in the Store and nowhere else, exactly as for
+          // dice — the Inventory shows the price but points at the shop.
+          canBuy: preview.from === 'store',
         }),
       };
     }
@@ -1067,19 +1072,29 @@ export function DiceDemoScreen() {
     const action = previewView.action;
 
     if (action.kind === 'buy') {
-      const skin = skinById(preview.id);
-      const result = buyWithCoins(skin.id, action.price);
+      // One flow for both kinds of purchase; only the wallet key and the
+      // words on the reward popup differ.
+      const bought =
+        preview.kind === 'arena'
+          ? {
+              key: arenaKey(preview.id),
+              emoji: ARENAS[preview.id].emoji,
+              name: ARENAS[preview.id].name,
+              note: 'Tap it again to battle there.',
+            }
+          : {
+              key: preview.id,
+              emoji: skinById(preview.id).emoji,
+              name: `${skinById(preview.id).name} dice`,
+              note: 'Tap it again to put it on.',
+            };
+      const result = buyWithCoins(bought.key, action.price);
       if (!result.ok) return;
       setWallet({ ...getWallet() });
       showPreview(null);
       setRewards((queue) => [
         ...queue,
-        {
-          emoji: skin.emoji,
-          name: `${skin.name} dice`,
-          kicker: 'PURCHASED',
-          note: 'Tap it again to put it on.',
-        },
+        { emoji: bought.emoji, name: bought.name, kicker: 'PURCHASED', note: bought.note },
       ]);
       playFanfare();
       return;
@@ -1547,7 +1562,11 @@ export function DiceDemoScreen() {
         would hide the very thing the preview exists to show.
       */}
       {menuTab === 'store' && preview === null && (
-        <StoreScreen wallet={wallet} onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })} />
+        <StoreScreen
+          wallet={wallet}
+          onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })}
+          onPreviewArena={(id) => showPreview({ kind: 'arena', id, from: 'store' })}
+        />
       )}
       {menuTab === 'leaderboard' && preview === null && (
         <LeaderboardScreen

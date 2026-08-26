@@ -37,6 +37,25 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-50-0-big-content',
+    date: '26 August 2026',
+    version: 'v1.50.0',
+    title: 'Sixteen new battlefields and forty new dice',
+    emoji: '🗺️',
+    body:
+      'The biggest update the game has ever had. Sixteen brand new ' +
+      'battlefields: a snowy hollow, desert dunes, a volcano rim, a ' +
+      'candy meadow, a pirate cove, a coral reef, a rooftop city at ' +
+      'night, a moon base and more. Half are earned by winning trophies ' +
+      '— the ladder now climbs all the way to 10,000 — and half are ' +
+      'bought with the coins you win by playing.\n\n' +
+      'And forty new dice: animals from leopard to bumblebee, sports ' +
+      'balls from soccer to bowling, foods from watermelon to chicken ' +
+      'and waffles, and stranger things — a galaxy, a rainbow, a ' +
+      'circuit board. Tap anything in the Store or your Items to stand ' +
+      'in it or hold it before you spend a single coin.',
+  },
+  {
     id: 'v1-46-0-see-through-and-a-finger',
     date: '26 August 2026',
     version: 'v1.46.0',

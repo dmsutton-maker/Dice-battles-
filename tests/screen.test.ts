@@ -11,6 +11,7 @@ import {
   activeDieBody,
   isArenaUnlocked,
   isSkinUnlocked,
+  ARENA_PRICES,
 } from '../src/game/loadout';
 import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
@@ -126,14 +127,27 @@ suite('screen · arenas', () => {
     }
   });
 
-  test('every arena is reachable through the trophy ladder', () => {
-    // An arena missing an unlock tier, or missing from the Inventory's
-    // display order, can never be played.
+  test('every arena is obtainable exactly one way', () => {
+    /*
+      An arena with no route can never be played; an arena with two routes
+      would sell what the ladder was about to award. Since 26 Aug 2026
+      battlefields follow the rule dice skins always had: a trophy tier on
+      the ladder, or a coin price in the Store — exactly one each.
+    */
     const tierIds = new Set<UnlockId>(TIERS.map((t) => t.id));
     for (const id of Object.keys(ARENAS) as ArenaId[]) {
       const unlock = ARENA_UNLOCKS[id];
-      assert(unlock !== undefined, `arena ${id} has no unlock tier`);
-      assert(tierIds.has(unlock), `arena ${id} maps to unknown unlock '${unlock}'`);
+      const price = ARENA_PRICES[id];
+      assert(
+        (unlock !== undefined) !== (price !== undefined),
+        `arena ${id} must have exactly one of a tier or a price`,
+      );
+      if (unlock !== undefined) {
+        assert(tierIds.has(unlock), `arena ${id} maps to unknown unlock '${unlock}'`);
+      }
+      if (price !== undefined) {
+        assert(price > 0 && Number.isInteger(price), `arena ${id} has a nonsense price`);
+      }
       assert(ARENA_ORDER.includes(id), `arena ${id} is missing from the Inventory`);
     }
     assertEqual(

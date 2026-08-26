@@ -1,5 +1,50 @@
 # Changelog
 
+## v1.50.0 — 2026-08-26 · requested by David
+
+### Added
+- **Sixteen new battlefields**, taking the game from four arenas to
+  twenty. Eight are earned on the trophy ladder, which now climbs to
+  10,000 trophies — Snowy Hollow, Desert Dunes, Autumn Woods, Frozen
+  Lights, Volcano Rim, Crystal Cavern, Sky Kingdom and Moon Base. Eight
+  are bought in the Store with coins, 800 to 2,400 — Sunny Farm, Treasure
+  Beach, Candy Meadow, Glow Glade, Pirate Cove, Coral Reef, Rooftop City
+  and Toy Room. Battlefields now follow the same one-route rule dice
+  always had: a trophy tier or a coin price, never both, and a test
+  enforces it.
+  - All sixteen share one renderer driven by pure data
+    (src/arena/themeData.ts), so every arena keeps the jail, the retreat
+    and the hazards exactly on the shared station coordinates — the
+    figures can never stand inside the scenery. Each theme dresses its
+    own hazards and names them ("Sssss! A die fell in the lava!"), so
+    the grass-hill-on-a-space-station bug cannot come back with the set.
+  - Every new arena has a drawn Inventory picture, generated FROM the
+    theme data so the two cannot drift, and the distinctness test now
+    measures the full colour cube across all twenty — the hue-only ruler
+    scored the desert and the toy room nearly identical while any pair of
+    eyes tells them apart instantly.
+- **Forty new dice skins**, taking the set from thirteen to fifty-three.
+  Six flat colours continue the trophy ladder (Ruby, Ocean, Lavender,
+  Slate, Blossom, Copper); thirty-four patterned sets join the Store —
+  ten animals (leopard, tiger, cow, giraffe, bumblebee, peacock, fish,
+  turtle, snake, paw prints), eight sports balls (golf, tennis, baseball,
+  soccer, basketball, football, bowling, volleyball), ten foods
+  including David's own **Chicken & Waffles**, plus watermelon, pizza,
+  donut and friends, and six oddities (denim, camo, tartan, circuit
+  board, rainbow, galaxy).
+  - Eight of them are painted in full colour — a watermelon is red,
+    white, green AND black, which the two-colour mask system could never
+    say — through a new colour-painter path in the texture builder.
+  - Every shell and every pattern ink was solved against the six face
+    colours before it was chosen (the ΔLab > 28 rule): the tiger is burnt
+    umber because real tiger orange would swallow the orange face, the
+    tennis ball is olive because optic yellow would swallow the yellow
+    one, and the baseball's stitches are wine-dark for the same reason.
+    Every pattern was rendered and looked at before shipping; the cow
+    started as one blob, the camouflage as another, the basketball's
+    seams met in an ellipse and three of the soccer ball's corner panels
+    were missing — none of which the code showed.
+
 ## v1.49.0 — 2026-08-26 · requested by David
 
 ### Changed

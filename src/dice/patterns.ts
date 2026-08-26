@@ -22,7 +22,43 @@ export type PatternId =
   | 'marble'
   | 'granite'
   | 'sheen'
-  | 'brushed';
+  | 'brushed'
+  // The 26 Aug 2026 batch — David asked for ~40 new skins. Mask painters:
+  | 'rosettes'
+  | 'tigerStripes'
+  | 'patches'
+  | 'giraffe'
+  | 'bands'
+  | 'peacock'
+  | 'scales'
+  | 'shell'
+  | 'diamonds'
+  | 'paws'
+  | 'basketball'
+  | 'soccer'
+  | 'tennis'
+  | 'baseball'
+  | 'laces'
+  | 'dimples'
+  | 'bowling'
+  | 'waffle'
+  | 'cookie'
+  | 'candyStripes'
+  | 'strawberry'
+  | 'honeycomb'
+  | 'chocolate'
+  | 'citrus'
+  | 'denim'
+  | 'circuit'
+  // Full-colour painters (see COLOR_PAINTERS):
+  | 'volleyball'
+  | 'watermelon'
+  | 'pizza'
+  | 'donut'
+  | 'rainbow'
+  | 'galaxy'
+  | 'camo'
+  | 'tartan';
 
 const SIZE = 64;
 
@@ -116,7 +152,13 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
  * dark trough beside it, which is the whole of what makes metal read as
  * metal. Every pattern written before this returns 0..1 and is unaffected.
  */
-const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
+/** The eight patterns painted in full colour rather than through a mask. */
+export type ColorPatternId =
+  | 'volleyball' | 'watermelon' | 'pizza' | 'donut'
+  | 'rainbow' | 'galaxy' | 'camo' | 'tartan';
+type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
+
+const PAINTERS: Record<MaskPatternId, Painter> = {
   // Diagonal stripes.
   stripes: (x, y) => (Math.floor((x + y) / 8) % 2 === 0 ? 1 : 0),
 
@@ -504,7 +546,594 @@ const PAINTERS: Record<Exclude<PatternId, 'plain'>, Painter> = {
     const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.045;
     return light + brush;
   },
+
+  /*
+   * ── The 26 Aug 2026 batch ─────────────────────────────────────────
+   *
+   * Twenty-six mask painters for the new skins. The style rules learned
+   * on the first twelve apply throughout: cells are staggered and sized
+   * by hashCell so nothing reads as graph paper, edges ramp through
+   * smoothstep rather than stepping, and anything meant to look like a
+   * MATERIAL gets negative shading as well as ink. No Math.random
+   * anywhere — the shelf and the table must show the same die.
+   */
+
+  /** Leopard: broken rings on a staggered grid, a dot in some. */
+  rosettes: (x, y) => {
+    const cell = 16;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const col = Math.floor((x + offset) / cell);
+    const h = hashCell(col, row);
+    const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 3;
+    const cy = (y % cell) - cell / 2 + (hashCell(col + 9, row) - 0.5) * 3;
+    const r = Math.hypot(cx, cy);
+    const ring = 4.6 + h * 1.4;
+    // The ring, BROKEN in one or two places — an unbroken ring is a
+    // polka dot with a hole, not a rosette.
+    const a = Math.atan2(cy, cx);
+    const gapAt = h * Math.PI * 2;
+    const inGap =
+      Math.abs(Math.atan2(Math.sin(a - gapAt), Math.cos(a - gapAt))) < 0.7;
+    const onRing = Math.abs(r - ring) < 1.6 && !inGap;
+    // A smaller solid freckle in the middle of about half of them.
+    const freckle = h > 0.5 && r < 1.8;
+    return onRing || freckle ? 0.95 : 0;
+  },
+
+  /** Tiger: vertical stripes that wave and TAPER to points. */
+  tigerStripes: (x, y) => {
+    const sway = tiling(y, 2) * 4 + fbm(x, y, [32], [1]) * 3;
+    const wave = Math.abs(tiling(x + sway, 4));
+    // Stripe width breathes down its length, pinching to nothing —
+    // parallel bands of constant width are a barcode, not a tiger.
+    const width = 0.28 + 0.3 * tiling(y + 11, 3);
+    return smoothstep(width + 0.12, width - 0.06, wave) * 0.95;
+  },
+
+  /**
+   * Cow: several lumpy patches. NOT thresholded noise — a 64px tile has
+   * room for about one island of low-frequency noise, and the first
+   * version rendered as a single blob in one corner. Cells guarantee the
+   * count; per-cell noise keeps every patch its own lumpy shape.
+   */
+  patches: (x, y) => {
+    const cell = 24;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const col = Math.floor((x + offset) / cell);
+    const h = hashCell(col, row);
+    // A patch in roughly two cells out of three.
+    if (h < 0.3) return 0;
+    const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 6;
+    const cy = (y % cell) - cell / 2 + (hashCell(col + 5, row) - 0.5) * 6;
+    const lump = fbm(x + col * 7, y + row * 3, [16, 8], [1, 0.6]) * 4;
+    const r = 6.5 + h * 3;
+    return smoothstep(r + 1.5, r - 1.5, Math.hypot(cx, cy) + lump) * 0.95;
+  },
+
+  /**
+   * Giraffe: polygonal plates with light seams between them. Nearest-two
+   * Voronoi: the seam is where the two closest jittered points are nearly
+   * equidistant, and everything else is plate.
+   */
+  giraffe: (x, y) => {
+    const cell = 16;
+    let d1 = 99;
+    let d2 = 99;
+    const gx = Math.floor(x / cell);
+    const gy = Math.floor(y / cell);
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        const px = (gx + ox + 0.5 + (hashCell(gx + ox, gy + oy) - 0.5) * 0.8) * cell;
+        const py = (gy + oy + 0.5 + (hashCell(gx + ox + 7, gy + oy) - 0.5) * 0.8) * cell;
+        const d = Math.hypot(x - px, y - py);
+        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+      }
+    }
+    return smoothstep(1.2, 2.6, d2 - d1) * 0.92;
+  },
+
+  /** Bee: three broad soft-edged bands across the die. */
+  bands: (x, y) => {
+    const wave = tiling(y + fbm(x, y, [32], [1]) * 2, 3);
+    return smoothstep(0.05, 0.45, wave) * 0.95;
+  },
+
+  /**
+   * Peacock: staggered feather eyes — a ring with a bright heart, and
+   * fine rays running outward between eyes.
+   */
+  peacock: (x, y) => {
+    const cell = 21;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    const r = Math.hypot(cx, cy);
+    if (r < 2.4) return 1;
+    if (Math.abs(r - 5.2) < 1.3) return 0.85;
+    // Rays: twelve per eye, fading with distance.
+    const a = Math.atan2(cy, cx);
+    const ray = Math.abs(Math.sin(a * 6)) > 0.92 && r < 9.5;
+    return ray ? 0.35 : -0.06;
+  },
+
+  /** Fish scales: overlapping scallop rows. */
+  scales: (x, y) => {
+    const cell = 12;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    // The arc of THIS row's scale, drawn where the scale below overlaps.
+    const cy = (y % cell);
+    const d = Math.hypot(cx, cy - cell);
+    const onEdge = Math.abs(d - cell * 0.62) < 1.2 && cy > cell * 0.35;
+    // A faint darkening toward each scale's root gives the rows depth.
+    const shade = smoothstep(cell * 0.62, 0, d) * -0.12;
+    return onEdge ? 0.9 : shade;
+  },
+
+  /** Turtle shell: big hexagonal plates with grooves between. */
+  shell: (x, y) => {
+    // Hex lattice via three axial stripe families 60° apart.
+    const u = x / 16;
+    const v = (x * 0.5 + y * 0.866) / 16;
+    const w = (x * 0.5 - y * 0.866) / 16;
+    const edge = (t: number) => Math.abs(t - Math.round(t));
+    const nearest = Math.min(edge(u), edge(v), edge(w));
+    const groove = smoothstep(0.1, 0.03, nearest);
+    // Plates bow upward slightly: darker toward every groove.
+    return groove * 0.9 - smoothstep(0.35, 0.1, nearest) * 0.1;
+  },
+
+  /** Snakeskin: a diamond lattice, each scale shaded to a keel. */
+  diamonds: (x, y) => {
+    const u = (x + y) / 11;
+    const v = (x - y) / 11;
+    const fu = Math.abs(u - Math.round(u));
+    const fv = Math.abs(v - Math.round(v));
+    const border = Math.min(fu, fv);
+    const line = smoothstep(0.1, 0.02, border);
+    // Each diamond darkens toward its lower edge, like lapped scales.
+    const inner = (fu + fv) * 0.5;
+    return line * 0.85 - smoothstep(0.5, 0.15, inner) * 0.14;
+  },
+
+  /** Paw prints: a main pad and three toes, marching diagonally. */
+  paws: (x, y) => {
+    const cell = 21;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    // Main pad: a wide ellipse low in the cell.
+    if (Math.hypot(cx / 1.3, cy - 2.5) < 3.4) return 0.95;
+    // Three toes arched above it.
+    for (const [tx, ty] of [[-3.6, -2.2], [0, -3.8], [3.6, -2.2]] as const) {
+      if (Math.hypot(cx - tx, cy - ty) < 1.7) return 0.95;
+    }
+    return 0;
+  },
+
+  /**
+   * Basketball: the classic four seams — one vertical, one horizontal,
+   * two side arcs — over a faint pebbled grain.
+   */
+  basketball: (x, y) => {
+    const c = SIZE / 2;
+    /*
+      The side arcs bulge OUTWARD, toward the edges — which means each
+      one's circle is centred on the far side of the face. The first
+      version centred them just off their own sides, and the two arcs
+      swept through the middle and met at top and bottom: rendered, the
+      ball wore an ellipse, not seams.
+    */
+    const seam =
+      Math.abs(x - c) < 1.4 ||
+      Math.abs(y - c) < 1.4 ||
+      Math.abs(Math.hypot(x - SIZE * 1.5, y - c) - SIZE * 1.25) < 1.4 ||
+      Math.abs(Math.hypot(x + SIZE * 0.5, y - c) - SIZE * 1.25) < 1.4;
+    if (seam) return 0.95;
+    // Pebble: fine hash speckle, kept subtle.
+    return (hashCell(x, y) - 0.5) * 0.1;
+  },
+
+  /** Soccer ball: one pentagon at the centre, quarters in the corners. */
+  soccer: (x, y) => {
+    const pentagon = (cx: number, cy: number, r: number, spin: number) => {
+      const dx = x - cx;
+      const dy = y - cy;
+      const d = Math.hypot(dx, dy);
+      if (d > r) return false;
+      const a = Math.atan2(dy, dx) + spin;
+      const sector = (Math.PI * 2) / 5;
+      const folded = Math.abs((((a % sector) + sector) % sector) - sector / 2);
+      // Distance to the flat edge of a regular pentagon.
+      return d * Math.cos(folded) <= r * Math.cos(sector / 2);
+    };
+    if (pentagon(SIZE / 2, SIZE / 2, 11, Math.PI / 2)) return 0.95;
+    /*
+      Corner pentagons stand upright like the centre one. Spinning them
+      by PI/5 seemed more natural and put a flat edge across three of the
+      four corners' visible quarters — the render showed one corner
+      panel and three empty corners.
+    */
+    for (const [cx, cy] of [[0, 0], [SIZE, 0], [0, SIZE], [SIZE, SIZE]] as const) {
+      if (pentagon(cx, cy, 12, Math.PI / 2)) return 0.95;
+    }
+    return 0;
+  },
+
+  /** Tennis ball: the two curved seams that wrap the felt. */
+  tennis: (x, y) => {
+    const c = SIZE / 2;
+    const left = Math.abs(Math.hypot(x + SIZE * 0.32, y - c) - SIZE * 0.72);
+    const right = Math.abs(Math.hypot(x - SIZE * 1.32, y - c) - SIZE * 0.72);
+    if (Math.min(left, right) < 1.8) return 0.95;
+    // Felt: the faintest fuzz so the ground is not a flat wash.
+    return (hashCell(x, y) - 0.5) * 0.08;
+  },
+
+  /**
+   * Baseball: two arcs of stitching. The stitches themselves are short
+   * dashes crossing the seam line, not the line — a drawn-on line is
+   * what makes toy baseballs look like toys.
+   */
+  baseball: (x, y) => {
+    for (const cx of [-SIZE * 0.28, SIZE * 1.28]) {
+      const d = Math.hypot(x - cx, y - SIZE / 2);
+      const off = Math.abs(d - SIZE * 0.62);
+      if (off < 3.2) {
+        // Position along the arc decides the dash rhythm.
+        const a = Math.atan2(y - SIZE / 2, x - cx);
+        if (Math.abs(Math.sin(a * 14)) > 0.55 && off > 0.8) return 0.9;
+      }
+    }
+    return 0;
+  },
+
+  /** Football: the lace panel — one long line, five cross-bars. */
+  laces: (x, y) => {
+    const c = SIZE / 2;
+    if (Math.abs(x - c) < 1.5 && Math.abs(y - c) < 17) return 0.95;
+    for (let i = -2; i <= 2; i++) {
+      if (Math.abs(y - (c + i * 7)) < 1.4 && Math.abs(x - c) < 5.5) return 0.95;
+    }
+    // The two pointed ends shade away, hinting the ball's curve.
+    return -smoothstep(20, 32, Math.abs(y - c)) * 0.18;
+  },
+
+  /** Golf ball: staggered dimples, each a shaded pit — no ink at all. */
+  dimples: (x, y) => {
+    const cell = 8;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    const d = Math.hypot(cx, cy);
+    // Dark on the lower right of each pit, a touch of ink light on the
+    // upper left: a dimple is a hollow, and a hollow has two sides.
+    if (d < 2.6) {
+      const lit = (-cx - cy) / 3.6;
+      return lit > 0 ? lit * 0.35 : lit * 0.5;
+    }
+    return 0;
+  },
+
+  /** Bowling ball: three finger holes and one long sweep of polish. */
+  bowling: (x, y) => {
+    for (const [hx, hy] of [[24, 22], [34, 18], [31, 30]] as const) {
+      if (Math.hypot(x - hx, y - hy) < 3.4) return -0.9;
+    }
+    const d = (x * 0.62 + y * 0.78) / SIZE;
+    return Math.exp(-Math.pow((d - 0.55) / 0.22, 2)) * 0.5 - 0.1;
+  },
+
+  /**
+   * Chicken and waffles — the waffle half. A deep grid, pockets shading
+   * toward their centres, and two golden-brown fried pieces sitting on
+   * top, drawn as darker crusted blobs. David named this one himself.
+   */
+  waffle: (x, y) => {
+    // The chicken: two lumpy patches, crusted at the edge. Checked before
+    // the grid so the pieces sit ON the waffle.
+    for (const [cx, cy, r] of [[20, 21, 9.5], [43, 42, 11]] as const) {
+      const lump = fbm(x * 1 + cy, y + cx, [16, 8], [1, 0.6]) * 2.5;
+      const d = Math.hypot(x - cx, y - cy) + lump;
+      if (d < r) {
+        // Crust: darkest at the rim, easing toward the middle.
+        return -0.28 - smoothstep(r - 4, r, d) * 0.3;
+      }
+    }
+    const cell = 16;
+    const inX = (x % cell + cell) % cell;
+    const inY = (y % cell + cell) % cell;
+    const edge = Math.min(inX, cell - inX, inY, cell - inY);
+    // The grid ridge carries the ink; pockets darken toward the middle.
+    if (edge < 2) return 0.75;
+    return -smoothstep(2, 8, edge) * 0.3;
+  },
+
+  /** Cookie: chocolate chips of varying size, and a crumbly surface. */
+  cookie: (x, y) => {
+    const cell = 13;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const col = Math.floor((x + offset) / cell);
+    const h = hashCell(col, row);
+    const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 5;
+    const cy = (y % cell) - cell / 2 + (hashCell(col + 3, row) - 0.5) * 5;
+    if (Math.hypot(cx, cy) < 1.9 + h * 1.4) return 0.95;
+    return (wrappedNoise(x, y, 8) - 0.5) * 0.14;
+  },
+
+  /** Candy cane: wide, soft-edged diagonal stripes. */
+  candyStripes: (x, y) => {
+    // Whole turns across the tile, like the metals' sweep — an odd count
+    // reads as off-kilter in a good way.
+    const wave = tiling(x + y, 3);
+    return smoothstep(-0.15, 0.35, wave) * 0.96;
+  },
+
+  /** Strawberry: seeds — small pale teardrops, each in a tiny hollow. */
+  strawberry: (x, y) => {
+    const cell = 11;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    // The seed: a narrow ellipse, standing upright.
+    if (Math.hypot(cx / 0.7, cy / 1.3) < 1.6) return 0.95;
+    // Its hollow: the flesh dips around every seed.
+    return -smoothstep(4.5, 1.8, Math.hypot(cx, cy)) * 0.2;
+  },
+
+  /** Honeycomb: a tight hexagonal comb, cells varying like real honey. */
+  honeycomb: (x, y) => {
+    const u = x / 9;
+    const v = (x * 0.5 + y * 0.866) / 9;
+    const w = (x * 0.5 - y * 0.866) / 9;
+    const edge = (t: number) => Math.abs(t - Math.round(t));
+    const nearest = Math.min(edge(u), edge(v), edge(w));
+    const wall = smoothstep(0.13, 0.05, nearest);
+    // Cell fill varies: some cells capped and pale, some open and dark.
+    const cellTone = (wrappedNoise(x, y, 16) - 0.5) * 0.3;
+    return wall * 0.85 + cellTone * (1 - wall);
+  },
+
+  /**
+   * Chocolate bar: square tablets. Grooves shade DOWN, and each tablet
+   * catches ink light along its top-left bevel — a bar is moulded, and
+   * the bevel is what says so.
+   */
+  chocolate: (x, y) => {
+    const cell = 16;
+    const inX = (x % cell + cell) % cell;
+    const inY = (y % cell + cell) % cell;
+    const edge = Math.min(inX, cell - inX, inY, cell - inY);
+    if (edge < 1.5) return -0.5;
+    if (edge < 3.5 && (inX < 4 || inY < 4)) return 0.55;
+    if (edge < 3.5) return -0.2;
+    return 0;
+  },
+
+  /** Lemon slice: rind ring, pith, and radial segments. */
+  citrus: (x, y) => {
+    const c = SIZE / 2;
+    const dx = x - c;
+    const dy = y - c;
+    const r = Math.hypot(dx, dy);
+    // Rind and pith at the very edge of the face.
+    if (r > 29) return 0.9;
+    if (r > 26.5) return -0.05;
+    // Segment walls: ten radial lines plus a small hub.
+    const a = Math.atan2(dy, dx);
+    if (r < 2.5) return 0.85;
+    if (Math.abs(Math.sin(a * 5)) > 0.965 && r > 5) return 0.85;
+    // Flesh: the faintest sparkle of juice sacs.
+    return (hashCell(x, y) - 0.5) * 0.12;
+  },
+
+  /** Denim: twill — the fine broken diagonals of woven cloth. */
+  denim: (x, y) => {
+    const diag = tiling(x * 2 - y * 2, 16);
+    const weave = smoothstep(0.3, 0.8, diag) * 0.45;
+    // Slubs: single pale threads where the yarn ran thick.
+    const slub = hashCell(x, Math.floor(y / 4)) > 0.985 ? 0.5 : 0;
+    return weave + slub + (wrappedNoise(x, y, 8) - 0.5) * 0.1;
+  },
+
+  /**
+   * Circuit board: traces that run, turn once, and end on a pad. Each
+   * horizontal lane carries one trace, its turn placed by hash — laid
+   * out like routing, not scattered like noise.
+   */
+  circuit: (x, y) => {
+    const lane = Math.floor(y / 8);
+    const inY = y - lane * 8;
+    const h = hashCell(lane, 3);
+    const turnAt = 8 + h * 40;
+    const padAt = turnAt + 8 + hashCell(lane, 7) * 12;
+    // The run along the lane, then the stub after the turn.
+    const online =
+      Math.abs(inY - 4) < 1 &&
+      (x < turnAt || (x > turnAt && x < padAt && Math.abs(inY - 4) < 1));
+    if (Math.hypot(x - padAt, inY - 4) < 2.4) return 0.95;
+    if (Math.hypot(x - turnAt, inY - 4) < 1.6) return 0.95;
+    return online ? 0.7 : (wrappedNoise(x, y, 16) - 0.5) * 0.08;
+  },
 };
+
+/** A colour painter returns the actual pixel, not a mask. */
+type ColorPainter = (x: number, y: number) => [number, number, number];
+
+const rgb = (hex: string): [number, number, number] => {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+
+const mixRgb = (
+  a: [number, number, number],
+  b: [number, number, number],
+  t: number,
+): [number, number, number] => [
+  Math.round(a[0] + (b[0] - a[0]) * t),
+  Math.round(a[1] + (b[1] - a[1]) * t),
+  Math.round(a[2] + (b[2] - a[2]) * t),
+];
+
+/**
+ * The eight patterns that need MORE than base-plus-ink.
+ *
+ * The mask system deliberately keeps every pattern to two colours, which
+ * is right for materials — but a watermelon is red, white, green and
+ * black, and no mask can say so. These painters return finished pixels.
+ * The skin's `body` still matters (it is what the face-separation check
+ * reads, so each painter's dominant colour must match its skin's body),
+ * and `ink` is unused — kept on the skin so the texture tests can treat
+ * every patterned skin alike.
+ */
+const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
+  /** White leather in curved panels, every third panel blue or yellow. */
+  volleyball: (x, y) => {
+    const c = SIZE / 2;
+    // Which band of the sweeping curve family this pixel falls in.
+    const d = Math.hypot(x + SIZE * 0.4, y - c);
+    const band = Math.floor(d / 13) % 3;
+    const seam = Math.abs((d % 13) - 13 / 2) > 5.4;
+    if (seam) return rgb('#c9c4b8');
+    if (band === 1) return rgb('#2a4a8a');
+    if (band === 2) return rgb('#f0c020');
+    return rgb('#f0ede6');
+  },
+
+  /** Rind, pith, flesh and seeds, in rings from one corner. */
+  watermelon: (x, y) => {
+    const d = Math.hypot(x - SIZE * 1.1, y - SIZE * 1.1);
+    // Outer rind: two greens striped along the arc.
+    if (d > 62) {
+      const stripe = Math.sin(Math.atan2(y - SIZE * 1.1, x - SIZE * 1.1) * 26);
+      return stripe > 0 ? rgb('#3f8f4a') : rgb('#2e6e38');
+    }
+    if (d > 56) return rgb('#e8f0d8');
+    // Flesh, with staggered black seeds pointing at the rind.
+    const cell = 13;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const sx = ((x + offset) % cell) - cell / 2;
+    const sy = (y % cell) - cell / 2;
+    if (Math.hypot(sx / 0.75, sy / 1.4) < 1.7 && d < 50) return rgb('#2a2418');
+    // The flesh pales slightly toward the pith, as the fruit does. Pinker
+    // than a real melon on purpose: #e05a5a sat ΔLab 17.7 from the red
+    // FACE sticker, and a shell that close swallows the face.
+    return mixRgb(rgb('#f08585'), rgb('#f7b8b8'), smoothstep(40, 56, d));
+  },
+
+  /** Cheese, crust at one corner, pepperoni, herbs. */
+  pizza: (x, y) => {
+    const d = Math.hypot(x - SIZE * 1.05, y - SIZE * 1.05);
+    if (d > 60) return rgb('#b3802e');
+    for (const [cx, cy, r] of [[16, 18, 7], [40, 34, 7.5], [20, 46, 6.5], [48, 10, 6]] as const) {
+      const pd = Math.hypot(x - cx, y - cy);
+      if (pd < r) {
+        // A darker rim where the slice cupped in the oven.
+        return pd > r - 1.8 ? rgb('#8e2f26') : rgb('#c24338');
+      }
+    }
+    if (hashCell(x, y) > 0.965) return rgb('#4a7a2e');
+    // The cheese itself, gently mottled where it browned.
+    return mixRgb(rgb('#e8c078'), rgb('#d9a55c'), wrappedNoise(x, y, 16) * 0.7);
+  },
+
+  /** Pink glaze over cake, drips along the edge, sprinkles on top. */
+  donut: (x, y) => {
+    // The glaze covers the face except a scalloped lower-right margin.
+    const dripEdge = 50 + tiling(x - y, 4) * 5;
+    const onCake = x + y > dripEdge + 46;
+    if (onCake) return mixRgb(rgb('#d9a55c'), rgb('#c2882e'), wrappedNoise(x, y, 8) * 0.5);
+    // Sprinkles: short capsules in five colours, angled by their cell.
+    const cell = 11;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const col = Math.floor((x + offset) / cell);
+    const h = hashCell(col, row);
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    const a = h * Math.PI;
+    const along = cx * Math.cos(a) + cy * Math.sin(a);
+    const across = -cx * Math.sin(a) + cy * Math.cos(a);
+    if (Math.abs(along) < 3 && Math.abs(across) < 1.1) {
+      const jimmies = ['#e84a6e', '#3fa35c', '#3f7fd0', '#f0c020', '#ffffff'];
+      return rgb(jimmies[Math.floor(h * jimmies.length)]);
+    }
+    return rgb('#e8a8b8');
+  },
+
+  /** Six soft bands on the diagonal, sky between. */
+  rainbow: (x, y) => {
+    const order = ['#e05a5a', '#e8963d', '#e8d23d', '#57b366', '#4a7fd0', '#9a6ee0'];
+    const d = (x + y) / 2;
+    const band = (d / 9) % order.length;
+    const i = Math.floor(band);
+    const frac = band - i;
+    const here = rgb(order[i]);
+    const next = rgb(order[(i + 1) % order.length]);
+    // A soft blend at every boundary — hard-edged rainbows read as a
+    // flag, soft ones as light.
+    if (frac > 0.8) return mixRgb(here, next, (frac - 0.8) / 0.2);
+    return here;
+  },
+
+  /** Nebula clouds and stars on deep indigo. */
+  galaxy: (x, y) => {
+    let px: [number, number, number] = rgb('#1d1440');
+    const cloudA = smoothstep(0.15, 0.65, fbm(x, y, [32, 16], [1, 0.5]) + 0.3);
+    const cloudB = smoothstep(0.2, 0.7, fbm(x + 21, y + 9, [32, 16], [1, 0.5]) + 0.25);
+    px = mixRgb(px, rgb('#8a3d8f'), cloudA * 0.6);
+    px = mixRgb(px, rgb('#2a6e9e'), cloudB * 0.5);
+    // Stars: mostly pinpricks, a few brighter.
+    const h = hashCell(x, y);
+    if (h > 0.992) return rgb('#ffffff');
+    if (h > 0.985) return mixRgb(px, rgb('#ffffff'), 0.6);
+    return px;
+  },
+
+  /**
+   * Classic camouflage. Two INDEPENDENT noise fields, one per overlay
+   * tone, each at period 16 — a single period-32 field has room for one
+   * island on a 64px tile, and the first render was exactly that: one
+   * dark blob on flat green.
+   */
+  camo: (x, y) => {
+    const dark = wrappedNoise(x, y, 16) * 0.7 + wrappedNoise(x + 9, y + 21, 8) * 0.3;
+    const pale = wrappedNoise(x + 31, y + 13, 16) * 0.7 + wrappedNoise(x + 3, y + 40, 8) * 0.3;
+    if (dark > 0.62) return rgb('#2e3d26');
+    if (pale > 0.66) return rgb('#8f9668');
+    if (dark > 0.5) return rgb('#4a5c3d');
+    return rgb('#6e7a52');
+  },
+
+  /** Tartan: navy and green bands over red, yellow pinstripes. */
+  tartan: (x, y) => {
+    const bandH = Math.abs(tiling(y, 2)) > 0.62;
+    const bandV = Math.abs(tiling(x, 2)) > 0.62;
+    const pinH = Math.abs(tiling(y + 8, 2)) > 0.985;
+    const pinV = Math.abs(tiling(x + 8, 2)) > 0.985;
+    // The woven look is entirely in the overlap rule: two bands crossing
+    // go DARKER, a band alone goes its own colour.
+    let px: [number, number, number] = rgb('#742533');
+    if (bandH && bandV) px = rgb('#1d2438');
+    else if (bandH || bandV) px = rgb('#2e4a3d');
+    if (pinH || pinV) px = rgb('#e8c23d');
+    // Twill: the fine diagonal texture cloth cannot help having.
+    const twill = tiling(x * 2 - y * 2, 16) > 0.4 ? 0.06 : 0;
+    return mixRgb(px, rgb('#000000'), twill);
+  },
+};
+
+/** Every colour-painter id, for the one runtime branch that needs it. */
+const COLOR_IDS = new Set(Object.keys(COLOR_PAINTERS));
 
 /**
  * Build the shell texture for a pattern. `base` is the skin's own colour
@@ -528,7 +1157,20 @@ export function patternPixels(
   };
   const [br, bg, bb] = parse(base);
   const [ir, ig, ib] = parse(ink);
-  const paint = PAINTERS[pattern];
+
+  // The eight full-colour patterns paint their own pixels outright.
+  if (COLOR_IDS.has(pattern)) {
+    const paintColor = COLOR_PAINTERS[pattern as ColorPatternId];
+    const out: number[] = [];
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        out.push(...paintColor(x, y));
+      }
+    }
+    return out;
+  }
+
+  const paint = PAINTERS[pattern as MaskPatternId];
 
   const out: number[] = [];
   for (let y = 0; y < SIZE; y++) {

@@ -55,7 +55,10 @@ suite('persistence · loadout', () => {
   });
 
   test('junk in storage falls back instead of crashing the game', async () => {
-    store.set('dice-battles:loadout', '{"arenaId":"atlantis","skinId":"rainbow"}');
+    // 'not-a-skin', where this used to say 'rainbow' — which was a fine
+    // fake id right up until 26 Aug 2026, when a real Rainbow skin
+    // shipped and the fixture started loading it successfully.
+    store.set('dice-battles:loadout', '{"arenaId":"atlantis","skinId":"not-a-skin"}');
     const reloaded = await loadLoadout();
     assertEqual(reloaded.arenaId, 'castle', 'unknown battlefield should fall back');
     assertEqual(reloaded.skinId, 'ivory', 'unknown dice should fall back');

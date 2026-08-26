@@ -1,4 +1,14 @@
 import { ArenaId } from './arenas';
+import { ARENA_THEMES, ThemedArenaId } from './themeData';
+
+/** Every themed arena's look, read out of its theme. */
+function themedLooks(): Record<ThemedArenaId, ObstacleLook> {
+  const out = {} as Record<ThemedArenaId, ObstacleLook>;
+  for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+    out[id] = ARENA_THEMES[id].look;
+  }
+  return out;
+}
 
 /**
  * What the two hazards LOOK like, and what they are called, in each
@@ -74,6 +84,7 @@ const CASTLE_DAY: ObstacleLook = {
 };
 
 export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
+  ...themedLooks(),
   castle: CASTLE_DAY,
 
   // The same castle later in the day. Grass goes blue-green as the light
@@ -138,3 +149,10 @@ export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
 export function obstacleLook(arenaId: ArenaId): ObstacleLook {
   return OBSTACLE_LOOKS[arenaId] ?? CASTLE_DAY;
 }
+
+/*
+ * The sixteen themed arenas carry their look INSIDE their theme
+ * (themeData.ts), because a theme without hazard dressing is exactly how
+ * the grass-hill-on-a-space-station bug happened. They are merged into
+ * the record below.
+ */

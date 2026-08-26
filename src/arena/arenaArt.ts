@@ -39,4 +39,30 @@ export const ARENA_ART: Record<ArenaId, ImageSourcePropType> = {
   castleSunset: require('../../assets/arenas/castle-sunset.png'),
   jungle: require('../../assets/arenas/jungle.png'),
   space: require('../../assets/arenas/space.png'),
+  /*
+    The sixteen themed battlefields. Their pictures are painted by
+    make-themed-art.py, which PARSES themeData.ts for each theme's own
+    ground and sky colours — so these cannot drift from the arenas the
+    way a hand-painted set would. Only the landmark in front (the
+    snowman, the cactus, the volcano) is drawn by hand.
+
+    require() needs a literal path per line — Metro resolves assets at
+    build time — which is why this is a list and not a loop.
+  */
+  snow: require('../../assets/arenas/snow.png'),
+  desert: require('../../assets/arenas/desert.png'),
+  volcano: require('../../assets/arenas/volcano.png'),
+  beach: require('../../assets/arenas/beach.png'),
+  candy: require('../../assets/arenas/candy.png'),
+  glade: require('../../assets/arenas/glade.png'),
+  autumn: require('../../assets/arenas/autumn.png'),
+  cove: require('../../assets/arenas/cove.png'),
+  farm: require('../../assets/arenas/farm.png'),
+  aurora: require('../../assets/arenas/aurora.png'),
+  reef: require('../../assets/arenas/reef.png'),
+  cavern: require('../../assets/arenas/cavern.png'),
+  city: require('../../assets/arenas/city.png'),
+  sky: require('../../assets/arenas/sky.png'),
+  moon: require('../../assets/arenas/moon.png'),
+  toybox: require('../../assets/arenas/toybox.png'),
 };

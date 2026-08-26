@@ -1,4 +1,6 @@
 import { CastleArena, SunsetCastleArena } from './CastleArena';
+import { ThemedArena } from './ThemedArena';
+import { ARENA_THEMES, THEMED_ARENA_META, ThemedArenaId } from './themeData';
 import { JungleArena } from './JungleArena';
 import { SpaceArena } from './SpaceArena';
 
@@ -61,6 +63,24 @@ export interface ArenaDef {
   Component: () => React.JSX.Element;
 }
 
+/** Registry entries for every themed arena, built from their data. */
+function themedEntries(): Record<ThemedArenaId, ArenaDef> {
+  const out = {} as Record<ThemedArenaId, ArenaDef>;
+  for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+    const meta = THEMED_ARENA_META[id];
+    const theme = ARENA_THEMES[id];
+    out[id] = {
+      name: meta.name,
+      short: meta.short,
+      emoji: meta.emoji,
+      skyColor: meta.skyColor,
+      lighting: theme.lighting ?? DAYLIGHT,
+      Component: () => <ThemedArena theme={theme} id={id} />,
+    };
+  }
+  return out;
+}
+
 export const ARENAS = {
   castle: {
     name: 'Castle Courtyard',
@@ -98,6 +118,14 @@ export const ARENAS = {
     lighting: DAYLIGHT,
     Component: SpaceArena,
   },
+  /*
+    The sixteen themed battlefields. One line each on purpose: everything
+    that makes Snowy Hollow snowy lives in themeData.ts, and everything
+    that draws it lives in ThemedArena.tsx — this registry only says that
+    it exists. Names, skies and economy come from THEMED_ARENA_META so a
+    theme cannot be added here without deciding how it is obtained.
+  */
+  ...themedEntries(),
 } satisfies Record<string, ArenaDef>;
 
 export type ArenaId = keyof typeof ARENAS;

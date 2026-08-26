@@ -1,6 +1,9 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STORE_SKINS } from '../game/diceSkins';
+import { ARENA_PRICES, STORE_ARENAS, arenaKey } from '../game/loadout';
+import { ARENAS } from '../arena/arenas';
+import { ARENA_ART } from '../arena/arenaArt';
 import { MENU_PAGE_AREA } from './BottomNav';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { COIN_REWARDS, Wallet } from '../game/currency';
@@ -27,9 +30,11 @@ interface StoreScreenProps {
   wallet: Wallet;
   /** Opens the die on the real battlefield, where it is bought. */
   onPreview: (skinId: string) => void;
+  /** Opens the battlefield itself, standing in it — bought there too. */
+  onPreviewArena: (arenaId: (typeof STORE_ARENAS)[number]) => void;
 }
 
-export function StoreScreen({ wallet, onPreview }: StoreScreenProps) {
+export function StoreScreen({ wallet, onPreview, onPreviewArena }: StoreScreenProps) {
   return (
     <View style={styles.overlay}>
       {/* No coin count here — the shared HUD shows it on every screen. */}
@@ -97,6 +102,52 @@ export function StoreScreen({ wallet, onPreview }: StoreScreenProps) {
           })}
         </View>
 
+        <Text style={styles.sectionTitle}>BATTLEFIELDS</Text>
+        <Text style={styles.sectionNote}>
+          Whole new places to battle. Tap one to stand in it and look
+          around before you spend anything — every battlefield plays
+          exactly the same, only the view changes.
+        </Text>
+        <View style={styles.grid}>
+          {STORE_ARENAS.map((id) => {
+            const arena = ARENAS[id];
+            const bought = wallet.owned.includes(arenaKey(id));
+            const affordable = wallet.coins >= ARENA_PRICES[id]!;
+            return (
+              <Pressable
+                key={id}
+                onPress={() => {
+                  playClick();
+                  onPreviewArena(id);
+                }}
+                style={[
+                  styles.card,
+                  bought && styles.cardOwned,
+                  !bought && !affordable && styles.cardLocked,
+                ]}
+              >
+                <Image
+                  source={ARENA_ART[id]}
+                  style={[styles.arenaArt, { backgroundColor: arena.skyColor }]}
+                  accessibilityIgnoresInvertColors
+                />
+                <Text style={styles.cardName}>{arena.name}</Text>
+                {bought ? (
+                  <Text style={styles.ownedTag}>OWNED</Text>
+                ) : (
+                  <CoinLabel
+                    size={13}
+                    style={[styles.priceText, !affordable && styles.priceShort]}
+                    containerStyle={styles.priceRow}
+                  >
+                    {ARENA_PRICES[id]}
+                  </CoinLabel>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Text style={styles.sectionTitle}>COIN PACKS</Text>
         <View style={styles.comingSoon}>
           <Text style={styles.comingTitle}>Not open yet</Text>
@@ -121,6 +172,16 @@ export function StoreScreen({ wallet, onPreview }: StoreScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  /** Same footprint as the 58pt dice swatch, so the two shelves align. */
+  arenaArt: {
+    width: 58,
+    height: 58,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(29,26,46,0.25)',
+  },
   overlay: {
     ...MENU_PAGE_AREA,
     // Solid, not 96%: the arena used to show faintly through every

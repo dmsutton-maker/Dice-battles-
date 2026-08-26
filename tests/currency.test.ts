@@ -20,6 +20,7 @@ import {
   ARENA_UNLOCKS,
   INVENTORY_SKIN_ORDER,
   isSkinUnlocked,
+  ARENA_PRICES,
 } from '../src/game/loadout';
 import { setUnlockAll } from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
@@ -397,13 +398,33 @@ suite('inventory · everything is listed cheapest first', () => {
     );
   });
 
-  test('the battlefields run up in price too', () => {
-    const cost = (id: (typeof ARENA_ORDER)[number]) =>
-      TIERS.find((t) => t.id === ARENA_UNLOCKS[id])?.at ?? 0;
-    for (let i = 1; i < ARENA_ORDER.length; i++) {
+  test('the battlefields run up in price too, trophies first then coins', () => {
+    /*
+      The same shape the dice list has, now that battlefields can also be
+      bought: the trophy ladder in climbing order, then the Store shelf
+      cheapest first. This test used to assume every arena had a tier and
+      read a missing one as 0🏆, which put the whole Store shelf "before"
+      the ladder it comes after.
+    */
+    const tier = (id: (typeof ARENA_ORDER)[number]) =>
+      TIERS.find((t) => t.id === ARENA_UNLOCKS[id])?.at;
+    const ladder = ARENA_ORDER.filter((id) => tier(id) !== undefined);
+    const store = ARENA_ORDER.filter((id) => ARENA_PRICES[id] !== undefined);
+    assertEqual(
+      ARENA_ORDER.join(','),
+      [...ladder, ...store].join(','),
+      'the ladder and the shop are interleaved',
+    );
+    for (let i = 1; i < ladder.length; i++) {
       assert(
-        cost(ARENA_ORDER[i]) >= cost(ARENA_ORDER[i - 1]),
-        `${ARENA_ORDER[i]} (${cost(ARENA_ORDER[i])}🏆) is out of order`,
+        tier(ladder[i])! >= tier(ladder[i - 1])!,
+        `${ladder[i]} (${tier(ladder[i])}🏆) is out of order`,
+      );
+    }
+    for (let i = 1; i < store.length; i++) {
+      assert(
+        ARENA_PRICES[store[i]]! >= ARENA_PRICES[store[i - 1]]!,
+        `${store[i]} (${ARENA_PRICES[store[i]]} coins) is out of order`,
       );
     }
   });

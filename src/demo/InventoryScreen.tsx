@@ -16,6 +16,7 @@ import {
   INVENTORY_SKIN_ORDER,
   isArenaUnlocked,
   isSkinUnlocked,
+  ARENA_PRICES,
 } from '../game/loadout';
 
 /**
@@ -107,11 +108,22 @@ export function InventoryScreen({
                   <Text style={styles.equippedTag}>EQUIPPED</Text>
                 ) : unlocked ? (
                   <Text style={styles.tapTag}>Tap to see</Text>
+                ) : ARENA_PRICES[id] !== undefined ? (
+                  // Sold in the Store, so the tag is a coin price. The
+                  // preview it opens says "In the Store for N" — coins
+                  // are only ever spent there, same as for dice.
+                  <CoinLabel
+                    size={11}
+                    style={styles.priceTag}
+                    containerStyle={styles.priceTagRow}
+                  >
+                    {ARENA_PRICES[id]}
+                  </CoinLabel>
                 ) : (
                   <View style={styles.priceTagRow}>
                     <TrophyIcon size={11} color={THEME.inkFaint} />
                     <Text style={styles.priceTag}>
-                      {priceFor(ARENA_UNLOCKS[id])}
+                      {priceFor(ARENA_UNLOCKS[id]!)}
                     </Text>
                   </View>
                 )}
