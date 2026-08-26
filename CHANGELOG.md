@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.44.0 — 2026-08-26 · requested by David
+
+### Fixed
+- **The How to Play demo now looks like the actual game.** David saw the
+  first version and said it "doesn't look like a mini arena and does not
+  look anything like a hand". Both were fair.
+  - It played out on a **blank cream rectangle**. It is a real mini
+    battlefield now — green grass, the stone tray with battlements along
+    its walls, the tiled floor, the four red corner towers, and the
+    barred jail across the top with the six prisoners standing behind it.
+    The colours are sampled out of a real screenshot of the game rather
+    than picked, so the demo cannot quietly disagree with the thing it is
+    demonstrating.
+  - The **hand was a grey circle on a stick**. It is a proper drawn hand
+    now — palm, curled fingers, thumb, one finger pointing. It had to
+    become an image to do that: a hand is curves and overlapping masses,
+    which the rounded rectangles everything else is drawn from cannot
+    make. Images ship over the air the same as the code, so this still
+    reaches phones without a new build.
+  - **The dice were solid blocks of colour**, which is not something a
+    player ever sees. A die in this game is white with a big coloured
+    spot, and now so are these.
+  - Two more, found by rendering it out again: the dice began the throw
+    sitting **on top of the wall, out on the grass**, and the freed
+    prisoner **floated up and perched on the bars** instead of simply
+    leaving. Everything happens inside the tray now, and the empty slot
+    in the jail is what tells you somebody got out.
+  - The lesson, written down because it has now cost two attempts: the
+    first version WAS rendered and checked — but only for whether the
+    timeline made sense, never against what the game actually looks like.
+    A demo of the game is wrong if it does not resemble the game, and
+    that is not something the code can tell you.
+
 ## v1.43.0 — 2026-08-26 · requested by David
 
 ### Added

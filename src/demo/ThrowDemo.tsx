@@ -3,6 +3,7 @@ import {
   AccessibilityInfo,
   Animated,
   Easing,
+  Image,
   StyleSheet,
   View,
 } from 'react-native';
@@ -15,28 +16,37 @@ import { SHAPE, THEME } from '../ui/theme';
  * "Throw the dice", shown rather than described.
  *
  * David asked on 26 Aug 2026 for "a little video showing real game play
- * with a hand on the screen flicking the dice". This is that, ANIMATED
- * rather than filmed, and the difference is worth writing down because it
- * was not a shortcut:
+ * with a hand on the screen flicking the dice", looked at the first
+ * attempt, and said: "it doesn't look like a mini arena and does not look
+ * anything like a hand." He was right on both counts. The first version
+ * played out on a blank cream rectangle with a grey circle on a stick for
+ * a hand, and it was checked only for whether the TIMELINE made sense —
+ * never against what the game actually looks like.
  *
- *   - Nothing here can record a phone. There is no device in this
- *     project's pipeline (AGENTS.md), so real footage would have to come
- *     off David's own handset every time the game changed.
- *   - Playing a video file needs `expo-video`, which is NATIVE code. A
- *     new native module means a new build, and builds are what is
- *     currently stuck — so a video could not ship at all right now, while
- *     this reaches the family over the air today.
- *   - A recording also goes stale silently. It would still show the old
- *     dice, the old arena and the old jail long after they changed, and
- *     nothing would fail to tell anybody.
+ * So this one is built from a real screenshot of the game
+ * (hq/public/images/game-screenshot-1.jpeg), with the colours sampled out
+ * of it rather than invented:
  *
- * So this is drawn from the same palette the game plays with, in Views,
- * the way src/ui/Icon.tsx draws the icon set and for the same reason:
- * Views cost nothing, ship over the air, and cannot disagree with the
- * game about what a colour looks like.
+ *     grass   #82b16d      stone wall  #917f67 / #7a6b56
+ *     floor   #c1b295      floor lines #928366
+ *     towers  #e16355      jail base   #423b31
  *
- * THE PAGE IT REPLACES was three emoji — 👆 💨 🎲 — which is exactly what
- * the Paper & Ink pass set out to get rid of everywhere else.
+ * and the same furniture the battlefield has: a stone tray with
+ * crenellated walls, red corner towers, a tiled floor, and the barred
+ * jail across the top with the six prisoners standing behind it. The dice
+ * are white with a big colour spot, which is what a die in this game
+ * looks like — the first version drew them as solid colour blocks, which
+ * is not a thing the player ever sees.
+ *
+ * WHY IT IS ANIMATED AND NOT FILMED. Nothing here can record a phone, so
+ * footage would have to come off David's own handset every time the game
+ * changed; playing a video needs a native player, which needs a build,
+ * which is what is currently stuck; and a recording goes stale in silence
+ * while the game moves on. This cannot — it reads the live palette.
+ *
+ * The hand is the one piece that is a PNG (assets/tutorial/hand.png, and
+ * the README beside it explains why): a hand is curves and overlapping
+ * masses, and rounded rectangles cannot make one.
  */
 
 /** One trip through the whole story, in milliseconds. */
@@ -52,10 +62,26 @@ const MATCH = PRISONER_COLORS.find((c) => c.id === 'blue')!;
 /** The tumbling faces, so the dice are visibly CHANGING before they land. */
 const TUMBLE = PRISONER_COLORS.filter((c) => c.id !== MATCH.id);
 
-/** The board the demo plays on. Fixed, so the timeline can be laid out in it. */
-const W = 250;
-const H = 150;
-const DIE = 34;
+/** Sampled from the game, not chosen. See the note above. */
+const ARENA = {
+  grass: '#82b16d',
+  grassDark: '#6f9a5c',
+  wall: '#917f67',
+  wallDark: '#7a6b56',
+  floor: '#c1b295',
+  floorLine: '#928366',
+  tower: '#e16355',
+  towerDark: '#c94f43',
+  jail: '#423b31',
+} as const;
+
+/** The stage, and the tray inside it. */
+const W = 252;
+const H = 168;
+const TRAY = { w: 148, h: 116, top: 40, wall: 8 };
+const DIE = 30;
+/** Blocks along the top and bottom walls — the crenellation. */
+const MERLONS = 7;
 
 /**
  * The timeline, in fractions of the loop.
@@ -120,9 +146,9 @@ export function ThrowDemo({ symbols }: { symbols: boolean }) {
         toValue: 1,
         duration: LOOP_MS,
         easing: Easing.linear,
-        // Everything below is transform or opacity, which is the whole
-        // reason this can run off the JS thread — a tutorial that stutters
-        // while React renders is worse than no animation.
+        // Everything animated here is transform or opacity, which is the
+        // whole reason it can run off the JS thread — a tutorial that
+        // stutters while React renders is worse than a still picture.
         useNativeDriver: true,
       }),
     );
@@ -130,107 +156,144 @@ export function ThrowDemo({ symbols }: { symbols: boolean }) {
     return () => loop.stop();
   }, [reduceMotion, t]);
 
-  /** Shorthand: a value that moves between marks and holds outside them. */
-  const between = (
-    from: number,
-    to: number,
-    out: [number, number],
-    easing?: (v: number) => number,
-  ) =>
-    t.interpolate({
-      inputRange: [0, from, to, 1],
-      outputRange: [out[0], out[0], out[1], out[1]],
-      easing,
-      extrapolate: 'clamp',
-    });
-
   // ── The hand ────────────────────────────────────────────────────────
-  // It comes in from the bottom-right, flicks up and to the left, and
-  // leaves. The dice go the way it went, which is the rule the page is
-  // teaching: "swipe, and the dice go the way you swiped".
+  // In from the bottom-right, press, flick up and to the left, away. The
+  // dice go the way it went, which is the rule the page is teaching:
+  // "swipe, and the dice go the way you swiped".
   const handX = t.interpolate({
     inputRange: [0, T.handIn, T.swipeStart, T.swipeEnd, T.handOut, 1],
-    outputRange: [90, 46, 46, -18, 40, 90],
+    outputRange: [120, 52, 52, -20, 54, 120],
     extrapolate: 'clamp',
   });
   const handY = t.interpolate({
     inputRange: [0, T.handIn, T.swipeStart, T.swipeEnd, T.handOut, 1],
-    outputRange: [90, 34, 34, -14, 44, 90],
+    outputRange: [130, 58, 58, -10, 70, 130],
     extrapolate: 'clamp',
   });
   const handFade = t.interpolate({
-    inputRange: [0, T.handIn, T.handOut - 0.04, T.handOut, 1],
+    inputRange: [0, T.handIn, T.handOut - 0.05, T.handOut, 1],
     outputRange: [0, 1, 1, 0, 0],
     extrapolate: 'clamp',
   });
-  // The press: the fingertip squashes on contact and releases as it goes.
+  // The press: the hand dips into the glass on contact and lifts as it goes.
   const handPress = t.interpolate({
     inputRange: [0, T.handIn, T.swipeStart, T.swipeEnd, 1],
-    outputRange: [1, 1, 0.86, 1, 1],
+    outputRange: [1, 1, 0.9, 1.02, 1.02],
     extrapolate: 'clamp',
   });
 
-  // The swipe trail, drawn once and wiped along with the flick.
+  // The smear the finger leaves, wiped along with the flick.
   const trailFade = t.interpolate({
     inputRange: [0, T.swipeStart, T.swipeEnd, T.handOut, 1],
-    outputRange: [0, 0, 0.9, 0, 0],
+    outputRange: [0, 0, 0.55, 0, 0],
     extrapolate: 'clamp',
   });
 
   // ── The prisoner who goes free ──────────────────────────────────────
-  // He lifts out of the jail once the dice have settled, not before: the
-  // whole point of the page is that the match comes first.
-  const freeLift = between(T.settled, T.gone, [0, -54], Easing.out(Easing.quad));
+  /*
+    A small hop, not a flight. At -30 the prisoner rose clear of the cage
+    and sat on TOP of the bars for a second, which looks like a drawing
+    mistake rather than a rescue. It lifts just enough to read as leaving
+    and is gone before it could clear the bars; the empty slot left behind
+    is what actually tells the story.
+  */
+  const freeLift = t.interpolate({
+    inputRange: [0, T.settled, T.gone, 1],
+    outputRange: [0, 0, -9, -9],
+    easing: Easing.out(Easing.quad),
+    extrapolate: 'clamp',
+  });
   const freeFade = t.interpolate({
     inputRange: [0, T.settled, T.freed, T.gone, T.reset, 1],
     outputRange: [1, 1, 1, 0, 0, 1],
     extrapolate: 'clamp',
   });
-  const freeSpin = between(T.settled, T.gone, [0, 1]);
 
   return (
     <View style={styles.stage}>
-      {/* The jail the six are held in, along the top. */}
+      {/* Grass, and the path that runs out of the gate. */}
+      <View style={styles.path} />
+
+      {/* The jail across the top: a dark barred cage, six prisoners in it. */}
       <View style={styles.jail}>
-        {PRISONER_COLORS.map((c) => {
-          const isMatch = c.id === MATCH.id;
-          return (
+        <View style={styles.jailFloor} />
+        <View style={styles.jailRow}>
+          {PRISONER_COLORS.map((c) => (
             <Animated.View
               key={c.id}
               style={[
-                styles.cell,
+                styles.peg,
                 { backgroundColor: c.hex },
-                isMatch && {
+                c.id === MATCH.id && {
                   opacity: freeFade,
-                  transform: [
-                    { translateY: freeLift },
-                    {
-                      rotate: freeSpin.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '38deg'],
-                      }),
-                    },
-                  ],
+                  transform: [{ translateY: freeLift }],
                 },
               ]}
             >
-              {symbols && (
-                <ShapeMark symbol={COLOR_SYMBOLS[c.id]} size={9} />
-              )}
+              {symbols && <ShapeMark symbol={COLOR_SYMBOLS[c.id]} size={7} />}
             </Animated.View>
-          );
-        })}
+          ))}
+        </View>
+        {/* The bars, in front of them. */}
+        <View style={styles.bars}>
+          {Array.from({ length: 11 }).map((_, i) => (
+            <View key={i} style={styles.bar} />
+          ))}
+        </View>
       </View>
+
+      {/* The tray: stone walls, tiled floor. */}
+      <View style={styles.tray}>
+        <View style={styles.floor}>
+          {/* The tile grid. Faint, the way it is in the game. */}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <View key={`h${i}`} style={[styles.tileLine, { top: (i + 1) * 16 }]} />
+          ))}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <View key={`v${i}`} style={[styles.tileLineV, { left: (i + 1) * 33 }]} />
+          ))}
+        </View>
+
+        {/* Crenellation: blocks standing along the top and bottom walls. */}
+        {(['top', 'bottom'] as const).map((edge) =>
+          Array.from({ length: MERLONS }).map((_, i) => (
+            <View
+              key={`${edge}${i}`}
+              style={[
+                styles.merlon,
+                { left: 6 + i * ((TRAY.w - 18) / (MERLONS - 1)) },
+                edge === 'top' ? { top: 0 } : { bottom: 0 },
+              ]}
+            />
+          )),
+        )}
+      </View>
+
+      {/* The four red towers, on the tray's corners. */}
+      {([[-1, -1], [1, -1], [-1, 1], [1, 1]] as const).map(([sx, sy]) => (
+        <View
+          key={`${sx}${sy}`}
+          style={[
+            styles.tower,
+            {
+              left: W / 2 + sx * (TRAY.w / 2) - 11,
+              top: TRAY.top + (sy < 0 ? -8 : TRAY.h - 14),
+            },
+          ]}
+        />
+      ))}
 
       {/* The two dice. */}
       <Die t={t} symbols={symbols} lane={-1} />
       <Die t={t} symbols={symbols} lane={1} />
 
-      {/* The swipe trail, under the hand. */}
+      {/* The smear, under the hand. */}
       <Animated.View style={[styles.trail, { opacity: trailFade }]} />
 
       {/* The hand. */}
-      <Animated.View
+      <Animated.Image
+        source={require('../../assets/tutorial/hand.png')}
+        resizeMode="contain"
         style={[
           styles.hand,
           {
@@ -238,24 +301,22 @@ export function ThrowDemo({ symbols }: { symbols: boolean }) {
             transform: [
               { translateX: handX },
               { translateY: handY },
+              { rotate: '24deg' },
               { scale: handPress },
             ],
           },
         ]}
-      >
-        <View style={styles.fingertip} />
-        <View style={styles.finger} />
-      </Animated.View>
+      />
     </View>
   );
 }
 
 /**
- * One die.
+ * One die: white, with a big colour spot, which is what this game's dice
+ * actually look like. The first version drew them as solid colour blocks
+ * — a thing the player never sees.
  *
- * `lane` is -1 for the left die and 1 for the right, which is all that
- * separates them — they fly the same arc, land side by side, and show the
- * same colour, because a MATCH is the thing this page exists to explain.
+ * `lane` is -1 for the left die and 1 for the right.
  */
 function Die({
   t,
@@ -271,36 +332,36 @@ function Die({
     timeline frame by frame showed them converging on the same point at
     the same speed and passing through each other about two thirds of the
     way, so for several frames there was one fat blob in the air instead
-    of two dice. They now leave from different points, arc to different
-    heights and land a beat apart.
+    of two dice. They leave from different points, arc to different
+    heights, and land a beat apart.
   */
   const lands = T.diceLand + (lane === 1 ? 0.045 : 0);
-  const peak = lane === 1 ? -14 : -30;
+  const peak = lane === 1 ? -6 : -20;
 
-  // Off to the bottom-right where the hand starts, then up the flick.
+  /*
+    Everything happens INSIDE the tray. The dice used to start at x=66,
+    which is past the inner face of the right-hand wall — so the throw
+    began with two dice sitting on the battlements, out on the grass.
+    38 keeps the whole die on the floor at its widest point.
+  */
   const x = t.interpolate({
     inputRange: [0, T.diceFly, lands, T.settled, T.reset, 1],
-    outputRange: [58 + lane * 9, 58 + lane * 9, lane * 30, lane * 30, lane * 30, 58 + lane * 9],
+    outputRange: [38 + lane * 7, 38 + lane * 7, lane * 26, lane * 26, lane * 26, 38 + lane * 7],
     extrapolate: 'clamp',
   });
   const y = t.interpolate({
     inputRange: [0, T.diceFly, (T.diceFly + lands) / 2, lands, T.settled, T.reset, 1],
     // Up over an arc and back down — a throw, not a slide.
-    outputRange: [56, 56, peak, 14, 14, 14, 56],
+    outputRange: [46, 46, peak, 32, 32, 32, 46],
     extrapolate: 'clamp',
   });
-  /*
-    The tumble. It spins fast at first and eases to a stop, which is what
-    makes the landing read as a landing rather than a jump cut — the same
-    reason the real game waits for the dice to stop before it counts a
-    colour (see src/dice/settle.ts).
-  */
+
   /*
     A WHOLE NUMBER OF TURNS, so the die comes to rest square on a face.
 
     This was 560·lane + 380, which is 940° for one die and -180° for the
     other. Rendering the timeline showed the result plainly: the right die
-    settled at 220°, sitting on the table as a diamond. That is precisely
+    settled at 220°, sitting on the floor as a diamond. That is precisely
     what the game itself refuses to do — a roll only ends when the dice
     have landed flat, and cocked ones are turned square before the colour
     is read (src/dice/settle.ts, src/dice/die.ts). A tutorial demonstrating
@@ -323,8 +384,8 @@ function Die({
   });
   /*
     Hidden until the finger actually moves. A straight fade from t=0 put
-    the dice on the table before the hand had touched it, so the page
-    opened on two dice sitting there and the flick looked like it did
+    the dice on the floor before the hand had touched the glass, so the
+    page opened on two dice sitting there and the flick looked like it did
     nothing.
   */
   const show = t.interpolate({
@@ -334,11 +395,11 @@ function Die({
   });
 
   /*
-    Colour cannot be animated on the native driver, so the faces are
+    Colour cannot be animated on the native driver, so the spots are
     STACKED and cross-faded instead: the tumbling colours underneath, the
     matched colour on top. That keeps the whole demo off the JS thread,
     and it is also closer to what the eye sees on a real die — a colour
-    replacing a colour, not one shape morphing into another.
+    replacing a colour, not one shape becoming another.
   */
   const matchFade = t.interpolate({
     inputRange: [0, lands - 0.06, lands, T.reset, 1],
@@ -360,12 +421,11 @@ function Die({
         <Animated.View
           key={c.id}
           style={[
-            StyleSheet.absoluteFill,
-            styles.face,
+            styles.spot,
             { backgroundColor: c.hex },
             {
               // Each tumbling colour takes its turn, so the die is not one
-              // flat block sliding across the board.
+              // flat block sliding across the floor.
               opacity: t.interpolate({
                 inputRange: [
                   T.diceFly,
@@ -381,17 +441,9 @@ function Die({
         />
       ))}
       <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          styles.face,
-          { backgroundColor: MATCH.hex, opacity: matchFade },
-        ]}
+        style={[styles.spot, { backgroundColor: MATCH.hex, opacity: matchFade }]}
       >
-        {symbols && (
-          <View style={styles.faceMark}>
-            <ShapeMark symbol={COLOR_SYMBOLS[MATCH.id]} size={DIE * 0.42} />
-          </View>
-        )}
+        {symbols && <ShapeMark symbol={COLOR_SYMBOLS[MATCH.id]} size={DIE * 0.3} />}
       </Animated.View>
     </Animated.View>
   );
@@ -404,84 +456,150 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.tile,
+    backgroundColor: ARENA.grass,
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
     borderRadius: SHAPE.radius,
     overflow: 'hidden',
   },
+  /** The dirt path leading away from the gate, as in the real arena. */
+  path: {
+    position: 'absolute',
+    bottom: 0,
+    width: 44,
+    height: 26,
+    backgroundColor: ARENA.grassDark,
+  },
+
+  // ── the jail ────────────────────────────────────────────────────────
   jail: {
     position: 'absolute',
-    top: 10,
+    top: 4,
+    width: 132,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  jailFloor: {
+    ...StyleSheet.absoluteFillObject,
+    top: 12,
+    backgroundColor: ARENA.jail,
+    borderRadius: 3,
+  },
+  jailRow: {
     flexDirection: 'row',
     gap: 5,
+    marginBottom: 3,
   },
-  cell: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
+  /** A prisoner: a stubby peg, the way they stand in the jail. */
+  peg: {
+    width: 13,
+    height: 17,
+    borderRadius: 4,
     borderWidth: 1.5,
     borderColor: THEME.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  bars: {
+    ...StyleSheet.absoluteFillObject,
+    top: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'stretch',
+    paddingHorizontal: 4,
+  },
+  bar: {
+    width: 2,
+    backgroundColor: THEME.ink,
+    borderRadius: 1,
+  },
+
+  // ── the tray ────────────────────────────────────────────────────────
+  tray: {
+    position: 'absolute',
+    top: TRAY.top,
+    width: TRAY.w,
+    height: TRAY.h,
+    backgroundColor: ARENA.wall,
+    borderWidth: 1.5,
+    borderColor: ARENA.wallDark,
+    borderRadius: 3,
+    padding: TRAY.wall,
+  },
+  floor: {
+    flex: 1,
+    backgroundColor: ARENA.floor,
+    overflow: 'hidden',
+  },
+  tileLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: ARENA.floorLine,
+    opacity: 0.45,
+  },
+  tileLineV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: ARENA.floorLine,
+    opacity: 0.45,
+  },
+  /** One block of the battlement. */
+  merlon: {
+    position: 'absolute',
+    width: 12,
+    height: 7,
+    backgroundColor: ARENA.wallDark,
+    borderRadius: 1,
+  },
+  tower: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: ARENA.tower,
+    borderWidth: 1.5,
+    borderColor: ARENA.towerDark,
+  },
+
+  // ── the dice ────────────────────────────────────────────────────────
   die: {
     position: 'absolute',
     width: DIE,
     height: DIE,
-    borderRadius: DIE * 0.24,
-    borderWidth: SHAPE.line,
-    borderColor: THEME.ink,
-    backgroundColor: THEME.surface,
-    overflow: 'hidden',
-  },
-  face: {
-    borderRadius: DIE * 0.2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  faceMark: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  /*
-    The swipe, as the smear a finger leaves rather than an arrow. An arrow
-    would be an instruction; this is the movement itself, which is what
-    the page is asking the player to copy.
-  */
-  trail: {
-    position: 'absolute',
-    width: 96,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: THEME.ink,
-    opacity: 0.9,
-    transform: [{ rotate: '-28deg' }, { translateX: 14 }, { translateY: 12 }],
-  },
-  /*
-    The hand is a fingertip and the finger behind it, not a whole hand.
-    At 150pt tall a full hand becomes a grey blob; a fingertip on the
-    glass is what a player actually sees of their own hand anyway.
-  */
-  hand: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  fingertip: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(29,26,46,0.16)',
-    borderWidth: SHAPE.line,
-    borderColor: THEME.ink,
-  },
-  finger: {
-    width: 15,
-    height: 40,
-    marginTop: -5,
-    borderRadius: 8,
-    backgroundColor: 'rgba(29,26,46,0.10)',
+    borderRadius: DIE * 0.22,
     borderWidth: 1.5,
     borderColor: 'rgba(29,26,46,0.55)',
+    // White, like a real die in this game. The colour is the SPOT on it.
+    backgroundColor: '#fdfcf8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spot: {
+    position: 'absolute',
+    width: DIE * 0.56,
+    height: DIE * 0.56,
+    borderRadius: DIE * 0.28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── the hand ────────────────────────────────────────────────────────
+  hand: {
+    position: 'absolute',
+    width: 62,
+    height: 83,
+  },
+  trail: {
+    position: 'absolute',
+    width: 92,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ffffff',
+    transform: [{ rotate: '-30deg' }, { translateX: 18 }, { translateY: 18 }],
   },
 });

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { store } from './storageMock';
 import { MODES, MODE_ORDER } from '../src/game/modes';
 import { PRISONER_COLORS } from '../src/game/colors';
@@ -147,6 +147,76 @@ suite('tutorial · the throw demo', () => {
     assert(
       !/bigEmoji/.test(body),
       'the throw page is back on emoji',
+    );
+  });
+
+  test('it looks like the battlefield, not a blank rectangle', () => {
+    /*
+      David, 26 Aug 2026, on the first version: "it doesn't look like a
+      mini arena and does not look anything like a hand."
+
+      He was right. It played out on an empty cream rounded rectangle. The
+      frames had been rendered and checked — but only for whether the
+      TIMELINE made sense, never against what the game actually looks
+      like, which is the whole point of a page that says "this is how it
+      goes".
+
+      So the furniture is named here. Every one of these is something in
+      the real arena (hq/public/images/game-screenshot-1.jpeg): grass, a
+      stone tray with battlements, a tiled floor, red corner towers, and
+      the barred jail with the six prisoners behind it.
+    */
+    for (const piece of ['jail', 'bar', 'tray', 'floor', 'tileLine', 'merlon', 'tower', 'peg']) {
+      assert(
+        new RegExp(`^  ${piece}:? ?[:{]`, 'm').test(demo) || demo.includes(`${piece}: {`),
+        `the demo has lost its ${piece} — it is drifting back to a blank box`,
+      );
+    }
+    // The colours are the game's, sampled from that screenshot.
+    for (const [name, hex] of [
+      ['grass', '#82b16d'],
+      ['stone', '#917f67'],
+      ['floor', '#c1b295'],
+      ['tower', '#e16355'],
+    ] as const) {
+      assert(demo.includes(hex), `the ${name} is no longer the colour the game uses (${hex})`);
+    }
+  });
+
+  test('the dice are white with a colour spot, like the real ones', () => {
+    /*
+      The first version drew them as solid blocks of colour, which is not
+      a thing a player ever sees — a die in this game is white with a big
+      coloured circle on the face. Getting that wrong in the one place
+      that teaches the rules is teaching the wrong picture.
+    */
+    const die = demo.slice(demo.indexOf('  die: {'), demo.indexOf('  spot: {'));
+    assert(
+      /backgroundColor: '#f[0-9a-f]{5}'/.test(die),
+      'the die is no longer white — it has gone back to being a block of colour',
+    );
+    assert(demo.includes('  spot: {'), 'the die has lost its colour spot');
+  });
+
+  test('the hand is a drawing of a hand', () => {
+    /*
+      It was a circle on a stick, built from two rounded rectangles, and
+      it did not read as a hand at any size. A hand is curves and
+      overlapping masses; Views cannot make one, and react-native-svg is
+      native code we cannot add. So it is a PNG, which ships over the air
+      with the update like every other asset.
+    */
+    assert(
+      /require\('\.\.\/\.\.\/assets\/tutorial\/hand\.png'\)/.test(demo),
+      'the hand is not the drawn one any more',
+    );
+    assert(
+      existsSync('assets/tutorial/hand.png'),
+      'the hand image is missing, so the demo would render an empty box',
+    );
+    assert(
+      !/fingertip|finger:/.test(demo),
+      'the hand is back to being assembled from rounded rectangles',
     );
   });
 
