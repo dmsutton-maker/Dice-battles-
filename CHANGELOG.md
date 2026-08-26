@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.48.0 — 2026-08-26 · reported by David
+
+### Fixed
+- **Opening a battlefield no longer flashes the last one you looked at.**
+  David: "the arena preview doesn't load fast enough when you click on an
+  arena, you can still see the previous arena you clicked on for a split
+  second."
+  - It was not a loading problem, which matters — making the arena
+    cheaper would not have fixed it. The board **stops rendering
+    entirely** while a menu is open, deliberately, because a phone should
+    not run a 3D scene nobody can see. A screen that has stopped
+    rendering keeps showing its last picture. So opening a preview
+    uncovered a board still holding the arena you looked at before.
+  - The board is now covered until it has genuinely drawn the new place —
+    counted in real frames, not guessed at with a timer — and the cover
+    is that arena's own sky, so it reads as walking out into it rather
+    than as a panel being taken away.
+  - **It was also doing far more work than it needed to.** Looking at a
+    different battlefield was rebuilding the entire physics world and both
+    dice from scratch, for a change that is only scenery. It does not any
+    more, which makes the swap quicker as well as invisible.
+
 ## v1.47.0 — 2026-08-26 · requested by David
 
 ### Changed

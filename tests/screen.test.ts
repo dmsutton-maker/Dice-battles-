@@ -32,6 +32,7 @@ import {
 } from '../src/game/stations';
 import { TUNING } from '../src/game/tuning';
 import { cameraBase, fitCamera } from '../src/demo/cameraFit';
+import { createFrameWatch } from '../src/demo/frameWatch';
 import { assert, assertAtMost, assertEqual, note, suite, test } from './harness';
 
 /**
@@ -1234,5 +1235,126 @@ suite('screen · the launch does not flash', () => {
       !image.includes('splash-icon'),
       'the splash is back on Expo’s placeholder artwork',
     );
+  });
+});
+
+/**
+ * Opening a preview must not show you the LAST arena you looked at.
+ *
+ * David, 26 Aug 2026: "the arena preview doesn't load fast enough when
+ * you click on an arena, you can still see the previous arena you clicked
+ * on for a split second."
+ *
+ * The name of the complaint is misleading and it is worth keeping the
+ * real cause written down, because "make it load faster" would not have
+ * fixed it. The board runs at `frameloop: 'never'` while a menu is up —
+ * a phone should not render a 3D scene nobody can see — and a GL surface
+ * that has stopped rendering goes on displaying its last frame. Opening a
+ * preview uncovered a canvas still holding a picture of the arena
+ * previewed before it.
+ */
+suite('screen · a preview never shows the last arena', () => {
+  const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+
+  test('the canvas is covered until it has really drawn the new scene', () => {
+    assert(
+      /const stale = preview !== null && drawnToken !== sceneToken;/.test(source),
+      'nothing tracks whether the canvas has caught up with the preview',
+    );
+    assert(
+      /<FirstFrame token=\{sceneToken\} onDrawn=\{setDrawnToken\} \/>/.test(source),
+      'the frame reporter is gone, so drawnToken would never update and the cover would never lift',
+    );
+    assert(
+      /\{stale && \(/.test(source),
+      'the cover is no longer tied to the canvas being behind',
+    );
+    // The scene token has to cover the DIE as well as the arena: tapping a
+    // skin uncovers the same stale canvas.
+    assert(
+      /const sceneToken = `\$\{sceneArenaId\}\|\$\{sceneSkin\.id\}`;/.test(source),
+      'the scene token no longer covers both the arena and the die',
+    );
+  });
+
+  test('changing arena does not rebuild the whole world', () => {
+    /*
+      The key used to include the arena, so looking at a different
+      battlefield tore down and rebuilt the physics world, both dice
+      bodies and every mesh — for a change that is only scenery. It must
+      still carry the difficulty and the round, because `physics` is a
+      useMemo with no dependencies and genuinely relies on the remount
+      when the LAYOUT changes.
+    */
+    const key = /key=\{`\$\{difficulty\}-\$\{round\}([^`]*)`\}/.exec(source);
+    assert(key !== null, 'the DiceScene key no longer carries difficulty and round');
+    assertEqual(
+      key![1],
+      '',
+      'the arena is back in the DiceScene key — switching scenery rebuilds the physics world',
+    );
+  });
+
+  test('the cover is the arena’s own sky, and cannot eat a tap', () => {
+    const at = source.indexOf('{stale && (');
+    const block = source.slice(at, at + 400);
+    assert(
+      block.includes('ARENAS[sceneArenaId].skyColor'),
+      'the cover is no longer the sky of the arena being opened',
+    );
+    assert(
+      block.includes('pointerEvents="none"'),
+      'the cover can swallow a tap while it is up',
+    );
+  });
+});
+
+suite('screen · counting real frames', () => {
+  test('it trusts the second frame, not the first', () => {
+    /*
+      The first tick of a restarted loop is the one that builds the new
+      arena's meshes and materials; the picture the player sees is the one
+      after it. Lifting the cover on the first tick uncovers the canvas a
+      frame early and the flicker survives, smaller and harder to report.
+    */
+    const watch = createFrameWatch();
+    assertEqual(watch.tick('castle'), null, 'reported on the very first frame');
+    assertEqual(watch.tick('castle'), 'castle', 'never reported at all');
+  });
+
+  test('it reports once and then stays quiet', () => {
+    // onDrawn sets React state. Firing every frame would re-render the
+    // whole screen sixty times a second.
+    const watch = createFrameWatch();
+    watch.tick('castle');
+    watch.tick('castle');
+    for (let i = 0; i < 30; i++) {
+      assertEqual(watch.tick('castle'), null, `reported again on frame ${i + 3}`);
+    }
+  });
+
+  test('a new scene starts the count again', () => {
+    const watch = createFrameWatch();
+    watch.tick('castle');
+    assertEqual(watch.tick('castle'), 'castle', 'castle never settled');
+    // Now the player taps a different battlefield.
+    assertEqual(watch.tick('jungle'), null, 'jungle was trusted on its first frame');
+    assertEqual(watch.tick('jungle'), 'jungle', 'jungle never settled');
+  });
+
+  test('flicking between two arenas never reports the wrong one', () => {
+    /*
+      The real sequence when somebody taps quickly down the list. A token
+      that arrives and is replaced before it is trusted must never be
+      reported, or the cover would lift on an arena the canvas is not
+      showing — which is the original bug wearing a different hat.
+    */
+    const watch = createFrameWatch();
+    const seen: string[] = [];
+    for (const token of ['castle', 'jungle', 'space', 'space', 'castle', 'castle']) {
+      const drawn = watch.tick(token);
+      if (drawn !== null) seen.push(drawn);
+    }
+    assertEqual(seen.join(','), 'space,castle', 'the cover lifted on the wrong scene');
   });
 });

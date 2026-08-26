@@ -123,6 +123,7 @@ import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
 import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
+import { FirstFrame } from './FirstFrame';
 import {
   loadTutorialSeen,
   markTutorialSeen,
@@ -978,6 +979,25 @@ export function DiceDemoScreen() {
     preview?.kind === 'die' ? skinById(preview.id) : equippedSkin;
   const dieBodyColor = sceneSkin.body;
 
+  /*
+    Which scene the canvas is actually SHOWING, as opposed to which one it
+    has been told to show.
+    
+    David, 26 Aug 2026: "the arena preview doesn't load fast enough when
+    you click on an arena, you can still see the previous arena you
+    clicked on for a split second."
+    
+    It is not a loading problem. The board runs at `frameloop: 'never'`
+    while a menu is up, and a GL surface that has stopped rendering keeps
+    displaying its last frame. Opening a preview therefore uncovered a
+    canvas still holding a picture of the arena previewed BEFORE this one.
+    `sceneToken` is what we want drawn; `drawnToken` is what FirstFrame
+    has confirmed really was drawn; the gap between them is covered.
+  */
+  const sceneToken = `${sceneArenaId}|${sceneSkin.id}`;
+  const [drawnToken, setDrawnToken] = useState('');
+  const stale = preview !== null && drawnToken !== sceneToken;
+
   const showPreview = (target: PreviewTarget | null) => {
     previewRef.current = target;
     setPreview(target);
@@ -1238,7 +1258,20 @@ export function DiceDemoScreen() {
       >
         <color attach="background" args={[ARENAS[sceneArenaId].skyColor]} />
         <DiceScene
-          key={`${difficulty}-${round}-${sceneArenaId}`}
+          /*
+            The arena is deliberately NOT in this key.
+            
+            It used to be, which tore down and rebuilt the physics world,
+            both dice bodies and every mesh in the scene each time you
+            looked at a different battlefield — for a change that is
+            purely scenery. `physics` is a useMemo with no dependencies
+            and relies on this remount, so the key still carries the
+            difficulty and the round, which is what actually changes the
+            LAYOUT. Nothing about which arena you are standing in touches
+            the simulation: `ArenaComponent`, `look` and `lighting` are
+            all read per render inside DiceScene.
+          */
+          key={`${difficulty}-${round}`}
           layout={layout}
           arenaId={sceneArenaId}
           dieBodyColor={dieBodyColor}
@@ -1254,7 +1287,27 @@ export function DiceDemoScreen() {
           shakeSignal={shakeSignal}
           throwsEnabled={phase === 'battle'}
         />
+        <FirstFrame token={sceneToken} onDrawn={setDrawnToken} />
       </Canvas>
+
+      {/*
+        The cover over a canvas that has not caught up yet.
+        
+        Painted in the new arena's own sky, so the reveal reads as walking
+        out into that place rather than as a panel being removed: the sky
+        arrives first and the ground appears under it. It is only ever up
+        for a frame or two — `pointerEvents="none"` so it cannot swallow a
+        tap in that time.
+      */}
+      {stale && (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: ARENAS[sceneArenaId].skyColor },
+          ]}
+        />
+      )}
 
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
