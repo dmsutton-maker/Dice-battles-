@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.54.0 — 2026-08-26 · requested by David
+
+### Fixed
+- **The dice designs are no longer drawn where the colour covers them.**
+  David: "a lot of the dice are messed up because the design is in the
+  center, which doesn't make sense because the colors are in the center."
+  - He is describing a collision the two halves of a die's look were
+    always going to have, and which nothing had ever checked. The
+    coloured circle on each face — the thing a roll is actually read
+    from — covers a third of that face, dead centre. The pattern
+    painters draw on a plain square tile and had no idea any of it was
+    about to be hidden.
+  - Eleven of the forty-three patterned skins had put their whole
+    subject in the middle. The **Football's** laces ran down the centre
+    line with TEN TIMES as much ink under the sticker as outside it, so
+    its faces were blank brown leather. The **Soccer Ball** was one
+    pentagon, dead centre, entirely invisible. The **Tennis Ball's** two
+    seams both crossed within six pixels of the middle. The
+    **Basketball's** seams were a cross whose junction was the exact
+    centre. All three of the **Bowling Ball's** finger holes were inside
+    the circle. The **Lemon** was a wheel of segments radiating from a
+    hidden hub. The **Galaxy's** bright core was the one thing covered
+    up. Also affected: Cow, Pizza, Volleyball, Watermelon and Circuit
+    Board.
+  - Each is redrawn as the SURFACE of the thing rather than a portrait
+    of it. The soccer ball is a proper pentagon-and-hexagon lattice; the
+    football's laces ride the left third with the ball's long seam
+    sweeping the right; the tennis and baseball seams bulge in from the
+    edges; the basketball wears four shallow seams, one from each edge;
+    the bowling ball's finger holes are up in a corner where a hand
+    grips it; the lemon is four cut slices in the corners; the galaxy's
+    core burns low in one corner with its disc tilted across.
+  - `npm test` now measures the local contrast of every pattern inside
+    the sticker's circle against outside it, so a new skin cannot ship
+    with its design hidden. DieMesh and the painters read the sticker
+    size from one shared number instead of two copies of 0.33.
+  - It also checks the colours the full-colour painters mix themselves,
+    which no test had ever looked at — they belong to no skin, so the
+    existing shell and ink checks could not see them. Moving the galaxy
+    off-centre meant giving its disc a colour, and the purple first
+    chosen sat ΔLab 8.7 from the PURPLE face sticker: a soft bright
+    field of almost exactly the face colour, spread across most of the
+    face. It would have swallowed one face in six.
+
 ## v1.53.0 — 2026-08-26 · requested by David
 
 ### Changed

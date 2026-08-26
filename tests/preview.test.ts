@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { assert, assertEqual, suite, test } from './harness';
+import { assert, assertEqual, note, suite, test } from './harness';
 import { recallScroll, rememberScroll, resetScrollForTests } from '../src/demo/menuScroll';
 import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
 import { shellPreviewUri } from '../src/dice/preview';
-import { PATTERN_SIZE, patternPixels } from '../src/dice/patterns';
+import { PATTERN_SIZE, patternPixels, STICKER_FRACTION } from '../src/dice/patterns';
 
 /**
  * The Store and Inventory pictures are generated, not drawn by hand, so
@@ -178,5 +178,140 @@ suite('preview · the shelf stays where you left it', () => {
         `${file} animates back to where it was — the jump is the point of not having one`,
       );
     }
+  });
+});
+
+/**
+ * No skin hides its design under the colour sticker.
+ *
+ * David, 26 Aug 2026: "a lot of the dice are messed up because the design
+ * is in the center, which doesn't make sense because the colors are in
+ * the center."
+ *
+ * He is describing a collision the two halves of a die's look were always
+ * going to have, and which nobody had checked for. DieMesh draws a
+ * coloured circle of radius `STICKER_FRACTION` of the face at the dead
+ * centre of all six faces — that circle is the game signal, the thing a
+ * roll is actually read from, and it covers a third of every face. A
+ * pattern painter, meanwhile, works on a square tile with no idea any of
+ * it is about to be covered. Eleven of the forty-three patterned skins
+ * had put their whole subject in the middle:
+ *
+ *   - the Football's laces ran down the centre line, with TEN TIMES as
+ *     much ink under the sticker as outside it — the faces were blank;
+ *   - the Soccer Ball was one pentagon, dead centre, entirely hidden;
+ *   - the Tennis Ball's two seams both crossed within six pixels of the
+ *     middle, so only their tips showed;
+ *   - the Basketball's seams were a cross whose junction was the centre;
+ *   - the Bowling Ball's three finger holes were all inside the circle;
+ *   - the Lemon was a wheel of segments radiating from a hidden hub.
+ *
+ * The measure is LOCAL CONTRAST — how much each pixel differs from its
+ * neighbours — rather than how far each pixel is from the shell colour.
+ * That distinction matters: a smooth gradient across a face is not a
+ * design and scores near zero either way, while a seam, a spot or a lace
+ * scores high wherever it is. Comparing "distance from the base colour"
+ * instead flagged the Watermelon (whose flesh simply pales toward the
+ * rind) and missed the Basketball entirely.
+ */
+suite('preview · the design goes where the colour is not', () => {
+  const SLACK = 12;
+  const RATIO = 1.35;
+
+  /** Mean 3x3 local contrast inside the sticker's circle, and outside it. */
+  function detail(px: number[], size: number): { inside: number; outside: number } {
+    const grey: number[][] = [];
+    for (let y = 0; y < size; y++) {
+      const row: number[] = [];
+      for (let x = 0; x < size; x++) {
+        const k = (y * size + x) * 3;
+        row.push(px[k] + px[k + 1] + px[k + 2]);
+      }
+      grey.push(row);
+    }
+    let inSum = 0;
+    let outSum = 0;
+    let inN = 0;
+    let outN = 0;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let lo = grey[y][x];
+        let hi = lo;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const v = grey[(y + dy + size) % size][(x + dx + size) % size];
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+          }
+        }
+        const u = (x + 0.5) / size - 0.5;
+        const v = (y + 0.5) / size - 0.5;
+        if (Math.hypot(u, v) < STICKER_FRACTION) {
+          inSum += hi - lo;
+          inN++;
+        } else {
+          outSum += hi - lo;
+          outN++;
+        }
+      }
+    }
+    return { inside: inSum / inN, outside: outSum / outN };
+  }
+
+  test('no skin puts more of its design under the sticker than around it', () => {
+    const worst: { over: number; label: string }[] = [];
+    for (const skin of DICE_SKINS) {
+      if (skin.pattern === 'plain') continue;
+      const px = patternPixels(skin.pattern, skin.body, skin.ink ?? skin.body);
+      const { inside, outside } = detail(px, PATTERN_SIZE);
+      /*
+        The allowance is a ratio PLUS a flat slack, not a ratio alone.
+        Denim's twill has a local contrast of about 12 against a shell of
+        almost the same colour; on a field that faint the ratio is mostly
+        noise, and a bare ratio would have banned a perfectly good
+        pattern for having its speckle land one way rather than another.
+      */
+      const allowed = outside * RATIO + SLACK;
+      worst.push({ over: inside - allowed, label: `${skin.id} ${inside.toFixed(0)} in / ${outside.toFixed(0)} out` });
+      assert(
+        inside <= allowed,
+        `${skin.id} draws its design where the colour sticker covers it ` +
+          `(${inside.toFixed(0)} of detail inside the circle against ${outside.toFixed(0)} outside)`,
+      );
+    }
+    worst.sort((a, b) => b.over - a.over);
+    for (const w of worst.slice(0, 3)) note(`closest to the line: ${w.label}`);
+  });
+
+  test('every patterned skin still has a design to see at all', () => {
+    // The other way to pass the test above is to draw nothing anywhere.
+    for (const skin of DICE_SKINS) {
+      if (skin.pattern === 'plain') continue;
+      const px = patternPixels(skin.pattern, skin.body, skin.ink ?? skin.body);
+      const { outside } = detail(px, PATTERN_SIZE);
+      assert(
+        outside > 4,
+        `${skin.id} has almost no visible pattern (local contrast ${outside.toFixed(1)})`,
+      );
+    }
+  });
+
+  test('the die and the patterns agree on how big the sticker is', () => {
+    /*
+      Two copies of 0.33 is how this comes back. If DieMesh grew the
+      sticker and patterns.ts did not hear about it, every painter would
+      go on carefully avoiding a circle smaller than the one actually
+      being drawn, and the designs would start disappearing again with
+      nothing failing.
+    */
+    const mesh = readFileSync('src/dice/DieMesh.tsx', 'utf8');
+    assert(
+      mesh.includes('size * STICKER_FRACTION'),
+      'DieMesh sizes the colour sticker with its own number again',
+    );
+    assert(
+      !/CircleGeometry\(size \* 0\.\d+/.test(mesh),
+      'DieMesh has a hard-coded sticker radius',
+    );
   });
 });

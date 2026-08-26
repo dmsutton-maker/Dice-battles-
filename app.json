@@ -3,7 +3,7 @@
     "name": "Dice Battles: Color Rush",
     "slug": "dice-battles",
     "backgroundColor": "#1b1430",
-    "version": "1.53.0",
+    "version": "1.54.0",
     "orientation": "portrait",
     "icon": "./assets/icon/light.png",
     "userInterfaceStyle": "light",

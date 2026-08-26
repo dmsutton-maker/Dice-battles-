@@ -62,6 +62,30 @@ export type PatternId =
 
 const SIZE = 64;
 
+/**
+ * How much of a face the coloured sticker covers, as a fraction of the
+ * face's width.
+ *
+ * DieMesh draws the six colour stickers as circles of this radius at the
+ * dead CENTRE of each face, and a face shows this texture exactly once,
+ * so in tile terms the middle disc of radius `STICKER_FRACTION * SIZE`
+ * is never seen. A pattern that puts its design there has drawn it for
+ * nobody.
+ *
+ * David, 26 Aug 2026: "a lot of the dice are messed up because the
+ * design is in the center, which doesn't make sense because the colors
+ * are in the center." Eleven of the forty-three patterned skins were
+ * doing exactly that — the Football's laces had ten times as much ink
+ * under the sticker as outside it, so every face rendered as blank
+ * leather, and the Soccer Ball's one pentagon was entirely hidden.
+ *
+ * The constant is exported so DieMesh reads it too: if the sticker ever
+ * changes size, the tests that guard this move with it instead of
+ * quietly measuring the wrong circle.
+ */
+export const STICKER_FRACTION = 0.33;
+const STICKER_RADIUS = SIZE * STICKER_FRACTION;
+
 type Painter = (x: number, y: number) => number;
 
 /**
@@ -598,25 +622,25 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * count; per-cell noise keeps every patch its own lumpy shape.
    */
   patches: (x, y) => {
-    const cell = 24;
+    /*
+      Cow markings. Smaller and more numerous than the first version,
+      which was coarse enough that one blotch landed over the middle of
+      the face and the rest of the face went bare.
+    */
+    const cell = 16;
     const row = Math.floor(y / cell);
     const offset = row % 2 === 0 ? 0 : cell / 2;
     const col = Math.floor((x + offset) / cell);
     const h = hashCell(col, row);
     // A patch in roughly two cells out of three.
     if (h < 0.3) return 0;
-    const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 6;
-    const cy = (y % cell) - cell / 2 + (hashCell(col + 5, row) - 0.5) * 6;
-    const lump = fbm(x + col * 7, y + row * 3, [16, 8], [1, 0.6]) * 4;
-    const r = 6.5 + h * 3;
-    return smoothstep(r + 1.5, r - 1.5, Math.hypot(cx, cy) + lump) * 0.95;
+    const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 4;
+    const cy = (y % cell) - cell / 2 + (hashCell(col + 5, row) - 0.5) * 4;
+    const lump = fbm(x + col * 7, y + row * 3, [16, 8], [1, 0.6]) * 2.6;
+    const r = 4.2 + h * 2.2;
+    return smoothstep(r + 1.2, r - 1.2, Math.hypot(cx, cy) + lump) * 0.95;
   },
 
-  /**
-   * Giraffe: polygonal plates with light seams between them. Nearest-two
-   * Voronoi: the seam is where the two closest jittered points are nearly
-   * equidistant, and everything else is plate.
-   */
   giraffe: (x, y) => {
     const cell = 16;
     let d1 = 99;
@@ -723,88 +747,130 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
   basketball: (x, y) => {
     const c = SIZE / 2;
     /*
-      The side arcs bulge OUTWARD, toward the edges — which means each
-      one's circle is centred on the far side of the face. The first
-      version centred them just off their own sides, and the two arcs
-      swept through the middle and met at top and bottom: rendered, the
-      ball wore an ellipse, not seams.
+      Four shallow seams, one riding in from each edge.
+
+      This used to be a straight cross — one seam down the middle and one
+      across it — which put the junction of the whole pattern at the
+      exact centre of the face, under the colour sticker, and left every
+      face as plain orange leather with four short stubs at its edges.
+      The two side arcs were no better: they crossed the middle line only
+      16 pixels from the centre, well inside the sticker.
+
+      Each arc's circle is centred far off the OPPOSITE side, so the arc
+      bulges toward its own edge instead of into the middle.
     */
+    const reach = SIZE * 1.375;
     const seam =
-      Math.abs(x - c) < 1.4 ||
-      Math.abs(y - c) < 1.4 ||
-      Math.abs(Math.hypot(x - SIZE * 1.5, y - c) - SIZE * 1.25) < 1.4 ||
-      Math.abs(Math.hypot(x + SIZE * 0.5, y - c) - SIZE * 1.25) < 1.4;
+      Math.abs(Math.hypot(x - SIZE * 1.5, y - c) - reach) < 1.4 ||
+      Math.abs(Math.hypot(x + SIZE * 0.5, y - c) - reach) < 1.4 ||
+      Math.abs(Math.hypot(x - c, y - SIZE * 1.5) - reach) < 1.4 ||
+      Math.abs(Math.hypot(x - c, y + SIZE * 0.5) - reach) < 1.4;
     if (seam) return 0.95;
     // Pebble: fine hash speckle, kept subtle.
     return (hashCell(x, y) - 0.5) * 0.1;
   },
 
-  /** Soccer ball: one pentagon at the centre, quarters in the corners. */
   soccer: (x, y) => {
-    const pentagon = (cx: number, cy: number, r: number, spin: number) => {
-      const dx = x - cx;
-      const dy = y - cy;
-      const d = Math.hypot(dx, dy);
-      if (d > r) return false;
-      const a = Math.atan2(dy, dx) + spin;
-      const sector = (Math.PI * 2) / 5;
-      const folded = Math.abs((((a % sector) + sector) % sector) - sector / 2);
-      // Distance to the flat edge of a regular pentagon.
-      return d * Math.cos(folded) <= r * Math.cos(sector / 2);
-    };
-    if (pentagon(SIZE / 2, SIZE / 2, 11, Math.PI / 2)) return 0.95;
     /*
-      Corner pentagons stand upright like the centre one. Spinning them
-      by PI/5 seemed more natural and put a flat edge across three of the
-      four corners' visible quarters — the render showed one corner
-      panel and three empty corners.
+      A soccer ball's surface is a LATTICE of pentagons among hexagons,
+      and it is drawn as one now. It used to be a single big pentagon in
+      the middle of the face with four quarter-pentagons in the corners —
+      and the middle of a face is where the colour sticker sits, so the
+      only whole pentagon was the one nobody could see. Faces rendered as
+      blank white paper.
+
+      Nearest-two Voronoi over a staggered lattice, the same trick the
+      giraffe uses: the seam is where the two closest lattice points are
+      nearly equidistant, and a pentagon is stamped at each point. A even
+      lattice cannot hide its design under the sticker, because there is
+      no one place for it to hide.
     */
-    for (const [cx, cy] of [[0, 0], [SIZE, 0], [0, SIZE], [SIZE, SIZE]] as const) {
-      if (pentagon(cx, cy, 12, Math.PI / 2)) return 0.95;
+    const cell = SIZE / 3;
+    let best = 1e9;
+    let second = 1e9;
+    let bx = 0;
+    let by = 0;
+    for (let row = -1; row <= 3; row++) {
+      const cy = row * cell;
+      const offset = (((row % 2) + 2) % 2) === 0 ? 0 : cell / 2;
+      for (let col = -1; col <= 4; col++) {
+        const cx = col * cell + offset;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < best) {
+          second = best;
+          best = d;
+          bx = cx;
+          by = cy;
+        } else if (d < second) {
+          second = d;
+        }
+      }
     }
-    return 0;
+    if (second - best < 1.5) return 0.3;
+    const a = Math.atan2(y - by, x - bx) + Math.PI / 2;
+    const sector = (Math.PI * 2) / 5;
+    const folded = Math.abs((((a % sector) + sector) % sector) - sector / 2);
+    return best * Math.cos(folded) <= 6.2 * Math.cos(sector / 2) ? 0.95 : 0;
   },
 
-  /** Tennis ball: the two curved seams that wrap the felt. */
   tennis: (x, y) => {
     const c = SIZE / 2;
-    const left = Math.abs(Math.hypot(x + SIZE * 0.32, y - c) - SIZE * 0.72);
-    const right = Math.abs(Math.hypot(x - SIZE * 1.32, y - c) - SIZE * 0.72);
+    /*
+      The two seams bulge in from the left and right EDGES. They used to
+      cross the middle line about six pixels either side of the centre —
+      that is, both of them ran under the colour sticker for most of
+      their length, and a Tennis Ball die was a plain green square with
+      two short white ticks top and bottom.
+    */
+    const left = Math.abs(Math.hypot(x + SIZE * 0.86, y - c) - SIZE);
+    const right = Math.abs(Math.hypot(x - SIZE * 1.86, y - c) - SIZE);
     if (Math.min(left, right) < 1.8) return 0.95;
     // Felt: the faintest fuzz so the ground is not a flat wash.
     return (hashCell(x, y) - 0.5) * 0.08;
   },
 
-  /**
-   * Baseball: two arcs of stitching. The stitches themselves are short
-   * dashes crossing the seam line, not the line — a drawn-on line is
-   * what makes toy baseballs look like toys.
-   */
   baseball: (x, y) => {
-    for (const cx of [-SIZE * 0.28, SIZE * 1.28]) {
+    /*
+      Both stitch runs used to cross the middle third of the face, under
+      the sticker. They sweep the left and right thirds now, which is
+      also closer to where a baseball's seams actually sit when you look
+      at one straight on.
+    */
+    for (const cx of [-SIZE * 0.53, SIZE * 1.53]) {
       const d = Math.hypot(x - cx, y - SIZE / 2);
-      const off = Math.abs(d - SIZE * 0.62);
+      const off = Math.abs(d - SIZE * 0.69);
       if (off < 3.2) {
         // Position along the arc decides the dash rhythm.
         const a = Math.atan2(y - SIZE / 2, x - cx);
-        if (Math.abs(Math.sin(a * 14)) > 0.55 && off > 0.8) return 0.9;
+        if (Math.abs(Math.sin(a * 16)) > 0.55 && off > 0.8) return 0.9;
       }
     }
     return 0;
   },
 
-  /** Football: the lace panel — one long line, five cross-bars. */
   laces: (x, y) => {
+    /*
+      The lace panel used to run straight down the middle of the face —
+      exactly where the sticker goes. Ten times as much of this pattern's
+      ink sat under the sticker as outside it, so a Football die read as
+      four blank brown faces and two half-seen ones.
+
+      The laces ride the left third now and the ball's long seam sweeps
+      the right, so what a face shows is the two things that make a
+      football a football, with the middle left to the colour.
+    */
     const c = SIZE / 2;
-    if (Math.abs(x - c) < 1.5 && Math.abs(y - c) < 17) return 0.95;
+    const lx = SIZE * 0.22;
+    if (Math.abs(x - lx) < 1.5 && Math.abs(y - c) < 18) return 0.95;
     for (let i = -2; i <= 2; i++) {
-      if (Math.abs(y - (c + i * 7)) < 1.4 && Math.abs(x - c) < 5.5) return 0.95;
+      if (Math.abs(y - (c + i * 7.5)) < 1.5 && Math.abs(x - lx) < 6) return 0.95;
     }
-    // The two pointed ends shade away, hinting the ball's curve.
+    // The long panel seam, curving away on the far side of the ball.
+    if (Math.abs(Math.hypot(x - SIZE * 1.4, y - c) - SIZE * 0.63) < 1.4) return 0.75;
+    // The pointed ends shade away, hinting the ball's curve.
     return -smoothstep(20, 32, Math.abs(y - c)) * 0.18;
   },
 
-  /** Golf ball: staggered dimples, each a shaded pit — no ink at all. */
   dimples: (x, y) => {
     const cell = 8;
     const row = Math.floor(y / cell);
@@ -823,18 +889,22 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
 
   /** Bowling ball: three finger holes and one long sweep of polish. */
   bowling: (x, y) => {
-    for (const [hx, hy] of [[24, 22], [34, 18], [31, 30]] as const) {
+    // All three finger holes used to sit inside the sticker's circle, so
+    // the die was a plain dark ball with a sheen. They are up in one
+    // corner now, where a bowler's hand actually grips it.
+    for (const [hx, hy] of [[8, 11], [18, 8], [13, 21]] as const) {
       if (Math.hypot(x - hx, y - hy) < 3.4) return -0.9;
     }
-    const d = (x * 0.62 + y * 0.78) / SIZE;
-    return Math.exp(-Math.pow((d - 0.55) / 0.22, 2)) * 0.5 - 0.1;
+    /*
+      The polish is a glow in the far corner rather than a band across
+      the ball. A straight band always crosses the middle of a square
+      somewhere, which put the brightest part of the sheen under the
+      sticker — the first attempt at this fix made it worse, not better.
+    */
+    const d = Math.hypot(x - SIZE * 1.02, y - SIZE * 1.02);
+    return Math.exp(-Math.pow(d / 32, 2)) * 0.55 - 0.12;
   },
 
-  /**
-   * Chicken and waffles — the waffle half. A deep grid, pockets shading
-   * toward their centres, and two golden-brown fried pieces sitting on
-   * top, drawn as darker crusted blobs. David named this one himself.
-   */
   waffle: (x, y) => {
     // The chicken: two lumpy patches, crusted at the edge. Checked before
     // the grid so the pieces sit ON the waffle.
@@ -920,22 +990,38 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
 
   /** Lemon slice: rind ring, pith, and radial segments. */
   citrus: (x, y) => {
-    const c = SIZE / 2;
-    const dx = x - c;
-    const dy = y - c;
-    const r = Math.hypot(dx, dy);
-    // Rind and pith at the very edge of the face.
-    if (r > 29) return 0.9;
-    if (r > 26.5) return -0.05;
-    // Segment walls: ten radial lines plus a small hub.
-    const a = Math.atan2(dy, dx);
-    if (r < 2.5) return 0.85;
-    if (Math.abs(Math.sin(a * 5)) > 0.965 && r > 5) return 0.85;
-    // Flesh: the faintest sparkle of juice sacs.
-    return (hashCell(x, y) - 0.5) * 0.12;
+    /*
+      Cut slices in the corners of the face.
+
+      This was a single wheel of ten segments with its hub dead centre —
+      drawn, in other words, entirely inside the circle the colour
+      sticker covers, so a Lemon die was a plain yellow square. Anchoring
+      the fruit at the corners puts the whole slice, peel and all, in the
+      part of a face you can actually see. Two big and two small, so it
+      reads as a print rather than as four of the same stamp.
+    */
+    for (const [cx, cy, R] of [
+      [0, 0, 23],
+      [SIZE, SIZE, 23],
+      [SIZE, 0, 15],
+      [0, SIZE, 15],
+    ] as const) {
+      const dx = x - cx;
+      const dy = y - cy;
+      const r = Math.hypot(dx, dy);
+      if (r > R) continue;
+      if (r > R - 2) return 0.9;      // peel
+      if (r > R - 4) return -0.06;    // pith
+      if (r < R * 0.11) return 0.85;  // the hub the segments meet at
+      const a = Math.atan2(dy, dx);
+      // Segment walls, spread evenly across the quarter that shows.
+      if (Math.abs(Math.sin(a * 8)) > 0.93 && r > R * 0.18) return 0.85;
+      // Flesh: the faintest sparkle of juice sacs.
+      return (hashCell(x, y) - 0.5) * 0.12;
+    }
+    return (hashCell(x, y) - 0.5) * 0.06;
   },
 
-  /** Denim: twill — the fine broken diagonals of woven cloth. */
   denim: (x, y) => {
     const diag = tiling(x * 2 - y * 2, 16);
     const weave = smoothstep(0.3, 0.8, diag) * 0.45;
@@ -953,8 +1039,10 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     const lane = Math.floor(y / 8);
     const inY = y - lane * 8;
     const h = hashCell(lane, 3);
-    const turnAt = 8 + h * 40;
-    const padAt = turnAt + 8 + hashCell(lane, 7) * 12;
+    // Turns spread across the whole width. They used to bunch in the
+    // middle third, which is the one part of a face nobody ever sees.
+    const turnAt = 3 + h * 52;
+    const padAt = turnAt + 5 + hashCell(lane, 7) * 8;
     // The run along the lane, then the stub after the turn.
     const online =
       Math.abs(inY - 4) < 1 &&
@@ -963,6 +1051,7 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     if (Math.hypot(x - turnAt, inY - 4) < 1.6) return 0.95;
     return online ? 0.7 : (wrappedNoise(x, y, 16) - 0.5) * 0.08;
   },
+
 };
 
 /** A colour painter returns the actual pixel, not a mask. */
@@ -997,18 +1086,21 @@ const mixRgb = (
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   /** White leather in curved panels, every third panel blue or yellow. */
   volleyball: (x, y) => {
-    const c = SIZE / 2;
-    // Which band of the sweeping curve family this pixel falls in.
-    const d = Math.hypot(x + SIZE * 0.4, y - c);
-    const band = Math.floor(d / 13) % 3;
-    const seam = Math.abs((d % 13) - 13 / 2) > 5.4;
-    if (seam) return rgb('#c9c4b8');
+    /*
+      Straight panel bands, in threes, the way a volleyball's panels
+      actually run. They used to be arcs sweeping out of a point off the
+      left edge, and arcs from a point crowd together as they leave it —
+      the crowded part landed square under the sticker.
+    */
+    const t = (x * 0.78 + y * 0.62) / 15;
+    const band = ((Math.floor(t) % 3) + 3) % 3;
+    const frac = t - Math.floor(t);
+    if (Math.abs(frac - 0.5) > 0.41) return rgb('#c9c4b8');
     if (band === 1) return rgb('#2a4a8a');
     if (band === 2) return rgb('#f0c020');
     return rgb('#f0ede6');
   },
 
-  /** Rind, pith, flesh and seeds, in rings from one corner. */
   watermelon: (x, y) => {
     const d = Math.hypot(x - SIZE * 1.1, y - SIZE * 1.1);
     // Outer rind: two greens striped along the arc.
@@ -1027,14 +1119,18 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     // The flesh pales slightly toward the pith, as the fruit does. Pinker
     // than a real melon on purpose: #e05a5a sat ΔLab 17.7 from the red
     // FACE sticker, and a shell that close swallows the face.
-    return mixRgb(rgb('#f08585'), rgb('#f7b8b8'), smoothstep(40, 56, d));
+    return mixRgb(rgb('#f08585'), rgb('#f7b8b8'), smoothstep(48, 60, d));
   },
 
   /** Cheese, crust at one corner, pepperoni, herbs. */
   pizza: (x, y) => {
     const d = Math.hypot(x - SIZE * 1.05, y - SIZE * 1.05);
     if (d > 60) return rgb('#b3802e');
-    for (const [cx, cy, r] of [[16, 18, 7], [40, 34, 7.5], [20, 46, 6.5], [48, 10, 6]] as const) {
+    // Four pepperoni, every one clear of BOTH the sticker and the crust.
+    // Two of the original four sat under the sticker; the first attempt
+    // at moving them put one out on the crust, where the crust — tested
+    // first — simply painted over it.
+    for (const [cx, cy, r] of [[46, 13, 7], [54, 38, 6.5], [20, 52, 7], [36, 58, 6]] as const) {
       const pd = Math.hypot(x - cx, y - cy);
       if (pd < r) {
         // A darker rim where the slice cupped in the oven.
@@ -1046,7 +1142,6 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return mixRgb(rgb('#e8c078'), rgb('#d9a55c'), wrappedNoise(x, y, 16) * 0.7);
   },
 
-  /** Pink glaze over cake, drips along the edge, sprinkles on top. */
   donut: (x, y) => {
     // The glaze covers the face except a scalloped lower-right margin.
     const dripEdge = 50 + tiling(x - y, 4) * 5;
@@ -1087,11 +1182,24 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   /** Nebula clouds and stars on deep indigo. */
   galaxy: (x, y) => {
+    /*
+      The core is low in one corner now, with the disc tilted across the
+      face. It used to be a bright glow in the middle — which is where
+      the sticker goes, so the one bright thing in the picture was the
+      one thing covered up, and the face read as flat dark blue.
+    */
     let px: [number, number, number] = rgb('#1d1440');
-    const cloudA = smoothstep(0.15, 0.65, fbm(x, y, [32, 16], [1, 0.5]) + 0.3);
-    const cloudB = smoothstep(0.2, 0.7, fbm(x + 21, y + 9, [32, 16], [1, 0.5]) + 0.25);
+    const cloudA = smoothstep(0.15, 0.65, fbm(x + 26, y + 38, [32, 16], [1, 0.5]) + 0.3);
+    const cloudB = smoothstep(0.2, 0.7, fbm(x + 5, y + 47, [32, 16], [1, 0.5]) + 0.25);
     px = mixRgb(px, rgb('#8a3d8f'), cloudA * 0.6);
     px = mixRgb(px, rgb('#2a6e9e'), cloudB * 0.5);
+    const gx = SIZE * 0.17;
+    const gy = SIZE * 0.83;
+    // The disc, tilted, and the core burning at one end of it.
+    const ux = (x - gx) * 0.94 + (y - gy) * 0.34;
+    const uy = -(x - gx) * 0.34 + (y - gy) * 0.94;
+    px = mixRgb(px, rgb('#6e3aa8'), Math.exp(-(Math.pow(ux / 30, 2) + Math.pow(uy / 10, 2))) * 0.55);
+    px = mixRgb(px, rgb('#ffeccc'), Math.exp(-Math.pow(Math.hypot(x - gx, y - gy) / 8, 2)));
     // Stars: mostly pinpricks, a few brighter.
     const h = hashCell(x, y);
     if (h > 0.992) return rgb('#ffffff');
@@ -1099,12 +1207,6 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return px;
   },
 
-  /**
-   * Classic camouflage. Two INDEPENDENT noise fields, one per overlay
-   * tone, each at period 16 — a single period-32 field has room for one
-   * island on a 64px tile, and the first render was exactly that: one
-   * dark blob on flat green.
-   */
   camo: (x, y) => {
     const dark = wrappedNoise(x, y, 16) * 0.7 + wrappedNoise(x + 9, y + 21, 8) * 0.3;
     const pale = wrappedNoise(x + 31, y + 13, 16) * 0.7 + wrappedNoise(x + 3, y + 40, 8) * 0.3;

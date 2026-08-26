@@ -249,6 +249,64 @@ const toLab = (hex: string) => {
   return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
 };
 
+suite('screen · the colours the pattern painters mix themselves', () => {
+  /*
+    Eight of the skins are painted by full-colour painters rather than by
+    tinting the shell: the volleyball's panels, the watermelon's flesh,
+    the pizza's pepperoni, the galaxy's dust. Those colours are hex
+    literals inside patterns.ts and belong to no skin, so the two checks
+    below — which read `body` and `ink` off each DiceSkin — never saw
+    them, and a painter could put whatever it liked on a face.
+
+    That hole let a real one through on 26 Aug 2026. Moving the galaxy's
+    core out of the middle of the face (David: "the design is in the
+    center, which doesn't make sense because the colors are in the
+    center") meant giving its disc a colour, and the purple chosen sat
+    ΔLab 8.7 from the PURPLE face sticker — a bright soft field of very
+    nearly the face colour, spread across most of the face. It would have
+    swallowed one face in six on that skin, and nothing would have said
+    so.
+
+    The bar is 12, not the 28 the shell has to clear. A painted colour is
+    not a flat shell: it arrives as a stripe with a white seam beside it
+    or a disc with a dark rim, and the eye separates those from a plain
+    circle far more easily than it separates two flat washes. The
+    tightest that ships today is the pizza's pepperoni at ΔLab 13.3 from
+    Red, which reads perfectly well at arm's length. What the bar is for
+    is a colour close enough to be mistaken for a face outright.
+  */
+  const painterHexes = (): string[] => {
+    const source = readFileSync('src/dice/patterns.ts', 'utf8');
+    const start = source.indexOf('const COLOR_PAINTERS');
+    const end = source.indexOf('const COLOR_IDS');
+    assert(start > 0 && end > start, 'the full-colour painters have moved');
+    return [...new Set(source.slice(start, end).match(/#[0-9a-f]{6}/g) ?? [])];
+  };
+
+  test('no painted colour could be mistaken for a face sticker', () => {
+    const hexes = painterHexes();
+    assert(hexes.length > 20, `only found ${hexes.length} painted colours — the scan is broken`);
+    let tightest = Infinity;
+    let label = '';
+    for (const hex of hexes) {
+      for (const face of PRISONER_COLORS) {
+        const a = toLab(hex);
+        const b = toLab(face.hex);
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        if (d < tightest) {
+          tightest = d;
+          label = `${hex} against ${face.label}`;
+        }
+        assert(
+          d > 12,
+          `a pattern painter mixes ${hex}, only ΔLab ${d.toFixed(1)} from the ${face.label} face`,
+        );
+      }
+    }
+    note(`${hexes.length} painted colours; tightest is ${label} at ΔLab ${tightest.toFixed(1)}`);
+  });
+});
+
 suite('screen · inventory', () => {
   test('no dice colour swallows a face colour', () => {
     // The shell surrounds the six face stickers. A shell too close to one

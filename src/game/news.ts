@@ -37,6 +37,27 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-54-0-dice-designs-move',
+    date: '26 August 2026',
+    version: 'v1.54.0',
+    title: 'The dice designs were hiding under the colours',
+    emoji: '🎲',
+    body:
+      'The coloured circle on each side of a die covers the middle of ' +
+      'that side — and a lot of the dice had their design drawn right ' +
+      'there, underneath it. The Football was four blank brown sides ' +
+      'with the laces hidden. The Soccer Ball had one pentagon and you ' +
+      'could not see it. The Tennis Ball, the Basketball, the Bowling ' +
+      'Ball, the Lemon and the Galaxy all had the same problem.\n\n' +
+      'Eleven dice are redrawn so the design goes around the colour ' +
+      'instead of under it. The soccer ball is a proper lattice of ' +
+      'pentagons now, the tennis and baseball seams curve in from the ' +
+      'sides, the basketball has four seams around the edge, the ' +
+      'bowling ball has its finger holes up in a corner, the lemon is ' +
+      'four cut slices, and the galaxy has its bright core low in one ' +
+      'corner with the arm sweeping across.',
+  },
+  {
     id: 'v1-53-0-brighter-battlefields',
     date: '26 August 2026',
     version: 'v1.53.0',

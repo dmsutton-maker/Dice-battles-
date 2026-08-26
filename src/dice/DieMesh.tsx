@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { DIE_FACE_COLORS } from '../game/colors';
 import { TUNING } from '../game/tuning';
-import { createPatternTexture, PatternId } from './patterns';
+import { createPatternTexture, PatternId, STICKER_FRACTION } from './patterns';
 import { createSymbolTexture } from './symbols';
 import { COLOR_SYMBOLS } from '../game/colorblind';
 
@@ -82,8 +82,16 @@ export const DieMesh = forwardRef<
       ),
     [symbols],
   );
+  /*
+    STICKER_FRACTION, not a literal 0.33: patterns.ts uses the same number
+    to keep each skin's design OUT of the middle of a face, and the test
+    suite measures the circle it describes. Three copies of one number is
+    how the design creeps back in — David, 26 Aug 2026: "a lot of the dice
+    are messed up because the design is in the center, which doesn't make
+    sense because the colors are in the center."
+  */
   const stickerGeometry = useMemo(
-    () => new THREE.CircleGeometry(size * 0.33, 24),
+    () => new THREE.CircleGeometry(size * STICKER_FRACTION, 24),
     [size],
   );
 
