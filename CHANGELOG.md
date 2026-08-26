@@ -1,5 +1,65 @@
 # Changelog
 
+## v1.55.0 — 2026-08-26 · requested by David
+
+### Changed
+- **Every dice design now matches its name.** David: "make sure every
+  dice design still makes sense according to the dice name. Like the
+  fish should have fish on it." He picked the clearest case — Fish was a
+  scale texture, which is what a fish is COVERED in rather than what a
+  fish looks like, and at a die's size it read as roof tiles. It has
+  actual fish on it now, swimming in rows that alternate direction.
+  - The audit turned up two more. Chicken & Waffles drew its chicken as
+    two round lumps in the waffle's own brown — two burnt patches; they
+    are drumsticks with bones now. Peacock drew its feather eye in one
+    ink, which cannot work: an ocelle is navy, then blue, then gold, and
+    that is the whole of what makes it a peacock.
+- **The skins are textured properly.** Ten of them moved from the
+  single-ink painter to full colour, because a mask can only travel from
+  the shell colour toward ONE ink — it can darken or it can lighten,
+  never both — and nothing with real relief can be drawn that way. The
+  turtle's scutes are domed with growth rings; the chocolate bar is
+  moulded and bevelled; the strawberry's seeds sit lit inside their
+  dimples; Denim went from the faintest pattern in the set to real
+  indigo twill with orange topstitching. Bubbles got a shaded side, so
+  each one is a sphere rather than a hoop. Camo's four tones were pushed
+  apart — camouflage is meant to break up a shape, not be invisible.
+- **Ruby, Ocean, Slate and Copper have their materials.** They were flat
+  colours, and all four are named after a MATERIAL. Ruby is a cut gem
+  with facets, Ocean is swells with foam on the crests, Slate splits
+  along its bedding, Copper is hammered with verdigris in the hollows.
+  The rest of the trophy ladder stays flat colour, which is what tells
+  it apart from the Store shelf.
+- **All sixteen battlefields are built of something different.** David:
+  "you just used the same like 4 different templates for the arenas now,
+  make them all unique." Right, and for the same reason four was not
+  enough that one was not: a skyline is what you recognise a place by.
+  There are sixteen now — snow palings, adobe brick, basalt columns,
+  stacked cordwood, a polar station, dripstone, the Sky Kingdom's
+  merlons, moon-base hull plating, driftwood, piped icing, mossy stones,
+  a ship's gunwale, a picket fence, coral heads, a rooftop parapet and
+  wooden bricks — each with its own corner piece. The tray the dice
+  bounce in is identical under all of them.
+- **Prices and trophy thresholds climb properly.** David: they should
+  "make sense scaling up higher and higher... just polish it off a bit."
+  - Six dice used to cost 500 coins and five cost 450 — a third of the
+    shelf was flat plateaus, which also made the display order arbitrary
+    since the shelf sorts by price. All forty-two now have their own
+    price, 250 up to 1,400, with the step widening the whole way.
+  - The battlefields were a flat 200 coins apart and then 400 for the
+    last one. They now widen 200, 250, 300 up to 500, from 900 to 3,350
+    — deliberately above the dice, because a battlefield is a bigger
+    thing to own than a die.
+  - The trophy ladder ran 350, 350 at one point: the only rung on the
+    whole climb that was no harder than the one below it. The long ladder
+    now widens by exactly fifty a rung, 350 through 1,000. That moves the
+    summit from a round 10,000 to 10,600 — the round number was what
+    forced the kink, and a clean climb is worth more than a tidy number.
+  - `npm test` now checks all of it: no two things on a shelf may share a
+    price, both shelves must be in price order, the battlefield steps
+    must widen, and the top of each shelf is converted into Hard wins so
+    a change to prices or to rewards has to stay honest about the other.
+
 ## v1.54.0 — 2026-08-26 · requested by David
 
 ### Fixed

@@ -118,25 +118,36 @@ export const TIERS: Tier[] = [
     sold in the Store, deliberately NOT here: one route each, the same
     rule dice skins follow).
 
-    The gaps keep widening the way the ladder always has, roughly +10% a
-    rung. The top sits at 10,000: a Hard win pays 55-85, so the summit is
-    a season of play, not a weekend — it is meant to be the long game for
-    Marc and AJ, and FAMILY mode still opens everything for testing.
+    The gaps keep widening the way the ladder always has, now by exactly
+    fifty trophies a rung: 350, 400, 450 and on up to 1,000. David asked
+    on 26 Aug 2026 for thresholds that "make sense scaling up higher and
+    higher"; the run used to start 350, 350 — the only place on the whole
+    ladder where a rung was no harder than the one below it, which reads
+    as a mistake because it was one.
+
+    That puts the summit at 10,600 rather than a round 10,000. The round
+    number was what forced the kink: 10,000 cannot be reached from 1,150
+    in fourteen evenly widening rungs, so something had to be uneven, and
+    a clean climb is worth more to a player than a tidy final number.
+
+    A Hard win pays 50-85, so the summit is a season of play rather than
+    a weekend — the long game for Marc and AJ. FAMILY mode still opens
+    everything for testing.
   */
   { at: 1500, name: 'Snowy Hollow', emoji: '⛄', id: 'snow-arena' },
-  { at: 1850, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
-  { at: 2250, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
-  { at: 2700, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
-  { at: 3200, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
-  { at: 3750, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
-  { at: 4350, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
-  { at: 5000, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
-  { at: 5700, name: 'Volcano Rim', emoji: '🌋', id: 'volcano-arena' },
-  { at: 6450, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
-  { at: 7250, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
-  { at: 8100, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
-  { at: 9000, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
-  { at: 10000, name: 'Moon Base', emoji: '🌕', id: 'moon-arena' },
+  { at: 1900, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
+  { at: 2350, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
+  { at: 2850, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
+  { at: 3400, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
+  { at: 4000, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
+  { at: 4650, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
+  { at: 5350, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
+  { at: 6100, name: 'Volcano Rim', emoji: '🌋', id: 'volcano-arena' },
+  { at: 6900, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
+  { at: 7750, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
+  { at: 8650, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
+  { at: 9600, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
+  { at: 10600, name: 'Moon Base', emoji: '🌕', id: 'moon-arena' },
 ];
 
 /**

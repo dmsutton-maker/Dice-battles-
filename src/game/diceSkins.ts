@@ -82,7 +82,7 @@ export const DICE_SKINS: DiceSkin[] = [
     pattern: 'bubbles',
     // Near-white so the rims and glints read as light on glass.
     ink: '#f4fbff',
-    price: 300,
+    price: 265,
   },
   {
     id: 'starry',
@@ -93,7 +93,7 @@ export const DICE_SKINS: DiceSkin[] = [
     // White, not the palette's yellow: stars in that exact yellow competed
     // with the yellow face sticker they sit beside.
     ink: '#ffffff',
-    price: 450,
+    price: 435,
   },
   {
     id: 'timber',
@@ -104,7 +104,7 @@ export const DICE_SKINS: DiceSkin[] = [
     // painter marble would have used and read as neither.
     pattern: 'wood',
     ink: '#7d5228',
-    price: 400,
+    price: 355,
   },
   {
     id: 'frost',
@@ -113,7 +113,7 @@ export const DICE_SKINS: DiceSkin[] = [
     body: '#e8f6ff',
     pattern: 'frost',
     ink: '#9fd3f0',
-    price: 350,
+    price: 300,
   },
   {
     id: 'marble',
@@ -124,7 +124,7 @@ export const DICE_SKINS: DiceSkin[] = [
     // Grey-blue veining. Warm veins on warm stone disappeared at the size
     // a die is actually seen.
     ink: '#7f8792',
-    price: 500,
+    price: 525,
   },
   {
     id: 'granite',
@@ -135,7 +135,7 @@ export const DICE_SKINS: DiceSkin[] = [
     // Pale quartz. The dark flecks come from the shading side of the mask
     // rather than from a second colour.
     ink: '#eef1f4',
-    price: 550,
+    price: 680,
   },
   {
     id: 'silver',
@@ -146,7 +146,7 @@ export const DICE_SKINS: DiceSkin[] = [
     // the two one picture in two tints.
     pattern: 'brushed',
     ink: '#ffffff',
-    price: 650,
+    price: 925,
   },
 
   /*
@@ -168,62 +168,62 @@ export const DICE_SKINS: DiceSkin[] = [
    */
 
   // The trophy ladder's six new rungs, flat colours as ever.
-  { id: 'ruby', name: 'Ruby', emoji: '🍒', body: '#8e2f4a', pattern: 'plain', unlock: 'ruby-dice' },
-  { id: 'ocean', name: 'Ocean', emoji: '🌊', body: '#1f6e8a', pattern: 'plain', unlock: 'ocean-dice' },
+  { id: 'ruby', name: 'Ruby', emoji: '🍒', body: '#8e2f4a', pattern: 'ruby', unlock: 'ruby-dice' },
+  { id: 'ocean', name: 'Ocean', emoji: '🌊', body: '#1f6e8a', pattern: 'ocean', unlock: 'ocean-dice' },
   { id: 'lavender', name: 'Lavender', emoji: '💐', body: '#b9a8e8', pattern: 'plain', unlock: 'lavender-dice' },
-  { id: 'slate', name: 'Slate', emoji: '🗿', body: '#5c6470', pattern: 'plain', unlock: 'slate-dice' },
+  { id: 'slate', name: 'Slate', emoji: '🗿', body: '#5c6470', pattern: 'slate', unlock: 'slate-dice' },
   { id: 'blossom', name: 'Blossom', emoji: '🌸', body: '#f5d7e3', pattern: 'plain', unlock: 'blossom-dice' },
-  { id: 'copper', name: 'Copper', emoji: '🥉', body: '#b56a3d', pattern: 'plain', unlock: 'copper-dice' },
+  { id: 'copper', name: 'Copper', emoji: '🥉', body: '#b56a3d', pattern: 'copper', unlock: 'copper-dice' },
 
   // Animals.
-  { id: 'paws', name: 'Paw Prints', emoji: '🐾', body: '#b98a5e', pattern: 'paws', ink: '#4a2f16', price: 300 },
-  { id: 'cow', name: 'Cow', emoji: '🐄', body: '#f7f4ee', pattern: 'patches', ink: '#2e2a26', price: 350 },
+  { id: 'paws', name: 'Paw Prints', emoji: '🐾', body: '#b98a5e', pattern: 'paws', ink: '#4a2f16', price: 280 },
+  { id: 'cow', name: 'Cow', emoji: '🐄', body: '#f7f4ee', pattern: 'patches', ink: '#2e2a26', price: 315 },
   // Amber bands, not true yellow: #f5c518 sat ΔLab 15.9 from the
   // yellow FACE, and pattern ink obeys the same rule shells do.
-  { id: 'bee', name: 'Bumblebee', emoji: '🐝', body: '#2a2418', pattern: 'bands', ink: '#c98a2e', price: 400 },
-  { id: 'turtle', name: 'Turtle', emoji: '🐢', body: '#7aa85c', pattern: 'shell', ink: '#3d5c2a', price: 450 },
-  { id: 'fish', name: 'Fish', emoji: '🐟', body: '#7fb8d9', pattern: 'scales', ink: '#2e6e99', price: 500 },
-  { id: 'snake', name: 'Snake', emoji: '🐍', body: '#8fae4a', pattern: 'diamonds', ink: '#3d4a1a', price: 550 },
-  { id: 'leopard', name: 'Leopard', emoji: '🐆', body: '#d9a55c', pattern: 'rosettes', ink: '#4a3018', price: 600 },
-  { id: 'tiger', name: 'Tiger', emoji: '🐯', body: '#a85a1a', pattern: 'tigerStripes', ink: '#1d1a2e', price: 650 },
-  { id: 'giraffe', name: 'Giraffe', emoji: '🦒', body: '#e8c078', pattern: 'giraffe', ink: '#a5651e', price: 700 },
-  { id: 'peacock', name: 'Peacock', emoji: '🦚', body: '#1f7a8a', pattern: 'peacock', ink: '#0a3d4a', price: 750 },
+  { id: 'bee', name: 'Bumblebee', emoji: '🐝', body: '#2a2418', pattern: 'bands', ink: '#c98a2e', price: 375 },
+  { id: 'turtle', name: 'Turtle', emoji: '🐢', body: '#7aa85c', pattern: 'shell', ink: '#3d5c2a', price: 455 },
+  { id: 'fish', name: 'Fish', emoji: '🐟', body: '#7fb8d9', pattern: 'fish', ink: '#2e6e99', price: 550 },
+  { id: 'snake', name: 'Snake', emoji: '🐍', body: '#8fae4a', pattern: 'diamonds', ink: '#3d4a1a', price: 710 },
+  { id: 'leopard', name: 'Leopard', emoji: '🐆', body: '#d9a55c', pattern: 'rosettes', ink: '#4a3018', price: 825 },
+  { id: 'tiger', name: 'Tiger', emoji: '🐯', body: '#a85a1a', pattern: 'tigerStripes', ink: '#1d1a2e', price: 955 },
+  { id: 'giraffe', name: 'Giraffe', emoji: '🦒', body: '#e8c078', pattern: 'giraffe', ink: '#a5651e', price: 1025 },
+  { id: 'peacock', name: 'Peacock', emoji: '🦚', body: '#1f7a8a', pattern: 'peacock', ink: '#0a3d4a', price: 1130 },
 
   // Sports balls.
-  { id: 'golf', name: 'Golf Ball', emoji: '⛳', body: '#f2f7f2', pattern: 'dimples', ink: '#ffffff', price: 350 },
-  { id: 'tennis', name: 'Tennis Ball', emoji: '🎾', body: '#a8b83d', pattern: 'tennis', ink: '#f2f7f2', price: 400 },
+  { id: 'golf', name: 'Golf Ball', emoji: '⛳', body: '#f2f7f2', pattern: 'dimples', ink: '#ffffff', price: 335 },
+  { id: 'tennis', name: 'Tennis Ball', emoji: '🎾', body: '#a8b83d', pattern: 'tennis', ink: '#f2f7f2', price: 395 },
   // Wine-dark stitches: true stitch red sat ΔLab 10.6 from the red face.
-  { id: 'baseball', name: 'Baseball', emoji: '⚾', body: '#f5f2ea', pattern: 'baseball', ink: '#7a2a3d', price: 450 },
-  { id: 'soccer', name: 'Soccer Ball', emoji: '⚽', body: '#f7f7f7', pattern: 'soccer', ink: '#1d1a2e', price: 500 },
-  { id: 'basketball', name: 'Basketball', emoji: '🏀', body: '#a34e26', pattern: 'basketball', ink: '#1d1a2e', price: 550 },
-  { id: 'football', name: 'Football', emoji: '🏈', body: '#8a4a2a', pattern: 'laces', ink: '#ffffff', price: 600 },
-  { id: 'bowling', name: 'Bowling Ball', emoji: '🎳', body: '#2e2a3d', pattern: 'bowling', ink: '#f0ede6', price: 650 },
+  { id: 'baseball', name: 'Baseball', emoji: '⚾', body: '#f5f2ea', pattern: 'baseball', ink: '#7a2a3d', price: 480 },
+  { id: 'soccer', name: 'Soccer Ball', emoji: '⚽', body: '#f7f7f7', pattern: 'soccer', ink: '#1d1a2e', price: 575 },
+  { id: 'basketball', name: 'Basketball', emoji: '🏀', body: '#a34e26', pattern: 'basketball', ink: '#1d1a2e', price: 735 },
+  { id: 'football', name: 'Football', emoji: '🏈', body: '#8a4a2a', pattern: 'laces', ink: '#ffffff', price: 860 },
+  { id: 'bowling', name: 'Bowling Ball', emoji: '🎳', body: '#2e2a3d', pattern: 'bowling', ink: '#f0ede6', price: 990 },
   // ink unused: a colour painter mixes its own paint. Same below.
-  { id: 'volleyball', name: 'Volleyball', emoji: '🏐', body: '#f0ede6', pattern: 'volleyball', ink: '#2a4a8a', price: 700 },
+  { id: 'volleyball', name: 'Volleyball', emoji: '🏐', body: '#f0ede6', pattern: 'volleyball', ink: '#2a4a8a', price: 1060 },
 
   // Food.
-  { id: 'cookie', name: 'Cookie', emoji: '🍪', body: '#d9a55c', pattern: 'cookie', ink: '#4a2f1a', price: 400 },
+  { id: 'cookie', name: 'Cookie', emoji: '🍪', body: '#d9a55c', pattern: 'cookie', ink: '#4a2f1a', price: 415 },
   // Cherry-dark stripes — the same face rule that recoloured the
   // baseball stitches. On white they still read as candy at a glance.
-  { id: 'candycane', name: 'Candy Cane', emoji: '🍭', body: '#ffffff', pattern: 'candyStripes', ink: '#8e2438', price: 450 },
-  { id: 'lemon', name: 'Lemon Slice', emoji: '🍋', body: '#f5e69a', pattern: 'citrus', ink: '#c98a2e', price: 500 },
-  { id: 'chocolate', name: 'Chocolate', emoji: '🍫', body: '#6e4226', pattern: 'chocolate', ink: '#a5764a', price: 500 },
-  { id: 'strawberry', name: 'Strawberry', emoji: '🍓', body: '#e87a8a', pattern: 'strawberry', ink: '#f7e6a0', price: 550 },
-  { id: 'honeycomb', name: 'Honeycomb', emoji: '🍯', body: '#c2882e', pattern: 'honeycomb', ink: '#6e4a16', price: 600 },
+  { id: 'candycane', name: 'Candy Cane', emoji: '🍭', body: '#ffffff', pattern: 'candyStripes', ink: '#8e2438', price: 500 },
+  { id: 'lemon', name: 'Lemon Slice', emoji: '🍋', body: '#f5e69a', pattern: 'citrus', ink: '#c98a2e', price: 600 },
+  { id: 'chocolate', name: 'Chocolate', emoji: '🍫', body: '#6e4226', pattern: 'chocolate', ink: '#a5764a', price: 625 },
+  { id: 'strawberry', name: 'Strawberry', emoji: '🍓', body: '#e87a8a', pattern: 'strawberry', ink: '#f7e6a0', price: 765 },
+  { id: 'honeycomb', name: 'Honeycomb', emoji: '🍯', body: '#c2882e', pattern: 'honeycomb', ink: '#6e4a16', price: 890 },
   // The one David named. The waffle carries its own chicken.
-  { id: 'waffles', name: 'Chicken & Waffles', emoji: '🧇', body: '#e8b45c', pattern: 'waffle', ink: '#8a5a1e', price: 750 },
-  { id: 'watermelon', name: 'Watermelon', emoji: '🍉', body: '#f08585', pattern: 'watermelon', ink: '#2e6e38', price: 800 },
-  { id: 'pizza', name: 'Pizza', emoji: '🍕', body: '#e8c078', pattern: 'pizza', ink: '#7a2a3d', price: 850 },
-  { id: 'donut', name: 'Donut', emoji: '🍩', body: '#e8a8b8', pattern: 'donut', ink: '#d9a55c', price: 900 },
+  { id: 'waffles', name: 'Chicken & Waffles', emoji: '🧇', body: '#e8b45c', pattern: 'waffle', ink: '#8a5a1e', price: 1165 },
+  { id: 'watermelon', name: 'Watermelon', emoji: '🍉', body: '#f08585', pattern: 'watermelon', ink: '#2e6e38', price: 1240 },
+  { id: 'pizza', name: 'Pizza', emoji: '🍕', body: '#e8c078', pattern: 'pizza', ink: '#7a2a3d', price: 1320 },
+  { id: 'donut', name: 'Donut', emoji: '🍩', body: '#e8a8b8', pattern: 'donut', ink: '#d9a55c', price: 1360 },
 
   // Fabrics and oddities.
-  { id: 'denim', name: 'Denim', emoji: '👖', body: '#3d5a80', pattern: 'denim', ink: '#a8c0d9', price: 500 },
-  { id: 'camo', name: 'Camo', emoji: '🪖', body: '#4a5c3d', pattern: 'camo', ink: '#2e3d26', price: 550 },
-  { id: 'tartan', name: 'Tartan', emoji: '🧣', body: '#742533', pattern: 'tartan', ink: '#1d2438', price: 700 },
+  { id: 'denim', name: 'Denim', emoji: '👖', body: '#3d5a80', pattern: 'denim', ink: '#a8c0d9', price: 655 },
+  { id: 'camo', name: 'Camo', emoji: '🪖', body: '#4a5c3d', pattern: 'camo', ink: '#2e3d26', price: 795 },
+  { id: 'tartan', name: 'Tartan', emoji: '🧣', body: '#742533', pattern: 'tartan', ink: '#1d2438', price: 1095 },
   // Teal traces, not mint: mint sat ΔLab 15 from the green face.
-  { id: 'circuit', name: 'Circuit Board', emoji: '🔌', body: '#143a2a', pattern: 'circuit', ink: '#57d0c9', price: 750 },
-  { id: 'rainbow', name: 'Rainbow', emoji: '🌈', body: '#f2f7fc', pattern: 'rainbow', ink: '#2a4a8a', price: 800 },
-  { id: 'galaxy', name: 'Galaxy', emoji: '🌌', body: '#1d1440', pattern: 'galaxy', ink: '#8a3d8f', price: 950 },
+  { id: 'circuit', name: 'Circuit Board', emoji: '🔌', body: '#143a2a', pattern: 'circuit', ink: '#57d0c9', price: 1205 },
+  { id: 'rainbow', name: 'Rainbow', emoji: '🌈', body: '#f2f7fc', pattern: 'rainbow', ink: '#2a4a8a', price: 1280 },
+  { id: 'galaxy', name: 'Galaxy', emoji: '🌌', body: '#1d1440', pattern: 'galaxy', ink: '#8a3d8f', price: 1400 },
 ];
 
 /**

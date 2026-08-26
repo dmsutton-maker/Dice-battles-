@@ -113,14 +113,18 @@ const cache = new Map<string, string>();
  * are one flat colour and a plain View draws them without any of this.
  */
 export function shellPreviewUri(skin: DiceSkin): string | null {
-  if (skin.pattern === 'plain' || !skin.ink) return null;
+  // Only a PLAIN skin has no picture. A missing `ink` used to stand in
+  // for that, which silently gave every colour-painted skin a blank card
+  // the moment one arrived without a dummy ink to satisfy the check.
+  if (skin.pattern === 'plain') return null;
   const hit = cache.get(skin.id);
   if (hit) return hit;
 
   const rgb = patternPixels(
     skin.pattern as Exclude<PatternId, 'plain'>,
     skin.body,
-    skin.ink,
+    // A colour painter ignores this; a mask painter cannot do without it.
+    skin.ink ?? skin.body,
   );
   const uri = encodePng(rgb, SIZE, SIZE);
   cache.set(skin.id, uri);

@@ -220,7 +220,7 @@ suite('arenas · no two battlefields are the same building', () => {
 });
 
 /**
- * The sixteen themed battlefields are not sixteen castles.
+ * No two of the sixteen themed battlefields are the same building.
  *
  * David, 26 Aug 2026: "the arenas all don't have to look like castles.
  * They can be something that makes sense for the arena name, like how the
@@ -256,45 +256,49 @@ suite('arenas · the themed sixteen are not all castles', () => {
     }
   });
 
-  test('most of them are something other than a castle', () => {
-    const battlements = structures.filter((s) => s === 'battlement').length;
-    note(
-      `structures: ${[...new Set(structures)]
-        .map((s) => `${s} ${structures.filter((x) => x === s).length}`)
-        .join(', ')}`,
-    );
+  test('every one of the sixteen is built of something different', () => {
+    note(`structures: ${structures.join(', ')}`);
     /*
-      A majority, not all of them: the Sky KINGDOM, the Candy Meadow's
-      gingerbread and the Toy Room's building blocks are places where a
-      castle is the right answer, and banning it outright would be the
-      same mistake in the other direction. What David objected to was
-      every arena being one, so that is what this measures.
+      David, 26 Aug 2026, on the first attempt at this — which gave the
+      sixteen four shared kinds: "you just used the same like 4 different
+      templates for the arenas now, make them all unique."
+
+      He is right, and the reason four was not enough is the reason one
+      was not. A SKYLINE is what you recognise a place by, so four
+      skylines across sixteen battlefields is four places wearing sixteen
+      coats of paint. Exactly one arena is still a castle, and it is the
+      Sky KINGDOM.
     */
-    assert(
-      battlements <= structures.length / 2,
-      `${battlements} of ${structures.length} themed arenas are still castles`,
+    assertEqual(
+      new Set(structures).size,
+      structures.length,
+      `only ${new Set(structures).size} kinds of building across ${structures.length} arenas`,
     );
-    assert(
-      new Set(structures).size >= 3,
-      `only ${new Set(structures).size} kinds of building across sixteen arenas`,
+    assertEqual(
+      structures.filter((s) => s === 'battlement').length,
+      1,
+      'more than one themed arena is a castle again',
     );
   });
 
   test('the renderer actually draws every structure a theme asks for', () => {
-    // A theme naming a structure the renderer has no branch for would
-    // silently fall through to the castle, which is the bug this whole
-    // change exists to fix — and it would look like it worked.
-    for (const s of new Set(structures)) {
-      assert(
-        rendererSource.includes(`theme.structure === '${s}'`) ||
-          s === 'battlement',
-        `ThemedArena never draws '${s}'`,
-      );
-    }
-    assert(
-      !/\{merlons\.map/.test(rendererSource),
-      'the renderer is back to drawing merlons unconditionally',
+    /*
+      A theme naming a structure the renderer has no branch for falls
+      through to the default and silently becomes the toy bricks — which
+      LOOKS like it worked, which is exactly how sixteen arenas became
+      one castle in the first place. Both the crest and the corner piece
+      are checked: a structure with a crest and no corner is half-built.
+    */
+    const crest = rendererSource.slice(
+      rendererSource.indexOf('function ThemedCrest'),
+      rendererSource.indexOf('function ThemedCorners'),
     );
+    const corners = rendererSource.slice(rendererSource.indexOf('function ThemedCorners'));
+    assert(crest.length > 500 && corners.length > 500, 'the two builders have moved');
+    for (const s of new Set(structures)) {
+      assert(crest.includes(`case '${s}':`), `ThemedCrest never draws '${s}'`);
+      assert(corners.includes(`case '${s}':`), `ThemedCorners has no corner for '${s}'`);
+    }
   });
 
   test('nothing about the structure reaches the tray the dice bounce in', () => {

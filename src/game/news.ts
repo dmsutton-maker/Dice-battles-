@@ -37,6 +37,33 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-55-0-dice-and-arena-polish',
+    date: '26 August 2026',
+    version: 'v1.55.0',
+    title: 'The Fish has fish on it, and every arena is its own place',
+    emoji: '🐟',
+    body:
+      'The Fish dice had scales on it, which is what a fish is covered ' +
+      'in — not what a fish looks like. It has fish on it now. The ' +
+      'chicken on Chicken & Waffles is drumsticks with bones instead of ' +
+      'two brown lumps, and the Peacock has proper feather eyes that go ' +
+      'navy, then blue, then gold.\n\n' +
+      'Most of the dice have been redrawn with real texture: the ' +
+      'turtle shell is domed with growth rings, the chocolate bar is ' +
+      'moulded, the strawberry seeds sit down in their dimples, and the ' +
+      'denim has proper twill with orange stitching. Ruby, Ocean, Slate ' +
+      'and Copper are not flat colours any more — a cut gem, water with ' +
+      'foam on the waves, split stone and hammered metal.\n\n' +
+      'All sixteen battlefields are built of something different now, ' +
+      'instead of sharing four designs: snow palings, adobe brick, ' +
+      'basalt columns, stacked logs, a polar station, cave dripstone, ' +
+      'hull plating, driftwood, piped icing, mossy stones, a ship rail, ' +
+      'a picket fence, coral, a rooftop parapet and wooden bricks.\n\n' +
+      'And the Store makes more sense: everything has its own price ' +
+      'instead of six dice all costing the same, and both shelves climb ' +
+      'steadily from cheap to rare.',
+  },
+  {
     id: 'v1-54-0-dice-designs-move',
     date: '26 August 2026',
     version: 'v1.54.0',

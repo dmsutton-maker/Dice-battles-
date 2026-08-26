@@ -73,23 +73,43 @@ export interface PropPlacement {
 }
 
 /**
- * What the tray is BUILT of.
+ * What the tray is BUILT of — one kind per battlefield, no two alike.
  *
- * David, 26 Aug 2026: "the arenas all don't have to look like castles.
- * They can be something that makes sense for the arena name, like how the
- * space station doesn't look like a castle." He is right, and the first
- * sixteen were all castles wearing different paint — merlons and
- * cone-roofed corner turrets on a coral reef and a rooftop at night.
+ * David asked on 26 Aug 2026 for arenas that were not all castles: "they
+ * can be something that makes sense for the arena name, like how the
+ * space station doesn't look like a castle." The first answer to that
+ * gave them four shared kinds — battlement, rocks, posts, hull — and he
+ * came straight back: "you just used the same like 4 different templates
+ * for the arenas now, make them all unique."
  *
- *   battlement — notched stone teeth, round turrets with cone roofs.
- *   rocks      — boulders heaped along the rim, cairns at the corners.
- *   posts      — a fence of timber uprights, taller posts with finials.
- *   hull       — flat panelled walls, a lit strip, slim corner masts.
+ * He is right, and the reason four was not enough is the same reason one
+ * was not: a SKYLINE is what you recognise a place by, so four skylines
+ * across sixteen battlefields means four places wearing sixteen coats of
+ * paint rather than one. So there are sixteen now, one each, named after
+ * what the place would actually be built of.
  *
- * The physics tray is identical in all four; only the dressing changes,
- * exactly as with the hazards.
+ * The physics tray underneath is identical in every one of them. Only
+ * the crest along the wall top and the four corner pieces change, which
+ * is the same bargain the hazards make — the suite asserts that the wall
+ * geometry never reads this field.
  */
-export type ArenaStructure = 'battlement' | 'rocks' | 'posts' | 'hull';
+export type ArenaStructure =
+  | 'snowFence'    // snow: timber palings under a cap of snow
+  | 'adobe'        // desert: sun-dried mud brick, stepped corners
+  | 'basalt'       // volcano: hexagonal columns, obsidian spires
+  | 'logPile'      // autumn: stacked cordwood, a stump at each corner
+  | 'station'      // aurora: panelled polar station, antenna masts
+  | 'stalagmite'   // cavern: dripstone teeth, crystal clusters
+  | 'battlement'   // sky: the one real castle, merlons and cone roofs
+  | 'airlock'      // moon: ribbed hull plating, dish antennae
+  | 'driftwood'    // beach: leaning weathered planks, parasols
+  | 'gingerbread'  // candy: piped icing scallops, candy swirls
+  | 'mossStone'    // glade: mossy boulders, giant toadstools
+  | 'shipHull'     // cove: strake planking, barrels and a lantern
+  | 'picket'       // farm: pointed pickets, a lantern on the gatepost
+  | 'coralRim'     // reef: branching coral heads, anemones
+  | 'parapet'      // city: concrete parapet, railing, aerial masts
+  | 'blocks';      // toybox: alternating wooden bricks, block towers
 
 export interface ArenaTheme {
   /** What the walls and corners are made of. */
@@ -169,7 +189,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   snow: {
     // A hollow in the woods, fenced with timber. Not a fortress.
-    structure: 'posts',
+    structure: 'snowFence',
     meadow: '#e9f1f6', hill: '#dae7f0', mountain: '#b9c9d8', cloud: '#ffffff',
     floor: { a: '#dfe9f0', b: '#cfdde8' },
     wall: { color: '#b7c6d2', cap: '#8a6a4a' },
@@ -197,7 +217,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   desert: {
     // Sandstone heaped along the rim, cairns at the corners.
-    structure: 'rocks',
+    structure: 'adobe',
     meadow: '#e8c987', hill: '#dcb968', mountain: '#c4924e', cloud: null,
     floor: { a: '#e3c384', b: '#d4b06a' },
     wall: { color: '#c9a05c', cap: '#b08a48' },
@@ -231,7 +251,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       rock is now warm grey-plum rather than near-black, which is what
       rock beside an open lava flow actually looks like.
     */
-    structure: 'rocks',
+    structure: 'basalt',
     meadow: '#6b4a48', hill: '#573b3d', mountain: '#7d4a48', cloud: '#8a5450',
     floor: { a: '#7a5a54', b: '#67494a' },
     wall: { color: '#8a6660', cap: '#6e4e4c' },
@@ -260,7 +280,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   autumn: {
     // A split-rail fence round a clearing in the woods.
-    structure: 'posts',
+    structure: 'logPile',
     meadow: '#c98d4a', hill: '#b3763c', mountain: '#8a6a52', cloud: '#f2ede4',
     floor: { a: '#c9a678', b: '#b8925e' },
     wall: { color: '#9a7a52', cap: '#7d6140' },
@@ -298,7 +318,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       The contrast between pale ground and green curtains is the whole
       picture.
     */
-    structure: 'hull',
+    structure: 'station',
     meadow: '#a8cbd4', hill: '#93b8c4', mountain: '#7ba2b0', cloud: null,
     floor: { a: '#b6d4dc', b: '#a2c3cd' },
     wall: { color: '#8fb2bf', cap: '#7a9daa', metalness: 0.25 },
@@ -333,7 +353,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       dark smudge. The stone is now lit violet-grey; the crystals still
       glow, and now they glow against something.
     */
-    structure: 'rocks',
+    structure: 'stalagmite',
     meadow: '#4a3d5c', hill: '#3d3350', mountain: '#584a6e', cloud: null,
     floor: { a: '#5e5075', b: '#4e4263' },
     wall: { color: '#7a6894', cap: '#63537a' },
@@ -393,7 +413,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   moon: {
     // A base. David's own example of the rule: "like how the space
     // station doesn't look like a castle."
-    structure: 'hull',
+    structure: 'airlock',
     meadow: '#b9bcc4', hill: '#a3a7b0', mountain: '#8a8e99', cloud: null,
     floor: { a: '#c9ccd4', b: '#b3b7c0' },
     wall: { color: '#9a9eaa', cap: '#838794', metalness: 0.3 },
@@ -423,7 +443,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   beach: {
     // Driftwood palisade. A castle on a beach is a sandcastle, and this
     // one is life-sized.
-    structure: 'posts',
+    structure: 'driftwood',
     meadow: '#f0dfa8', hill: '#e6d090', mountain: null, cloud: '#ffffff',
     floor: { a: '#efe2b4', b: '#e0cd92' },
     wall: { color: '#d9c284', cap: '#a8845c' },
@@ -451,7 +471,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   candy: {
     // Gingerbread. One of the three places where a castle is the joke.
-    structure: 'battlement',
+    structure: 'gingerbread',
     meadow: '#f4b5d6', hill: '#e89cc6', mountain: '#d086b4', cloud: '#ffe8f4',
     floor: { a: '#fbe3ef', b: '#f3cde2' },
     wall: { color: '#e8a8cc', cap: '#d68cb8' },
@@ -486,7 +506,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       moon, which is both brighter and further from the reef — the two
       were the closest pair of teals in the set.
     */
-    structure: 'rocks',
+    structure: 'mossStone',
     meadow: '#3f7a58', hill: '#33684a', mountain: '#4a8a66',
     cloud: null,
     floor: { a: '#4a8562', b: '#3d7353' },
@@ -518,7 +538,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   cove: {
     // A beached hull with the deck cut away. The one arena where "hull"
     // is literal rather than a metaphor for something built.
-    structure: 'hull',
+    structure: 'shipHull',
     meadow: '#c9b382', hill: '#b89e68', mountain: '#6e7d8a', cloud: '#e9e4d8',
     floor: { a: '#a8845c', b: '#93714a' },
     wall: { color: '#7d5f3d', cap: '#66492c' },
@@ -548,7 +568,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   farm: {
     // A fence. Obviously a fence.
-    structure: 'posts',
+    structure: 'picket',
     meadow: '#a8c45c', hill: '#93b34a', mountain: '#7d9958', cloud: '#ffffff',
     floor: { a: '#d9c799', b: '#c9b380' },
     wall: { color: '#a8845c', cap: '#8f6c44' },
@@ -577,7 +597,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   reef: {
     // Coral heads heaped round the rim. Nothing on a reef is squared off.
-    structure: 'rocks',
+    structure: 'coralRim',
     meadow: '#1a6673', hill: '#125460', mountain: '#0d4550', cloud: null,
     floor: { a: '#2a8a99', b: '#1f7080' },
     wall: { color: '#33a3b3', cap: '#26858f' },
@@ -613,7 +633,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       the concrete is lit from the streets below, and the skyline behind
       still reads as night because the sky and the towers carry that.
     */
-    structure: 'hull',
+    structure: 'parapet',
     meadow: '#5a5f7d', hill: '#4c5170', mountain: null, cloud: '#565d80',
     floor: { a: '#7b8099', b: '#6c7189' },
     wall: { color: '#8b90a8', cap: '#717691', metalness: 0.25 },
@@ -641,7 +661,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   toybox: {
     // Wooden blocks stacked into a toy castle, because that is what a
     // child builds out of blocks.
-    structure: 'battlement',
+    structure: 'blocks',
     meadow: '#d9a05c', hill: '#c98d4a', mountain: null, cloud: null,
     floor: { a: '#e8c076', b: '#d9a95c' },
     wall: { color: '#c23b3b', cap: '#3f7fd0' },
@@ -681,6 +701,14 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
  * being obtained with trophies." Ladder arenas are the grand vistas that
  * mark progress — snow to desert to the moon. Store arenas are the fun
  * ones a pocket of coins should be able to reach on any afternoon.
+ *
+ * The prices climb by a widening step — 200, then 250, then 300 and on
+ * to 500 — rather than the flat 200 they used to, which made the shelf
+ * read as a list rather than a ladder. David, 26 Aug 2026: prices should
+ * "make sense scaling up higher and higher." They sit above the dice
+ * deliberately: a battlefield is a bigger thing to own than a die, and
+ * the dearest arena is about fifty Hard wins against the dearest die's
+ * twenty.
  */
 export interface ThemedArenaMeta {
   name: string;
@@ -703,12 +731,12 @@ export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   moon: { name: 'Moon Base', short: 'Moon', emoji: '🌕', skyColor: '#0a0c16', tier: 'moon-arena' },
 
   // Bought in the Store, cheapest first.
-  farm: { name: 'Sunny Farm', short: 'Farm', emoji: '🚜', skyColor: '#bfe0f5', price: 800 },
-  beach: { name: 'Treasure Beach', short: 'Beach', emoji: '🏖️', skyColor: '#8fd8f0', price: 1000 },
-  candy: { name: 'Candy Meadow', short: 'Candy', emoji: '🍭', skyColor: '#ffabd6', price: 1200 },
-  glade: { name: 'Glow Glade', short: 'Glade', emoji: '🍄', skyColor: '#1d4450', price: 1400 },
-  cove: { name: 'Pirate Cove', short: 'Cove', emoji: '🏴‍☠️', skyColor: '#a8c9d8', price: 1600 },
-  reef: { name: 'Coral Reef', short: 'Reef', emoji: '🐠', skyColor: '#0e4e5c', price: 1800 },
-  city: { name: 'Rooftop City', short: 'City', emoji: '🌃', skyColor: '#2e3352', price: 2000 },
-  toybox: { name: 'Toy Room', short: 'Toys', emoji: '🧸', skyColor: '#f2e2c4', price: 2400 },
+  farm: { name: 'Sunny Farm', short: 'Farm', emoji: '🚜', skyColor: '#bfe0f5', price: 900 },
+  beach: { name: 'Treasure Beach', short: 'Beach', emoji: '🏖️', skyColor: '#8fd8f0', price: 1100 },
+  candy: { name: 'Candy Meadow', short: 'Candy', emoji: '🍭', skyColor: '#ffabd6', price: 1350 },
+  glade: { name: 'Glow Glade', short: 'Glade', emoji: '🍄', skyColor: '#1d4450', price: 1650 },
+  cove: { name: 'Pirate Cove', short: 'Cove', emoji: '🏴‍☠️', skyColor: '#a8c9d8', price: 2000 },
+  reef: { name: 'Coral Reef', short: 'Reef', emoji: '🐠', skyColor: '#0e4e5c', price: 2400 },
+  city: { name: 'Rooftop City', short: 'City', emoji: '🌃', skyColor: '#2e3352', price: 2850 },
+  toybox: { name: 'Toy Room', short: 'Toys', emoji: '🧸', skyColor: '#f2e2c4', price: 3350 },
 };

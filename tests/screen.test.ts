@@ -3,7 +3,9 @@ import { THEME } from '../src/ui/theme';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../src/arena/arenas';
-import { DICE_SKINS, DEFAULT_SKIN_ID, skinById } from '../src/game/diceSkins';
+import { DICE_SKINS, DEFAULT_SKIN_ID, STORE_SKINS, skinById } from '../src/game/diceSkins';
+import { COIN_REWARDS } from '../src/game/currency';
+import { isColorPattern } from '../src/dice/patterns';
 import {
   ARENA_ORDER,
   ARENA_UNLOCKS,
@@ -12,6 +14,7 @@ import {
   isArenaUnlocked,
   isSkinUnlocked,
   ARENA_PRICES,
+  STORE_ARENAS,
 } from '../src/game/loadout';
 import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
@@ -357,7 +360,10 @@ suite('screen · inventory', () => {
       if (inStore) {
         assert(skin.price! > 0, `${skin.name} is in the Store but free`);
       }
-      if (skin.pattern !== 'plain') {
+      if (skin.pattern !== 'plain' && !isColorPattern(skin.pattern)) {
+        // Colour painters are exempt: they return finished pixels and
+        // never look at an ink. Requiring one anyway is what forced the
+        // eight full-colour skins to carry a made-up colour.
         assert(
           skin.ink !== undefined,
           `${skin.name} has a pattern but no pattern colour`,
@@ -409,11 +415,91 @@ suite('screen · inventory', () => {
 
     assertAtMost(gaps[0], 60, 'the first reward is too far from the start');
     for (let i = 1; i < gaps.length; i++) {
+      /*
+        Strictly bigger, not merely no smaller. `>=` let one rung sit at
+        exactly the same distance as the one below it — the long ladder
+        ran 350, 350 — and a rung that costs the same as the last is the
+        one place a climb stops feeling like a climb. David, 26 Aug 2026:
+        the thresholds should "make sense scaling up higher and higher".
+      */
       assert(
-        gaps[i] >= gaps[i - 1],
-        `gap ${i} (${gaps[i]}) is smaller than the one before (${gaps[i - 1]}) — the ladder gets easier`,
+        gaps[i] > gaps[i - 1],
+        `gap ${i} (${gaps[i]}) is not bigger than the one before (${gaps[i - 1]}) — the ladder stops climbing`,
       );
     }
+  });
+
+  test('nothing on either shelf costs the same as anything else', () => {
+    /*
+      David, 26 Aug 2026: "make sure all the arena and dice skins have
+      varying prices and trophy amount that make sense scaling up higher
+      and higher." Six dice used to cost 500 coins and five cost 450, so
+      a third of the shelf was three flat plateaus — which reads as
+      arbitrary, because it was: the prices had been picked one skin at a
+      time as skins were added.
+
+      Both shelves are sorted by price for display, so equal prices also
+      make the ORDER arbitrary — two identical cards swapping places
+      between builds for no reason a player could see.
+    */
+    for (const [what, prices] of [
+      ['dice', STORE_SKINS.map((s) => s.price!)],
+      ['battlefields', STORE_ARENAS.map((id) => ARENA_PRICES[id]!)],
+    ] as const) {
+      note(`${what}: ${prices.length} on the shelf, ${prices[0]} to ${prices[prices.length - 1]} coins`);
+      assertEqual(
+        new Set(prices).size,
+        prices.length,
+        `two ${what} cost the same`,
+      );
+      for (let i = 1; i < prices.length; i++) {
+        assert(
+          prices[i] > prices[i - 1],
+          `the ${what} shelf is not in price order at ${i}`,
+        );
+      }
+    }
+  });
+
+  test('the battlefield shelf climbs by a widening step', () => {
+    // The dice shelf has forty-two rungs in it and its steps grow slowly;
+    // the eight battlefields are far enough apart to demand it outright.
+    // They used to be a flat 200 coins apart the whole way, then 400 for
+    // the last one, which is a list with a jump at the end, not a ladder.
+    const prices = STORE_ARENAS.map((id) => ARENA_PRICES[id]!);
+    const gaps = prices.slice(1).map((p, i) => p - prices[i]);
+    note(`battlefield price gaps: ${gaps.join(', ')}`);
+    for (let i = 1; i < gaps.length; i++) {
+      assert(
+        gaps[i] > gaps[i - 1],
+        `battlefield gap ${i} (${gaps[i]}) is not bigger than the one before (${gaps[i - 1]})`,
+      );
+    }
+  });
+
+  test('the dearest thing on each shelf is a season, not an afternoon', () => {
+    /*
+      A sanity check on the whole economy in one number, because prices
+      and rewards live in different files and only meet in a player's
+      wallet. A Hard win pays 50-85 coins; these convert the top of each
+      shelf into wins so a change to either side has to stay honest about
+      what it costs to reach.
+    */
+    const perWin = (COIN_REWARDS.hard.win.min + COIN_REWARDS.hard.win.max) / 2;
+    const dearestDie = Math.max(...STORE_SKINS.map((s) => s.price!));
+    const dearestArena = Math.max(...STORE_ARENAS.map((id) => ARENA_PRICES[id]!));
+    note(
+      `dearest die ${dearestDie} coins (~${Math.round(dearestDie / perWin)} Hard wins), ` +
+        `dearest battlefield ${dearestArena} (~${Math.round(dearestArena / perWin)})`,
+    );
+    // Wide bounds on purpose: this is here to catch an order-of-magnitude
+    // slip, not to pin a balance decision that is David's to make.
+    assert(dearestDie / perWin > 8, 'the dearest die is pocket change');
+    assert(dearestDie / perWin < 60, 'the dearest die is out of reach');
+    assert(
+      dearestArena > dearestDie,
+      'a battlefield costs less than a die — the bigger thing should cost more',
+    );
   });
 });
 

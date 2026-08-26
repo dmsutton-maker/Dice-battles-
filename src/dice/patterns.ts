@@ -30,7 +30,7 @@ export type PatternId =
   | 'giraffe'
   | 'bands'
   | 'peacock'
-  | 'scales'
+  | 'fish'
   | 'shell'
   | 'diamonds'
   | 'paws'
@@ -50,6 +50,14 @@ export type PatternId =
   | 'citrus'
   | 'denim'
   | 'circuit'
+  // Materials for the trophy ladder, added 26 Aug 2026 when David asked
+  // for the skins to be "more accurate and textured if they need
+  // texture". Ruby, Slate, Copper and Ocean are named after MATERIALS,
+  // and a material with no texture is just a colour.
+  | 'ruby'
+  | 'slate'
+  | 'copper'
+  | 'ocean'
   // Full-colour painters (see COLOR_PAINTERS):
   | 'volleyball'
   | 'watermelon'
@@ -179,7 +187,19 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 /** The eight patterns painted in full colour rather than through a mask. */
 export type ColorPatternId =
   | 'volleyball' | 'watermelon' | 'pizza' | 'donut'
-  | 'rainbow' | 'galaxy' | 'camo' | 'tartan';
+  | 'rainbow' | 'galaxy' | 'camo' | 'tartan'
+  /*
+    Moved here from the mask painters on 26 Aug 2026, and the reason is
+    the same for all of them: a mask can only travel from the shell
+    colour toward ONE ink, so it can darken or it can lighten, never
+    both. Nothing with real relief can be drawn that way. A turtle's
+    scutes are domed and need a lit side and a shaded one; a peacock's
+    eye is navy, then blue, then gold; a chicken drumstick needs a bone
+    PALER than the meat it sticks out of. Each of these was a flat
+    two-tone smudge until it got its own paint.
+  */
+  | 'shell' | 'peacock' | 'waffle' | 'strawberry' | 'chocolate' | 'denim'
+  | 'ruby' | 'slate' | 'copper' | 'ocean';
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 const PAINTERS: Record<MaskPatternId, Painter> = {
@@ -336,14 +356,26 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     const gd = Math.hypot(cx + radius * 0.34, cy + radius * 0.34);
     if (gd < radius * 0.2) return 1;
 
-    // The rim.
-    const thickness = 2.1;
-    if (d < radius && d > radius - thickness) return 0.9;
+    /*
+      The rim, lit on the upper left and shadowed on the lower right. A
+      ring of one tone is a hoop; a bubble is a sphere, and the two sides
+      of it are what say so. This was the second-faintest pattern in the
+      set once the others got their texture.
+    */
+    const thickness = 2.3;
+    if (d < radius && d > radius - thickness) {
+      const lit = (-cx - cy) / (radius * 1.4);
+      return lit > 0 ? 0.35 + lit * 0.65 : -0.4 + lit * 0.4;
+    }
 
-    // Hollow inside — the faintest wash so it reads as glass, not a hole.
-    if (d <= radius - thickness) return 0.12;
+    // Hollow inside — the faintest wash so it reads as glass, not a hole,
+    // with the shadow gathering at the bottom of each bubble.
+    if (d <= radius - thickness) {
+      return 0.12 - smoothstep(-radius * 0.3, radius, cy) * 0.24;
+    }
 
-    return 0;
+    // Between the bubbles: the wet film they cling to.
+    return -smoothstep(radius + 3.5, radius, d) * 0.14;
   },
 
   // Soft wavy bands. Kept for the skins that already use it.
@@ -668,50 +700,38 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * Peacock: staggered feather eyes — a ring with a bright heart, and
    * fine rays running outward between eyes.
    */
-  peacock: (x, y) => {
-    const cell = 21;
+  fish: (x, y) => {
+    /*
+      Actual fish, in rows swimming opposite ways.
+
+      David, 26 Aug 2026: "make sure every dice design still makes sense
+      according to the dice name. Like the fish should have fish on it."
+      He picked the clearest case in the set: this was a scallop-row
+      SCALE texture — what a fish is covered in rather than what a fish
+      looks like — and at the size a die is actually seen it read as
+      roof tiles.
+    */
+    const cell = 16;
     const row = Math.floor(y / cell);
     const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
-    const r = Math.hypot(cx, cy);
-    if (r < 2.4) return 1;
-    if (Math.abs(r - 5.2) < 1.3) return 0.85;
-    // Rays: twelve per eye, fading with distance.
-    const a = Math.atan2(cy, cx);
-    const ray = Math.abs(Math.sin(a * 6)) > 0.92 && r < 9.5;
-    return ray ? 0.35 : -0.06;
+    const fx = ((x + offset) % cell) - cell / 2;
+    const fy = (y % cell) - cell / 2;
+    // Every other row swims the other way, so a face has some movement
+    // in it rather than a column of identical stamps.
+    const sx = row % 2 === 0 ? fx : -fx;
+    const body = Math.hypot(sx / 5.6, fy / 3.2);
+    const tail = sx < -3.4 && sx > -7.6 && Math.abs(fy) < (-sx - 3.4) * 1.35;
+    if (body <= 1 || tail) {
+      if (Math.hypot(sx - 3.2, fy + 0.9) < 1.1) return -0.85;
+      if (Math.abs(sx - 0.4) < 0.6 && Math.abs(fy) < 2.3) return 0.4;
+      // A paler belly, so it is a lit fish and not a silhouette.
+      return fy > 1.3 ? 0.5 : 0.92;
+    }
+    // Water: a faint ripple, and the odd rising bubble.
+    if (Math.hypot(sx + 6.4, fy - 4.8) < 1.2) return 0.3;
+    return (wrappedNoise(x, y, 16) - 0.5) * 0.16;
   },
 
-  /** Fish scales: overlapping scallop rows. */
-  scales: (x, y) => {
-    const cell = 12;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    // The arc of THIS row's scale, drawn where the scale below overlaps.
-    const cy = (y % cell);
-    const d = Math.hypot(cx, cy - cell);
-    const onEdge = Math.abs(d - cell * 0.62) < 1.2 && cy > cell * 0.35;
-    // A faint darkening toward each scale's root gives the rows depth.
-    const shade = smoothstep(cell * 0.62, 0, d) * -0.12;
-    return onEdge ? 0.9 : shade;
-  },
-
-  /** Turtle shell: big hexagonal plates with grooves between. */
-  shell: (x, y) => {
-    // Hex lattice via three axial stripe families 60° apart.
-    const u = x / 16;
-    const v = (x * 0.5 + y * 0.866) / 16;
-    const w = (x * 0.5 - y * 0.866) / 16;
-    const edge = (t: number) => Math.abs(t - Math.round(t));
-    const nearest = Math.min(edge(u), edge(v), edge(w));
-    const groove = smoothstep(0.1, 0.03, nearest);
-    // Plates bow upward slightly: darker toward every groove.
-    return groove * 0.9 - smoothstep(0.35, 0.1, nearest) * 0.1;
-  },
-
-  /** Snakeskin: a diamond lattice, each scale shaded to a keel. */
   diamonds: (x, y) => {
     const u = (x + y) / 11;
     const v = (x - y) / 11;
@@ -905,27 +925,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     return Math.exp(-Math.pow(d / 32, 2)) * 0.55 - 0.12;
   },
 
-  waffle: (x, y) => {
-    // The chicken: two lumpy patches, crusted at the edge. Checked before
-    // the grid so the pieces sit ON the waffle.
-    for (const [cx, cy, r] of [[20, 21, 9.5], [43, 42, 11]] as const) {
-      const lump = fbm(x * 1 + cy, y + cx, [16, 8], [1, 0.6]) * 2.5;
-      const d = Math.hypot(x - cx, y - cy) + lump;
-      if (d < r) {
-        // Crust: darkest at the rim, easing toward the middle.
-        return -0.28 - smoothstep(r - 4, r, d) * 0.3;
-      }
-    }
-    const cell = 16;
-    const inX = (x % cell + cell) % cell;
-    const inY = (y % cell + cell) % cell;
-    const edge = Math.min(inX, cell - inX, inY, cell - inY);
-    // The grid ridge carries the ink; pockets darken toward the middle.
-    if (edge < 2) return 0.75;
-    return -smoothstep(2, 8, edge) * 0.3;
-  },
-
-  /** Cookie: chocolate chips of varying size, and a crumbly surface. */
   cookie: (x, y) => {
     const cell = 13;
     const row = Math.floor(y / cell);
@@ -947,19 +946,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
   },
 
   /** Strawberry: seeds — small pale teardrops, each in a tiny hollow. */
-  strawberry: (x, y) => {
-    const cell = 11;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
-    // The seed: a narrow ellipse, standing upright.
-    if (Math.hypot(cx / 0.7, cy / 1.3) < 1.6) return 0.95;
-    // Its hollow: the flesh dips around every seed.
-    return -smoothstep(4.5, 1.8, Math.hypot(cx, cy)) * 0.2;
-  },
-
-  /** Honeycomb: a tight hexagonal comb, cells varying like real honey. */
   honeycomb: (x, y) => {
     const u = x / 9;
     const v = (x * 0.5 + y * 0.866) / 9;
@@ -977,18 +963,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * catches ink light along its top-left bevel — a bar is moulded, and
    * the bevel is what says so.
    */
-  chocolate: (x, y) => {
-    const cell = 16;
-    const inX = (x % cell + cell) % cell;
-    const inY = (y % cell + cell) % cell;
-    const edge = Math.min(inX, cell - inX, inY, cell - inY);
-    if (edge < 1.5) return -0.5;
-    if (edge < 3.5 && (inX < 4 || inY < 4)) return 0.55;
-    if (edge < 3.5) return -0.2;
-    return 0;
-  },
-
-  /** Lemon slice: rind ring, pith, and radial segments. */
   citrus: (x, y) => {
     /*
       Cut slices in the corners of the face.
@@ -1022,19 +996,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     return (hashCell(x, y) - 0.5) * 0.06;
   },
 
-  denim: (x, y) => {
-    const diag = tiling(x * 2 - y * 2, 16);
-    const weave = smoothstep(0.3, 0.8, diag) * 0.45;
-    // Slubs: single pale threads where the yarn ran thick.
-    const slub = hashCell(x, Math.floor(y / 4)) > 0.985 ? 0.5 : 0;
-    return weave + slub + (wrappedNoise(x, y, 8) - 0.5) * 0.1;
-  },
-
-  /**
-   * Circuit board: traces that run, turn once, and end on a pad. Each
-   * horizontal lane carries one trace, its turn placed by hash — laid
-   * out like routing, not scattered like noise.
-   */
   circuit: (x, y) => {
     const lane = Math.floor(y / 8);
     const inY = y - lane * 8;
@@ -1176,11 +1137,13 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const next = rgb(order[(i + 1) % order.length]);
     // A soft blend at every boundary — hard-edged rainbows read as a
     // flag, soft ones as light.
-    if (frac > 0.8) return mixRgb(here, next, (frac - 0.8) / 0.2);
-    return here;
+    let px = frac > 0.8 ? mixRgb(here, next, (frac - 0.8) / 0.2) : here;
+    // Brushed grain along the bands, so it is painted colour rather
+    // than six flat swatches.
+    px = mixRgb(px, rgb('#ffffff'), wrappedNoise(x * 2, y * 2, 16) * 0.18);
+    return mixRgb(px, rgb('#3d3a4a'), (hashCell(x, y) - 0.5) * 0.1 + 0.05);
   },
 
-  /** Nebula clouds and stars on deep indigo. */
   galaxy: (x, y) => {
     /*
       The core is low in one corner now, with the disc tilted across the
@@ -1210,13 +1173,23 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   camo: (x, y) => {
     const dark = wrappedNoise(x, y, 16) * 0.7 + wrappedNoise(x + 9, y + 21, 8) * 0.3;
     const pale = wrappedNoise(x + 31, y + 13, 16) * 0.7 + wrappedNoise(x + 3, y + 40, 8) * 0.3;
-    if (dark > 0.62) return rgb('#2e3d26');
-    if (pale > 0.66) return rgb('#8f9668');
-    if (dark > 0.5) return rgb('#4a5c3d');
-    return rgb('#6e7a52');
+    // Four tones, further apart than the first version's — camouflage
+    // is meant to break up a shape, not to be invisible, and at a die's
+    // size the old four read as one muddy olive.
+    let px = rgb('#6e7a52');
+    if (dark > 0.62) px = rgb('#26331f');
+    else if (pale > 0.66) px = rgb('#9aa374');
+    else if (dark > 0.5) px = rgb('#46583a');
+    /*
+      Woven cotton over the top of the blobs. Four flat colours with
+      hard edges read as a printed chart; real camouflage is printed ON
+      cloth, and the cloth is what your eye finds first.
+    */
+    const weave = ((x % 2 === 0 ? 1 : 0) + (y % 2 === 0 ? 1 : 0)) / 2;
+    px = mixRgb(px, rgb('#1d2418'), (weave - 0.5) * 0.16 + 0.03);
+    return mixRgb(px, rgb('#e8e4d0'), (hashCell(x, y) - 0.5) * 0.1 + 0.03);
   },
 
-  /** Tartan: navy and green bands over red, yellow pinstripes. */
   tartan: (x, y) => {
     const bandH = Math.abs(tiling(y, 2)) > 0.62;
     const bandV = Math.abs(tiling(x, 2)) > 0.62;
@@ -1232,10 +1205,256 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const twill = tiling(x * 2 - y * 2, 16) > 0.4 ? 0.06 : 0;
     return mixRgb(px, rgb('#000000'), twill);
   },
+
+  /* ── moved here from the mask painters, 26 Aug 2026 ─────────────── */
+
+  shell: (x, y) => {
+    /*
+      A turtle's carapace: domed scutes with growth rings inside them and
+      deep grooves between. As a one-ink mask it could only ever get
+      DARKER than the shell colour, so the plates had no lit side and the
+      whole thing read as a faint honeycomb — which is to say, as the
+      Honeycomb skin.
+    */
+    const cell = 21;
+    let best = 1e9;
+    let second = 1e9;
+    let bx = 0;
+    let by = 0;
+    for (let row = -1; row <= 4; row++) {
+      const cy = row * cell * 0.86;
+      const offset = (((row % 2) + 2) % 2) === 0 ? 0 : cell / 2;
+      for (let col = -1; col <= 4; col++) {
+        const cx = col * cell + offset;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < best) {
+          second = best;
+          best = d;
+          bx = cx;
+          by = cy;
+        } else if (d < second) {
+          second = d;
+        }
+      }
+    }
+    const gap = second - best;
+    if (gap < 1.6) return rgb('#2a4218');
+    // Every scute its own tone, so the shell is not one flat green.
+    const tone = hashCell(Math.round(bx) + 3, Math.round(by) + 7);
+    let px = mixRgb(rgb('#54873a'), rgb('#8fb85c'), tone);
+    // Domed: lit on the upper left, falling away to the lower right.
+    const lit = (-(x - bx) - (y - by)) / (cell * 1.05);
+    px = mixRgb(px, rgb('#c2d98f'), Math.max(0, lit) * 0.6);
+    px = mixRgb(px, rgb('#33521f'), Math.max(0, -lit) * 0.5);
+    // Growth rings, offset per plate so they are not one target pattern.
+    const ring = Math.abs(((best + tone * 3) % 3.4) - 1.7);
+    px = mixRgb(px, rgb('#3f6b26'), smoothstep(1.1, 0.25, ring) * 0.35);
+    // A pale rim just inside every groove.
+    return mixRgb(px, rgb('#a8c975'), smoothstep(3.6, 1.7, gap) * 0.5);
+  },
+
+  peacock: (x, y) => {
+    /*
+      The concentric navy-blue-gold ocelli a peacock's tail is made of,
+      with the feather's barbs combing out of each one. Drawn through one
+      ink it was a flat teal target: an eye whose entire point is that it
+      changes colour ring by ring cannot be drawn in one colour.
+    */
+    const cell = 21;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    const r = Math.hypot(cx, cy);
+    const a = Math.atan2(cy, cx);
+    if (r < 2.7) return rgb('#101c33');
+    if (r < 4.8) return mixRgb(rgb('#17548f'), rgb('#2470ad'), (r - 2.7) / 2.1);
+    if (r < 6.4) return rgb('#0f3d52');
+    if (r < 8.4) return mixRgb(rgb('#b8862e'), rgb('#d9a83d'), (r - 6.4) / 2);
+    if (r < 9.2) return rgb('#8a6a1e');
+    const px = mixRgb(rgb('#126b6b'), rgb('#1a8a80'), wrappedNoise(x, y, 16));
+    return mixRgb(px, rgb('#0d4a52'), Math.abs(Math.sin(a * 9)) > 0.5 ? 0.4 : 0);
+  },
+
+  waffle: (x, y) => {
+    /*
+      Chicken and waffles, and you can now tell which is which.
+
+      The chicken was two round lumps painted in the waffle's own brown,
+      which read as two burnt patches. A drumstick needs a bone, and a
+      bone has to be PALER than the meat it sticks out of — exactly what
+      a single dark ink cannot do.
+    */
+    const cell = 16;
+    const inX = ((x % cell) + cell) % cell;
+    const inY = ((y % cell) + cell) % cell;
+    const edge = Math.min(inX, cell - inX, inY, cell - inY);
+    const px = edge < 2
+      ? mixRgb(rgb('#f0c878'), rgb('#e8b45c'), 0.4)
+      : mixRgb(rgb('#d9a04a'), rgb('#a8742a'), smoothstep(2, 8, edge));
+    for (const [dx0, dy0, rot] of [[15, 18, 0.6], [46, 45, -0.7]] as const) {
+      const dx = x - dx0;
+      const dy = y - dy0;
+      const ux = dx * Math.cos(rot) + dy * Math.sin(rot);
+      const uy = -dx * Math.sin(rot) + dy * Math.cos(rot);
+      // The bone and its knuckle, out of the narrow end.
+      if (
+        Math.hypot(ux - 10.6, uy - 0.4) < 2.8 ||
+        (Math.abs(uy) < 1.8 && ux > 3.2 && ux < 10.8)
+      ) {
+        return mixRgb(rgb('#f2e6c9'), rgb('#cbbb99'), smoothstep(-1, 2.2, uy));
+      }
+      const lump = fbm(x + dy0, y + dx0, [16, 8], [1, 0.6]) * 1.7;
+      const meat = Math.hypot((ux + 3.2) / 8, uy / 6.4) + lump * 0.1;
+      if (meat < 1) {
+        // Crust: craggy fried skin, darkest at the rim.
+        return mixRgb(
+          mixRgb(rgb('#c9762e'), rgb('#9e5418'), wrappedNoise(x * 2, y * 2, 16)),
+          rgb('#6e360e'),
+          smoothstep(0.55, 1, meat),
+        );
+      }
+    }
+    return px;
+  },
+
+  strawberry: (x, y) => {
+    /*
+      Real strawberry skin: every seed sunk in its own dimple with the
+      pale lip a live achene sits in, over flesh that is not one flat
+      red. The mask version could draw the seed or the hollow, never the
+      seed lit inside the hollow.
+    */
+    const cell = 11;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    const d = Math.hypot(cx, cy);
+    let px = mixRgb(rgb('#c93a52'), rgb('#e0687a'), wrappedNoise(x, y, 16) * 0.9);
+    px = mixRgb(px, rgb('#9e2a40'), smoothstep(4.6, 1.9, d) * 0.55);
+    px = mixRgb(px, rgb('#ef939c'), smoothstep(2.6, 4.4, d) * smoothstep(6, 4.4, d) * 0.5);
+    const seed = Math.hypot(cx / 0.78, cy / 1.4);
+    if (seed < 1.7) return mixRgb(rgb('#f7e6a0'), rgb('#b8932e'), smoothstep(0.2, 1.7, seed));
+    return px;
+  },
+
+  chocolate: (x, y) => {
+    /*
+      A moulded bar: each square bevelled, lit along its top and left and
+      shadowed along its bottom and right, with the deep channel between
+      them. Two flat browns in a grid read as a chequerboard.
+    */
+    const cell = 16;
+    const inX = ((x % cell) + cell) % cell;
+    const inY = ((y % cell) + cell) % cell;
+    const edge = Math.min(inX, cell - inX, inY, cell - inY);
+    if (edge < 1.5) return rgb('#33200f');
+    let px = mixRgb(rgb('#6e4226'), rgb('#7d4d2e'), wrappedNoise(x, y, 16) * 0.7);
+    const bevel = smoothstep(4.5, 1.5, edge);
+    if (Math.min(inX, inY) < 4.5) px = mixRgb(px, rgb('#ab7d4f'), bevel * 0.9);
+    if (Math.min(cell - inX, cell - inY) < 4.5) px = mixRgb(px, rgb('#472616'), bevel * 0.9);
+    return px;
+  },
+
+  denim: (x, y) => {
+    /*
+      Indigo twill: the diagonal rib of the weave with the pale weft
+      crossing it, slubs where the yarn ran thick, and the orange
+      topstitching every pair of jeans has. This used to be the least
+      visible pattern in the whole set — a local contrast of nine, which
+      is to say a plain blue cube.
+    */
+    const diag = tiling(x * 2 - y * 2, 16);
+    let px = mixRgb(rgb('#2a4466'), rgb('#4d7099'), smoothstep(0.2, 0.85, diag));
+    px = mixRgb(px, rgb('#93b3cc'), (x + y) % 3 === 0 ? 0.22 : 0);
+    if (hashCell(x, Math.floor(y / 4)) > 0.982) px = mixRgb(px, rgb('#c2d6e3'), 0.7);
+    // Two seams of topstitching, dashed the way a lockstitch is.
+    for (const sy of [11, 52]) {
+      if (Math.abs(y - sy) < 1.4 && (x + Math.floor(y)) % 7 < 4) {
+        px = mixRgb(rgb('#c98f33'), rgb('#a5701f'), (x % 2) * 0.5);
+      }
+    }
+    return px;
+  },
+
+  /* ── materials for the trophy ladder ────────────────────────────── */
+
+  ruby: (x, y) => {
+    // A cut gem: triangular facets, each catching the light its own way,
+    // over the deep red a ruby has when you look into it.
+    const u = (x + y * 0.5) / 13;
+    const v = (y - x * 0.35) / 13;
+    const cu = Math.floor(u);
+    const cv = Math.floor(v);
+    const upper = u - cu + (v - cv) > 1 ? 1 : 0;
+    const h = hashCell(cu * 2 + upper, cv);
+    let px = mixRgb(rgb('#66142b'), rgb('#b82f4a'), h);
+    const g = (u - cu) * 0.6 + (v - cv) * 0.4;
+    px = mixRgb(px, rgb('#e0687f'), Math.max(0, g - 0.45) * 1.3);
+    px = mixRgb(px, rgb('#3d0a1a'), Math.max(0, 0.35 - g) * 0.95);
+    const edge = Math.min(
+      Math.abs(u - Math.round(u)),
+      Math.abs(v - Math.round(v)),
+      Math.abs(u - cu + (v - cv) - 1),
+    );
+    return mixRgb(px, rgb('#f2a3b3'), smoothstep(0.06, 0.01, edge) * 0.55);
+  },
+
+  slate: (x, y) => {
+    // Slate splits along its bedding: flat planes, a stepped edge where
+    // one layer sits proud of the next, and the fine cleavage grain.
+    const bed = fbm(x * 0.5, y * 2.2, [32, 16], [1, 0.5]);
+    let px = mixRgb(rgb('#454d59'), rgb('#6e7784'), (bed + 0.6) * 0.8);
+    const step = Math.abs(((((y + bed * 9) % 17) + 17) % 17) - 8.5);
+    px = mixRgb(px, rgb('#2b323c'), smoothstep(2.2, 0.4, step) * 0.55);
+    px = mixRgb(px, rgb('#8a939e'), smoothstep(3.6, 2.4, step) * 0.4);
+    return mixRgb(px, rgb('#39404a'), (hashCell(x, y) - 0.5) * 0.24 + 0.12);
+  },
+
+  copper: (x, y) => {
+    // Hammered copper: a dimpled surface catching the light, with the
+    // first green of verdigris settling into the seams between blows.
+    const cell = 13;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const cx = ((x + offset) % cell) - cell / 2;
+    const cy = (y % cell) - cell / 2;
+    const d = Math.hypot(cx, cy);
+    const lit = (-cx - cy) / (cell * 0.7);
+    let px = mixRgb(rgb('#7d4423'), rgb('#c9793d'), smoothstep(cell * 0.55, 0, d));
+    px = mixRgb(px, rgb('#e8a869'), Math.max(0, lit) * 0.6);
+    px = mixRgb(px, rgb('#54290f'), Math.max(0, -lit) * 0.5);
+    return mixRgb(px, rgb('#3d8a7a'), smoothstep(cell * 0.4, cell * 0.6, d) * 0.3);
+  },
+
+  ocean: (x, y) => {
+    // Water: long swells with light running along the crests and the
+    // darker troughs between them.
+    const swell = Math.sin(
+      ((x * 2 + y) / SIZE) * Math.PI * 2 + fbm(x, y, [32, 16], [1, 0.5]) * 2.5,
+    );
+    let px = mixRgb(rgb('#0f4d66'), rgb('#2a86a8'), (swell + 1) / 2);
+    px = mixRgb(px, rgb('#a8dbe8'), smoothstep(0.84, 0.99, swell) * 0.75);
+    return mixRgb(px, rgb('#57a8c2'), wrappedNoise(x * 2, y * 2, 16) * 0.2);
+  },
 };
 
 /** Every colour-painter id, for the one runtime branch that needs it. */
 const COLOR_IDS = new Set(Object.keys(COLOR_PAINTERS));
+
+/**
+ * Does this pattern mix its own paint?
+ *
+ * A colour painter takes no ink: it returns finished pixels. Callers used
+ * to work that out by checking whether a skin had an `ink` at all, which
+ * meant every colour-painted skin had to carry a made-up ink nobody read
+ * — and the suite then dutifully checked that made-up colour against the
+ * face palette. Asking the question directly is both shorter and true.
+ */
+export function isColorPattern(pattern: PatternId): boolean {
+  return COLOR_IDS.has(pattern);
+}
 
 /**
  * Build the shell texture for a pattern. `base` is the skin's own colour
