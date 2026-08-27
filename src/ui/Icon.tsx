@@ -687,21 +687,53 @@ export function RushIcon({ size = 22, color = THEME.ink }: IconProps) {
 export function UltimateIcon({ size = 22, color = THEME.ink }: IconProps) {
   const s = w(size);
   const stroke = s * 0.9;
-  // Where the top and bottom bars of the loop run, so the heads can sit
-  // exactly on those lines rather than near them.
+  // The centre lines of the loop's top and bottom runs, so a head sits
+  // exactly ON one rather than near it.
   const topLine = size * 0.19 + stroke / 2;
   const bottomLine = size * 0.81 - stroke / 2;
-  const reach = size * 0.19;
-  const halfHead = size * 0.135;
 
-  const head = (tipX: number, line: number, dir: 'left' | 'right') => (
+  /*
+    THIRD attempt at these arrowheads. Both earlier ones failed on the
+    same part and David said so both times.
+
+    The first made the loop's gaps by setting the left and right border
+    colours of a ROUNDED box to transparent — not knowing that each of a
+    rounded box's four border sides owns one 90-degree quadrant and is
+    mitred at the diagonals, so clearing the sides left the top and
+    bottom quadrants behind as stubs.
+
+    The second fixed that but got the heads wrong: 0.27 of the icon tall
+    against 0.19 long — WIDER THAN THEY WERE LONG — and pinned to the far
+    edges at x 0.97 and 0.03, floating clear of a closed loop. Rendered,
+    that is a rounded box with two fins stuck to it.
+
+    A head has to be longer than it is wide or it is not a head, and it
+    has to overlap the line so the line runs into it. This one is 0.26
+    long against 0.14 of half-width, with its point at 0.66 — which is
+    exactly where the top run stops being straight and starts curving
+    into the corner (the box spans 0.13 to 0.87 with a 0.2 radius, so
+    the straight part is 0.33 to 0.67). The head therefore grows out of
+    the straight bar and points into the turn, instead of being laid
+    over the curve where it thickens into a blob.
+
+    Checked by rendering it — tools/icon-preview draws the real
+    component through react-native-web — against three other designs and
+    then a sweep of these three numbers, rather than by drawing a
+    picture of what it was hoped to be. That last is exactly how the
+    second attempt came to be approved.
+  */
+  const halfHead = size * 0.14;
+  const headLength = size * 0.26;
+
+  const head = (key: string, tipX: number, line: number, pointsRight: boolean) => (
     <View
-      key={dir}
+      key={key}
       style={{
         position: 'absolute',
-        // A CSS triangle's tip is at the far side of its border box, so
-        // a right-pointing head starts `reach` back from where it points.
-        left: dir === 'right' ? tipX - reach : tipX,
+        // A zero-sized box's four borders meet at its centre, so each is
+        // a triangle; the coloured one points AWAY from its own side.
+        // The box therefore starts a whole head-length back from the tip.
+        left: pointsRight ? tipX - headLength : tipX,
         top: line - halfHead,
         width: 0,
         height: 0,
@@ -709,8 +741,9 @@ export function UltimateIcon({ size = 22, color = THEME.ink }: IconProps) {
         borderBottomWidth: halfHead,
         borderTopColor: 'transparent',
         borderBottomColor: 'transparent',
-        [dir === 'right' ? 'borderLeftWidth' : 'borderRightWidth']: reach,
-        [dir === 'right' ? 'borderLeftColor' : 'borderRightColor']: color,
+        ...(pointsRight
+          ? { borderLeftWidth: headLength, borderLeftColor: color }
+          : { borderRightWidth: headLength, borderRightColor: color }),
       }}
     />
   );
@@ -729,9 +762,9 @@ export function UltimateIcon({ size = 22, color = THEME.ink }: IconProps) {
           borderColor: color,
         }}
       />
-      {/* Top arrow runs right, bottom arrow runs left: they chase. */}
-      {head(size * 0.97, topLine, 'right')}
-      {head(size * 0.03, bottomLine, 'left')}
+      {/* Top head runs right, bottom head runs left: they chase. */}
+      {head('top', size * 0.66, topLine, true)}
+      {head('bottom', size * 0.34, bottomLine, false)}
     </View>
   );
 }

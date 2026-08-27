@@ -245,8 +245,12 @@ suite('icons · the four game modes', () => {
       2,
       'Ultimate no longer has two arrowheads',
     );
-    assert(
-      /'right'\)/.test(ultimate) && /'left'\)/.test(ultimate),
+    const directions = [...ultimate.matchAll(/head\('\w+', [^)]*?,\s*(true|false)\)/g)].map(
+      (m) => m[1],
+    );
+    assertEqual(
+      new Set(directions).size,
+      2,
       'Ultimate\u2019s two heads no longer point opposite ways — that is what makes them chase',
     );
     // The heads sit ON the bars, worked out from the stroke rather than
@@ -255,6 +259,45 @@ suite('icons · the four game modes', () => {
       /topLine/.test(ultimate) && /bottomLine/.test(ultimate),
       'the arrowheads are no longer aligned to the loop\u2019s own bars',
     );
+
+    /*
+      An arrowhead is LONGER than it is wide.
+
+      This is the specific thing that went wrong twice, and it is
+      arithmetic rather than taste, so it can be checked. The second
+      attempt drew heads 0.27 of the icon tall against 0.19 long — wider
+      than they were long — which is not an arrowhead, it is a fin, and
+      David reported it as such both times.
+
+      Half-width against length, because the border trick builds the
+      triangle from a half-width above and below the line.
+    */
+    const halfHead = Number(/const halfHead = size \* ([\d.]+)/.exec(ultimate)?.[1] ?? 0);
+    const headLength = Number(/const headLength = size \* ([\d.]+)/.exec(ultimate)?.[1] ?? 0);
+    assert(halfHead > 0 && headLength > 0, 'Ultimate\u2019s head size is no longer stated plainly');
+    note(`Ultimate arrowhead: ${headLength} long, ${halfHead * 2} across`);
+    assert(
+      headLength > halfHead * 1.4,
+      `Ultimate\u2019s arrowheads are ${headLength} long against ${halfHead * 2} across — ` +
+        'that is a fin, not an arrowhead',
+    );
+
+    /*
+      And the point lands on the STRAIGHT part of the run, not on the
+      corner curve. The loop spans 0.13 to 0.87 with a 0.2 radius, so it
+      only stops curving between 0.33 and 0.67; a head laid over the
+      curve thickens the turn into a blob instead of narrowing it.
+    */
+    const tips = [...ultimate.matchAll(/head\('\w+', size \* ([\d.]+)/g)].map((m) =>
+      Number(m[1]),
+    );
+    assertEqual(tips.length, 2, 'Ultimate no longer places its heads by a stated fraction');
+    for (const tip of tips) {
+      assert(
+        tip >= 0.33 && tip <= 0.67,
+        `an Ultimate arrowhead points at ${tip}, which is out on the corner radius`,
+      );
+    }
 
     // 🤼 Two figures: two heads and two leaning bodies, in two colours.
     assertEqual(

@@ -48,3 +48,4 @@ credentials.json
 # The artboards are the source; this is the build output.
 design-concept/dice-battles-redesign.html
 tools/arena-preview/bundle.js
+tools/icon-preview/bundle.js

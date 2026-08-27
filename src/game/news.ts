@@ -37,6 +37,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-59-0-ultimate-icon',
+    date: '26 August 2026',
+    version: 'v1.59.0',
+    title: 'The Ultimate icon, finally',
+    emoji: '🔁',
+    body:
+      'The little loop-and-arrows icon for Ultimate mode has been wrong ' +
+      'twice, both times on the arrowheads. The first version left odd ' +
+      'stubs on the loop; the second drew heads that were wider than ' +
+      'they were long and stuck them on the outside, so it looked like ' +
+      'a rounded box with two fins.\n\n' +
+      'It is now a proper repeat symbol: two arrowheads that are longer ' +
+      'than they are wide, sitting on the straight part of the loop and ' +
+      'narrowing into the turn.',
+  },
+  {
     id: 'v1-58-0-copper-and-thirteen',
     date: '26 August 2026',
     version: 'v1.58.0',

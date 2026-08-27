@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.59.0 — 2026-08-26 · reported by David
+
+### Fixed
+- **The Ultimate mode icon, third attempt — and this one was looked at.**
+  David: "the icon for ultimate still doesn't look good. You seem to keep
+  messing up with the triangle part of the arrows." He is right on both
+  counts, and the two failures were different mistakes with the same
+  cause.
+  - The first version made the loop's gaps by clearing the left and right
+    border colours of a rounded box, not knowing that each of a rounded
+    box's four border sides owns one 90-degree quadrant and is mitred at
+    the diagonals — so clearing the sides leaves the top and bottom
+    quadrants behind as stubs rather than opening the sides.
+  - The second fixed that and then drew the heads 0.27 of the icon tall
+    against 0.19 long — **wider than they were long** — pinned out at
+    x 0.97 and 0.03, floating clear of a closed loop. Rendered, that is a
+    rounded box with two fins stuck on it.
+  - The heads are now 0.26 long against 0.28 across, with their points at
+    0.66 and 0.34 — exactly where the loop stops being straight and
+    starts curving, so each head grows out of the bar and narrows into
+    the turn instead of being laid over the curve where it thickens into
+    a blob.
+  - Both earlier versions were signed off against a hand-drawn picture of
+    what the code was hoped to produce. This one was chosen by rendering
+    four designs side by side and then sweeping the three numbers.
+
+### Added
+- **`tools/icon-preview/` — a way to look at the icons.** It draws every
+  icon in the app at 96pt and 22pt through the real components, with
+  `react-native` aliased to `react-native-web`, so the styles a phone
+  applies are the styles the browser applies rather than a guess at
+  them. Same reason `tools/arena-preview/` exists: the checks that can be
+  automated cannot see a picture, and somebody has to look.
+- `npm test` now checks the two things that actually went wrong: an
+  Ultimate arrowhead must be longer than it is wide, and its point must
+  land on the straight part of the loop rather than out on the corner
+  radius. Both are arithmetic, so both can be pinned.
+
 ## v1.58.0 — 2026-08-26 · reported by David
 
 ### Fixed
