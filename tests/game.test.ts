@@ -1,4 +1,6 @@
 import { AI_DIFFICULTIES, AI_ROSTER, pickOpponent, rollAiDice } from '../src/game/ai';
+import { readFileSync } from 'node:fs';
+import { tierItem, TIERS_WITHOUT_A_PICTURE } from '../src/game/tierItem';
 import { OBSTACLES_BY_DIFFICULTY } from '../src/game/obstacles';
 import { DIE_FACE_COLORS, PRISONER_COLORS } from '../src/game/colors';
 import { firstFreeIndex, makeUnits, MODE_ORDER, MODES, ModeId } from '../src/game/modes';
@@ -14,7 +16,7 @@ import {
   slotFor,
   WALL_SLOTS,
 } from '../src/game/stations';
-import { assert, assertEqual, suite, test } from './harness';
+import { assert, assertEqual, note, suite, test } from './harness';
 import { averageOf } from '../src/game/rewards';
 
 /** Rules, progression and palette invariants — pure logic, no physics. */
@@ -367,5 +369,82 @@ suite('game · color war shares the bottom row', () => {
       3,
       'your opponent should field three',
     );
+  });
+});
+
+/**
+ * The ladder as a climb, and as something you can look at.
+ *
+ * Marc, 27 Aug 2026, three things at once: "make the emojis on the ladder
+ * section just the icons for each item. Flip the ladder around to go in
+ * ascending order down. Change the trophy amount of some items so that
+ * the highest thing is only 10 thousand trophies."
+ */
+suite('the ladder', () => {
+  test('the summit is ten thousand trophies, exactly', () => {
+    const top = TIERS[TIERS.length - 1];
+    note(`the ladder ends at ${top.at} (${top.name})`);
+    assertEqual(top.at, 10000, 'the top of the ladder has moved off 10,000');
+  });
+
+  test('every rung is harder than the one below it', () => {
+    /*
+      Not merely "no cheaper" — HARDER. A rung that costs the same climb
+      as the one under it reads as a mistake, and once was one: the run
+      above Midnight Dice used to open 350, 350.
+    */
+    let previous = 0;
+    for (let i = 1; i < TIERS.length; i++) {
+      const gap = TIERS[i].at - TIERS[i - 1].at;
+      if (gap === 0) continue; // The two free rungs you start on.
+      assert(
+        gap > previous,
+        `${TIERS[i].id} is ${gap} above ${TIERS[i - 1].id}, no more than the ${previous} before it`,
+      );
+      previous = gap;
+    }
+    note(`${TIERS.length} rungs, widening the whole way to a ${previous} final step`);
+  });
+
+  test('every rung has a picture of what it gives you', () => {
+    /*
+      The ladder draws each rung's own item — the real painted die, the
+      real picture of the battlefield — rather than a hand-picked emoji
+      standing in for it. That only works while every rung can be matched
+      to something, so this is the check that keeps it working when a new
+      rung is added.
+    */
+    const noPicture: string[] = [];
+    for (const tier of TIERS) {
+      if (tierItem(tier).kind === 'none') noPicture.push(tier.id);
+    }
+    assertEqual(
+      noPicture.join(', '),
+      TIERS_WITHOUT_A_PICTURE.join(', '),
+      'a rung of the ladder has nothing to show for itself',
+    );
+    note(`${TIERS.length - noPicture.length} of ${TIERS.length} rungs show their own item`);
+  });
+
+  test('the ladder reads downwards, cheapest first', () => {
+    // It used to be reversed, so the summit sat at the top the way a
+    // leaderboard does. This is a road, not a leaderboard.
+    const source = readFileSync('src/demo/LeaderboardScreen.tsx', 'utf8');
+    const ladder = source.slice(source.indexOf('THE LADDER'));
+    assert(
+      !/\[\.\.\.TIERS\]\.reverse\(\)/.test(ladder),
+      'the ladder is drawn upside down again',
+    );
+    assert(/\{TIERS\.map\(/.test(ladder), 'the ladder no longer walks TIERS in order');
+  });
+
+  test('no rung falls back to an emoji that has an item to show', () => {
+    // The emoji is the fallback for Courtyard Treasure alone, which adds
+    // gold to a courtyard rather than handing over a thing of its own.
+    for (const id of TIERS_WITHOUT_A_PICTURE) {
+      const tier = TIERS.find((t) => t.id === id);
+      assert(tier !== undefined, `${id} is not on the ladder at all`);
+      assert(!!tier!.emoji, `${id} has neither a picture nor an emoji`);
+    }
   });
 });

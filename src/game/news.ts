@@ -37,6 +37,23 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-62-0-ladder',
+    date: '27 August 2026',
+    version: 'v1.62.0',
+    title: 'The ladder shows what you are climbing for',
+    emoji: '\ud83e\uddd7',
+    body:
+      'Every rung of the ladder used to have a little emoji next to it. ' +
+      'It now shows the actual thing you get — the real dice, the real ' +
+      'picture of the battlefield — the same as the Store and your ' +
+      'Inventory do.\n\n' +
+      'The list also reads the right way round now: it starts where you ' +
+      'started and climbs as you read down it.\n\n' +
+      'And the top of the ladder is 10,000 trophies instead of 10,600, ' +
+      'with the rungs below it moved to match. Every step up is still ' +
+      'harder than the one before.',
+  },
+  {
     id: 'v1-61-1-soccer-and-ocean',
     date: '27 August 2026',
     version: 'v1.61.1',

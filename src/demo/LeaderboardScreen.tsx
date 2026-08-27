@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiDifficultyId } from '../game/ai';
 import { MENU_PAGE_AREA } from './BottomNav';
 import { TrophyIcon } from '../ui/Icon';
@@ -8,12 +8,64 @@ import { getWallet } from '../game/currency';
 import { CoinLabel } from './GoldCoin';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
+import { Tier } from '../game/progress';
+import { tierItem } from '../game/tierItem';
+import { ARENA_ART } from '../arena/arenaArt';
+import { ARENAS } from '../arena/arenas';
+import { DiceSwatch } from './DiceSwatch';
 import {
   isAvailable as gameCenterAvailable,
   mayPost,
   openAchievements,
   openLeaderboard,
 } from '../game/gameCenter';
+
+/**
+ * The picture on a rung of the ladder.
+ *
+ * Marc, 27 Aug 2026: "make the emojis on the ladder section just the
+ * icons for each item." The ladder drew a hand-picked emoji for every
+ * rung — a cherry for Ruby Dice, a volcano for Volcano Rim — while the
+ * Store and the Inventory, two taps away, show the real painted die and
+ * the real picture of the battlefield. Same items, same screenfuls of
+ * app, and only this one showed a picture of fruit.
+ *
+ * So a rung shows what it hands over, drawn the way every other screen
+ * draws it: DiceSwatch for a dice set, the arena's own art for a
+ * battlefield. Courtyard Treasure adds the pile of gold to a courtyard
+ * rather than giving a thing of its own, so it keeps its emoji — see
+ * tierItem.ts.
+ */
+const RUNG_ICON = 30;
+
+function RungIcon({ tier, size = RUNG_ICON }: { tier: Tier; size?: number }) {
+  const item = tierItem(tier);
+  if (item.kind === 'die') return <DiceSwatch skin={item.skin} size={size} />;
+  if (item.kind === 'arena') {
+    return (
+      <Image
+        source={ARENA_ART[item.arena]}
+        // The sky underneath, so the rung is never a white hole for the
+        // frame it takes the picture to decode.
+        style={[
+          styles.rungArt,
+          {
+            width: size,
+            height: size,
+            borderRadius: size * 0.24,
+            backgroundColor: ARENAS[item.arena].skyColor,
+          },
+        ]}
+        accessibilityIgnoresInvertColors
+      />
+    );
+  }
+  return (
+    <Text style={[styles.rungEmoji, { width: size, fontSize: size * 0.6 }]}>
+      {tier.emoji}
+    </Text>
+  );
+}
 
 /**
  * The Leaderboard.
@@ -72,9 +124,16 @@ export function LeaderboardScreen({
         {/* Where you stand right now */}
         <View style={styles.leagueCard}>
           <Text style={styles.leagueEyebrow}>YOUR LEAGUE</Text>
-          <Text style={styles.leagueName}>
-            {leagueLabel.emoji} {leagueLabel.name}
-          </Text>
+          {/*
+            The banner shows the same picture the rung does. It used to be
+            the tier's emoji, and once the ladder underneath it stopped
+            standing things in with emoji this was the only one left on
+            the screen doing it.
+          */}
+          <View style={styles.leagueRow}>
+            <RungIcon tier={league} size={26} />
+            <Text style={styles.leagueName}>{leagueLabel.name}</Text>
+          </View>
           {upNext ? (
             <Text style={styles.leagueNext}>
               {toNext} more {toNext === 1 ? 'trophy' : 'trophies'} to reach{' '}
@@ -136,9 +195,17 @@ export function LeaderboardScreen({
 
         <Text style={styles.sectionTitle}>THE LADDER</Text>
         <Text style={styles.sectionNote}>
-          Every rung, and where you are on it.
+          Every rung, and where you are on it. It starts where you started
+          and climbs as you read down.
         </Text>
-        {[...TIERS].reverse().map((tier) => {
+        {/*
+          Read DOWN, cheapest first. Marc, 27 Aug 2026: "flip the ladder
+          around to go in ascending order down." It was reversed so the
+          summit sat at the top, which is how a leaderboard reads — but
+          this is not a leaderboard, it is a road, and a road is read from
+          where you are standing towards where you are going.
+        */}
+        {TIERS.map((tier) => {
           const label = tierLabel(tier, trophies);
           const reachedThis = trophies >= tier.at;
           const isCurrent = tier.id === league.id;
@@ -147,7 +214,7 @@ export function LeaderboardScreen({
               key={tier.id}
               style={[styles.rung, isCurrent && styles.rungCurrent]}
             >
-              <Text style={styles.rungEmoji}>{label.emoji}</Text>
+              <RungIcon tier={tier} />
               <Text
                 style={[styles.rungName, !reachedThis && styles.rungNameLocked]}
               >
@@ -250,6 +317,7 @@ const styles = StyleSheet.create({
     ...TYPE.label,
     letterSpacing: 2,
   },
+  leagueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   leagueName: { color: THEME.ink, fontSize: 22, fontWeight: '900' },
   leagueNext: {
     color: THEME.inkSoft,
@@ -347,7 +415,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,210,31,0.30)',
     borderColor: THEME.ink,
   },
-  rungEmoji: { fontSize: 18 },
+  rungEmoji: { fontSize: 18, width: RUNG_ICON, textAlign: 'center' },
+  rungArt: {
+    width: RUNG_ICON,
+    height: RUNG_ICON,
+    borderRadius: RUNG_ICON * 0.24,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+  },
   rungName: { color: THEME.ink, fontSize: 14, fontWeight: '700', flex: 1 },
   rungNameLocked: { color: THEME.inkFaint },
   rungPrice: { flexDirection: 'row', alignItems: 'center', gap: 4 },

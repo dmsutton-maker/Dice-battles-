@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.62.0 — 2026-08-27 · requested by Marc
+
+Marc: "make the emojis on the ladder section just the icons for each
+item. Flip the ladder around to go in ascending order down. Change the
+trophy amount of some items so that the highest thing is only 10 thousand
+trophies."
+
+### Changed
+- **The ladder shows the item, not an emoji.** It drew a hand-picked
+  emoji for every rung — a cherry for Ruby Dice, a volcano for Volcano
+  Rim — while the Store and the Inventory, two taps away, show the real
+  painted die and the real picture of the battlefield. Same items, same
+  app, and only this screen showed a picture of fruit. A rung now draws
+  what it hands over, through the same `DiceSwatch` and the same
+  `ARENA_ART` every other screen uses. The league banner above it was the
+  last emoji stand-in left on the screen once the list stopped using
+  them, so it shows the picture too.
+
+  Courtyard Treasure keeps its 💰: it adds the pile of gold to the Castle
+  Courtyard rather than handing over a thing of its own, so there is no
+  picture to show. The join between a rung and its item lives in
+  `src/game/tierItem.ts`, and a test holds that rung to being the only
+  one without a picture.
+- **The ladder reads downwards.** It was reversed so the summit sat at
+  the top, which is how a leaderboard reads. This is not a leaderboard,
+  it is a road, and a road is read from where you are standing towards
+  where you are going.
+- **The summit is 10,000 trophies exactly**, down from 10,600, with the
+  eleven rungs below it moved to suit. The comment in `progress.ts` used
+  to argue this could not be done without a kink in the climb, and that
+  was true only of gaps that all grow by the same fifty: fourteen of
+  those, each wider than the 300 below, come to at least 9,450 and
+  overshoot. Four twenty-fives at the bottom of the run buy the
+  difference — 325, 375, 425, 475, then ten clean fifties from 500 to 950
+  — summing to exactly 8,850. Every rung is still harder than the one
+  below it, now checked by a test that demands *harder* rather than *no
+  cheaper*.
+
+  Midnight Dice stays on 1,150, and not for tidiness. Its Game Center
+  achievement id is `…trophies1150` — the number is IN the id, and those
+  ids are live records in App Store Connect, pinned in
+  `tests/achievements.test.ts` from the API. Moving the rung would mean
+  renaming one there or leaving an achievement that never fires.
+
+### Added
+- **`tools/screen-preview/` — the menus can be looked at now.** The
+  arenas, the icons and the dice skins could all be rendered and
+  inspected before shipping; the menu screens were the last visual thing
+  going out on faith. It mounts a real screen through `react-native-web`,
+  so the flex, border, radius and image rules a phone applies are the
+  ones the browser applies. This ladder was checked in it before it went
+  out, top of the screen to bottom.
+
 ## v1.61.1 — 2026-08-27 · reported by Marc
 
 Marc: "fix the ocean dice skin to look better. That's not what a soccer

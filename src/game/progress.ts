@@ -118,36 +118,50 @@ export const TIERS: Tier[] = [
     sold in the Store, deliberately NOT here: one route each, the same
     rule dice skins follow).
 
-    The gaps keep widening the way the ladder always has, now by exactly
-    fifty trophies a rung: 350, 400, 450 and on up to 1,000. David asked
-    on 26 Aug 2026 for thresholds that "make sense scaling up higher and
-    higher"; the run used to start 350, 350 — the only place on the whole
-    ladder where a rung was no harder than the one below it, which reads
-    as a mistake because it was one.
+    The gaps keep widening the whole way: 325, 375, 425, 475, then 500
+    and fifty more each rung to 950. David asked on 26 Aug 2026 for
+    thresholds that "make sense scaling up higher and higher"; the run
+    used to start 350, 350 — the only place on the whole ladder where a
+    rung was no harder than the one below it, which reads as a mistake
+    because it was one.
 
-    That puts the summit at 10,600 rather than a round 10,000. The round
-    number was what forced the kink: 10,000 cannot be reached from 1,150
-    in fourteen evenly widening rungs, so something had to be uneven, and
-    a clean climb is worth more to a player than a tidy final number.
+    The summit is 10,000 exactly. Marc asked for that on 27 Aug 2026:
+    "change the trophy amount of some items so that the highest thing is
+    only 10 thousand trophies." This comment used to argue it could not be
+    done without a kink, and ran the ladder on to 10,600 instead. That is
+    true only of gaps that all grow by the same fifty — fourteen of those,
+    each wider than the 300 below, come to at least 9,450 and overshoot.
+
+    Four twenty-fives at the bottom of the run buy the difference: 325,
+    375, 425, 475 and then ten clean fifties, 500 through 950, summing to
+    exactly 8,850. It is why Snowy Hollow and Desert Dunes sit on 1,475
+    and 2,275 rather than round hundreds.
+
+    Midnight Dice stays on 1,150, and that is not for tidiness. Its Game
+    Center achievement id is `…trophies1150`, the number is IN the id, and
+    those ids are live records in App Store Connect — moving the rung
+    would mean renaming one there or leaving an achievement that never
+    fires. A ladder is worth bending around that; an external identifier
+    is not worth bending around a ladder.
 
     A Hard win pays 50-85, so the summit is a season of play rather than
     a weekend — the long game for Marc and AJ. FAMILY mode still opens
     everything for testing.
   */
-  { at: 1500, name: 'Snowy Hollow', emoji: '⛄', id: 'snow-arena' },
-  { at: 1900, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
-  { at: 2350, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
-  { at: 2850, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
-  { at: 3400, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
-  { at: 4000, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
-  { at: 4650, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
-  { at: 5350, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
-  { at: 6100, name: 'Volcano Rim', emoji: '🌋', id: 'volcano-arena' },
-  { at: 6900, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
-  { at: 7750, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
-  { at: 8650, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
-  { at: 9600, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
-  { at: 10600, name: 'Moon Base', emoji: '🌕', id: 'moon-arena' },
+  { at: 1475, name: 'Snowy Hollow', emoji: '⛄', id: 'snow-arena' },
+  { at: 1850, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
+  { at: 2275, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
+  { at: 2750, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
+  { at: 3250, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
+  { at: 3800, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
+  { at: 4400, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
+  { at: 5050, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
+  { at: 5750, name: 'Volcano Rim', emoji: '🌋', id: 'volcano-arena' },
+  { at: 6500, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
+  { at: 7300, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
+  { at: 8150, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
+  { at: 9050, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
+  { at: 10000, name: 'Moon Base', emoji: '🌕', id: 'moon-arena' },
 ];
 
 /**
