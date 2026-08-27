@@ -37,6 +37,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-62-2-faster-floors',
+    date: '27 August 2026',
+    version: 'v1.62.2',
+    title: 'The floors build five times faster',
+    emoji: '\u26a1',
+    body:
+      'Nothing looks different — this one is under the bonnet. The code ' +
+      'that paints an arena floor was doing the same work six times ' +
+      'over, and now it does not, so a floor takes about a fifth as ' +
+      'long to appear the first time you open an arena.\n\n' +
+      'Every floor comes out exactly, pixel for pixel, the way it did ' +
+      'before, and there is now a test that checks that so a speed-up ' +
+      'can never quietly change how a map looks.',
+  },
+  {
     id: 'v1-62-1-floors',
     date: '27 August 2026',
     version: 'v1.62.1',

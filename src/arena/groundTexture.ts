@@ -95,18 +95,46 @@ function hash(ix: number, iy: number): number {
   return s - Math.floor(s);
 }
 
-/** Value noise that wraps at `period`, so the tile has no seam. */
+/**
+ * Value noise that wraps at `period`, so the tile has no seam.
+ *
+ * Written flat, and it is worth saying why, because the obvious tidy
+ * version is the slow one. This is the hottest function in the file by a
+ * long way — a floor calls it millions of times — and as it stood it
+ * allocated a `wrap` closure and an `h` closure on every single call,
+ * then called `h` SIX times for four corners, so `h(x0, y0)` and
+ * `h(x0, y0 + 1)` each hashed twice over. Twelve wraps and six hashes
+ * for four distinct values.
+ *
+ * Now: four wraps, four hashes, no closures. Same four corners, same
+ * arithmetic, same order of operations — every floor comes out
+ * bit-identical, which a test checks by comparing all sixteen against
+ * the pixels they had before.
+ *
+ * The tempting further step is to precompute the hashes into a table,
+ * since `noise` only ever hashes lattice points. It does NOT work here:
+ * `hash` is a fract-of-a-sine over its arguments, not a lookup, and the
+ * painters pass FRACTIONAL periods (`SIZE / 3` is 42.667), so the
+ * wrapped coordinates it hashes are a continuum rather than a grid. A
+ * table quietly repaints five of the sixteen floors. It was tried.
+ */
 function noise(x: number, y: number, period: number): number {
-  const wrap = (n: number) => ((n % period) + period) % period;
   const x0 = Math.floor(x);
   const y0 = Math.floor(y);
   const fx = x - x0;
   const fy = y - y0;
   const sx = fx * fx * (3 - 2 * fx);
   const sy = fy * fy * (3 - 2 * fy);
-  const h = (ix: number, iy: number) => hash(wrap(ix), wrap(iy));
-  const top = h(x0, y0) + (h(x0 + 1, y0) - h(x0, y0)) * sx;
-  const bot = h(x0, y0 + 1) + (h(x0 + 1, y0 + 1) - h(x0, y0 + 1)) * sx;
+  const ax = ((x0 % period) + period) % period;
+  const bx = (((x0 + 1) % period) + period) % period;
+  const ay = ((y0 % period) + period) % period;
+  const by = (((y0 + 1) % period) + period) % period;
+  const p00 = hash(ax, ay);
+  const p10 = hash(bx, ay);
+  const p01 = hash(ax, by);
+  const p11 = hash(bx, by);
+  const top = p00 + (p10 - p00) * sx;
+  const bot = p01 + (p11 - p01) * sx;
   return top + (bot - top) * sy;
 }
 

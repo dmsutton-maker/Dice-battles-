@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.62.2 — 2026-08-27 · found by the test suite
+
+### Fixed
+- **A floor paints in a fifth of the time, pixel for pixel the same.**
+  `noise` is the hottest function in the surface painters by a long way
+  — a floor calls it millions of times — and every call was allocating
+  two closures (`wrap` and `h`) and then calling `h` SIX times to get
+  FOUR corners, so two of them were hashed twice over. Written flat, with
+  four wraps and four hashes and no closures, the reef — the slowest
+  floor in the set — went from about 226ms to about 33ms. Every floor
+  comes out bit-identical; a new test proves it.
+
+### Added
+- **A fingerprint of every floor's pixels**, because this nearly shipped
+  as something much worse. The obvious way to speed `noise` up is to
+  precompute its hashes into a table, since it only ever hashes lattice
+  points. That is wrong here: `hash` is a fract-of-a-sine over its
+  arguments rather than a lookup, and the painters pass FRACTIONAL
+  periods (`SIZE / 3` is 42.667), so the coordinates it hashes are a
+  continuum and not a grid. The table version was written, it was three
+  times faster, it passed all 512 tests — and it silently repainted five
+  of the sixteen floors. Nothing in the suite could see it, because the
+  tone-step and distinct-surface tests measure a floor's CHARACTER, which
+  survives being redrawn. The new test measures identity.
+
+### Changed
+- **The floor-paint budget is measured as the best of five runs**, not
+  the mean. Its first version failed on a busy machine — 310ms for a
+  floor that really costs 33ms — which is a test failing by weather
+  rather than by regression. The 260ms ceiling is unchanged; it now has
+  eight times the headroom.
+
+### Corrected
+- **v1.62.1's changelog claimed a hash change that is not in the code.**
+  It said the fract-of-a-sine hash had been replaced with integer
+  bit-mixing, gave measurements for it, and reasoned about why it was
+  kept. The shipped file has no such change and never did — the edit was
+  written and measured, then lost before the commit, and the paragraph
+  went out unchecked against the file it described. That entry is struck
+  through and marked below. Nothing about the floors' appearance depended
+  on it, and nothing else in that release is affected.
+
 ## v1.62.1 — 2026-08-27 · reported by Marc
 
 Marc: "make the crystal cavern floor look less pixelated. Make the glow
@@ -60,11 +102,12 @@ time an arena opens, and avoiding that stall is the whole reason
 `textureCache.ts` exists. Sharpness came from ramping the painters' hard
 edges instead — a multiply, rather than half again as many pixels.
 
-The hash under all of it was changed from a fract-of-a-sine to integer
-bit-mixing, which is 2.4× faster in isolation. On a whole floor it is
-close to a wash (the reef: 145ms → 141ms at the same size) because the
-painters spend more time on interpolation than on hashing. It is kept
-because it is free, not because it paid for anything.
+~~The hash under all of it was changed from a fract-of-a-sine to integer
+bit-mixing…~~ **This paragraph was wrong and is corrected in v1.62.2.**
+No such change is in the shipped code: the hash is still the
+fract-of-a-sine it always was. The edit was written, measured and
+described, and then lost before the commit; nobody checked the file
+against the paragraph.
 
 ## v1.62.0 — 2026-08-27 · requested by Marc
 

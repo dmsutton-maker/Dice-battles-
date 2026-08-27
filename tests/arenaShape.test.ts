@@ -935,25 +935,76 @@ suite('arenas · the floor is not cut in half', () => {
     assertEqual(g.image.width, g.image.height, 'the ground is no longer square');
   });
 
+  test('nothing has quietly repainted a floor', () => {
+    /*
+      A fingerprint of every floor's pixels, and the reason it exists is
+      a mistake this file nearly shipped.
+
+      `noise` is the hottest function in the surface painters, and the
+      obvious way to speed it up is to precompute its hashes into a table
+      — it only ever hashes lattice points. That is wrong here: `hash` is
+      a fract-of-a-sine over its arguments rather than a lookup, and the
+      painters pass FRACTIONAL periods (SIZE / 3 is 42.667), so the
+      coordinates it hashes are a continuum, not a grid. The table was
+      written, it was three times faster, it passed every test in this
+      suite — and it silently repainted five of the sixteen floors.
+
+      Nothing else here could see that. The tone-step and
+      distinct-surface tests measure a floor's CHARACTER, which survives
+      being redrawn with different noise. So this measures identity: any
+      change to a floor's pixels, deliberate or not, fails here and has
+      to be looked at and re-pinned on purpose.
+    */
+    const FINGERPRINT: Record<string, number> = {
+      snowFence: 2822920031, adobe: 3332830248, basalt: 2367338390,
+      logPile: 3467978741, station: 4294572736, stalagmite: 12270393,
+      battlement: 2711802449, airlock: 1806471617, driftwood: 542929681,
+      gingerbread: 4111876675, mossStone: 2127551540, shipHull: 2439740480,
+      picket: 3596239287, coralRim: 588170051, parapet: 2389790565,
+      blocks: 1393805627,
+    };
+    const changed: string[] = [];
+    for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+      const t = ARENA_THEMES[id];
+      const px = surfacePixels(t.structure, { a: t.floor.a, b: t.floor.b, accent: t.wall.cap });
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < px.length; i++) {
+        h ^= px[i] & 255;
+        h = Math.imul(h, 16777619) >>> 0;
+      }
+      if (FINGERPRINT[t.structure] !== h) changed.push(`${t.structure} (${h})`);
+    }
+    assertEqual(
+      changed.join(', '),
+      '',
+      'a floor is not the floor it was — re-pin the fingerprint if you meant it',
+    );
+    note(`${Object.keys(FINGERPRINT).length} floors match their pinned pixels`);
+  });
+
   test('a floor still paints fast enough not to be seen', () => {
     /*
-      Being one picture is not free: the tray's shape makes it 40% bigger
-      than the square it replaced, and the heaviest floors went from
-      about 145ms to about 190ms here. That is the price of not having a
-      seam and there is no way around it — but it is a ceiling worth
-      holding, because a floor that takes a quarter of a second is a
-      stall a player sees the first time an arena opens, and avoiding
-      that stall is the whole reason textureCache.ts exists.
+      A floor that takes a quarter of a second is a stall a player sees
+      the first time an arena opens, and avoiding that stall is the whole
+      reason textureCache.ts exists.
 
-      The headroom over 190ms is for slower machines than this one, not
-      for a painter to grow into.
+      Measured as the BEST of several runs, not the average. The first
+      version of this test took a mean and failed on a machine that
+      happened to be busy — 310ms for a floor that really costs 33ms —
+      which is a test failing by weather rather than by regression. The
+      minimum is the run least contaminated by whatever else was
+      happening, so it tracks the real cost and cannot be pushed over the
+      line by load. The ceiling is unchanged.
     */
     // Warms the JIT, not a cache — createTraySurface has none.
     for (let i = 0; i < 3; i++) trayFor('reef');
-    const start = Date.now();
-    for (let i = 0; i < 3; i++) trayFor('reef');
-    const ms = (Date.now() - start) / 3;
-    note(`the reef's floor — the slowest — paints in ${ms.toFixed(0)}ms`);
-    assert(ms < 260, `a floor takes ${ms.toFixed(0)}ms to paint`);
+    let best = Infinity;
+    for (let i = 0; i < 5; i++) {
+      const start = Date.now();
+      trayFor('reef');
+      best = Math.min(best, Date.now() - start);
+    }
+    note(`the reef's floor — the slowest — paints in ${best}ms`);
+    assert(best < 260, `a floor takes ${best}ms to paint`);
   });
 });
