@@ -999,6 +999,25 @@ function ThemedRetreat({ theme }: { theme: ArenaTheme }) {
 
 /* ── what the tray is BUILT of ────────────────────────────────────── */
 
+/** Where the crest ring turns, i.e. the outside face of the wall. */
+const RIM_END_X = halfW + wallThickness / 2;
+const RIM_END_Z = halfD + wallThickness / 2;
+
+/**
+ * A thin bar along each wall, corner to corner.
+ *
+ * Not WALL_RUNS scaled down: those carry the wall's own width, so a bar
+ * cut from them is as broad as the wall is thick and hides whatever
+ * stands on the coping underneath it. These are 0.12 across and reach
+ * the true corners, so a handrail looks like a handrail.
+ */
+const RAIL_RUNS: [number, number, number, number][] = [
+  [-RIM_END_X, 0, 0.12, RIM_END_Z * 2],
+  [RIM_END_X, 0, 0.12, RIM_END_Z * 2],
+  [0, -RIM_END_Z, RIM_END_X * 2, 0.12],
+  [0, RIM_END_Z, RIM_END_X * 2, 0.12],
+];
+
 /** The four wall runs, as [centreX, centreZ, width, depth]. */
 const WALL_RUNS: [number, number, number, number][] = [
   [-(halfW + wallThickness / 2), 0, wallThickness, innerDepth + wallThickness * 2],
@@ -1034,27 +1053,48 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
     /* ── ladder ──────────────────────────────────────────────────── */
 
     case 'snowFence':
-      // Timber palings with a cap of snow lying along the top rail.
+      /*
+        Timber palings, standing PROUD of the snow lying along the rail.
+
+        They used to top out at 0.40 above the wall and the drift of snow
+        was a slab from 0.355 to 0.485 across the full width of it — so
+        from the camera, which looks down, the fence was buried and every
+        wall of the Snowy Woods read as a blank white kerb. The posts had
+        been there the whole time. Nobody could see one.
+      */
       return (
         <group>
           {WALL_RUNS.map(([x, z, w, d], i) => (
             <group key={`rail-${i}`}>
-              <mesh position={[x, wallHeight + 0.26, z]}>
+              <mesh position={[x, wallHeight + 0.22, z]}>
                 <boxGeometry args={[w, 0.09, d]} />
                 <meshStandardMaterial color={cap} roughness={0.95} />
               </mesh>
-              <mesh position={[x, wallHeight + 0.42, z]}>
-                <boxGeometry args={[w * 0.98, 0.13, d * 0.98]} />
+              <mesh position={[x, wallHeight + 0.32, z]}>
+                <boxGeometry args={[w * 0.86, 0.11, d * 0.86]} />
                 <meshStandardMaterial color="#f7fafc" roughness={0.8} />
               </mesh>
             </group>
           ))}
-          {rim.map((m, i) => (
-            <mesh key={`paling-${i}`} position={[m.pos[0], wallHeight + 0.2, m.pos[2]]}>
-              <boxGeometry args={[0.18, 0.4, 0.18]} />
-              <meshStandardMaterial color={cap} roughness={0.95} />
-            </mesh>
-          ))}
+          {rim.map((m, i) => {
+            const h = 0.62 + ((i * 37) % 5) / 20;
+            return (
+              <group key={`paling-${i}`} position={[m.pos[0], wallHeight, m.pos[2]]}>
+                <mesh position={[0, h / 2, 0]}>
+                  <boxGeometry args={[0.19, h, 0.19]} />
+                  <meshStandardMaterial
+                    color={i % 3 === 0 ? theme.wall.color : cap}
+                    roughness={0.95}
+                  />
+                </mesh>
+                {/* A cap of snow sitting on each post, not over it. */}
+                <mesh position={[0, h + 0.05, 0]}>
+                  <boxGeometry args={[0.23, 0.1, 0.23]} />
+                  <meshStandardMaterial color="#f7fafc" roughness={0.8} />
+                </mesh>
+              </group>
+            );
+          })}
         </group>
       );
 
@@ -1066,7 +1106,7 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
             const h = 0.3 + ((i * 29) % 7) / 22;
             return (
               <mesh key={`brick-${i}`} position={[m.pos[0], wallHeight + h / 2, m.pos[2]]}>
-                <boxGeometry args={[0.62, h, 0.44]} />
+                <boxGeometry args={m.alongX ? [0.62, h, 0.44] : [0.44, h, 0.62]} />
                 <meshStandardMaterial color={i % 3 === 0 ? theme.wall.color : cap} roughness={1} />
               </mesh>
             );
@@ -1242,7 +1282,7 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
                 position={[m.pos[0], wallHeight + h / 2, m.pos[2]]}
                 rotation={m.alongX ? [0, 0, lean] : [lean, 0, 0]}
               >
-                <boxGeometry args={[0.3, h, 0.16]} />
+                <boxGeometry args={m.alongX ? [0.3, h, 0.16] : [0.16, h, 0.3]} />
                 <meshStandardMaterial color={i % 3 === 0 ? theme.wall.color : cap} roughness={1} />
               </mesh>
             );
@@ -1325,7 +1365,7 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
           {rim.map((m, i) => (
             <group key={`picket-${i}`} position={[m.pos[0], 0, m.pos[2]]}>
               <mesh position={[0, wallHeight + 0.2, 0]}>
-                <boxGeometry args={[0.22, 0.4, 0.1]} />
+                <boxGeometry args={m.alongX ? [0.22, 0.4, 0.1] : [0.1, 0.4, 0.22]} />
                 <meshStandardMaterial color="#f7f4ea" roughness={0.9} />
               </mesh>
               <mesh position={[0, wallHeight + 0.48, 0]}>
@@ -1390,29 +1430,55 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
     }
 
     case 'parapet':
-      // A rooftop: concrete coping with a steel handrail above it.
+      /*
+        A rooftop: coping cast in slabs, with a steel handrail above it.
+
+        It used to be one smooth grey band and a rail cut from the wall's
+        own width — 0.5 across, wider than anything standing on the
+        coping — with 0.04-radius posts underneath it. From above that is
+        a bare grey frame. Every other battlefield has something you can
+        count along its wall; this one had nothing at all.
+
+        So the coping is slabs now, alternating shade, one per crest spot
+        the whole way round, and the rail is a thin bar that leaves them
+        showing on both sides of it.
+      */
       return (
         <group>
           {WALL_RUNS.map(([x, z, w, d], i) => (
-            <group key={`coping-${i}`}>
-              <mesh position={[x, wallHeight + 0.08, z]}>
-                <boxGeometry args={[w * 1.04, 0.16, d * 1.04]} />
-                <meshStandardMaterial color={cap} roughness={0.9} />
+            <mesh key={`coping-${i}`} position={[x, wallHeight + 0.06, z]}>
+              <boxGeometry args={[w * 1.04, 0.12, d * 1.04]} />
+              <meshStandardMaterial color={cap} roughness={0.9} />
+            </mesh>
+          ))}
+          {rim.map((m, i) => (
+            <group key={`bay-${i}`} position={[m.pos[0], wallHeight, m.pos[2]]}>
+              <mesh position={[0, 0.19, 0]}>
+                <boxGeometry
+                  args={m.alongX ? [0.52, 0.14, 0.6] : [0.6, 0.14, 0.52]}
+                />
+                <meshStandardMaterial
+                  color={i % 2 === 0 ? cap : theme.wall.color}
+                  roughness={0.92}
+                />
               </mesh>
-              <mesh position={[x, wallHeight + 0.52, z]}>
-                <boxGeometry args={[w * 0.99, 0.05, d * 0.99]} />
+              {/* The stanchion, with a base plate you can pick out from above. */}
+              <mesh position={[0, 0.29, 0]}>
+                <boxGeometry args={[0.17, 0.06, 0.17]} />
+                <meshStandardMaterial color="#6a7285" roughness={0.4} metalness={0.6} />
+              </mesh>
+              <mesh position={[0, 0.47, 0]}>
+                <cylinderGeometry args={[0.05, 0.05, 0.34, 6]} />
                 <meshStandardMaterial color="#8f96a8" roughness={0.4} metalness={0.6} />
               </mesh>
             </group>
           ))}
-          {rim.map((m, i) =>
-            i % 2 === 0 ? (
-              <mesh key={`post-${i}`} position={[m.pos[0], wallHeight + 0.32, m.pos[2]]}>
-                <cylinderGeometry args={[0.04, 0.04, 0.44, 6]} />
-                <meshStandardMaterial color="#8f96a8" roughness={0.4} metalness={0.6} />
-              </mesh>
-            ) : null,
-          )}
+          {RAIL_RUNS.map(([x, z, w, d], i) => (
+            <mesh key={`rail-${i}`} position={[x, wallHeight + 0.65, z]}>
+              <boxGeometry args={[w, 0.06, d]} />
+              <meshStandardMaterial color="#8f96a8" roughness={0.4} metalness={0.6} />
+            </mesh>
+          ))}
         </group>
       );
 

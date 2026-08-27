@@ -1,5 +1,57 @@
 # Changelog
 
+## v1.61.0 — 2026-08-27 · reported by Marc
+
+Marc: "in volcano rim you didn't put the orange rocks around the entire
+wall, just on half of it. All these things have to go around the entire
+wall."
+
+Volcano Rim was v1.60.1's fault and was already fixed by it — with the
+crest ring listed a wall at a time, the orange columns were `i % 4`, and
+every even index was a left-wall spot, so nine went down one side and
+none down the other. What "all these things" turned up was that going
+round the wall was only ever CHECKED by eye, and three other faults had
+got past that.
+
+### Fixed
+- **The Snowy Woods' fence was buried.** The palings topped out 0.40
+  above the wall and the drift of snow was a slab from 0.355 to 0.485
+  across the full width of it, so from a camera that looks down there was
+  nothing to see: every wall read as a blank white kerb. The posts had
+  been there the whole time. They now stand 0.62–0.82 proud with a cap of
+  snow ON each one, and every third is cut from the paler timber.
+- **Rooftop City had a bare grey frame.** The coping was one smooth band,
+  the handrail was cut from the wall's own width — 0.5 across, wider than
+  anything standing under it — and the posts were 0.04-radius pins. From
+  above, nothing. The coping is cast in slabs now, alternating shade, one
+  per crest spot the whole way round, with a stanchion and a base plate
+  on each, under a 0.12 rail that leaves them showing either side.
+- **Three crests were laid crossways on two of their four walls.** The
+  Dune Fort's bricks, Palm Cove's driftwood and Sunny Farm's pickets all
+  had fixed box dimensions, which are right for the near and far walls
+  and turned ninety degrees out on the two long ones. They now follow the
+  wall they sit on.
+
+### Added
+- **`tools/arena-preview/audit.js` — the wall is measured now.** It
+  renders each battlefield straight down, walks the middle of all four
+  walls in screen space through the camera that drew them, and reports
+  the light-to-dark range along each. It fails a wall under 18 of range
+  (a bare kerb) and fails walls that do not match the one opposite — the
+  long walls to 0.75, the short ones to 0.45, which are looser because
+  the jail and the retreat stand behind them.
+
+  Both thresholds were set by testing them against faults that really
+  happened: with the crest ring reverted to its pre-v1.60.1 order the
+  audit flags Volcano Rim (105 vs 65), Frozen Lights (125 vs 0) and
+  Crystal Cavern (166 vs 113), and nothing else. All sixteen pass on the
+  code as shipped.
+
+  A per-wall evenness reading is printed as well but deliberately does
+  NOT fail: it samples one line at one height, so a piece taller than
+  that line shifts off it as it projects and the number dips where
+  nothing is missing.
+
 ## v1.60.1 — 2026-08-27 · reported by Marc
 
 ### Fixed

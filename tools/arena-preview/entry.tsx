@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import { ThemedArena } from '../../src/arena/ThemedArena';
 import { ARENA_THEMES, ThemedArenaId } from '../../src/arena/themeData';
 import { fitCamera } from '../../src/demo/cameraFit';
+import { TUNING } from '../../src/game/tuning';
+
+const W = 393, H = 852;
 
 const DAYLIGHT = {
   hemisphere: { sky: '#eef2fa', ground: '#8f877b', intensity: 1.0 },
@@ -29,6 +32,47 @@ function Fit({ aspect }: { aspect: number }) {
     }
     fitCamera(camera, aspect);
   }, [camera, aspect]);
+
+  useEffect(() => {
+    /*
+      What audit.js reads the picture through.
+
+      It needs to know where on the SCREEN a given point on the wall top
+      ended up, and the only thing that knows that is the camera that
+      just drew it. Projecting here rather than re-deriving the maths in
+      node means the audit measures the render, not a model of it.
+    */
+    const w = TUNING.tray;
+    const top = w.wallHeight + 0.3;
+    (window as any).__project = (x: number, z: number) => {
+      const v = new THREE.Vector3(x, top, z).project(camera);
+      return [((v.x + 1) / 2) * W, ((1 - v.y) / 2) * H];
+    };
+    (window as any).__walls = () => {
+      const endX = w.innerWidth / 2 + w.wallThickness / 2;
+      const endZ = w.innerDepth / 2 + w.wallThickness / 2;
+      /*
+        The middle of the wall only. Every battlefield puts a big bright
+        corner piece at each end, and a corner is not evidence that the
+        wall between the corners has anything on it — measuring through
+        them makes the quiet middle of a bare wall look like a dip in a
+        decorated one.
+      */
+      const line = (from: [number, number], to: [number, number]) => {
+        const out: [number, number][] = [];
+        for (let t = 0.09; t <= 0.91; t += 1 / 400)
+          out.push([from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t]);
+        return out;
+      };
+      return {
+        left: line([-endX, -endZ], [-endX, endZ]),
+        right: line([endX, -endZ], [endX, endZ]),
+        near: line([-endX, -endZ], [endX, -endZ]),
+        far: line([-endX, endZ], [endX, endZ]),
+      };
+    };
+  }, [camera]);
+
   return null;
 }
 
@@ -45,7 +89,6 @@ function Scene({ id }: { id: ThemedArenaId }) {
   );
 }
 
-const W = 393, H = 852;
 const id = (new URLSearchParams(location.search).get('id') ?? 'autumn') as ThemedArenaId;
 const meta = ARENA_THEMES[id];
 document.body.style.margin = '0';

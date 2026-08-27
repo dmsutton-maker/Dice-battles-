@@ -37,6 +37,23 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-61-0-walls-all-the-way-round',
+    date: '27 August 2026',
+    version: 'v1.61.0',
+    title: 'Every wall, the whole way round',
+    emoji: '🧱',
+    body:
+      'The orange rocks on Volcano Rim were all down one side. Fixing ' +
+      'that turned up three more: the fence in the Snowy Woods was ' +
+      'buried under the snow so you could not see a post of it, ' +
+      'Rooftop City had a bare grey wall with nothing on it, and the ' +
+      'bricks, driftwood and pickets on the Dune Fort, Palm Cove and ' +
+      'Sunny Farm were lying sideways on two walls out of four.\n\n' +
+      'All four are sorted. There is also a new tool that measures every ' +
+      'wall of every arena and says which ones look bare, so this stops ' +
+      'being something somebody has to spot.',
+  },
+  {
     id: 'v1-60-1-frozen-lights-ribs',
     date: '27 August 2026',
     version: 'v1.60.1',
