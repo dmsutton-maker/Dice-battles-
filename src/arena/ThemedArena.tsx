@@ -1808,7 +1808,7 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         createTraySurface(
           theme.structure,
           { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
-          [floorW / 6.4, floorD / 6.4],
+          [floorW, floorD],
         ),
       ),
     [id, theme.structure, theme.floor.a, theme.floor.b, theme.wall.cap, floorW, floorD],

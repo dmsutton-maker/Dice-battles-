@@ -5,7 +5,7 @@ import { palisadeLogs, palisadeTopHeight } from '../src/arena/palisade';
 import { buildRim, RIM_PITCH, RimSpot } from '../src/arena/rim';
 import { TUNING } from '../src/game/tuning';
 import { ARENA_THEMES, ThemedArenaId } from '../src/arena/themeData';
-import { surfacePixels } from '../src/arena/groundTexture';
+import { createGroundSurface, createTraySurface, surfacePixels } from '../src/arena/groundTexture';
 
 /** Every structure in the set, from the themes themselves. */
 const ARENA_STRUCTURES = [
@@ -846,5 +846,114 @@ suite('arenas · the crest goes all the way round', () => {
       !/const rim = useMemo\(\(\) => \{/.test(source),
       'ThemedArena is building its own crest ring again, where no test can see it',
     );
+  });
+});
+
+/**
+ * The floor is one picture.
+ *
+ * Marc, 27 Aug 2026: "make the floor of every arena one continuous
+ * picture and design because you can see the line in the middle where
+ * it's cut."
+ *
+ * There was a line, in the same place on all sixteen. The floor was a
+ * square 128x128 picture laid down with `repeat` set to the tray's size
+ * over 6.4 world units — [0.875, 1.594]. Across the tray that is under
+ * one copy, so nothing shows; DOWN it the picture ran out at 1.0 and
+ * started again, and the join was a hard cut about six-tenths along,
+ * right where the dice land.
+ *
+ * A square picture cannot cover a 5.6 x 10.2 tray without repeating or
+ * being stretched, so the shape of the picture is the thing to hold.
+ */
+suite('arenas · the floor is not cut in half', () => {
+  const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+  const floorW = innerWidth + wallThickness * 2;
+  const floorD = innerDepth + wallThickness * 2;
+
+  const trayFor = (id: ThemedArenaId) => {
+    const t = ARENA_THEMES[id];
+    return createTraySurface(
+      t.structure,
+      { a: t.floor.a, b: t.floor.b, accent: t.wall.cap },
+      [floorW, floorD],
+    );
+  };
+
+  test('every tray floor is laid down exactly once', () => {
+    for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+      const t = trayFor(id);
+      assertEqual(t.repeat.x, 1, `${id}'s floor repeats across the tray`);
+      assertEqual(t.repeat.y, 1, `${id}'s floor repeats down the tray`);
+    }
+  });
+
+  test('and cannot wrap round even if something asked it to', () => {
+    // Clamped, not repeating: with the picture covering the floor once,
+    // a wrapping filter samples the far edge along all four sides.
+    const t = trayFor('cavern');
+    assertEqual(t.wrapS, THREE.ClampToEdgeWrapping, 'the floor wraps across');
+    assertEqual(t.wrapT, THREE.ClampToEdgeWrapping, 'the floor wraps down');
+  });
+
+  test('the picture is the shape of the tray, so nothing is stretched', () => {
+    /*
+      The real check. Repeat [1, 1] on a square picture would remove the
+      join by squashing the floor instead — circles into ellipses. The
+      texels have to stay square in WORLD space, which means the
+      picture's proportions have to match the tray's.
+    */
+    const want = floorD / floorW;
+    for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+      const t = trayFor(id);
+      const got = t.image.height / t.image.width;
+      assert(
+        Math.abs(got - want) < 0.02,
+        `${id}'s floor is ${t.image.width}x${t.image.height}, ` +
+          `a ratio of ${got.toFixed(3)} against the tray's ${want.toFixed(3)}`,
+      );
+    }
+    const one = trayFor('sky');
+    note(`tray floor ${one.image.width}x${one.image.height} for ${floorW}x${floorD} world units`);
+  });
+
+  test('the ground outside still tiles, because it should', () => {
+    /*
+      Not everything wants to be one picture. The ground reaches 26 world
+      units where the tray reaches ten, it is mostly behind scenery, and
+      one picture that size would be either enormous to paint or blurred
+      to nothing. Its painters wrap at SIZE, so its joins really are
+      seamless — which is what the tray's could never be at 1.594.
+    */
+    const t = ARENA_THEMES.moon;
+    const g = createGroundSurface(
+      t.structure,
+      { a: t.meadow, b: t.hill, accent: t.mountain ?? t.wall.cap },
+      4,
+    );
+    assertEqual(g.repeat.x, 4, 'the ground has stopped tiling');
+    assertEqual(g.image.width, g.image.height, 'the ground is no longer square');
+  });
+
+  test('a floor still paints fast enough not to be seen', () => {
+    /*
+      Being one picture is not free: the tray's shape makes it 40% bigger
+      than the square it replaced, and the heaviest floors went from
+      about 145ms to about 190ms here. That is the price of not having a
+      seam and there is no way around it — but it is a ceiling worth
+      holding, because a floor that takes a quarter of a second is a
+      stall a player sees the first time an arena opens, and avoiding
+      that stall is the whole reason textureCache.ts exists.
+
+      The headroom over 190ms is for slower machines than this one, not
+      for a painter to grow into.
+    */
+    // Warms the JIT, not a cache — createTraySurface has none.
+    for (let i = 0; i < 3; i++) trayFor('reef');
+    const start = Date.now();
+    for (let i = 0; i < 3; i++) trayFor('reef');
+    const ms = (Date.now() - start) / 3;
+    note(`the reef's floor — the slowest — paints in ${ms.toFixed(0)}ms`);
+    assert(ms < 260, `a floor takes ${ms.toFixed(0)}ms to paint`);
   });
 });

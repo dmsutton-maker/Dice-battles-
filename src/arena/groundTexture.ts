@@ -33,6 +33,27 @@ import type { ArenaStructure } from './themeData';
 
 const SIZE = 128;
 
+/**
+ * Painter units per world unit.
+ *
+ * The painters were written against a 128-unit square standing in for
+ * 6.4 world units, and every feature size in them is tuned to that.
+ * Changing this number resizes every feature on every floor at once.
+ */
+const UNITS_PER_WORLD = SIZE / 6.4;
+
+/**
+ * Texels per painter unit on the tray floor.
+ *
+ * The tray is the largest thing on screen, about 54 screen pixels to the
+ * world unit against 20 texels — so each texel was covering nearly three
+ * pixels and the floor was soft where it was not jagged. Half as many
+ * again is what the faster hash pays for. Much more and a phone stalls
+ * visibly the first time an arena opens, which is the very fault
+ * textureCache.ts exists to avoid.
+ */
+const TRAY_DENSITY = 1;
+
 type Rgb = [number, number, number];
 
 const rgb = (hex: string): Rgb => {
@@ -208,30 +229,89 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   // of mineral veining that read as noise, so the rock is calm now and
   // the crystal is drawn as actual faceted shards catching the light.
   stalagmite: (x, y, p) => {
+    /*
+      Marc, 27 Aug 2026: "make the crystal cavern floor look less
+      pixelated."
+
+      The pixels were never the problem — the EDGES were. Every crystal
+      was drawn by a pair of `continue` tests, so a texel was either
+      wholly crystal or wholly rock with nothing between, and a hard edge
+      magnified onto a floor about three screen pixels to the texel is a
+      staircase. Nothing else on this floor had the fault because nothing
+      else on it has an edge; it is all noise. So every edge here is a
+      RAMP now — how much of the texel the shard covers — and the shards
+      are mixed in by that coverage.
+
+      The shape took three goes. Long tapered blades radiating from a
+      root are what a crystal cluster looks like from the SIDE; from
+      above, at twenty texels to the world unit, three of them read as a
+      bird's footprint and four as a bird. What reads as crystal looking
+      down at it is a chunk: a flat angular face with a straight edge and
+      a second face turned away from the light. So each cluster is three
+      overlapping hexagonal shards, each split down the middle into a lit
+      facet and a shadowed one, each outlined dark so it stays a separate
+      solid rather than melting into its neighbour.
+    */
     const warp = fbm(x, y, SIZE) * 10;
     let c = mix(p.a, p.b, smoothstep(0.25, 0.75, fbm(x * 0.6 + warp * 0.2, y * 0.6, SIZE)));
     c = mix(c, shade(p.a, 0.72), smoothstep(0.5, 0.85, fbm(x * 0.4, y * 0.4, SIZE)) * 0.45);
-    // Crystal: angular blades on a coarse lattice, each with a lit face
-    // and a dark one so it reads as a solid with edges.
-    const cell = 26;
+    // Wet rock, so the floor between the crystals is not a flat wash.
+    c = mix(c, shade(p.a, 0.55), smoothstep(0.62, 0.9, noise(x / 5, y / 5, SIZE / 5)) * 0.4);
+
+    const SECTOR = Math.PI / 3;
+    const cell = 36;
     for (let k = 0; k < 2; k++) {
-      const ox = k * 13;
-      const row = Math.floor((y + ox) / cell);
-      const col = Math.floor((x + ox) / cell);
-      const h = hash(col + k * 19, row + k * 7);
-      if (h < 0.45) continue;
-      const bx = (((x + ox) % cell) + cell) % cell - cell / 2;
-      const by = (((y + ox) % cell) + cell) % cell - cell / 2;
-      const a = h * Math.PI;
-      const ux = bx * Math.cos(a) + by * Math.sin(a);
-      const uy = -bx * Math.sin(a) + by * Math.cos(a);
-      const half = 2.4 + h * 1.6;
-      const len = 7 + h * 5;
-      if (Math.abs(uy) > half * (1 - Math.abs(ux) / len) || Math.abs(ux) > len) continue;
-      const face = uy < 0 ? lift(p.b, 0.55) : shade(p.b, 0.7);
-      c = mix(c, face, 0.9);
-      // The bright edge down the blade's spine.
-      if (Math.abs(uy) < 0.7) c = mix(c, lift(p.b, 0.85), 0.8);
+      const oz = k * 18;
+      const row = Math.floor((y + oz) / cell);
+      const col = Math.floor((x + oz) / cell);
+      const seed = hash(col + k * 19, row + k * 7);
+      if (seed < 0.52) continue;
+      // Where in the cell this cluster grew.
+      const rx = (hash(col + 3, row + 11) - 0.5) * 15;
+      const ry = (hash(col + 7, row + 2) - 0.5) * 15;
+      const bx = (((x + oz) % cell) + cell) % cell - cell / 2 - rx;
+      const by = (((y + oz) % cell) + cell) % cell - cell / 2 - ry;
+      if (Math.abs(bx) > 15 || Math.abs(by) > 15) continue;
+
+      // The light the cluster throws onto the rock around it.
+      c = mix(c, lift(p.b, 0.3), smoothstep(14, 3, Math.hypot(bx, by)) * 0.26);
+
+      for (let b = 0; b < 3; b++) {
+        const g = hash(col * 3 + b * 41, row * 5 + b * 13 + k);
+        const h2 = hash(col * 7 + b * 5, row * 11 + b * 29 + k);
+        // Shards sit beside each other, not on one point.
+        const ox = (h2 - 0.5) * 9;
+        const oy = (g - 0.5) * 9;
+        const dx = bx - ox;
+        const dy = by - oy;
+        const rad = 2.4 + h2 * 5.2;
+        // Cheap rejection first. Rotating a point costs a sine, a cosine
+        // and an arc-tangent, and all three would be spent on the four
+        // texels in five that are nowhere near this shard.
+        const reach = rad + 2.5;
+        if (dx < -reach || dx > reach || dy < -reach || dy > reach) continue;
+        const dd = dx * dx + dy * dy;
+        if (dd > reach * reach) continue;
+        const a = g * 6.283;
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        const ux = dx * ca + dy * sa;
+        const uy = -dx * sa + dy * ca;
+        const d = Math.sqrt(dd);
+        // A hexagon's boundary in this direction: its inradius over the
+        // cosine of the angle folded into one sixty-degree wedge.
+        const ang = Math.atan2(uy, ux);
+        const folded = Math.abs(((((ang + SECTOR / 2) % SECTOR) + SECTOR) % SECTOR) - SECTOR / 2);
+        const edge = rad / Math.cos(folded);
+        const cover = smoothstep(edge + 0.7, edge - 0.7, d);
+        if (cover <= 0.02) continue;
+        // Two facets meeting on a straight line, which is what makes a
+        // solid read as a solid rather than as a blob.
+        c = mix(c, uy < 0 ? lift(p.b, 0.62) : shade(p.b, 0.66), cover * 0.95);
+        c = mix(c, lift(p.b, 0.72), cover * smoothstep(rad * 0.5, 0, Math.abs(uy)) * 0.5);
+        // Outlined, so two shards touching stay two shards.
+        c = mix(c, shade(p.b, 0.4), smoothstep(1.4, 0.25, Math.abs(d - edge)) * 0.55);
+      }
     }
     return c;
   },
@@ -297,11 +377,37 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   // the shade. David asked for Glow Glade to look better; it was one
   // flat green with pale dots on it.
   mossStone: (x, y, p) => {
+    /*
+      Marc, 27 Aug 2026: "make the glow glade floor look better."
+
+      It was a flat green with grey lumps on it and a scatter of white
+      dots. Three things were wrong. The moss was one blob of noise, so
+      it had colour but no TEXTURE — nothing at the scale of a leaf. The
+      stones were near-circles with a soft rim, which at this size reads
+      as mould rather than rock. And the glowing spores were single
+      texels turned on by a hash: a lit pixel with nothing around it is
+      not a glow, it is a dead pixel, and it is exactly what a floor
+      "looking pixelated" means.
+
+      Now: moss in three depths with a fine fibrous grain over it, stones
+      that are lumpy rather than round and sit in their own shadow, and
+      spores drawn as soft round lights with a halo.
+    */
     const blob = fbm(x * 0.55, y * 0.55, SIZE);
     let c = mix(p.a, p.b, smoothstep(0.28, 0.72, blob));
-    // Damp patches, and the bright moss where light gets in.
+    // Damp hollows, and the bright moss where light gets down.
     c = mix(c, shade(p.a, 0.6), smoothstep(0.35, 0.05, blob) * 0.7);
-    c = mix(c, lift(p.b, 0.35), smoothstep(0.72, 0.95, blob) * 0.6);
+    c = mix(c, lift(p.b, 0.42), smoothstep(0.7, 0.95, blob) * 0.65);
+    // A second, finer patchwork so the green is not one flat field.
+    c = mix(c, lift(p.b, 0.22), smoothstep(0.55, 0.85, fbm(x * 1.6 + 31, y * 1.6, SIZE)) * 0.35);
+    // The fibre of the moss itself, at the scale of a leaf.
+    // Displaced by `blob`, which is already in hand, rather than by a
+    // second fbm — that was eight more hash lookups on every texel of
+    // the floor for a wobble nobody can see.
+    const fibre = noise(x * 1.1, y * 1.1 + blob * 3, SIZE);
+    c = mix(c, shade(c, 0.84), smoothstep(0.45, 0.85, fibre) * 0.5);
+    c = mix(c, lift(c, 0.18), smoothstep(0.4, 0.08, fibre) * 0.4);
+
     const cell = 32;
     const col = Math.floor(x / cell);
     const row = Math.floor(y / cell);
@@ -310,17 +416,49 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     const radius = hash(col + 8, row + 6) > 0.42 ? 5 + hash(col + 2, row + 3) * 4 : -99;
     const sx = (((x % cell) + cell) % cell) - cell / 2 - jx;
     const sy = (((y % cell) + cell) % cell) - cell / 2 - jy;
-    const stone = Math.hypot(sx, sy) + fbm(x, y, SIZE) * 3;
-    // Pale grey, and barely tinted by the theme: the glade's accent is
-    // another green, and a stone mixed a quarter of the way into it came
-    // out DARKER than the moss it was meant to sit proud of.
-    const rock: Rgb = [166, 172, 164];
-    c = mix(c, mix(rock, p.accent, 0.12), smoothstep(radius + 2, radius, stone) * 0.95);
-    c = mix(c, lift(rock, 0.5), smoothstep(radius + 1, radius - 1, stone) * Math.max(0, -(sx + sy) / radius) * 0.7);
-    c = mix(c, shade(p.a, 0.78), smoothstep(radius, radius + 2, stone) * smoothstep(radius + 4, radius + 2, stone) * 0.45);
-    // Tiny glowing spores in the moss.
-    if (hash(x * 3, y * 3) > 0.994) c = mix(c, [200, 245, 235], 0.75);
-    return mix(c, shade(c, 0.9), noise(x / 2, y / 2, SIZE / 2) * 0.4);
+    /*
+      Lumpy, not round. The wobble is noise on the RADIUS rather than on
+      the position, so a stone keeps one outline instead of being blurred
+      into the moss the way adding noise to the distance did.
+    */
+    const wobble = (noise(sx * 0.55 + col * 7, sy * 0.55 + row * 7, SIZE) - 0.5) * 1.5;
+    const stone = Math.hypot(sx, sy) - wobble;
+    // Pale grey, barely tinted by the theme: the glade's accent is
+    // another green, and a stone mixed a quarter into it came out DARKER
+    // than the moss it was meant to sit proud of.
+    const rock: Rgb = [170, 176, 167];
+    // Its own shadow first, so the stone sits ON the moss.
+    c = mix(c, shade(p.a, 0.66), smoothstep(radius + 3.5, radius + 0.5, stone) * 0.5);
+    const body = mix(rock, p.accent, 0.12);
+    c = mix(c, body, smoothstep(radius + 0.9, radius - 0.4, stone) * 0.96);
+    // Lit from the upper left, with grain in the rock.
+    const lit = -(sx + sy) / Math.max(1, radius);
+    const on = smoothstep(radius + 0.4, radius - 1, stone);
+    c = mix(c, lift(rock, 0.55), on * Math.max(0, lit) * 0.75);
+    c = mix(c, shade(rock, 0.72), on * Math.max(0, -lit) * 0.5);
+    c = mix(c, shade(c, 0.92), on * noise(x * 1.5, y * 1.5, SIZE) * 0.5);
+
+    /*
+      The glow. Two per lattice cell at most, drawn as a round light with
+      a halo around it — a spore you can see is worth more than fifty
+      single lit texels, which is what these were.
+    */
+    const gcell = 26;
+    for (let k = 0; k < 2; k++) {
+      const oz = k * 11;
+      const gc = Math.floor((x + oz) / gcell);
+      const gr = Math.floor((y + oz) / gcell);
+      if (hash(gc + k * 31, gr + k * 17) < 0.72) continue;
+      const gx = (((x + oz) % gcell) + gcell) % gcell - gcell / 2
+        - (hash(gc + 2, gr + 4) - 0.5) * 11;
+      const gy = (((y + oz) % gcell) + gcell) % gcell - gcell / 2
+        - (hash(gc + 6, gr + 8) - 0.5) * 11;
+      const d = Math.hypot(gx, gy);
+      const glow: Rgb = [196, 246, 232];
+      c = mix(c, glow, smoothstep(4.2, 0.9, d) * 0.32);
+      c = mix(c, glow, smoothstep(1.5, 0.2, d) * 0.85);
+    }
+    return c;
   },
 
   shipHull: (x, y, p) => {
@@ -459,21 +597,39 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   },
 };
 
-function build(structure: ArenaStructure, paint: SurfacePaint): THREE.DataTexture {
+/**
+ * Paint a surface.
+ *
+ * `wUnits` x `hUnits` is the picture in the painters' OWN coordinates,
+ * where 20 units is one world unit — the density they were written at
+ * and the one every feature size in them is tuned to (a 26-unit crystal
+ * lattice, a 16-unit flagstone). `density` then decides how many real
+ * texels each of those units gets, so the picture can be drawn finer
+ * without a single painter changing what it draws.
+ */
+function build(
+  structure: ArenaStructure,
+  paint: SurfacePaint,
+  wUnits: number,
+  hUnits: number,
+  density: number,
+): THREE.DataTexture {
   const painter = PAINTERS[structure];
   const p = { a: rgb(paint.a), b: rgb(paint.b), accent: rgb(paint.accent) };
-  const data = new Uint8Array(SIZE * SIZE * 4);
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++) {
-      const c = painter(x, y, p);
-      const i = (y * SIZE + x) * 4;
+  const w = Math.round(wUnits * density);
+  const h = Math.round(hUnits * density);
+  const data = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const c = painter(x / density, y / density, p);
+      const i = (y * w + x) * 4;
       data[i] = Math.max(0, Math.min(255, c[0]));
       data[i + 1] = Math.max(0, Math.min(255, c[1]));
       data[i + 2] = Math.max(0, Math.min(255, c[2]));
       data[i + 3] = 255;
     }
   }
-  const texture = new THREE.DataTexture(data, SIZE, SIZE);
+  const texture = new THREE.DataTexture(data, w, h);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
@@ -488,10 +644,41 @@ function build(structure: ArenaStructure, paint: SurfacePaint): THREE.DataTextur
 export function createTraySurface(
   structure: ArenaStructure,
   paint: SurfacePaint,
-  repeat: [number, number],
+  world: [number, number],
 ): THREE.DataTexture {
-  const t = build(structure, paint);
-  t.repeat.set(repeat[0], repeat[1]);
+  /*
+    ONE PICTURE, the shape of the tray.
+
+    Marc, 27 Aug 2026: "make the floor of every arena one continuous
+    picture and design because you can see the line in the middle where
+    it's cut."
+
+    There was a line, and this is where it came from. The floor was a
+    square 128x128 picture laid down with `repeat` set to the tray's size
+    over 6.4 world units — [0.875, 1.594]. Across the tray that is less
+    than one copy, so nothing shows; DOWN it the picture runs out at 1.0
+    and starts again from the top, and the join is a hard horizontal cut
+    about six-tenths of the way along the floor. Every arena had it, in
+    the same place, right where the dice land.
+
+    A square picture cannot cover a 5.6 x 10.2 tray without either
+    repeating or being stretched out of shape. So it is not square any
+    more: the painter is asked for a picture of the tray's own
+    proportions and it is laid down once, at repeat [1, 1]. No join, and
+    nothing stretched, because the texels stay square in world space.
+  */
+  const t = build(
+    structure,
+    paint,
+    world[0] * UNITS_PER_WORLD,
+    world[1] * UNITS_PER_WORLD,
+    TRAY_DENSITY,
+  );
+  // It covers the floor exactly once, so there is nothing to wrap, and
+  // clamping stops the filter reaching round to the opposite edge.
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.repeat.set(1, 1);
   return t;
 }
 
@@ -501,7 +688,14 @@ export function createGroundSurface(
   paint: SurfacePaint,
   repeat: number,
 ): THREE.DataTexture {
-  const t = build(structure, paint);
+  /*
+    The ground still tiles, and that is right. It reaches 26 world units
+    where the tray reaches ten, it is mostly behind scenery, and one
+    picture that size would be either enormous to paint or blurred to
+    nothing. Its painters wrap at SIZE, so its joins really are seamless
+    — which is what the tray's could never be at repeat 1.594.
+  */
+  const t = build(structure, paint, SIZE, SIZE, 1);
   t.repeat.set(repeat, repeat);
   return t;
 }

@@ -1,5 +1,71 @@
 # Changelog
 
+## v1.62.1 — 2026-08-27 · reported by Marc
+
+Marc: "make the crystal cavern floor look less pixelated. Make the glow
+glade floor look better. Make the floor of every arena one continuous
+picture and design because you can see the line in the middle where it's
+cut."
+
+### Fixed
+- **Every floor was cut across, in the same place.** The tray floor was a
+  square 128×128 picture laid down with `repeat` set to the tray's size
+  over 6.4 world units — `[0.875, 1.594]`. Across the tray that is under
+  one copy, so nothing showed; DOWN it the picture ran out at 1.0 and
+  started again from the top, and the join was a hard horizontal cut
+  about six-tenths of the way along, right where the dice land. All
+  sixteen had it.
+
+  A square picture cannot cover a 5.6 × 10.2 tray without either
+  repeating or being stretched out of shape, so the picture is not square
+  any more: the painter is asked for one the tray's own proportions, laid
+  down once at `repeat [1, 1]` and clamped rather than wrapped. No join,
+  and nothing stretched, because the texels stay square in world space.
+
+  The ground outside the tray still tiles, and should: it reaches 26
+  world units, it is mostly behind scenery, and its painters genuinely
+  wrap — which is what the tray's could never do at 1.594.
+- **The Crystal Cavern's floor was jagged.** The pixels were never the
+  problem, the EDGES were: every crystal was drawn by a pair of
+  `continue` tests, so a texel was either wholly crystal or wholly rock
+  with nothing between, and a hard edge magnified onto a floor about
+  three screen pixels to the texel is a staircase. Nothing else on that
+  floor had the fault because nothing else on it has an edge — it is all
+  noise. Every edge is a ramp now.
+
+  The shape took three goes and both dead ends are worth recording. Long
+  tapered blades radiating from a root is what a crystal cluster looks
+  like from the SIDE; from above, three of them read as a bird's
+  footprint and four as a bird. What reads as crystal looking down is a
+  chunk — a flat angular face with a straight edge and a second face
+  turned away from the light — so a cluster is three overlapping
+  hexagonal shards, each split into a lit facet and a shadowed one, each
+  outlined dark so it stays a separate solid.
+- **Glow Glade's floor was a flat green with grey lumps.** The moss was
+  one blob of noise, so it had colour but nothing at the scale of a leaf.
+  The stones were near-circles with a soft rim, which at this size reads
+  as mould. And the spores were single texels turned on by a hash — a lit
+  pixel with nothing around it is not a glow, it is a dead pixel, and it
+  is exactly what "looks pixelated" means. Now: moss in three depths with
+  a fibrous grain over it, lumpy stones sitting in their own shadow, and
+  spores drawn as soft round lights with a halo.
+
+### Notes on cost, since it is not free
+Being one picture makes the floor 40% bigger than the square it replaced,
+and the heaviest floors went from about 145ms to about 190ms to paint.
+That is the price of not having a seam and there is no way around it.
+Painting at higher resolution as well was tried and dropped: it took the
+worst floors past 260ms, which is a stall a player would see the first
+time an arena opens, and avoiding that stall is the whole reason
+`textureCache.ts` exists. Sharpness came from ramping the painters' hard
+edges instead — a multiply, rather than half again as many pixels.
+
+The hash under all of it was changed from a fract-of-a-sine to integer
+bit-mixing, which is 2.4× faster in isolation. On a whole floor it is
+close to a wash (the reef: 145ms → 141ms at the same size) because the
+painters spend more time on interpolation than on hashing. It is kept
+because it is free, not because it paid for anything.
+
 ## v1.62.0 — 2026-08-27 · requested by Marc
 
 Marc: "make the emojis on the ladder section just the icons for each

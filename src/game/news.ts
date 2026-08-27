@@ -37,6 +37,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-62-1-floors',
+    date: '27 August 2026',
+    version: 'v1.62.1',
+    title: 'The floors are one piece now',
+    emoji: '\ud83d\udd2e',
+    body:
+      'Every arena floor had a line across it about two thirds of the ' +
+      'way down, where the picture ran out and started again. It was ' +
+      'the same in all sixteen. Each floor is now one picture the shape ' +
+      'of the board, so there is nothing to join.\n\n' +
+      'The Crystal Cavern has proper crystals on it instead of jagged ' +
+      'white splinters, and Glow Glade has mossy texture, rounder ' +
+      'stones and spores that actually glow.',
+  },
+  {
     id: 'v1-62-0-ladder',
     date: '27 August 2026',
     version: 'v1.62.0',
