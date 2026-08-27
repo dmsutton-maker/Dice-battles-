@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { palisadeLogs, palisadeTopHeight } from '../src/arena/palisade';
+import { buildRim, RIM_PITCH, RimSpot } from '../src/arena/rim';
 import { TUNING } from '../src/game/tuning';
 import { ARENA_THEMES, ThemedArenaId } from '../src/arena/themeData';
 import { surfacePixels } from '../src/arena/groundTexture';
@@ -750,5 +751,100 @@ suite('arenas · the shared furniture is not shared', () => {
       );
     }
     assert(structures.length > 40, 'the structure switches have collapsed');
+  });
+});
+
+
+/**
+ * The crest runs round the whole wall, whichever pieces it picks.
+ *
+ * Marc, 27 Aug 2026: "on frozen lights the nobs at the top of the wall
+ * still don't go around the entire wall." A previous version had already
+ * fixed the POSITIONS — the ring was continuous and every corner filled.
+ * What was still wrong was the ORDER they were listed in. The list was
+ * built a wall at a time, pushing the left-hand spot and the right-hand
+ * spot of each step together, so every even index sat on the left wall
+ * and every odd index on the right. Almost every crest picks its pieces
+ * with `i % 2` or `i % 4`; the polar station's ribs therefore landed
+ * nine on one wall and none on the wall opposite.
+ *
+ * A test on the positions alone cannot see that, because the positions
+ * were never wrong. So the check is on what the crests actually READ:
+ * take the ring, apply the same filters the renderer applies, and insist
+ * that what survives still touches all four walls.
+ */
+suite('arenas · the crest goes all the way round', () => {
+  const rim = buildRim();
+  const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+  const endX = innerWidth / 2 + wallThickness / 2;
+  const endZ = innerDepth / 2 + wallThickness / 2;
+
+  /** Which of the four walls a spot sits on. A corner counts as its long wall. */
+  const wallOf = (s: RimSpot) =>
+    s.alongX ? (s.pos[2] > 0 ? 'far' : 'near') : s.pos[0] < 0 ? 'left' : 'right';
+
+  test('the ring is unbroken and sits on the wall', () => {
+    note(`${rim.length} crest spots round the tray`);
+    assert(rim.length >= 40, `only ${rim.length} crest spots for the whole perimeter`);
+    for (const s of rim) {
+      const onSide = Math.abs(Math.abs(s.pos[0]) - endX) < 1e-6 && Math.abs(s.pos[2]) <= endZ + 1e-6;
+      const onEnd = Math.abs(Math.abs(s.pos[2]) - endZ) < 1e-6 && Math.abs(s.pos[0]) <= endX + 1e-6;
+      assert(onSide || onEnd, `a crest spot floats off the wall at ${s.pos.join(', ')}`);
+    }
+    // Every corner is occupied, or the crest has a hole at each turn.
+    for (const cx of [-endX, endX])
+      for (const cz of [-endZ, endZ])
+        assert(
+          rim.some((s) => Math.abs(s.pos[0] - cx) < 1e-6 && Math.abs(s.pos[2] - cz) < 1e-6),
+          `nothing on the corner at ${cx}, ${cz}`,
+        );
+  });
+
+  test('walking the list walks the wall', () => {
+    /*
+      The fault itself. Consecutive entries must be NEIGHBOURS: if index
+      i and index i + 1 are on opposite walls, then `i % 2` is not "every
+      other piece", it is "one whole side of the arena".
+    */
+    for (let i = 0; i < rim.length; i++) {
+      const a = rim[i].pos;
+      const b = rim[(i + 1) % rim.length].pos;
+      const gap = Math.hypot(a[0] - b[0], a[2] - b[2]);
+      assert(
+        gap <= RIM_PITCH * 1.6,
+        `the crest list jumps ${gap.toFixed(2)} between spot ${i} and ${i + 1} — ` +
+          'it is not in the order you would walk the wall',
+      );
+    }
+  });
+
+  test('every other piece is still every wall', () => {
+    for (const n of [2, 3, 4]) {
+      const counts: Record<string, number> = { left: 0, right: 0, near: 0, far: 0 };
+      rim.forEach((s, i) => {
+        if (i % n === 0) counts[wallOf(s)]++;
+      });
+      note(`i % ${n}: left ${counts.left}, right ${counts.right}, near ${counts.near}, far ${counts.far}`);
+      for (const [wall, count] of Object.entries(counts))
+        assert(count > 0, `a crest that draws every ${n}${n === 2 ? 'nd' : 'rd'} piece puts none on the ${wall} wall`);
+      // And in matching numbers, or one wall is dressed and its opposite bare.
+      assertEqual(counts.left, counts.right, `the two long walls get different numbers of pieces at i % ${n}`);
+      assertEqual(counts.near, counts.far, `the two short walls get different numbers of pieces at i % ${n}`);
+    }
+  });
+
+  test('a repeating pattern closes up at the corner it started from', () => {
+    // 2, 3 and 4 all divide the ring, so a striped crest has no seam.
+    for (const n of [2, 3, 4])
+      assertEqual(rim.length % n, 0, `a crest repeating every ${n} pieces breaks where the ring closes`);
+  });
+
+  test('the renderer uses the measured ring and nothing else', () => {
+    const source = readFileSync('src/arena/ThemedArena.tsx', 'utf8');
+    assert(source.includes('buildRim()'), 'ThemedArena has stopped using the measured crest ring');
+    assert(
+      !/const rim = useMemo\(\(\) => \{/.test(source),
+      'ThemedArena is building its own crest ring again, where no test can see it',
+    );
   });
 });

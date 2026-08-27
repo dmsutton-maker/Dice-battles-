@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.60.1 — 2026-08-27 · reported by Marc
+
+### Fixed
+- **Frozen Lights' ribs were on one wall only.** Marc: "on frozen lights
+  the nobs at the top of the wall still don't go around the entire
+  wall." v1.60.0 fixed the crest POSITIONS — the ring was continuous and
+  every corner filled — and the ribs still came out nine down one long
+  wall and none down the other. The positions were never the fault. The
+  ORDER was.
+
+  The ring was built a wall at a time, pushing the left-hand spot and the
+  right-hand spot of each step into the list together, then the near and
+  far ones. So every even index was a left-or-near spot and every odd
+  index its opposite number. Nearly every crest picks which pieces to
+  draw with `i % 2` or `i % 4` — the polar station's ribs, the rooftop's
+  handrail posts, the cavern's lit crystals, the cordwood's two shades —
+  and every one of those was really saying "one side of the arena", not
+  "every other piece".
+
+  The ring is now built in the order you would walk it: down the left
+  wall, across the far one, back up the right, home along the near. It
+  comes to 48 pieces, which 2, 3 and 4 all divide, so a repeating crest
+  also closes up at the corner it started from instead of showing a seam.
+  Frozen Lights now carries nine ribs on each long wall and three on each
+  short one; Rooftop City, Crystal Cavern and the Autumn Woods' cordwood
+  are evenly dressed for the first time as well.
+
+  The ring moved out of `ThemedArena.tsx` into `src/arena/rim.ts` so it
+  can be measured. Five new tests: the ring touches all four corners,
+  consecutive entries are neighbours on the wall, every `i % 2`, `i % 3`
+  and `i % 4` subset still lands on all four walls in matching numbers,
+  a repeating pattern divides the ring, and the renderer uses the
+  measured ring rather than building its own.
+
 ## v1.60.0 — 2026-08-27 · reported by David
 
 ### Fixed

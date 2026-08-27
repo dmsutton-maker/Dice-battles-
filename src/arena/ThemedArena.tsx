@@ -14,6 +14,7 @@ import {
 import { createGroundSurface, createTraySurface } from './groundTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
+import { buildRim, RimSpot } from './rim';
 
 /**
  * One renderer for all sixteen themed battlefields.
@@ -998,12 +999,6 @@ function ThemedRetreat({ theme }: { theme: ArenaTheme }) {
 
 /* ── what the tray is BUILT of ────────────────────────────────────── */
 
-/** One spot along the top of the tray wall. */
-interface RimSpot {
-  pos: [number, number, number];
-  alongX: boolean;
-}
-
 /** The four wall runs, as [centreX, centreZ, width, depth]. */
 const WALL_RUNS: [number, number, number, number][] = [
   [-(halfW + wallThickness / 2), 0, wallThickness, innerDepth + wallThickness * 2],
@@ -1776,47 +1771,7 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
     [theme.wall.color, theme.wall.metalness],
   );
 
-  const rim = useMemo(() => {
-    /*
-      One continuous ring of crest pieces, at one pitch, all the way
-      round.
-
-      David, 26 Aug 2026: "the pegs and decorations on the top of the
-      walls on a lot of maps only go halfway around when they should be
-      all the way around." Measured, the near and far walls carried
-      crest across only 77% of their width — the run started 0.15 inside
-      the INNER width and stopped 0.15 short of it, which leaves 0.65 of
-      bare wall at each of the eight places an end wall meets a side. The
-      sides reached 95%, so the two short walls looked stripped next to
-      them and every corner had a hole in it.
-
-      The fix is to stop thinking of it as four separate runs. The sides
-      go corner centre to corner centre and OWN the four corners; the
-      ends then fill in between those corners at the same pitch, which
-      is why they skip their first and last slot — those are the corner
-      pieces the sides already placed.
-    */
-    const list: RimSpot[] = [];
-    const y = wallHeight + 0.12;
-    const PITCH = 0.62;
-    const endX = halfW + wallThickness / 2;
-    const endZ = halfD + wallThickness / 2;
-
-    const down = Math.max(2, Math.round((endZ * 2) / PITCH));
-    for (let i = 0; i <= down; i++) {
-      const z = -endZ + (i * endZ * 2) / down;
-      list.push({ pos: [-endX, y, z], alongX: false });
-      list.push({ pos: [endX, y, z], alongX: false });
-    }
-
-    const across = Math.max(2, Math.round((endX * 2) / PITCH));
-    for (let i = 1; i < across; i++) {
-      const x = -endX + (i * endX * 2) / across;
-      list.push({ pos: [x, y, -endZ], alongX: true });
-      list.push({ pos: [x, y, endZ], alongX: true });
-    }
-    return list;
-  }, []);
+  const rim = useMemo(() => buildRim(), []);
 
   return (
     <group>

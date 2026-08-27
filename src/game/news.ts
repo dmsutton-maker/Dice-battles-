@@ -37,6 +37,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-60-1-frozen-lights-ribs',
+    date: '27 August 2026',
+    version: 'v1.60.1',
+    title: 'Frozen Lights goes all the way round',
+    emoji: '🧊',
+    body:
+      'The little ribs along the top of the wall in Frozen Lights were ' +
+      'all down one side and none down the other. ' +
+      'Last time we fixed where they sit; what was still wrong was the ' +
+      'order they were listed in, so "every other one" quietly meant ' +
+      '"one whole side of the arena".\n\n' +
+      'They now run evenly the whole way round. The same fix tidied up ' +
+      'the handrail on Rooftop City, the glowing crystals in the ' +
+      'Crystal Cavern and the stacked logs in the Autumn Woods.',
+  },
+  {
     id: 'v1-60-0-arenas-and-dice-polish',
     date: '27 August 2026',
     version: 'v1.60.0',
