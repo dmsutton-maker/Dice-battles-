@@ -37,6 +37,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-61-1-soccer-and-ocean',
+    date: '27 August 2026',
+    version: 'v1.61.1',
+    title: 'A football that looks like a football',
+    emoji: '\u26bd',
+    body:
+      'The Soccer Ball skin was picking its black panels at random, so ' +
+      'they kept landing next to each other and running together, and ' +
+      'every panel was a hexagon. A real football has black PENTAGONS ' +
+      'that never touch, in among white hexagons — which is what it has ' +
+      'now.\n\n' +
+      'The Ocean skin has been redone too. It was a flat teal with white ' +
+      'smears flying across it; it is now proper choppy water with the ' +
+      'white caps breaking in runs along the swell.',
+  },
+  {
     id: 'v1-61-0-walls-all-the-way-round',
     date: '27 August 2026',
     version: 'v1.61.0',

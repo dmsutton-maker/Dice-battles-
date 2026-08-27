@@ -1235,21 +1235,70 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   ocean: (x, y) => {
     /*
-      Open water: long swells with a second set crossing them, white
-      breaking along the crests and green in the troughs. The first pass
-      scattered white pixels wherever a crest was high, which read as
-      static rather than as foam — foam is a LINE along a crest, not a
-      speckle.
+      Rolling swells with the foam breaking in an unbroken LINE along
+      each crest.
+
+      Marc, 27 Aug 2026: "fix the ocean dice skin to look better." Three
+      things were wrong and each one had to go.
+
+      The wave phase was pushed around by 2.6 radians of noise — more
+      than half a wavelength — so every swell bent back into itself and
+      there were no wave fronts at all, only swirls.
+
+      The foam was chosen from the SUM of the swell and the shorter chop
+      crossing it. The chop is what stops a sea looking like corduroy,
+      but adding it before deciding where the foam goes chews the crest
+      line into pieces, and the pieces are the flying white blobs. Foam
+      is picked from the swell alone now; the chop only ruffles the
+      colour underneath it.
+
+      And the water sat in one narrow band of teal, so even where a wave
+      was there was nothing to see. Trough to crest now runs deep navy →
+      ocean blue → bright shallow → pale glass, in steps wide enough to
+      read at sixty-four pixels.
     */
-    const drift = fbm(x, y, [32, 16], [1, 0.5]) * 2.6;
-    const swell = Math.sin(((x * 2 + y) / SIZE) * Math.PI * 2 + drift);
-    const cross = Math.sin(((x - y * 2) / SIZE) * Math.PI * 2 - drift * 0.7);
-    const height = swell * 0.7 + cross * 0.3;
-    let px = mixRgb(rgb('#0d4a63'), rgb('#3092b5'), (height + 1) / 2);
-    px = mixRgb(px, rgb('#12705f'), Math.max(0, -height) * 0.55);
-    // The breaking lip, and the paler water sliding off behind it.
-    px = mixRgb(px, rgb('#9fd6e8'), smoothstep(0.62, 0.86, height) * 0.7);
-    px = mixRgb(px, rgb('#ffffff'), smoothstep(0.88, 0.99, height));
+    /*
+      Two scales, because one is what kept going wrong.
+
+      A single train of waves with foam on every crest gives evenly
+      spaced parallel stripes, and at sixty-four pixels evenly spaced
+      parallel stripes are a deck chair, not the sea — that was true of
+      it as a thin neon line and just as true of it as a broad white
+      band. What makes water read as water is that the foam is PATCHY
+      and still lies along lines.
+
+      So: a long roll carries the colour, shorter waves ride on top of it
+      at a slight angle, and the foam needs BOTH — a small wave at its
+      crest AND the long roll high underneath it. Foam then breaks out in
+      runs along the tops of the rollers and leaves the troughs alone,
+      which is what a sea from above actually does.
+    */
+    const wander = fbm(x, y, [32, 16], [0.8, 0.28]) * 0.45;
+    // The long roll: two swells across the tile, down and to the right.
+    const roll = Math.sin(((y + x * 0.42) / SIZE) * Math.PI * 4 + wander);
+    // Shorter waves riding it, turned a little across the roll.
+    const rip = Math.sin(((y * 0.85 - x * 0.34) / SIZE) * Math.PI * 10 + wander * 1.7 + roll * 0.75);
+    const water = roll * 0.6 + rip * 0.4;
+
+    /*
+      The water itself, and there is far more of it than there is foam.
+      Sea read from above is mostly mid-blue; trough to crest is a real
+      range but it is not black to white.
+    */
+    let px = mixRgb(rgb('#14577a'), rgb('#2382a8'), smoothstep(-1, -0.1, water));
+    px = mixRgb(px, rgb('#3aa6c6'), smoothstep(-0.15, 0.55, water));
+    px = mixRgb(px, rgb('#76c4dc'), smoothstep(0.5, 0.95, water));
+    // Green light coming back up out of the deepest troughs.
+    px = mixRgb(px, rgb('#15695a'), smoothstep(-0.45, -0.95, water) * 0.42);
+    // Ripple everywhere, so the surface is never a clean gradient.
+    const ripple = wrappedNoise(x, y, 8) - 0.5;
+    px = mixRgb(px, rgb(ripple > 0 ? '#8fd0e2' : '#0f4f6e'), Math.abs(ripple) * 0.45);
+
+    // Where a short wave is breaking, and only up on the roll.
+    const breaking = smoothstep(0.3, 0.9, rip) * smoothstep(-0.15, 0.75, roll);
+    const froth = 0.5 + wrappedNoise(x, y, 8) * 0.8;
+    px = mixRgb(px, rgb('#cfe7ef'), breaking * Math.min(1, froth) * 0.95);
+    px = mixRgb(px, rgb('#f4fbfd'), breaking * smoothstep(0.72, 0.99, rip) * 0.8);
     return px;
   },
 
@@ -1276,25 +1325,57 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   soccer: (x, y) => {
     /*
-      Black and white hexagons, and that is all. David: "make the soccer
-      ball just a black and white hexagonal pattern like a soccer ball."
+      A football is a truncated icosahedron: twelve BLACK PENTAGONS, no
+      two of them touching, set in a field of white hexagons, with the
+      stitched seams drawn between the lot.
 
-      The first go at this hashed three independently-rounded axial
-      coordinates to choose which cells were black, which does not name a
-      hexagon — it named a point in three unrelated stripe families, so
-      the colour changed pixel to pixel and the ball came out as black
-      splatter. Cube-coordinate rounding (hexCell) names the cell.
+      Marc, 27 Aug 2026: "that's not what a soccer ball looks like, make
+      the soccer ball skin look like a freaking soccer ball." He is
+      right. What was there picked one panel in three with a hash, so
+      black cells landed next to each other and ran together into blobs;
+      every panel was a hexagon; and the seam was a hairline. It read as
+      bathroom tiling.
+
+      Two changes do it. The black panels go on a proper 3-colouring of
+      the hex lattice — (q + 2r) mod 3, the arrangement in which no two
+      of them are EVER neighbours, which is exactly what a real ball does
+      with its pentagons. And a black panel is drawn as a regular
+      PENTAGON rather than as its hexagon, because five sides against six
+      is the whole difference between a football and a honeycomb.
     */
-    const size = 6.4;
+    const size = 6.6;
     const cell = hexCell(x, y, size);
-    // Roughly one panel in three is black; a real ball is 12 to 20.
-    const dark = hashCell(cell.q * 7 + 3, cell.r * 11 + 5) > 0.66;
-    let px = dark ? rgb('#1d1a2b') : rgb('#f7f5f0');
-    // The stitched seam round every panel, on the HEXAGON's own edge.
-    const seam = smoothstep(0.82, 0.99, cell.t);
-    px = mixRgb(px, dark ? rgb('#0b0a12') : rgb('#8f8c85'), seam);
-    // Leather, lightly, so it is not flat vector art.
-    return mixRgb(px, dark ? rgb('#494360') : rgb('#cfcbc2'), wrappedNoise(x, y, 16) * 0.16);
+    const inradius = (size * Math.sqrt(3)) / 2;
+
+    // White leather, with the grain barely showing.
+    let px = mixRgb(rgb('#f7f5f0'), rgb('#dcd8cf'), wrappedNoise(x, y, 16) * 0.55);
+
+    // The seam net, on every panel edge.
+    px = mixRgb(px, rgb('#a9a49b'), smoothstep(0.78, 0.97, cell.t) * 0.9);
+
+    const klass = (((cell.q + 2 * cell.r) % 3) + 3) % 3;
+    if (klass === 0) {
+      /*
+        A regular pentagon's boundary at the angle we are looking along:
+        its inradius over the cosine of the angle folded into one fifth
+        of a turn — the same trick hexCell uses for six sides. Turned a
+        little from panel to panel, the way a stitched ball never has two
+        quite aligned.
+      */
+      const sector = (Math.PI * 2) / 5;
+      const spin = ((((cell.q * 5 + cell.r * 3) % 5) + 5) % 5) * 0.22;
+      const a = Math.atan2(y - cell.cy, x - cell.cx) + spin - Math.PI / 2;
+      const folded = Math.abs(((((a + sector / 2) % sector) + sector) % sector) - sector / 2);
+      const edge = (inradius * 0.9) / Math.cos(folded);
+      px = mixRgb(px, rgb('#1b1826'), smoothstep(edge + 0.8, edge - 0.8, cell.d));
+      // Stitching round it, a shade off the black so the edge reads.
+      px = mixRgb(
+        px,
+        rgb('#6e6a79'),
+        smoothstep(1.8, 0.3, Math.abs(cell.d - edge)) * 0.45,
+      );
+    }
+    return px;
   },
 
   basketball: (x, y) => {

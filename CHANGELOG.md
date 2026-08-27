@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.61.1 — 2026-08-27 · reported by Marc
+
+Marc: "fix the ocean dice skin to look better. That's not what a soccer
+ball looks like, make the soccer ball skin look like a freaking soccer
+ball."
+
+### Fixed
+- **The Soccer Ball was a honeycomb.** It picked one panel in three with
+  a hash, so black cells landed next to each other and ran together into
+  blobs; every panel was a hexagon; and the seam was a hairline. It read
+  as bathroom tiling. A football is a truncated icosahedron — black
+  PENTAGONS, no two touching, in a field of white hexagons — so the black
+  panels now go on a proper 3-colouring of the hex lattice,
+  `(q + 2r) mod 3`, which is the arrangement where no two are ever
+  neighbours. Each one is drawn as a regular pentagon, its boundary found
+  the same way `hexCell` finds a hexagon's: the inradius over the cosine
+  of the angle folded into one fifth of a turn.
+- **The Ocean was teal with white comets on it.** Three separate faults,
+  and each had to go.
+  - The wave phase was pushed around by 2.6 radians of noise — more than
+    half a wavelength — so every swell bent back into itself and there
+    were no wave fronts at all, only swirls. The wander is a fifth of a
+    wavelength now.
+  - The foam was chosen from the sum of the swell and the chop crossing
+    it. The chop is what stops a sea looking like corduroy, but adding it
+    in before deciding where the foam goes chews the crest line into
+    pieces — and those pieces were the flying white blobs.
+  - It was one train of waves with foam on every crest, which gives
+    evenly spaced parallel stripes. At sixty-four pixels evenly spaced
+    parallel stripes are a deck chair, whether the stripe is a thin neon
+    line or a broad white band; both were tried on the way here. What
+    makes water read as water is foam that is patchy and still lies along
+    lines, so there are two scales now: a long roll carries the colour,
+    shorter waves ride it at an angle, and foam needs BOTH a small wave
+    at its crest and the roll high underneath it.
+
 ## v1.61.0 — 2026-08-27 · reported by Marc
 
 Marc: "in volcano rim you didn't put the orange rocks around the entire
