@@ -151,30 +151,44 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   },
 
   // Fallen leaves, each one a small oval lying its own way.
+  // Fallen leaves: proper leaf shapes, in the reds and golds a wood
+  // turns, each with a midrib. David asked for the Autumn Woods floor to
+  // look better — it was small dark dashes, which reads as grit.
   logPile: (x, y, p) => {
-    const cell = 11;
-    const row = Math.floor(y / cell);
-    const off = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + off) / cell);
-    const h = hash(col, row);
-    const lx = ((x + off) % cell) - cell / 2 + (h - 0.5) * 3;
-    const ly = (y % cell) - cell / 2 + (hash(col + 7, row) - 0.5) * 3;
-    const a = h * Math.PI;
-    const ux = lx * Math.cos(a) + ly * Math.sin(a);
-    const uy = -lx * Math.sin(a) + ly * Math.cos(a);
-    let c = mix(p.a, shade(p.a, 0.9), fbm(x, y, SIZE));
-    // Only about half the cells carry a leaf. Every cell carrying one
-    // covered the floor edge to edge, and a floor of small dark marks
-    // reads as grit, not as fallen leaves — it also fights the dice,
-    // which are the thing on it that has to be read.
-    if (hash(col + 11, row + 4) > 0.45 && Math.hypot(ux / 4.6, uy / 2.7) < 1) {
-      c = mix(mix(p.b, p.accent, h), p.a, 0.25);
-      if (Math.abs(uy) < 0.7) c = shade(c, 0.9);
+    const cell = 14;
+    let c = mix(p.a, shade(p.a, 0.92), fbm(x, y, SIZE));
+    // Two passes at different offsets, so leaves overlap the way a
+    // drift of them does instead of sitting one to a cell.
+    for (let pass = 0; pass < 2; pass++) {
+      const ox = pass * 7;
+      const oy = pass * 5;
+      const row = Math.floor((y + oy) / cell);
+      const rowOff = row % 2 === 0 ? 0 : cell / 2;
+      const col = Math.floor((x + ox + rowOff) / cell);
+      const h = hash(col + pass * 31, row + pass * 17);
+      if (h < 0.42) continue;
+      const lx = (((x + ox + rowOff) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 5;
+      const ly = (((y + oy) % cell) + cell) % cell - cell / 2 + (hash(col + 7, row + pass) - 0.5) * 5;
+      const a = h * Math.PI * 2;
+      const ux = lx * Math.cos(a) + ly * Math.sin(a);
+      const uy = -lx * Math.sin(a) + ly * Math.cos(a);
+      // A leaf: an ellipse drawn to a point at both ends.
+      const t = Math.abs(ux) / 5.2;
+      if (t > 1) continue;
+      const width = 2.6 * (1 - t * t);
+      if (Math.abs(uy) > width) continue;
+      const leaf = mix(
+        mix(p.b, p.accent, hash(col + 3, row + 5)),
+        [196, 92, 40],
+        hash(col + 11, row + 2) * 0.8,
+      );
+      c = mix(leaf, shade(leaf, 0.82), Math.abs(uy) / Math.max(width, 0.6) * 0.5);
+      // The midrib.
+      if (Math.abs(uy) < 0.55) c = shade(c, 0.82);
     }
     return c;
   },
 
-  // Riveted deck plating, the seams between panels picked out.
   station: (x, y, p) => {
     const edge = gridEdge(x, y, 32);
     let c = mix(p.a, p.b, hash(Math.floor(x / 32), Math.floor(y / 32)) * 0.5 + 0.25);
@@ -189,19 +203,39 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   },
 
   // Wet cave rock, minerals running through it in bands.
+  // Cave rock with crystal breaking through it. David: "make the crystal
+  // cavern look less weird and more like crystals" — it was a scribble
+  // of mineral veining that read as noise, so the rock is calm now and
+  // the crystal is drawn as actual faceted shards catching the light.
   stalagmite: (x, y, p) => {
-    const warp = fbm(x, y, SIZE) * 14;
-    const band = Math.sin((x * 0.35 + y * 0.85) * 0.16 + warp);
-    let c = mix(p.a, p.b, (band + 1) / 2);
-    // Mineral seams running through the rock, and the wet sheen on top
-    // of them. Both lifted rather than tinted: the cavern's accent is
-    // another purple, and purple on purple is a flat wash.
-    c = mix(c, lift(p.b, 0.4), smoothstep(0.78, 1, band) * 0.6);
-    c = mix(c, shade(p.a, 0.7), smoothstep(-0.78, -1, band) * 0.5);
-    return mix(c, lift(c, 0.3), smoothstep(0.62, 0.9, noise(x / 5, y / 5, SIZE / 5)) * 0.35);
+    const warp = fbm(x, y, SIZE) * 10;
+    let c = mix(p.a, p.b, smoothstep(0.25, 0.75, fbm(x * 0.6 + warp * 0.2, y * 0.6, SIZE)));
+    c = mix(c, shade(p.a, 0.72), smoothstep(0.5, 0.85, fbm(x * 0.4, y * 0.4, SIZE)) * 0.45);
+    // Crystal: angular blades on a coarse lattice, each with a lit face
+    // and a dark one so it reads as a solid with edges.
+    const cell = 26;
+    for (let k = 0; k < 2; k++) {
+      const ox = k * 13;
+      const row = Math.floor((y + ox) / cell);
+      const col = Math.floor((x + ox) / cell);
+      const h = hash(col + k * 19, row + k * 7);
+      if (h < 0.45) continue;
+      const bx = (((x + ox) % cell) + cell) % cell - cell / 2;
+      const by = (((y + ox) % cell) + cell) % cell - cell / 2;
+      const a = h * Math.PI;
+      const ux = bx * Math.cos(a) + by * Math.sin(a);
+      const uy = -bx * Math.sin(a) + by * Math.cos(a);
+      const half = 2.4 + h * 1.6;
+      const len = 7 + h * 5;
+      if (Math.abs(uy) > half * (1 - Math.abs(ux) / len) || Math.abs(ux) > len) continue;
+      const face = uy < 0 ? lift(p.b, 0.55) : shade(p.b, 0.7);
+      c = mix(c, face, 0.9);
+      // The bright edge down the blade's spine.
+      if (Math.abs(uy) < 0.7) c = mix(c, lift(p.b, 0.85), 0.8);
+    }
+    return c;
   },
 
-  // Laid flagstone — the classic, kept for the one arena that is a castle.
   battlement: (x, y, p) => {
     const cell = 16;
     const tx = Math.floor(x / cell);
@@ -213,19 +247,32 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   },
 
   // Regolith trodden into a hexagonal landing pad.
+  // Regolith: grey dust pocked with craters, and the tracks of whatever
+  // has driven over it. David asked for the Moon Base floor to look
+  // better — it was a hexagonal wireframe, which reads as graph paper.
   airlock: (x, y, p) => {
-    const u = x / 18;
-    const v = (x * 0.5 + y * 0.866) / 18;
-    const w = (x * 0.5 - y * 0.866) / 18;
-    const e = (t: number) => Math.abs(t - Math.round(t));
-    const near = Math.min(e(u), e(v), e(w));
     let c = mix(p.a, p.b, fbm(x, y, SIZE));
-    c = mix(c, shade(p.a, 0.74), smoothstep(0.08, 0.02, near));
-    if (hash(x, y) > 0.99) c = mix(c, p.accent, 0.6);
-    return c;
+    c = mix(c, shade(p.a, 0.86), smoothstep(0.45, 0.8, fbm(x * 0.5, y * 0.5, SIZE)) * 0.5);
+    // Craters, three sizes, each a dark bowl inside a lit rim.
+    for (let k = 0; k < 3; k++) {
+      const cell = [37, 23, 13][k];
+      const radius = [9, 5.5, 3][k];
+      const row = Math.floor((y + k * 11) / cell);
+      const col = Math.floor((x + k * 7) / cell);
+      const h = hash(col + k * 29, row + k * 13);
+      if (h < 0.35) continue;
+      const cx = (((x + k * 7) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 6;
+      const cy = (((y + k * 11) % cell) + cell) % cell - cell / 2 + (hash(col, row + 5) - 0.5) * 6;
+      const r = radius * (0.6 + h * 0.6);
+      const d = Math.hypot(cx, cy) + fbm(x * 2, y * 2, SIZE) * 1.2;
+      if (d > r * 1.2) continue;
+      c = mix(c, shade(p.a, 0.66), smoothstep(r, r * 0.55, d) * 0.8);
+      c = mix(c, lift(p.b, 0.4), smoothstep(r * 0.78, r, d) * smoothstep(r * 1.2, r, d) * 0.9);
+    }
+    // The dust itself, fine and even.
+    return mix(c, hash(x, y) > 0.5 ? lift(p.b, 0.25) : shade(p.a, 0.9), 0.06);
   },
 
-  // Wet sand with the tide's ripples and broken shell in it.
   driftwood: (x, y, p) => {
     const ripple = Math.sin(y * 0.34 + fbm(x, y, SIZE) * 7) * 0.5 + 0.5;
     let c = mix(p.a, p.b, ripple);
@@ -246,14 +293,15 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   },
 
   // Moss, with stepping stones worn through it.
+  // Moss with stepping stones worn through it, and the darker damp under
+  // the shade. David asked for Glow Glade to look better; it was one
+  // flat green with pale dots on it.
   mossStone: (x, y, p) => {
     const blob = fbm(x * 0.55, y * 0.55, SIZE);
-    let c = mix(p.a, p.b, smoothstep(0.34, 0.66, blob));
-    /*
-      Stepping stones, jittered and sized per cell. A fixed offset in a
-      fixed cell gave a perfectly regular dot grid — polka dots, not a
-      path. Cell 32 because it divides the 128 tile; 26 left a seam.
-    */
+    let c = mix(p.a, p.b, smoothstep(0.28, 0.72, blob));
+    // Damp patches, and the bright moss where light gets in.
+    c = mix(c, shade(p.a, 0.6), smoothstep(0.35, 0.05, blob) * 0.7);
+    c = mix(c, lift(p.b, 0.35), smoothstep(0.72, 0.95, blob) * 0.6);
     const cell = 32;
     const col = Math.floor(x / cell);
     const row = Math.floor(y / cell);
@@ -263,20 +311,18 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     const sx = (((x % cell) + cell) % cell) - cell / 2 - jx;
     const sy = (((y % cell) + cell) % cell) - cell / 2 - jy;
     const stone = Math.hypot(sx, sy) + fbm(x, y, SIZE) * 3;
-    // Grey stone, not the theme's accent — the glade's accent is another
-    // green, so the stepping stones vanished into the moss entirely.
-    const rock: Rgb = [126, 132, 128];
-    c = mix(c, mix(rock, p.accent, 0.25), smoothstep(radius + 2, radius, stone) * 0.95);
-    // Moss creeping over each stone's edge.
-    c = mix(
-      c,
-      shade(p.a, 0.72),
-      smoothstep(radius, radius + 2, stone) * smoothstep(radius + 5, radius + 2, stone) * 0.6,
-    );
-    return mix(c, shade(c, 0.88), noise(x / 2, y / 2, SIZE / 2) * 0.45);
+    // Pale grey, and barely tinted by the theme: the glade's accent is
+    // another green, and a stone mixed a quarter of the way into it came
+    // out DARKER than the moss it was meant to sit proud of.
+    const rock: Rgb = [166, 172, 164];
+    c = mix(c, mix(rock, p.accent, 0.12), smoothstep(radius + 2, radius, stone) * 0.95);
+    c = mix(c, lift(rock, 0.5), smoothstep(radius + 1, radius - 1, stone) * Math.max(0, -(sx + sy) / radius) * 0.7);
+    c = mix(c, shade(p.a, 0.78), smoothstep(radius, radius + 2, stone) * smoothstep(radius + 4, radius + 2, stone) * 0.45);
+    // Tiny glowing spores in the moss.
+    if (hash(x * 3, y * 3) > 0.994) c = mix(c, [200, 245, 235], 0.75);
+    return mix(c, shade(c, 0.9), noise(x / 2, y / 2, SIZE / 2) * 0.4);
   },
 
-  // Deck planks with the caulking black between them.
   shipHull: (x, y, p) => {
     const plank = 15;
     const row = Math.floor(y / plank);
@@ -291,45 +337,107 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   },
 
   // Bare earth with straw trodden into it.
+  // Ploughed earth in rows, straw trodden into it, and the green coming
+  // through between the furrows. David: make the Sunny Farm "look better
+  // and less simple" — it was flat dirt with two straws on it.
   picket: (x, y, p) => {
+    // Furrows: long ridges running one way across the field.
+    const wave = Math.sin((x * 0.32 + y * 0.06) + fbm(x, y, SIZE) * 3);
     let c = mix(p.a, p.b, fbm(x * 0.7, y * 0.7, SIZE));
-    for (let k = 0; k < 2; k++) {
-      const cell = 19 + k * 7;
-      const cx = ((x + k * 7) % cell) - cell / 2;
-      const cy = ((y + k * 11) % cell) - cell / 2;
-      const a = hash(Math.floor(x / cell) + k, Math.floor(y / cell)) * Math.PI;
+    c = mix(c, shade(p.a, 0.78), smoothstep(-0.2, -1, wave) * 0.7);
+    c = mix(c, lift(p.b, 0.3), smoothstep(0.3, 1, wave) * 0.5);
+    // Clods turned up along the ridges.
+    if (hash(x, y) > 0.955 && wave > 0) c = mix(c, shade(p.a, 0.7), 0.6);
+    // Straw, lying along the furrows rather than scattered at random.
+    for (let k = 0; k < 3; k++) {
+      const cell = 15 + k * 6;
+      const cx = (((x + k * 7) % cell) + cell) % cell - cell / 2;
+      const cy = (((y + k * 11) % cell) + cell) % cell - cell / 2;
+      const a = hash(Math.floor(x / cell) + k, Math.floor(y / cell)) * 0.9 - 0.45;
       const ux = cx * Math.cos(a) + cy * Math.sin(a);
       const uy = -cx * Math.sin(a) + cy * Math.cos(a);
-      if (Math.abs(uy) < 0.7 && Math.abs(ux) < 5) c = mix(c, p.accent, 0.5);
+      if (Math.abs(uy) < 0.6 && Math.abs(ux) < 5.5) c = mix(c, p.accent, 0.55);
     }
     return c;
   },
 
-  // Rippled seabed, lighter where the water is shallower.
+  // A living reef: sand between coral heads in half a dozen colours,
+  // under the caustics. David asked for "more color and more coral" —
+  // it was one teal mottle with a faint net of light on it.
   coralRim: (x, y, p) => {
     const r = Math.sin(x * 0.28 + fbm(x, y, SIZE) * 8) * 0.5 + 0.5;
     let c = mix(p.a, p.b, r);
-    /*
-      Caustics: the net of light the water's surface throws on the bottom.
-      They are LIGHT by definition, so they are lifted toward white — the
-      first version tinted toward the theme's accent, which for the reef
-      is a darker teal than the seabed, and painted the sunlight in
-      shadow.
-    */
+    // Coral heads growing over the bottom, each its own colour.
+    const REEF: Rgb[] = [
+      [232, 122, 92], [232, 108, 158], [240, 186, 92],
+      [150, 214, 168], [186, 132, 216], [244, 158, 120],
+    ];
+    for (let k = 0; k < 3; k++) {
+      const cell = 21 - k * 4;
+      const ox = k * 9;
+      const row = Math.floor((y + ox) / cell);
+      const col = Math.floor((x + ox * 2) / cell);
+      const h = hash(col + k * 23, row + k * 11);
+      if (h < 0.38) continue;
+      const cx = (((x + ox * 2) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 5;
+      const cy = (((y + ox) % cell) + cell) % cell - cell / 2 + (hash(col + 3, row) - 0.5) * 5;
+      const lump = fbm(x * 1.5 + k * 20, y * 1.5, SIZE) * 2.4;
+      const rad = (cell * 0.3) * (0.6 + h * 0.7);
+      const d = Math.hypot(cx, cy) + lump;
+      if (d > rad) continue;
+      const head = REEF[Math.floor(h * REEF.length * 0.999)];
+      c = mix(c, head, 0.85);
+      // Lit on the upper left, and the polyp texture over the top.
+      c = mix(c, lift(head, 0.45), Math.max(0, -(cx + cy) / rad) * 0.5);
+      c = mix(c, shade(head, 0.72), Math.max(0, (cx + cy) / rad) * 0.4);
+      if (hash(x * 2, y * 2) > 0.6) c = mix(c, shade(head, 0.85), 0.25);
+    }
+    // Caustics over everything.
     const caustic = Math.abs(
       Math.sin(x * 0.14 + fbm(x, y, SIZE) * 5) * Math.sin(y * 0.12 - fbm(y, x, SIZE) * 5),
     );
-    c = mix(c, lift(p.b, 0.5), smoothstep(0.55, 0.95, caustic) * 0.8);
-    c = mix(c, shade(p.a, 0.78), smoothstep(0.3, 0.05, caustic) * 0.35);
-    return c;
+    return mix(c, lift(p.b, 0.5), smoothstep(0.55, 0.95, caustic) * 0.55);
   },
 
-  // Rolled roofing felt, gravelled, with the seams showing.
+  // A real rooftop: rolled felt with its seams, gravel ballast, tar
+  // patches, and the chalk lines and hatches a roof carries. David asked
+  // for Rooftop City to look better — it was grey felt and nothing else.
   parapet: (x, y, p) => {
     const roll = 26;
     const inY = ((y % roll) + roll) % roll;
     let c = mix(p.a, p.b, fbm(x, y, SIZE) * 0.7 + 0.15);
     if (inY < 1.6) c = shade(c, 0.8);
+    // Patched repairs, darker than the felt around them.
+    const patch = fbm(x * 0.5 + 40, y * 0.5, SIZE);
+    c = mix(c, shade(p.a, 0.72), smoothstep(0.62, 0.78, patch) * 0.7);
+    /*
+      A painted hatch cover, a run of duct and a yellow safety line.
+
+      Not in `p.accent`: the rooftop's accent is another grey within a few
+      per cent of its felt, so the first version's hatches were invisible
+      — the same trap the glade's stepping stones and the reef's caustics
+      both fell into. A roof's fittings are painted BECAUSE they need to
+      stand out from the roof.
+    */
+    /*
+      One hatch, one duct run and one painted line per tile — not a grid
+      of them. The first version repeated every 61 by 47 pixels, which on
+      a 128 tile is five hatches, and five hatches in a lattice read as
+      wallpaper rather than as the things on a roof.
+    */
+    if (y > 86 && y < 96) {
+      // Galvanised duct, ribbed along its length.
+      c = mix(c, [158, 166, 180], 0.7);
+      if (((x % 5) + 5) % 5 < 1.4) c = shade(c, 0.82);
+      if (y < 88 || y > 94) c = shade(c, 0.7);
+    }
+    if (x > 20 && x < 48 && y > 14 && y < 40) {
+      const plate: Rgb = [196, 148, 62];
+      c = mix(plate, lift(plate, 0.3), (x - 20) / 28);
+      if (x < 23 || x > 45 || y < 17 || y > 37) c = shade(c, 0.72);
+    }
+    // The painted line that runs round the edge of every flat roof.
+    if (x > 108 && x < 112) c = mix(c, [214, 176, 74], 0.5);
     // Grit.
     const g = hash(x, y);
     if (g > 0.93) c = mix(c, lift(p.b, 0.3), 0.5);
@@ -337,7 +445,6 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     return c;
   },
 
-  // A printed play mat: soft squares with a road drawn on it.
   blocks: (x, y, p) => {
     const cell = 22;
     const tx = Math.floor(x / cell);

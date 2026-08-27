@@ -14,7 +14,21 @@ const DAYLIGHT = {
 
 function Fit({ aspect }: { aspect: number }) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
-  useEffect(() => { fitCamera(camera, aspect); }, [camera, aspect]);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('top') === '1') {
+      // Straight down and pulled back: an inspection view for checking
+      // that a crest actually runs the whole way round the tray. NOT the
+      // game's camera — see cameraFit.ts for that.
+      camera.fov = 40;
+      camera.aspect = aspect;
+      camera.position.set(0, 22, 0.01);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+      return;
+    }
+    fitCamera(camera, aspect);
+  }, [camera, aspect]);
   return null;
 }
 

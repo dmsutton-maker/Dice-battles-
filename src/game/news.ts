@@ -37,6 +37,31 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-60-0-arenas-and-dice-polish',
+    date: '27 August 2026',
+    version: 'v1.60.0',
+    title: 'Decorations all the way round, and a lot of redrawing',
+    emoji: '🪸',
+    body:
+      'The pegs and decorations along the tops of the walls used to stop ' +
+      'short at every corner, so the two short walls looked bare. They ' +
+      'now run the whole way round.\n\n' +
+      'The Crystal Cavern actually has crystals in it. The Coral Reef is ' +
+      'full of coral in six colours and the things on its walls are ' +
+      'brain corals and sea fans instead of spikes. The Moon Base floor ' +
+      'is cratered dust. Sunny Farm has ploughed furrows and a lot more ' +
+      'hay, trees and flowers. Glow Glade has brighter moss and pale ' +
+      'stepping stones. Rooftop City has a hatch, ducting and painted ' +
+      'lines. The Sky Kingdom has three times the clouds. And the Autumn ' +
+      'Woods floor has proper red and gold leaves on it.\n\n' +
+      'On the dice: Ruby is now Gold in red, the bubbles look like real ' +
+      'bubbles, the cow has proper cow markings instead of a repeating ' +
+      'pattern, the soccer ball is plain black and white hexagons, the ' +
+      'bumblebee has lost its spots and the odd yellow dot on the denim ' +
+      'is gone. The golf ball, turtle, snake, basketball and ocean were ' +
+      'all redrawn too.',
+  },
+  {
     id: 'v1-59-0-ultimate-icon',
     date: '26 August 2026',
     version: 'v1.59.0',

@@ -10,9 +10,10 @@ const IDS = process.argv.slice(2);
   page.on('console', (m) => { if (m.type() === 'error') console.log('PAGE ERROR:', m.text()); });
   page.on('pageerror', (e) => console.log('PAGE THROW:', e.message));
   for (const id of IDS) {
-    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id);
+    const top = process.env.TOP === '1' ? '&top=1' : '';
+    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id + top);
     await page.waitForFunction('window.__ready === true', { timeout: 20000 }).catch(() => {});
-    await page.screenshot({ path: `/tmp/arena-${id}.png` });
+    await page.screenshot({ path: `/tmp/arena-${id}${top ? '-top' : ''}.png` });
     console.log('shot', id);
   }
   await browser.close();

@@ -184,6 +184,54 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
  * dark trough beside it, which is the whole of what makes metal read as
  * metal. Every pattern written before this returns 0..1 and is unaffected.
  */
+/**
+ * Which hexagon of a lattice a pixel is in, and where that hexagon's
+ * centre is.
+ *
+ * The three-axial-stripe trick elsewhere in this file finds the distance
+ * to the nearest hex EDGE, which is all a comb wall needs. It does not
+ * identify a CELL: rounding each family separately gives three unrelated
+ * integers, and hashing those to pick a colour per hexagon scatters
+ * colour per pixel instead. The soccer ball came out as black splatter
+ * that way. This is the standard cube-coordinate rounding.
+ */
+function hexCell(x: number, y: number, size: number): {
+  q: number;
+  r: number;
+  cx: number;
+  cy: number;
+  d: number;
+  /** 0 at the cell's centre, 1 exactly on its six-sided boundary. */
+  t: number;
+} {
+  const fq = ((Math.sqrt(3) / 3) * x - y / 3) / size;
+  const fr = ((2 / 3) * y) / size;
+  const fs = -fq - fr;
+  let q = Math.round(fq);
+  let r = Math.round(fr);
+  const sRound = Math.round(fs);
+  const dq = Math.abs(q - fq);
+  const dr = Math.abs(r - fr);
+  const ds = Math.abs(sRound - fs);
+  if (dq > dr && dq > ds) q = -r - sRound;
+  else if (dr > ds) r = -q - sRound;
+  const cx = size * Math.sqrt(3) * (q + r / 2);
+  const cy = size * 1.5 * r;
+  const d = Math.hypot(x - cx, y - cy);
+  /*
+    How far out the boundary is in THIS direction. Comparing the plain
+    radius against a constant draws circles, not hexagons — which is
+    what the soccer ball's panels came out as. A hexagon's boundary is
+    its inradius divided by the cosine of the angle folded into one
+    60-degree wedge.
+  */
+  const sector = Math.PI / 3;
+  const a = Math.atan2(y - cy, x - cx);
+  const folded = Math.abs((((a + sector / 2) % sector) + sector) % sector - sector / 2);
+  const boundary = ((size * Math.sqrt(3)) / 2) / Math.cos(folded);
+  return { q, r, cx, cy, d, t: d / boundary };
+}
+
 /** The eight patterns painted in full colour rather than through a mask. */
 export type ColorPatternId =
   | 'volleyball' | 'watermelon' | 'pizza' | 'donut'
@@ -211,7 +259,10 @@ export type ColorPatternId =
     colour toward one other.
   */
   | 'dimples' | 'soccer' | 'basketball' | 'laces' | 'bowling'
-  | 'patches' | 'bands' | 'diamonds' | 'tigerStripes' | 'honeycomb';
+  | 'patches' | 'bands' | 'diamonds' | 'tigerStripes' | 'honeycomb'
+  // Bubbles joined them on 27 Aug: a soap film is iridescent, and one
+  // ink cannot be iridescent.
+  | 'bubbles';
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 const PAINTERS: Record<MaskPatternId, Painter> = {
@@ -349,48 +400,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * The mask tops out at 1 (full ink) for the glint and sits lower for
    * the rim, so one ink colour still gives two brightnesses.
    */
-  bubbles: (x, y) => {
-    const cell = 16;
-    const row = Math.floor(y / cell);
-    const col = Math.floor(x / cell);
-    // Deterministic per-cell jitter — no Math.random, so the texture is
-    // identical every time it is built.
-    const hash = (Math.sin(row * 12.9898 + col * 78.233) * 43758.5453) % 1;
-    const wobble = Math.abs(hash);
-    const radius = 4.6 + wobble * 2.2;
-
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
-    const d = Math.hypot(cx, cy);
-
-    // The glint: a small dot up and to the left inside the bubble.
-    const gd = Math.hypot(cx + radius * 0.34, cy + radius * 0.34);
-    if (gd < radius * 0.2) return 1;
-
-    /*
-      The rim, lit on the upper left and shadowed on the lower right. A
-      ring of one tone is a hoop; a bubble is a sphere, and the two sides
-      of it are what say so. This was the second-faintest pattern in the
-      set once the others got their texture.
-    */
-    const thickness = 2.3;
-    if (d < radius && d > radius - thickness) {
-      const lit = (-cx - cy) / (radius * 1.4);
-      return lit > 0 ? 0.35 + lit * 0.65 : -0.4 + lit * 0.4;
-    }
-
-    // Hollow inside — the faintest wash so it reads as glass, not a hole,
-    // with the shadow gathering at the bottom of each bubble.
-    if (d <= radius - thickness) {
-      return 0.12 - smoothstep(-radius * 0.3, radius, cy) * 0.24;
-    }
-
-    // Between the bubbles: the wet film they cling to.
-    return -smoothstep(radius + 3.5, radius, d) * 0.14;
-  },
-
-  // Soft wavy bands. Kept for the skins that already use it.
   grain: (x, y) => {
     const wave = Math.sin(x / 5 + Math.sin(y / 11) * 1.6);
     return wave > 0.35 ? 0.75 : 0;
@@ -1004,50 +1013,38 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   /* ── moved here from the mask painters, 26 Aug 2026 ─────────────── */
 
+
   shell: (x, y) => {
     /*
-      A turtle's carapace: domed scutes with growth rings inside them and
-      deep grooves between. David named it again on 26 Aug 2026, so the
-      dome is stronger, the grooves are darker, and each plate now
-      carries the horn-yellow edge a real scute has where it overlaps its
-      neighbour — that edge is most of what makes a shell read as shell
-      rather than as a honeycomb.
+      A turtle's carapace: big horn plates, each domed, ringed by a dark
+      suture, carrying growth rings and the pale streaks that radiate
+      from a scute's centre.
+
+      Two earlier versions failed differently and for the same reason —
+      neither knew which plate a pixel was in. One drew an even comb of
+      same-sized cells (a honeycomb, not a shell); the next tried to
+      hand-place vertebral and costal rows and produced a grid of small
+      squares.
     */
-    const cell = 21;
-    let best = 1e9;
-    let second = 1e9;
-    let bx = 0;
-    let by = 0;
-    for (let row = -1; row <= 4; row++) {
-      const cy = row * cell * 0.86;
-      const offset = (((row % 2) + 2) % 2) === 0 ? 0 : cell / 2;
-      for (let col = -1; col <= 4; col++) {
-        const cx = col * cell + offset;
-        const d = Math.hypot(x - cx, y - cy);
-        if (d < best) {
-          second = best;
-          best = d;
-          bx = cx;
-          by = cy;
-        } else if (d < second) {
-          second = d;
-        }
-      }
-    }
-    const gap = second - best;
-    if (gap < 1.5) return rgb('#1f3311');
-    const tone = hashCell(Math.round(bx) + 3, Math.round(by) + 7);
-    let px = mixRgb(rgb('#4a7d31'), rgb('#93bd5e'), tone);
-    // Domed: lit on the upper left, falling away to the lower right.
-    const lit = (-(x - bx) - (y - by)) / (cell * 0.92);
-    px = mixRgb(px, rgb('#d2e5a3'), Math.max(0, lit) * 0.7);
-    px = mixRgb(px, rgb('#26401a'), Math.max(0, -lit) * 0.65);
-    // Growth rings, offset per plate so they are not one target pattern.
-    const ring = Math.abs(((best + tone * 3) % 3.4) - 1.7);
-    px = mixRgb(px, rgb('#375c22'), smoothstep(1.1, 0.25, ring) * 0.4);
-    // The horn-yellow lip where each scute laps the next.
-    px = mixRgb(px, rgb('#cfc069'), smoothstep(3.4, 1.5, gap) * 0.7);
-    return px;
+    const size = 10.5;
+    const cell = hexCell(x, y, size);
+    // The hexagon's own boundary, not a circle: scutes tile a shell with
+    // no gaps, and round plates leave gaps.
+    const t = cell.t;
+    const tone = hashCell(cell.q * 5 + 2, cell.r * 9 + 4);
+    let px = mixRgb(rgb('#4a7d31'), rgb('#8fb85c'), tone);
+    // Domed, lit from the upper left.
+    const lit = -((x - cell.cx) + (y - cell.cy)) / size;
+    px = mixRgb(px, rgb('#d2e5a3'), Math.max(0, lit) * 0.55);
+    px = mixRgb(px, rgb('#274219'), Math.max(0, -lit) * 0.5);
+    // Growth rings, concentric in the plate.
+    px = mixRgb(px, rgb('#375c22'), smoothstep(0.3, 0.08, Math.abs(((t * 4 + tone) % 1) - 0.5)) * 0.3);
+    // Streaks radiating from the plate's centre.
+    const spoke = Math.abs(Math.sin(Math.atan2(y - cell.cy, x - cell.cx) * 6));
+    px = mixRgb(px, rgb('#c2cf7a'), smoothstep(0.88, 1, spoke) * smoothstep(0.25, 0.7, t) * 0.45);
+    // The horn lip, then the dark suture between plates.
+    px = mixRgb(px, rgb('#cfc069'), smoothstep(0.72, 0.88, t) * 0.7);
+    return mixRgb(px, rgb('#1f3311'), smoothstep(0.88, 1, t) * 0.95);
   },
 
   peacock: (x, y) => {
@@ -1154,23 +1151,20 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return px;
   },
 
+
   denim: (x, y) => {
     /*
-      Indigo twill: the diagonal rib of the weave with the pale weft
-      crossing it, slubs where the yarn ran thick, orange topstitching,
-      and a copper rivet. This started as the least visible pattern in
-      the set — a local contrast of nine, which is to say a plain blue
-      cube — and David named it again, so the rib is deeper and the
-      seams now carry the hardware that says "jeans".
+      Indigo twill: the diagonal rib of the weave, the pale weft crossing
+      it, slubs, and two seams of orange topstitching. The copper rivet
+      that used to sit at (47, 32) is gone — David: "get rid of that
+      weird yellow dot on denim." On a shell this size it did not read as
+      a rivet, it read as a stray dot.
     */
     const diag = tiling(x * 2 - y * 2, 16);
     let px = mixRgb(rgb('#22395c'), rgb('#5480ad'), smoothstep(0.12, 0.9, diag));
-    // Individual weft threads crossing the rib.
     px = mixRgb(px, rgb('#a3c2d9'), (x + y) % 3 === 0 ? 0.3 : 0);
     px = mixRgb(px, rgb('#16263f'), (x - y + 64) % 3 === 0 ? 0.22 : 0);
     if (hashCell(x, Math.floor(y / 4)) > 0.978) px = mixRgb(px, rgb('#cfe0ea'), 0.75);
-    // Two seams of topstitching, dashed the way a lockstitch is, with a
-    // fold of heavier cloth under each.
     for (const sy of [11, 52]) {
       const near = Math.abs(y - sy);
       if (near < 4) px = mixRgb(px, rgb('#16263f'), smoothstep(4, 1.6, near) * 0.35);
@@ -1178,36 +1172,29 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
         px = mixRgb(rgb('#d99a35'), rgb('#a5701f'), (x % 2) * 0.5);
       }
     }
-    // A rivet, the way a pocket corner carries one.
-    const rd = Math.hypot(x - 47, y - 32);
-    if (rd < 3.4) {
-      px = mixRgb(rgb('#c98a3d'), rgb('#8a5a1e'), smoothstep(0.5, 3.4, rd));
-      if (rd < 1.4) px = rgb('#e8b870');
-    }
     return px;
   },
-
   ruby: (x, y) => {
-    // A cut gem: triangular facets, each catching the light its own way,
-    // over the deep red a ruby has when you look into it.
-    const u = (x + y * 0.5) / 13;
-    const v = (y - x * 0.35) / 13;
-    const cu = Math.floor(u);
-    const cv = Math.floor(v);
-    const upper = u - cu + (v - cv) > 1 ? 1 : 0;
-    const h = hashCell(cu * 2 + upper, cv);
-    let px = mixRgb(rgb('#66142b'), rgb('#b82f4a'), h);
-    const g = (u - cu) * 0.6 + (v - cv) * 0.4;
-    px = mixRgb(px, rgb('#e0687f'), Math.max(0, g - 0.45) * 1.3);
-    px = mixRgb(px, rgb('#3d0a1a'), Math.max(0, 0.35 - g) * 0.95);
-    const edge = Math.min(
-      Math.abs(u - Math.round(u)),
-      Math.abs(v - Math.round(v)),
-      Math.abs(u - cu + (v - cv) - 1),
-    );
-    return mixRgb(px, rgb('#f2a3b3'), smoothstep(0.06, 0.01, edge) * 0.55);
-  },
+    /*
+      Gold's sheen, in red. David: "make the ruby dice color look like
+      the gold but red." It was a cut gem of triangular facets, which is
+      what a ruby IS but not what the ladder's metals look like — and
+      Gold, Silver and Copper are one family the ruby ought to join.
 
+      One soft bar of light sweeping the face, a hot core to it, and the
+      stone going almost black where the light never reaches.
+    */
+    const d = (x * 0.62 + y * 0.78) / SIZE;
+    const bar = (centre: number, width: number, strength: number) =>
+      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
+    const light = bar(0.38, 0.18, 1.0) + bar(1.02, 0.14, 0.42);
+    let px = mixRgb(rgb('#4a0a1c'), rgb('#c22a48'), Math.min(1, light + 0.2));
+    px = mixRgb(px, rgb('#ff9ab0'), Math.max(0, light - 0.76) * 1.9);
+    px = mixRgb(px, rgb('#2b0511'), Math.max(0, 0.2 - light) * 1.2);
+    // The same fine polishing marks the other three carry.
+    const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.05 + (hashCell(x, y) - 0.5) * 0.05;
+    return mixRgb(px, brush > 0 ? rgb('#ffffff') : rgb('#000000'), Math.abs(brush));
+  },
   slate: (x, y) => {
     // Slate splits along its bedding: flat planes, a stepped edge where
     // one layer sits proud of the next, and the fine cleavage grain.
@@ -1245,105 +1232,109 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return mixRgb(px, brush > 0 ? rgb('#ffffff') : rgb('#000000'), Math.abs(brush));
   },
 
-  ocean: (x, y) => {
-    // Water: long swells with light running along the crests and the
-    // darker troughs between them.
-    const swell = Math.sin(
-      ((x * 2 + y) / SIZE) * Math.PI * 2 + fbm(x, y, [32, 16], [1, 0.5]) * 2.5,
-    );
-    let px = mixRgb(rgb('#0f4d66'), rgb('#2a86a8'), (swell + 1) / 2);
-    px = mixRgb(px, rgb('#a8dbe8'), smoothstep(0.84, 0.99, swell) * 0.75);
-    return mixRgb(px, rgb('#57a8c2'), wrappedNoise(x * 2, y * 2, 16) * 0.2);
-  },
 
-  /* ── sports, remade in full colour ──────────────────────────────── */
+  ocean: (x, y) => {
+    /*
+      Open water: long swells with a second set crossing them, white
+      breaking along the crests and green in the troughs. The first pass
+      scattered white pixels wherever a crest was high, which read as
+      static rather than as foam — foam is a LINE along a crest, not a
+      speckle.
+    */
+    const drift = fbm(x, y, [32, 16], [1, 0.5]) * 2.6;
+    const swell = Math.sin(((x * 2 + y) / SIZE) * Math.PI * 2 + drift);
+    const cross = Math.sin(((x - y * 2) / SIZE) * Math.PI * 2 - drift * 0.7);
+    const height = swell * 0.7 + cross * 0.3;
+    let px = mixRgb(rgb('#0d4a63'), rgb('#3092b5'), (height + 1) / 2);
+    px = mixRgb(px, rgb('#12705f'), Math.max(0, -height) * 0.55);
+    // The breaking lip, and the paler water sliding off behind it.
+    px = mixRgb(px, rgb('#9fd6e8'), smoothstep(0.62, 0.86, height) * 0.7);
+    px = mixRgb(px, rgb('#ffffff'), smoothstep(0.88, 0.99, height));
+    return px;
+  },
 
   dimples: (x, y) => {
     /*
-      A golf ball is white on white, so ALL of it is shading — and a
-      one-ink mask can only travel toward one colour, so a white ball
-      that could only get darker had no dimples worth the name. It was
-      the faintest pattern of the thirteen David asked for.
+      A golf ball: white on white, so all of it is shading. Pits packed
+      on a real hex lattice, which is how a ball is actually dimpled.
 
-      Each dimple is a hollow lit from the upper left, which means its
-      far wall catches the light and its near rim is in shadow.
+      The first attempt measured "distance from a dimple" by adding up
+      three axial stripe distances, which is not a distance to anything —
+      it drew diagonal streaks rather than round pits.
     */
-    const cell = 8;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
-    const d = Math.hypot(cx, cy);
+    const size = 4.1;
+    const cell = hexCell(x, y, size);
     const ball = 1 - (x + y) / (SIZE * 2.8);
-    let px = mixRgb(rgb('#d4d8d2'), rgb('#ffffff'), ball);
-    if (d < 3.1) {
-      const lit = (cx + cy) / 4.2;
-      px = mixRgb(px, rgb('#ffffff'), Math.max(0, lit) * 0.95);
-      px = mixRgb(px, rgb('#9aa09a'), Math.max(0, -lit) * 0.9);
-    }
-    return px;
+    let px = mixRgb(rgb('#d0d5cf'), rgb('#ffffff'), ball);
+    const pit = smoothstep(size * 0.86, size * 0.2, cell.d);
+    // A hollow lit from the upper left has its FAR wall bright.
+    const lit = ((x - cell.cx) + (y - cell.cy)) / size;
+    px = mixRgb(px, rgb('#ffffff'), Math.max(0, lit) * pit * 1.15);
+    px = mixRgb(px, rgb('#8a908a'), Math.max(0, -lit) * pit * 1.25);
+    return mixRgb(px, rgb('#b3b8b2'), pit * 0.2);
   },
 
   soccer: (x, y) => {
-    // Leather panels, each one domed, with a stitched seam between them.
-    const cell = SIZE / 3;
-    let best = 1e9;
-    let second = 1e9;
-    let bx = 0;
-    let by = 0;
-    for (let row = -1; row <= 3; row++) {
-      const cy = row * cell;
-      const offset = (((row % 2) + 2) % 2) === 0 ? 0 : cell / 2;
-      for (let col = -1; col <= 4; col++) {
-        const cx = col * cell + offset;
-        const d = Math.hypot(x - cx, y - cy);
-        if (d < best) {
-          second = best;
-          best = d;
-          bx = cx;
-          by = cy;
-        } else if (d < second) {
-          second = d;
-        }
-      }
-    }
-    const gap = second - best;
-    const a = Math.atan2(y - by, x - bx) + Math.PI / 2;
-    const sector = (Math.PI * 2) / 5;
-    const folded = Math.abs((((a % sector) + sector) % sector) - sector / 2);
-    const pentagon = best * Math.cos(folded) <= 6.2 * Math.cos(sector / 2);
-    const lit = (-(x - bx) - (y - by)) / (cell * 1.4) + 0.3;
-    let px = pentagon
-      ? mixRgb(rgb('#1d1a2b'), rgb('#3f3a56'), Math.max(0, lit))
-      : mixRgb(rgb('#dedbd2'), rgb('#ffffff'), Math.max(0, lit));
-    if (gap < 1.7) px = mixRgb(px, rgb('#7d7a72'), 0.85);
-    else if (gap < 2.9 && ((x + y) % 5) < 1.8) px = mixRgb(px, rgb('#9e9a90'), 0.55);
-    return px;
+    /*
+      Black and white hexagons, and that is all. David: "make the soccer
+      ball just a black and white hexagonal pattern like a soccer ball."
+
+      The first go at this hashed three independently-rounded axial
+      coordinates to choose which cells were black, which does not name a
+      hexagon — it named a point in three unrelated stripe families, so
+      the colour changed pixel to pixel and the ball came out as black
+      splatter. Cube-coordinate rounding (hexCell) names the cell.
+    */
+    const size = 6.4;
+    const cell = hexCell(x, y, size);
+    // Roughly one panel in three is black; a real ball is 12 to 20.
+    const dark = hashCell(cell.q * 7 + 3, cell.r * 11 + 5) > 0.66;
+    let px = dark ? rgb('#1d1a2b') : rgb('#f7f5f0');
+    // The stitched seam round every panel, on the HEXAGON's own edge.
+    const seam = smoothstep(0.82, 0.99, cell.t);
+    px = mixRgb(px, dark ? rgb('#0b0a12') : rgb('#8f8c85'), seam);
+    // Leather, lightly, so it is not flat vector art.
+    return mixRgb(px, dark ? rgb('#494360') : rgb('#cfcbc2'), wrappedNoise(x, y, 16) * 0.16);
   },
 
   basketball: (x, y) => {
-    // Pebbled leather under the four seams. The pebble is the point of a
-    // basketball's surface and a mask could not render it at all.
+    /*
+      A basketball: deep orange pebbled hide with the eight-panel seams
+      wide and black over it. The seams used to be hairlines a pixel and
+      a half wide, which at a die's size vanished into the pebble and
+      left an orange cube.
+    */
     const c = SIZE / 2;
-    const reach = SIZE * 1.375;
-    const seam =
-      Math.abs(Math.hypot(x - SIZE * 1.5, y - c) - reach) < 1.5 ||
-      Math.abs(Math.hypot(x + SIZE * 0.5, y - c) - reach) < 1.5 ||
-      Math.abs(Math.hypot(x - c, y - SIZE * 1.5) - reach) < 1.5 ||
-      Math.abs(Math.hypot(x - c, y + SIZE * 0.5) - reach) < 1.5;
-    const cell = 4;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const gx = ((x + offset) % cell) - cell / 2;
-    const gy = (y % cell) - cell / 2;
-    const lit = (-gx - gy) / 2.6;
-    let px = mixRgb(rgb('#a04a1c'), rgb('#c2652b'), wrappedNoise(x, y, 32));
-    px = mixRgb(px, rgb('#d98f52'), Math.max(0, lit) * 0.45);
-    px = mixRgb(px, rgb('#66280c'), Math.max(0, -lit) * 0.4);
-    if (seam) px = mixRgb(rgb('#241d2e'), rgb('#3d3450'), Math.max(0, lit) * 0.5);
+    /*
+      1.4375, out from 1.375. The seams got much wider when they were
+      made bold enough to read, and at the old radius their inner lip
+      reached 19.8 from the centre — inside the 21-pixel circle the
+      colour sticker covers. Widening a line means moving it too.
+    */
+    const reach = SIZE * 1.4375;
+    const seamAt = Math.min(
+      Math.abs(Math.hypot(x - SIZE * 1.5, y - c) - reach),
+      Math.abs(Math.hypot(x + SIZE * 0.5, y - c) - reach),
+      Math.abs(Math.hypot(x - c, y - SIZE * 1.5) - reach),
+      Math.abs(Math.hypot(x - c, y + SIZE * 0.5) - reach),
+    );
+    /*
+      Pebble: a tight hex lattice of little domes over the whole hide.
+      Built with hexCell rather than by rounding two axial stripes — the
+      stripe version is not a distance to anything, and its beat against
+      the tile put a third more contrast inside the sticker's circle than
+      outside it.
+    */
+    const grain = hexCell(x, y, 2.1);
+    const lit = ((x - grain.cx) + (y - grain.cy)) / 2.1;
+    let px = mixRgb(rgb('#a34a14'), rgb('#cf6b24'), wrappedNoise(x, y, 32));
+    px = mixRgb(px, rgb('#e8964f'), Math.max(0, lit) * 0.5);
+    px = mixRgb(px, rgb('#66290a'), Math.max(0, -lit) * 0.45);
+    // The seam: a black channel with the hide lipping over its edges.
+    px = mixRgb(px, rgb('#1d1622'), smoothstep(2.8, 1.4, seamAt));
+    px = mixRgb(px, rgb('#7a3a10'), smoothstep(4.2, 2.8, seamAt) * 0.5);
     return px;
   },
-
   laces: (x, y) => {
     // A football: pebbled hide, the lace panel on the left third and the
     // long seam sweeping the right, both clear of the colour sticker.
@@ -1413,62 +1404,89 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   /* ── animals, remade in full colour ─────────────────────────────── */
 
+
   patches: (x, y) => {
-    // Cow hide: soft-edged patches with the short hair of the coat over
-    // both tones. Hard blobs of flat ink read as a domino.
-    const cell = 16;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + offset) / cell);
-    const h = hashCell(col, row);
+    /*
+      Cow markings, drawn as MARKINGS.
+
+      David: "make the cow look more like a cow and less like an
+      algorithm picking a pattern." It was one blob per cell of a
+      staggered lattice, and however much each was jittered the grid
+      showed through — the eye finds a repeat long before it finds a cow.
+
+      These are six patches placed by hand at sizes and positions no
+      lattice would produce, each one's edge chewed by noise. Hand-placed
+      because a 64-pixel tile has room for about one island of
+      low-frequency noise: pure noise gives one enormous blob, which is
+      what sent this to a lattice in the first place.
+    */
     let px = mixRgb(rgb('#efece4'), rgb('#ffffff'), wrappedNoise(x, y, 16));
-    if (h >= 0.3) {
-      const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 4;
-      const cy = (y % cell) - cell / 2 + (hashCell(col + 5, row) - 0.5) * 4;
-      const lump = fbm(x + col * 7, y + row * 3, [16, 8], [1, 0.6]) * 2.6;
-      const r = 4.2 + h * 2.2;
-      const inside = smoothstep(r + 1.5, r - 1.5, Math.hypot(cx, cy) + lump);
-      px = mixRgb(px, mixRgb(rgb('#2b2723'), rgb('#4a443b'), wrappedNoise(x * 2, y * 2, 16)), inside);
+    const patch = (cx: number, cy: number, rx: number, ry: number, spin: number) => {
+      // Wrapped so a patch crossing the tile edge comes back the far side.
+      const dx = ((((x - cx) % SIZE) + SIZE * 1.5) % SIZE) - SIZE / 2;
+      const dy = ((((y - cy) % SIZE) + SIZE * 1.5) % SIZE) - SIZE / 2;
+      const ux = dx * Math.cos(spin) + dy * Math.sin(spin);
+      const uy = -dx * Math.sin(spin) + dy * Math.cos(spin);
+      const chew = fbm(x * 1.6, y * 1.6, [32, 16], [1, 0.6]) * 0.5 - 0.15;
+      return Math.hypot(ux / rx, uy / ry) + chew < 1;
+    };
+    const inside =
+      patch(14, 12, 13, 9, 0.5) ||
+      patch(46, 20, 9, 14, -0.9) ||
+      patch(24, 44, 15, 10, 1.2) ||
+      patch(56, 52, 8, 7, 0.2) ||
+      patch(4, 34, 6, 11, -0.4) ||
+      patch(38, 60, 11, 6, 0.8);
+    if (inside) {
+      px = mixRgb(rgb('#2b2723'), rgb('#4a443b'), wrappedNoise(x * 2, y * 2, 16));
     }
+    // The short hair of the coat, over both.
     return mixRgb(px, rgb('#8a8378'), (wrappedNoise(x * 3, y, 16) - 0.5) * 0.16 + 0.08);
   },
 
   bands: (x, y) => {
     /*
-      A bumblebee is FUZZY. Hard bands of flat colour read as a deck
-      chair; these have hair breaking their edges and the shine of a
-      shell showing through the fuzz.
+      A bumblebee: fuzzy black and amber bands, and nothing else. The
+      speckle of pale hairs scattered over them read as SPOTS — David
+      asked for them gone, and he is right that a bee has no spots.
     */
     const fuzz = fbm(x * 2, y * 3, [32, 16], [1, 0.5]) * 2.4;
     const wave = tiling(y + fuzz, 3);
     let px = mixRgb(rgb('#221d13'), rgb('#dba428'), smoothstep(0.1, 0.4, wave));
     px = mixRgb(px, rgb('#ffd97a'), smoothstep(0.4, 0.6, wave) * smoothstep(0.92, 0.6, wave) * 0.55);
     px = mixRgb(px, rgb('#0b0905'), smoothstep(0.1, 0, wave) * 0.6);
-    return mixRgb(px, rgb('#f7e6b8'), hashCell(x, Math.floor(y / 2)) > 0.962 ? 0.4 : 0);
+    // The fuzz is DIRECTIONAL now — hair lying along the band rather
+    // than dots sitting on it.
+    return mixRgb(px, rgb('#f7e6b8'), (wrappedNoise(x * 5, y, 16) - 0.5) * 0.13);
   },
 
   diamonds: (x, y) => {
     /*
-      Snakeskin: each scale a lozenge with its own keel, lit along the
-      upper edge and shadowed under the lower one, in two alternating
-      tones so the pattern runs down the body.
+      A diamondback: big dark saddles down the spine, pale-edged, over
+      fine scales. The scales used to BE the diamonds, which is a
+      lattice — a diamondback's markings are several scales across.
     */
-    const u = (x + y) / 11;
-    const v = (x - y) / 11;
-    const cu = Math.floor(u);
-    const cv = Math.floor(v);
-    const fu = u - cu - 0.5;
-    const fv = v - cv - 0.5;
-    const h = hashCell(cu, cv);
-    const dark = (cu + cv) % 2 === 0;
-    let px = dark
-      ? mixRgb(rgb('#33421a'), rgb('#4a5c26'), h)
-      : mixRgb(rgb('#8fa84a'), rgb('#b3c96b'), h);
-    const lit = -(fu + fv) * 1.6;
-    px = mixRgb(px, rgb('#dee6b3'), Math.max(0, lit) * 0.45);
-    px = mixRgb(px, rgb('#1b240f'), Math.max(0, -lit) * 0.5);
-    const border = Math.max(Math.abs(fu), Math.abs(fv));
-    return mixRgb(px, rgb('#202a11'), smoothstep(0.42, 0.5, border) * 0.9);
+    const su = (x + y) / 4.4;
+    const sv = (x - y) / 4.4;
+    const fu = su - Math.floor(su) - 0.5;
+    const fv = sv - Math.floor(sv) - 0.5;
+    const keel = -(fu + fv) * 1.4;
+    let px = mixRgb(rgb('#97ac60'), rgb('#c6d393'), hashCell(Math.floor(su), Math.floor(sv)) * 0.7);
+    px = mixRgb(px, rgb('#e4ecc1'), Math.max(0, keel) * 0.4);
+    px = mixRgb(px, rgb('#606f37'), Math.max(0, -keel) * 0.45);
+    px = mixRgb(px, rgb('#4e5b2d'), smoothstep(0.4, 0.5, Math.max(Math.abs(fu), Math.abs(fv))) * 0.5);
+    /*
+      The saddles. Bigger than the scales by a long way, wandering with
+      the noise so they are not a stamped grid, and edged in cream — the
+      edging is most of what makes a snake read as a snake.
+    */
+    const wobble = fbm(x * 0.7, y * 0.7, [32, 16], [1, 0.5]) * 9 - 4.5;
+    const bx = Math.abs(((x + wobble + SIZE * 1.5) % 32) - 16) / 16;
+    const by = Math.abs(((y - wobble * 0.5 + SIZE * 1.5) % 21.33) - 10.67) / 10.67;
+    const saddle = bx * 0.62 + by * 0.38;
+    px = mixRgb(px, rgb('#f4f2d4'), smoothstep(0.62, 0.44, saddle) * 0.85);
+    px = mixRgb(px, rgb('#2b3317'), smoothstep(0.44, 0.3, saddle));
+    return px;
   },
 
   tigerStripes: (x, y) => {
@@ -1506,6 +1524,43 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const wall = smoothstep(0.17, 0.08, nearest);
     const lit = 0.5 - (((x * 0.6 + y * 0.8) % 9) + 9) % 9 / 12;
     px = mixRgb(px, mixRgb(rgb('#c2933a'), rgb('#f2d488'), Math.max(0, lit + 0.35)), wall);
+    return px;
+  },
+
+  bubbles: (x, y) => {
+    /*
+      Real soap bubbles: round, overlapping, thin-walled, with a bright
+      specular dot near the top left of each and the faint rainbow a
+      soap film throws. The mask version could only tint toward one ink,
+      so every bubble was the same flat outline in the same one colour.
+    */
+    const cell = 15;
+    let px = mixRgb(rgb('#bfe2f7'), rgb('#dff0fc'), fbm(x, y, [32, 16], [1, 0.5]));
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const row = Math.floor(y / cell) + dy;
+        const col = Math.floor(x / cell) + dx;
+        const h = hashCell(col, row);
+        const offset = ((row % 2) + 2) % 2 === 0 ? 0 : cell / 2;
+        const cx = col * cell + offset + (h - 0.5) * 4 + cell / 2;
+        const cy = row * cell + (hashCell(col + 9, row) - 0.5) * 4 + cell / 2;
+        const r = 4.6 + h * 2.6;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d > r + 0.6) continue;
+        // The film: brightest at the rim, all but clear in the middle.
+        const rim = smoothstep(r - 2.2, r, d);
+        // Iridescence — the colour a soap film shows at grazing angles.
+        const tint = mixRgb(rgb('#c9a8f0'), rgb('#a8f0d8'), (Math.sin(d * 0.9 + h * 6) + 1) / 2);
+        px = mixRgb(px, tint, rim * 0.55);
+        px = mixRgb(px, rgb('#ffffff'), smoothstep(r - 1, r, d) * smoothstep(r + 0.6, r - 0.2, d) * 0.9);
+        // Shadow under the far side, so it is a sphere not a ring.
+        px = mixRgb(px, rgb('#7fa8c2'), rim * smoothstep(-0.2, 0.9, (x - cx + y - cy) / r) * 0.45);
+        // The glint.
+        if (Math.hypot(x - (cx - r * 0.38), y - (cy - r * 0.38)) < r * 0.2) {
+          px = rgb('#ffffff');
+        }
+      }
+    }
     return px;
   },
 };

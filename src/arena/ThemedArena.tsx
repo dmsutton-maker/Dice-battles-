@@ -1143,21 +1143,56 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
         </group>
       );
 
-    case 'stalagmite':
-      // Dripstone: uneven teeth pointing up out of the rock.
+    case 'stalagmite': {
+      /*
+        Crystal, not dripstone teeth. David: "make the crystal cavern
+        look less weird and more like crystals." A crystal is a solid
+        with flat faces and a blunt end — a smooth six-sided cone is a
+        spike, and a rim of them is a portcullis.
+      */
       return (
         <group>
           {rim.map((m, i) => {
-            const h = 0.4 + ((i * 53) % 11) / 12;
+            const h = 0.36 + ((i * 53) % 11) / 14;
+            const lit = i % 4 === 0;
             return (
-              <mesh key={`drip-${i}`} position={[m.pos[0], wallHeight + h / 2, m.pos[2]]}>
-                <coneGeometry args={[0.22, h, 6]} />
-                <meshStandardMaterial color={i % 5 === 0 ? accent : cap} roughness={0.9} />
-              </mesh>
+              <group
+                key={`crystal-${i}`}
+                position={[m.pos[0], wallHeight, m.pos[2]]}
+                rotation={[((i % 5) - 2) * 0.07, i * 0.9, ((i % 3) - 1) * 0.08]}
+              >
+                {/* The shaft: a stubby hexagonal prism. */}
+                <mesh position={[0, h * 0.42, 0]}>
+                  <cylinderGeometry args={[0.15, 0.2, h * 0.84, 6]} />
+                  <meshStandardMaterial
+                    color={lit ? accent : cap}
+                    emissive={lit ? accent : '#000000'}
+                    emissiveIntensity={lit ? 0.3 : 0}
+                    roughness={0.35}
+                  />
+                </mesh>
+                {/* And the blunt pyramid capping it. */}
+                <mesh position={[0, h * 0.96, 0]}>
+                  <coneGeometry args={[0.15, h * 0.36, 6]} />
+                  <meshStandardMaterial
+                    color={lit ? accent : cap}
+                    emissive={lit ? accent : '#000000'}
+                    emissiveIntensity={lit ? 0.3 : 0}
+                    roughness={0.3}
+                  />
+                </mesh>
+                {i % 2 === 0 && (
+                  <mesh position={[0.17, h * 0.3, 0.06]} rotation={[0, 0, 0.35]}>
+                    <cylinderGeometry args={[0.07, 0.1, h * 0.55, 6]} />
+                    <meshStandardMaterial color={cap} roughness={0.4} />
+                  </mesh>
+                )}
+              </group>
             );
           })}
         </group>
       );
+    }
 
     case 'battlement':
       // Notched stone teeth. The Sky Kingdom is a kingdom.
@@ -1307,26 +1342,57 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
         </group>
       );
 
-    case 'coralRim':
-      // Branching coral heads growing along the reef's edge.
+    case 'coralRim': {
+      /*
+        Coral, not spikes. David: "make the things on the walls look less
+        like spikes and more like coral." Thin cones pointing straight up
+        are a fence of spears; coral is lumpy, it branches, it comes in a
+        dozen colours, and no two heads on a reef are the same size.
+      */
+      const REEF = ['#ff8a5c', '#ff6e9e', '#ffc95c', '#8ad4e8', '#b884d8', '#5ce0b0'];
       return (
         <group>
-          {rim.map((m, i) => (
-            <group key={`coral-${i}`} position={[m.pos[0], wallHeight, m.pos[2]]}>
-              {([-0.16, 0.02, 0.18] as const).map((ox, k) => (
-                <mesh
-                  key={k}
-                  position={[ox, 0.16 + k * 0.05, ox * 0.6]}
-                  rotation={[0, 0, ox * 1.4]}
-                >
-                  <coneGeometry args={[0.1, 0.34 + k * 0.08, 5]} />
-                  <meshStandardMaterial color={k === 1 ? accent : cap} roughness={0.75} />
-                </mesh>
-              ))}
-            </group>
-          ))}
+          {rim.map((m, i) => {
+            const tint = REEF[i % REEF.length];
+            const kind = i % 3;
+            return (
+              <group key={`coral-${i}`} position={[m.pos[0], wallHeight, m.pos[2]]}>
+                {kind === 0 && (
+                  // A brain coral: a fat lobed dome.
+                  <>
+                    <mesh position={[0, 0.16, 0]} scale={[1, 0.72, 1]}>
+                      <sphereGeometry args={[0.27, 10, 8]} />
+                      <meshStandardMaterial color={tint} roughness={0.85} />
+                    </mesh>
+                    <mesh position={[0.13, 0.13, 0.09]} scale={[1, 0.7, 1]}>
+                      <sphereGeometry args={[0.16, 8, 6]} />
+                      <meshStandardMaterial color={cap} roughness={0.85} />
+                    </mesh>
+                  </>
+                )}
+                {kind === 1 &&
+                  // Staghorn: stubby branches forking off a short trunk.
+                  ([[0, 0.34, 0], [-0.17, 0.24, 0.5], [0.18, 0.26, -0.55]] as const).map(
+                    ([ox, h, tilt], k) => (
+                      <mesh key={k} position={[ox, h / 2 + 0.04, ox * 0.5]} rotation={[0, 0, tilt]}>
+                        <cylinderGeometry args={[0.055, 0.085, h, 6]} />
+                        <meshStandardMaterial color={k === 0 ? tint : cap} roughness={0.8} />
+                      </mesh>
+                    ),
+                  )}
+                {kind === 2 && (
+                  // A fan, stood edge-on to the current.
+                  <mesh position={[0, 0.22, 0]} scale={[1, 0.95, 0.2]}>
+                    <sphereGeometry args={[0.26, 10, 8]} />
+                    <meshStandardMaterial color={tint} roughness={0.8} />
+                  </mesh>
+                )}
+              </group>
+            );
+          })}
         </group>
       );
+    }
 
     case 'parapet':
       // A rooftop: concrete coping with a steel handrail above it.
@@ -1712,32 +1778,42 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
 
   const rim = useMemo(() => {
     /*
-      Evenly spaced the whole way round, at the same pitch on the ends as
-      on the sides.
+      One continuous ring of crest pieces, at one pitch, all the way
+      round.
 
-      It used to step 1.1 across the ends and 1.15 down the sides, from
-      inset starts — four pieces on each end against eight on each side,
-      with gaps wider than the pieces. On screen that read as scattered
-      rubble rather than a built rim, and the ends looked bare next to
-      the sides. One pitch, measured from the wall's own corners, fixes
-      both at once.
+      David, 26 Aug 2026: "the pegs and decorations on the top of the
+      walls on a lot of maps only go halfway around when they should be
+      all the way around." Measured, the near and far walls carried
+      crest across only 77% of their width — the run started 0.15 inside
+      the INNER width and stopped 0.15 short of it, which leaves 0.65 of
+      bare wall at each of the eight places an end wall meets a side. The
+      sides reached 95%, so the two short walls looked stripped next to
+      them and every corner had a hole in it.
+
+      The fix is to stop thinking of it as four separate runs. The sides
+      go corner centre to corner centre and OWN the four corners; the
+      ends then fill in between those corners at the same pitch, which
+      is why they skip their first and last slot — those are the corner
+      pieces the sides already placed.
     */
     const list: RimSpot[] = [];
     const y = wallHeight + 0.12;
     const PITCH = 0.62;
     const endX = halfW + wallThickness / 2;
     const endZ = halfD + wallThickness / 2;
-    const across = Math.max(2, Math.round((innerWidth - 0.3) / PITCH));
-    for (let i = 0; i <= across; i++) {
-      const x = -(innerWidth / 2 - 0.15) + (i * (innerWidth - 0.3)) / across;
-      list.push({ pos: [x, y, -endZ], alongX: true });
-      list.push({ pos: [x, y, endZ], alongX: true });
-    }
-    const down = Math.max(2, Math.round((innerDepth + wallThickness) / PITCH));
+
+    const down = Math.max(2, Math.round((endZ * 2) / PITCH));
     for (let i = 0; i <= down; i++) {
-      const z = -(innerDepth + wallThickness) / 2 + (i * (innerDepth + wallThickness)) / down;
+      const z = -endZ + (i * endZ * 2) / down;
       list.push({ pos: [-endX, y, z], alongX: false });
       list.push({ pos: [endX, y, z], alongX: false });
+    }
+
+    const across = Math.max(2, Math.round((endX * 2) / PITCH));
+    for (let i = 1; i < across; i++) {
+      const x = -endX + (i * endX * 2) / across;
+      list.push({ pos: [x, y, -endZ], alongX: true });
+      list.push({ pos: [x, y, endZ], alongX: true });
     }
     return list;
   }, []);

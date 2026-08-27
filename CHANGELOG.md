@@ -1,5 +1,71 @@
 # Changelog
 
+## v1.60.0 — 2026-08-27 · reported by David
+
+### Fixed
+- **The wall decorations stopped short of every corner.** David: "the
+  pegs and decorations on the top of the walls on a lot of maps only go
+  halfway around when they should be all the way around." Measured, the
+  crest ran across only 77% of the near and far walls — it started and
+  stopped 0.15 inside the INNER width, leaving 0.65 of bare wall at each
+  of the eight places an end wall meets a side. The sides reached 95%, so
+  the two short walls looked stripped next to them and every corner had a
+  hole in it. It is one continuous ring at one pitch now: the sides run
+  corner centre to corner centre and own the corners, and the ends fill
+  in between them.
+
+### Changed
+- **The Autumn Woods floor has real leaves** — shaped, with a midrib, in
+  the reds and golds a wood actually turns, overlapping in two passes.
+  They were small dark dashes, which reads as grit.
+- **The Crystal Cavern has crystals in it.** The floor was a scribble of
+  mineral veining that read as noise; it is calm rock now with faceted
+  blades breaking through. The rim was a row of smooth cones — a
+  portcullis — and is now stubby hexagonal prisms with blunt pyramid
+  caps, some of them lit.
+- **The Coral Reef is a reef.** More colour and far more coral, as asked:
+  the seabed carries coral heads in six colours, and the wall pieces are
+  brain corals, staghorn and fans instead of spikes.
+- **The Moon Base floor is regolith** — grey dust pocked with craters in
+  three sizes, each a dark bowl inside a lit rim. It was a hexagonal
+  wireframe, which reads as graph paper.
+- **Sunny Farm is a farm.** Ploughed furrows with clods turned up along
+  the ridges, straw lying along them, and three times the hay bales,
+  trees and flowers.
+- **Glow Glade** has damp patches, brighter moss where the light gets in,
+  glowing spores, and stepping stones that are now PALER than the moss —
+  they had been mixed a quarter of the way into the theme's accent, which
+  for the glade is another green, so they came out darker than what they
+  were meant to sit on.
+- **Rooftop City** has a roof on it: a hatch cover, a run of galvanised
+  duct and the painted safety lines, over lifted decking.
+- **More clouds in the Sky Kingdom** — nineteen props against six.
+
+### Changed — dice
+- **Ruby is Gold in red**, as asked: the same sweep of light, the same
+  polishing marks, a bright core and near-black in the shade.
+- **Bubbles are bubbles** — round, overlapping, with the iridescence a
+  soap film shows, a shaded far side and a glint on each.
+- **The Cow is a cow.** Six hand-placed patches at sizes and angles no
+  lattice would produce, edges chewed by noise. It was one blob per cell
+  of a staggered grid, and however much each was jittered the grid showed
+  through: "less like an algorithm picking a pattern."
+- **The Soccer Ball is black and white hexagons**, as asked.
+- **The Bumblebee has no spots.** The pale speckle over its bands read as
+  spots, which a bee has none of.
+- **Also better:** the golf ball's dimples, the turtle's shell, the
+  snake's markings, the basketball's seams and pebble, and the ocean's
+  waves. The denim's copper rivet is gone — at a die's size it did not
+  read as a rivet, it read as a stray yellow dot.
+- Three of those had the same root cause, worth naming: the hex patterns
+  were identifying which cell a pixel was in by rounding three axial
+  stripe families separately. That does not name a cell, so hashing it
+  scattered colour per PIXEL — the soccer ball came out as black
+  splatter and the golf ball as diagonal streaks. There is one correct
+  hex helper now, with cube-coordinate rounding and a real hexagonal
+  boundary, and the soccer ball, golf ball, turtle and basketball all use
+  it.
+
 ## v1.59.0 — 2026-08-26 · reported by David
 
 ### Fixed
