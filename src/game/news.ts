@@ -37,6 +37,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-63-0-crystal-cavern',
+    date: '28 August 2026',
+    version: 'v1.63.0',
+    title: 'The Crystal Cavern is made of crystal',
+    emoji: '\ud83d\udc8e',
+    body:
+      'The family picked these two off a set of designs. The floor is ' +
+      'no longer rock with a few crystals on it — the whole board is ' +
+      'now the inside of a cracked geode, cut faces meeting edge to ' +
+      'edge, some of them gemstone and the rest violet stone.\n\n' +
+      'And the wall has proper crystal clusters along the top of it, ' +
+      'all the way round: several six-sided points growing out of one ' +
+      'root, tallest in the middle, the way crystal actually grows.',
+  },
+  {
     id: 'v1-62-3-both-free-rungs',
     date: '28 August 2026',
     version: 'v1.62.3',

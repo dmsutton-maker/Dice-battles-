@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.63.0 — 2026-08-28 · chosen by Marc
+
+Marc, picking two directions off the design canvas: "I like the
+FloorGeode for the floor of the crystal cavern and the CrestCluster for
+the wall toppers."
+
+### Changed
+- **The Crystal Cavern's floor IS the crystal now**, rather than rock
+  with crystal lying on it: the inside of a cracked geode, cut facets
+  meeting edge to edge with nothing between them, about a third of them
+  gemstone and the rest the cavern's own violet rock.
+
+  The facets come from a jittered Voronoi — for each texel, the nearest
+  of nine candidate sites owns it. Voronoi cells are convex polygons that
+  tile without gaps, which is exactly what a cut surface is, so every
+  edge falls out of the distances rather than being drawn: `d2 - d1`, the
+  gap between nearest and second-nearest site, is small only along a
+  boundary, and the bright seam is that number ramped.
+- **The wall carries crystal clusters**, not single studs. A crystal does
+  not grow one to a spot; it grows from a common root, several six-sided
+  prisms of different heights splaying outward, tallest in the middle.
+  Every rim spot gets one, so the wall is crystal the whole way round.
+
+### Fixed
+- **The ground outside the tray stayed rock, and had to be made to.**
+  One painter draws both surfaces, so the first build turned the entire
+  screen into crystal facets and the board stopped reading as a board in
+  the middle of it. A painter is now told which surface it is drawing;
+  fifteen of the sixteen ignore it and make both from the same rock, and
+  the cavern uses it to keep its scenery quieter than its floor.
+- **Most of a wall cluster is coloured crystal**, after the first attempt
+  used the wall's own cap stone for four prisms in five. Cap is a dark
+  violet a shade off the wall itself, so the clusters came out as dark
+  studs on a dark wall and the ring read as gravel from above.
+
+### Added
+- **The pixel fingerprint now covers both surfaces**, floor and ground.
+  Splitting the painter in two gave every structure a second behaviour,
+  and pinning only the floor would have left half of each one unwatched —
+  which is the gap that test exists to close.
+
 ## v1.62.3 — 2026-08-28 · reported by Marc
 
 Marc: "have both the castle courtyard and ivory dice be highlighted on

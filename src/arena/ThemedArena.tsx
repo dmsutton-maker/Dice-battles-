@@ -1180,48 +1180,86 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
 
     case 'stalagmite': {
       /*
-        Crystal, not dripstone teeth. David: "make the crystal cavern
-        look less weird and more like crystals." A crystal is a solid
-        with flat faces and a blunt end — a smooth six-sided cone is a
-        spike, and a rim of them is a portcullis.
+        Clusters, picked off the design canvas — Marc, 28 Aug 2026: "the
+        CrestCluster for the wall toppers."
+
+        Crystal does not grow one to a spot. It grows in CLUSTERS from a
+        common root: several six-sided prisms of different heights
+        splaying outward, tallest in the middle. That is the whole
+        difference between this and what stood here, which was a single
+        stubby prism per spot — from any distance, a row of studs.
+
+        Every rim spot carries one, so the wall is crystal the whole way
+        round rather than every second or third pillar with bare cap
+        between them. How many prisms, how tall, which colour and which
+        ones glow all come off the spot's own index, so no two
+        neighbours match and none of it is random at runtime.
       */
+      // The cavern's own crystal colours, the same five its props use.
+      const GEM = ['#c98aff', '#a37ae8', '#dcaeff', '#7fd4e8', '#f0d68a'];
       return (
         <group>
           {rim.map((m, i) => {
-            const h = 0.36 + ((i * 53) % 11) / 14;
-            const lit = i % 4 === 0;
+            const blades = 3 + ((i * 7) % 3);
+            const mid = (blades - 1) / 2;
             return (
               <group
-                key={`crystal-${i}`}
+                key={`cluster-${i}`}
                 position={[m.pos[0], wallHeight, m.pos[2]]}
-                rotation={[((i % 5) - 2) * 0.07, i * 0.9, ((i % 3) - 1) * 0.08]}
+                rotation={[0, i * 1.7, 0]}
               >
-                {/* The shaft: a stubby hexagonal prism. */}
-                <mesh position={[0, h * 0.42, 0]}>
-                  <cylinderGeometry args={[0.15, 0.2, h * 0.84, 6]} />
-                  <meshStandardMaterial
-                    color={lit ? accent : cap}
-                    emissive={lit ? accent : '#000000'}
-                    emissiveIntensity={lit ? 0.3 : 0}
-                    roughness={0.35}
-                  />
-                </mesh>
-                {/* And the blunt pyramid capping it. */}
-                <mesh position={[0, h * 0.96, 0]}>
-                  <coneGeometry args={[0.15, h * 0.36, 6]} />
-                  <meshStandardMaterial
-                    color={lit ? accent : cap}
-                    emissive={lit ? accent : '#000000'}
-                    emissiveIntensity={lit ? 0.3 : 0}
-                    roughness={0.3}
-                  />
-                </mesh>
-                {i % 2 === 0 && (
-                  <mesh position={[0.17, h * 0.3, 0.06]} rotation={[0, 0, 0.35]}>
-                    <cylinderGeometry args={[0.07, 0.1, h * 0.55, 6]} />
-                    <meshStandardMaterial color={cap} roughness={0.4} />
-                  </mesh>
-                )}
+                {Array.from({ length: blades }, (_, b) => {
+                  const k = i * 5 + b * 13;
+                  /*
+                    Tallest in the middle, shorter towards the edges —
+                    what makes a handful of prisms read as one cluster
+                    rather than as a scatter of separate spikes.
+                  */
+                  const fromMid = Math.abs(b - mid) / (mid + 0.5);
+                  const h = (0.34 + ((k * 31) % 13) / 26) * (1 - fromMid * 0.42);
+                  const r = 0.085 + ((k * 17) % 7) / 110;
+                  const gem = GEM[(i * 3 + b) % GEM.length];
+                  /*
+                    Most of a cluster is coloured crystal and the rest is
+                    clear quartz — NOT the wall's own cap stone, which
+                    was the first thing tried. Cap is a dark violet a
+                    shade off the wall itself, so four prisms in five
+                    came out as dark studs sitting on a dark wall and the
+                    whole ring read as gravel from above.
+                  */
+                  const lit = (k * 11) % 5 < 4;
+                  const color = lit ? gem : '#b7a8d6';
+                  return (
+                    <group
+                      key={b}
+                      position={[(b - mid) * 0.085, 0, (((k * 23) % 5) - 2) * 0.022]}
+                      rotation={[0, b * 1.1, (b - mid) * 0.26]}
+                    >
+                      {/* The shaft: a six-sided prism, tapering upward. */}
+                      <mesh position={[0, h * 0.42, 0]}>
+                        <cylinderGeometry args={[r * 0.86, r, h * 0.84, 6]} />
+                        <meshStandardMaterial
+                          color={color}
+                          emissive={lit ? gem : '#000000'}
+                          emissiveIntensity={lit ? 0.34 : 0}
+                          roughness={0.3}
+                          metalness={0.1}
+                        />
+                      </mesh>
+                      {/* And the point: six facets meeting at the tip. */}
+                      <mesh position={[0, h * 0.94, 0]}>
+                        <coneGeometry args={[r * 0.86, h * 0.34, 6]} />
+                        <meshStandardMaterial
+                          color={color}
+                          emissive={lit ? gem : '#000000'}
+                          emissiveIntensity={lit ? 0.34 : 0}
+                          roughness={0.25}
+                          metalness={0.1}
+                        />
+                      </mesh>
+                    </group>
+                  );
+                })}
               </group>
             );
           })}

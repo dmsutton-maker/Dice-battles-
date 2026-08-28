@@ -158,7 +158,22 @@ export interface SurfacePaint {
   accent: string;
 }
 
-type SurfacePainter = (x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }) => Rgb;
+/**
+ * `tray` says which surface is being painted: the board the dice roll on,
+ * or the ground around it.
+ *
+ * Most painters ignore it — the same rock makes both. The Crystal Cavern
+ * does not: its floor is now a bed of cut facets (Marc picked it off the
+ * design canvas), and painting the ground the same way turned the entire
+ * screen into crystal with no board to be seen in the middle of it.
+ * Scenery has to stay quieter than the thing it surrounds.
+ */
+type SurfacePainter = (
+  x: number,
+  y: number,
+  p: { a: Rgb; b: Rgb; accent: Rgb },
+  tray: boolean,
+) => Rgb;
 
 /**
  * One painter per battlefield, keyed by what the place is built of.
@@ -256,92 +271,117 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   // cavern look less weird and more like crystals" — it was a scribble
   // of mineral veining that read as noise, so the rock is calm now and
   // the crystal is drawn as actual faceted shards catching the light.
-  stalagmite: (x, y, p) => {
+  stalagmite: (x, y, p, tray) => {
     /*
-      Marc, 27 Aug 2026: "make the crystal cavern floor look less
-      pixelated."
+      Marc, 28 Aug 2026, picking a direction off the design canvas: "I
+      like the FloorGeode for the floor of the crystal cavern."
 
-      The pixels were never the problem — the EDGES were. Every crystal
-      was drawn by a pair of `continue` tests, so a texel was either
-      wholly crystal or wholly rock with nothing between, and a hard edge
-      magnified onto a floor about three screen pixels to the texel is a
-      staircase. Nothing else on this floor had the fault because nothing
-      else on it has an edge; it is all noise. So every edge here is a
-      RAMP now — how much of the texel the shard covers — and the shards
-      are mixed in by that coverage.
+      So the floor IS the crystal now, rather than rock with crystal
+      lying on it: the inside of a cracked geode, cut facets meeting edge
+      to edge with nothing between them, about a third of them gemstone
+      and the rest the cavern's own violet rock.
 
-      The shape took three goes. Long tapered blades radiating from a
-      root are what a crystal cluster looks like from the SIDE; from
-      above, at twenty texels to the world unit, three of them read as a
-      bird's footprint and four as a bird. What reads as crystal looking
-      down at it is a chunk: a flat angular face with a straight edge and
-      a second face turned away from the light. So each cluster is three
-      overlapping hexagonal shards, each split down the middle into a lit
-      facet and a shadowed one, each outlined dark so it stays a separate
-      solid rather than melting into its neighbour.
+      The facets come from a jittered Voronoi — for each texel, the
+      nearest of nine candidate sites owns it. Voronoi cells are convex
+      polygons that tile without gaps, which is exactly what a cut
+      surface is, and it means every edge falls out of the distances
+      rather than being drawn. `d2 - d1`, the gap between the nearest and
+      second-nearest site, is small only along a boundary, so the bright
+      seam between facets is that number ramped — soft, and free.
+
+      What this replaces was three goes at the OTHER idea: crystal
+      objects scattered on rock. Long tapered blades radiating from a
+      root read as a bird's footprint from above, and faceted hexagonal
+      shards read better but still left most of the floor as flat wash.
+      Cutting the whole surface into facets was the direction the family
+      chose, and it is the one that makes the floor itself the feature.
     */
-    const warp = fbm(x, y, SIZE) * 10;
-    let c = mix(p.a, p.b, smoothstep(0.25, 0.75, fbm(x * 0.6 + warp * 0.2, y * 0.6, SIZE)));
-    c = mix(c, shade(p.a, 0.72), smoothstep(0.5, 0.85, fbm(x * 0.4, y * 0.4, SIZE)) * 0.45);
-    // Wet rock, so the floor between the crystals is not a flat wash.
-    c = mix(c, shade(p.a, 0.55), smoothstep(0.62, 0.9, noise(x / 5, y / 5, SIZE / 5)) * 0.4);
+    if (!tray) {
+      /*
+        Outside the tray: damp violet rock with crystal showing THROUGH
+        it here and there, which is what the cavern looked like before
+        the floor became a geode and is what keeps the board readable as
+        a board. The facets belong on the thing you are playing on.
+      */
+      let g = mix(p.a, p.b, smoothstep(0.2, 0.8, fbm(x * 0.6, y * 0.6, SIZE)));
+      g = mix(g, shade(p.a, 0.62), smoothstep(0.5, 0.9, fbm(x * 0.35, y * 0.35, SIZE)) * 0.5);
+      const vein = Math.abs(fbm(x * 0.5 + 17, y * 0.5, SIZE) - 0.5);
+      g = mix(g, lift(p.accent, 0.35), smoothstep(0.07, 0.01, vein) * 0.4);
+      const chunk = hash(Math.floor(x / 19), Math.floor(y / 19));
+      if (chunk > 0.86) {
+        const bx = (((x % 19) + 19) % 19) - 9.5;
+        const by = (((y % 19) + 19) % 19) - 9.5;
+        g = mix(g, lift(p.accent, 0.5), smoothstep(4.5, 1.5, Math.hypot(bx, by)) * 0.55);
+      }
+      return mix(g, shade(g, 0.9), noise(x / 3, y / 3, SIZE / 3) * 0.4);
+    }
 
-    const SECTOR = Math.PI / 3;
-    const cell = 36;
-    for (let k = 0; k < 2; k++) {
-      const oz = k * 18;
-      const row = Math.floor((y + oz) / cell);
-      const col = Math.floor((x + oz) / cell);
-      const seed = hash(col + k * 19, row + k * 7);
-      if (seed < 0.52) continue;
-      // Where in the cell this cluster grew.
-      const rx = (hash(col + 3, row + 11) - 0.5) * 15;
-      const ry = (hash(col + 7, row + 2) - 0.5) * 15;
-      const bx = (((x + oz) % cell) + cell) % cell - cell / 2 - rx;
-      const by = (((y + oz) % cell) + cell) % cell - cell / 2 - ry;
-      if (Math.abs(bx) > 15 || Math.abs(by) > 15) continue;
+    const CELL = 11.5;
+    /*
+      The gems. Hardcoded rather than taken from SurfacePaint, which
+      carries only three colours and none of them bright — the cavern's
+      accent is its wall cap, a muted violet. These are the arena's own
+      crystal colours from themeData.ts, so the floor is cut from the
+      same stone as the props standing around it.
+    */
+    const GEMS: Rgb[] = [
+      [201, 138, 255], [163, 122, 232], [220, 174, 255],
+      [127, 212, 232], [240, 214, 138],
+    ];
 
-      // The light the cluster throws onto the rock around it.
-      c = mix(c, lift(p.b, 0.3), smoothstep(14, 3, Math.hypot(bx, by)) * 0.26);
-
-      for (let b = 0; b < 3; b++) {
-        const g = hash(col * 3 + b * 41, row * 5 + b * 13 + k);
-        const h2 = hash(col * 7 + b * 5, row * 11 + b * 29 + k);
-        // Shards sit beside each other, not on one point.
-        const ox = (h2 - 0.5) * 9;
-        const oy = (g - 0.5) * 9;
-        const dx = bx - ox;
-        const dy = by - oy;
-        const rad = 2.4 + h2 * 5.2;
-        // Cheap rejection first. Rotating a point costs a sine, a cosine
-        // and an arc-tangent, and all three would be spent on the four
-        // texels in five that are nowhere near this shard.
-        const reach = rad + 2.5;
-        if (dx < -reach || dx > reach || dy < -reach || dy > reach) continue;
-        const dd = dx * dx + dy * dy;
-        if (dd > reach * reach) continue;
-        const a = g * 6.283;
-        const ca = Math.cos(a);
-        const sa = Math.sin(a);
-        const ux = dx * ca + dy * sa;
-        const uy = -dx * sa + dy * ca;
-        const d = Math.sqrt(dd);
-        // A hexagon's boundary in this direction: its inradius over the
-        // cosine of the angle folded into one sixty-degree wedge.
-        const ang = Math.atan2(uy, ux);
-        const folded = Math.abs(((((ang + SECTOR / 2) % SECTOR) + SECTOR) % SECTOR) - SECTOR / 2);
-        const edge = rad / Math.cos(folded);
-        const cover = smoothstep(edge + 0.7, edge - 0.7, d);
-        if (cover <= 0.02) continue;
-        // Two facets meeting on a straight line, which is what makes a
-        // solid read as a solid rather than as a blob.
-        c = mix(c, uy < 0 ? lift(p.b, 0.62) : shade(p.b, 0.66), cover * 0.95);
-        c = mix(c, lift(p.b, 0.72), cover * smoothstep(rad * 0.5, 0, Math.abs(uy)) * 0.5);
-        // Outlined, so two shards touching stay two shards.
-        c = mix(c, shade(p.b, 0.4), smoothstep(1.4, 0.25, Math.abs(d - edge)) * 0.55);
+    const gx = Math.floor(x / CELL);
+    const gy = Math.floor(y / CELL);
+    let d1 = 1e9;
+    let d2 = 1e9;
+    let cx = 0;
+    let cy = 0;
+    let cq = 0;
+    let cr = 0;
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        const q = gx + ox;
+        const r = gy + oy;
+        const jx = (q + 0.15 + hash(q, r) * 0.7) * CELL;
+        const jy = (r + 0.15 + hash(q + 41, r + 17) * 0.7) * CELL;
+        const dx = x - jx;
+        const dy = y - jy;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < d1) {
+          d2 = d1;
+          d1 = d;
+          cx = jx;
+          cy = jy;
+          cq = q;
+          cr = r;
+        } else if (d < d2) {
+          d2 = d;
+        }
       }
     }
-    return c;
+
+    const seed = hash(cq * 7 + 3, cr * 11 + 5);
+    const gemmy = seed > 0.68;
+    const base = gemmy
+      ? mix(GEMS[Math.floor(hash(cq + 5, cr + 9) * GEMS.length) % GEMS.length], p.b, 0.34)
+      : mix(p.a, p.b, hash(cq + 2, cr + 6));
+
+    /*
+      Each facet is a flat plane at its own angle, so it takes the light
+      differently from the one beside it — which is the whole reason a
+      field of polygons reads as CUT crystal rather than as camouflage.
+      The tilt is measured from the facet's own centre, so one side of
+      every cell is lit and the other falls away.
+    */
+    const tilt = ((x - cx) + (y - cy)) / CELL;
+    let c = shade(base, 0.68 + Math.max(0, -tilt) * 0.72 + hash(cq + 13, cr + 3) * 0.18);
+
+    // The seam where two facets meet, and the bright arris along it.
+    const edge = d2 - d1;
+    c = mix(c, shade(base, 0.4), smoothstep(1.5, 0.35, edge) * 0.6);
+    c = mix(c, lift(base, gemmy ? 0.8 : 0.55), smoothstep(0.75, 0.08, edge) * 0.75);
+
+    // A slow damp wash over the whole bed, so it is not evenly bright.
+    return mix(c, shade(p.b, 0.72), smoothstep(0.45, 0.95, fbm(x * 0.35, y * 0.35, SIZE)) * 0.35);
   },
 
   battlement: (x, y, p) => {
@@ -641,6 +681,7 @@ function build(
   wUnits: number,
   hUnits: number,
   density: number,
+  tray: boolean,
 ): THREE.DataTexture {
   const painter = PAINTERS[structure];
   const p = { a: rgb(paint.a), b: rgb(paint.b), accent: rgb(paint.accent) };
@@ -649,7 +690,7 @@ function build(
   const data = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const c = painter(x / density, y / density, p);
+      const c = painter(x / density, y / density, p, tray);
       const i = (y * w + x) * 4;
       data[i] = Math.max(0, Math.min(255, c[0]));
       data[i + 1] = Math.max(0, Math.min(255, c[1]));
@@ -701,6 +742,7 @@ export function createTraySurface(
     world[0] * UNITS_PER_WORLD,
     world[1] * UNITS_PER_WORLD,
     TRAY_DENSITY,
+    true,
   );
   // It covers the floor exactly once, so there is nothing to wrap, and
   // clamping stops the filter reaching round to the opposite edge.
@@ -723,19 +765,23 @@ export function createGroundSurface(
     nothing. Its painters wrap at SIZE, so its joins really are seamless
     — which is what the tray's could never be at repeat 1.594.
   */
-  const t = build(structure, paint, SIZE, SIZE, 1);
+  const t = build(structure, paint, SIZE, SIZE, 1, false);
   t.repeat.set(repeat, repeat);
   return t;
 }
 
 /** Test-only: the painters, so a suite can measure what they produce. */
-export function surfacePixels(structure: ArenaStructure, paint: SurfacePaint): number[] {
+export function surfacePixels(
+  structure: ArenaStructure,
+  paint: SurfacePaint,
+  tray = true,
+): number[] {
   const painter = PAINTERS[structure];
   const p = { a: rgb(paint.a), b: rgb(paint.b), accent: rgb(paint.accent) };
   const out: number[] = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      const c = painter(x, y, p);
+      const c = painter(x, y, p, tray);
       out.push(
         Math.max(0, Math.min(255, Math.round(c[0]))),
         Math.max(0, Math.min(255, Math.round(c[1]))),

@@ -955,31 +955,53 @@ suite('arenas · the floor is not cut in half', () => {
       change to a floor's pixels, deliberate or not, fails here and has
       to be looked at and re-pinned on purpose.
     */
-    const FINGERPRINT: Record<string, number> = {
-      snowFence: 2822920031, adobe: 3332830248, basalt: 2367338390,
-      logPile: 3467978741, station: 4294572736, stalagmite: 12270393,
-      battlement: 2711802449, airlock: 1806471617, driftwood: 542929681,
-      gingerbread: 4111876675, mossStone: 2127551540, shipHull: 2439740480,
-      picket: 3596239287, coralRim: 588170051, parapet: 2389790565,
-      blocks: 1393805627,
+    /*
+      Two numbers per structure: the tray floor, then the ground outside.
+      A painter can now draw the two differently — the Crystal Cavern's
+      floor is a bed of cut facets while its ground stays rock — so
+      pinning only the floor would leave half of every painter unwatched,
+      which is the very gap this test exists to close.
+    */
+    const FINGERPRINT: Record<string, [number, number]> = {
+      snowFence: [2822920031, 2591079004], adobe: [3332830248, 3217809634],
+      basalt: [2367338390, 812598676], logPile: [3467978741, 3677557592],
+      station: [4294572736, 11610392], stalagmite: [2332719538, 18287228],
+      battlement: [2711802449, 3801047114], airlock: [1806471617, 1375994754],
+      driftwood: [542929681, 1624185647], gingerbread: [4111876675, 4044205311],
+      mossStone: [2127551540, 2729603520], shipHull: [2439740480, 1924898867],
+      picket: [3596239287, 2708851089], coralRim: [588170051, 2042255654],
+      parapet: [2389790565, 2377193977], blocks: [1393805627, 3816223702],
     };
-    const changed: string[] = [];
-    for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+    const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];
-      const px = surfacePixels(t.structure, { a: t.floor.a, b: t.floor.b, accent: t.wall.cap });
+      const px = surfacePixels(
+        t.structure,
+        tray
+          ? { a: t.floor.a, b: t.floor.b, accent: t.wall.cap }
+          : { a: t.meadow, b: t.hill, accent: t.mountain ?? t.wall.cap },
+        tray,
+      );
       let h = 2166136261 >>> 0;
       for (let i = 0; i < px.length; i++) {
         h ^= px[i] & 255;
         h = Math.imul(h, 16777619) >>> 0;
       }
-      if (FINGERPRINT[t.structure] !== h) changed.push(`${t.structure} (${h})`);
+      return h;
+    };
+    const changed: string[] = [];
+    for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {
+      const want = FINGERPRINT[ARENA_THEMES[id].structure];
+      const floor = fingerprint(id, true);
+      const ground = fingerprint(id, false);
+      if (want[0] !== floor) changed.push(`${ARENA_THEMES[id].structure} floor (${floor})`);
+      if (want[1] !== ground) changed.push(`${ARENA_THEMES[id].structure} ground (${ground})`);
     }
     assertEqual(
       changed.join(', '),
       '',
-      'a floor is not the floor it was — re-pin the fingerprint if you meant it',
+      'a surface is not the surface it was — re-pin the fingerprint if you meant it',
     );
-    note(`${Object.keys(FINGERPRINT).length} floors match their pinned pixels`);
+    note(`${Object.keys(FINGERPRINT).length} structures match their pinned pixels, floor and ground`);
   });
 
   test('a floor still paints fast enough not to be seen', () => {
