@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.63.2 — 2026-08-28 · reported by Marc
+
+Marc: "the floor is too blurry, enhance the quality of it."
+
+### Fixed
+- **Every arena floor is drawn at twice the resolution**, 224x408 texels
+  instead of 112x204. The tray is the largest thing on screen at about 54
+  screen pixels to the world unit, and the painters work at 20 units to
+  the world unit — so at the old density each texel was covering nearly
+  three screen pixels and the slab seams came out as stair-stepped dashes
+  rather than lines.
+
+  It was at the low setting for a reason that had already expired. When
+  it was chosen the heaviest floor took 226ms to paint and anything more
+  pushed it past a quarter of a second, which is a stall a player sees
+  the first time an arena opens. `noise` got 6.8x faster in v1.62.2, so
+  that floor is now 37ms and four times the pixels is 147ms — well inside
+  the same ceiling, which has not moved.
+
+  Not higher: three times measures 339ms and blows the ceiling, and two
+  and a half fits here at 227ms but leaves nothing for a slower phone and
+  holds 11.7MB of texture that is deliberately never freed. Two costs
+  7.5MB across all sixteen floors.
+- **The tray floor is filtered anisotropically.** The camera looks down
+  the board at a 17-degree tilt, so the far half is squashed hard along
+  one axis and not the other — the case ordinary mipmapping handles worst,
+  because it picks one level for both and blurs the far end lengthwise to
+  avoid aliasing across it. This is most of why the far end looked softer
+  than the near end.
+
+Both changes apply to all sixteen battlefields, not just the Crystal
+Cavern. No painter changed, and the pixel fingerprints confirm it.
+
 ## v1.63.1 — 2026-08-28 · chosen by Marc
 
 Marc, on the geode floor that shipped yesterday: "actually I don't like

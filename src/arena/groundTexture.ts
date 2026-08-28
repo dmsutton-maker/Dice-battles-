@@ -45,14 +45,26 @@ const UNITS_PER_WORLD = SIZE / 6.4;
 /**
  * Texels per painter unit on the tray floor.
  *
- * The tray is the largest thing on screen, about 54 screen pixels to the
- * world unit against 20 texels — so each texel was covering nearly three
- * pixels and the floor was soft where it was not jagged. Half as many
- * again is what the faster hash pays for. Much more and a phone stalls
- * visibly the first time an arena opens, which is the very fault
- * textureCache.ts exists to avoid.
+ * The tray is the largest thing on screen at about 54 screen pixels to
+ * the world unit. The painters are written at 20 units to the world
+ * unit, so at a density of one each texel was covering nearly three
+ * screen pixels and the floor looked soft — Marc, 28 Aug 2026: "the
+ * floor is too blurry."
+ *
+ * Two is 40 texels to the world unit, so a texel is about 1.35 screen
+ * pixels and the softness is mostly gone. It was one until now for a
+ * reason that has since expired: at the time the heaviest floor took
+ * 226ms to paint and anything above one pushed it past a quarter of a
+ * second, which is a stall a player sees the first time an arena opens.
+ * `noise` got 6.8x faster in v1.62.2, so the same floor is 37ms and four
+ * times the pixels is 147ms — still comfortably inside the ceiling.
+ *
+ * Not three, which measures 339ms and blows it, and not two and a half,
+ * which fits here at 227ms but leaves nothing for a slower phone and
+ * holds 11.7MB of texture that is deliberately never freed. Two costs
+ * 7.5MB across all sixteen.
  */
-const TRAY_DENSITY = 1;
+const TRAY_DENSITY = 2;
 
 type Rgb = [number, number, number];
 
@@ -766,6 +778,16 @@ export function createTraySurface(
   t.wrapS = THREE.ClampToEdgeWrapping;
   t.wrapT = THREE.ClampToEdgeWrapping;
   t.repeat.set(1, 1);
+  /*
+    The camera looks down the tray at a 17-degree tilt (cameraFit.ts), so
+    the far half of the floor is squashed hard in one direction and not
+    the other. That is exactly the case ordinary mipmapping handles
+    badly: it picks one level for both axes, so the far end blurs along
+    its length to avoid aliasing across it. Anisotropic filtering samples
+    the two axes separately and is the fix. Eight is a request, not a
+    promise — three.js clamps it to whatever the device can do.
+  */
+  t.anisotropy = 8;
   return t;
 }
 

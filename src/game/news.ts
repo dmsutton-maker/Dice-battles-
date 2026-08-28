@@ -37,6 +37,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-63-2-sharper-floors',
+    date: '28 August 2026',
+    version: 'v1.63.2',
+    title: 'Sharper floors everywhere',
+    emoji: '\ud83d\udd0d',
+    body:
+      'The arena floors were being drawn at half the detail they needed, ' +
+      'so edges came out fuzzy and stepped instead of clean. Every ' +
+      'battlefield is now drawn at twice the resolution, and the far end ' +
+      'of the board — which the camera looks at on a slant — gets proper ' +
+      'filtering as well.\n\n' +
+      'It was set low back when floors took too long to build. That got ' +
+      'fixed a few updates ago, so there was room to turn it up.',
+  },
+  {
     id: 'v1-63-1-cut-slabs',
     date: '28 August 2026',
     version: 'v1.63.1',
