@@ -426,6 +426,41 @@ suite('the ladder', () => {
     note(`${TIERS.length - noPicture.length} of ${TIERS.length} rungs show their own item`);
   });
 
+  test('a new player is shown standing on both free rungs', () => {
+    /*
+      Marc, 28 Aug 2026: "have both the castle courtyard and ivory dice
+      be highlighted on the ladder at the beginning."
+
+      The ladder marks the rung you are on by comparing against your
+      league, and a league is a single tier — the last one reached. Two
+      rungs are free and both sit at 0, so at zero trophies one of them
+      was marked YOU and the other looked like something still to earn.
+
+      The screen picks by THRESHOLD now, so this is the check that the
+      threshold really is shared and that nothing else on the ladder ties
+      by accident — a tie anywhere else would light two rungs at once for
+      a reason nobody intended.
+    */
+    const free = TIERS.filter((t) => t.at === 0);
+    assertEqual(free.length, 2, 'the ladder should start with two free rungs');
+    assertEqual(
+      free.map((t) => t.id).join(', '),
+      'castle, ivory-dice',
+      'the two free rungs are not the ones the ladder starts with',
+    );
+    const ties = new Map<number, number>();
+    for (const t of TIERS) ties.set(t.at, (ties.get(t.at) ?? 0) + 1);
+    const shared = [...ties].filter(([, n]) => n > 1).map(([at, n]) => `${at} (${n})`);
+    assertEqual(shared.join(', '), '0 (2)', 'more than one rung shares a threshold');
+
+    const source = readFileSync('src/demo/LeaderboardScreen.tsx', 'utf8');
+    const ladder = source.slice(source.indexOf('THE LADDER'));
+    assert(
+      /isCurrent = tier\.at === league\.at/.test(ladder),
+      'the ladder marks the rung you are on by identity again, so only one of the two free rungs lights up',
+    );
+  });
+
   test('the ladder reads downwards, cheapest first', () => {
     // It used to be reversed, so the summit sat at the top the way a
     // leaderboard does. This is a road, not a leaderboard.

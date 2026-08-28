@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.62.3 — 2026-08-28 · reported by Marc
+
+Marc: "have both the castle courtyard and ivory dice be highlighted on
+the ladder at the beginning."
+
+### Fixed
+- **A new player was shown standing on one free rung instead of two.**
+  The ladder marks where you are by comparing each rung against your
+  league, and a league is a single tier — the last one you have reached.
+  Two rungs are free and both sit at 0 trophies, so at the start Ivory
+  Dice was marked YOU and Castle Courtyard looked like something still to
+  earn, when you own both from the first launch.
+
+  The rung you are on is picked by THRESHOLD now rather than by identity,
+  so every rung at the number you are standing on lights up. A test pins
+  that the two free rungs really are the only pair sharing a threshold —
+  a tie anywhere else on the ladder would light two rungs at once for a
+  reason nobody intended.
+
 ## v1.62.2 — 2026-08-27 · found by the test suite
 
 ### Fixed

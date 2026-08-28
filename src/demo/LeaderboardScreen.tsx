@@ -208,7 +208,17 @@ export function LeaderboardScreen({
         {TIERS.map((tier) => {
           const label = tierLabel(tier, trophies);
           const reachedThis = trophies >= tier.at;
-          const isCurrent = tier.id === league.id;
+          /*
+            Every rung at the threshold you are standing on, not just one.
+
+            Marc, 28 Aug 2026: "have both the castle courtyard and ivory
+            dice be highlighted on the ladder at the beginning." The two
+            free rungs both sit at 0, and `league` can only ever be one
+            tier — the last one you have reached — so a brand-new player
+            saw Ivory Dice marked YOU and Castle Courtyard looking like
+            something still to earn, when they own both.
+          */
+          const isCurrent = tier.at === league.at;
           return (
             <View
               key={tier.id}

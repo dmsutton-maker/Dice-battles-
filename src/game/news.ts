@@ -37,6 +37,18 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-62-3-both-free-rungs',
+    date: '28 August 2026',
+    version: 'v1.62.3',
+    title: 'You start on both of them',
+    emoji: '\u2b50',
+    body:
+      'The Castle Courtyard and the Ivory Dice are both yours the moment ' +
+      'you open the game, but the ladder was only highlighting one of ' +
+      'them, so the other looked like something you still had to earn. ' +
+      'Both are marked now.',
+  },
+  {
     id: 'v1-62-2-faster-floors',
     date: '27 August 2026',
     version: 'v1.62.2',
