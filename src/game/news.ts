@@ -37,6 +37,19 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-63-1-cut-slabs',
+    date: '28 August 2026',
+    version: 'v1.63.1',
+    title: 'Bigger pieces on the cavern floor',
+    emoji: '\ud83d\udd37',
+    body:
+      'The Crystal Cavern floor we put in yesterday was cut into small ' +
+      'pieces, and up close that looks more like gravel than crystal. ' +
+      'It is now cut into a handful of big flat faces instead, each one ' +
+      'catching the light its own way — which is what the inside of a ' +
+      'geode actually looks like.',
+  },
+  {
     id: 'v1-63-0-crystal-cavern',
     date: '28 August 2026',
     version: 'v1.63.0',

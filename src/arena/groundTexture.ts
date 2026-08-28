@@ -273,29 +273,35 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   // the crystal is drawn as actual faceted shards catching the light.
   stalagmite: (x, y, p, tray) => {
     /*
-      Marc, 28 Aug 2026, picking a direction off the design canvas: "I
-      like the FloorGeode for the floor of the crystal cavern."
+      The Crystal Cavern's floor IS the crystal — the inside of a cracked
+      geode, cut faces meeting edge to edge with nothing between them,
+      about a quarter of them gemstone and the rest violet rock.
 
-      So the floor IS the crystal now, rather than rock with crystal
-      lying on it: the inside of a cracked geode, cut facets meeting edge
-      to edge with nothing between them, about a third of them gemstone
-      and the rest the cavern's own violet rock.
+      Chosen by the family on 28 Aug 2026, twice. First "I like the
+      FloorGeode", then — after seeing it in the game — "actually I don't
+      like the floor", and finally, from a second set, "I want the cut
+      slabs". Same idea both times; the SIZE was the whole argument, and
+      it is settled below where the cell size is set.
 
-      The facets come from a jittered Voronoi — for each texel, the
-      nearest of nine candidate sites owns it. Voronoi cells are convex
-      polygons that tile without gaps, which is exactly what a cut
-      surface is, and it means every edge falls out of the distances
-      rather than being drawn. `d2 - d1`, the gap between the nearest and
-      second-nearest site, is small only along a boundary, so the bright
-      seam between facets is that number ramped — soft, and free.
-
-      What this replaces was three goes at the OTHER idea: crystal
-      objects scattered on rock. Long tapered blades radiating from a
-      root read as a bird's footprint from above, and faceted hexagonal
-      shards read better but still left most of the floor as flat wash.
-      Cutting the whole surface into facets was the direction the family
-      chose, and it is the one that makes the floor itself the feature.
+      What this replaced was three goes at the other idea entirely:
+      crystal objects scattered on rock. Long tapered blades radiating
+      from a root read as a bird's footprint from above; faceted hexagonal
+      shards read better but still left most of the floor a flat wash.
+      Cutting the whole surface is what makes the floor itself the
+      feature rather than a background for things lying on it.
     */
+    /*
+      The gems. Hardcoded rather than taken from SurfacePaint, which
+      carries only three colours and none of them bright — the cavern's
+      accent is its wall cap, a muted violet. These are the arena's own
+      crystal colours from themeData.ts, so the floor is cut from the
+      same stone as the props standing around it.
+    */
+    const GEMS: Rgb[] = [
+      [201, 138, 255], [163, 122, 232], [220, 174, 255],
+      [127, 212, 232], [240, 214, 138],
+    ];
+
     if (!tray) {
       /*
         Outside the tray: damp violet rock with crystal showing THROUGH
@@ -316,19 +322,34 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       return mix(g, shade(g, 0.9), noise(x / 3, y / 3, SIZE / 3) * 0.4);
     }
 
-    const CELL = 11.5;
     /*
-      The gems. Hardcoded rather than taken from SurfacePaint, which
-      carries only three colours and none of them bright — the cavern's
-      accent is its wall cap, a muted violet. These are the arena's own
-      crystal colours from themeData.ts, so the floor is cut from the
-      same stone as the props standing around it.
-    */
-    const GEMS: Rgb[] = [
-      [201, 138, 255], [163, 122, 232], [220, 174, 255],
-      [127, 212, 232], [240, 214, 138],
-    ];
+      Marc, 28 Aug 2026, after seeing the first version in the game:
+      "actually I don't like the floor" — then, from a set rendered
+      through this very painter rather than drawn by hand, "I want the
+      cut slabs."
 
+      Same idea as before, three times the size. The first pass cut the
+      floor into cells about half a world unit across, and a hundred
+      small facets on a board is gravel, not crystal. At thirty painter
+      units — a unit and a half of world — the board is a handful of big
+      cut planes, which is what the inside of a geode actually looks like
+      and what reads as CUT at the size a player sees it.
+
+      Worth recording how that mistake got through: the first set of
+      options were hand-drawn SVG illustrations, and an illustration
+      flatters itself. The cell size that looked like bold faceting in a
+      drawing came out as rubble from the real painter. Every option in
+      the second set was rendered by this function at shipping size, and
+      the difference was obvious at a glance.
+
+      The facets come from a jittered Voronoi: for each texel, the
+      nearest of nine candidate sites owns it. Voronoi cells are convex
+      polygons that tile without gaps, which is exactly what a cut
+      surface is, so the edges fall out of the distances rather than
+      being drawn — `d2 - d1`, the gap between nearest and
+      second-nearest, is small only along a boundary.
+    */
+    const CELL = 30;
     const gx = Math.floor(x / CELL);
     const gy = Math.floor(y / CELL);
     let d1 = 1e9;
@@ -341,8 +362,8 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       for (let ox = -1; ox <= 1; ox++) {
         const q = gx + ox;
         const r = gy + oy;
-        const jx = (q + 0.15 + hash(q, r) * 0.7) * CELL;
-        const jy = (r + 0.15 + hash(q + 41, r + 17) * 0.7) * CELL;
+        const jx = (q + 0.2 + hash(q, r) * 0.6) * CELL;
+        const jy = (r + 0.2 + hash(q + 41, r + 17) * 0.6) * CELL;
         const dx = x - jx;
         const dy = y - jy;
         const d = Math.sqrt(dx * dx + dy * dy);
@@ -359,29 +380,25 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       }
     }
 
-    const seed = hash(cq * 7 + 3, cr * 11 + 5);
-    const gemmy = seed > 0.68;
+    const gemmy = hash(cq * 7 + 3, cr * 11 + 5) > 0.72;
     const base = gemmy
-      ? mix(GEMS[Math.floor(hash(cq + 5, cr + 9) * GEMS.length) % GEMS.length], p.b, 0.34)
-      : mix(p.a, p.b, hash(cq + 2, cr + 6));
+      ? mix(GEMS[Math.floor(hash(cq + 5, cr + 9) * GEMS.length) % GEMS.length], p.b, 0.42)
+      : mix(p.a, p.b, hash(cq + 2, cr + 6) * 0.7);
 
     /*
-      Each facet is a flat plane at its own angle, so it takes the light
-      differently from the one beside it — which is the whole reason a
-      field of polygons reads as CUT crystal rather than as camouflage.
-      The tilt is measured from the facet's own centre, so one side of
-      every cell is lit and the other falls away.
+      Each slab is a flat plane at its own angle, so it takes the light
+      differently from the one beside it — the whole reason a field of
+      polygons reads as CUT crystal rather than as camouflage. A face
+      this big also shows its own grain, which a small facet never did.
     */
-    const tilt = ((x - cx) + (y - cy)) / CELL;
-    let c = shade(base, 0.68 + Math.max(0, -tilt) * 0.72 + hash(cq + 13, cr + 3) * 0.18);
+    const tilt = ((x - cx) * 0.7 + (y - cy)) / CELL;
+    let c = shade(base, 0.8 + Math.max(0, -tilt) * 0.5);
+    c = mix(c, shade(base, 0.86), noise(x / 4 + cq * 9, y / 4 + cr * 5, SIZE / 4) * 0.35);
 
-    // The seam where two facets meet, and the bright arris along it.
+    // The seam where two slabs meet, and the bright arris along it.
     const edge = d2 - d1;
-    c = mix(c, shade(base, 0.4), smoothstep(1.5, 0.35, edge) * 0.6);
-    c = mix(c, lift(base, gemmy ? 0.8 : 0.55), smoothstep(0.75, 0.08, edge) * 0.75);
-
-    // A slow damp wash over the whole bed, so it is not evenly bright.
-    return mix(c, shade(p.b, 0.72), smoothstep(0.45, 0.95, fbm(x * 0.35, y * 0.35, SIZE)) * 0.35);
+    c = mix(c, shade(base, 0.42), smoothstep(2.6, 0.5, edge) * 0.55);
+    return mix(c, lift(base, 0.6), smoothstep(1.2, 0.1, edge) * 0.7);
   },
 
   battlement: (x, y, p) => {
@@ -769,6 +786,31 @@ export function createGroundSurface(
   t.repeat.set(repeat, repeat);
   return t;
 }
+
+/**
+ * The primitives a painter is built from, for tools that try new ones.
+ *
+ * Exported for the same reason `surfacePixels` is: a floor can only be
+ * judged by looking at it, and a candidate drawn with a COPY of these
+ * helpers is not the candidate that would ship. The Crystal Cavern's
+ * geode floor was chosen off idealised SVG artboards and did not survive
+ * contact with the real painter — hand-drawn options flatter themselves.
+ * A tool that renders through these renders the truth.
+ *
+ * Not used by the game itself.
+ */
+export const SURFACE_TOOLS = {
+  SIZE,
+  rgb,
+  mix,
+  shade,
+  lift,
+  smoothstep,
+  hash,
+  noise,
+  fbm,
+  gridEdge,
+};
 
 /** Test-only: the painters, so a suite can measure what they produce. */
 export function surfacePixels(

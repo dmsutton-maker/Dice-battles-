@@ -965,7 +965,7 @@ suite('arenas · the floor is not cut in half', () => {
     const FINGERPRINT: Record<string, [number, number]> = {
       snowFence: [2822920031, 2591079004], adobe: [3332830248, 3217809634],
       basalt: [2367338390, 812598676], logPile: [3467978741, 3677557592],
-      station: [4294572736, 11610392], stalagmite: [2332719538, 18287228],
+      station: [4294572736, 11610392], stalagmite: [807404290, 18287228],
       battlement: [2711802449, 3801047114], airlock: [1806471617, 1375994754],
       driftwood: [542929681, 1624185647], gingerbread: [4111876675, 4044205311],
       mossStone: [2127551540, 2729603520], shipHull: [2439740480, 1924898867],

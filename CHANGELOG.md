@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.63.1 — 2026-08-28 · chosen by Marc
+
+Marc, on the geode floor that shipped yesterday: "actually I don't like
+the floor so give me more options for that." Then, from the second set:
+"I want the cut slabs."
+
+### Changed
+- **The Crystal Cavern's floor is cut in slabs, three times the size.**
+  Same idea as the floor it replaces — the inside of a cracked geode,
+  convex faces meeting edge to edge — but the cells go from about half a
+  world unit across to a unit and a half. A hundred small facets on a
+  board is gravel; a handful of big ones is cut crystal, and only the
+  second reads as cut at the size a player actually sees it.
+
+### Why the first one was wrong, and how the second was chosen
+The first set of options were hand-drawn SVG illustrations on a design
+canvas, and an illustration flatters itself: the cell size that looked
+like bold faceting in a drawing came out as rubble from the real painter.
+Nobody could have told from the canvas.
+
+The second set was rendered by the actual painter, at the actual size,
+through `SURFACE_TOOLS` — the primitives a painter is built from, now
+exported so a tool can draw a candidate with the real thing rather than a
+copy of it. Six floors side by side including the one already shipping,
+and the problem with it was obvious at a glance. Three of the six needed
+a second pass before they were worth showing at all: the seams came out
+as pixel speckle, the agate as a bullseye centred exactly where the dice
+land, and the pools a muddy gold.
+
+That is the process now for anything visual: draw it with the code that
+will draw it, at the size it will be seen.
+
 ## v1.63.0 — 2026-08-28 · chosen by Marc
 
 Marc, picking two directions off the design canvas: "I like the
