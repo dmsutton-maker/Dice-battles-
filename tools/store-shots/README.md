@@ -1,7 +1,27 @@
 # App Store screenshots
 
-Builds the five 1290 × 2796 screenshots in `store/screenshots/`, which is
-the size Apple currently asks for (iPhone 6.9").
+Builds six screenshots in two device shapes, into
+`store/screenshots/iphone/` and `store/screenshots/ipad/`.
+
+| folder | size | what it is |
+|---|---|---|
+| `iphone/` | 1290 × 2796 | iPhone 6.9" |
+| `ipad/` | 2048 × 2732 | iPad 12.9"/13" |
+
+Both are sizes App Store Connect accepts, but Apple moves the goalposts —
+1320 × 2868 and 2064 × 2752 are also current — so **check the sizes
+App Store Connect asks for on the day you upload** rather than trusting
+this table. Changing them is one edit to `DEVICES` in `compose.py`; the
+layout is written against the canvas, not against fixed numbers.
+
+## The two shapes are not one picture scaled
+
+An iPad is 1.59× the phone's width and almost exactly its height (2732
+against 2796). Scaling the art by the width ratio therefore overflows the
+bottom, which is what the first iPad pass did to the dice grid and the
+arena tiles. Anything that has to fit whole is fitted to a BOX — width and
+height both — rather than to a scale factor. The board shots still bleed
+off the sides on purpose.
 
 ```sh
 npm i --no-save --legacy-peer-deps react-dom@19.1.0 playwright@1.49.0
@@ -14,6 +34,7 @@ cd - && npx esbuild tools/store-shots/entry.tsx --bundle \
   --alias:@react-three/fiber/native=@react-three/fiber \
   --define:process.env.NODE_ENV='"production"'
 node tools/store-shots/shoot.js '[{"name":"sky","w":1600,"h":1500,"arena":"sky","skin":"ivory","dist":16,"pitch":0.72,"yaw":0.30}, ...]'
+# the iPad board shots want wider renders (…W) — see SHOTS in build-shots.py
 npx tsx tools/store-shots/dice-grid.ts
 python3 tools/store-shots/build-shots.py
 npm uninstall --no-save react-dom playwright   # ← REQUIRED, see arena-preview/README.md
@@ -29,6 +50,12 @@ use. They are fetched rather than committed.
 the dice are `DieMesh` wearing a real skin from `diceSkins.ts`, and the
 dice-set grid is painted by the same `patterns.ts` painter that paints
 them in play. Nothing is drawn to look like the game.
+
+The two-player shot is the exception that proves the rule: its LAYOUT is
+literally the feature. `TwoPlayerScreen.tsx` puts the phone flat on the
+table and rotates the top half 180° so it faces the player sitting
+opposite, and the screenshot shows exactly that — two boards, the far one
+upside down. Turning it is not a flourish.
 
 **The camera is not.** The game looks almost straight down, because that
 is the only way a 5.6 × 10.2 tray fits a phone (see `cameraFit.ts`) — and

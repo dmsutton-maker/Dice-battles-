@@ -11,7 +11,23 @@ six face colours that ARE the game.
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import math, random
 
-W, H = 1290, 2796                      # iPhone 6.9", App Store's current size
+# The two shapes Apple asks for. They are NOT the same picture scaled: a
+# phone is 0.46 wide-to-tall and an iPad is 0.75, so the headline block and
+# the art have to be laid out per device or one of them ends up with a
+# metre of empty sky.
+DEVICES = {
+    'iphone': {'w': 1290, 'h': 2796, 'text': 1.00, 'art': 1.00, 'head_y': 0.118},
+    'ipad':   {'w': 2048, 'h': 2732, 'text': 1.34, 'art': 1.42, 'head_y': 0.140},
+}
+W, H = DEVICES['iphone']['w'], DEVICES['iphone']['h']
+
+
+def use(device):
+    """Point the module at one device's canvas. Everything below reads W
+    and H at call time, so switching here re-lays the whole set."""
+    global W, H
+    W, H = DEVICES[device]['w'], DEVICES[device]['h']
+    return DEVICES[device]
 CREAM, INK, ACCENT, GOLD = '#fdf6ec', '#1d1a2e', '#d2451e', '#ffd21f'
 FACES = ['#cc2533', '#043fe0', '#33cc6b', '#ffe521', '#cc79fc', '#fc8403']
 BIG = '/tmp/fonts/baloo-800.ttf'
