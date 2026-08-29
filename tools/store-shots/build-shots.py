@@ -64,11 +64,11 @@ board_shot('/tmp/store-2.png', '/tmp/hero-candy.png',
 
 tiles_shot('/tmp/store-3.png',
     ['/tmp/hero-volcano.png', '/tmp/hero-aurora.png', '/tmp/hero-reef.png', '/tmp/hero-moon.png'],
-    'A castle, a reef, the moon', 'TWENTY\nBATTLEFIELDS',
+    'A castle, a reef, the moon', 'BATTLEFIELDS\nTO UNLOCK',
     '#3f7f8f', '#123240', '#7fd4e8', 14)
 
 grid_shot('/tmp/store-4.png', '/tmp/dice-grid.png',
-    'Earn them, or buy them', 'FIFTY-THREE\nDICE SETS',
+    'Earn them, or buy them', 'DICE SETS\nTO COLLECT',
     '#d2451e', '#4d1a0c', '#ffb27a', 15)
 
 board_shot('/tmp/store-5.png', '/tmp/hero-cavern.png',

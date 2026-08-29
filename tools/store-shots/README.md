@@ -44,16 +44,26 @@ ARE the game.
 
 ## Rules for the copy
 
-Every number on these has to be true on the day they are uploaded, and
-they are checked against the code rather than remembered:
+**No countable claims.** Marc, 29 Aug 2026, on a first pass that said
+TWENTY BATTLEFIELDS and FIFTY-THREE DICE SETS: "don't say exactly how
+many arenas or dice we have so we can keep expanding."
 
-- **20 battlefields** — `Object.keys(ARENAS).length`
-- **53 dice sets** — `DICE_SKINS.length`
-- **4 ways to play** — `MODE_ORDER.length`
+He is right, and it is worth writing down why, because a specific number
+is genuinely tempting — it is concrete, it sounds impressive, and it was
+true on the day. It is also a promise that goes stale the moment the
+game grows, and a screenshot cannot be corrected without a new
+submission. Apple treats a screenshot that overstates the app as grounds
+for rejection, and one that UNDERSTATES it just sells the game short for
+however many months pass before the next release.
 
-If a release changes any of those, the screenshot is wrong and has to be
-rebuilt before the next submission. Apple treats a misleading screenshot
-as grounds for rejection, and it would be true even if they did not.
+So the copy names the KIND of thing and not the quantity of it:
+BATTLEFIELDS TO UNLOCK, DICE SETS TO COLLECT. Both stay true whether the
+next release adds four arenas or none.
+
+FOUR WAYS TO PLAY stays a number on purpose. The modes are the game's
+structure rather than a collection that grows — they are named in the
+description, the tutorial and the mode picker — so if a fifth ever ships
+it is a change big enough that the screenshots would be rebuilt anyway.
 
 ## What these deliberately do not do
 
