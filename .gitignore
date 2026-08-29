@@ -49,3 +49,4 @@ credentials.json
 design-concept/dice-battles-redesign.html
 tools/arena-preview/bundle.js
 tools/icon-preview/bundle.js
+__pycache__/
