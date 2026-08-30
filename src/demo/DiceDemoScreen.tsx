@@ -1466,7 +1466,17 @@ export function DiceDemoScreen() {
               Race other players to free your prisoners!
             </Text>
             {unlockAll ? (
-              <Text style={styles.trophyNext} numberOfLines={1}>
+              <Text
+                style={styles.trophyNext}
+                numberOfLines={1}
+                // Longer than any "Next unlock" line this slot has ever
+                // held — and the tail, "test ads only", is the half that
+                // matters: it is how a tester confirms they are not
+                // loading real ads. Ellipsising it would hide exactly
+                // the word they came to check, so shrink instead.
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
                 Family tester mode — everything unlocked, test ads only
               </Text>
             ) : (

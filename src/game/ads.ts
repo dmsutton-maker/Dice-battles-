@@ -150,10 +150,13 @@ export function hasRealAdUnit(): boolean {
  */
 export function usingTestAds(): boolean {
   try {
+    // Before the save is read back `unlockAll` is undefined, so this is
+    // already false — real ads — which is the right default: a player
+    // who is not a tester must never be handed a test ad, since a test
+    // ad earns nothing. The catch is belt and braces for a future where
+    // this getter does more than read a field.
     return getProgress().unlockAll === true;
   } catch {
-    // Progress not loaded yet. Real ads are the correct fallback: a
-    // player who is not a tester must never be shown a test ad.
     return false;
   }
 }

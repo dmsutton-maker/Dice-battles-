@@ -27,6 +27,11 @@
     nothing, so leaking it would quietly zero the income. If progress has
     not loaded yet the fallback is real ads, because guessing "tester"
     for an unknown player gives away free test ads.
+  - The banner shrinks rather than ellipsising. Measured against every
+    "Next unlock" line the same slot has ever shown, it is about 9%
+    wider than the longest of them — and the tail, "test ads only", is
+    the half a tester actually came to read, so cutting it would defeat
+    the point. Same fallback the two-player label already uses.
   - Ads themselves remain OFF. Nothing here puts the SDK in the bundle,
     which was checked by building it and searching rather than assumed.
 

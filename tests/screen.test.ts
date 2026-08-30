@@ -1095,6 +1095,80 @@ suite('screen · the menu does not jump', () => {
       }
     }
   });
+
+  /**
+   * The `trophyNext` slot renders one of three things: the "Next unlock"
+   * line, the family-tester banner, or nothing — and only the "Next
+   * unlock" line was ever measured against real content (the widest
+   * arena name). It has `numberOfLines={1}` but no `adjustsFontSizeToFit`,
+   * unlike `twoPlayerText` a few lines below it in the same file, which
+   * got that fallback specifically because "Color Rush · Med…" reads as
+   * broken — the same risk applies here, just unmeasured.
+   *
+   * There is no font-shading engine in this Node process (see
+   * coinLabelLayout.test.ts), so this cannot assert a hard pixel width.
+   * What it CAN assert is relative: the tester banner must not be the
+   * widest thing this slot has ever had to hold, using the same
+   * deliberately-generous per-glyph estimate coinLabelLayout.test.ts uses
+   * elsewhere in this suite. If it is wider than every "Next unlock" line
+   * across the whole tier ladder — including the ones with a wide emoji
+   * and a long arena name — the one message this update exists to show
+   * ("test ads only") is the one most likely to be the part that gets
+   * clipped by the ellipsis on a real phone.
+   */
+  test('the family-tester banner is not the widest line this slot has held', () => {
+    const EMOJI_EM = 1.25;
+    const DIGIT_EM = 0.65;
+    const SPACE_EM = 0.35;
+    const LETTER_EM = 0.62;
+    const isEmoji = (ch: string) =>
+      /\p{Extended_Pictographic}|\p{Emoji_Presentation}/u.test(ch);
+    const estimateTextWidth = (text: string, fontSize: number): number => {
+      let width = 0;
+      for (const ch of Array.from(text)) {
+        if (isEmoji(ch)) width += EMOJI_EM * fontSize;
+        else if (ch === ' ') width += SPACE_EM * fontSize;
+        else if (/[0-9]/.test(ch)) width += DIGIT_EM * fontSize;
+        else width += LETTER_EM * fontSize;
+      }
+      return width;
+    };
+
+    const fontSize = 13.5; // trophyNext's fontSize, read from the style block above.
+    const nextUnlockWidths = TIERS.map((t) =>
+      estimateTextWidth(`Next unlock: ${t.emoji} ${t.name} at ${t.at} trophies`, fontSize),
+    );
+    const widestShipped = Math.max(...nextUnlockWidths);
+
+    const bannerMatch = /Family tester mode — [^<]+(?=<\/Text>)/.exec(source);
+    assert(bannerMatch !== null, 'the family-tester banner text moved or was removed');
+    const bannerWidth = estimateTextWidth(bannerMatch![0].trim(), fontSize);
+
+    /*
+      Two ways to be safe, and either will do: keep the line no wider
+      than the widest thing this slot has already shipped, or let it
+      shrink like `twoPlayerText` does. What is NOT allowed is the
+      combination — a record-breaking line with only an ellipsis to fall
+      back on. So the shrink check is scoped to the banner's own <Text>,
+      not the whole file, or the prop on some other element would excuse
+      this one.
+    */
+    const openTag = source.lastIndexOf('<Text', source.indexOf('Family tester mode'));
+    const bannerElement = source.slice(openTag, source.indexOf('Family tester mode'));
+    const shrinks = /adjustsFontSizeToFit/.test(bannerElement);
+
+    note(
+      `tester banner ~${bannerWidth.toFixed(1)}pt vs widest Next-unlock line ` +
+        `~${widestShipped.toFixed(1)}pt; shrink-to-fit ${shrinks ? 'on' : 'off'}`,
+    );
+    assert(
+      bannerWidth <= widestShipped || shrinks,
+      `the tester banner (~${bannerWidth.toFixed(1)}pt) is wider than any "Next unlock" ` +
+        `line this slot has shipped (~${widestShipped.toFixed(1)}pt) but has no ` +
+        `adjustsFontSizeToFit — on a small phone "test ads only" is the likely part to ` +
+        `be cut by the ellipsis, which is the one thing this banner was added to say`,
+    );
+  });
 });
 
 suite('release · the version number is real', () => {
