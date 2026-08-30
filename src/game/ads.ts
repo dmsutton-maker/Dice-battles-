@@ -67,6 +67,7 @@ interface NativeAds {
       maxAdContentRating?: string;
       tagForChildDirectedTreatment?: boolean;
       tagForUnderAgeOfConsent?: boolean;
+      testDeviceIdentifiers?: string[];
     }): Promise<void>;
   };
   MaxAdContentRating: { G: string };
@@ -118,6 +119,37 @@ export function hasRealAdUnit(): boolean {
   return INTERSTITIAL_AD_UNIT_ID.startsWith('ca-app-pub-')
     && INTERSTITIAL_AD_UNIT_ID.includes('/');
 }
+
+/**
+ * The family's phones, so THEIR ads are test ads.
+ *
+ * Google suspends AdMob accounts for "invalid traffic" — tapping and
+ * loading your own real ads — and the people most likely to do exactly
+ * that are David, Marc and AJ testing the game. A device listed here is
+ * served Google's test creative instead, which is safe to load and tap
+ * all day.
+ *
+ * WHERE THE IDS COME FROM. They cannot be looked up in advance; the SDK
+ * assigns one per device and prints it the first time an ad request runs
+ * on a build with the SDK in it. In the device log (Xcode → Devices, or
+ * Console.app with the phone plugged in) it looks like:
+ *
+ *     <Google> To get test ads on this device, set:
+ *     GADMobileAds.sharedInstance.requestConfiguration.testDeviceIdentifiers
+ *       = @[ "SOME-LONG-HEX-STRING" ];
+ *
+ * Paste that hex string here. The list ships over the air, so adding a
+ * device is an update, not a build. Simulators are test devices
+ * automatically and need no entry.
+ *
+ * These identifiers are public-safe: they only mean "serve fake ads
+ * here" and unlock nothing else.
+ */
+export const AD_TEST_DEVICE_IDS: string[] = [
+  // David's iPhone —
+  // Marc's iPhone —
+  // AJ's iPhone —
+];
 
 const STORAGE_KEY = 'dice-battles/games-finished';
 
@@ -198,6 +230,7 @@ export async function initAds(): Promise<void> {
       maxAdContentRating: mod.MaxAdContentRating.G,
       tagForChildDirectedTreatment: true,
       tagForUnderAgeOfConsent: true,
+      testDeviceIdentifiers: AD_TEST_DEVICE_IDS,
     });
     await mod.default().initialize();
     ready = true;

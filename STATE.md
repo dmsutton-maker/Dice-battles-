@@ -114,9 +114,10 @@ and the same day the listing was brought up to date:
 - **Right already:** category Games → Board + Family (not Kids),
   age rating 4+, privacy policy at papershipstudio.com/privacy (live),
   support and marketing URLs live, copyright "2026 Paper Ship Studio".
-- **Still missing before any submission:** App Review contact details
-  (name, phone, email — needs David, not something to invent) and a
-  build attached to version 1.0. And the submission itself sits behind
+- **App Review contact: set** (30 Aug 2026, details from David in
+  chat). `demoAccountRequired` false — the app has no accounts.
+- **Still missing before any submission:** a build attached to
+  version 1.0. And the submission itself sits behind
   the full-test-on-Fable gate in AGENTS.md.
 
 ## Known-open, as of the last update

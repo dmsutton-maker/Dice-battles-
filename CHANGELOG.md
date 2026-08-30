@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.63.3 — 2026-08-30 · requested by David
+
+### Added
+- **A place for the family's phones in the ad code**, ready for when ads
+  switch on. `AD_TEST_DEVICE_IDS` in `src/game/ads.ts` lists devices that
+  get Google's TEST ads instead of real ones — loading and tapping your
+  own real ads is what gets an AdMob account suspended for invalid
+  traffic, and the family testing the game is exactly that. The list is
+  empty for now: each phone's identifier is printed in the device log the
+  first time an ad request runs on a build containing the SDK, and gets
+  pasted in then. The list rides in the JavaScript, so adding a device is
+  an over-the-air update, not a new build. Ads themselves stay OFF —
+  nothing about this changes the bundle, which was checked by building it
+  and searching for the SDK: zero occurrences.
+
+
 ## v1.63.2 — 2026-08-28 · reported by Marc
 
 Marc: "the floor is too blurry, enhance the quality of it."
