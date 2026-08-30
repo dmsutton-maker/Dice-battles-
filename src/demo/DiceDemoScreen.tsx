@@ -1467,7 +1467,7 @@ export function DiceDemoScreen() {
             </Text>
             {unlockAll ? (
               <Text style={styles.trophyNext} numberOfLines={1}>
-                Family tester mode — everything unlocked
+                Family tester mode — everything unlocked, test ads only
               </Text>
             ) : (
               upNext && (

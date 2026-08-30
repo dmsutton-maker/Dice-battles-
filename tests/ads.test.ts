@@ -313,6 +313,39 @@ suite('ads · an ad can never cost a player anything', () => {
       );
     }
   });
+
+  test('the family sees test ads, and only the family', () => {
+    /*
+      David, Marc and AJ play this game more than anyone, on TestFlight,
+      with the ads switched on — which is precisely the "invalid traffic"
+      that gets an AdMob account suspended. They are covered by family
+      tester mode requesting Google's test unit instead of the real one.
+
+      Two halves matter equally. A tester must never load a real ad, and
+      a REAL player must never be given a test one — a test ad earns
+      nothing, so leaking it to the public would quietly zero the income
+      the ads exist for.
+    */
+    assert(
+      /usingTestAds\(\)/.test(source),
+      'nothing routes testers away from real ads',
+    );
+    assert(
+      /getProgress\(\)\.unlockAll === true/.test(source),
+      'test ads are no longer tied to family tester mode',
+    );
+    assert(
+      /hasRealAdUnit\(\) && !usingTestAds\(\)/.test(source),
+      'the real unit is not gated on the tester check',
+    );
+    // The fallback when progress has not loaded has to be REAL ads:
+    // guessing "tester" for an unknown player gives away free test ads.
+    const fallback = /catch \{[^}]*return false;/.test(
+      source.slice(source.indexOf('export function usingTestAds')),
+    );
+    assert(fallback, 'an unknown player must fall back to real ads, not test');
+    note('testers get Google test ads; everyone else gets the real unit');
+  });
 });
 
 suite('ads · nothing here can break a game when the SDK is absent', () => {

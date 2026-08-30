@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.63.4 — 2026-08-30 · requested by David
+
+### Changed
+- **The family's phones will get FAKE ads, arranged by a word instead of
+  a laptop.** Tapping your own real ads is what gets an AdMob account
+  suspended for invalid traffic, and David, Marc and AJ play this more
+  than anyone. The usual fix — registering each phone's test-device id —
+  turned out to be unavailable: those ids exist only on the phone,
+  printed to its system log, and reading one needs a Mac with the phone
+  plugged in. Nobody in this family has a Mac, so that safety net would
+  never have existed.
+  - Instead, anyone in **family tester mode** (the `FAMILY` code already
+    typed on a fresh install to open every arena) is served Google's TEST
+    interstitial rather than the real unit. Test ads always fill, are
+    meant to be tapped, and earn nothing — which is the whole point.
+    This is Google's own recommended route for development, not a
+    workaround. `LOCK` puts real ads back.
+  - The check happens when each ad is REQUESTED, not remembered at
+    launch, so switching tester mode changes the very next ad.
+  - The menu line now reads "Family tester mode — everything unlocked,
+    test ads only", so it is visible on the phone rather than taken on
+    trust.
+  - A test guards both directions: a tester must never load a real ad,
+    and a real player must never be handed a test one — a test ad earns
+    nothing, so leaking it would quietly zero the income. If progress has
+    not loaded yet the fallback is real ads, because guessing "tester"
+    for an unknown player gives away free test ads.
+  - Ads themselves remain OFF. Nothing here puts the SDK in the bundle,
+    which was checked by building it and searching rather than assumed.
+
+
 ## v1.63.3 — 2026-08-30 · requested by David
 
 ### Added

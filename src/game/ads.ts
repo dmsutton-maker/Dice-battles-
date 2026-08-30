@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadAdSdk } from './adSdk';
 import { gamesUntilAd, shouldShowAd } from './adRules';
+import { getProgress } from './progress';
 
 /**
  * Advertising, behind one door.
@@ -67,7 +68,6 @@ interface NativeAds {
       maxAdContentRating?: string;
       tagForChildDirectedTreatment?: boolean;
       tagForUnderAgeOfConsent?: boolean;
-      testDeviceIdentifiers?: string[];
     }): Promise<void>;
   };
   MaxAdContentRating: { G: string };
@@ -121,35 +121,42 @@ export function hasRealAdUnit(): boolean {
 }
 
 /**
- * The family's phones, so THEIR ads are test ads.
+ * The family's phones get FAKE ads, and no device id is needed to arrange it.
  *
- * Google suspends AdMob accounts for "invalid traffic" — tapping and
- * loading your own real ads — and the people most likely to do exactly
- * that are David, Marc and AJ testing the game. A device listed here is
- * served Google's test creative instead, which is safe to load and tap
- * all day.
+ * Google suspends AdMob accounts for "invalid traffic" — loading and
+ * tapping your own real ads — and the people most likely to do exactly
+ * that are David, Marc and AJ testing the game. Google offers two safe
+ * ways out, and this file takes the simpler one.
  *
- * WHERE THE IDS COME FROM. They cannot be looked up in advance; the SDK
- * assigns one per device and prints it the first time an ad request runs
- * on a build with the SDK in it. In the device log (Xcode → Devices, or
- * Console.app with the phone plugged in) it looks like:
+ * THE ONE NOT TAKEN: registering each phone's test-device id. Those ids
+ * exist only on the phone itself, printed to its system log the first
+ * time an ad is requested, and reading one needs a Mac with the phone
+ * plugged in. Nobody here has a Mac, and an id that cannot be collected
+ * is a safety net that does not exist.
  *
- *     <Google> To get test ads on this device, set:
- *     GADMobileAds.sharedInstance.requestConfiguration.testDeviceIdentifiers
- *       = @[ "SOME-LONG-HEX-STRING" ];
+ * THE ONE TAKEN: request Google's TEST ad unit instead of the real one.
+ * The test unit always fills, is meant to be tapped, and earns nothing —
+ * which is the entire point. It is Google's own recommended route for
+ * development, not a workaround.
  *
- * Paste that hex string here. The list ships over the air, so adding a
- * device is an update, not a build. Simulators are test devices
- * automatically and need no entry.
+ * WHO GETS IT: anyone in family tester mode — the `FAMILY` code in
+ * Settings that David, Marc and AJ already type on a fresh install to
+ * open every arena. That code now means "I am a tester" in both senses,
+ * so registering a phone is typing a word into it rather than plugging it
+ * into a laptop. `LOCK` turns it off again, and real ads come back.
  *
- * These identifiers are public-safe: they only mean "serve fake ads
- * here" and unlock nothing else.
+ * The check is deliberately made at REQUEST time rather than remembered,
+ * so switching tester mode changes the very next ad.
  */
-export const AD_TEST_DEVICE_IDS: string[] = [
-  // David's iPhone —
-  // Marc's iPhone —
-  // AJ's iPhone —
-];
+export function usingTestAds(): boolean {
+  try {
+    return getProgress().unlockAll === true;
+  } catch {
+    // Progress not loaded yet. Real ads are the correct fallback: a
+    // player who is not a tester must never be shown a test ad.
+    return false;
+  }
+}
 
 const STORAGE_KEY = 'dice-battles/games-finished';
 
@@ -230,7 +237,6 @@ export async function initAds(): Promise<void> {
       maxAdContentRating: mod.MaxAdContentRating.G,
       tagForChildDirectedTreatment: true,
       tagForUnderAgeOfConsent: true,
-      testDeviceIdentifiers: AD_TEST_DEVICE_IDS,
     });
     await mod.default().initialize();
     ready = true;
@@ -245,7 +251,9 @@ function preload(): void {
   const mod = moduleOrNull();
   if (!mod || !ready || interstitial) return;
   try {
-    const unitId = hasRealAdUnit() ? INTERSTITIAL_AD_UNIT_ID : mod.TestIds.INTERSTITIAL;
+    const unitId = hasRealAdUnit() && !usingTestAds()
+      ? INTERSTITIAL_AD_UNIT_ID
+      : mod.TestIds.INTERSTITIAL;
     const ad = mod.InterstitialAd.createForAdRequest(unitId, {
       // Belt and braces with tagForChildDirectedTreatment above: this
       // says the same thing at the request level.
