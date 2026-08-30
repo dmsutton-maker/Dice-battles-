@@ -7,6 +7,8 @@
     python3 tools/appstoreconnect/asc.py ask "what should the next release fix?"
     python3 tools/appstoreconnect/asc.py set-promo --file store/promo.txt
     python3 tools/appstoreconnect/asc.py set-promo --file store/promo.txt --apply
+    python3 tools/appstoreconnect/asc.py set-screenshots [--apply]
+    python3 tools/appstoreconnect/asc.py set-listing [--apply]
 
 ── CREDENTIALS ──────────────────────────────────────────────────────
 
@@ -121,7 +123,9 @@ def call(method: str, path: str, *, params=None, body=None, raw=False):
         except Exception:
             detail = r.text[:400]
         die(f"{method} {path} → {r.status_code}: {detail}")
-    return r.content if raw else r.json()
+    if raw:
+        return r.content
+    return r.json() if r.content else None  # DELETE answers 204, no body
 
 
 # ── reads ────────────────────────────────────────────────────────────
@@ -169,8 +173,8 @@ def get_reviews(limit: int) -> list[dict]:
 def current_localization() -> tuple[str, dict]:
     """The editable localization on the version that is still editable.
 
-    Promotional text is the one store field that can change without a new
-    submission, which is what makes it the only write this script offers.
+    Everything this script writes — promotional text, listing text,
+    screenshots — hangs off this localization, or its app info sibling.
     """
     vs = call("GET", f"/apps/{APP_ID}/appStoreVersions",
               params={"limit": 10, "include": "appStoreVersionLocalizations"})
@@ -211,6 +215,174 @@ def set_promo(text: str, apply: bool) -> None:
          body={"data": {"id": loc_id, "type": "appStoreVersionLocalizations",
                         "attributes": {"promotionalText": text}}})
     print("\nSent. Promotional text changes take effect without a new review.")
+
+
+SCREENSHOT_FOLDERS = {
+    # folder under store/screenshots → Apple display type. 6.7" covers the
+    # smaller iPhones by fallback; 12.9" covers the smaller iPads.
+    "iphone": "APP_IPHONE_67",           # 1290 × 2796
+    "ipad": "APP_IPAD_PRO_3GEN_129",     # 2048 × 2732
+}
+
+
+def set_screenshots(apply: bool) -> None:
+    """Replace every screenshot set on the en-US listing with the PNGs in
+    store/screenshots/. Anything else there — including sets stuck in
+    AWAITING_UPLOAD from an abandoned manual upload — is deleted."""
+    import hashlib
+    import requests
+
+    plan = []
+    for folder, display_type in SCREENSHOT_FOLDERS.items():
+        files = sorted((pathlib.Path("store/screenshots") / folder).glob("*.png"))
+        if not files:
+            die(f"no PNGs in store/screenshots/{folder}")
+        plan.append((display_type, files))
+
+    loc_id, info = current_localization()
+    print(f"version {info['version']} ({info['state']}), en-US")
+
+    existing = call("GET", f"/appStoreVersionLocalizations/{loc_id}/appScreenshotSets",
+                    params={"limit": 20}).get("data", [])
+    for st in existing:
+        shots = call("GET", f"/appScreenshotSets/{st['id']}/appScreenshots",
+                     params={"limit": 20}).get("data", [])
+        names = ", ".join(sh["attributes"].get("fileName", "?") for sh in shots)
+        print(f"  delete {st['attributes']['screenshotDisplayType']}: "
+              f"{len(shots)} screenshots ({names})")
+    for display_type, files in plan:
+        print(f"  upload {display_type}: " + ", ".join(f.name for f in files))
+    if not apply:
+        print("\nDry run. Nothing was sent. Add --apply to do it.")
+        return
+
+    for st in existing:
+        call("DELETE", f"/appScreenshotSets/{st['id']}")
+
+    for display_type, files in plan:
+        made = call("POST", "/appScreenshotSets", body={"data": {
+            "type": "appScreenshotSets",
+            "attributes": {"screenshotDisplayType": display_type},
+            "relationships": {"appStoreVersionLocalization": {"data": {
+                "type": "appStoreVersionLocalizations", "id": loc_id}}},
+        }})
+        set_id = made["data"]["id"]
+        ids = []
+        for f in files:
+            data = f.read_bytes()
+            shot = call("POST", "/appScreenshots", body={"data": {
+                "type": "appScreenshots",
+                "attributes": {"fileName": f.name, "fileSize": len(data)},
+                "relationships": {"appScreenshotSet": {"data": {
+                    "type": "appScreenshotSets", "id": set_id}}},
+            }})["data"]
+            for op in shot["attributes"]["uploadOperations"]:
+                chunk = data[op["offset"]:op["offset"] + op["length"]]
+                headers = {h["name"]: h["value"]
+                           for h in op.get("requestHeaders", [])}
+                r = requests.request(op["method"], op["url"],
+                                     headers=headers, data=chunk, timeout=120)
+                if not r.ok:
+                    die(f"uploading {f.name}: chunk at {op['offset']} "
+                        f"→ {r.status_code}")
+            call("PATCH", f"/appScreenshots/{shot['id']}", body={"data": {
+                "type": "appScreenshots", "id": shot["id"],
+                "attributes": {"uploaded": True,
+                               "sourceFileChecksum": hashlib.md5(data).hexdigest()},
+            }})
+            ids.append(shot["id"])
+            print(f"  {display_type} ← {f.name} ({len(data)} bytes)")
+        call("PATCH", f"/appScreenshotSets/{set_id}/relationships/appScreenshots",
+             body={"data": [{"type": "appScreenshots", "id": i} for i in ids]})
+
+    # Apple processes uploads for a little while; report where they got to.
+    print("\nwaiting for Apple to accept them", end="", flush=True)
+    for _ in range(24):
+        states = []
+        for display_type, _files in plan:
+            sets = call("GET",
+                        f"/appStoreVersionLocalizations/{loc_id}/appScreenshotSets",
+                        params={"limit": 20})
+            for st in sets.get("data", []):
+                if st["attributes"]["screenshotDisplayType"] != display_type:
+                    continue
+                for sh in call("GET", f"/appScreenshotSets/{st['id']}/appScreenshots",
+                               params={"limit": 20}).get("data", []):
+                    states.append((display_type, sh["attributes"].get("fileName"),
+                                   (sh["attributes"].get("assetDeliveryState") or {})
+                                   .get("state")))
+        if all(st == "COMPLETE" for _, _, st in states):
+            break
+        if any(st == "FAILED" for _, _, st in states):
+            break
+        print(".", end="", flush=True)
+        time.sleep(5)
+    print()
+    for display_type, name, st in states:
+        print(f"  {display_type} {name}: {st}")
+    if not all(st == "COMPLETE" for _, _, st in states):
+        die("not every screenshot reached COMPLETE — check App Store Connect.")
+
+
+LISTING_LIMITS = {  # Apple's character ceilings
+    "description": 4000, "keywords": 100, "promotionalText": 170, "subtitle": 30}
+
+
+def set_listing(apply: bool) -> None:
+    """Sync description, keywords, promotional text and subtitle from
+    store/*.txt to the en-US listing. Only fields that differ are sent."""
+    want = {
+        "description": pathlib.Path("store/description.txt").read_text().strip(),
+        "keywords": pathlib.Path("store/keywords.txt").read_text().strip(),
+        "promotionalText": pathlib.Path("store/promo.txt").read_text().strip(),
+        "subtitle": pathlib.Path("store/subtitle.txt").read_text().strip(),
+    }
+    for field, text in want.items():
+        if len(text) > LISTING_LIMITS[field]:
+            die(f"{field} is {len(text)} characters; the limit is "
+                f"{LISTING_LIMITS[field]}.")
+
+    loc_id, info = current_localization()
+    loc = call("GET", f"/appStoreVersionLocalizations/{loc_id}")["data"]["attributes"]
+    info_loc_id, subtitle_now = None, None
+    for ai in call("GET", f"/apps/{APP_ID}/appInfos",
+                   params={"limit": 5}).get("data", []):
+        for il in call("GET", f"/appInfos/{ai['id']}/appInfoLocalizations",
+                       params={"limit": 20}).get("data", []):
+            if il["attributes"].get("locale") == "en-US":
+                info_loc_id = il["id"]
+                subtitle_now = il["attributes"].get("subtitle")
+    if not info_loc_id:
+        die("found no en-US app info localization.")
+
+    now = {"description": loc.get("description"),
+           "keywords": loc.get("keywords"),
+           "promotionalText": loc.get("promotionalText"),
+           "subtitle": subtitle_now}
+    changed = {f: v for f, v in want.items() if (now[f] or "").strip() != v}
+    print(f"version {info['version']} ({info['state']}), en-US")
+    for field in want:
+        if field in changed:
+            print(f"  {field}: CHANGES ({len(now[field] or '')} → "
+                  f"{len(want[field])} chars)")
+        else:
+            print(f"  {field}: already matches store/")
+    if not changed:
+        return
+    if not apply:
+        print("\nDry run. Nothing was sent. Add --apply to write it.")
+        return
+
+    version_fields = {f: v for f, v in changed.items() if f != "subtitle"}
+    if version_fields:
+        call("PATCH", f"/appStoreVersionLocalizations/{loc_id}",
+             body={"data": {"id": loc_id, "type": "appStoreVersionLocalizations",
+                            "attributes": version_fields}})
+    if "subtitle" in changed:
+        call("PATCH", f"/appInfoLocalizations/{info_loc_id}",
+             body={"data": {"id": info_loc_id, "type": "appInfoLocalizations",
+                            "attributes": {"subtitle": changed["subtitle"]}}})
+    print("\nSent: " + ", ".join(changed))
 
 
 # ── ask Claude about it ──────────────────────────────────────────────
@@ -264,6 +436,15 @@ def main() -> None:
     sp.add_argument("--file", default="store/promo.txt")
     sp.add_argument("--apply", action="store_true",
                     help="actually send it; without this it is a dry run")
+    ss = sub.add_parser("set-screenshots",
+                        help="replace all screenshots with store/screenshots/")
+    ss.add_argument("--apply", action="store_true",
+                    help="actually send them; without this it is a dry run")
+    sl = sub.add_parser("set-listing",
+                        help="sync description, keywords, promo and subtitle "
+                             "from store/*.txt")
+    sl.add_argument("--apply", action="store_true",
+                    help="actually send it; without this it is a dry run")
     args = p.parse_args()
 
     if args.cmd == "status":
@@ -280,6 +461,10 @@ def main() -> None:
         ask(args.question, args.reviews)
     elif args.cmd == "set-promo":
         set_promo(pathlib.Path(args.file).read_text(), args.apply)
+    elif args.cmd == "set-screenshots":
+        set_screenshots(args.apply)
+    elif args.cmd == "set-listing":
+        set_listing(args.apply)
 
 
 if __name__ == "__main__":

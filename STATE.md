@@ -5,7 +5,7 @@ one read instead of reconstructing it from conversation history. Keep it
 current — a stale map is worse than none. `AGENTS.md` holds the *rules*;
 this holds the *facts*.
 
-Last updated: 24 August 2026.
+Last updated: 30 August 2026.
 
 ## The two things being built
 
@@ -94,6 +94,30 @@ art, news). The launch title card is deliberately still ink-dark — the
 bundled paper-ship mark is the light-on-dark variant. A custom typeface
 is the one part not shipped: font files ride in the binary, so it waits
 for the next native build.
+
+## The App Store listing, as of 30 Aug 2026
+
+`tools/appstoreconnect/asc.py` talks to the live App Store Connect
+record — David supplied the issuer id on 30 Aug 2026 (it stays in the
+environment, never in this repo). First live run confirmed the record,
+and the same day the listing was brought up to date:
+
+- **Screenshots: uploaded and live.** The six designed shots in
+  `store/screenshots/`, both device sets — 6.7" iPhone (1290×2796) and
+  12.9" iPad (2048×2732) — all `COMPLETE`. They replaced twelve raw
+  phone captures, seven of which had been stuck in `AWAITING_UPLOAD`
+  since a manual attempt.
+- **Text: verified matching.** Description, keywords, subtitle and
+  promotional text on the listing are character-for-character the
+  `store/*.txt` files. `set-listing` diffs and pushes them if they ever
+  drift.
+- **Right already:** category Games → Board + Family (not Kids),
+  age rating 4+, privacy policy at papershipstudio.com/privacy (live),
+  support and marketing URLs live, copyright "2026 Paper Ship Studio".
+- **Still missing before any submission:** App Review contact details
+  (name, phone, email — needs David, not something to invent) and a
+  build attached to version 1.0. And the submission itself sits behind
+  the full-test-on-Fable gate in AGENTS.md.
 
 ## Known-open, as of the last update
 

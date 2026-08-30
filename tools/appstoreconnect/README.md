@@ -13,19 +13,22 @@ export ASC_ISSUER_ID='...'        # see below — NOT in this repo
 ```
 
 A virtualenv rather than the system Python because this machine's system
-`cryptography` is broken (`_cffi_backend` missing, and importing it panics
-the interpreter). ES256 signing needs a working one.
+`cryptography` was broken on arrival — importing it panicked the
+interpreter with `_cffi_backend` missing, which is a missing dependency
+and not a broken build. `pip install cffi` against the system Python
+fixes it just as well, and is what was actually done on 30 Aug 2026.
+Either way ES256 signing needs a working `cryptography`.
 
-## The one thing still missing
+## The credential
 
-**`ASC_ISSUER_ID`.** Everything else is already here: the `.p8` is at
-`~/.appstoreconnect/private_keys/`, and the Key ID is read off its
-filename. The issuer id is in App Store Connect → **Users and Access** →
-**Integrations** → **App Store Connect API**, printed as "Issuer ID"
-above the table of keys. It is a UUID.
+**`ASC_ISSUER_ID`** is the only thing not already on this machine: the
+`.p8` is at `~/.appstoreconnect/private_keys/`, and the Key ID is read
+off its filename. The issuer id is in App Store Connect → **Users and
+Access** → **Integrations** → **App Store Connect API**, printed as
+"Issuer ID" above the table of keys. It is a UUID.
 
-Export it; never commit it. Until it is set every command stops with a
-message saying so rather than guessing.
+Export it; never commit it — this repository is public. Until it is set
+every command stops with a message saying so rather than guessing.
 
 ## Why a JWT and not a password
 
@@ -72,6 +75,11 @@ pasted deliberately.
 
 ## What it deliberately will not do
 
+Beyond promotional text it can now also replace the listing's
+screenshots (`set-screenshots`) and sync the description, keywords,
+subtitle and promo from `store/*.txt` (`set-listing`) — every write is a
+dry run until `--apply`, and prints exactly what it is about to change.
+
 It will not submit a build, release a version, reply to a review, or
 change pricing. Those are decisions with consequences that a script
 firing on its own should not be making — and per AGENTS.md a submission
@@ -79,12 +87,24 @@ is the one thing here that cannot be rolled back in seconds.
 
 ## Status
 
-Verified as far as it can be without the issuer id: the token is signed
-with the real `.p8`, is ES256 with the right `kid`, `aud` and a 15-minute
-expiry, and its signature verifies against that key's public half. Sent
-to Apple with a placeholder issuer it reaches the API and comes back 401,
-which is the correct answer to a well-formed token with the wrong issuer.
+**Connected and working.** First live run 30 Aug 2026 with the real
+issuer id, against app `6802287913`:
 
-**No call has yet been made with real credentials**, so the response
-parsing is written against Apple's documented shapes and not yet against
-a real payload. Expect to fix a field name or two on the first live run.
+- `status` — returns the app record (name, bundle id, SKU, locale,
+  content rights), version 1.0 in `PREPARE_FOR_SUBMISSION`, and four
+  builds: 6, 5, 2 valid, 3 expired. No build 7, which matches the
+  signing failure that stopped it ever being uploaded.
+- `reviews` — empty, correct for an app that has not been released.
+- `builds` — same four, parsed.
+- `set-promo` — dry run reads the live promotional text and diffs it
+  against `store/promo.txt`; they are identical, so nothing to send.
+
+Every documented field name parsed on the first attempt. The one real
+fix the first live run forced: a successful `DELETE` answers 204 with an
+empty body, and `call()` assumed every response was JSON.
+
+Later the same day the first writes ran: `set-screenshots --apply`
+replaced both screenshot sets (12 files, all reached `COMPLETE`), and
+`set-listing` found every text field already matching `store/*.txt`.
+`ask` is the one path still unexercised — it needs `ANTHROPIC_API_KEY`,
+which is not set on this machine.
