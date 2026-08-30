@@ -117,7 +117,14 @@ and the same day the listing was brought up to date:
 - **App Review contact: set** (30 Aug 2026, details from David in
   chat). `demoAccountRequired` false — the app has no accounts.
 - **Still missing before any submission:** a build attached to
-  version 1.0. And the submission itself sits behind
+  version 1.0.
+- **In-app purchases are wanted before launch** (David, 30 Aug 2026)
+  but deliberately parked LAST: he will decide what is for sale (coin
+  packs, remove-ads, bundles, possibly a subscription) and get back to
+  us. Nothing is designed or built. When it lands it needs: the Paid
+  Applications agreement signed in App Store Connect (account holder
+  only), products created on the record, StoreKit code in the app — a
+  native module, so it rides the same binary train as ads. And the submission itself sits behind
   the full-test-on-Fable gate in AGENTS.md.
 
 ## Known-open, as of the last update
