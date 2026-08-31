@@ -1541,6 +1541,36 @@ suite('screen · a preview never shows the last arena', () => {
   });
 });
 
+suite('screen · the Inventory leads with the dice', () => {
+  /**
+   * David asked on 31 Aug 2026 for the two Inventory sections to be
+   * swapped, so DICE comes before BATTLEFIELDS.
+   *
+   * Worth a test rather than trusting the file to stay put: the two
+   * blocks are near-identical in shape — a section title, a note, a
+   * grid of Pressables — so a later edit that rewrites one of them can
+   * put them back the other way round without anybody noticing, and the
+   * only person who would notice is the one who asked for the change.
+   */
+  const source = readFileSync(
+    join(__dirname, '..', 'src/demo/InventoryScreen.tsx'),
+    'utf8',
+  );
+
+  test('DICE is the first section, BATTLEFIELDS the second', () => {
+    const dice = source.indexOf('>DICE<');
+    const arenas = source.indexOf('>BATTLEFIELDS<');
+    assert(dice !== -1, 'the DICE section title is gone');
+    assert(arenas !== -1, 'the BATTLEFIELDS section title is gone');
+    note(`DICE at ${dice}, BATTLEFIELDS at ${arenas}`);
+    assert(
+      dice < arenas,
+      'the Inventory shows BATTLEFIELDS before DICE again — David asked ' +
+        'for them the other way round',
+    );
+  });
+});
+
 suite('screen · counting real frames', () => {
   test('it trusts the second frame, not the first', () => {
     /*

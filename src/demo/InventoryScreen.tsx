@@ -80,6 +80,61 @@ export function InventoryScreen({
         onScroll={(e) => rememberScroll('inventory', e.nativeEvent.contentOffset.y)}
         scrollEventThrottle={64}
       >
+        <Text style={styles.sectionTitle}>DICE</Text>
+        <Text style={styles.sectionNote}>
+          Tap a set to see it out on the board, and use it from there. Only
+          the shell changes — the six face colours always stay the same, so a
+          match is always a match. Plain colours are earned with trophies;
+          patterned ones are bought in the Store with coins.
+        </Text>
+        <View style={styles.grid}>
+          {INVENTORY_SKIN_ORDER.map((skin) => {
+            const unlocked = isSkinUnlocked(skin.id, trophies);
+            const equipped = skinId === skin.id;
+            return (
+              <Pressable
+                key={skin.id}
+                onPress={() => {
+                  playClick();
+                  onPreview({ kind: 'die', id: skin.id, from: 'inventory' });
+                }}
+                style={[
+                  styles.card,
+                  equipped && styles.cardEquipped,
+                  !unlocked && styles.cardLocked,
+                ]}
+              >
+                {/* The real shell, same painter as the dice in play. */}
+                <DiceSwatch skin={skin} size={58} />
+                <Text style={[styles.cardName, !unlocked && styles.lockedText]}>
+                  {skin.name}
+                </Text>
+                {equipped ? (
+                  <Text style={styles.equippedTag}>EQUIPPED</Text>
+                ) : unlocked ? (
+                  <Text style={styles.tapTag}>Tap to see</Text>
+                ) : skin.price !== undefined ? (
+                  <CoinLabel
+                    coinFirst={false}
+                    size={12}
+                    style={styles.priceTagText}
+                    containerStyle={styles.priceTagRow}
+                  >
+                    {skin.price}
+                  </CoinLabel>
+                ) : (
+                  <View style={styles.priceTagRow}>
+                    <TrophyIcon size={11} color={THEME.inkFaint} />
+                    <Text style={styles.priceTag}>
+                      {priceFor(skin.unlock!)}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Text style={styles.sectionTitle}>BATTLEFIELDS</Text>
         <Text style={styles.sectionNote}>
           Tap one to stand on it and look around before you choose. Every
@@ -141,61 +196,6 @@ export function InventoryScreen({
                     <TrophyIcon size={11} color={THEME.inkFaint} />
                     <Text style={styles.priceTag}>
                       {priceFor(ARENA_UNLOCKS[id]!)}
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.sectionTitle}>DICE</Text>
-        <Text style={styles.sectionNote}>
-          Tap a set to see it out on the board, and use it from there. Only
-          the shell changes — the six face colours always stay the same, so a
-          match is always a match. Plain colours are earned with trophies;
-          patterned ones are bought in the Store with coins.
-        </Text>
-        <View style={styles.grid}>
-          {INVENTORY_SKIN_ORDER.map((skin) => {
-            const unlocked = isSkinUnlocked(skin.id, trophies);
-            const equipped = skinId === skin.id;
-            return (
-              <Pressable
-                key={skin.id}
-                onPress={() => {
-                  playClick();
-                  onPreview({ kind: 'die', id: skin.id, from: 'inventory' });
-                }}
-                style={[
-                  styles.card,
-                  equipped && styles.cardEquipped,
-                  !unlocked && styles.cardLocked,
-                ]}
-              >
-                {/* The real shell, same painter as the dice in play. */}
-                <DiceSwatch skin={skin} size={58} />
-                <Text style={[styles.cardName, !unlocked && styles.lockedText]}>
-                  {skin.name}
-                </Text>
-                {equipped ? (
-                  <Text style={styles.equippedTag}>EQUIPPED</Text>
-                ) : unlocked ? (
-                  <Text style={styles.tapTag}>Tap to see</Text>
-                ) : skin.price !== undefined ? (
-                  <CoinLabel
-                    coinFirst={false}
-                    size={12}
-                    style={styles.priceTagText}
-                    containerStyle={styles.priceTagRow}
-                  >
-                    {skin.price}
-                  </CoinLabel>
-                ) : (
-                  <View style={styles.priceTagRow}>
-                    <TrophyIcon size={11} color={THEME.inkFaint} />
-                    <Text style={styles.priceTag}>
-                      {priceFor(skin.unlock!)}
                     </Text>
                   </View>
                 )}

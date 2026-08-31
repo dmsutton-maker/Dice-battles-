@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.63.6 — 2026-08-31 · requested by David
+
+### Changed
+- **The Inventory leads with the dice now**, with battlefields
+  underneath. The two sections simply swapped over. A test holds the
+  order, because the two blocks look almost identical in the file — a
+  title, a note, a grid of cards — so a later edit could quietly put
+  them back and the only person who would notice is the one who asked.
+
+
 ## v1.63.5 — 2026-08-31 · requested by David
 
 A sweep across every arena and every dice skin, looking for the ones
