@@ -118,13 +118,32 @@ and the same day the listing was brought up to date:
   chat). `demoAccountRequired` false — the app has no accounts.
 - **Still missing before any submission:** a build attached to
   version 1.0.
-- **In-app purchases are wanted before launch** (David, 30 Aug 2026)
-  but deliberately parked LAST: he will decide what is for sale (coin
-  packs, remove-ads, bundles, possibly a subscription) and get back to
-  us. Nothing is designed or built. When it lands it needs: the Paid
-  Applications agreement signed in App Store Connect (account holder
-  only), products created on the record, StoreKit code in the app — a
-  native module, so it rides the same binary train as ads. And the submission itself sits behind
+- **In-app purchases: the family decided (31 Aug 2026).** David, with
+  Marc and AJ, settled the product list. Prices are Apple tiers.
+  - **Remove Ads** — $5.99 one-time (deliberately raised from the first
+    $3.99 idea so Dice Club's maths works). Interstitials off forever.
+  - **Premium dice sets** — $1.99 each, money-only, cosmetic.
+  - **Premium arenas** — $2.99 each, money-only.
+  - **Starter Pack** — $4.99, offered ONLY in the first 48 hours after
+    install (a client-side window; the product itself always exists).
+    Contents to be confirmed — proposed: an exclusive golden die plus a
+    pile of coins.
+  - **Coin packs** — Pouch $0.99, Chest $4.99, Vault $9.99.
+  - **Dice Club** — $4.99/month subscription, the everything tier: no
+    ads while subscribed, Season Pass included, daily coin bonus, and a
+    members-only die that changes monthly.
+  - **Season Pass** — $2.99 per season, implemented as an XP reward
+    track of ~30 tiers: everyone earns XP and climbs the FREE track
+    (coins, occasional dice); pass holders also unlock the PAID track
+    alongside (exclusive arenas and dice). Resets each season. This is
+    a second progression next to trophies, so the design must keep the
+    two from confusing each other.
+  - Paid Applications agreement: ACTIVE (David confirmed 31 Aug).
+  - Still needed: product IDs chosen (permanent, never reusable —
+    name them carefully), products created on the App Store record,
+    StoreKit code (native — must ride the same binary as the ads SDK to
+    avoid a second build), and the XP/season system itself (pure JS,
+    can ship and iterate over the air). And the submission itself sits behind
   the full-test-on-Fable gate in AGENTS.md.
 
 ## Known-open, as of the last update
