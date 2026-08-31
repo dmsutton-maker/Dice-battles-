@@ -204,8 +204,12 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   snow: {
     // A hollow in the woods, fenced with timber. Not a fortress.
     structure: 'snowFence',
-    meadow: '#e9f1f6', hill: '#dae7f0', mountain: '#b9c9d8', cloud: '#ffffff',
-    floor: { a: '#dfe9f0', b: '#cfdde8' },
+    // The hill and floor.b tones sit a real step bluer than their pale
+    // partners — the 31 Aug 2026 skin review found the old pair so
+    // close that the drift painter showed nothing and the whole floor
+    // read as flat plaster rather than snow.
+    meadow: '#e7f0f6', hill: '#c8d9e8', mountain: '#b9c9d8', cloud: '#ffffff',
+    floor: { a: '#e3edf4', b: '#c2d3e6' },
     wall: { color: '#b7c6d2', cap: '#8a6a4a' },
     tower: { body: '#b7c6d2', roof: '#5b87b0' },
     jail: { platform: '#9dafbe', bars: '#4b5866' },
@@ -363,19 +367,22 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     retreat: { padA: '#c9e2e8', padB: '#aecfd8', post: '#4a6470', canopy: '#57e8a9', pool: '#57c9e8' },
     sky: { sun: null, stars: true, body: { kind: 'aurora', color: '#4fe89a' } },
     props: [
-      { kind: 'pine', x: -3.44, z: -7.4, scale: 0.6, color: '#1a5245' },
-      { kind: 'crystal', x: -3.38, z: -3.3, scale: 0.7, color: '#57e8a9' },
+      // Pines a saturated deep green and crystals two steps brighter —
+      // at the old values both rendered as near-black blobs under the
+      // night rig (skin review, 31 Aug 2026).
+      { kind: 'pine', x: -3.44, z: -7.4, scale: 0.6, color: '#2d8a62' },
+      { kind: 'crystal', x: -3.38, z: -3.3, scale: 0.7, color: '#7df5c2' },
       { kind: 'pebbles', x: -3.46, z: -0.9, scale: 0.95, color: '#7ba2b0' },
-      { kind: 'pine', x: -3.4, z: 1.6, scale: 0.55, color: '#154438' },
-      { kind: 'crystal', x: -3.46, z: 3.6, scale: 0.6, color: '#7fd4e8' },
-      { kind: 'crystal', x: 3.42, z: -7.4, scale: 0.75, color: '#57e8a9' },
-      { kind: 'pine', x: 3.38, z: -3.3, scale: 0.58, color: '#1a5245' },
+      { kind: 'pine', x: -3.4, z: 1.6, scale: 0.55, color: '#247550' },
+      { kind: 'crystal', x: -3.46, z: 3.6, scale: 0.6, color: '#a8ecf8' },
+      { kind: 'crystal', x: 3.42, z: -7.4, scale: 0.75, color: '#7df5c2' },
+      { kind: 'pine', x: 3.38, z: -3.3, scale: 0.58, color: '#2d8a62' },
       { kind: 'rock', x: 3.46, z: -0.9, scale: 0.75, color: '#7ba2b0' },
-      { kind: 'bush', x: 3.4, z: 1.6, scale: 0.85, color: '#2e5c50' },
-      { kind: 'crystal', x: 3.46, z: 3.6, scale: 0.55, color: '#7fd4e8' },
+      { kind: 'bush', x: 3.4, z: 1.6, scale: 0.85, color: '#3f8068' },
+      { kind: 'crystal', x: 3.46, z: 3.6, scale: 0.55, color: '#a8ecf8' },
       { kind: 'pebbles', x: -2.4, z: -8.8, scale: 0.9, color: '#7ba2b0' },
-      { kind: 'crystal', x: 0.1, z: -9, scale: 0.5, color: '#57e8a9' },
-      { kind: 'pine', x: 2.5, z: -8.8, scale: 0.46, color: '#154438' },
+      { kind: 'crystal', x: 0.1, z: -9, scale: 0.5, color: '#7df5c2' },
+      { kind: 'pine', x: 2.5, z: -8.8, scale: 0.46, color: '#247550' },
     ],
     look: look(
       { color: '#b6d4dc', roughness: 0.7, metalness: 0 },
@@ -434,10 +441,19 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     // A kingdom, so this one really is a castle — and the only ladder
     // arena that keeps its merlons.
     structure: 'battlement',
-    meadow: '#a8d4f0', hill: '#8fc4ea', mountain: null, cloud: '#ffffff',
-    floor: { a: '#f2f7fc', b: '#dfebf5' },
-    wall: { color: '#c9dff0', cap: '#aecbe3' },
-    tower: { body: '#c9dff0', roof: '#ffd21f' },
+    /*
+      Repainted 31 Aug 2026 off a two-lens review that scored the old
+      white-on-white 4 and 3. The ground pair is now open SKY — the
+      painter draws cumulus on it, not tiles — with `mountain` carrying
+      the blue-grey of a cloud's shaded belly. The floor pair spans a
+      real value range so the marble blocks differ from one another,
+      and the wall is a mid-blue so the one real castle in the set has
+      a silhouette instead of vanishing into its own floor.
+    */
+    meadow: '#9fd0f2', hill: '#5b9fd8', mountain: '#8fa9c6', cloud: '#ffffff',
+    floor: { a: '#f4f8fd', b: '#bccfe3' },
+    wall: { color: '#7ea6cf', cap: '#e6eff8' },
+    tower: { body: '#7ea6cf', roof: '#ffd21f' },
     jail: { platform: '#aecbe3', bars: '#5c7d99' },
     retreat: { padA: '#ffffff', padB: '#e3eff8', post: '#c9a05c', canopy: '#ff8ab0', pool: '#8fd0f0' },
     sky: { sun: { color: '#fff6d8', size: 1.8 }, stars: false, body: { kind: 'rainbow', color: '#ff6e6e' } },
@@ -445,16 +461,19 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'cloudIsle', x: -3.46, z: -7.4, scale: 0.5 },
       { kind: 'cloudIsle', x: -3.2, z: -5.6, scale: 0.34 },
       { kind: 'banner', x: -3.38, z: -3.3, scale: 0.75, color: '#ff8ab0' },
-      { kind: 'cloudIsle', x: -3.5, z: -1.6, scale: 0.44 },
+      // Balloons pulled in from the far corners to the mid-walls, where
+      // the camera actually looks — they were the only pigment on the
+      // board and all of it was at the edges of the frame.
+      { kind: 'balloon', x: -3.1, z: -1.6, scale: 0.6, color: '#33cc6b' },
       { kind: 'cloudIsle', x: -3.3, z: 0.2, scale: 0.3 },
       { kind: 'flowers', x: -3.4, z: 2, scale: 0.95, color: '#ff6e6e' },
       { kind: 'balloon', x: -3.46, z: 3.6, scale: 0.6, color: '#ff6e6e' },
       { kind: 'balloon', x: 3.42, z: -7.4, scale: 0.62, color: '#57c9e8' },
       { kind: 'cloudIsle', x: 3.44, z: -5.6, scale: 0.46 },
       { kind: 'banner', x: 3.46, z: -3.3, scale: 0.75, color: '#ffd21f' },
-      { kind: 'cloudIsle', x: 3.5, z: -1.6, scale: 0.38 },
+      { kind: 'balloon', x: 3.1, z: -1.6, scale: 0.58, color: '#ff8ab0' },
       { kind: 'cloudIsle', x: 3.28, z: 0.4, scale: 0.32 },
-      { kind: 'cloudIsle', x: 3.5, z: 2.2, scale: 0.44 },
+      { kind: 'balloon', x: 3.15, z: 2.2, scale: 0.62, color: '#cc79fc' },
       { kind: 'flowers', x: 3.46, z: 3.8, scale: 0.9, color: '#ff8ab0' },
       { kind: 'cloudIsle', x: -2.6, z: -8.9, scale: 0.42 },
       { kind: 'balloon', x: 0.1, z: -9, scale: 0.5, color: '#ffd21f' },
@@ -589,31 +608,41 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       were the closest pair of teals in the set.
     */
     structure: 'mossStone',
-    meadow: '#3f7a58', hill: '#33684a', mountain: '#4a8a66',
+    /*
+      Three value bands on purpose, after a 31 Aug 2026 review found
+      everything living in one: the tray is a LIGHT mown clearing, the
+      ground outside is DARK dusk moss pulled toward the teal sky, and
+      the wall between them is warm earth-and-stone brown so the border
+      belongs to neither green. Collapse any of these back together and
+      the arena edge disappears again.
+    */
+    meadow: '#2b5747', hill: '#1e453c', mountain: '#3c7a64',
     cloud: null,
-    floor: { a: '#4a8562', b: '#3d7353' },
-    wall: { color: '#528f6b', cap: '#427a58' },
-    tower: { body: '#528f6b', roof: '#4fd0c9' },
-    jail: { platform: '#427a58', bars: '#1d3d2c' },
+    floor: { a: '#74b183', b: '#549062' },
+    wall: { color: '#77624b', cap: '#8a7f6d' },
+    tower: { body: '#77624b', roof: '#4fd0c9' },
+    jail: { platform: '#2f5a48', bars: '#152e22' },
     retreat: { padA: '#5f9c78', padB: '#4a8562', post: '#33684a', canopy: '#4fd0c9', pool: '#4fd0c9' },
     sky: { sun: null, stars: true, body: { kind: 'moon', color: '#e9f0f7' } },
     props: [
-      { kind: 'mushroom', x: -3.44, z: -7.3, scale: 0.6, color: '#3fb0aa' },
-      { kind: 'mushroom', x: -3.28, z: -5.5, scale: 0.42, color: '#45c48c' },
+      // Toadstool caps in the two spore colours — cyan and yellow-green
+      // — so the glow on the ground has lamps standing over it.
+      { kind: 'mushroom', x: -3.44, z: -7.3, scale: 0.6, color: '#4fe8d6' },
+      { kind: 'mushroom', x: -3.28, z: -5.5, scale: 0.42, color: '#c9f26e' },
       { kind: 'pine', x: -3.38, z: -3.4, scale: 0.58, color: '#245c40' },
-      { kind: 'mushroom', x: -3.46, z: -1.4, scale: 0.5, color: '#45c48c' },
+      { kind: 'mushroom', x: -3.46, z: -1.4, scale: 0.5, color: '#c9f26e' },
       { kind: 'flowers', x: -3.3, z: 0.4, scale: 0.95, color: '#8ad4e8' },
-      { kind: 'mushroom', x: -3.44, z: 2.1, scale: 0.46, color: '#6bb4c9' },
+      { kind: 'mushroom', x: -3.44, z: 2.1, scale: 0.46, color: '#4fe8d6' },
       { kind: 'bush', x: -3.46, z: 3.6, scale: 0.9, color: '#2f6b4a' },
       { kind: 'pine', x: 3.42, z: -7.3, scale: 0.6, color: '#245c40' },
-      { kind: 'mushroom', x: 3.3, z: -5.5, scale: 0.55, color: '#6bb4c9' },
-      { kind: 'mushroom', x: 3.38, z: -3.4, scale: 0.48, color: '#3fb0aa' },
-      { kind: 'pebbles', x: 3.46, z: -1.4, scale: 0.95, color: '#33684a' },
-      { kind: 'mushroom', x: 3.3, z: 0.5, scale: 0.52, color: '#45c48c' },
+      { kind: 'mushroom', x: 3.3, z: -5.5, scale: 0.55, color: '#4fe8d6' },
+      { kind: 'mushroom', x: 3.38, z: -3.4, scale: 0.48, color: '#4fe8d6' },
+      { kind: 'pebbles', x: 3.46, z: -1.4, scale: 0.95, color: '#8a7f6d' },
+      { kind: 'mushroom', x: 3.3, z: 0.5, scale: 0.52, color: '#c9f26e' },
       { kind: 'flowers', x: 3.4, z: 2.2, scale: 0.9, color: '#8ad4e8' },
       { kind: 'bush', x: 3.46, z: 3.7, scale: 0.85, color: '#2f6b4a' },
-      { kind: 'mushroom', x: -2.5, z: -8.8, scale: 0.5, color: '#45c48c' },
-      { kind: 'pebbles', x: 0.1, z: -9.1, scale: 0.9, color: '#33684a' },
+      { kind: 'mushroom', x: -2.5, z: -8.8, scale: 0.5, color: '#c9f26e' },
+      { kind: 'pebbles', x: 0.1, z: -9.1, scale: 0.9, color: '#8a7f6d' },
       { kind: 'pine', x: 2.5, z: -8.8, scale: 0.46, color: '#245c40' },
     ],
     look: look(

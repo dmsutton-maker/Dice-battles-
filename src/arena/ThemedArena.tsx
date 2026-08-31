@@ -1070,9 +1070,15 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
                 <boxGeometry args={[w, 0.09, d]} />
                 <meshStandardMaterial color={cap} roughness={0.95} />
               </mesh>
+              {/*
+                The snow along the rail sits a step cooler than the
+                caps on the posts, so the posts read as posts and the
+                wall top stops matching the ground outside it (31 Aug
+                2026 skin review: "white-on-white-on-white").
+              */}
               <mesh position={[x, wallHeight + 0.32, z]}>
                 <boxGeometry args={[w * 0.86, 0.11, d * 0.86]} />
-                <meshStandardMaterial color="#f7fafc" roughness={0.8} />
+                <meshStandardMaterial color="#e6eef6" roughness={0.8} />
               </mesh>
             </group>
           ))}
@@ -1093,6 +1099,31 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
                   <meshStandardMaterial color="#f7fafc" roughness={0.8} />
                 </mesh>
               </group>
+            );
+          })}
+          {/*
+            A bank of drifted snow along the INSIDE base of every wall —
+            all four of them, walked through the same measured rim ring
+            as the palings so it cannot go half way round. It separates
+            wall from floor at the 17-degree camera: the 31 Aug 2026
+            skin review found white walls on a white floor dissolving
+            into one shape. Decoration only — the physics wall the dice
+            bounce off is untouched; a die that hugs the wall sinks its
+            bottom edge into soft snow, which is what snow does.
+          */}
+          {rim.map((m, i) => {
+            const s = 0.8 + ((i * 29) % 5) / 12;
+            const px = m.alongX ? m.pos[0] : Math.sign(m.pos[0]) * (innerWidth / 2);
+            const pz = m.alongX ? Math.sign(m.pos[2]) * (innerDepth / 2) : m.pos[2];
+            return (
+              <mesh
+                key={`drift-${i}`}
+                position={[px, 0.02, pz]}
+                scale={m.alongX ? [1.15 * s, 0.3 * s, 0.42] : [0.42, 0.3 * s, 1.15 * s]}
+              >
+                <sphereGeometry args={[0.34, 10, 7]} />
+                <meshStandardMaterial color="#f4f9fd" roughness={0.85} />
+              </mesh>
             );
           })}
         </group>
@@ -1268,14 +1299,25 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
     }
 
     case 'battlement':
-      // Notched stone teeth. The Sky Kingdom is a kingdom.
+      // Notched stone teeth, each capped in gold. The Sky Kingdom is a
+      // kingdom, and the crown running the whole rim is what says so —
+      // pale merlons alone vanished into the pale floor behind them.
       return (
         <group>
           {rim.map((m, i) => (
-            <mesh key={`merlon-${i}`} position={[m.pos[0], y, m.pos[2]]}>
-              <boxGeometry args={m.alongX ? [0.45, 0.24, wallThickness] : [wallThickness, 0.24, 0.5]} />
-              <meshStandardMaterial color={cap} roughness={0.85} />
-            </mesh>
+            <group key={`merlon-${i}`}>
+              <mesh position={[m.pos[0], y, m.pos[2]]}>
+                <boxGeometry args={m.alongX ? [0.45, 0.24, wallThickness] : [wallThickness, 0.24, 0.5]} />
+                <meshStandardMaterial color={cap} roughness={0.85} />
+              </mesh>
+              {/* A gold boss centred on the tooth, not a gold lid over
+                  it — the camera is near top-down, so a full-width trim
+                  turned the entire ring solid yellow. */}
+              <mesh position={[m.pos[0], y + 0.15, m.pos[2]]}>
+                <boxGeometry args={m.alongX ? [0.26, 0.07, wallThickness * 0.5] : [wallThickness * 0.5, 0.07, 0.28]} />
+                <meshStandardMaterial color={accent} roughness={0.4} metalness={0.2} />
+              </mesh>
+            </group>
           ))}
         </group>
       );
@@ -1350,7 +1392,12 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
       );
 
     case 'mossStone':
-      // Rounded boulders with moss on their tops.
+      // Grey-brown boulders with a cap of moss on their tops ONLY — the
+      // rock has to read as rock against both greens, which it never did
+      // while boulder, moss and meadow were all the same forest green.
+      // Not theme.meadow for the moss: that is the dusk ground now, and
+      // moss growing in a boulder's crown catches more light than the
+      // shade it stands over.
       return (
         <group>
           {rim.map((m, i) => {
@@ -1363,7 +1410,7 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
                 </mesh>
                 <mesh position={[0, r * 0.5, 0]} scale={[1, 0.35, 1]}>
                   <sphereGeometry args={[r * 0.78, 8, 6]} />
-                  <meshStandardMaterial color={theme.meadow} roughness={1} />
+                  <meshStandardMaterial color="#4c8f58" roughness={1} />
                 </mesh>
               </group>
             );
@@ -1709,9 +1756,15 @@ function ThemedCorners({
               four of those at the corners of the board were doing a
               small-scale version of the horizon blob.
             */}
+            {/*
+              0.55 emissive, up from 0.22. The theme is GLOW Glade and
+              these four caps are its biggest lamps; at 0.22 they read as
+              painted plastic, and the 31 Aug 2026 review's one-line
+              verdict was "nothing glows".
+            */}
             <mesh position={[0, wallHeight + 0.5, 0]} scale={[1, 0.62, 1]}>
               <sphereGeometry args={[0.5, 12, 8]} />
-              <meshStandardMaterial color={roof} emissive={roof} emissiveIntensity={0.22} roughness={0.55} />
+              <meshStandardMaterial color={roof} emissive={roof} emissiveIntensity={0.55} roughness={0.55} />
             </mesh>
           </>
         );

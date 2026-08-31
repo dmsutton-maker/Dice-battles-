@@ -963,13 +963,13 @@ suite('arenas · the floor is not cut in half', () => {
       which is the very gap this test exists to close.
     */
     const FINGERPRINT: Record<string, [number, number]> = {
-      snowFence: [2822920031, 2591079004], adobe: [3332830248, 3217809634],
+      snowFence: [156103442, 2798872402], adobe: [3332830248, 3217809634],
       basalt: [2367338390, 812598676], logPile: [3467978741, 3677557592],
-      station: [4294572736, 11610392], stalagmite: [807404290, 18287228],
-      battlement: [2711802449, 3801047114], airlock: [1806471617, 1375994754],
+      station: [2717233196, 3994914310], stalagmite: [807404290, 18287228],
+      battlement: [3236668260, 3814821791], airlock: [1806471617, 1375994754],
       driftwood: [542929681, 1624185647], gingerbread: [4111876675, 4044205311],
-      mossStone: [2127551540, 2729603520], shipHull: [2439740480, 1924898867],
-      picket: [3596239287, 2708851089], coralRim: [588170051, 2042255654],
+      mossStone: [3451167438, 1696864712], shipHull: [2439740480, 1924898867],
+      picket: [3596239287, 2708851089], coralRim: [35853002, 1941100666],
       parapet: [2389790565, 2377193977], blocks: [1393805627, 3816223702],
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {

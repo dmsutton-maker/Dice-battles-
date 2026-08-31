@@ -58,6 +58,9 @@ export type PatternId =
   | 'slate'
   | 'copper'
   | 'ocean'
+  // Ivory, 31 Aug 2026 — the default die shipped as a flat pure-white
+  // square, the one skin whose material name delivered nothing at all.
+  | 'ivory'
   // Full-colour painters (see COLOR_PAINTERS):
   | 'volleyball'
   | 'watermelon'
@@ -66,7 +69,13 @@ export type PatternId =
   | 'rainbow'
   | 'galaxy'
   | 'camo'
-  | 'tartan';
+  | 'tartan'
+  // Blossom, 31 Aug 2026 — it shipped as a plain pink cube, the one
+  // skin in the set whose name promised a picture it did not have.
+  | 'blossom'
+  // Lavender, 31 Aug 2026 — the other flat cube whose name promised a
+  // plant. Sprigs of the plant itself: green stems, purple bud spikes.
+  | 'lavender';
 
 const SIZE = 64;
 
@@ -262,7 +271,18 @@ export type ColorPatternId =
   | 'patches' | 'bands' | 'diamonds' | 'tigerStripes' | 'honeycomb'
   // Bubbles joined them on 27 Aug: a soap film is iridescent, and one
   // ink cannot be iridescent.
-  | 'bubbles';
+  | 'bubbles'
+  // Blossom, 31 Aug 2026: a cherry flower is white petals, a pink
+  // blush at their base and a GOLD heart — three colours a mask's one
+  // ink cannot mix.
+  | 'blossom'
+  // Lavender, 31 Aug 2026: a sprig is a GREEN stem under PURPLE buds —
+  // two hues on a lilac shell, which is one more than a mask has.
+  | 'lavender'
+  // Fish, 31 Aug 2026: the mask version was mid-blue fish on light-blue
+  // water, and at die scale the whole school vanished. A goldfish is
+  // ORANGE with a white eye — two hues a blue mask cannot reach.
+  | 'fish';
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 const PAINTERS: Record<MaskPatternId, Painter> = {
@@ -624,6 +644,51 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     return light + brush;
   },
 
+  /**
+   * Ivory: the material, painted at a whisper.
+   *
+   * The default die shipped as a flat pure-white square — the one skin in
+   * the set whose material name delivered nothing, and it reads as an
+   * unloaded texture rather than as a prize tusk. Real ivory is a warm
+   * cream with faint near-parallel grain and a soft polished sheen, and
+   * the dice are unlit, so all of that has to be painted in.
+   *
+   * Everything here is deliberately tiny: this is the shell every new
+   * player reads their first roll on, so the face stickers must dominate.
+   * At arm's length it should still say "plain pale die" — ceramic, not
+   * vector fill.
+   */
+  ivory: (x, y) => {
+    // Gold's single sweep of light at roughly a quarter of its strength:
+    // one broad soft band brightening the upper-left diagonal, the body
+    // falling away only slightly either side of it.
+    const d = (x * 0.62 + y * 0.78) / SIZE;
+    const bar = (centre: number, width: number, strength: number) =>
+      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
+    const sheen = bar(0.38, 0.26, 0.55) + bar(1.05, 0.16, 0.16) - 0.1;
+
+    // The grain: fine near-parallel lines running down the face, gently
+    // wavy via the tiling noise, each only a few percent darker than the
+    // body. The weight drifts along a line's length — fading out here,
+    // pressing in there — which is what separates grain from a comb. The
+    // first cut of this warped by ±2.5px, which at nine lines in 64px is
+    // invisible: it rendered as dead-straight pinstripe wallpaper. The
+    // slow octave carries the bend now, and the lines lean by exactly one
+    // period across the tile (y / lines · SIZE/lines... i.e. y/9) so the
+    // tilt keeps the wrap.
+    const warp = fbm(x + 11, y + 3, [32, 16], [1, 0.3]) * 5.5;
+    const lines = 9;
+    const phase = ((((x + y / lines + warp) * lines) / SIZE) % 1 + 1) % 1;
+    const core = smoothstep(0.34, 0.5, phase) * (1 - smoothstep(0.5, 0.66, phase));
+    const grain = -core * (0.05 + wrappedNoise(x + 40, y + 23, 32) * 0.11);
+
+    // The faintest cream mottle, so the ground is dentine rather than one
+    // flat fill.
+    const mottle = fbm(x + 27, y + 31, [32, 16], [1, 0.5]) * 0.04;
+
+    return sheen + grain + mottle;
+  },
+
   /*
    * ── The 26 Aug 2026 batch ─────────────────────────────────────────
    *
@@ -674,39 +739,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
       }
     }
     return smoothstep(1.2, 2.6, d2 - d1) * 0.92;
-  },
-
-  /** Bee: three broad soft-edged bands across the die. */
-  fish: (x, y) => {
-    /*
-      Actual fish, in rows swimming opposite ways.
-
-      David, 26 Aug 2026: "make sure every dice design still makes sense
-      according to the dice name. Like the fish should have fish on it."
-      He picked the clearest case in the set: this was a scallop-row
-      SCALE texture — what a fish is covered in rather than what a fish
-      looks like — and at the size a die is actually seen it read as
-      roof tiles.
-    */
-    const cell = 16;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const fx = ((x + offset) % cell) - cell / 2;
-    const fy = (y % cell) - cell / 2;
-    // Every other row swims the other way, so a face has some movement
-    // in it rather than a column of identical stamps.
-    const sx = row % 2 === 0 ? fx : -fx;
-    const body = Math.hypot(sx / 5.6, fy / 3.2);
-    const tail = sx < -3.4 && sx > -7.6 && Math.abs(fy) < (-sx - 3.4) * 1.35;
-    if (body <= 1 || tail) {
-      if (Math.hypot(sx - 3.2, fy + 0.9) < 1.1) return -0.85;
-      if (Math.abs(sx - 0.4) < 0.6 && Math.abs(fy) < 2.3) return 0.4;
-      // A paler belly, so it is a lit fish and not a silhouette.
-      return fy > 1.3 ? 0.5 : 0.92;
-    }
-    // Water: a faint ripple, and the odd rising bubble.
-    if (Math.hypot(sx + 6.4, fy - 4.8) < 1.2) return 0.3;
-    return (wrappedNoise(x, y, 16) - 0.5) * 0.16;
   },
 
   paws: (x, y) => {
@@ -1310,17 +1342,54 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       The first attempt measured "distance from a dimple" by adding up
       three axial stripe distances, which is not a distance to anything —
       it drew diagonal streaks rather than round pits.
+
+      Redrawn 31 Aug 2026 after review: the pits had become ~3px specks
+      at 5% contrast, so at die scale the whole skin read as a blank
+      white cube — and a blank white-ish cube is exactly what the
+      baseball already is. Two fixes, both borrowed from how a
+      driving-range ball solves the same problem. The dimples are twice
+      the size and shaded hard enough to survive the tilted camera: each
+      is a round hollow with a dark crescent on its upper-left wall and
+      a lit crescent on its lower-right. And the ball gets a range
+      ball's single bold band, so the silhouette is nameable even where
+      the dimples blur out. Blue, not red, because the baseball owns
+      red-on-cream — and a navy sitting ΔLab 46 from the BLUE face
+      sticker, well clear of the > 12 guard in screen.test.ts.
     */
-    const size = 4.1;
+    const size = 6.2;
     const cell = hexCell(x, y, size);
-    const ball = 1 - (x + y) / (SIZE * 2.8);
-    let px = mixRgb(rgb('#d0d5cf'), rgb('#ffffff'), ball);
-    const pit = smoothstep(size * 0.86, size * 0.2, cell.d);
-    // A hollow lit from the upper left has its FAR wall bright.
-    const lit = ((x - cell.cx) + (y - cell.cy)) / size;
-    px = mixRgb(px, rgb('#ffffff'), Math.max(0, lit) * pit * 1.15);
-    px = mixRgb(px, rgb('#8a908a'), Math.max(0, -lit) * pit * 1.25);
-    return mixRgb(px, rgb('#b3b8b2'), pit * 0.2);
+    const R = size * 0.78;
+    // 1 across the dimple's floor, 0 on the ridge between dimples. The
+    // plateau reaches most of the way out so the crescents land on the
+    // WALLS: fading the mask from the centre put maximum shading midway
+    // and the pits came out as flat grey discs, not hollows.
+    const pit = smoothstep(R, R * 0.55, cell.d);
+    // Where this pixel sits across its dimple, along the light. Light
+    // comes from the upper left (the prior every eye brings), so a
+    // HOLLOW shadows its near wall — the upper-left crescent, -1 here —
+    // and its far wall catches the light — the lower-right crescent, +1.
+    // Painted the other way round these exact circles read as pearls
+    // stuck ON the ball; a render proved it before this comment did.
+    const toLight = Math.max(
+      -1,
+      Math.min(1, (x - cell.cx + (y - cell.cy)) / (R * Math.SQRT2)),
+    );
+    // Bright white ball, rounded off very gently toward one corner.
+    const ball = 1 - (x + y) / (SIZE * 2.6);
+    let px = mixRgb(rgb('#e4e9e4'), rgb('#ffffff'), ball);
+    // The band first, so the dimples carve into it like everything else.
+    px = mixRgb(px, rgb('#1a3a8c'), smoothstep(4.6, 3.4, Math.abs(y - 9)));
+    // The hollow: an overall step down, a deeper lower-left crescent, a
+    // lit upper-right crescent. Scaling the pixel instead of mixing to a
+    // fixed grey keeps the same relief readable on white AND on navy.
+    const shade = pit * (0.1 + Math.max(0, -toLight) * 0.45);
+    const gleam = pit * Math.max(0, toLight) * 0.9;
+    px = [
+      Math.round(px[0] * (1 - shade)),
+      Math.round(px[1] * (1 - shade)),
+      Math.round(px[2] * (1 - shade)),
+    ];
+    return mixRgb(px, rgb('#ffffff'), gleam);
   },
 
   soccer: (x, y) => {
@@ -1588,24 +1657,42 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   honeycomb: (x, y) => {
     /*
-      Comb with depth: each cell is a HOLE — dark at the bottom, honey
-      standing in the fuller ones — under a wax wall that is lit on one
-      side and shadowed on the other. Flat hexagons read as a grid.
+      Comb, rebuilt 31 Aug 2026. The first pass took the min edge-
+      distance across three stripe axes — which draws the triangular
+      DUAL of a hex grid, a fine gold mesh with not one hexagon in it,
+      and the sweeping `lit` gradient over the top read as brushed
+      metal. Hexagons are the entire signal of this skin, so this one
+      uses hexCell (the soccer ball's lattice) for real cells, LARGE —
+      about three across a face, because at die scale fine cells
+      collapse into shimmer. Amber wax floors that sink darker toward
+      each hole's middle, honey-brown walls a couple of pixels thick
+      with a lit flank and a shadowed one, light spilling over each
+      cell's top rim, and about a third of the cells flooded to the
+      brim with glossy honey.
     */
-    const u = x / 9;
-    const v = (x * 0.5 + y * 0.866) / 9;
-    const w = (x * 0.5 - y * 0.866) / 9;
-    const edge = (t: number) => Math.abs(t - Math.round(t));
-    const nearest = Math.min(edge(u), edge(v), edge(w));
-    const fill = wrappedNoise(x, y, 16);
-    let px = mixRgb(rgb('#6b4711'), rgb('#8a6117'), fill);
-    px = mixRgb(px, rgb('#d99f26'), smoothstep(0.3, 0.62, fill) * 0.85);
-    // Deeper toward the middle of every cell.
-    px = mixRgb(px, rgb('#4a300a'), smoothstep(0.3, 0.5, nearest) * 0.45);
-    const wall = smoothstep(0.17, 0.08, nearest);
-    const lit = 0.5 - (((x * 0.6 + y * 0.8) % 9) + 9) % 9 / 12;
-    px = mixRgb(px, mixRgb(rgb('#c2933a'), rgb('#f2d488'), Math.max(0, lit + 0.35)), wall);
-    return px;
+    const h = hexCell(x, y, 12);
+    // Roughly how many pixels this point sits in from the cell wall.
+    const rim = (1 - h.t) * 10.9;
+    const dy = (y - h.cy) / 12;
+    // The wax floor: amber, deeper and darker toward the hole's middle.
+    const grain = wrappedNoise(x, y, 16);
+    let px = mixRgb(rgb('#c8891f'), rgb('#e2a83c'), grain);
+    px = mixRgb(px, rgb('#74470e'), smoothstep(2.2, 7.5, rim) * 0.58);
+    // Light spills over the top rim; the near wall shades the bottom.
+    px = mixRgb(px, rgb('#f6d478'), smoothstep(3.4, 1.1, rim) * smoothstep(0.1, -0.45, dy) * 0.7);
+    px = mixRgb(px, rgb('#5c3a0e'), smoothstep(3.4, 1.1, rim) * smoothstep(-0.1, 0.45, dy) * 0.35);
+    // A random third of the cells are full: glossy pooled honey.
+    if (hashCell(h.q * 5 + 13, h.r * 7 + 4) < 0.34) {
+      let honey = mixRgb(rgb('#a85708'), rgb('#d98a16'), smoothstep(0.5, 6, rim));
+      honey = mixRgb(honey, rgb('#f2b14a'), smoothstep(0.15, -0.4, dy) * 0.4);
+      const gleam = Math.hypot(x - h.cx + 3.2, y - h.cy + 3.6) / 12;
+      honey = mixRgb(honey, rgb('#ffe9a8'), smoothstep(0.3, 0.06, gleam) * 0.72);
+      px = mixRgb(px, honey, smoothstep(1.2, 2.6, rim));
+    }
+    // The wall itself: dark honey-brown, its sunward flank lit wax.
+    const flank = 0.5 + ((y - h.cy) / Math.max(h.d, 0.001)) * 0.45;
+    const wallTone = mixRgb(rgb('#4e300a'), rgb('#d9a84e'), flank);
+    return mixRgb(px, wallTone, smoothstep(2.0, 0.8, rim));
   },
 
   bubbles: (x, y) => {
@@ -1644,6 +1731,420 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     }
     return px;
   },
+
+  /**
+   * Blossom: scattered five-petal cherry flowers and a few drifting
+   * petals on the pink shell. Until 31 Aug 2026 this skin was `plain` —
+   * the one skin whose name promised a picture and delivered a flat
+   * pink cube, and the nearest confusable neighbour to marble's
+   * near-blank white.
+   *
+   * Built the way frost's snowflakes are: fixed, deterministic shapes
+   * (no Math.random — the shelf and the table must show the same dice),
+   * SUPERSAMPLED because a 1px petal rim on a 64px grid shreds into
+   * stair-steps at any rotation, and placed clear of the central disc
+   * the colour sticker covers — a flower drawn there is drawn for
+   * nobody. Unlike frost it mixes its own paint: white petal tips, a
+   * pink blush at their base, a deeper pink outline and a gold heart
+   * are four colours, and a mask only travels from the shell toward one
+   * ink.
+   */
+  blossom: (x, y) => {
+    // cx, cy, petal reach, rotation. Four full flowers in the corners
+    // (sized like frost's flakes, so the two skins feel like siblings)
+    // and two smaller ones on the edges, every centre far enough out
+    // that the sticker at most grazes a petal tip.
+    const FLOWERS: [number, number, number, number][] = [
+      [9, 10, 9.5, 0.4],
+      [54, 9, 8.5, 1.3],
+      [55, 54, 9.5, 2.2],
+      [9, 54, 8, 0.9],
+      [33, 60, 6, 1.8],
+      [60, 31, 6, 2.8],
+    ];
+    // Loose petals adrift between the flowers: cx, cy, rotation.
+    const PETALS: [number, number, number][] = [
+      [30, 4, 0.7],
+      [5, 30, 2.1],
+      [21, 62, 1.4],
+      [47, 62, 2.6],
+      [62, 17, 0.3],
+    ];
+
+    const flower = (
+      dx: number,
+      dy: number,
+      R: number,
+      rot: number,
+    ): [number, number, number] | null => {
+      const r = Math.hypot(dx, dy);
+      if (r > R * 1.15) return null;
+      // The gold heart, ringed darker where the stamens meet the petals.
+      if (r < R * 0.22) return r > R * 0.15 ? rgb('#cd9033') : rgb('#f0c14d');
+      // Fold into one of five sectors, exactly as frost folds into six.
+      const sector = (Math.PI * 2) / 5;
+      const a = Math.atan2(dy, dx) + rot;
+      const folded = (((a % sector) + sector) % sector) - sector / 2;
+      const along = (r * Math.cos(folded)) / R;
+      const across = Math.abs(r * Math.sin(folded)) / R;
+      // Each petal is an ellipse pushed out along its sector's axis.
+      const e = Math.hypot((along - 0.55) / 0.45, across / 0.3);
+      if (e < 1) {
+        // White at the tip, blushing pink toward the heart.
+        return mixRgb(rgb('#fff7fa'), rgb('#f6b9d0'), 1 - smoothstep(0.3, 0.62, along));
+      }
+      // A deeper pink outline — it is what keeps a white flower legible
+      // on a pink die at arm's length, and it draws the seams between
+      // neighbouring petals for free.
+      if (e < 1.35) return rgb('#df7fa6');
+      return null;
+    };
+
+    const petal = (dx: number, dy: number, rot: number): [number, number, number] | null => {
+      const u = dx * Math.cos(rot) + dy * Math.sin(rot);
+      const v = -dx * Math.sin(rot) + dy * Math.cos(rot);
+      const e = Math.hypot(u / 3.4, v / 2);
+      // Deeper pink than the flowers' petals: a petal on its own has no
+      // outline of neighbours to lift it off the shell.
+      if (e < 1) return mixRgb(rgb('#f2aac7'), rgb('#fdeaf2'), smoothstep(-2.5, 2.5, u));
+      if (e < 1.45) return rgb('#df7fa6');
+      return null;
+    };
+
+    // Flowers first, so a drifting petal that reaches one slides UNDER
+    // it rather than across its face.
+    const sample = (px: number, py: number): [number, number, number] | null => {
+      for (const [cx, cy, R, rot] of FLOWERS) {
+        const hit = flower(px - cx, py - cy, R, rot);
+        if (hit) return hit;
+      }
+      for (const [cx, cy, rot] of PETALS) {
+        const hit = petal(px - cx, py - cy, rot);
+        if (hit) return hit;
+      }
+      return null;
+    };
+
+    // The shell between the flowers: the skin's own pink, gently
+    // mottled so the ground reads as petal-strewn air, not plastic.
+    const ground = mixRgb(rgb('#f5d7e3'), rgb('#eec6d8'), wrappedNoise(x, y, 16) * 0.6);
+
+    // Supersample 3x3 — frost's lesson: thin edges on a 64px grid only
+    // survive rotation with partial coverage along every boundary.
+    const N = 3;
+    let sr = 0;
+    let sg = 0;
+    let sb = 0;
+    for (let sy = 0; sy < N; sy++) {
+      for (let sx = 0; sx < N; sx++) {
+        const c = sample(x + (sx + 0.5) / N, y + (sy + 0.5) / N) ?? ground;
+        sr += c[0];
+        sg += c[1];
+        sb += c[2];
+      }
+    }
+    return [Math.round(sr / (N * N)), Math.round(sg / (N * N)), Math.round(sb / (N * N))];
+  },
+
+  /**
+   * Lavender: sprigs of the plant itself — a thin green stem curving up
+   * to a spike of purple buds, a pair of leaves at its foot — scattered
+   * round the rim of the lilac shell, with a few loose buds adrift
+   * between them. Until 31 Aug 2026 this skin was `plain`: next to
+   * frost's snowflakes it was a paint swatch, and the name promised a
+   * flower it never drew.
+   *
+   * Built the way blossom was, and for the same reasons: fixed
+   * deterministic shapes (no Math.random — the shelf and the table must
+   * show the same dice), 3x3 supersampled because a 1px stem on a 64px
+   * grid shreds into stair-steps without partial coverage, and every
+   * sprig placed clear of the central disc the colour sticker covers.
+   * It mixes its own paint — green stems under purple buds is two hues
+   * on a lilac ground, one more than a mask's single ink can travel to.
+   *
+   * The IIFE is so the sprig geometry (stems bent by their bow, bud
+   * ellipses staggered up each spike) is worked out ONCE, not once per
+   * subsample — blossom's flowers are bare literals, but a sprig's buds
+   * sit on a curve and pricing that curve 37k times would be silly.
+   */
+  lavender: (() => {
+    type Ellipse = {
+      cx: number;
+      cy: number;
+      ca: number; // cos of the ellipse's rotation
+      sa: number; // sin of it
+      t: number; // where along the stem it sits, for colour ramps
+    };
+    type Sprig = {
+      // Stem as base + unit direction + perpendicular bow, so distance
+      // to it is one projection per sample instead of a polyline walk.
+      bx: number;
+      by: number;
+      dx: number;
+      dy: number;
+      nx: number;
+      ny: number;
+      len: number;
+      bow: number;
+      buds: Ellipse[];
+      leaves: Ellipse[];
+      minX: number;
+      maxX: number;
+      minY: number;
+      maxY: number;
+    };
+
+    // Base x, base y, angle (radians — the y axis points down, so
+    // upward angles are negative), stem length, sideways bow. Four tall
+    // sprigs in the corners and a short one leaning off bottom-centre;
+    // every bud spike stays outside the sticker disc, at most grazing
+    // its rim the way blossom's petal tips do.
+    const DEFS: [number, number, number, number, number][] = [
+      [7, 63, -1.42, 20, 1.6],
+      [55, 62, -1.75, 19, -1.6],
+      [8, 25, -1.36, 19, 1.3],
+      [57, 24, -1.8, 18, -1.3],
+      [30, 63, -2.0, 12, -1.0],
+    ];
+
+    const SPRIGS: Sprig[] = DEFS.map(([bx, by, angle, len, bow]) => {
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      const nx = -dy;
+      const ny = dx;
+      const pos = (t: number): [number, number] => [
+        bx + dx * len * t + nx * bow * t * t,
+        by + dy * len * t + ny * bow * t * t,
+      ];
+      const tangentAngle = (t: number) =>
+        Math.atan2(dy * len + ny * 2 * bow * t, dx * len + nx * 2 * bow * t);
+      const ellipse = (t: number, side: number, out: number, tilt: number): Ellipse => {
+        const [cx, cy] = pos(t);
+        const a = tangentAngle(t) + side * tilt;
+        return { cx: cx + nx * side * out, cy: cy + ny * side * out, ca: Math.cos(a), sa: Math.sin(a), t };
+      };
+      // The spike: staggered pairs up the top half of the stem, tilted
+      // outward like the real plant's whorls, and one terminal bud.
+      const buds = [
+        ellipse(0.52, 1, 1.7, 0.55),
+        ellipse(0.64, -1, 1.7, 0.55),
+        ellipse(0.76, 1, 1.7, 0.55),
+        ellipse(0.88, -1, 1.7, 0.55),
+        ellipse(1.03, 0, 0, 0),
+      ];
+      const leaves = [ellipse(0.18, 1, 2.2, 0.9), ellipse(0.34, -1, 2.2, 0.9)];
+      const xs = [...buds, ...leaves].map((e) => e.cx).concat([bx, pos(1)[0]]);
+      const ys = [...buds, ...leaves].map((e) => e.cy).concat([by, pos(1)[1]]);
+      return {
+        bx,
+        by,
+        dx,
+        dy,
+        nx,
+        ny,
+        len,
+        bow,
+        buds,
+        leaves,
+        minX: Math.min(...xs) - 4.5,
+        maxX: Math.max(...xs) + 4.5,
+        minY: Math.min(...ys) - 4.5,
+        maxY: Math.max(...ys) + 4.5,
+      };
+    });
+
+    // Loose buds adrift between the sprigs: cx, cy, rotation.
+    const LOOSE: Ellipse[] = [
+      [33, 3, 0.5],
+      [2, 43, 1.9],
+      [62, 41, 2.6],
+      [45, 61, 1.1],
+    ].map(([cx, cy, a]) => ({ cx, cy, ca: Math.cos(a), sa: Math.sin(a), t: 1 }));
+
+    // A bud, shaded deep purple at its base toward a paler tip.
+    const budPaint = (u: number): [number, number, number] =>
+      mixRgb(rgb('#6a49b0'), rgb('#9a76dd'), smoothstep(-2.4, 2.4, u));
+
+    const inEllipse = (
+      px: number,
+      py: number,
+      e: Ellipse,
+      ra: number,
+      rb: number,
+    ): number | null => {
+      const ox = px - e.cx;
+      const oy = py - e.cy;
+      const u = ox * e.ca + oy * e.sa;
+      const v = -ox * e.sa + oy * e.ca;
+      return Math.hypot(u / ra, v / rb) < 1 ? u : null;
+    };
+
+    const sample = (px: number, py: number): [number, number, number] | null => {
+      for (const s of SPRIGS) {
+        if (px < s.minX || px > s.maxX || py < s.minY || py > s.maxY) continue;
+        // Buds first: the spike sits over the stem's tip.
+        for (const b of s.buds) {
+          const u = inEllipse(px, py, b, 2.4, 1.4);
+          if (u !== null) return budPaint(u);
+        }
+        for (const l of s.leaves) {
+          const u = inEllipse(px, py, l, 3.0, 1.0);
+          if (u !== null) return mixRgb(rgb('#4f7345'), rgb('#6f9a60'), smoothstep(-3, 3, u));
+        }
+        // The stem: project onto the straight axis, bend the expected
+        // point by the bow, and measure. The bow is small enough that
+        // the projection error is far under a pixel.
+        const ox = px - s.bx;
+        const oy = py - s.by;
+        const t = Math.max(0, Math.min(1, (ox * s.dx + oy * s.dy) / s.len));
+        const cx = s.bx + s.dx * s.len * t + s.nx * s.bow * t * t;
+        const cy = s.by + s.dy * s.len * t + s.ny * s.bow * t * t;
+        if (Math.hypot(px - cx, py - cy) < 0.8) {
+          return mixRgb(rgb('#46683c'), rgb('#5e8752'), t);
+        }
+      }
+      for (const b of LOOSE) {
+        const u = inEllipse(px, py, b, 2.4, 1.4);
+        if (u !== null) return budPaint(u);
+      }
+      return null;
+    };
+
+    return (x: number, y: number): [number, number, number] => {
+      // The shell between the sprigs: the skin's own lilac given a soft
+      // vertical sheen — paler up top, deeper at the foot, meeting the
+      // body colour in the middle — a gentle mottle, and a sparse
+      // darker-purple speckle so the ground reads as a field of distant
+      // florets rather than plastic.
+      let ground = mixRgb(rgb('#c9bbf0'), rgb('#a793de'), y / 63);
+      ground = mixRgb(ground, rgb('#9d89d6'), wrappedNoise(x, y, 16) * 0.3);
+      const cell = 6;
+      const col = Math.floor(x / cell);
+      const row = Math.floor(y / cell);
+      if (hashCell(col, row) > 0.62) {
+        const sx = col * cell + 1 + hashCell(col + 31, row) * (cell - 2);
+        const sy = row * cell + 1 + hashCell(col, row + 57) * (cell - 2);
+        const d = Math.hypot(x - sx, y - sy);
+        ground = mixRgb(ground, rgb('#8f7ac9'), smoothstep(1.2, 0.4, d) * 0.6);
+      }
+
+      // Supersample 3x3 — blossom's lesson, which was frost's lesson:
+      // thin edges on a 64px grid only survive rotation with partial
+      // coverage along every boundary.
+      const N = 3;
+      let sr = 0;
+      let sg = 0;
+      let sb = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const c = sample(x + (sx + 0.5) / N, y + (sy + 0.5) / N) ?? ground;
+          sr += c[0];
+          sg += c[1];
+          sb += c[2];
+        }
+      }
+      return [Math.round(sr / (N * N)), Math.round(sg / (N * N)), Math.round(sb / (N * N))];
+    };
+  })(),
+
+  fish: (() => {
+    /*
+      Goldfish, 31 Aug 2026.
+
+      David, 26 Aug 2026: "the fish should have fish on it" — and the
+      first pass at that drew sixteen thumbnail fish in mid-blue on
+      light-blue water. Two problems, both fatal at the size a die is
+      actually seen: the fish were one shade off the water, so the skin
+      read as plain speckled blue, and each fish was a rounded block
+      with a notch, so even up close they read as little boats. Rebuilt
+      as FOUR big orange goldfish — the one hue no blue-shell mask could
+      mix, and the only orange-on-blue die in the set. Two swim right
+      along the top of the face, two swim left along the bottom, each
+      tilted its own small way so they school rather than march; the
+      middle stays water because the colour sticker covers it anyway.
+    */
+    const WATER = rgb('#7fb8d9'); // must match the skin's body
+    const RIPPLE = rgb('#9ccce4');
+    const BODY = rgb('#e8622a');
+    const FIN = rgb('#c2481a'); // tail, dorsal fin — darker, so they separate
+    const BELLY = rgb('#f7c98f');
+    const EYE = rgb('#ffffff');
+    const PUPIL = rgb('#26343d');
+    const BUBBLE = rgb('#eef7fc');
+
+    // cx, cy, swim direction, tilt. Rows sit against the top and bottom
+    // edges: the sticker disc owns the centre of the face.
+    const SCHOOL: readonly (readonly [number, number, 1 | -1, number])[] = [
+      [15, 8, 1, -0.1],
+      [49, 9, 1, 0.08],
+      [17, 56, -1, 0.1],
+      [48, 55, -1, -0.07],
+    ];
+    const BUBBLES: readonly (readonly [number, number, number])[] = [
+      [57, 26, 1.8],
+      [5, 36, 1.4],
+      [59, 44, 1.1],
+    ];
+
+    const sample = (x: number, y: number): [number, number, number] | null => {
+      for (const [cx, cy, dir, tilt] of SCHOOL) {
+        // Fish-local coordinates: +u toward the nose, +v toward the belly.
+        const dx = (x - cx) * dir;
+        const dy = y - cy;
+        const u = dx * Math.cos(tilt) - dy * Math.sin(tilt);
+        const v = dx * Math.sin(tilt) + dy * Math.cos(tilt);
+        const half = 8; // half body length
+        const t = u / half;
+        if (Math.abs(t) < 1) {
+          // Teardrop, not ellipse: the profile is fullest just behind
+          // the head and tapers toward the rear, which with the forked
+          // tail is the pair of shapes that actually says "fish".
+          const h = 5.2 * Math.sqrt(1 - t * t) * (0.6 + 0.2 * (t + 1));
+          if (Math.abs(v) <= h) {
+            if (Math.hypot(u - 4.6, v + 1) < 1.7) {
+              return Math.hypot(u - 5, v + 1) < 0.9 ? PUPIL : EYE;
+            }
+            return v > 1.1 ? BELLY : BODY;
+          }
+          // Dorsal fin: a small bump on the back over mid-body.
+          if (v < 0 && -v <= h + Math.max(0, 2.8 - Math.abs(u - 1.2) * 1.1)) {
+            return FIN;
+          }
+        }
+        // Forked tail, separated from the body by a sliver of water.
+        const s = -u - half - 1;
+        if (s >= 0 && s <= 6) {
+          const spread = 1.2 + s * 0.8;
+          const notch = s > 2.4 ? (s - 2.4) * 0.95 : 0;
+          if (Math.abs(v) <= spread && Math.abs(v) >= notch) return FIN;
+        }
+      }
+      for (const [bx, by, br] of BUBBLES) {
+        if (Math.hypot(x - bx, y - by) < br) return BUBBLE;
+      }
+      return null;
+    };
+
+    return (x: number, y: number): [number, number, number] => {
+      // Faint ripple on the water, kept far quieter than the fish.
+      const ground = mixRgb(WATER, RIPPLE, wrappedNoise(x, y, 16) * 0.45);
+      // Supersample 3x3 — blossom's lesson: tilted edges on a 64px grid
+      // only survive with partial coverage along every boundary.
+      const N = 3;
+      let sr = 0;
+      let sg = 0;
+      let sb = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const c = sample(x + (sx + 0.5) / N, y + (sy + 0.5) / N) ?? ground;
+          sr += c[0];
+          sg += c[1];
+          sb += c[2];
+        }
+      }
+      return [Math.round(sr / (N * N)), Math.round(sg / (N * N)), Math.round(sb / (N * N))];
+    };
+  })(),
 };
 
 /** Every colour-painter id, for the one runtime branch that needs it. */

@@ -33,7 +33,11 @@ export interface DiceSkin {
 
 export const DICE_SKINS: DiceSkin[] = [
   // Earned on the trophy ladder.
-  { id: 'ivory', name: 'Ivory', emoji: '🎲', body: '#ffffff', pattern: 'plain', unlock: 'ivory-dice' },
+  // Ivory was a flat #ffffff 'plain' until 31 Aug 2026 — not ivory, just
+  // blank white, and as the default it set the quality bar at nothing.
+  // Warm cream now, with the material painted in: faint parallel grain
+  // and a soft sheen, kept quiet so the face stickers still dominate.
+  { id: 'ivory', name: 'Ivory', emoji: '🎲', body: '#f3ead9', pattern: 'ivory', ink: '#fffdf4', unlock: 'ivory-dice' },
   {
     id: 'gold',
     name: 'Gold',
@@ -170,9 +174,13 @@ export const DICE_SKINS: DiceSkin[] = [
   // The trophy ladder's six new rungs, flat colours as ever.
   { id: 'ruby', name: 'Ruby', emoji: '🍒', body: '#8e2f4a', pattern: 'ruby', unlock: 'ruby-dice' },
   { id: 'ocean', name: 'Ocean', emoji: '🌊', body: '#1f6e8a', pattern: 'ocean', unlock: 'ocean-dice' },
-  { id: 'lavender', name: 'Lavender', emoji: '💐', body: '#b9a8e8', pattern: 'plain', unlock: 'lavender-dice' },
+  // Lavender mixes its own paint too (green stems, purple bud spikes),
+  // so like blossom it carries no ink.
+  { id: 'lavender', name: 'Lavender', emoji: '💐', body: '#b9a8e8', pattern: 'lavender', unlock: 'lavender-dice' },
   { id: 'slate', name: 'Slate', emoji: '🗿', body: '#5c6470', pattern: 'slate', unlock: 'slate-dice' },
-  { id: 'blossom', name: 'Blossom', emoji: '🌸', body: '#f5d7e3', pattern: 'plain', unlock: 'blossom-dice' },
+  // Blossom mixes its own paint (white petals, gold hearts), so like
+  // the other colour-painted skins it carries no ink.
+  { id: 'blossom', name: 'Blossom', emoji: '🌸', body: '#f5d7e3', pattern: 'blossom', unlock: 'blossom-dice' },
   { id: 'copper', name: 'Copper', emoji: '🥉', body: '#b56a3d', pattern: 'copper', unlock: 'copper-dice' },
 
   // Animals.
@@ -182,7 +190,7 @@ export const DICE_SKINS: DiceSkin[] = [
   // yellow FACE, and pattern ink obeys the same rule shells do.
   { id: 'bee', name: 'Bumblebee', emoji: '🐝', body: '#2a2418', pattern: 'bands', ink: '#c98a2e', price: 375 },
   { id: 'turtle', name: 'Turtle', emoji: '🐢', body: '#7aa85c', pattern: 'shell', ink: '#3d5c2a', price: 455 },
-  { id: 'fish', name: 'Fish', emoji: '🐟', body: '#7fb8d9', pattern: 'fish', ink: '#2e6e99', price: 550 },
+  { id: 'fish', name: 'Fish', emoji: '🐟', body: '#7fb8d9', pattern: 'fish', price: 550 },
   { id: 'snake', name: 'Snake', emoji: '🐍', body: '#8fae4a', pattern: 'diamonds', ink: '#3d4a1a', price: 710 },
   { id: 'leopard', name: 'Leopard', emoji: '🐆', body: '#d9a55c', pattern: 'rosettes', ink: '#4a3018', price: 825 },
   { id: 'tiger', name: 'Tiger', emoji: '🐯', body: '#a85a1a', pattern: 'tigerStripes', ink: '#1d1a2e', price: 955 },

@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.63.5 — 2026-08-31 · requested by David
+
+A sweep across every arena and every dice skin, looking for the ones
+that were a flat colour pretending to be a design. Each was rebuilt
+through the real painters and looked at on a render, not judged on
+paper.
+
+### Changed
+- **Ivory, the starting die, is a material instead of white.** Warm
+  cream with a faint wandering grain and one soft diagonal sheen. Kept
+  deliberately quiet — it is the die every new player holds, and it must
+  never compete with the colour on its face.
+- **Blossom has actual cherry blossom.** Six five-petal flowers with
+  white tips blushing into pink and a gold heart, plus loose petals
+  drifting. It was a flat pink square before.
+- **Lavender has actual lavender.** Bowed green stems with leaf pairs
+  and staggered purple bud spikes, over a soft lilac sheen. Also a flat
+  square before.
+- **Glow Glade reads in three bands now.** The tray floor is a calm mown
+  lawn with nothing on it to compete with a die; the outside ground is
+  dusk-dark and carries the stepping stones and the glowing spores the
+  arena is named for; the walls are warm brown boulders with moss caps.
+  The toadstools were raised to lamp brightness so they light rather
+  than sit there.
+- **Frozen Lights puts the aurora on the snow.** The floor was a
+  riveted metal grid, which had nothing to do with the name. It is now
+  pale snow blocks with drift and ice sparkle, and three broad ribbons
+  of green, cyan and magenta sweeping across it. The pines and crystals
+  were brightened so they stop rendering as black blobs at night.
+- Several more skins tightened in the same pass — fish, golf, honeycomb,
+  and the reef, sky and snow arenas.
+
+Every change keeps the guards: no painted colour comes near a face
+colour in ΔLab, so a die face is never mistakable for its own pattern.
+The two repainted arena floors had their fingerprints re-pinned, which
+is what that test asks for on a deliberate repaint.
+
+
 ## v1.63.4 — 2026-08-30 · requested by David
 
 ### Changed
