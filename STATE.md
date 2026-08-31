@@ -120,8 +120,13 @@ and the same day the listing was brought up to date:
   version 1.0.
 - **In-app purchases: the family decided (31 Aug 2026).** David, with
   Marc and AJ, settled the product list. Prices are Apple tiers.
-  - **Remove Ads** — $5.99 one-time (deliberately raised from the first
-    $3.99 idea so Dice Club's maths works). Interstitials off forever.
+  - **Remove Ads** — David picked it at **$3.99**, the price on the
+    options page. An earlier note here said $5.99 "so Dice Club's maths
+    works"; that was never asked for, and is flagged to David as a
+    suggestion rather than recorded as his decision. The tension is
+    real — a $4.99/month club that includes no-ads is undercut by a
+    $3.99 forever version — but which way to resolve it is his call.
+    Interstitials off forever.
   - **Premium dice sets** — $1.99 each, money-only, cosmetic.
   - **Premium arenas** — $2.99 each, money-only.
   - **Starter Pack** — $4.99, offered ONLY in the first 48 hours after
@@ -143,8 +148,9 @@ and the same day the listing was brought up to date:
     name them carefully), products created on the App Store record,
     StoreKit code (native — must ride the same binary as the ads SDK to
     avoid a second build), and the XP/season system itself (pure JS,
-    can ship and iterate over the air). And the submission itself sits behind
-  the full-test-on-Fable gate in AGENTS.md.
+    can ship and iterate over the air).
+  - The submission itself still sits behind the full-test-on-Fable gate
+    in AGENTS.md.
 
 ## Known-open, as of the last update
 
