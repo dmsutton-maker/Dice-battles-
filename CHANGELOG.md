@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.63.7 — 2026-09-02 · requested by David
+
+David asked for everything — icons, loading screens, all of it — to be
+in Paper & Ink. A sweep found three places that never got converted,
+all of them out of sight in normal play, which is why they survived.
+
+### Changed
+- **The crash screen is on paper.** It was still the old dark purple
+  with white text, which meant the one screen you see when something has
+  gone badly wrong was also the only screen that looked like a different
+  app. Warm paper, ink text, and the machine detail in a sunk well.
+- **Its 🎲💥 emoji is now a drawn mark** — a die with a crack through
+  it, built from Views, since rule one of the direction is that emoji
+  are content and never chrome. It deliberately does NOT import
+  `Icon.tsx`: this screen runs when module loading has already failed,
+  and `theme.ts` is a plain object with no imports of its own while
+  `Icon.tsx` is not.
+- **The bug report box is on paper**, using the real Card and button
+  kit rather than a hand-rolled panel. Its Send button had been in
+  PRISONER YELLOW — one of the six colours the game plays with, which
+  `theme.ts` says in as many words must never be reused in the
+  interface, because those colours are the game's signal.
+- **Launch no longer shows a third colour.** `app.json`'s root
+  background sat at #1b1430, left over from the theme before this one,
+  matching neither the ink splash in front of it nor the paper that
+  follows.
+
+### Fixed
+- **A tap inside the bug report could throw away what you typed.** The
+  panel lost its tap-swallowing wrapper during the conversion, so a near
+  miss on Send fell through to the backdrop and closed the report. Found
+  by a test, and the test was checked to genuinely fail without the fix
+  rather than trusted.
+
+Three of these were caught by looking rather than by reading: the first
+cracked die rendered as "/\", two separate strokes instead of one break,
+and an early version made the whole report panel depress like a giant
+button whenever you touched it — including while typing.
+
+
 ## v1.63.6 — 2026-08-31 · requested by David
 
 ### Changed

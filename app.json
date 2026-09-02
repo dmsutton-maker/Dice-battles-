@@ -2,7 +2,7 @@
   "expo": {
     "name": "Dice Battles: Color Rush",
     "slug": "dice-battles",
-    "backgroundColor": "#1b1430",
+    "backgroundColor": "#1d1a2e",
     "version": "1.60.0",
     "orientation": "portrait",
     "icon": "./assets/icon/light.png",

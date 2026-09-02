@@ -1457,6 +1457,23 @@ suite('screen · the launch does not flash', () => {
     );
   });
 
+  test('the root view behind everything is the same ink again', () => {
+    /*
+      app.json's own `backgroundColor` is the colour the OS paints behind
+      the app — visible for an instant on launch and behind any bounce at
+      the edge of a scroll. It sat at #1b1430, a dark purple left over
+      from the theme before Paper & Ink, which matched neither the ink
+      splash in front of it nor the paper ground that follows. Three
+      colours in the first second, one of them chosen by nobody.
+    */
+    const root = String(app.backgroundColor ?? '').toLowerCase();
+    assertEqual(
+      root,
+      THEME.ink.toLowerCase(),
+      'app.json backgroundColor is not THEME.ink, so launch shows a third colour',
+    );
+  });
+
   test('the splash does not still show Expo’s placeholder art', () => {
     // assets/splash-icon.png is the stock grid-and-circles image that
     // ships with a new Expo project. It was never replaced, and for a
@@ -1537,6 +1554,63 @@ suite('screen · a preview never shows the last arena', () => {
     assert(
       block.includes('pointerEvents="none"'),
       'the cover can swallow a tap while it is up',
+    );
+  });
+});
+
+suite('screen · no screen still wears the old dark theme', () => {
+  /**
+   * The Paper & Ink conversion (v1.32.0) went screen by screen, and two
+   * were missed because neither is reachable in normal play: the crash
+   * screen, and the bug report box. Both are exactly the moments where
+   * looking like a different app is worst — something has gone wrong and
+   * the player is deciding whether this game is trustworthy.
+   *
+   * The palette below is the old direction's, and none of it may come
+   * back. Checked as source text rather than by rendering, because these
+   * are stylesheets and a render would prove less, not more.
+   */
+  const OLD_THEME = [
+    '#1b1430', // the old ground
+    '#2c2450', // the old panel
+    '#241c40', // the old ink-on-yellow
+    '#ffb3b3', // the old error red
+  ];
+
+  for (const file of ['src/debug/CrashScreen.tsx', 'src/debug/BugReportModal.tsx']) {
+    test(`${file.split('/').pop()} is on paper, not the old purple`, () => {
+      const src = readFileSync(join(__dirname, '..', file), 'utf8');
+      for (const dead of OLD_THEME) {
+        assert(
+          !src.toLowerCase().includes(dead),
+          `${file} still uses ${dead}, a colour from the theme before Paper & Ink`,
+        );
+      }
+      assert(
+        /THEME\./.test(src),
+        `${file} takes no colour from the theme at all`,
+      );
+      // White text is the tell that a screen still assumes a dark ground.
+      assert(
+        !/color: '#ffffff'/.test(src),
+        `${file} still paints white text, which only reads on a dark ground`,
+      );
+    });
+  }
+
+  test('the crash screen uses no emoji as an icon', () => {
+    /*
+      Rule 1 of the direction: emoji are content (an arena, a cup, a
+      tier), never chrome. The crash screen's 🎲💥 was chrome — and it
+      is drawn from Views now, deliberately WITHOUT importing Icon.tsx,
+      since this screen runs when module loading has already failed.
+    */
+    const src = readFileSync(join(__dirname, '..', 'src/debug/CrashScreen.tsx'), 'utf8');
+    const emoji = src.match(/\p{Extended_Pictographic}/gu) ?? [];
+    assertEqual(emoji.length, 0, `the crash screen shows emoji: ${emoji.join(' ')}`);
+    assert(
+      !/from '\.\.\/ui\/Icon'/.test(src),
+      'the crash screen imports Icon.tsx, which it must not — see the note in that file',
     );
   });
 });

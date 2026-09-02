@@ -163,9 +163,27 @@ suite('layout · a bug report can be abandoned', () => {
 
   test('tapping inside the panel does NOT close it', () => {
     // Otherwise missing a button by a few points throws away what you typed.
+    //
+    // Checked as "a Pressable that does nothing wraps the panel" rather
+    // than as one exact line: the panel became a Card in the Paper & Ink
+    // pass, and the swallowing Pressable moved outside it. What matters
+    // is that the tap is caught, not how the catcher is spelled.
     assert(
-      /<Pressable style=\{styles\.panel\} onPress=\{\(\) => \{\}\}>/.test(report),
+      /<Pressable onPress=\{\(\) => \{\}\}>\s*<Card/.test(report),
       'the panel does not swallow taps, so a near-miss would discard the report',
+    );
+  });
+
+  test('the panel itself is not a giant button', () => {
+    /*
+      The Card must NOT take the swallowing onPress. Card renders a
+      pressed state — the face drops onto its own shadow — so a Card with
+      a do-nothing handler would press down every time you touched
+      anywhere inside the report, including while typing.
+    */
+    assert(
+      !/<Card[^>]*style=\{styles\.panel\}[^>]*onPress/.test(report),
+      'the report panel is a pressable Card, so it animates on every tap inside it',
     );
   });
 

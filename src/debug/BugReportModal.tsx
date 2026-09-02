@@ -12,6 +12,8 @@ import {
   View,
 } from 'react-native';
 import { sendBugReport } from './bugReport';
+import { Card, PrimaryButton, SecondaryButton } from '../ui/Card';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
 
 /**
  * The whole point of this screen is to make reporting a bug take under
@@ -85,10 +87,17 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           {/*
-            Swallows taps so pressing inside the panel — or missing a
-            button by a few points — does not close it.
+            Two layers on purpose. The Pressable swallows taps so that
+            pressing inside the panel — or missing a button by a few
+            points — does not close it and discard what you typed. The
+            Card is the panel itself and takes NO onPress, because Card
+            renders a pressed state: the face drops onto its own shadow,
+            so a Card with a do-nothing handler would visibly depress
+            every time you touched anywhere inside the report, including
+            while typing.
           */}
-          <Pressable style={styles.panel} onPress={() => {}}>
+          <Pressable onPress={() => {}}>
+            <Card style={styles.panel} radius={SHAPE.radiusLg}>
           <Text style={styles.title}>🐞 Report a Bug</Text>
           <Text style={styles.subtitle}>
             What happened? Your device and game version are attached
@@ -106,27 +115,26 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
                 value={message}
                 onChangeText={setMessage}
                 placeholder="The dice got stuck when…"
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholderTextColor={THEME.inkFaint}
                 multiline
                 maxLength={2000}
                 autoFocus
               />
               {result && <Text style={styles.errorText}>{result}</Text>}
-              <Pressable
-                style={[styles.sendButton, sending && styles.sendButtonBusy]}
-                onPress={send}
-                disabled={sending}
+              <PrimaryButton
+                onPress={sending ? undefined : send}
+                style={sending ? styles.sendBusy : undefined}
               >
                 {sending ? (
-                  <ActivityIndicator color="#241c40" />
+                  <ActivityIndicator color={THEME.onAccent} />
                 ) : (
                   <Text style={styles.sendButtonText}>Send</Text>
                 )}
-              </Pressable>
+              </PrimaryButton>
             </>
           )}
 
-          <Pressable
+          <SecondaryButton
             style={styles.closeButton}
             onPress={() => {
               Keyboard.dismiss();
@@ -137,7 +145,8 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
             <Text style={styles.closeButtonText}>
               {sent ? 'Done' : 'Cancel'}
             </Text>
-          </Pressable>
+          </SecondaryButton>
+            </Card>
           </Pressable>
         </KeyboardAvoidingView>
       </Pressable>
@@ -146,9 +155,11 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
 }
 
 const styles = StyleSheet.create({
+  // Ink at low opacity, not black: the dim behind a Paper & Ink panel is
+  // the same ink everything else is drawn in, just thinned.
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(10,8,24,0.75)',
+    backgroundColor: 'rgba(29,26,46,0.55)',
   },
   avoider: {
     flex: 1,
@@ -156,79 +167,67 @@ const styles = StyleSheet.create({
     paddingHorizontal: 26,
   },
   panel: {
-    backgroundColor: '#2c2450',
-    borderRadius: 22,
     padding: 22,
   },
   title: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: '900',
+    ...TYPE.heading,
+    color: THEME.ink,
     textAlign: 'center',
     marginBottom: 6,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 13,
-    fontWeight: '600',
+    ...TYPE.body,
+    color: THEME.inkSoft,
     textAlign: 'center',
     marginBottom: 16,
   },
+  // The one sunk surface on the panel, so the box you type in reads as a
+  // well cut into the card rather than another card on top of it.
   input: {
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    color: '#ffffff',
+    backgroundColor: THEME.sunk,
+    borderRadius: SHAPE.radiusSm,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    color: THEME.ink,
     fontSize: 15,
+    fontWeight: '600',
     padding: 14,
     minHeight: 110,
     textAlignVertical: 'top',
   },
   errorText: {
-    color: '#ffb3b3',
-    fontSize: 13,
-    fontWeight: '700',
+    ...TYPE.small,
+    color: THEME.bad,
     marginTop: 10,
     textAlign: 'center',
   },
-  sendButton: {
-    marginTop: 16,
-    backgroundColor: '#ffe521',
-    borderRadius: 20,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  sendButtonBusy: {
+  sendBusy: {
     opacity: 0.7,
   },
   sendButtonText: {
-    color: '#241c40',
-    fontSize: 16,
-    fontWeight: '900',
+    ...TYPE.cardTitle,
+    color: THEME.onAccent,
   },
+  // A gain, so it takes the good ink rather than a green of its own.
   sentBox: {
-    backgroundColor: 'rgba(51,204,107,0.16)',
-    borderWidth: 1,
-    borderColor: '#33cc6b',
-    borderRadius: 14,
+    backgroundColor: THEME.sunk,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.good,
+    borderRadius: SHAPE.radiusSm,
     padding: 16,
     marginBottom: 4,
   },
   sentText: {
-    color: '#ffffff',
+    ...TYPE.body,
     fontSize: 15,
-    fontWeight: '700',
+    color: THEME.ink,
     textAlign: 'center',
   },
   closeButton: {
     marginTop: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
   },
   closeButtonText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 14,
-    fontWeight: '700',
+    ...TYPE.body,
+    color: THEME.ink,
   },
 });
