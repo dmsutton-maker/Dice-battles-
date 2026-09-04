@@ -86,6 +86,8 @@ interface LeaderboardScreenProps {
   trophies: number;
   wins: Record<AiDifficultyId, number>;
   modeWins: Record<ModeId, number>;
+  /** Opens the Friends page. */
+  onFriends: () => void;
 }
 
 const DIFFICULTIES: { id: AiDifficultyId; label: string }[] = [
@@ -98,6 +100,7 @@ export function LeaderboardScreen({
   trophies,
   wins,
   modeWins,
+  onFriends,
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
   const totalWins = DIFFICULTIES.reduce((sum, d) => sum + wins[d.id], 0);
@@ -258,6 +261,16 @@ export function LeaderboardScreen({
               </Text>
             )}
             <View style={styles.gcButtons}>
+              {/*
+                Friends live here rather than in the tab bar. The bar is
+                five cells on purpose — seven left about 53pt each on a
+                small phone and five leave 75 — and a sixth would undo
+                that. Ranks is also where the rest of the social side
+                already is, so it is where somebody would look.
+              */}
+              <Pressable style={styles.gcButton} onPress={onFriends}>
+                <Text style={styles.gcButtonText}>Friends</Text>
+              </Pressable>
               <Pressable style={styles.gcButton} onPress={openLeaderboard}>
                 <Text style={styles.gcButtonText}>World ranking</Text>
               </Pressable>

@@ -1,5 +1,55 @@
 # Changelog
 
+## v1.64.0 — 2026-09-04 · requested by David
+
+David asked for "an account system and a friends system … view your
+friend's profiles and stuff". He chose "Game Center now, accounts
+later" once the trade-offs were laid out.
+
+### Added
+- **Friends, and a profile for each of them.** Find someone by their
+  friend code, ask to be friends, and once they say yes you can see
+  their trophies, their wins by difficulty and by game mode, how many
+  dice sets and battlefields they have, and their favourite of each.
+  It lives on the Ranks page rather than in the tab bar — five tabs is
+  a deliberate size, and a sixth would squeeze every label.
+- **A friend code instead of a search box.** Eight characters in
+  Crockford base32, so there is no 1/I and no 0/O and a five-year-old
+  can read one down the phone. O, I, L and U are accepted and corrected
+  when typed. There is NO directory and no "people you may know": a
+  child cannot be found by anybody who was not handed their code.
+
+### Why there is no sign-up
+- **No email, no password, no age, no free text anywhere.** This game
+  is rated 4+ and AGENTS.md says it collects nothing; the App Privacy
+  answers already filed with Apple are true only while that holds. A
+  sign-up would need a verifiable parental consent flow under COPPA,
+  a re-filing, and probably a higher age rating — against a studio that
+  is not yet a company, so the liability would be David's personally.
+- **Identity comes from Game Center**, which already holds it, already
+  has the parent's consent, and moderates the alias — which is why
+  there is no username for a child to invent and nobody to moderate it.
+  A player with no Game Center (Android, signed out, an older build)
+  still gets a profile and a code, kept on the device, and the screen
+  says so rather than hiding it.
+- **A block is quiet.** The blocked player is told nothing, sees no
+  change, and a further request is answered as though it succeeded —
+  because any other answer is a way to detect a block, which is the
+  confrontation a block exists to avoid.
+- **A stranger sees a name and a trophy count.** Never the collection,
+  never the friend code. The trimming happens on the SERVER, because
+  the app runs on somebody else's phone.
+
+### Behind the scenes
+- The rules exist twice on purpose — in the app so a button can grey out
+  without a round trip, and on the server, which is the copy that
+  decides. A test reads both files and fails if they drift, and it was
+  checked to actually fail rather than trusted.
+- Each device holds a secret the player never sees, sent with every
+  write so nobody can edit another player's profile. Only its SHA-256 is
+  stored. It is also the credential a real account upgrades from.
+
+
 ## v1.63.7 — 2026-09-02 · requested by David
 
 David asked for everything — icons, loading screens, all of it — to be

@@ -33,6 +33,18 @@ interface NativeGameCenter {
   reportAchievement(achievementID: string, percentComplete: number): Promise<boolean>;
   presentLeaderboard(leaderboardID: string): Promise<void>;
   presentAchievements(): Promise<void>;
+  /**
+   * Optional on purpose. It exists in expo-game-center 1.0.1, but a
+   * binary built before this line was written contains whatever version
+   * was current then, and JavaScript ships over the air to those. So it
+   * is declared as possibly-absent and every caller checks — the same
+   * discipline the ad SDK note in AGENTS.md exists to enforce.
+   */
+  getLocalPlayer?(): Promise<{
+    playerID: string;
+    displayName: string;
+    alias: string;
+  } | null>;
 }
 
 let native: NativeGameCenter | null | undefined;
@@ -207,4 +219,37 @@ export function setNativeForTests(fake: NativeGameCenter | null): void {
   signedIn = false;
   signingIn = null;
   sent.clear();
+}
+
+/**
+ * Who Apple says this player is, or null.
+ *
+ * Null for every ordinary reason — Android, a simulator with no Apple
+ * account, a player signed out of Game Center, a binary whose bundled
+ * expo-game-center predates `getLocalPlayer` — and the caller must treat
+ * all of those the same way. See playerIdentity.ts, which does.
+ *
+ * The alias is the name a player chose in Game Center and Apple
+ * moderates. Using it rather than asking for a name is the reason this
+ * game still has no free-text field anywhere.
+ */
+export async function localPlayer(): Promise<
+  { playerId: string; name: string } | null
+> {
+  const gc = moduleOrNull();
+  if (!gc || typeof gc.getLocalPlayer !== 'function') return null;
+  try {
+    if (!(await signIn())) return null;
+    const player = await gc.getLocalPlayer();
+    if (!player || typeof player.playerID !== 'string' || !player.playerID) {
+      return null;
+    }
+    const name =
+      (typeof player.alias === 'string' && player.alias.trim()) ||
+      (typeof player.displayName === 'string' && player.displayName.trim()) ||
+      '';
+    return { playerId: player.playerID, name };
+  } catch {
+    return null;
+  }
 }

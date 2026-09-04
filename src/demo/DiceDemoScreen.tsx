@@ -111,6 +111,8 @@ import { DEFAULT_SKIN_ID, skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
+import { FriendsScreen } from './FriendsScreen';
+import { Identity, loadIdentity } from '../game/playerIdentity';
 import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
 import { VolumeSlider } from './VolumeSlider';
@@ -223,6 +225,28 @@ export function DiceDemoScreen() {
   const [twoPlayer, setTwoPlayer] = useState(false);
   const [loadout, setLoadout] = useState(getLoadout());
   const [tab, setTab] = useState<Tab>('play');
+  const [showFriends, setShowFriends] = useState(false);
+  /*
+    Who this player is, for the Friends page. Read once on mount and
+    never awaited by anything that draws: loadIdentity talks to Game
+    Center, which shows a system sheet the first time, and a menu that
+    waited on that would appear to hang.
+  */
+  const [me, setMe] = useState<Identity | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadIdentity()
+      .then((identity) => {
+        if (alive) setMe(identity);
+      })
+      .catch(() => {
+        // loadIdentity never rejects, but a caller assuming that is how
+        // an unhandled rejection gets shipped.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
   /*
     Settings and News open OVER whatever you were doing rather than
     replacing it, so they are their own bit of state — not a sixth and
@@ -1583,8 +1607,19 @@ export function DiceDemoScreen() {
           trophies={trophies}
           wins={wins}
           modeWins={modeWins}
+          onFriends={() => {
+            playClick();
+            setShowFriends(true);
+          }}
         />
       )}
+      {/*
+        Friends sits OVER the Ranks page rather than being a tab of its
+        own: the bar is five cells on purpose and a sixth would squeeze
+        every label. It draws only once an identity has been read, so
+        the screen never flashes an empty friend code.
+      */}
+      {showFriends && me && <FriendsScreen me={me} onClose={() => setShowFriends(false)} />}
       {menuTab === 'inventory' && preview === null && (
         <InventoryScreen
           trophies={trophies}
