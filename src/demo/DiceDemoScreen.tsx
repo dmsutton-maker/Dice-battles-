@@ -24,6 +24,7 @@ import {
   ARENA_UNLOCKS,
   equipArena,
   equipSkin,
+  ARENA_ORDER,
   isArenaUnlocked,
   isSkinUnlocked,
   getLoadout,
@@ -112,6 +113,7 @@ import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
 import { FriendsScreen } from './FriendsScreen';
+import { DICE_SKINS } from '../game/diceSkins';
 import { Identity, loadIdentity } from '../game/playerIdentity';
 import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
@@ -1619,7 +1621,24 @@ export function DiceDemoScreen() {
         every label. It draws only once an identity has been read, so
         the screen never flashes an empty friend code.
       */}
-      {showFriends && me && <FriendsScreen me={me} onClose={() => setShowFriends(false)} />}
+      {showFriends && me && (
+        <FriendsScreen
+          me={me}
+          stats={{
+            trophies,
+            wins,
+            modeWins,
+            // COUNTS, never lists. A friend seeing "22 dice sets" is the
+            // interesting fact; sending which 22 would be a bigger
+            // payload saying less.
+            diceOwned: DICE_SKINS.filter((s) => isSkinUnlocked(s.id, trophies)).length,
+            arenasOwned: ARENA_ORDER.filter((id) => isArenaUnlocked(id, trophies)).length,
+            favouriteDie: loadout.skinId,
+            favouriteArena: loadout.arenaId,
+          }}
+          onClose={() => setShowFriends(false)}
+        />
+      )}
       {menuTab === 'inventory' && preview === null && (
         <InventoryScreen
           trophies={trophies}

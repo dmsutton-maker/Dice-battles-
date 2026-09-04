@@ -26,6 +26,7 @@ import {
   fetchFriends,
   findByCode,
   ProfilePeek,
+  pushProfile,
 } from '../game/friendsApi';
 
 /**
@@ -47,7 +48,19 @@ import {
 
 type Page = 'list' | 'profile';
 
-export function FriendsScreen({ me, onClose }: { me: Identity; onClose: () => void }) {
+/** Everything a profile shows about me. Gathered by the caller, which
+ *  is the screen that already holds the game's state. */
+export type MyStats = Parameters<typeof pushProfile>[1];
+
+export function FriendsScreen({
+  me,
+  stats,
+  onClose,
+}: {
+  me: Identity;
+  stats: MyStats;
+  onClose: () => void;
+}) {
   const [list, setList] = useState<FriendList>(EMPTY_LIST);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
@@ -60,6 +73,16 @@ export function FriendsScreen({ me, onClose }: { me: Identity; onClose: () => vo
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    /*
+      Publish MY profile before reading anyone else's, every time.
+      Two reasons, and the first is not optional: the friends endpoint
+      only knows players who exist, so without this the very first visit
+      would be answered "no such player" and the screen would show an
+      error to somebody who had done nothing wrong. The second is that
+      it keeps a friend's view of my trophies fresh without needing a
+      separate sync anywhere else in the game.
+    */
+    await pushProfile(me, stats);
     const result = await fetchFriends(me);
     if (result.ok) {
       setList(result.list);
@@ -68,7 +91,7 @@ export function FriendsScreen({ me, onClose }: { me: Identity; onClose: () => vo
       setProblem(result.error);
     }
     setLoading(false);
-  }, [me]);
+  }, [me, stats]);
 
   useEffect(() => {
     void refresh();
