@@ -1,26 +1,69 @@
 {
   "expo": {
-    "name": "Dice Battles",
+    "name": "Dice Battles: Color Rush",
     "slug": "dice-battles",
-    "backgroundColor": "#1b1430",
-    "version": "1.0.0",
+    "backgroundColor": "#1d1a2e",
+    "version": "1.60.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon/light.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": {
+        "light": "./assets/icon/light.png",
+        "dark": "./assets/icon/dark.png",
+        "tinted": "./assets/icon/tinted.png"
+      },
+      "bundleIdentifier": "com.dmsutton.dicebattles",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.game-center": true
+      }
     },
     "android": {
+      "package": "com.dmsutton.dicebattles",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#fdf6ec",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f5fb40f0-cb76-4fce-8094-1be129db1576"
+      }
+    },
+    "owner": "dmsutton",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1d1a2e",
+          "image": "./assets/paper-ship-mark.png",
+          "imageWidth": 150
+        }
+      ],
+      "expo-audio",
+      "expo-asset",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-5310885665976703~4644888759",
+          "androidAppId": "ca-app-pub-5310885665976703~4644888759"
+        }
+      ]
+    ]
   }
 }

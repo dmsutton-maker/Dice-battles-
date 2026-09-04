@@ -3,26 +3,41 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-three/fiber": "^9.7.0",
     "cannon-es": "^0.20.0",
-    "expo": "~57.0.13",
-    "expo-gl": "~57.0.2",
-    "expo-haptics": "~57.0.1",
-    "expo-status-bar": "~57.0.1",
-    "react": "19.2.3",
-    "react-native": "0.86.2",
+    "expo": "~54.0.37",
+    "expo-asset": "~12.0.13",
+    "expo-audio": "~1.1.1",
+    "expo-constants": "~18.0.14",
+    "expo-file-system": "~19.0.24",
+    "expo-game-center": "^1.0.1",
+    "expo-gl": "~16.0.10",
+    "expo-haptics": "~15.0.8",
+    "expo-splash-screen": "~31.0.13",
+    "expo-status-bar": "~3.0.9",
+    "expo-updates": "~29.0.20",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-google-mobile-ads": "^16.5.0",
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@types/react": "~19.2.2",
-    "@types/three": "^0.185.4",
-    "typescript": "~6.0.3"
+    "@types/react": "~19.1.0",
+    "@types/three": "^0.185.0",
+    "tsx": "^4.23.12",
+    "typescript": "~5.9.2",
+    "yoga-layout": "^3.2.1"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "tsx tests/run.ts",
+    "typecheck": "tsc --noEmit",
+    "bundle": "expo export --platform ios --output-dir /tmp/dice-battles-bundle-check",
+    "check": "npm run typecheck && npm test"
   },
   "private": true
 }

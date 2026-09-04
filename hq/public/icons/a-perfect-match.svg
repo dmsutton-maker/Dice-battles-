@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Two dice showing the same red face">
+  <title>Perfect Match</title>
+  <defs>
+    <linearGradient id="a-bg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#3b2d72"/>
+      <stop offset="1" stop-color="#150f2a"/>
+    </linearGradient>
+    <radialGradient id="a-glow" cx="0.5" cy="0.46" r="0.55">
+      <stop offset="0" stop-color="#cc2533" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#cc2533" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="a-shell" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#fffdf7"/>
+      <stop offset="1" stop-color="#d9d1bf"/>
+    </linearGradient>
+    <linearGradient id="a-face" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#e8394a"/>
+      <stop offset="1" stop-color="#b41c2a"/>
+    </linearGradient>
+    <filter id="a-drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="26" stdDeviation="26" flood-color="#05030f" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#a-bg)"/>
+  <rect width="1024" height="1024" fill="url(#a-glow)"/>
+
+  <!-- Left die, tipped away from its partner. -->
+  <g transform="rotate(-9 300 545)" filter="url(#a-drop)">
+    <rect x="112" y="357" width="376" height="376" rx="74" fill="url(#a-shell)"/>
+    <rect x="176" y="421" width="248" height="248" rx="48" fill="url(#a-face)"/>
+    <rect x="176" y="421" width="248" height="112" rx="46" fill="#ffffff" opacity="0.16"/>
+  </g>
+
+  <!-- Right die, the matching one. -->
+  <g transform="rotate(8 724 495)" filter="url(#a-drop)">
+    <rect x="536" y="307" width="376" height="376" rx="74" fill="url(#a-shell)"/>
+    <rect x="600" y="371" width="248" height="248" rx="48" fill="url(#a-face)"/>
+    <rect x="600" y="371" width="248" height="112" rx="46" fill="#ffffff" opacity="0.16"/>
+  </g>
+
+  <!-- The six colours of the game, along the bottom: the thing being raced for. -->
+  <g>
+    <rect x="243" y="838" width="88" height="26" rx="13" fill="#cc2533"/>
+    <rect x="345" y="838" width="88" height="26" rx="13" fill="#fc8403"/>
+    <rect x="447" y="838" width="88" height="26" rx="13" fill="#ffe521"/>
+    <rect x="549" y="838" width="88" height="26" rx="13" fill="#33cc6b"/>
+    <rect x="651" y="838" width="88" height="26" rx="13" fill="#043fe0"/>
+    <rect x="753" y="838" width="88" height="26" rx="13" fill="#cc79fc"/>
+  </g>
+</svg>

@@ -1,0 +1,909 @@
+import React from 'react';
+import { View } from 'react-native';
+import { PRISONER_COLORS } from '../game/colors';
+import { ICON, THEME } from './theme';
+
+/**
+ * The icon set, drawn rather than typed.
+ *
+ * Emoji used as icons was the single loudest reason the interface read as
+ * a game from 2010 — 🛒 🎒 ⚔️ 🏆 🏅 along the bottom bar. They also render
+ * differently on every platform and version, so the game could not even be
+ * sure what its own navigation looked like. The same argument already won
+ * once here: GoldCoin.tsx exists because 🪙 is silver on some phones.
+ *
+ * These are Views, not SVG. `react-native-svg` is a NATIVE module, and
+ * adding one means a new build — which is exactly what is blocked. Views
+ * cost nothing, ship over the air, and geometric icons are mostly rounded
+ * rectangles and circles anyway.
+ *
+ * Every icon is drawn inside a `size` box on the same optical weight, so a
+ * row of them looks like one family rather than five borrowed pictures.
+ */
+
+interface IconProps {
+  size?: number;
+  /** The ink outline. Every icon keeps one, whatever it is filled with. */
+  color?: string;
+  /**
+   * The fill under the outline. Each icon defaults to its own object
+   * colour (see ICON in theme.ts); pass 'transparent' for a line-only
+   * version — which is what the launch card does, drawing on ink.
+   */
+  fill?: string;
+}
+
+/**
+ * A prisoner colour by name, straight from the game's palette.
+ *
+ * Every icon that carries a game colour reads it from here rather than
+ * keeping a copy, for the same reason the die icon always did: a second
+ * palette drifts, and then the menu is showing a colour the board does
+ * not have. Falls back to ink so a mistyped id draws a visible shape
+ * instead of nothing at all.
+ */
+const hex = (id: string) =>
+  PRISONER_COLORS.find((c) => c.id === id)?.hex ?? THEME.ink;
+
+/** The stroke weight every icon shares, scaled to its box. */
+const w = (size: number) => Math.max(1.5, Math.round(size * 0.095));
+
+/** A bag with a handle — the Store. */
+export function BagIcon({ size = 22, color = THEME.ink, fill = ICON.leather }: IconProps) {
+  const s = w(size);
+  const bodyTop = size * 0.34;
+  return (
+    <View style={{ width: size, height: size }}>
+      {/* The handle: a circle whose bottom half is hidden behind the bag. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.3,
+          top: size * 0.12,
+          width: size * 0.4,
+          height: size * 0.4,
+          borderRadius: size * 0.2,
+          borderWidth: s,
+          borderColor: color,
+        }}
+      />
+      {/* The bag itself, drawn over the handle's lower half. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.11,
+          top: bodyTop,
+          right: size * 0.11,
+          bottom: size * 0.08,
+          borderRadius: size * 0.13,
+          borderWidth: s,
+          borderColor: color,
+          backgroundColor: fill,
+        }}
+      />
+      {/* Masks the handle where it passes behind the bag's top edge. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.24,
+          top: bodyTop - s,
+          width: size * 0.52,
+          height: s * 1.6,
+          backgroundColor: 'transparent',
+        }}
+      />
+    </View>
+  );
+}
+
+/** A crate — the Inventory. */
+export function CrateIcon({ size = 22, color = THEME.ink, fill = ICON.wood }: IconProps) {
+  const s = w(size);
+  return (
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.1,
+          top: size * 0.16,
+          right: size * 0.1,
+          bottom: size * 0.16,
+          borderRadius: size * 0.11,
+          borderWidth: s,
+          borderColor: color,
+          backgroundColor: fill,
+        }}
+      />
+      {/* The lid seam, which is what stops it reading as a plain square. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.1,
+          top: size * 0.38,
+          right: size * 0.1,
+          height: s,
+          backgroundColor: color,
+        }}
+      />
+      {/* The clasp. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.42,
+          top: size * 0.44,
+          width: size * 0.16,
+          height: size * 0.16,
+          borderRadius: size * 0.04,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * A die — Battle. The game's own object, so it needs no metaphor.
+ *
+ * The three pips wear the game's REAL prisoner colours, read straight
+ * from src/game/colors.ts rather than copied into the palette. A game
+ * whose whole idea is "match the colours" should say so on the tab that
+ * starts a battle, and reading the true source means the icon cannot
+ * drift away from what the dice actually show.
+ */
+export function DieIcon({
+  size = 22,
+  color = THEME.ink,
+  fill = THEME.surface,
+}: IconProps) {
+  const s = w(size);
+  const pip = size * 0.15;
+  const at = (left: number, top: number, hex: string) => (
+    <View
+      key={hex}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * top,
+        width: pip,
+        height: pip,
+        borderRadius: pip / 2,
+        backgroundColor: hex,
+      }}
+    />
+  );
+  // Red, green and blue: the three furthest apart in the palette, so they
+  // stay tellable from each other down at 11pt.
+  return (
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.12,
+          top: size * 0.12,
+          right: size * 0.12,
+          bottom: size * 0.12,
+          borderRadius: size * 0.22,
+          borderWidth: s,
+          borderColor: color,
+          backgroundColor: fill,
+        }}
+      />
+      {at(0.25, 0.25, hex('red'))}
+      {at(0.425, 0.425, hex('green'))}
+      {at(0.6, 0.6, hex('blue'))}
+    </View>
+  );
+}
+
+/**
+ * A trophy cup — the TROPHY COUNT, everywhere it appears: the HUD, the
+ * Inventory header, the ladder prices, the Ranks screen.
+ *
+ * MOSTLY GOLD, thinly outlined. The first version outlined every part in
+ * ink and filled only the bowl, which at 15pt came out as a dark blob
+ * with a gold speck in it — and the Cups tab, drawn the same way, came
+ * out as the SAME dark blob. David said twice they still looked
+ * identical. They did. Making the cup, stem and foot all gold under one
+ * thin outline is what turns it back into a recognisable trophy at the
+ * size it is actually used.
+ */
+export function TrophyIcon({
+  size = 22,
+  color = THEME.ink,
+  fill = THEME.gold,
+}: IconProps) {
+  const s = w(size) * 0.85;
+  return (
+    <View style={{ width: size, height: size }}>
+      {/* Handles first, so the bowl is drawn over where they meet it. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.05,
+          top: size * 0.17,
+          width: size * 0.25,
+          height: size * 0.26,
+          borderRadius: size * 0.13,
+          borderWidth: s,
+          borderColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          right: size * 0.05,
+          top: size * 0.17,
+          width: size * 0.25,
+          height: size * 0.26,
+          borderRadius: size * 0.13,
+          borderWidth: s,
+          borderColor: color,
+        }}
+      />
+      {/* Foot and stem, gold like the bowl — an ink stem was half the blob. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.26,
+          top: size * 0.76,
+          width: size * 0.48,
+          height: size * 0.15,
+          borderRadius: size * 0.06,
+          backgroundColor: fill,
+          borderWidth: s,
+          borderColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.42,
+          top: size * 0.54,
+          width: size * 0.16,
+          height: size * 0.26,
+          backgroundColor: fill,
+          borderLeftWidth: s,
+          borderRightWidth: s,
+          borderColor: color,
+        }}
+      />
+      {/* The bowl: square shoulders, deeply rounded underneath. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.2,
+          top: size * 0.11,
+          width: size * 0.6,
+          height: size * 0.47,
+          backgroundColor: fill,
+          borderWidth: s,
+          borderColor: color,
+          borderTopLeftRadius: size * 0.06,
+          borderTopRightRadius: size * 0.06,
+          borderBottomLeftRadius: size * 0.3,
+          borderBottomRightRadius: size * 0.3,
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * A knockout BRACKET — the Cups tab.
+ *
+ * Cups was a trophy, then a medal, and David said both times that it
+ * still looked the same as the trophy count. He was right both times:
+ * rendering the two at their real 21pt showed a compact gold-and-ink
+ * lozenge either way, because a cup and a medal are both "round object,
+ * outlined, centred" once they are 21 pixels wide.
+ *
+ * So this is not another award. It is the shape of the thing the tab
+ * actually opens: two contenders feeding into one line, and a champion
+ * at the end of it. Wide where a cup is tall, open where a cup is solid,
+ * lines where a cup is a mass — nothing about it can be mistaken for a
+ * trophy at any size, which is the entire requirement.
+ *
+ * ALL ONE INK. The champion used to be a gold disc, and David asked on
+ * 25 Aug 2026 for it to be black and white like the rest of the bar. It
+ * was the odd one out: a diagram is not an object, so it has no material
+ * to be the colour OF — the leather of the bag and the wood of the crate
+ * are things, and a bracket is a drawing of a fixture list. It also put
+ * a third gold spot on a screen that already has the coin and the trophy.
+ *
+ * `fill` therefore defaults to `color` rather than to a colour of its
+ * own, so the icon is still one instruction away from being drawn on a
+ * dark ground, and there is no second colour to keep in step.
+ */
+export function BracketIcon({
+  size = 22,
+  color = THEME.ink,
+  fill = color,
+}: IconProps) {
+  const s = Math.max(1.5, w(size) * 0.9);
+  const xIn = size * 0.14;
+  const xJoin = size * 0.5;
+  const xOut = size * 0.78;
+  const yTop = size * 0.2;
+  const yBottom = size * 0.8;
+  // 0.21, not the 0.24 the ring used. A ring's weight is its outline; a
+  // solid disc of the same diameter reads a step heavier, and at 21pt
+  // 0.24 turned the champion into a blob on the end of the line.
+  const dot = size * 0.21;
+
+  const across = (y: number, from: number, to: number) => (
+    <View
+      key={`${y}-${from}`}
+      style={{
+        position: 'absolute',
+        left: from,
+        top: y - s / 2,
+        width: to - from,
+        height: s,
+        borderRadius: s / 2,
+        backgroundColor: color,
+      }}
+    />
+  );
+
+  return (
+    <View style={{ width: size, height: size }}>
+      {/* The two contenders. */}
+      {across(yTop, xIn, xJoin)}
+      {across(yBottom, xIn, xJoin)}
+      {/* The joiner they meet on. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: xJoin - s / 2,
+          top: yTop,
+          width: s,
+          height: yBottom - yTop,
+          borderRadius: s / 2,
+          backgroundColor: color,
+        }}
+      />
+      {/* The winner's line out to the final. */}
+      {across(size * 0.5, xJoin, xOut)}
+      {/* The champion. A solid disc now: the ring existed to hold gold
+          in, and with nothing to hold it would only read as a smudge at
+          21pt. Same outer size, so the balance of the drawing is kept. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: xOut - dot * 0.3,
+          top: size * 0.5 - dot / 2,
+          width: dot,
+          height: dot,
+          borderRadius: dot / 2,
+          backgroundColor: fill,
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Three bars — Ranks.
+ *
+ * Coloured by HEIGHT rather than by position: the tallest bar is gold,
+ * the middle one silver, the shortest bronze. That is what a ranking IS,
+ * so the icon now says the same thing its screen does instead of being
+ * three anonymous strokes.
+ */
+export function RanksIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const bar = (left: number, top: number, tint: string) => (
+    <View
+      key={left}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * top,
+        bottom: size * 0.14,
+        width: s * 1.6,
+        borderRadius: s * 0.6,
+        backgroundColor: tint,
+        borderWidth: s * 0.55,
+        borderColor: color,
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {bar(0.14, 0.52, ICON.bronze)}
+      {bar(0.42, 0.18, THEME.gold)}
+      {bar(0.7, 0.38, ICON.silver)}
+    </View>
+  );
+}
+
+/** A gear — Settings. */
+export function GearIcon({ size = 22, color = THEME.ink, fill = ICON.steel }: IconProps) {
+  const s = w(size);
+  const teeth = [0, 45, 90, 135];
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {teeth.map((deg) => (
+        <View
+          key={deg}
+          style={{
+            position: 'absolute',
+            width: s * 1.3,
+            height: size * 0.86,
+            borderRadius: s,
+            backgroundColor: color,
+            transform: [{ rotate: `${deg}deg` }],
+          }}
+        />
+      ))}
+      {/* The hub, painted over the tooth ends so they read as spokes. */}
+      <View
+        style={{
+          position: 'absolute',
+          width: size * 0.56,
+          height: size * 0.56,
+          borderRadius: size * 0.28,
+          backgroundColor: fill,
+          borderWidth: s * 0.7,
+          borderColor: color,
+        }}
+      />
+      {/* The hole. Ground-coloured, because a View cannot punch a hole. */}
+      <View
+        style={{
+          position: 'absolute',
+          width: size * 0.26,
+          height: size * 0.26,
+          borderRadius: size * 0.13,
+          backgroundColor: THEME.surface,
+        }}
+      />
+    </View>
+  );
+}
+
+/** A question mark — How to play. */
+export function HelpIcon({ size = 22, color = THEME.ink, fill = ICON.info }: IconProps) {
+  const s = w(size);
+  // A filled disc carries a reversed mark; an unfilled one keeps ink.
+  const mark = fill === 'transparent' ? color : ICON.onFill;
+  return (
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.08,
+          top: size * 0.08,
+          right: size * 0.08,
+          bottom: size * 0.08,
+          borderRadius: size * 0.46,
+          borderWidth: s,
+          borderColor: color,
+          backgroundColor: fill,
+        }}
+      />
+      {/*
+        The question mark, REVERSED OUT of the disc rather than drawn in
+        ink. Ink on this blue measured 2.77:1 — the mark that matters most
+        would have been the hardest thing to see on it.
+      */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.32,
+          top: size * 0.24,
+          width: size * 0.36,
+          height: size * 0.3,
+          borderWidth: s,
+          borderColor: mark,
+          borderRadius: size * 0.18,
+          borderBottomColor: 'transparent',
+          borderLeftColor: 'transparent',
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.5 - s * 0.65,
+          top: size * 0.48,
+          width: s * 1.3,
+          height: size * 0.14,
+          backgroundColor: mark,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.5 - s * 0.8,
+          top: size * 0.68,
+          width: s * 1.6,
+          height: s * 1.6,
+          borderRadius: s,
+          backgroundColor: mark,
+        }}
+      />
+    </View>
+  );
+}
+
+/** A newspaper — News: a page with a front-page block and text lines. */
+export function NewsIcon({ size = 22, color = THEME.ink, fill = THEME.surface }: IconProps) {
+  const s = w(size);
+  const line = (top: number, left: number, rightInset: number) => (
+    <View
+      key={`${top}-${left}`}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * top,
+        right: size * rightInset,
+        height: s * 0.9,
+        borderRadius: s,
+        backgroundColor: color,
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.12,
+          top: size * 0.14,
+          right: size * 0.12,
+          bottom: size * 0.14,
+          borderRadius: size * 0.11,
+          borderWidth: s,
+          borderColor: color,
+          backgroundColor: fill,
+        }}
+      />
+      {/* The front-page photo: the one splash of colour on the page. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.26,
+          top: size * 0.28,
+          width: size * 0.22,
+          height: size * 0.2,
+          borderRadius: s * 0.8,
+          backgroundColor: ICON.leather,
+        }}
+      />
+      {line(0.29, 0.56, 0.26)}
+      {line(0.4, 0.56, 0.26)}
+      {line(0.58, 0.26, 0.26)}
+      {line(0.69, 0.26, 0.34)}
+    </View>
+  );
+}
+
+/**
+ * THE FOUR GAME MODES.
+ *
+ * These are drawings of the EMOJI the modes used to wear — ⚔️ 🔁 🤼 🎯 —
+ * in the Paper & Ink style. That is the second design, and the first one
+ * is worth recording because it was reasonable and wrong: it drew each
+ * mode's RULE (a matching pair, a returning arrow, two arrows on one
+ * prisoner, a divided field), and David asked for them to "look very
+ * similar to the original emojis so they're easily identifiable". The
+ * family had weeks of knowing ⚔️ meant Color Rush; an icon system that
+ * discards learned recognition to be cleverer about semantics makes the
+ * picker HARDER to use, not easier. The emoji shapes were already four
+ * different kinds of picture, so nothing is lost on the Cups lesson.
+ *
+ *   BLUE fills stay banned (the ink outline reads 2.25:1 on blue and the
+ *   drawing dissolves), and nothing is filled YELLOW because the selected
+ *   chip is gold (1.14:1, same hue — a yellow fill reads as a hole in the
+ *   chip). The target's gold centre ring is the one deliberate exception:
+ *   it sits inside a red disc, not on the chip.
+ */
+
+/** Color Rush — ⚔️, two swords crossed. */
+export function RushIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const sword = (flip: boolean) => (
+    <View
+      key={String(flip)}
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: size,
+        height: size,
+        transform: [{ rotate: flip ? '-45deg' : '45deg' }],
+      }}
+    >
+      {/* Blade: silver, edge-outlined, tapering look from a rounded tip. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.5 - s * 0.55,
+          top: size * 0.04,
+          width: s * 1.1,
+          height: size * 0.6,
+          borderRadius: s * 0.55,
+          backgroundColor: ICON.silver,
+          borderWidth: s * 0.35,
+          borderColor: color,
+        }}
+      />
+      {/* Crossguard. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.5 - size * 0.14,
+          top: size * 0.62,
+          width: size * 0.28,
+          height: s * 0.9,
+          borderRadius: s,
+          backgroundColor: color,
+        }}
+      />
+      {/* Grip. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.5 - s * 0.5,
+          top: size * 0.66,
+          width: s,
+          height: size * 0.26,
+          borderRadius: s * 0.5,
+          backgroundColor: ICON.leather,
+          borderWidth: s * 0.3,
+          borderColor: color,
+        }}
+      />
+    </View>
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {sword(false)}
+      {sword(true)}
+    </View>
+  );
+}
+
+/**
+ * Ultimate — 🔁, the repeat loop.
+ *
+ * A CLOSED rounded-rectangle loop with an arrowhead on the top-right and
+ * another on the bottom-left, which is what the emoji actually is: a
+ * rectangle of two arrows chasing each other, not a circle.
+ *
+ * The first attempt made the loop a circle and cut gaps in it by setting
+ * `borderLeftColor` and `borderRightColor` to transparent. That does not
+ * do what it reads as. A rounded box's four border SIDES each own one
+ * 90° quadrant, mitred at the diagonals — so transparent left and right
+ * leave two stubby 90° arcs at the TOP and BOTTOM, with the heads
+ * floating off them. (My check drew the arcs on the left and right, so
+ * the picture I approved was not the picture the code makes. Rendering
+ * only helps if the render obeys the same rules as the renderer.)
+ *
+ * Nothing here relies on border-side transparency now. A closed ring and
+ * two triangles are the same shape at every size, on every platform, and
+ * can be reasoned about from the numbers alone.
+ */
+export function UltimateIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const stroke = s * 0.9;
+  // The centre lines of the loop's top and bottom runs, so a head sits
+  // exactly ON one rather than near it.
+  const topLine = size * 0.19 + stroke / 2;
+  const bottomLine = size * 0.81 - stroke / 2;
+
+  /*
+    THIRD attempt at these arrowheads. Both earlier ones failed on the
+    same part and David said so both times.
+
+    The first made the loop's gaps by setting the left and right border
+    colours of a ROUNDED box to transparent — not knowing that each of a
+    rounded box's four border sides owns one 90-degree quadrant and is
+    mitred at the diagonals, so clearing the sides left the top and
+    bottom quadrants behind as stubs.
+
+    The second fixed that but got the heads wrong: 0.27 of the icon tall
+    against 0.19 long — WIDER THAN THEY WERE LONG — and pinned to the far
+    edges at x 0.97 and 0.03, floating clear of a closed loop. Rendered,
+    that is a rounded box with two fins stuck to it.
+
+    A head has to be longer than it is wide or it is not a head, and it
+    has to overlap the line so the line runs into it. This one is 0.26
+    long against 0.14 of half-width, with its point at 0.66 — which is
+    exactly where the top run stops being straight and starts curving
+    into the corner (the box spans 0.13 to 0.87 with a 0.2 radius, so
+    the straight part is 0.33 to 0.67). The head therefore grows out of
+    the straight bar and points into the turn, instead of being laid
+    over the curve where it thickens into a blob.
+
+    Checked by rendering it — tools/icon-preview draws the real
+    component through react-native-web — against three other designs and
+    then a sweep of these three numbers, rather than by drawing a
+    picture of what it was hoped to be. That last is exactly how the
+    second attempt came to be approved.
+  */
+  const halfHead = size * 0.14;
+  const headLength = size * 0.26;
+
+  const head = (key: string, tipX: number, line: number, pointsRight: boolean) => (
+    <View
+      key={key}
+      style={{
+        position: 'absolute',
+        // A zero-sized box's four borders meet at its centre, so each is
+        // a triangle; the coloured one points AWAY from its own side.
+        // The box therefore starts a whole head-length back from the tip.
+        left: pointsRight ? tipX - headLength : tipX,
+        top: line - halfHead,
+        width: 0,
+        height: 0,
+        borderTopWidth: halfHead,
+        borderBottomWidth: halfHead,
+        borderTopColor: 'transparent',
+        borderBottomColor: 'transparent',
+        ...(pointsRight
+          ? { borderLeftWidth: headLength, borderLeftColor: color }
+          : { borderRightWidth: headLength, borderRightColor: color }),
+      }}
+    />
+  );
+
+  return (
+    <View style={{ width: size, height: size }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.13,
+          top: size * 0.19,
+          width: size * 0.74,
+          height: size * 0.62,
+          borderRadius: size * 0.2,
+          borderWidth: stroke,
+          borderColor: color,
+        }}
+      />
+      {/* Top head runs right, bottom head runs left: they chase. */}
+      {head('top', size * 0.66, topLine, true)}
+      {head('bottom', size * 0.34, bottomLine, false)}
+    </View>
+  );
+}
+
+/** Skirmish — 🤼, two figures grappling. */
+export function SkirmishIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const figure = (left: number, lean: string, fill: string) => (
+    <View
+      key={left}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * 0.08,
+        width: size * 0.46,
+        height: size * 0.88,
+        transform: [{ rotate: lean }],
+      }}
+    >
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.23 - size * 0.13,
+          top: 0,
+          width: size * 0.26,
+          height: size * 0.26,
+          borderRadius: size * 0.13,
+          backgroundColor: fill,
+          borderWidth: s * 0.6,
+          borderColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.23 - size * 0.15,
+          top: size * 0.26,
+          width: size * 0.3,
+          height: size * 0.52,
+          borderTopLeftRadius: size * 0.14,
+          borderTopRightRadius: size * 0.14,
+          borderBottomLeftRadius: size * 0.06,
+          borderBottomRightRadius: size * 0.06,
+          backgroundColor: fill,
+          borderWidth: s * 0.6,
+          borderColor: color,
+        }}
+      />
+    </View>
+  );
+  // Two different prisoner colours, leaning INTO each other — the emoji
+  // is two wrestlers locked together, not two people standing about.
+  return (
+    <View style={{ width: size, height: size }}>
+      {figure(0.04, '14deg', hex('green'))}
+      {figure(0.5, '-14deg', hex('purple'))}
+    </View>
+  );
+}
+
+/** Color War — 🎯, a bullseye. */
+export function ColorWarIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const ring = (inset: number, fill: string) => (
+    <View
+      key={inset}
+      style={{
+        position: 'absolute',
+        left: size * inset,
+        top: size * inset,
+        right: size * inset,
+        bottom: size * inset,
+        borderRadius: size,
+        backgroundColor: fill,
+        borderWidth: s * 0.45,
+        borderColor: color,
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {ring(0.05, hex('red'))}
+      {ring(0.22, THEME.surface)}
+      {ring(0.37, hex('red'))}
+    </View>
+  );
+}
+
+/** A cross — close. */
+export function CloseIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {[45, -45].map((deg) => (
+        <View
+          key={deg}
+          style={{
+            position: 'absolute',
+            width: size * 0.68,
+            height: s * 1.2,
+            borderRadius: s,
+            backgroundColor: color,
+            transform: [{ rotate: `${deg}deg` }],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** A chevron. `up` by default; rotate for the other three. */
+export function ChevronIcon({
+  size = 22,
+  color = THEME.ink,
+  direction = 'up',
+}: IconProps & { direction?: 'up' | 'down' | 'left' | 'right' }) {
+  const s = w(size);
+  const spin = { up: 0, right: 90, down: 180, left: 270 }[direction];
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ rotate: `${spin}deg` }],
+      }}
+    >
+      <View
+        style={{
+          width: size * 0.44,
+          height: size * 0.44,
+          borderTopWidth: s * 1.2,
+          borderLeftWidth: s * 1.2,
+          borderColor: color,
+          borderTopLeftRadius: s * 0.6,
+          transform: [{ rotate: '45deg' }, { translateY: size * 0.06 }],
+        }}
+      />
+    </View>
+  );
+}

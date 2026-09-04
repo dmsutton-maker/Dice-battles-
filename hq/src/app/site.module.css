@@ -1,0 +1,91 @@
+/*
+ * Behavior that inline styles can't express (hover, focus-visible, the
+ * <details> marker) for the public Paper Ship Studio pages, plus the
+ * responsive rules the design handoff left to the developer — the
+ * reference was built at a fixed 1200px width on purpose.
+ */
+
+.link {
+  transition: opacity 0.15s ease;
+}
+.link:hover {
+  opacity: 0.75;
+}
+.link:focus-visible {
+  outline: 2px solid #0088b0;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.pillButton {
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.pillButton:hover {
+  opacity: 0.85;
+}
+.pillButton:active {
+  transform: scale(0.98);
+}
+.pillButton:focus-visible {
+  outline: 2px solid #201e1d;
+  outline-offset: 3px;
+}
+
+.field:focus-visible,
+.field:focus {
+  outline: 2px solid #0088b0;
+  outline-offset: 1px;
+}
+
+.details summary {
+  list-style: none;
+}
+.details summary::-webkit-details-marker {
+  display: none;
+}
+.details summary::after {
+  content: '+';
+  float: right;
+  font-weight: 800;
+  color: #0088b0;
+}
+.details[open] summary::after {
+  content: '\2212';
+}
+
+.page ::selection {
+  background: #f2c53d;
+}
+
+/* --- responsive: the reference is fixed at 1200px, this is ours --- */
+@media (max-width: 760px) {
+  .page :global(.psg-wrap) {
+    padding-left: 22px !important;
+    padding-right: 22px !important;
+  }
+  .page :global(.psg-hero) {
+    padding: 40px 24px !important;
+  }
+  .page :global(.psg-hero-text) {
+    max-width: 100% !important;
+  }
+  .page :global(.psg-hero-h1) {
+    font-size: 30px !important;
+  }
+  .page :global(.psg-nav) {
+    gap: 18px !important;
+    font-size: 13px !important;
+  }
+  .page :global(.psg-row-wrap) {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .page :global(.psg-grid-2) {
+    grid-template-columns: 1fr !important;
+  }
+  .page :global(.psg-footer) {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+}

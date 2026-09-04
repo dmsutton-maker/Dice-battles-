@@ -20,6 +20,12 @@ export const TUNING = {
     /** Max catch-up substeps per frame. */
     maxSubSteps: 4,
     dieMass: 1,
+    /**
+     * Low damping and a lively bounce: these are what make a roll look
+     * like real dice. Raising them shortens rolls but the dice read as
+     * tumbling through syrup, which is exactly how this drifted away from
+     * feeling natural. Feel wins over the extra fraction of a second.
+     */
     linearDamping: 0.08,
     angularDamping: 0.1,
     /** Die vs tray contact. */
@@ -33,15 +39,46 @@ export const TUNING = {
   },
 
   tray: {
-    /** Inner playable area (x = width, z = depth toward the player). */
-    innerWidth: 6,
-    innerDepth: 8,
+    /**
+     * Inner playable area (x = width, z = depth toward the player).
+     * Portrait-shaped on purpose: phone screens are tall and narrow, and the
+     * camera auto-fits the whole arena (see src/demo/cameraFit.ts), so the
+     * closer the arena's footprint matches a phone aspect, the bigger
+     * everything renders.
+     */
+    innerWidth: 4.6,
+    innerDepth: 9.2,
     wallHeight: 1.4,
     wallThickness: 0.5,
     /** Invisible ceiling so wild flicks never leave the camera view. */
     ceilingHeight: 6.5,
   },
 
+  /** The jail pen attached behind the far castle wall where prisoners wait. */
+  prison: {
+    /** Pen width (x). Prisoners line up across it. */
+    innerWidth: 4.4,
+    /** Pen depth (z), extending away from the far wall. */
+    depth: 1.6,
+    /**
+     * Height of the stone platform the pen sits on. Raised so the whole
+     * prisoner figure is visible over the castle's far wall from the
+     * near-top-down camera — at ground level the wall hid their bodies.
+     */
+    platformHeight: 1.15,
+    /** Iron bar height around the pen. */
+    barHeight: 1.15,
+  },
+
+  /**
+   * The throw is the original one: the dice are picked up from wherever
+   * they lie and tossed, and a flick sends them with the speed and
+   * direction of your hand.
+   *
+   * Later versions launched every throw from a fixed spot at the player's
+   * edge and metered its power. That is tidier and it is not how throwing
+   * dice feels — the tidiness is what made it feel mechanical.
+   */
   throw: {
     /** Tap: upward pop range. */
     tapUpMin: 7.5,
@@ -64,14 +101,88 @@ export const TUNING = {
   settle: {
     /** Both dice slower than this (linear + angular) counts as still. */
     speedThreshold: 0.28,
-    /** Consecutive still frames before we call the roll settled. */
-    stillFrames: 14,
+    /**
+     * Frames of stillness before a roll is called. Short because the dice
+     * are FROZEN the moment a roll is called, so the face read can never go
+     * stale — that safety used to cost a full extra second of waiting.
+     */
+    stillFrames: 5,
+    /**
+     * A roll is called as soon as the dice are still, and they are FROZEN
+     * at that instant so the face cannot change afterwards. That freeze is
+     * what makes an early call safe, and it costs nothing in feel.
+     *
+     * There is no artificial damping here any more: bleeding velocity off
+     * a rolling die to end the roll sooner is felt immediately as the dice
+     * being grabbed.
+     */
+    maxRollMs: 2200,
+    /** Absolute backstop if a die is somehow still moving at maxRollMs. */
+    hardMaxRollMs: 3200,
+    /**
+     * The floor under every roll: dice must actually ROLL for this long
+     * before a result may be read off them.
+     *
+     * This was the 24 Aug 2026 answer to David's "you're able to just spam
+     * as fast as you can and get every color in only a matter of seconds",
+     * and on 25 Aug he reported the same bug again: "they should have to
+     * fully land for it to count as getting the color."
+     *
+     * He was right, and the suite had the proof in it the whole time —
+     * hurried rolls measured median 650ms AND p95 650ms, exactly this
+     * number, on every single roll. That is not what a floor looks like.
+     * It was the DURATION of a spammed roll: the hurried path fired on the
+     * first frame past the floor, so dice needing ~1500ms to come to rest
+     * were read at 650 and snapped onto a face in mid-air. Trading one
+     * frame for 650ms made the exploit slower, not gone.
+     *
+     * So the hurried early-exit is deleted (see `shouldCallRoll`) and a
+     * roll now ends when the dice are at REST. This number goes back to
+     * being what it claims to be: cover for a feather-light throw that
+     * could satisfy `stillFrames` almost immediately. In ordinary play
+     * nothing reaches it — the dice are still tumbling at 650ms.
+     */
+    minRollMs: 650,
+    /** Delay before a tap queued mid-roll fires, so the result registers. */
+    queuedThrowDelayMs: 130,
+    /**
+     * The pause after the dice land before a tap that arrived mid-roll
+     * goes out, for a player who has already tapped: they have been
+     * watching and are waiting on it, so they get a short one rather than
+     * `queuedThrowDelayMs`.
+     *
+     * This is now the ONLY thing tapping early changes. It used to also
+     * end the roll in flight, which is the bug above.
+     *
+     * `hurriedSpeed` and `hurriedFlatness` used to sit here, described as
+     * bars a hurried roll had to clear — "moving slowly enough" and "lying
+     * flat enough". Nothing read them. They were left behind when
+     * `isReadable` was deleted, and they made the file describe a safety
+     * check the game had not performed for weeks, which is worse than
+     * having no comment at all. Removed with the path they belonged to.
+     */
+    hurriedThrowDelayMs: 34,
+    /**
+     * Flat enough that the top face is unambiguous. 1 is square, 0.707 is
+     * balanced on an edge, 0.577 on a corner.
+     *
+     * A die that has stopped is NOT automatically flat, which is easy to
+     * assume and wrong: 720 simulated rolls on 25 Aug 2026 turned up a die
+     * resting motionless at 0.58 — perched on an obstacle at about 54
+     * degrees. Anything below this bar gets turned square before the
+     * result is shown, so the player sees the colour the game counted.
+     */
+    flatEnough: 0.999,
   },
 
   haptics: {
-    /** Min impact velocity along contact normal to fire a tick. */
-    collisionMinImpact: 2.2,
-    /** Min ms between collision haptic ticks. */
-    collisionCooldownMs: 90,
+    /**
+     * Min impact velocity along contact normal to fire a tick + click.
+     * Kept high so only meaty hits register — the full throw recording
+     * already carries the roll sound; accents should be occasional.
+     */
+    collisionMinImpact: 3.0,
+    /** Min ms between collision haptic ticks / click accents. */
+    collisionCooldownMs: 130,
   },
 } as const;

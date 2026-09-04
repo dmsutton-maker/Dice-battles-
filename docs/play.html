@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play Dice Battles</title>
+<style>
+  :root {
+    --sky: #7fbdf2;
+    --sky-deep: #5ea7e8;
+    --ink: #22304f;
+    --card: #ffffff;
+    --sun: #ffd829;
+    --sun-ink: #4a3a00;
+    --grass: #4e9a58;
+    --line: rgba(34, 48, 79, 0.14);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, var(--sky) 0%, var(--sky-deep) 100%);
+    min-height: 100vh;
+    font-family: ui-rounded, -apple-system, "SF Pro Rounded", system-ui, "Segoe UI", sans-serif;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 28px 18px 48px;
+  }
+  .page { width: 100%; max-width: 430px; display: flex; flex-direction: column; gap: 18px; }
+
+  /* Two toy dice, like the game's */
+  .dice { display: flex; justify-content: center; gap: 18px; margin-top: 8px; }
+  .die {
+    width: 74px; height: 74px; background: #fff; border-radius: 18px;
+    display: grid; place-items: center;
+    box-shadow: 0 6px 0 rgba(34, 48, 79, 0.18);
+  }
+  .die:first-child { transform: rotate(-8deg); }
+  .die:last-child { transform: rotate(7deg); }
+  .dot { width: 34px; height: 34px; border-radius: 50%; }
+
+  h1 {
+    margin: 4px 0 0;
+    text-align: center;
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #ffffff;
+    text-shadow: 0 3px 0 rgba(34, 48, 79, 0.28);
+    text-wrap: balance;
+  }
+  .tagline {
+    margin: 0;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    color: #eaf4ff;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: 22px;
+    padding: 18px 20px;
+    box-shadow: 0 5px 0 rgba(34, 48, 79, 0.16);
+  }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .step + .step { margin-top: 14px; padding-top: 14px; border-top: 2px dashed var(--line); }
+  .badge {
+    flex: none;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--grass); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 900; font-size: 18px;
+  }
+  .step h2 { margin: 3px 0 4px; font-size: 18px; font-weight: 800; }
+  .step p { margin: 0; font-size: 15.5px; line-height: 1.45; }
+  .step a { color: #1d6fd6; font-weight: 700; }
+
+  .play {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    background: var(--sun);
+    color: var(--sun-ink);
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    border-radius: 999px;
+    padding: 18px 10px;
+    box-shadow: 0 6px 0 rgba(34, 48, 79, 0.22);
+  }
+  .play:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(34, 48, 79, 0.22); }
+  .play-hint { text-align: center; font-size: 13.5px; color: #eaf4ff; margin: -6px 0 0; font-weight: 600; }
+
+  .qr-card { text-align: center; }
+  .qr-card h2 { margin: 0 0 6px; font-size: 16px; font-weight: 800; }
+  .qr-card p { margin: 0 0 12px; font-size: 14px; line-height: 1.4; }
+  .qr-card img { width: 190px; max-width: 100%; border-radius: 12px; }
+
+  .fineprint {
+    text-align: center; font-size: 12.5px; color: #dcedff; font-weight: 600;
+    margin: 0;
+  }
+</style>
+
+<div class="page">
+  <div class="dice" aria-hidden="true">
+    <div class="die"><div class="dot" style="background:#c04cff"></div></div>
+    <div class="die"><div class="dot" style="background:#33cc6b"></div></div>
+  </div>
+
+  <h1>DICE BATTLES</h1>
+  <p class="tagline">Race Sir Rollsalot. Free your prisoners. 🏰</p>
+
+  <div class="card">
+    <div class="step">
+      <div class="badge">1</div>
+      <div>
+        <h2>Get Expo Go</h2>
+        <p>It's the free app that runs the game —
+          <a href="https://apps.apple.com/app/expo-go/id982107779">download it from the App&nbsp;Store</a>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="badge">2</div>
+      <div>
+        <h2>Tap the big yellow button</h2>
+        <p>The game opens right inside Expo Go. If tapping doesn't work,
+          press and hold the button, then choose <strong>Open</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <a class="play" href="exp://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576?channel-name=main&amp;runtime-version=exposdk:54.0.0">▶ PLAY DICE BATTLES</a>
+  <p class="play-hint">Tap fast to roll · match both dice colors to rescue a soldier</p>
+
+  <div class="card qr-card">
+    <h2>Reading this on a computer?</h2>
+    <p>Point your phone's camera at this code instead:</p>
+    <img alt="QR code that opens Dice Battles in Expo Go" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAJYCAYAAAC+ZpjcAAAAAklEQVR4AewaftIAABM3SURBVO3BQaoEx6IsSPfg7H/L3gLBHzRvknWDpFSYWfePAABwzQkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1V9e1Da8b1ueaps3bMsn2uapbXlL27xhW97SNk9tC/+btnnDtrylbd6yLd+qbXjftrzhBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq/7yH7AtJG3zzbblqbZ5S9t8s215qm3esi1Ptc0ntuXXtM1btuUtbfPUtrylbZ7alm+2LSRt881OAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKv+8qPa5pttC8m2vKVt3rItT7XNN2ubX9Q2b9iWT7TNG9rmE9vya9rmqW35Zm3zzbbl15wAAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV/0F/g/b8lTbvGVbntqWp9rmE23zhm35Zm3zlrb5xLbwubZ5w7bAf8kJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABX/QX+D23z1LZ8s7Z5y7Z8s7b5Zm3za9rmE9vyVNs8tS1vaRv4dScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVX/5UdvC57aFd7XNW7blm7XNU9vylrZ5alt+Udt8s215qm1+zbbwrhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqr/8B7QN72qbp7blqbb5xLa8YVs+0TZPbctTbfOWtnlqW75d2zy1LU+1zSe25ddsy1Nt84lt+TVtw/c7AQDgqhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqhMA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sC2faJu3tM0btuUt2/JU23yztvnEtnyrtvnEtryhbfjcCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHBV94/wP2mbN2zLN2ubX7Mt36xtftG2vKVt3rAtb2mbp7blE23za7blm7XNN9uWp9rmqW35ZicAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVd0/8pK2ecu2PNU2n9iWN7TNN9uWp9rmLdvyVNu8ZVueaptPbMtTbfOWbflmbfOWbflmbfPUtrylbd6wLU+1zVu2hXedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1V9etC2faJun2uapbflm2/KJtnlqW55qm6e25S1tw7u25RNt85ZtecO2fKJtntqWp9rmE9vyVNs8tS2f2Jan2ubXtM1btuWptnnLtrzhBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqLy9qm09sy69pm1+zLW9pGz7XNk9ty1Nt84lteaptPtE2T20Ln9uWp9rm12zLJ9rm12zLU23zzU4AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq04AALjqBACAq/7yH9A2T23LU23ziW15w7Z8om2eapuntuWbbctTbfPNtuWbbctbtuUtbfPUtnxiW/jctryhbZ7alk9sy1Nt85a2ITkBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCq7h/hdW3zzbbl17TNr9mWt7TNU9vyibZ5als+0TZPbctb2uapbXlL2zy1LU+1zSe25de0zVPb8lTbfGJb3tA2n9iWN5wAAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV/3lRW3ziW15Q9t8s215S9u8YVvesi1vaZtv1jZPbctbtuXXtM0ntuUNbfOJbXmqbZ7alk+0zVPb8mva5pu1zVPb8s1OAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKtOAAC46gQAgKv+8h/QNm/Ylk+0zRva5i3b8lTb8K62+WZt84lteaptPrEt36xtSNrmLW3z1LZ8s235NW3ziW15wwkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFf9hf+nbd6yLW9pm6fahqRt3rItT7XNJ7bl12zLJ9rmDdvyibZ5alueaptPtM1T2/Jr2uabtc0325an2uabnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXdf/IS9rmLdvya9rmm23LW9rmqW35Zm3D57blLW3zlm15qm2e2pZPtM0btuUtbUOyLZ9om6e25am2+cS2vOEEAICrTgAAuOoEAICrTgAAuOoEAICrTgAAuOoEAICrTgAAuOoEAICrTgAAuOoEAICrTgAAuKr7R+D/p22e2pa3tM0btuWbtc0v2pan2uabbctb2uYt2/KGtvnEtjzVNk9tyzdrm6e2hc+dAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFf95UVtw/u25Q1t89S2fGJbnmqbt7TNN9uWb9Y2b9mWp9qGf7XNN2ubb9U2n9iWb9Y2T23LrzkBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCqEwAArjoBAOCqv/wHbAtJ23yzbXmqbT6xLU9ty1u25de0zTfblk+0zRva5hPb8tS2fLO2IdmWb9Y2n9iWp9rmLdvyhhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqhMAAK46AQDgqr/8qLb5Ztvya9rmLW3z1LY81Taf2Jan2uabbctb2uaptnnLtjzVNp9om6e25Ztty1va5g1tw+e25decAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFedAABw1QkAAFf9Bf6DtuWptnlL2zy1Ld+sbZ7alk9sy1va5qm2eWpbPtE2T7XNW7blDW3ziW15qm3esC2faJuntuWptvlE27xhW77ZCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV50AAHDVCQAAV/0F/g/b8lTbPLUtb9mWt7TNU23z1LZ8om2e2pan2uYT2/LNtuWptvnEtjzVNm9pm6e25Zttyzfblqfa5ptty1Nt84ltecMJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNUJAABXnQAAcNVfftS2wP+qbT6xLU+1zVNt88225Re1za/Zlk+0DUnbvGVb+H4nAABcdQIAwFUnAABcdQIAwFUnAABcdQIAwFUnAABcdQIAwFUnAABcdQIAwFUnAABcdQIAwFXdP/KStuF92/JU27xhWz7RNk9tyzdrm2+2LfyrbfjXtnyztuFd20JyAgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVd0/AgDANScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFx1AgDAVScAAFz1/wFavagFTLCNSwAAAABJRU5ErkJggg==">
+  </div>
+
+  <p class="fineprint">Always opens the newest version · no account needed · made by Dad 🎲</p>
+</div>
+
+</body>
+</html>

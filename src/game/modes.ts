@@ -1,0 +1,125 @@
+import { ColorDef } from './colors';
+
+/**
+ * The game modes from the original tabletop rules (see the project brief).
+ * All modes share the same dice physics and settle detection — they differ
+ * only in what a color match DOES and how the race ends.
+ */
+export type ModeId = 'classic' | 'ultimate' | 'skirmish' | 'colorwar';
+
+export interface ModeDef {
+  id: ModeId;
+  name: string;
+  /** One-line rules, kid-readable, shown under the mode picker. */
+  rules: string;
+}
+
+/*
+  There is no `emoji` here any more.
+
+  Every mode carried one — ⚔️ 🔁 🤼 🎯 — and David asked on 26 Aug 2026 for
+  drawn icons instead. The field is deleted rather than left unused,
+  because a string sitting on the mode definition is an invitation to
+  render it again somewhere new, and then half the game has icons and
+  half has emoji. The drawings live in src/ui/modeIcons.ts, which is a
+  Record<ModeId, …> so a fifth mode cannot be added without one.
+*/
+export const MODES: Record<ModeId, ModeDef> = {
+  classic: {
+    // The id stays 'classic' on purpose: it is the key saved progress and
+    // per-mode win counts are stored under. Only the shown name changed.
+    id: 'classic',
+    name: 'Color Rush',
+    rules: 'Match a color to rescue that prisoner. First to all six wins!',
+  },
+  ultimate: {
+    id: 'ultimate',
+    name: 'Ultimate',
+    rules: 'Careful! Matching a rescued color sends that prisoner BACK to jail!',
+  },
+  skirmish: {
+    id: 'skirmish',
+    name: 'Skirmish',
+    rules: 'ONE shared jail! Grab prisoners before your opponent — most wins!',
+  },
+  colorwar: {
+    id: 'colorwar',
+    name: 'Color War',
+    rules: 'You each get ONE color. Rescue your three first!',
+  },
+};
+
+export const MODE_ORDER: ModeId[] = ['classic', 'ultimate', 'skirmish', 'colorwar'];
+
+/** Where a prisoner figure currently stands. */
+export interface Station {
+  kind: 'jail' | 'retreat' | 'wall';
+  index: number;
+}
+
+/** One prisoner figure on the board. */
+export interface PrisonerUnit {
+  key: string;
+  colorId: ColorDef['id'];
+  hex: string;
+  /** Fixed home slot in the jail, for modes that send prisoners back. */
+  jailIndex: number;
+  station: Station;
+}
+
+/** Build the round-start prisoner lineup for a mode. */
+export function makeUnits(
+  mode: ModeId,
+  allColors: ColorDef[],
+  playerColor: ColorDef | null,
+  aiColor: ColorDef | null,
+): PrisonerUnit[] {
+  if (mode === 'colorwar' && playerColor && aiColor) {
+    // Your three fill the LEFT half of the jail, your opponent's the
+    // right. They used to alternate, which made it hard to see at a
+    // glance whose side was emptying — sides read faster than a pattern.
+    const lineup = [
+      playerColor,
+      playerColor,
+      playerColor,
+      aiColor,
+      aiColor,
+      aiColor,
+    ];
+    return lineup.map((c, i) => ({
+      key: `cw-${i}`,
+      colorId: c.id,
+      hex: c.hex,
+      jailIndex: i,
+      station: { kind: 'jail', index: i },
+    }));
+  }
+  return allColors.map((c, i) => ({
+    key: c.id,
+    colorId: c.id,
+    hex: c.hex,
+    jailIndex: i,
+    station: { kind: 'jail', index: i },
+  }));
+}
+
+/**
+ * The lowest free slot index at a station kind — where the next arriving
+ * figure should stand.
+ *
+ * Placement used to use the COUNT of figures already at the station, which
+ * is the next free slot only while nobody ever leaves. Ultimate breaks that
+ * assumption: a prisoner exchange sends a rescued figure BACK to jail,
+ * leaving a hole in the retreat row — and the count then points at a slot
+ * that is still occupied, standing two soldiers on the same spot (AJ's bug
+ * report, 24 Aug 2026). Filling the first hole instead keeps the row tidy
+ * and cannot collide.
+ */
+export function firstFreeIndex(units: PrisonerUnit[], kind: Station['kind']): number {
+  const taken = new Set(
+    units.filter((u) => u.station.kind === kind).map((u) => u.station.index),
+  );
+  let i = 0;
+  while (taken.has(i)) i++;
+  return i;
+}
