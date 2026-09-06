@@ -16,7 +16,10 @@ export const dynamic = 'force-dynamic';
 
 /** Falls back to the app page's own list — there is only ever one FAQ. */
 const DEFAULT_GAME_FAQS = [
-  { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
+  {
+    q: 'Does the game have ads?',
+    a: 'One full-screen ad after every third finished game, and nothing else — never during a game. They are always non-personalised and G-rated, and they can be switched off for good with a one-time purchase.',
+  },
   { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
   {
     q: 'Do I need to be able to read to play?',

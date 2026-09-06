@@ -6,7 +6,7 @@ import { getSiteContent, sectionList, text } from '@/lib/content';
 export const metadata: Metadata = {
   title: 'Privacy Policy — Paper Ship Studio',
   description:
-    "Paper Ship Studio doesn't collect personal information, show ads, or use analytics or tracking tools of any kind, across every app we publish.",
+    'No accounts and no tracking. Adding a friend, reporting a bug or writing to us sends a little information — this page says exactly what, and why.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -17,23 +17,35 @@ const DEFAULT_INTRO =
 const DEFAULT_SECTIONS = [
   {
     heading: 'The short version',
-    body: "We don't collect personal information, we don't show ads, and we don't use analytics or tracking tools of any kind. There are no accounts to create and no data leaves your device because of our apps.",
+    body: 'There are no accounts to sign up for, no analytics, and nothing that tracks you around the internet. Most of the game never talks to us at all — your progress, coins and unlocked items live on your device. Three things do send us something: adding a friend, sending a bug report, and writing to us through the contact form. Each is explained below, and each only happens if you choose it.',
   },
   {
-    heading: 'Information we collect',
-    body: "None. Our apps don't require sign-up, don't ask for personal details, and don't include any analytics, advertising, or crash-reporting software that would send data about you or your device to us or to any third party.",
+    heading: 'Friends',
+    body: 'Friends is optional, and nothing is sent unless you open it. When you do, the game stores a profile on our server so the people you add can see it: the name Game Center gives you (or “New Player” if you are not signed in), a random player id, your friend code, your trophy count, how many battles you have won at each difficulty and in each game mode, how many dice sets and battlefields you own, your chosen die and battlefield, and when you last played. Your friend list is stored too, including requests and anyone you have blocked. Blocks are private — the other person is never told. There is nowhere in Friends to type a message or a profile description, on purpose.',
   },
   {
-    heading: "Children's privacy",
-    body: "Our apps are designed to be friendly to young players, including kids who can't read yet. Because we don't collect any personal information from anyone — regardless of age — there is no personal information collected from children either. If you have questions about a specific app and younger players, reach out at the address below.",
+    heading: 'Bug reports and the contact form',
+    body: 'If you send a bug report from inside the game, we receive what you typed plus your device model, its operating system version and the game version — that last part is what makes a report useful. If you write to us through the contact form on this website, we receive your name, your email address and your message, so that we can reply.',
+  },
+  {
+    heading: 'Advertising',
+    body: 'Dice Battles: Color Rush is free, and adverts are what pay for it: one full-screen advert after every third finished game, and nothing else — no banners, no video rewards, nothing during a game. They come from Google AdMob, and every single request is marked as child-directed and non-personalised and capped at a G rating. In plain terms: AdMob is told not to build a profile of whoever is holding the phone and not to use anything about them to choose the advert. That is why the game never asks permission to track you. If you would rather have none at all, adverts can be switched off permanently with a one-time purchase.',
+  },
+  {
+    heading: 'Where it is kept, and for how long',
+    body: 'The little we do hold is stored in a Supabase database and served through Vercel, both in the United States. We keep it for as long as the game is running, and we will delete anything belonging to you if you ask us at hello@papershipstudio.com.',
+  },
+  {
+    heading: 'Children\'s privacy',
+    body: 'The game is made for families and is rated for ages 4 and up. It asks no one their age, their name or their email. Friends is built on Apple\'s Game Center precisely so that we do not have to: Apple already holds the account, already has a parent\'s consent where one is needed, and moderates the nickname that other players see. We collect no other personal details from anyone, at any age. If you have a question about a younger player, write to us at the address below.',
   },
   {
     heading: 'App Store and platform data',
-    body: "Apple, Google, or your device's operating system may collect standard information as part of operating their app stores and platforms (such as download counts or crash logs at the OS level). That collection is governed by their own privacy policies, not ours — we don't receive or request personal data from them.",
+    body: 'Apple, Google, or your device\'s operating system may collect standard information as part of operating their app stores and platforms (such as download counts or crash logs at the OS level). That collection is governed by their own privacy policies, not ours — we don\'t receive or request personal data from them.',
   },
   {
     heading: 'Changes to this policy',
-    body: "If this policy ever changes — for example, if a future app needs to work differently — we'll update this page and change the date at the top.",
+    body: 'If this policy ever changes — for example, if a future app needs to work differently — we\'ll update this page and change the date at the top.',
   },
   {
     heading: 'Contact us',

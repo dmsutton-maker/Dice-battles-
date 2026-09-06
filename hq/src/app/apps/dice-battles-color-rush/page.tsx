@@ -9,7 +9,7 @@ import { faqList, getSiteContent, highlightList, labelList, sectionList, text } 
 export const metadata: Metadata = {
   title: 'Dice Battles: Color Rush — Paper Ship Studio',
   description:
-    'Roll color dice, march your army across the board, and take the other castle. Fast, colorful, and simple enough that a five-year-old can jump right in.',
+    'Two dice, six colors, six prisoners to set free. Roll both dice — match the colors and a prisoner runs free. First to free all six wins. Nothing to read and nothing to count, so a five-year-old and a grandparent can play the same game at the same table.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -30,24 +30,30 @@ const DEFAULT_HIGHLIGHTS = [
   },
   {
     title: 'Two players, one phone',
-    body: 'Pass and play on a single device — the board flips so each side always faces its own castle. No wifi, no second phone, nobody left out.',
+    body: 'Split screen, both halves live at once — put the phone on the table between you and nothing gets passed back and forth. No wifi, no second phone, nobody left out.',
   },
   {
-    title: 'A battle in a few minutes',
-    body: 'Roll, march, and clash. A full game wraps up fast, which makes it easy to say yes to one more.',
+    title: 'Four ways to play',
+    body: 'Color Rush to learn on, Ultimate where a color you already freed sends that prisoner back, Skirmish with one shared jail, and Color War where you each race for your own color.',
   },
   {
     title: 'Nothing to sign up for',
-    body: 'No ads, no accounts, and no analytics — you download it, and that’s the whole relationship.',
+    body: 'No accounts and no analytics. Download it and play — Friends is the one optional extra, and it borrows your Game Center name rather than asking you to invent one.',
   },
 ];
 
 const DEFAULT_FAQS = [
-  { q: 'Does the game have ads?', a: 'No. Dice Battles has never shown an ad and never will.' },
-  { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
+  {
+    q: 'Does the game have ads?',
+    a: 'One full-screen ad after every third finished game, and nothing else — never during a game. They are always non-personalised and G-rated, and they can be switched off for good with a one-time purchase.',
+  },
+  {
+    q: 'Do I need to create an account?',
+    a: 'No sign-in, no account, nothing to lose. Open it and play. Friends is the one optional extra, and it uses your Game Center name rather than asking you to make one up.',
+  },
   {
     q: 'Is any data collected about me or my family?',
-    a: 'No analytics or tracking of any kind. See our Privacy Policy for the full picture.',
+    a: 'No analytics and no tracking. If you use Friends, your Game Center name, your trophies and your friend list are stored so friends can see them. Bug reports and the contact form send what you write. Our Privacy Policy spells all of it out.',
   },
   {
     q: 'Do I need to be able to read to play?',
@@ -64,7 +70,7 @@ export default async function DiceBattlesAppPage() {
   const description = text(
     content,
     'dice_battles.description',
-    'Roll color dice, march your army across the board, and take the other castle. Fast, colorful, and simple enough that a five-year-old can jump right in.',
+    'Two dice, six colors, six prisoners to set free. Roll both dice — match the colors and a prisoner runs free. First to free all six wins. Nothing to read and nothing to count, so a five-year-old and a grandparent can play the same game at the same table.',
   );
   const ctaSubhead = text(
     content,
@@ -75,9 +81,9 @@ export default async function DiceBattlesAppPage() {
   const faqs = faqList(content, 'dice_battles.faq', DEFAULT_FAQS);
   const extraSections = sectionList(content, 'dice_battles.extra_sections', []);
   const pills = labelList(content, 'dice_battles.pills', [
-    'No ads',
     'No accounts',
     'No tracking',
+    'Ages 4+',
   ]);
   const ctaTitle = text(content, 'dice_battles.cta_title', 'Report a problem, or just say hi');
 

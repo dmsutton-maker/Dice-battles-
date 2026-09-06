@@ -16,11 +16,15 @@ const DEFAULT_INTRO =
 const DEFAULT_SECTIONS = [
   {
     heading: 'Using our apps',
-    body: "Our apps are provided for personal, non-commercial entertainment. You're welcome to play, and to let your family and friends play, for as long as you like.",
+    body: 'Our apps are provided for personal, non-commercial entertainment. You\'re welcome to play, and to let your family and friends play, for as long as you like.',
   },
   {
-    heading: 'No accounts, your device, your data',
-    body: "Our apps don't require an account and don't collect personal data (see our Privacy Policy). Any game progress is stored on your own device and is yours to keep or delete.",
+    heading: 'No accounts, and where your things are kept',
+    body: 'Our apps don\'t require an account. Your progress, coins and unlocked items are stored on your own device and are yours to keep or delete. If you use Friends, the profile your friends can see is stored on our server instead — our Privacy Policy sets out exactly what that includes.',
+  },
+  {
+    heading: 'Being a good neighbour in Friends',
+    body: 'Friends works by sharing a code with someone you already know. Please do not use it to bother anyone. You can remove a friend at any time, and blocking someone is silent — they are not told, and they cannot ask again. We may remove a player from Friends if they use it to harass others.',
   },
   {
     heading: 'Intellectual property',
@@ -32,7 +36,7 @@ const DEFAULT_SECTIONS = [
   },
   {
     heading: 'Changes',
-    body: "We may update these terms as the studio grows — for example, if we incorporate or add new apps. We'll update the date at the top when we do.",
+    body: 'We may update these terms as the studio grows — for example, if we incorporate or add new apps. We\'ll update the date at the top when we do.',
   },
   {
     heading: 'Contact us',

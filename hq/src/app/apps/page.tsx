@@ -24,7 +24,7 @@ export default async function AppsPage() {
   const cardDescription = text(
     content,
     'apps.card_description',
-    'Roll color dice, march your army and take the other castle — pick up and play, no reading required.',
+    'Roll two color dice. Match them and a prisoner runs free — first to free all six wins. Nothing to read, nothing to count.',
   );
 
   return (
