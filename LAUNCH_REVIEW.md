@@ -1,6 +1,6 @@
 # Launch review — handoff
 
-**Status: PARTIAL — the review workflow was still running (graphics and minor-triage passes outstanding) when this was generated on 2026-09-06; regenerate when it completes.** Generated from the verifier verdicts in the launch-review workflow (run `wf_82e1508f-191`), not written by hand, so the fix instructions below are the verifiers' exact words.
+**Status: PARTIAL — handed to Opus 2026-09-06 while the graphics and minor-triage passes were still running; step 1 below finishes it.** Generated from the verifier verdicts in the launch-review workflow (run `wf_82e1508f-191`), not written by hand, so the fix instructions below are the verifiers' exact words.
 
 ## Read this first (for whichever model picks this up)
 
