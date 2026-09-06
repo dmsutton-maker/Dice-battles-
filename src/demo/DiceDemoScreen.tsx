@@ -349,6 +349,19 @@ export function DiceDemoScreen() {
   const modeRef = useRef<ModeId>('classic');
   const opponentRef = useRef<AiOpponent | null>(null);
   const runRef = useRef<RunState | null>(null);
+  /**
+   * Is the battle now being played a CUP round?
+   *
+   * A run used to be enough on its own: any battle finished while one was
+   * open reported into the bracket. So a casual game started from the
+   * home screen — on Easy, for fun — could knock you out of a 150-coin
+   * Grand Championship you had paid for and were three rounds into.
+   *
+   * Only the Cups tab sets this. Play again keeps whatever the last
+   * round was, so "one more" after a cup round continues the cup and
+   * after a casual round stays casual.
+   */
+  const cupRoundRef = useRef(false);
   const unitsRef = useRef<PrisonerUnit[]>([]);
   const warRef = useRef<{ player: ColorDef; ai: ColorDef } | null>(null);
   const aiFreedRef = useRef<PrisonerColorId[]>([]);
@@ -533,6 +546,8 @@ export function DiceDemoScreen() {
   }, [showCallout]);
 
   const quitToMenu = useCallback(() => {
+    // An abandoned cup round is simply replayed, not lost.
+    cupRoundRef.current = false;
     countdownTimers.current.forEach(clearTimeout);
     stopAnnouncer();
     resetRace();
@@ -557,11 +572,30 @@ export function DiceDemoScreen() {
 
       // A cup round reports back to the bracket. A tie does not advance
       // you and does not knock you out — you play the round again.
-      if (runRef.current && outcome !== 'tie') {
+      if (runRef.current && cupRoundRef.current && outcome !== 'tie') {
         const cup = tournamentById(runRef.current.tournamentId);
         if (cup) {
           const next = advanceRun(runRef.current, cup, outcome === 'won');
-          setRun(next);
+          /*
+            A finished run is cleared, not kept. Held on to, the Cups tab
+            went on saying "YOU ARE IN THE …" and offering "Play the
+            Final" after the player had already been knocked out — and
+            the champion popup below reads from `next` and `cup`, which
+            are locals, so clearing loses nothing.
+          */
+          setRun(next.finished ? null : next);
+          cupRoundRef.current = false;
+          if (next.finished === 'knocked-out') {
+            setRewards((queue) => [
+              ...queue,
+              {
+                emoji: cup.emoji,
+                name: `Out of the ${cup.name}`,
+                kicker: 'CUP OVER',
+                note: 'Lose once and the run is over. Enter again from Cups whenever you like.',
+              },
+            ]);
+          }
           if (next.finished === 'champion') {
             const prize = rollReward(cup.prize);
             grantCoins(prize);
@@ -663,7 +697,15 @@ export function DiceDemoScreen() {
     difficultyRef.current = tournament.difficulty;
   }, []);
 
-  const startCountdown = useCallback(() => {
+  const startCountdown = useCallback((origin: 'cup' | 'casual' | 'again' = 'casual') => {
+    /*
+      `origin` is a STRING, not a boolean, and every call site passes it
+      explicitly. `onPress={startCountdown}` would hand this the press
+      event — truthy, and enough to make a casual game count as a cup
+      round if the flag were a boolean. The default is the safe one.
+    */
+    if (origin === 'cup') cupRoundRef.current = true;
+    else if (origin === 'casual') cupRoundRef.current = false;
     // Same moment as quitToMenu: the player is leaving the result screen,
     // this time straight into another battle.
     showAdIfDue();
@@ -681,7 +723,18 @@ export function DiceDemoScreen() {
   /** Start the next bracket round: same flow as a normal battle. */
   const playCupRound = useCallback(() => {
     setTab('play');
-    startCountdown();
+    /*
+      Re-pin the cup's difficulty. It is set once on entering, but the
+      chips on the Play tab and on every result screen stayed live, so a
+      Grand Championship advertised as Hard could be played through on
+      Easy.
+    */
+    const cup = runRef.current ? tournamentById(runRef.current.tournamentId) : undefined;
+    if (cup) {
+      setDifficulty(cup.difficulty);
+      difficultyRef.current = cup.difficulty;
+    }
+    startCountdown('cup');
   }, [startCountdown]);
 
   const beginCountdown = useCallback(() => {
@@ -967,7 +1020,7 @@ export function DiceDemoScreen() {
         samples.current = [];
         sample(event);
         if (previewRef.current !== null) return;
-        if (phaseRef.current === 'pick') startCountdown();
+        if (phaseRef.current === 'pick') startCountdown('casual');
         // battle: the throw waits for release, so a flick can carry the
         // player's own direction and speed into the dice. arm/go: inputs
         // locked during the ritual. won/lost/tie: the buttons decide.
@@ -1253,7 +1306,7 @@ export function DiceDemoScreen() {
   // round (and on Hard, put 25 trophies back on the line).
   const roundOverButtons = (
     <View style={styles.endButtons}>
-      <Pressable style={styles.playAgainButton} onPress={startCountdown}>
+      <Pressable style={styles.playAgainButton} onPress={() => startCountdown('again')}>
         <Text style={styles.playAgainText}>Play again</Text>
       </Pressable>
       <Pressable style={styles.homeButton} onPress={quitToMenu}>
@@ -1514,7 +1567,7 @@ export function DiceDemoScreen() {
             )}
             {modeRow}
             {difficultyRow}
-            <Pressable style={styles.startButton} onPress={startCountdown}>
+            <Pressable style={styles.startButton} onPress={() => startCountdown('casual')}>
               <Text style={styles.startText}>Start battle</Text>
             </Pressable>
             <Pressable

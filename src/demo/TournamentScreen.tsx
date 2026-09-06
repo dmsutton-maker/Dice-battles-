@@ -50,7 +50,7 @@ export function TournamentScreen({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {run && active ? (
+        {run && active && !run.finished ? (
           <View style={styles.runCard}>
             <Text style={styles.runEyebrow}>YOU ARE IN THE</Text>
             <Text style={styles.runName}>
