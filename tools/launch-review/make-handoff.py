@@ -33,6 +33,7 @@ tri_auto.sort(key=sortkey)
 L = []
 L.append(f"# Launch review — handoff\n")
 L.append(f"**Status: {status}.** Generated from the verifier verdicts in the launch-review workflow (run `wf_82e1508f-191`), not written by hand, so the fix instructions below are the verifiers' exact words.\n")
+L.append(open(__file__.rsplit("/",1)[0] + "/HANDOFF.md").read())
 L.append("""## Read this first (for whichever model picks this up)
 
 - Read `AGENTS.md` (rules) and `STATE.md` (facts) before touching anything.
