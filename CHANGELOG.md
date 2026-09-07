@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.67.0 — 2026-09-07 · requested by David
+
+**Adverts are on.** David asked for advertising in the first public
+release. This is the change that does it, and it is the first one in
+this project that needs a new build before anybody can receive it.
+
+### Added
+- **One full-screen advert after every third finished game**, and
+  nothing else — never during a battle, never a banner, never a video.
+  Every request is marked child-directed and non-personalised and capped
+  at a G rating, which is what makes the App Store privacy answers true.
+  The advert waits for the moment you leave a result screen, so it can
+  never cover a trophy or an unlock you just earned, and the next battle
+  now waits behind it rather than starting underneath.
+
+### Native — this needs the new build
+- `runtimeVersion` is pinned to **2.0.0**, in the same change as the SDK
+  going into the bundle, because that pairing is the only thing that
+  stops old installs being handed JavaScript they cannot run.
+  **Builds 5 and 6 will stop receiving over-the-air updates**: they
+  report `exposdk:54.0.0`, contain no advert SDK, and correctly stay on
+  v1.66.1 until the new build is installed. That is the pin working, not
+  a fault.
+- The Android AdMob app id was the iOS one pasted twice, which pointed
+  Android at David's own iOS app. It is Google's public Android **test**
+  id for now — an honest placeholder — and a test refuses to let an
+  Android release ship with it.
+
+
 ## v1.66.1 — 2026-09-07 · requested by David
 
 Closing the launch review: the last three things an agent could do

@@ -48,10 +48,9 @@
  * read in one glance is the point.
  */
 export function loadAdSdk(): unknown | null {
-  // ADS OFF. To turn them on, uncomment the next line AND set
-  // runtimeVersion to "1.1.0" in app.json, in the same change.
+  // ADS ON. To turn them off, comment the next line out AND return
+  // runtimeVersion to the sdkVersion policy, in the same change.
   //
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  // return require('react-native-google-mobile-ads');
-  return null;
+  return require('react-native-google-mobile-ads');
 }

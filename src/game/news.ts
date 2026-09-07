@@ -37,6 +37,55 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-67-0-adverts',
+    date: '7 September 2026',
+    version: 'v1.67.0',
+    title: 'One advert every third game',
+    emoji: '\ud83d\udcf0',
+    body:
+      'The game is free, and from this update one full-screen advert ' +
+      'appears after every third finished game. That is the whole of it: ' +
+      'never during a battle, never a banner across the board, never a ' +
+      'video you have to sit through.\n\n' +
+      'Every advert is marked for a family audience, so nothing is ' +
+      'chosen based on who is holding the phone and nothing follows you ' +
+      'anywhere. It waits until you leave the results, so it can never ' +
+      'cover a trophy or an unlock you have just won — and the next ' +
+      'battle waits for you to close it.',
+  },
+  {
+    id: 'v1-66-0-coins-shown',
+    date: '7 September 2026',
+    version: 'v1.66.0',
+    title: 'You can see the coins you won',
+    emoji: '\ud83e\ude99',
+    body:
+      'Every result screen now shows the coins that battle paid, next to ' +
+      'the trophies. They were being paid the whole time and never shown ' +
+      'anywhere, which made the shop feel further away than it was.\n\n' +
+      'Two other things: the opponent could squeeze in one more roll ' +
+      'after you had already won, and switching apps in the middle of a ' +
+      'roll used to drop the dice out of the air and count whatever face ' +
+      'was on top. Both fixed.',
+  },
+  {
+    id: 'v1-65-0-cups-and-floors',
+    date: '7 September 2026',
+    version: 'v1.65.0',
+    title: 'Cups are safe, and the dice show up',
+    emoji: '\ud83c\udfc6',
+    body:
+      'A normal battle used to count as a cup round, so an ordinary loss ' +
+      'could knock you out of a cup you had paid to enter. Only rounds ' +
+      'you start from Cups count now, and a run survives closing the ' +
+      'game.\n\n' +
+      'Entering a cup, giving up a run, removing a friend and blocking ' +
+      'somebody all ask first — one stray tap used to be enough.\n\n' +
+      'Eight battlefields were repainted where the floor was hiding the ' +
+      'dice, the Coral Reef worst of all, and eighteen dice sets were ' +
+      'redrawn.',
+  },
+  {
     id: 'v1-63-2-sharper-floors',
     date: '28 August 2026',
     version: 'v1.63.2',

@@ -41,9 +41,7 @@
       }
     },
     "owner": "dmsutton",
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
+    "runtimeVersion": "2.0.0",
     "updates": {
       "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
     },
@@ -68,7 +66,7 @@
         "react-native-google-mobile-ads",
         {
           "iosAppId": "ca-app-pub-5310885665976703~4644888759",
-          "androidAppId": "ca-app-pub-5310885665976703~4644888759",
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
           "delayAppMeasurementInit": true
         }
       ]

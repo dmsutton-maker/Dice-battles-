@@ -3,14 +3,6 @@ import { join } from 'node:path';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { GAME_VERSION } from '../src/game/version';
 
-/** Is the ad SDK actually in the bundle? Same test tests/ads.test.ts uses. */
-function adsOn(): boolean {
-  const code = readFileSync(join(__dirname, '..', 'src/game/adSdk.ts'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/[^\n]*/g, '');
-  return /require\('react-native-google-mobile-ads'\)/.test(code);
-}
-
 /**
  * The parts of the submission gate that a machine can check.
  *
@@ -219,14 +211,38 @@ suite('submission · the ad configuration is per-platform', () => {
       'the Android AdMob app id is missing or malformed — the Android SDK ' +
         'crashes at startup without one',
     );
-    if (iosAppId === androidAppId) {
-      const message =
-        'iosAppId and androidAppId are identical. AdMob issues one App ID per ' +
-        'platform app, so Android would initialise against the iOS app. Create ' +
-        'an Android app for com.dmsutton.dicebattles in the AdMob console and ' +
-        'paste its id at app.json.';
-      assert(!adsOn(), message);
-      note(`KNOWN, and harmless while ads are off: ${message}`);
+    assert(
+      iosAppId !== androidAppId,
+      'iosAppId and androidAppId are identical. AdMob issues one App ID per ' +
+        'platform app, so Android would initialise against the iOS app — no ' +
+        'fill at best, an invalid-traffic flag on the account at worst.',
+    );
+
+    /*
+      Google's public Android test id is an ACCEPTABLE placeholder and a
+      forbidden shipping value.
+
+      There is no real Android AdMob app yet — one has to be created in
+      the console, which only David can do — and the launch is iOS only.
+      The wrong thing to do meanwhile was leave the real iOS id in the
+      Android slot, which is what pointed Android at David's own iOS app.
+      The wrong thing to do next is ship an Android release with the test
+      id, which serves test adverts to real players and earns nothing.
+    */
+    const GOOGLE_TEST_ANDROID = 'ca-app-pub-3940256099942544~3347511713';
+    if (androidAppId === GOOGLE_TEST_ANDROID) {
+      const easJson = JSON.parse(readFileSync(join(root, 'eas.json'), 'utf8'));
+      const submitsAndroid = Object.values(easJson.submit ?? {}).some(
+        (p) => typeof p === 'object' && p !== null && 'android' in p,
+      );
+      assert(
+        !submitsAndroid,
+        'the Android AdMob app id is still Google\'s public TEST id, and ' +
+          'eas.json now has an Android submit profile. Create an Android app ' +
+          'for com.dmsutton.dicebattles in the AdMob console and paste its ' +
+          'real App ID into app.json before that release goes out.',
+      );
+      note('Android AdMob id is Google\'s test placeholder — iOS-only launch, replace before any Android release');
     }
   });
 });
