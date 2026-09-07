@@ -86,15 +86,42 @@ suite('layout · the tab bar clears the home indicator', () => {
     );
   });
 
-  test('seven labels each hold one line, whatever the system text size', () => {
-    // Seven cells across the narrowest iPhone is about 53pt each. A player
-    // who has turned up iOS text size must not be the one who breaks it.
+  test('the labels grow with the system text size, up to where the row breaks', () => {
+    /*
+      This used to assert `allowFontScaling={false}`, back when there
+      were seven cells of about 53pt each. There are five now, of about
+      75pt, and pinning the labels made the NAVIGATION the one place in
+      the game that ignores a grandparent's larger-text setting — the
+      thing you have to read to get anywhere.
+
+      So they scale, and the cap is where the row would actually break:
+      the longest label is "Battle" and 1.6x of 10pt still holds one
+      line in 75pt. Cap and one-line together are the guarantee; either
+      alone is not.
+    */
     const label = nav.match(/<Text\s+style=\{\[styles\.label[\s\S]*?>/)?.[0];
     assert(label !== undefined, 'could not find the tab label');
     assert(/numberOfLines=\{1\}/.test(label!), 'tab labels can wrap to two lines');
     assert(
-      /allowFontScaling=\{false\}/.test(label!),
-      'tab labels scale with system text size, which breaks the row',
+      !/allowFontScaling=\{false\}/.test(label!),
+      'tab labels are pinned again — the navigation ignores the text-size setting',
+    );
+    const cap = label!.match(/maxFontSizeMultiplier=\{([\d.]+)\}/);
+    assert(cap !== null, 'tab labels scale without any cap, which breaks the row');
+    const times = Number(cap![1]);
+    assert(
+      times > 1 && times <= 1.6,
+      `the label cap is ${times}x — above 1.6x "Battle" no longer holds one line in a 75pt cell`,
+    );
+    note(`tab labels scale to ${times}x of ${'10pt'}`);
+  });
+
+  test('every tab cell is at least the theme’s own tap floor', () => {
+    // MIN_TAP said "Nothing tappable is smaller than this" and was
+    // imported by nothing at all, which made it a comment.
+    assert(
+      /minHeight: MIN_TAP/.test(nav),
+      'the tab cells no longer state the 44pt floor',
     );
   });
 

@@ -88,6 +88,8 @@ interface LeaderboardScreenProps {
   modeWins: Record<ModeId, number>;
   /** Opens the Friends page. */
   onFriends: () => void;
+  /** False until the device identity has been read — see the button. */
+  friendsReady?: boolean;
 }
 
 const DIFFICULTIES: { id: AiDifficultyId; label: string }[] = [
@@ -101,6 +103,7 @@ export function LeaderboardScreen({
   wins,
   modeWins,
   onFriends,
+  friendsReady = true,
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
   const totalWins = DIFFICULTIES.reduce((sum, d) => sum + wins[d.id], 0);
@@ -268,8 +271,14 @@ export function LeaderboardScreen({
                 that. Ranks is also where the rest of the social side
                 already is, so it is where somebody would look.
               */}
-              <Pressable style={styles.gcButton} onPress={onFriends}>
-                <Text style={styles.gcButtonText}>Friends</Text>
+              <Pressable
+                style={[styles.gcButton, !friendsReady && styles.gcButtonWaiting]}
+                onPress={friendsReady ? onFriends : undefined}
+                disabled={!friendsReady}
+              >
+                <Text style={styles.gcButtonText}>
+                  {friendsReady ? 'Friends' : 'Friends — one moment'}
+                </Text>
               </Pressable>
               <Pressable style={styles.gcButton} onPress={openLeaderboard}>
                 <Text style={styles.gcButtonText}>World ranking</Text>
@@ -368,6 +377,7 @@ const styles = StyleSheet.create({
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
   },
+  gcButtonWaiting: { backgroundColor: THEME.sunk, opacity: 0.75 },
   gcButtonText: { color: THEME.ink, fontSize: 13.5, fontWeight: '900' },
   // Amber, not red: nothing is broken and nothing was taken away. Dark
   // enough to read on white — bright amber was a dark-theme colour.

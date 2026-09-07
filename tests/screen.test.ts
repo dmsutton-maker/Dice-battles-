@@ -1062,11 +1062,24 @@ suite('screen · the menu does not jump', () => {
   };
 
   for (const name of ['modeRules', 'difficultyHint', 'trophyNext']) {
-    test(`${name} reserves its height`, () => {
+    test(`${name} reserves its height without clipping bigger text`, () => {
+      /*
+        A FLOOR, not a ceiling. These were hard `height`s, which held
+        the menu still at the default text size and cut the line off
+        half way down a letter at any larger one — the reserved slots
+        were the one thing on the home screen that got worse when a
+        grandparent turned the system text size up. minHeight keeps the
+        menu still where it can and reflows where it cannot, and the
+        scaling cap on each Text keeps the reflow small.
+      */
       const block = styleBlock(name);
-      const height = /height:\s*(\d+)/.exec(block);
+      const height = /minHeight:\s*(\d+)/.exec(block);
       const lineHeight = /lineHeight:\s*(\d+)/.exec(block);
-      assert(height !== null, `${name} has no fixed height — it will shift the menu`);
+      assert(
+        !/\n\s*height:\s*\d/.test(block),
+        `${name} has a hard height again — bigger text will be clipped`,
+      );
+      assert(height !== null, `${name} reserves no height — it will shift the menu`);
       assert(lineHeight !== null, `${name} has no lineHeight, so its height is a guess`);
       const lines = Number(height![1]) / Number(lineHeight![1]);
       assert(
@@ -1075,6 +1088,30 @@ suite('screen · the menu does not jump', () => {
       );
     });
   }
+
+  test('every reserved slot caps how far its text may grow', () => {
+    /*
+      minHeight without a cap is the other failure: at the largest
+      accessibility sizes the mode rules would push the difficulty row
+      and the Start button off the bottom of the screen. Each of these
+      either caps the multiplier or shrinks to fit, and one of the two
+      has to be true of every use.
+    */
+    for (const name of ['modeRules', 'difficultyHint', 'trophyNext']) {
+      const tags = [
+        ...source.matchAll(
+          new RegExp(`<Text\\s+style=\\{(?:styles\\.${name}|\\[styles\\.${name}[^\\]]*\\])\\}[^>]*>`, 'g'),
+        ),
+      ];
+      assert(tags.length > 0, `${name} is not used anywhere`);
+      for (const [tag] of tags) {
+        assert(
+          /maxFontSizeMultiplier=\{[\d.]+\}/.test(tag) || /adjustsFontSizeToFit/.test(tag),
+          `${name} neither caps its scaling nor shrinks to fit: ${tag.trim()}`,
+        );
+      }
+    }
+  });
 
   test('every reserved line also caps how many lines it may take', () => {
     // A fixed height without numberOfLines clips mid-wrap instead of
@@ -1203,6 +1240,86 @@ suite('release · the version number is real', () => {
     assert(
       screen.includes('{GAME_VERSION}'),
       'the Settings tab never renders GAME_VERSION',
+    );
+  });
+
+  test('the Creative Commons credits are somewhere a player can read them', () => {
+    // assets/sounds/CREDITS.md lists these as a licence condition, not a
+    // courtesy — CC-BY 4.0 requires the names to be reachable in the app.
+    const screen = readFileSync(
+      join(root, 'src/demo/DiceDemoScreen.tsx'),
+      'utf8',
+    );
+    for (const name of ['Kevin MacLeod', 'Gregor Quendel', 'CC BY 4.0']) {
+      assert(
+        screen.includes(name),
+        `Settings never shows "${name}", which the CC-BY licence requires`,
+      );
+    }
+  });
+
+  test('a matched pair only says RESCUED when somebody got out', () => {
+    // Two faces landing the same is not the same as a rescue: Ultimate
+    // can send one back, Skirmish may already have lost it, Color War
+    // may not be your colour. The HUD used to shout RESCUED! regardless.
+    const screen = readFileSync(
+      join(root, 'src/demo/DiceDemoScreen.tsx'),
+      'utf8',
+    );
+    assert(
+      screen.includes('{matchNote\n                    ? matchNote.text'),
+      'the bottom HUD still reads the raw pair rather than the outcome',
+    );
+    for (const note of [
+      'SENT BACK!',
+      'IS ALREADY OUT',
+      'IS NOT YOUR COLOR',
+      'NOBODY FREED',
+    ]) {
+      assert(
+        screen.includes(note),
+        `nothing tells the player "${note}" when a pair frees no one`,
+      );
+    }
+  });
+
+  test('Friends closes when you leave the Ranks tab', () => {
+    // It used to be drawn on `showFriends && me` alone, so tapping Store
+    // moved the highlight and left Friends covering the screen.
+    const screen = readFileSync(
+      join(root, 'src/demo/DiceDemoScreen.tsx'),
+      'utf8',
+    );
+    assert(
+      screen.includes("showFriends && me && menuTab === 'leaderboard'"),
+      'Friends is still drawn without checking which tab is showing',
+    );
+    assert(
+      screen.includes("if (menuTab !== 'leaderboard') setShowFriends(false)"),
+      'leaving the Ranks tab never closes the Friends page',
+    );
+  });
+
+  test('the four one-tap actions that cost something ask first', () => {
+    const cups = readFileSync(join(root, 'src/demo/TournamentScreen.tsx'), 'utf8');
+    assert(
+      cups.includes('<Confirm') && cups.includes("kind: 'enter'"),
+      'entering a cup still spends the entry fee on the first tap',
+    );
+    assert(
+      cups.includes("kind: 'abandon'"),
+      'giving up a run still throws the entry fee away with no question',
+    );
+    const friends = readFileSync(join(root, 'src/demo/FriendsScreen.tsx'), 'utf8');
+    for (const action of ['remove', 'block', 'unblock']) {
+      assert(
+        friends.includes(`action: '${action}'`),
+        `${action} is not routed through a confirmation`,
+      );
+    }
+    assert(
+      friends.includes('list.blocked.map'),
+      'there is still nowhere in the game to unblock somebody',
     );
   });
 

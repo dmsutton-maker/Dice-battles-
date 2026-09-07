@@ -206,7 +206,17 @@ suite('currency · items are telling apart-able', () => {
     // now, not because the two pictures differ the way Frost and Starry
     // were made to. Anyone tightening this to compare PIXELS should know
     // that gold and silver are meant to match and everything else is not.
-    const patterned = DICE_SKINS.filter((s) => s.pattern !== 'plain');
+    /*
+      `satin` joins `plain` as an exemption, 7 Sep 2026, and for the same
+      reason: it carries no SHAPE at all. It is ivory's sweep of light on
+      its own, given to the three ladder prizes — Mint, Bubblegum and
+      Midnight — which were flat fills and so read blanker than the Ivory
+      die a player starts with. They are still told apart by colour
+      alone, exactly as they were as `plain`, and the colour-distance
+      check below now covers them too.
+    */
+    const SHAPELESS = ['plain', 'satin'];
+    const patterned = DICE_SKINS.filter((s) => !SHAPELESS.includes(s.pattern));
     const patterns = patterned.map((s) => s.pattern);
     assertEqual(
       new Set(patterns).size,
@@ -215,10 +225,13 @@ suite('currency · items are telling apart-able', () => {
     );
   });
 
-  test('every plain skin is a clearly different colour', () => {
-    // Plain skins have only their body colour to tell them apart, so that
-    // colour has to carry the whole job.
-    const plain = DICE_SKINS.filter((s) => s.pattern === 'plain');
+  test('every shapeless skin is a clearly different colour', () => {
+    // A skin with no shape on it has only its body colour to tell it
+    // apart, so that colour has to carry the whole job. Both `plain` and
+    // `satin` are in that position — see the note above.
+    const plain = DICE_SKINS.filter(
+      (s) => s.pattern === 'plain' || s.pattern === 'satin',
+    );
     const rgb = (hex: string) => [
       parseInt(hex.slice(1, 3), 16),
       parseInt(hex.slice(3, 5), 16),

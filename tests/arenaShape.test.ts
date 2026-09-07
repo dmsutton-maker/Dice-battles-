@@ -961,16 +961,25 @@ suite('arenas · the floor is not cut in half', () => {
       floor is a bed of cut facets while its ground stays rock — so
       pinning only the floor would leave half of every painter unwatched,
       which is the very gap this test exists to close.
+
+      Re-pinned 7 Sep 2026 for the art pass: the reef's floor opened
+      into pale sand, Pirate Cove's planks turned along the tray and
+      its ground became a shore, Rooftop City's fittings stopped being
+      printed on the outside ground, Frozen Lights' curtains and
+      snowfield split by surface, Glow Glade's lawn lost its stripes,
+      the Crystal Cavern's gems sank into the rock, Autumn Woods'
+      litter thinned on the board, and Toy Room's rim came off the dice
+      palette. Every one of those was looked at as a render first.
     */
     const FINGERPRINT: Record<string, [number, number]> = {
       snowFence: [156103442, 2798872402], adobe: [3332830248, 3217809634],
-      basalt: [2367338390, 812598676], logPile: [3467978741, 3677557592],
-      station: [2717233196, 3994914310], stalagmite: [807404290, 18287228],
+      basalt: [2367338390, 812598676], logPile: [4280602225, 3677557592],
+      station: [3286370816, 3018566527], stalagmite: [180147778, 18287228],
       battlement: [3236668260, 3814821791], airlock: [1806471617, 1375994754],
       driftwood: [542929681, 1624185647], gingerbread: [4111876675, 4044205311],
-      mossStone: [3451167438, 1696864712], shipHull: [2439740480, 1924898867],
-      picket: [3596239287, 2708851089], coralRim: [35853002, 1941100666],
-      parapet: [2389790565, 2377193977], blocks: [1393805627, 3816223702],
+      mossStone: [1230692574, 1696864712], shipHull: [3933717449, 141008790],
+      picket: [3596239287, 2708851089], coralRim: [2795293299, 2615557615],
+      parapet: [4083942454, 1253591282], blocks: [4246978967, 3897879857],
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];

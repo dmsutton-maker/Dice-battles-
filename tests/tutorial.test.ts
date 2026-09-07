@@ -545,6 +545,61 @@ print(round(sum(v)/len(v),3), round(sum(1 for x in v if x < 0.32)/len(v),3))
     }
   });
 
+  test('every shelf picture is painted in its own arena’s colours', () => {
+    /*
+      Reading the generator's source is not enough, and 6 Sep 2026 proved
+      it twice over.
+
+      First, the generator PARSED the right file and still got the wrong
+      block: `SRC.index('\n  sky: {')` matched the `sky` FIELD of the
+      ArenaTheme type long before it reached the `sky` theme, and that
+      field's block runs to the `},` closing the SNOW theme — so Sky
+      Kingdom's picture was painted in Snowy Hollow's palette from the
+      day the script was written. Second, three thumbnails were simply
+      stale: the arenas were repainted on 31 Aug and nobody re-ran it.
+
+      Neither is visible to a test that only checks the source mentions
+      themeData.ts. This one opens the actual PNGs and looks for each
+      theme's own meadow and hill, exactly, among their pixels.
+    */
+    const src = readFileSync('src/arena/themeData.ts', 'utf8');
+    const themesAt = src.indexOf('export const ARENA_THEMES');
+    assert(themesAt > 0, 'themeData.ts no longer exports ARENA_THEMES');
+    // The four originals predate the themes and are drawn by a
+    // different generator; only the sixteen themed ones parse a block.
+    const THEMED = IDS.slice(4);
+
+    for (const id of THEMED) {
+      const at = src.indexOf(`\n  ${id}: {`, themesAt);
+      assert(at > 0, `${id} has no theme block`);
+      const block = src.slice(at, src.indexOf('\n  },', at));
+      const want: string[] = [];
+      for (const field of ['meadow', 'hill']) {
+        const m = block.match(new RegExp(`${field}: '(#[0-9a-f]{6})'`));
+        assert(m !== null, `${id} has no ${field}`);
+        want.push(m![1]);
+      }
+      const found = execSync(
+        `python3 -c "
+from PIL import Image
+im = Image.open('assets/arenas/${id}.png').convert('RGBA')
+px = set('#%02x%02x%02x' % p[:3] for p in im.getdata() if p[3] > 200)
+print(' '.join(c for c in [${want.map((c) => `'${c}'`).join(', ')}] if c in px))
+"`,
+        { encoding: 'utf8' },
+      ).trim();
+      for (const hex of want) {
+        assert(
+          found.includes(hex),
+          `assets/arenas/${id}.png does not contain ${hex}, which is that ` +
+            `theme's own colour — the picture is stale, or painted from ` +
+            `the wrong block. Re-run python3 assets/arenas/make-themed-art.py`,
+        );
+      }
+    }
+    note(`${THEMED.length} shelf pictures checked against their themes' own paint`);
+  });
+
   test('each original is made of its own arena’s paint', () => {
     /*
       ACCURATE, the third thing asked for. A pretty picture of a castle

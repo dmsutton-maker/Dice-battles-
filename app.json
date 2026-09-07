@@ -9,6 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": true,
       "icon": {
         "light": "./assets/icon/light.png",
         "dark": "./assets/icon/dark.png",
@@ -55,13 +56,20 @@
           "imageWidth": 150
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-asset",
       [
         "react-native-google-mobile-ads",
         {
           "iosAppId": "ca-app-pub-5310885665976703~4644888759",
-          "androidAppId": "ca-app-pub-5310885665976703~4644888759"
+          "androidAppId": "ca-app-pub-5310885665976703~4644888759",
+          "delayAppMeasurementInit": true
         }
       ]
     ]

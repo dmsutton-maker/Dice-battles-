@@ -83,6 +83,12 @@ interface ZoneViewProps {
   /** Bumped each match so the physics world rebuilds around new obstacles. */
   matchKey: number;
   difficultyName: string;
+  /**
+   * Color War only: the one colour THIS half of the phone is rescuing.
+   * Without it neither player was ever told which colour was theirs —
+   * the only cue was where their three prisoners happened to sit.
+   */
+  myColor?: ColorDef;
   controlsRef: React.MutableRefObject<SceneControls | null>;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
@@ -106,6 +112,7 @@ function ZoneView({
   layout,
   matchKey,
   difficultyName,
+  myColor,
   controlsRef,
   onThrow,
   onSettled,
@@ -182,8 +189,12 @@ function ZoneView({
 
       {/* Zone score strip */}
       <View pointerEvents="none" style={styles.zoneHud}>
+        {myColor && (
+          <View style={[styles.mySwatch, { backgroundColor: myColor.hex }]} />
+        )}
         <Text style={styles.zoneScore}>
-          {modeName} · {difficultyName} · {score} / {target}
+          {myColor ? `Rescue ${myColor.label}` : modeName} · {difficultyName} ·{' '}
+          {score} / {target}
           {oppScore > score ? '  — catch up!' : ''}
         </Text>
       </View>
@@ -230,6 +241,21 @@ export function TwoPlayerScreen({
     PRISONER_COLORS[0].id,
     PRISONER_COLORS[1].id,
   ]).current;
+  /*
+    Only Color War hands a player a colour of their own; in every other
+    mode both halves are chasing the same six, so a swatch would be a
+    lie. zoneColors[0] is the bottom half (Player 1) — the same order
+    buildBoards uses below.
+  */
+  const myColorA =
+    mode === 'colorwar'
+      ? PRISONER_COLORS.find((c) => c.id === zoneColors[0])
+      : undefined;
+  const myColorB =
+    mode === 'colorwar'
+      ? PRISONER_COLORS.find((c) => c.id === zoneColors[1])
+      : undefined;
+
   const buildBoards = useCallback((): SplitBoards => {
     if (mode === 'colorwar') {
       const [one, two] = zoneColors.map(
@@ -328,7 +354,21 @@ export function TwoPlayerScreen({
         faces[0].id,
         zoneColors,
       );
-      if (outcome.effect === 'none') return;
+      if (outcome.effect === 'none') {
+        /*
+          In Color War a matched pair that is not YOUR colour used to do
+          nothing at all — no sound, no buzz, no words. Two identical
+          faces landing to complete silence reads as a broken game, not
+          as "wrong colour", so say so the way Ultimate already does.
+        */
+        if (mode === 'colorwar') {
+          playCue('wrong');
+          Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Warning,
+          ).catch(() => {});
+        }
+        return;
+      }
 
       unitsRefA.current = outcome.boards.a;
       unitsRefB.current = outcome.boards.b;
@@ -390,6 +430,7 @@ export function TwoPlayerScreen({
         layout={layout}
         matchKey={matchKey}
         difficultyName={AI_DIFFICULTIES[difficulty].label}
+        myColor={myColorB}
         controlsRef={controlsB}
         onThrow={noop}
         onSettled={settledB}
@@ -414,6 +455,7 @@ export function TwoPlayerScreen({
         layout={layout}
         matchKey={matchKey}
         difficultyName={AI_DIFFICULTIES[difficulty].label}
+        myColor={myColorA}
         controlsRef={controlsA}
         onThrow={noop}
         onSettled={settledA}
@@ -438,7 +480,7 @@ export function TwoPlayerScreen({
           <View style={styles.readyCard}>
             <Text style={styles.readyTitle}>Split screen</Text>
             <Text style={styles.readyBody}>
-              First to rescue all six prisoners wins.{'\n'}Tap fast. No mercy.
+              {MODES[mode].rules}{'\n'}Tap fast. No mercy.
             </Text>
           </View>
         </Pressable>
@@ -477,6 +519,16 @@ const styles = StyleSheet.create({
     borderRadius: SHAPE.radiusSm,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  mySwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
   },
   zoneScore: {
     color: THEME.ink,

@@ -165,13 +165,18 @@ export function StoreScreen({ wallet, onPreview, onPreviewArena }: StoreScreenPr
           })}
         </View>
 
-        <Text style={styles.sectionTitle}>COIN PACKS</Text>
+        {/*
+          Written for whoever is holding the phone, not for us. The old
+          copy explained our App Store payment paperwork, which is not a
+          player's problem and reads like a broken screen.
+        */}
+        <Text style={styles.sectionTitle}>HOW TO GET COINS</Text>
         <View style={styles.comingSoon}>
-          <Text style={styles.comingTitle}>Not open yet</Text>
+          <Text style={styles.comingTitle}>Win them</Text>
           <Text style={styles.comingBody}>
-            Buying coins with real money needs the App Store payment setup
-            finished first. Until then every coin is earned by playing —
-            which is the only way to get anything in the game right now.
+            Every battle you win pays coins, and harder rivals pay more.
+            Cups pay the biggest prizes of all. There is nothing here to
+            buy — playing is the only way in, for everybody.
           </Text>
         </View>
       </ScrollView>

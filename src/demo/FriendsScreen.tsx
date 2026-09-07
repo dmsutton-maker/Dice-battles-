@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { MENU_PAGE_AREA } from './BottomNav';
 import { Card, PrimaryButton, SecondaryButton } from '../ui/Card';
+import { Confirm, Tell } from '../ui/Confirm';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { TrophyIcon } from '../ui/Icon';
 import { DiceSwatch } from './DiceSwatch';
@@ -69,6 +70,20 @@ export function FriendsScreen({
   const [found, setFound] = useState<ProfilePeek | null>(null);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [showing, setShowing] = useState<PublicProfile | null>(null);
+  /*
+    Cutting somebody off is the one thing here that cannot be undone by
+    tapping again — a block can only be lifted from the blocked list,
+    and a removed friend has to ask all over again. So both ask first.
+  */
+  const [asking, setAsking] = useState<
+    { action: 'remove' | 'block' | 'unblock'; playerId: string; name: string } | null
+  >(null);
+  /*
+    An action that fails from the profile page used to fail in silence:
+    `problem` is drawn on the LIST, which is the page you are not
+    looking at. This one is drawn over whatever page you are on.
+  */
+  const [actionError, setActionError] = useState<string | null>(null);
   const page: Page = showing ? 'profile' : 'list';
 
   const refresh = useCallback(async () => {
@@ -129,6 +144,7 @@ export function FriendsScreen({
     const result = await actOnFriend(me, otherId, action);
     if (!result.ok) {
       setProblem(result.error);
+      setActionError(result.error);
       return;
     }
     setFound(null);
@@ -137,14 +153,70 @@ export function FriendsScreen({
     await refresh();
   };
 
+  /*
+    The question, and the error, drawn over whichever page is showing —
+    the list and the profile are two returns below, and a confirmation
+    that only existed on one of them would be the bug all over again.
+  */
+  const ASK_COPY = {
+    remove: {
+      title: (n: string) => `Remove ${n}?`,
+      body: 'They come off your list and you come off theirs. Either of you can ask again afterwards.',
+      confirm: 'Yes, remove them',
+    },
+    block: {
+      title: (n: string) => `Block ${n}?`,
+      body: 'They cannot ask to be your friend again, and they are not told. You can undo this from the blocked list at the bottom of this page.',
+      confirm: 'Yes, block them',
+    },
+    unblock: {
+      title: (n: string) => `Unblock ${n}?`,
+      body: 'They will be able to ask to be your friend again. They were never told they were blocked.',
+      confirm: 'Yes, unblock them',
+    },
+  } as const;
+
+  const overlays = (
+    <>
+      {asking && (
+        <Confirm
+          title={ASK_COPY[asking.action].title(asking.name)}
+          body={ASK_COPY[asking.action].body}
+          confirmLabel={ASK_COPY[asking.action].confirm}
+          onCancel={() => setAsking(null)}
+          onConfirm={() => {
+            const a = asking;
+            setAsking(null);
+            void act(a.playerId, a.action);
+          }}
+        />
+      )}
+      {actionError && (
+        <Tell
+          title="That did not go through"
+          body={actionError}
+          dismissLabel="Close"
+          onDismiss={() => setActionError(null)}
+        />
+      )}
+    </>
+  );
+
   if (page === 'profile' && showing) {
     return (
-      <ProfileView
-        profile={showing}
-        onBack={() => setShowing(null)}
-        onRemove={() => act(showing.playerId, 'remove')}
-        onBlock={() => act(showing.playerId, 'block')}
-      />
+      <>
+        <ProfileView
+          profile={showing}
+          onBack={() => setShowing(null)}
+          onRemove={() =>
+            setAsking({ action: 'remove', playerId: showing.playerId, name: showing.name })
+          }
+          onBlock={() =>
+            setAsking({ action: 'block', playerId: showing.playerId, name: showing.name })
+          }
+        />
+        {overlays}
+      </>
     );
   }
 
@@ -296,7 +368,36 @@ export function FriendsScreen({
             </Card>
           ))
         )}
+
+        {/*
+          The way back out of a block. The rule engine has always said
+          unblock is the ONLY move a blocked row allows, and until now
+          there was nowhere in the game to make it — so a mis-tap on
+          Block was permanent.
+        */}
+        {list.blocked.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>BLOCKED</Text>
+            <Text style={styles.blockedNote}>
+              They cannot ask to be your friend, and they were never told.
+            </Text>
+            {list.blocked.map((b) => (
+              <Card key={b.playerId} style={styles.rowCard}>
+                <Text style={styles.rowName}>{b.name}</Text>
+                <SecondaryButton
+                  style={styles.smallButton}
+                  onPress={() =>
+                    setAsking({ action: 'unblock', playerId: b.playerId, name: b.name })
+                  }
+                >
+                  <Text style={styles.smallSecondaryText}>Unblock</Text>
+                </SecondaryButton>
+              </Card>
+            ))}
+          </>
+        )}
       </ScrollView>
+      {overlays}
     </View>
   );
 }
@@ -456,5 +557,12 @@ const styles = StyleSheet.create({
   profileActions: { flexDirection: 'row', gap: 10, marginTop: 24 },
   wideButton: { flex: 1, paddingVertical: 12 },
   blockText: { ...TYPE.body, color: THEME.bad },
+  blockedNote: {
+    ...TYPE.small,
+    color: THEME.inkFaint,
+    marginTop: -4,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
   blockNote: { ...TYPE.small, color: THEME.inkFaint, textAlign: 'center', marginTop: 10 },
 });

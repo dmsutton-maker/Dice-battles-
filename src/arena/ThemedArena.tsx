@@ -1332,8 +1332,17 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
                 <boxGeometry args={[w, 0.14, d]} />
                 <meshStandardMaterial color={cap} roughness={0.35} metalness={0.6} />
               </mesh>
+              {/*
+                Narrow ACROSS the wall, full length ALONG it. Scaling
+                both axes by 0.6 shortened the hazard stripe as well as
+                narrowing it, so every wall had a bare grey gap at each
+                end and the rim never closed — the same "the decoration
+                doesn't go all the way round" fault reported before.
+                WALL_RUNS is [left, right, near, far], so 0 and 1 run
+                along d and the other two along w.
+              */}
               <mesh position={[x, wallHeight + 0.15, z]}>
-                <boxGeometry args={[w * 0.6, 0.04, d * 0.6]} />
+                <boxGeometry args={[i < 2 ? w * 0.6 : w, 0.04, i < 2 ? d : d * 0.6]} />
                 <meshBasicMaterial color={accent} />
               </mesh>
             </group>
@@ -1574,9 +1583,12 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
         <group>
           {rim.map((m, i) => {
             const shade = [theme.wall.color, cap, accent][i % 3];
+            // 0.24, not 0.38 — a block that is a die's size AND a die's
+            // colour is a die. The palette moved off the dice in
+            // themeData; this stops the shape matching too.
             return (
-              <mesh key={`block-${i}`} position={[m.pos[0], wallHeight + 0.19, m.pos[2]]}>
-                <boxGeometry args={[0.38, 0.38, 0.38]} />
+              <mesh key={`block-${i}`} position={[m.pos[0], wallHeight + 0.13, m.pos[2]]}>
+                <boxGeometry args={[0.24, 0.24, 0.24]} />
                 <meshStandardMaterial color={shade} roughness={0.55} />
               </mesh>
             );

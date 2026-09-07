@@ -272,12 +272,77 @@ suite('ads · an ad can never cost a player anything', () => {
     ] as const) {
       const start = screen.indexOf(marker);
       assert(start > 0, `${name} is gone`);
-      const body = screen.slice(start, start + 900);
+      const body = screen.slice(start, start + 2200);
       assert(
         body.includes('showAdIfDue()'),
         `leaving via ${name} never shows a due ad`,
       );
     }
+  });
+
+  test('Game Center’s own guard is still there, because ours cannot help', () => {
+    /*
+      The 25 Aug 2026 crash, from the other side.
+
+      `expo-game-center` is in EVERY over-the-air bundle through the
+      literal require in src/game/gameCenter.ts, and it only survives on
+      a binary without the native module because the PACKAGE swallows
+      requireNativeModule's throw itself, inside its own module factory.
+      Our try/catch around the require cannot help: Metro's loader
+      catches a throwing factory first and reports it as fatal.
+
+      So the safety here belongs to a third party, and a package upgrade
+      that drops that internal try/catch reproduces the crash with
+      nothing in this repo changed. Nothing else watches for it — the
+      test above only reads the ads SDK string.
+    */
+    const guard = readFileSync(
+      'node_modules/expo-game-center/build/ExpoGameCenterModule.js',
+      'utf8',
+    );
+    const factory = guard.slice(0, guard.indexOf('export default'));
+    assert(
+      /try\s*\{[\s\S]*requireNativeModule\([\s\S]*?\}\s*catch/.test(factory),
+      'expo-game-center no longer swallows its own requireNativeModule throw. ' +
+        'Every old binary would red-screen on the next OTA. Either pin the ' +
+        'previous version, or move Game Center behind an explicit ' +
+        'runtimeVersion and ship a build in the same change.',
+    );
+    const gc = readFileSync('src/game/gameCenter.ts', 'utf8');
+    assert(
+      gc.includes("require('expo-game-center')"),
+      'gameCenter.ts no longer requires the package — re-check this test',
+    );
+  });
+
+  test('the next battle waits behind the ad instead of running under it', () => {
+    /*
+      JS timers do not pause under a native full-screen ad. When
+      showAdIfDue was fire-and-forget, the matching overlay, the
+      1100/1800ms arm and go timers and then the AI's roll interval all
+      kept running, so a player closed the interstitial to find the
+      battle already going and the rival ahead.
+    */
+    const start = screen.indexOf('const startCountdown');
+    const body = screen.slice(start, start + 2200);
+    assert(
+      body.includes('void showAdIfDue().then('),
+      'startCountdown no longer waits for the ad before starting the battle',
+    );
+    const after = body.slice(body.indexOf('void showAdIfDue().then('));
+    assert(
+      after.includes("setPhaseBoth('matching')"),
+      'the countdown starts outside the ad wait, so it runs under the ad',
+    );
+    // And the wait itself can never become a hang.
+    assert(
+      source.includes('AD_CLOSE_TIMEOUT_MS'),
+      'nothing caps how long the game will wait for an ad to close',
+    );
+    assert(
+      source.includes('await closed;'),
+      'showAdIfDue resolves on shown rather than on closed',
+    );
   });
 
   test('an ad that is not ready is skipped, never waited for', () => {

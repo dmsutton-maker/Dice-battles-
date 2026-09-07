@@ -49,13 +49,29 @@ export const DICE_SKINS: DiceSkin[] = [
     ink: '#fff8dc',
     unlock: 'golden-dice',
   },
-  { id: 'mint', name: 'Mint', emoji: '🍃', body: '#a8f0d8', pattern: 'plain', unlock: 'mint-dice' },
+  /*
+    The three ladder prizes were `plain` — one flat fill, no shell
+    material — which made a die a family had to EARN look blanker than
+    the Ivory they start with. `satin` is ivory's sheen on its own: a
+    broad sweep of light, no grain, no mottle, so the face stickers
+    still dominate and the flat-ladder / patterned-store split holds.
+  */
+  {
+    id: 'mint',
+    name: 'Mint',
+    emoji: '🍃',
+    body: '#a8f0d8',
+    pattern: 'satin',
+    ink: '#e6fdf4',
+    unlock: 'mint-dice',
+  },
   {
     id: 'bubblegum',
     name: 'Bubblegum',
     emoji: '🍬',
     body: '#ff9ecb',
-    pattern: 'plain',
+    pattern: 'satin',
+    ink: '#ffd2e8',
     unlock: 'bubblegum-dice',
   },
   {
@@ -63,7 +79,10 @@ export const DICE_SKINS: DiceSkin[] = [
     name: 'Midnight',
     emoji: '🌑',
     body: '#262b40',
-    pattern: 'plain',
+    pattern: 'satin',
+    // A LIFTED navy, not a white: Midnight has to stay night-dark, so
+    // its sweep is moonlight on navy rather than a grey wash.
+    ink: '#556398',
     unlock: 'midnight-dice',
   },
 
@@ -126,8 +145,9 @@ export const DICE_SKINS: DiceSkin[] = [
     body: '#f2efe8',
     pattern: 'marble',
     // Grey-blue veining. Warm veins on warm stone disappeared at the size
-    // a die is actually seen.
-    ink: '#7f8792',
+    // a die is actually seen, and #7f8792 was still a step too pale to
+    // survive a Store thumbnail.
+    ink: '#6b7480',
     price: 525,
   },
   {

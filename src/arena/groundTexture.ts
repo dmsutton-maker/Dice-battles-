@@ -296,19 +296,25 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   // Fallen leaves: proper leaf shapes, in the reds and golds a wood
   // turns, each with a midrib. David asked for the Autumn Woods floor to
   // look better — it was small dark dashes, which reads as grit.
-  logPile: (x, y, p) => {
+  //
+  // The drift is thinned INSIDE the walls. Painted at ground density the
+  // board became a carpet of red and gold, and a red or orange die
+  // landing on it had to be hunted for — the one thing a floor must not
+  // do. Outside the walls the density is untouched: that is where the
+  // arena's name lives.
+  logPile: (x, y, p, tray) => {
     const cell = 14;
     let c = mix(p.a, shade(p.a, 0.92), fbm(x, y, SIZE));
     // Two passes at different offsets, so leaves overlap the way a
     // drift of them does instead of sitting one to a cell.
-    for (let pass = 0; pass < 2; pass++) {
+    for (let pass = 0; pass < (tray ? 1 : 2); pass++) {
       const ox = pass * 7;
       const oy = pass * 5;
       const row = Math.floor((y + oy) / cell);
       const rowOff = row % 2 === 0 ? 0 : cell / 2;
       const col = Math.floor((x + ox + rowOff) / cell);
       const h = hash(col + pass * 31, row + pass * 17);
-      if (h < 0.42) continue;
+      if (h < (tray ? 0.72 : 0.42)) continue;
       const lx = (((x + ox + rowOff) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 5;
       const ly = (((y + oy) % cell) + cell) % cell - cell / 2 + (hash(col + 7, row + pass) - 0.5) * 5;
       const a = h * Math.PI * 2;
@@ -349,14 +355,22 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     // Per-block tone. The old hash * 0.5 + 0.25 band was too narrow to
     // survive the night rig; this runs the cold-white mix from 0.3 to
     // 0.75 so neighbouring blocks stay distinct after the lights dim it.
+    // The cold-white lift is a TRAY thing. Outside, pulling the snow up
+    // to near-white swamped the darker meadow the theme now sets, and
+    // the whole arena sat in one value band — board, wall and snow all
+    // the same pale grey-blue, which is why it read foggy.
     const block = hash(bx, by);
-    let c = mix(mix(p.a, p.b, 0.3 + hash(bx + 7, by + 3) * 0.7), cold, 0.2 + block * 0.6);
+    let c = mix(
+      mix(p.a, p.b, 0.3 + hash(bx + 7, by + 3) * 0.7),
+      cold,
+      tray ? 0.2 + block * 0.6 : 0.04 + block * 0.22,
+    );
 
     // Wind-drifted snow — the snowfield's own drift, mixed toward cold
     // white. Deepest on the ground outside the tray, so the board stays
     // the flattest, most playable snow in frame.
     const drift = fbm(x + y * 0.3, y * 2.2, SIZE);
-    c = mix(c, lift(cold, 0.6), smoothstep(0.4, 0.8, drift) * (tray ? 0.4 : 0.65));
+    c = mix(c, lift(cold, 0.6), smoothstep(0.4, 0.8, drift) * (tray ? 0.4 : 0.3));
 
     // Joints between the snow blocks — soft blue shadows, not grout —
     // with drift piled a shade brighter along each lip.
@@ -372,11 +386,22 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     const green = Math.sin(((2 * x + y) / SIZE) * TAU + warp * 2.2);
     const cyan = Math.sin(((x + 2 * y) / SIZE) * TAU + 2.1 + warp * 2.8);
     const magenta = Math.sin(((2 * x - y) / SIZE) * TAU + 4.4 + warp * 1.8);
-    // Each ribbon is a broad graded wash with a brighter core, so it
-    // reads as a curtain of light rather than a hard painted stripe.
-    c = mix(c, [59, 226, 148], smoothstep(0.0, 0.85, green) * 0.42 + smoothstep(0.7, 0.98, green) * 0.18);
-    c = mix(c, [96, 208, 236], smoothstep(0.05, 0.9, cyan) * 0.32 + smoothstep(0.72, 0.98, cyan) * 0.14);
-    c = mix(c, [224, 134, 220], smoothstep(0.3, 0.95, magenta) * 0.24);
+    /*
+      Each ribbon is a broad graded wash with a brighter core, so it
+      reads as a curtain of light rather than a hard painted stripe —
+      and each is now scaled by where it falls. The drift above already
+      dimmed on the tray; these did not, so the curtains washed over the
+      play floor as strongly as the snow, and the board came out a hazy
+      grey-green smear at almost the same value as everything else. The
+      green wash sat in the same family as the green die, too.
+
+      Quiet under the dice, stronger on the snow around them, which is
+      where this painter's own note says the picture lives.
+    */
+    const lights = tray ? 0.35 : 1.4;
+    c = mix(c, [59, 226, 148], (smoothstep(0.0, 0.85, green) * 0.42 + smoothstep(0.7, 0.98, green) * 0.18) * lights);
+    c = mix(c, [96, 208, 236], (smoothstep(0.05, 0.9, cyan) * 0.32 + smoothstep(0.72, 0.98, cyan) * 0.14) * lights);
+    c = mix(c, [224, 134, 220], smoothstep(0.3, 0.95, magenta) * 0.24 * lights);
 
     // Ice sparkle.
     if (hash(x, y) > 0.993) c = lift(c, 0.85);
@@ -499,7 +524,12 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
 
     const gemmy = hash(cq * 7 + 3, cr * 11 + 5) > 0.72;
     const base = gemmy
-      ? mix(GEMS[Math.floor(hash(cq + 5, cr + 9) * GEMS.length) % GEMS.length], p.b, 0.42)
+      // Pushed further into the rock than it used to be. At 0.42 a lit
+      // lilac facet reached about #c38cf7 — the purple die's own colour,
+      // at ten times the size — and a purple die landing on one
+      // disappeared. The gems still read as gems; they just belong to
+      // the cavern now instead of competing with the dice.
+      ? mix(GEMS[Math.floor(hash(cq + 5, cr + 9) * GEMS.length) % GEMS.length], p.b, 0.68)
       : mix(p.a, p.b, hash(cq + 2, cr + 6) * 0.7);
 
     /*
@@ -509,7 +539,9 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       this big also shows its own grain, which a small facet never did.
     */
     const tilt = ((x - cx) * 0.7 + (y - cy)) / CELL;
-    let c = shade(base, 0.8 + Math.max(0, -tilt) * 0.5);
+    // Gain capped at 0.25 (was 0.5) so no facet ends up brighter than
+    // the wall behind it.
+    let c = shade(base, 0.8 + Math.min(0.25, Math.max(0, -tilt) * 0.5));
     c = mix(c, shade(base, 0.86), noise(x / 4 + cq * 9, y / 4 + cr * 5, SIZE / 4) * 0.35);
 
     // The seam where two slabs meet, and the bright arris along it.
@@ -663,8 +695,12 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       // vanished into the grain the first time round.
       const wide = Math.sin((x + 6) * (Math.PI / 28));
       let c = mix(p.b, p.a, smoothstep(-0.45, 0.45, wide));
+      // Graded, not banded. A hard half-wave at 0.7 darkened every 16
+      // painter units into stripes you could not unsee, and the green
+      // die sat on them. smoothstep rolls the edge off and the depth
+      // comes down to a hint of a mow line.
       const fine = Math.sin(x * (Math.PI / 8));
-      c = mix(c, shade(c, 0.9), Math.max(0, fine) * 0.7);
+      c = mix(c, shade(c, 0.9), smoothstep(-0.3, 0.6, fine) * 0.25);
       // Patches where the grass grows thicker, so the lawn is not paper.
       const blob = fbm(x * 0.5, y * 0.5, SIZE);
       c = mix(c, lift(p.b, 0.16), smoothstep(0.62, 0.9, blob) * 0.3);
@@ -764,16 +800,44 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     return c;
   },
 
-  shipHull: (x, y, p) => {
-    const plank = 15;
-    const row = Math.floor(y / plank);
-    const inY = ((y % plank) + plank) % plank;
-    let c = mix(p.a, p.b, hash(row, Math.floor(x / 42)) * 0.7 + 0.15);
-    // Grain running the length of the plank.
-    c = mix(c, shade(c, 0.9), noise(x / 6, y * 2, SIZE / 6) * 0.55);
-    if (inY < 1.4 || inY > plank - 1.4) c = mix(c, p.accent, 0.45);
+  /*
+    Pirate Cove: a deck on the board, a shore around it.
+
+    Two faults, both found on 6 Sep 2026. The planks ran ACROSS the
+    short axis in short staggered courses with strong seams, so the
+    deck read as a chocolate brick wall rather than as boards. And the
+    painter ignored its `tray` flag, so the surrounding ground got the
+    same deck treatment — a ship beached on nothing, which is a wooden
+    crate on a warehouse floor, and there was no cove anywhere in
+    Pirate Cove.
+
+    So the boards now run the LONG axis in 64-unit lengths (64 and 16
+    both divide the 128-unit ground tile, so nothing seams at the
+    repeat), and outside the walls is rippled sand with shell flecks.
+    The hull IS the board; the shore is what it is beached on.
+  */
+  shipHull: (x, y, p, tray) => {
+    if (!tray) {
+      // Wet sand, the adobe ripple turned across the other diagonal so
+      // the shore does not read as the same dune field as the desert.
+      const ripple = Math.sin((y * 0.9 + x * 0.35) * 0.42 + fbm(x, y, SIZE) * 5);
+      let c = mix(p.a, p.b, (ripple + 1) / 2);
+      c = mix(c, shade(p.a, 0.92), smoothstep(0.55, 0.85, fbm(x * 0.5, y * 0.5, SIZE)) * 0.4);
+      // Shells and pebbles, in the deck's own gold so the two surfaces
+      // still belong to one arena.
+      if (hash(x * 3, y * 3) > 0.9955) c = mix(c, p.accent, 0.55);
+      if (hash(x * 3 + 41, y * 3 + 17) > 0.9975) c = mix(c, [244, 238, 224], 0.7);
+      return c;
+    }
+    const plank = 16;
+    const row = Math.floor(x / plank);
+    const inX = ((x % plank) + plank) % plank;
+    let c = mix(p.a, p.b, hash(row, Math.floor(y / 64)) * 0.7 + 0.15);
+    // Grain running the length of the plank — now the y axis.
+    c = mix(c, shade(c, 0.9), noise(y / 6, x * 2, SIZE / 6) * 0.55);
+    if (inX < 1.4 || inX > plank - 1.4) c = mix(c, p.accent, 0.45);
     // The butt joints where one plank ends and the next begins.
-    if (Math.abs((((x + row * 17) % 42) + 42) % 42) < 1.2) c = mix(c, p.accent, 0.35);
+    if (Math.abs((((y + row * 17) % 64) + 64) % 64) < 1.2) c = mix(c, p.accent, 0.35);
     return c;
   },
 
@@ -825,7 +889,10 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     // pass painted "sand" as a second teal and the heads floated on it.
     const sand: Rgb = [216, 202, 168];
     const rip = Math.sin(y * 0.85 + x * 0.15 + wob * 5) * 0.5 + 0.5;
-    let c = mix(mix(p.a, p.b, 0.5), sand, (tray ? 0.34 : 0.2) + rip * 0.28);
+    // The board is SAND with water over it, not water with a hint of
+    // sand. At 0.34 the tray still came out teal and six dice landed on
+    // a surface the same value as themselves.
+    let c = mix(mix(p.a, p.b, 0.5), sand, (tray ? 0.55 : 0.2) + rip * 0.3);
     c = mix(c, shade(p.b, 0.9), smoothstep(0.5, 0.06, rip) * 0.4);
     /*
       How likely a lattice cell is to skip its head. On the ground it is
@@ -834,9 +901,17 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       tray picture in painter units — floorW 5.6 by floorD 10.2 world at
       UNITS_PER_WORLD — the same hardcoding the snow pond uses.
     */
+    // Both surfaces were re-tuned after the 6 Sep 2026 art pass called
+    // this the worst arena of the sixteen — and it is the one that costs
+    // 2400 coins. On the TRAY the base skip went 0.38 -> 0.66 and the
+    // ramp starts almost at the wall, so heads are a thin fringe on the
+    // rim and everything else is open sand: six dice used to land in
+    // coral the same size and colour as themselves. On the GROUND the
+    // skip went 0.38 -> 0.72, because at 0.38 through four lattices the
+    // surround was a solid carpet of blobs that read as mould.
     const skip = tray
-      ? 0.38 + smoothstep(11, 32, Math.min(x, 112 - x, y, 204 - y)) * 0.58
-      : 0.38;
+      ? 0.72 + smoothstep(4, 40, Math.min(x, 112 - x, y, 204 - y)) * 0.28
+      : 0.8;
     // Coral heads, each its own colour. The 32-cell lattice (double the
     // rest, and the one size that wraps at 128 exactly) only grows in
     // the open ground outside the tray.
@@ -845,7 +920,9 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       [150, 214, 168], [186, 132, 216], [244, 158, 120],
     ];
     const lump = (wob - 0.5) * 3.2;
-    for (let k = tray ? 1 : 0; k < 4; k++) {
+    // Two lattices outside instead of four, and only the two largest
+    // head sizes inside the walls.
+    for (let k = tray ? 2 : 0; k < (tray ? 4 : 2); k++) {
       const cell = k === 0 ? 32 : 25 - k * 4;
       const ox = k * 9;
       const row = Math.floor((y + ox) / cell);
@@ -869,7 +946,9 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       // survived a high threshold was the same salmon, and the first two
       // palette entries were never drawn at all.
       const head = REEF[Math.floor(hash(col + 19, row + k * 7) * REEF.length * 0.999)];
-      c = mix(c, head, 0.9);
+      // 0.55, not 0.9: coral seen THROUGH water, rather than stickers
+      // laid on top of it. At full strength the surround read as static.
+      c = mix(c, head, 0.55);
       // Interior structure, keyed on the head's own lattice hash: half
       // are brain corals with concentric ridges, half are knobbly
       // polyp mounds.
@@ -897,13 +976,16 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     const web =
       1 - Math.abs(noise(x / 9 + 31, y / 9 + 57, SIZE / 9) +
         (noise(x / 4.5 + 71, y / 4.5 + 13, SIZE / 4.5) - 0.5) * 0.35 - 0.5) * 2;
-    return mix(c, lift(p.b, 0.85), smoothstep(0.84, 0.97, web) * (tray ? 0.7 : 0.5));
+    // A few thin glints, not white spaghetti: the ramp narrowed and the
+    // tray strength came down from 0.7 to 0.22. The web used to be laid
+    // over the whole board at full strength, on top of the coral.
+    return mix(c, lift(p.b, 0.85), smoothstep(0.9, 0.99, web) * (tray ? 0.22 : 0.5));
   },
 
   // A real rooftop: rolled felt with its seams, gravel ballast, tar
   // patches, and the chalk lines and hatches a roof carries. David asked
   // for Rooftop City to look better — it was grey felt and nothing else.
-  parapet: (x, y, p) => {
+  parapet: (x, y, p, tray) => {
     const roll = 26;
     const inY = ((y % roll) + roll) % roll;
     let c = mix(p.a, p.b, fbm(x, y, SIZE) * 0.7 + 0.15);
@@ -926,19 +1008,37 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
       a 128 tile is five hatches, and five hatches in a lattice read as
       wallpaper rather than as the things on a roof.
     */
-    if (y > 86 && y < 96) {
-      // Galvanised duct, ribbed along its length.
-      c = mix(c, [158, 166, 180], 0.7);
-      if (((x % 5) + 5) % 5 < 1.4) c = shade(c, 0.82);
-      if (y < 88 || y > 94) c = shade(c, 0.7);
+    /*
+      The fittings belong on the ROOF, not on the world around it.
+
+      This painter used to ignore its `tray` flag, so the duct, the
+      hatch and the safety line were drawn on the outside ground too —
+      which tiles every 128 units, printing long pale bands and a yellow
+      line across the whole surround. Rooftop City read as a street with
+      a zebra crossing and a centre line. Outside now gets felt seams,
+      patches and grit only, and the arena reads as a roof.
+    */
+    if (tray) {
+      if (y > 168 && y < 178 && x > 16 && x < 78) {
+        // Galvanised duct, ribbed along its length. Moved from mid-board
+        // (y 86-96) to the near end, and no longer spanning the full
+        // width — a full-width ribbed grey band under a near-top-down
+        // camera reads as a crossing however it is coloured. Ribs at
+        // every 3 units rather than 5, so they read as ribs, not dashes.
+        c = mix(c, [158, 166, 180], 0.7);
+        if (((x % 3) + 3) % 3 < 1.1) c = shade(c, 0.82);
+        if (y < 170 || y > 176) c = shade(c, 0.7);
+        // Capped ends, so the run stops rather than being cut off.
+        if (x < 19 || x > 75) c = shade(c, 0.62);
+      }
+      if (x > 20 && x < 48 && y > 14 && y < 40) {
+        const plate: Rgb = [196, 148, 62];
+        c = mix(plate, lift(plate, 0.3), (x - 20) / 28);
+        if (x < 23 || x > 45 || y < 17 || y > 37) c = shade(c, 0.72);
+      }
+      // The painted line that runs round the edge of every flat roof.
+      if (x > 108 && x < 112) c = mix(c, [214, 176, 74], 0.5);
     }
-    if (x > 20 && x < 48 && y > 14 && y < 40) {
-      const plate: Rgb = [196, 148, 62];
-      c = mix(plate, lift(plate, 0.3), (x - 20) / 28);
-      if (x < 23 || x > 45 || y < 17 || y > 37) c = shade(c, 0.72);
-    }
-    // The painted line that runs round the edge of every flat roof.
-    if (x > 108 && x < 112) c = mix(c, [214, 176, 74], 0.5);
     // Grit.
     const g = hash(x, y);
     if (g > 0.93) c = mix(c, lift(p.b, 0.3), 0.5);

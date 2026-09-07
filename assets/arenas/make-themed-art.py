@@ -40,8 +40,19 @@ def hx(h):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
+# Everything is searched from HERE, never from the top of the file.
+#
+# The bug this fixes: `SRC.index('\n  sky: {')` matched the `sky:` FIELD
+# of the ArenaTheme type at themeData.ts:143 long before it reached the
+# `sky` theme, and that field's block runs to the `\n  },` that closes
+# the snow theme — so Sky Kingdom's shelf picture was painted in Snowy
+# Hollow's colours from the day this script was written. Any theme id
+# that shares a name with a field of the type had the same problem.
+THEMES_AT = SRC.index('export const ARENA_THEMES')
+
+
 def theme_block(tid):
-    at = SRC.index(f'\n  {tid}: {{')
+    at = SRC.index(f'\n  {tid}: {{', THEMES_AT)
     end = SRC.index('\n  },', at)
     return SRC[at:end]
 
@@ -52,7 +63,7 @@ def field(block, name):
 
 
 def sky_color(tid):
-    at = SRC.index(f'\n  {tid}: {{ name:')
+    at = SRC.index(f'\n  {tid}: {{ name:', THEMES_AT)
     line = SRC[at:SRC.index('\n', at + 2)]
     return re.search(r"skyColor: '(#[0-9a-f]{6})'", line).group(1)
 

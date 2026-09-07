@@ -1,5 +1,81 @@
 # Changelog
 
+## v1.65.0 — 2026-09-07 · requested by David
+
+David asked for a full front-to-back review of the game and everything
+around it — "see where it needs improvement in features, graphics, and
+use" — with minor bugs and small cosmetic changes fixed without asking.
+This is the first batch of that work: everything a review agent
+confirmed twice, that needed no decision from anyone.
+
+### Fixed
+- **A normal battle no longer knocks you out of a cup you paid for.** A
+  cup run was global: any battle started while one was open counted as
+  the next bracket round, so a casual Easy loss ended a 150-coin Grand
+  Championship. Only rounds started from Cups count now, they always run
+  at the cup's advertised difficulty, and a finished run clears itself
+  instead of offering rounds that change nothing.
+- **A cup run survives the app being killed.** It lived only in memory,
+  so force-quitting mid-run threw away the run and the entry fee with it.
+- **Entering a cup, giving up a run, removing a friend and blocking
+  somebody all ask first.** Every one of them used to happen on the first
+  tap that landed on it, and a mis-tap cost 150 coins or a friendship.
+- **There is somewhere to unblock somebody.** Blocking was the only move
+  in the game with no way back, even though the rules always allowed one.
+- **The bottom bar says what really happened.** Two matching faces used
+  to shout "RED RESCUED!" even when nobody got out — when Ultimate sent
+  one back, when the other side had already taken it, when it was not
+  your colour in Color War.
+- **Both players can see which colour is theirs in two-player Color
+  War.** Neither was ever told, and a matched pair in the wrong colour
+  did nothing at all, silently. The ready card also read "first to
+  rescue all six" in every mode, which is wrong in three of the four.
+- **Friends closes when you leave the Ranks tab.** Tapping Store moved
+  the highlight and left Friends covering the screen.
+- **An advert no longer runs the next battle underneath itself.** The
+  countdown, the dice and the rival all kept going behind a full-screen
+  ad, so you closed it to find the battle already lost ground.
+
+### Changed
+- **Eight battlefields repainted where they hid the dice.** Coral Reef's
+  board is open sand instead of coral the same size and colour as a die,
+  and its surround is water rather than a carpet of blobs. Glow Glade's
+  striped lawn went pale so a green die shows. Autumn Woods thinned its
+  leaves on the board. The Crystal Cavern's lilac slabs sank into the
+  rock. Pirate Cove is a deck beached on a shore instead of a crate on a
+  warehouse floor. Rooftop City lost the zebra crossing across its
+  middle. Frozen Lights actually has lights now. Moon Base's hazard
+  stripe reaches the corners, and Toy Room's rim is no longer a row of
+  things that look like dice.
+- **Eighteen dice repainted.** The four metals lost a zigzag staircase
+  down the light band, Zebra bends and tapers like an animal instead of
+  a barber pole, Mint, Bubblegum and Midnight gained a sheen so an
+  earned die is not blanker than the one you start with, and Circuit,
+  Volleyball, Golf, Bowling, Paws, Marble, Granite, Starry, Strawberry
+  and Donut each look like the thing they are named after.
+- **Every shelf picture is painted from its own battlefield.** Sky
+  Kingdom's had been painted in Snowy Hollow's colours since the day the
+  generator was written, and three others were weeks out of date.
+- **The Store's coin section is written for a player.** It used to
+  explain our App Store payment paperwork.
+- **The tab labels grow with the system text size.** The navigation was
+  the one place in the game that ignored it.
+- **The credits for the music and the crowd are in Settings**, which
+  their licence requires.
+
+### Security
+- **The device secret moved out of the web address** into a header, so it
+  stops being written into request logs on every open of Friends.
+- **The advert consent form is told it is talking to a child** before it
+  can draw itself, rather than afterwards.
+
+### Native (needs a new build to take effect)
+- iPad is portrait-locked, matching the rest of the game.
+- The advert SDK no longer starts measuring before it has been told the
+  child-directed rules.
+- The game no longer asks for microphone permission it never uses.
+
+
 ## v1.64.0 — 2026-09-04 · requested by David
 
 David asked for "an account system and a friends system … view your

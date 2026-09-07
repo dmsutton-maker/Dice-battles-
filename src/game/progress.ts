@@ -38,6 +38,19 @@ export interface Progress {
    * just be a two-step way of posting the typed number.
    */
   cheated?: boolean;
+  /**
+   * The cup run in progress, if there is one.
+   *
+   * A run used to live only in React state, so killing the app in the
+   * middle of one lost the run AND the 50 or 150 coins paid to enter it
+   * — with nothing on screen to say so. Everything else a player owns
+   * survives being force-quit; a run they paid for has to as well.
+   *
+   * Stored as { tournamentId, wins } rather than the whole RunState: a
+   * FINISHED run is cleared on the spot, so a saved one is by
+   * definition still going.
+   */
+  run?: { tournamentId: string; wins: number } | null;
 }
 
 /**
@@ -304,6 +317,19 @@ export function markCheated(): void {
   if (current.cheated) return;
   current = { ...current, cheated: true };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+}
+
+/**
+ * Remember (or forget) the cup run in progress.
+ *
+ * Called on entering a cup, after each bracket round, and when a run
+ * ends or is given up. Writes are fire-and-forget like every other
+ * write here — a storage failure must never stop a battle.
+ */
+export function setRun(run: { tournamentId: string; wins: number } | null): Progress {
+  current = { ...current, run };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  return current;
 }
 
 export function hasCheated(): boolean {

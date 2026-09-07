@@ -53,10 +53,21 @@ async function authenticate(playerId: unknown, secret: unknown) {
   return { playerId };
 }
 
-/** GET ?playerId=…&secret=… — my friends, my requests, and their profiles. */
+/**
+ * GET ?playerId=… with the secret in the `x-player-secret` header —
+ * my friends, my requests, and their profiles.
+ *
+ * The secret used to ride in the query string, which put a long-lived
+ * device credential into the request log on every open of the Friends
+ * screen. `?secret=` is still read as a fallback so a phone running an
+ * older bundle keeps working; new bundles never send it.
+ */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  const auth = await authenticate(params.get('playerId'), params.get('secret'));
+  const auth = await authenticate(
+    params.get('playerId'),
+    request.headers.get('x-player-secret') ?? params.get('secret'),
+  );
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 401 });
 
   const supabase = supabaseAdmin();

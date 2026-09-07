@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AI_DIFFICULTIES } from '../game/ai';
 import { playClick } from '../audio/sounds';
@@ -15,6 +15,7 @@ import {
 } from '../game/tournament';
 import { MENU_PAGE_AREA } from './BottomNav';
 import { PrimaryButton } from '../ui/Card';
+import { Confirm } from '../ui/Confirm';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
 
@@ -39,6 +40,15 @@ export function TournamentScreen({
   onAbandon: () => void;
 }) {
   const active = run ? tournamentById(run.tournamentId) : undefined;
+
+  /**
+   * Which question is on screen, if any. Entering costs coins and there
+   * is no refund; giving up throws the entry fee away. Both used to
+   * happen on the first tap that landed on them.
+   */
+  const [asking, setAsking] = useState<
+    { kind: 'enter'; cup: TournamentDef } | { kind: 'abandon' } | null
+  >(null);
 
   return (
     <View style={styles.overlay}>
@@ -92,7 +102,7 @@ export function TournamentScreen({
               style={styles.quietButton}
               onPress={() => {
                 playClick();
-                onAbandon();
+                setAsking({ kind: 'abandon' });
               }}
             >
               <Text style={styles.quietText}>Give up this run</Text>
@@ -114,7 +124,7 @@ export function TournamentScreen({
                   style={[styles.card, !affordable && styles.cardLocked]}
                   onPress={() => {
                     playClick();
-                    onEnter(t);
+                    setAsking({ kind: 'enter', cup: t });
                   }}
                 >
                   <Text style={styles.cardEmoji}>{t.emoji}</Text>
@@ -122,7 +132,7 @@ export function TournamentScreen({
                     <Text style={styles.cardTitle}>{t.name}</Text>
                     <Text style={styles.cardMeta}>
                       {t.size} players · {AI_DIFFICULTIES[t.difficulty].label} ·{' '}
-                      {roundsToWin(t.size)} rounds to win
+                      {roundsToWin(t.size)} rounds
                     </Text>
                     <View style={styles.prizeRow}>
                       <GoldCoin size={13} />
@@ -152,6 +162,53 @@ export function TournamentScreen({
           </>
         )}
       </ScrollView>
+
+      {asking?.kind === 'enter' && (
+        <Confirm
+          title={`Enter the ${asking.cup.name}?`}
+          body={
+            asking.cup.entry > 0
+              ? `It costs ${asking.cup.entry} coins to enter, and the entry fee is not given back. Lose one round and the run is over.`
+              : 'This one is free to enter. Lose one round and the run is over.'
+          }
+          confirmLabel={
+            asking.cup.entry > 0
+              ? `Yes, pay ${asking.cup.entry} and enter`
+              : 'Yes, enter'
+          }
+          onCancel={() => {
+            playClick();
+            setAsking(null);
+          }}
+          onConfirm={() => {
+            playClick();
+            setAsking(null);
+            onEnter(asking.cup);
+          }}
+        />
+      )}
+
+      {asking?.kind === 'abandon' && (
+        <Confirm
+          title="Give up this run?"
+          body={
+            active && active.entry > 0
+              ? `The run ends here and the ${active.entry} coins you paid to enter are gone. You can enter again whenever you like.`
+              : 'The run ends here. You can enter again whenever you like.'
+          }
+          confirmLabel="Yes, give up the run"
+          cancelLabel="No, keep playing"
+          onCancel={() => {
+            playClick();
+            setAsking(null);
+          }}
+          onConfirm={() => {
+            playClick();
+            setAsking(null);
+            onAbandon();
+          }}
+        />
+      )}
     </View>
   );
 }

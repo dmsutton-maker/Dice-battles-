@@ -82,6 +82,7 @@ import {
   TIERS,
   tierLabel,
   TROPHY_STAKES,
+  setRun as saveRun,
 } from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
@@ -199,6 +200,19 @@ export function DiceDemoScreen() {
         setModeWins(progress.modeWins);
         setUnlockAll(!!progress.unlockAll);
         setColorblind(cb);
+        /*
+          Pick the cup run back up. Only ever an unfinished one is
+          stored, and it is checked against the cup list on the way in
+          so a save written before a cup was renamed or removed cannot
+          strand the Cups tab on a run that no longer exists.
+        */
+        if (progress.run && tournamentById(progress.run.tournamentId)) {
+          setRunState({
+            tournamentId: progress.run.tournamentId,
+            wins: progress.run.wins,
+            finished: null,
+          });
+        }
         // First launch opens the tutorial on its own. Never again after
         // that — it stays behind the ❓ for whoever picks the phone up in
         // six months and has no idea what any of this is.
@@ -258,7 +272,20 @@ export function DiceDemoScreen() {
   const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | null>(null);
   // The cup being played, if any. A round started from a cup reports back
   // to it when it finishes.
-  const [run, setRun] = useState<RunState | null>(null);
+  const [run, setRunState] = useState<RunState | null>(null);
+
+  /**
+   * Change the cup run, on screen and on disk together.
+   *
+   * A run used to live only in React state, so force-quitting mid-run
+   * lost the run and the 50 or 150 coins paid to enter it. Everything
+   * else a player owns survives being killed; something they paid for
+   * has to as well.
+   */
+  const setRun = useCallback((next: RunState | null) => {
+    setRunState(next);
+    saveRun(next ? { tournamentId: next.tournamentId, wins: next.wins } : null);
+  }, []);
   const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
   const [unlockAll, setUnlockAll] = useState(false);
@@ -327,6 +354,16 @@ export function DiceDemoScreen() {
   const [aiLastRoll, setAiLastRoll] = useState<[ColorDef, ColorDef] | null>(null);
   const [shakeSignal, setShakeSignal] = useState(0);
   const [callout, setCallout] = useState<{ key: number; text: string } | null>(null);
+  /*
+    What the last matched pair actually DID. Two faces landing the same
+    is not the same thing as somebody getting out: in Ultimate it can
+    send one back, in Skirmish the other side may already have taken it,
+    and in Color War it may not be your colour at all. The HUD used to
+    shout "RED RESCUED!" for every one of those.
+  */
+  const [matchNote, setMatchNote] = useState<{ text: string; good: boolean } | null>(
+    null,
+  );
   const [layout, setLayout] = useState<ObstacleLayout>(EMPTY_LAYOUT);
   const [round, setRound] = useState(0);
   const [trophies, setTrophies] = useState(0);
@@ -552,6 +589,7 @@ export function DiceDemoScreen() {
     stopAnnouncer();
     resetRace();
     setCallout(null);
+    setMatchNote(null);
     setPhaseBoth('pick');
     // Leaving the result screen is the moment for an ad, if one is due.
     // Not awaited: the menu appears immediately either way, and an ad
@@ -679,6 +717,14 @@ export function DiceDemoScreen() {
   const menuTab: Tab | null =
     phase === 'pick' && tab !== 'play' ? tab : null;
 
+  // Friends is a page ON the Ranks tab, not a fifth thing floating over
+  // everything. Without this, tapping Store moved the highlight and left
+  // Friends covering the screen, and its "‹ Ranks" button dropped you on
+  // whichever tab was now lit.
+  useEffect(() => {
+    if (menuTab !== 'leaderboard') setShowFriends(false);
+  }, [menuTab]);
+
   // Leaving Settings clears the code feedback — the Done button used to
   // do this on its way out, and without it "10,000 coins added!" would
   // still be sitting there next time you opened the page.
@@ -706,18 +752,32 @@ export function DiceDemoScreen() {
     */
     if (origin === 'cup') cupRoundRef.current = true;
     else if (origin === 'casual') cupRoundRef.current = false;
-    // Same moment as quitToMenu: the player is leaving the result screen,
-    // this time straight into another battle.
-    showAdIfDue();
-    const rival = pickOpponent(opponentRef.current ?? undefined);
-    opponentRef.current = rival;
-    setOpponent(rival);
-    resetRace();
-    // Fresh obstacle spots every battle.
-    setLayout(generateObstacleLayout(difficultyRef.current));
-    setRound((r) => r + 1);
-    setCallout(null);
-    setPhaseBoth('matching');
+    /*
+      The battle waits BEHIND the ad, rather than starting under it.
+
+      Same moment as quitToMenu: the player is leaving the result screen,
+      this time straight into another battle. showAdIfDue used to be
+      fire-and-forget, and the matching overlay, its 1100/1800ms arm and
+      go timers and then the AI's roll interval are all ordinary JS
+      timers — which do not pause under a native full-screen ad. A
+      player who got an interstitial here closed it to find the battle
+      already running and the rival ahead of them.
+
+      showAdIfDue resolves immediately when no ad is due or none has
+      loaded, so the ordinary path costs one microtask.
+    */
+    void showAdIfDue().then(() => {
+      const rival = pickOpponent(opponentRef.current ?? undefined);
+      opponentRef.current = rival;
+      setOpponent(rival);
+      resetRace();
+      // Fresh obstacle spots every battle.
+      setLayout(generateObstacleLayout(difficultyRef.current));
+      setRound((r) => r + 1);
+      setCallout(null);
+      setMatchNote(null);
+      setPhaseBoth('matching');
+    });
   }, [resetRace, setPhaseBoth]);
 
   /** Start the next bracket round: same flow as a normal battle. */
@@ -872,6 +932,7 @@ export function DiceDemoScreen() {
     (faces: ColorDef[]) => {
       setRolling(false);
       setRolledFaces(faces);
+      setMatchNote(null);
       if (phaseRef.current !== 'battle') return;
       const isMatch = faces.length === 2 && faces[0].id === faces[1].id;
       if (!isMatch) {
@@ -882,6 +943,7 @@ export function DiceDemoScreen() {
       const m = modeRef.current;
 
       const celebrate = () => {
+        setMatchNote({ text: `${color.label.toUpperCase()} RESCUED!`, good: true });
         setShakeSignal((s2) => s2 + 1);
         setPlayerFlash(true);
         flashTimers.current.push(setTimeout(() => setPlayerFlash(false), 650));
@@ -903,12 +965,20 @@ export function DiceDemoScreen() {
             );
             if (freedUnit) {
               moveUnit(freedUnit.key, { kind: 'jail', index: freedUnit.jailIndex });
+              setMatchNote({
+                text: `${color.label.toUpperCase()} SENT BACK!`,
+                good: false,
+              });
               showCallout(`Oh no! ${color.label} was captured again!`, 'wrong');
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Warning,
               ).catch(() => {});
             }
           } else {
+            setMatchNote({
+              text: `${color.label.toUpperCase()} IS ALREADY OUT`,
+              good: false,
+            });
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
           }
           return;
@@ -942,6 +1012,10 @@ export function DiceDemoScreen() {
           (u) => u.colorId === color.id && u.station.kind === 'jail',
         );
         if (!unit) {
+          setMatchNote({
+            text: `${color.label.toUpperCase()} IS ALREADY OUT`,
+            good: false,
+          });
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
           return;
         }
@@ -964,6 +1038,10 @@ export function DiceDemoScreen() {
       const war = warRef.current;
       if (!war) return;
       if (color.id !== war.player.id) {
+        setMatchNote({
+          text: `${color.label.toUpperCase()} IS NOT YOUR COLOR`,
+          good: false,
+        });
         showCallout(
           color.id === war.ai.id
             ? `That's your opponent's color — hands off!`
@@ -1252,7 +1330,7 @@ export function DiceDemoScreen() {
         pull the whole screen up by a line and push it back down again on
         the next tap.
       */}
-      <Text style={styles.modeRules} numberOfLines={2}>
+      <Text style={styles.modeRules} numberOfLines={2} maxFontSizeMultiplier={1.5}>
         {MODES[mode].rules}
       </Text>
     </View>
@@ -1291,7 +1369,7 @@ export function DiceDemoScreen() {
         the stakes line and everything under it — the same fault the mode
         rules had.
       */}
-      <Text style={styles.difficultyHint} numberOfLines={2}>
+      <Text style={styles.difficultyHint} numberOfLines={2} maxFontSizeMultiplier={1.5}>
         {obstacleHint(difficulty, obstacleLook(arenaId).words)}
       </Text>
       <Text style={styles.stakesText}>
@@ -1495,10 +1573,18 @@ export function DiceDemoScreen() {
                     style={[styles.swatch, { backgroundColor: face.hex }]}
                   />
                 ))}
-                <Text style={[styles.resultText, isMatch && styles.matchText]}>
-                  {isMatch
-                    ? `${rolledFaces[0].label.toUpperCase()} RESCUED!`
-                    : `${rolledFaces[0].label} · ${rolledFaces[1].label}`}
+                <Text
+                  style={[
+                    styles.resultText,
+                    matchNote?.good && styles.matchText,
+                    matchNote && !matchNote.good && styles.noMatchText,
+                  ]}
+                >
+                  {matchNote
+                    ? matchNote.text
+                    : isMatch
+                      ? `${rolledFaces[0].label.toUpperCase()} — NOBODY FREED`
+                      : `${rolledFaces[0].label} · ${rolledFaces[1].label}`}
                 </Text>
               </>
             ) : (
@@ -1560,7 +1646,7 @@ export function DiceDemoScreen() {
               </Text>
             ) : (
               upNext && (
-                <Text style={styles.trophyNext} numberOfLines={1}>
+                <Text style={styles.trophyNext} numberOfLines={1} maxFontSizeMultiplier={1.5}>
                   Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
                 </Text>
               )
@@ -1617,7 +1703,7 @@ export function DiceDemoScreen() {
             {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} trophies → {trophies}
           </Text>
           {upNext && (
-            <Text style={[styles.trophyNext, styles.onGlass]} numberOfLines={1}>
+            <Text style={[styles.trophyNext, styles.onGlass]} numberOfLines={1} maxFontSizeMultiplier={1.5}>
               Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
             </Text>
           )}
@@ -1662,6 +1748,10 @@ export function DiceDemoScreen() {
           trophies={trophies}
           wins={wins}
           modeWins={modeWins}
+          // Until the identity has been read there is no friend code to
+          // show, so the button says so rather than swallowing the tap
+          // and popping the page open some seconds later.
+          friendsReady={me !== null}
           onFriends={() => {
             playClick();
             setShowFriends(true);
@@ -1674,7 +1764,7 @@ export function DiceDemoScreen() {
         every label. It draws only once an identity has been read, so
         the screen never flashes an empty friend code.
       */}
-      {showFriends && me && (
+      {showFriends && me && menuTab === 'leaderboard' && (
         <FriendsScreen
           me={me}
           stats={{
@@ -1933,6 +2023,18 @@ export function DiceDemoScreen() {
             >
               <Text style={styles.bugReportButtonText}>Report a bug</Text>
             </Pressable>
+            {/*
+              The two Creative Commons credits. assets/sounds/CREDITS.md
+              lists these as a condition of the licence, not a courtesy —
+              the music and the crowd are CC-BY 4.0, which requires the
+              names to be somewhere a player can actually reach.
+            */}
+            <Text style={styles.creditLine}>
+              Music by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0
+            </Text>
+            <Text style={styles.creditLine}>
+              Crowd cheering by Gregor Quendel, licensed under CC BY 4.0
+            </Text>
             </ScrollView>
             {/*
               The version, the last row of the panel. It no longer has to
@@ -2136,9 +2238,13 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '700',
     lineHeight: 18,
-    // One line, always. Arena names differ in length and this sits above
-    // the mode picker, so a wrap would push the whole column down.
-    height: 18,
+    // One line at the default text size — arena names differ in length
+    // and this sits above the mode picker, so a wrap would push the
+    // whole column down. minHeight, not height: at a larger system text
+    // size a hard height clipped the line instead of reflowing it, and
+    // a menu that moves is a smaller problem than a menu you cannot
+    // read. The scaling cap is on the Text itself.
+    minHeight: 18,
     marginTop: 4,
   },
   stakesText: {
@@ -2220,6 +2326,13 @@ const styles = StyleSheet.create({
   },
   matchText: {
     color: THEME.good,
+    fontWeight: '900',
+  },
+  // A pair landed but nobody got out. Not a celebration and not a
+  // failure to roll either — amber, the same colour the Ranks page uses
+  // for "nothing is broken, but read this".
+  noMatchText: {
+    color: '#7a5200',
     fontWeight: '900',
   },
   hint: {
@@ -2394,6 +2507,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
+  creditLine: {
+    marginTop: 10,
+    color: THEME.inkFaint,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   versionLine: {
     // The one row outside the scroll, so it needs the inset stated rather
     // than inherited — otherwise it is the only line in the popup still
@@ -2491,8 +2612,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
-    // Exactly two lines, always — see the note at the usage site.
-    height: 36,
+    // Two lines at the default text size — see the note at the usage
+    // site. minHeight rather than height so a grandparent's larger text
+    // grows the box instead of being cut off half way down a letter.
+    minHeight: 36,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 10,
@@ -2510,8 +2633,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
-    // Exactly two lines — see the note at the usage site.
-    height: 36,
+    // Two lines at the default text size — see the note at the usage
+    // site. minHeight for the same reason as modeRules above.
+    minHeight: 36,
     marginTop: 10,
     textAlign: 'center',
   },

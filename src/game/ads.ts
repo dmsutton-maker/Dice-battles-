@@ -72,7 +72,9 @@ interface NativeAds {
   };
   MaxAdContentRating: { G: string };
   AdsConsent: {
-    requestInfoUpdate(): Promise<{ canRequestAds: boolean }>;
+    requestInfoUpdate(options?: {
+      tagForUnderAgeOfConsent?: boolean;
+    }): Promise<{ canRequestAds: boolean }>;
     loadAndShowConsentFormIfRequired(): Promise<{ canRequestAds: boolean }>;
     getConsentInfo(): Promise<{ canRequestAds: boolean }>;
   };
@@ -113,6 +115,13 @@ interface LoadedInterstitial {
  * these are not, which is why they may live in this public repo.
  */
 export const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-5310885665976703/5594525845';
+
+/**
+ * How long the game will wait for an ad's CLOSED event before carrying
+ * on regardless. Long enough for any real interstitial, short enough
+ * that a dropped event is a pause rather than a hang.
+ */
+const AD_CLOSE_TIMEOUT_MS = 90_000;
 
 /** True once a real unit is configured — the launch checklist reads this. */
 export function hasRealAdUnit(): boolean {
@@ -226,7 +235,22 @@ export async function initAds(): Promise<void> {
     // the EU there is nothing to show and this returns immediately.
     let canRequestAds = false;
     try {
-      await mod.AdsConsent.requestInfoUpdate();
+      /*
+        UNDER AGE OF CONSENT, declared to the consent SDK BEFORE the form
+        can be drawn — not afterwards on the request configuration.
+
+        The two calls do different jobs and the order matters. Without
+        this flag the SDK builds a GDPR/TCF form and shows it to whoever
+        is holding the phone, and takes their tap as consent to
+        personalised advertising. That person is frequently a child, a
+        child cannot give that consent, and the App Privacy filing on
+        this app says "not used for tracking" — an answer that is only
+        true while nothing here asks for it. Flagged under-age, the SDK
+        asks for the far narrower consent it is allowed to ask a child
+        for, and the request configuration below then says the same
+        thing a second time at request level.
+      */
+      await mod.AdsConsent.requestInfoUpdate({ tagForUnderAgeOfConsent: true });
       const info = await mod.AdsConsent.loadAndShowConsentFormIfRequired();
       canRequestAds = info?.canRequestAds ?? false;
     } catch {
@@ -248,6 +272,18 @@ export async function initAds(): Promise<void> {
     ready = false;
   }
 }
+
+/**
+ * Set while an ad is on screen: called once, when it closes.
+ *
+ * `show()` resolves when the ad is PRESENTED, not when it is dismissed,
+ * which is the whole reason this exists. The countdown, its 1100/1800ms
+ * arm and go timers and then the AI's roll interval are ordinary JS
+ * timers, and JS timers do not pause under a native full-screen ad — so
+ * a player who watched an interstitial closed it to find the battle
+ * already running and the rival ahead.
+ */
+let closedResolve: (() => void) | null = null;
 
 /** Fetch the next interstitial so it is ready before its turn comes. */
 function preload(): void {
@@ -274,6 +310,11 @@ function preload(): void {
     ad.addAdEventListener(mod.AdEventType.CLOSED, () => {
       loaded = false;
       interstitial = null;
+      // Wake whoever is waiting behind the ad BEFORE fetching the next
+      // one, so the game resumes the instant the ad closes.
+      const waiting = closedResolve;
+      closedResolve = null;
+      waiting?.();
       preload();
     });
     interstitial = ad;
@@ -329,9 +370,27 @@ export async function showAdIfDue(): Promise<boolean> {
 
   adDue = false;
   try {
+    /*
+      Resolve on CLOSED, not on shown — but never wait forever. If the
+      event never arrives (an SDK that drops it, an ad dismissed by the
+      system) the game must still start, so the wait is capped. Nothing
+      in this file may block the game; a late resume is a bug, a stuck
+      one is a dead app.
+    */
+    const closed = new Promise<void>((resolve) => {
+      closedResolve = resolve;
+      setTimeout(() => {
+        if (closedResolve === resolve) {
+          closedResolve = null;
+          resolve();
+        }
+      }, AD_CLOSE_TIMEOUT_MS);
+    });
     await interstitial.show();
+    await closed;
     return true;
   } catch {
+    closedResolve = null;
     loaded = false;
     interstitial = null;
     preload();
@@ -346,6 +405,7 @@ export function gamesPlayed(): number {
 
 /** Test seam: forget everything this module has cached. */
 export function resetAdsForTest(): void {
+  closedResolve = null;
   native = undefined;
   ready = false;
   interstitial = null;

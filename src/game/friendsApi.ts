@@ -102,8 +102,19 @@ export async function findByCode(
 export async function fetchFriends(
   me: Identity,
 ): Promise<{ ok: true; list: FriendList } | { ok: false; error: string }> {
+  /*
+    The secret goes in a HEADER, not the query string.
+
+    A URL is written to Vercel's request log, to any proxy in between,
+    and to anything either of those forwards to. This is a long-lived
+    device secret that never rotates and is the only thing proving this
+    phone owns that player id, so leaving it in a URL meant printing it
+    somewhere on every single open of the Friends screen. The POST
+    variants already put it in the body; this is the one that did not.
+  */
   const result = await call<FriendList>(
-    `/friends?playerId=${encodeURIComponent(me.playerId)}&secret=${encodeURIComponent(me.secret)}`,
+    `/friends?playerId=${encodeURIComponent(me.playerId)}`,
+    { headers: { 'x-player-secret': me.secret } },
   );
   if (!result.ok) return result;
   return {

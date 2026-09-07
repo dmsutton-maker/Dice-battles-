@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
 import { BOTTOM_INSET } from '../game/safeArea';
 import { BagIcon, BracketIcon, CrateIcon, DieIcon, RanksIcon } from '../ui/Icon';
-import { SHAPE, THEME, TYPE } from '../ui/theme';
+import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 
 /**
  * The menu bar along the bottom — the way Clash Royale does it.
@@ -71,14 +71,20 @@ export function BottomNav({
             <Text
               style={[styles.label, on && styles.labelOn]}
               /*
-                Seven cells across the narrowest iPhone leaves about 53pt
-                each. "Settings" and "Battle" have to hold one line inside
-                that, and a player who has turned up the system text size
-                must not be the one who breaks the row — so this label does
-                not scale with it.
+                It scales, but only so far.
+
+                This label used to be pinned at 10pt with scaling off
+                entirely, which made the NAVIGATION the one place in the
+                game that ignored a grandparent's larger-text setting —
+                exactly backwards, since it is the thing you have to read
+                to get anywhere. Five cells on the narrowest iPhone leave
+                about 75pt each, and the longest label is "Battle": at
+                1.6x that is still one comfortable line, so the cap is
+                where the row would break rather than at no scaling at
+                all.
               */
               numberOfLines={1}
-              allowFontScaling={false}
+              maxFontSizeMultiplier={1.6}
             >
               {tab.label}
             </Text>
@@ -143,6 +149,11 @@ const styles = StyleSheet.create({
   item: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    // The theme's own floor, stated rather than assumed. MIN_TAP was
+    // declared "Nothing tappable is smaller than this" and then imported
+    // by nothing at all, which made it a comment.
+    minHeight: MIN_TAP,
     gap: 2,
   },
   pill: {

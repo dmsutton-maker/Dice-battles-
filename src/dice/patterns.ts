@@ -23,6 +23,7 @@ export type PatternId =
   | 'granite'
   | 'sheen'
   | 'brushed'
+  | 'satin'
   // The 26 Aug 2026 batch — David asked for ~40 new skins. Mask painters:
   | 'rosettes'
   | 'tigerStripes'
@@ -286,8 +287,36 @@ export type ColorPatternId =
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 const PAINTERS: Record<MaskPatternId, Painter> = {
-  // Diagonal stripes.
-  stripes: (x, y) => (Math.floor((x + y) / 8) % 2 === 0 ? 1 : 0),
+  /**
+   * Zebra stripes — bent, tapered and soft-edged.
+   *
+   * This was `Math.floor((x + y) / 8) % 2` — perfectly regular 45-degree
+   * bands, every one the same width, dead straight, returning a hard 0
+   * or 1 with no ramp at all. It was the only painter in the file with
+   * no antialiasing, so the edges were raw pixel staircases, and it read
+   * as a barber pole or a rugby shirt rather than as an animal. A real
+   * zebra's stripes bend, swell and come to points.
+   *
+   * Three changes, each borrowed from a painter that already worked:
+   * warp the stripe coordinate through the tiling fbm the way `marble`
+   * does, band it through a smoothstep ramp the way `wood` does, and
+   * swell the band width along its length with a slow wrapped noise.
+   * Used only by the zebra skin, so there is nothing else to keep happy.
+   */
+  stripes: (x, y) => {
+    const warp =
+      fbm(x, y, [32, 16], [1, 0.45]) * 11 + fbm(x + 23, y + 7, [16, 8], [1, 0.4]) * 3.5;
+    const bands = 4;
+    const phase = ((((x + y + warp) * bands) / (SIZE * 2)) % 1 + 1) % 1;
+    // How wide the dark band runs HERE — slow along the stripe, so each
+    // one swells and thins instead of being a ruled line.
+    const swell = 0.34 + wrappedNoise(x - y + 40, x + y, 32) * 0.22;
+    const edge = 0.055;
+    return (
+      smoothstep(0.5 - swell - edge, 0.5 - swell + edge, phase) *
+      (1 - smoothstep(0.5 + swell - edge, 0.5 + swell + edge, phase))
+    );
+  },
 
   // Evenly spaced dots on a staggered grid.
   spots: (x, y) => {
@@ -308,25 +337,53 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * folded into one of five sectors and the boundary runs straight from
    * the inner vertex out to the point, which is what a star actually is.
    */
+  /*
+    Three later fixes, all found by looking at the render beside Frost:
+
+    - `cell = 21` does not divide the 64px tile, so the pattern wrapped
+      a pixel short. SIZE / 4 does.
+    - The shape test returned a hard 0 or 1, so every point was a
+      staircase, which showed badly next to Frost's cleanly-ramped arms.
+      It is supersampled 3x3 and averaged now, as `blossom` is.
+    - Nine identical upright stars in perfect rows and columns read as
+      wallpaper, not as a night sky. Alternate rows are offset by half a
+      cell, and each star takes a small size and rotation jitter from a
+      hash of its own row and column, the way `frost` does.
+  */
   stars: (x, y) => {
-    const cell = 21;
-    const cx = ((x % cell) - cell / 2) / (cell / 2);
-    const cy = ((y % cell) - cell / 2) / (cell / 2);
-    const r = Math.hypot(cx, cy);
-    if (r > 1) return 0;
+    const cell = SIZE / 4;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const col = Math.floor((x + offset) / cell);
+    const h = hashCell(col + 3, row + 11);
+    const spin = (hashCell(col + 17, row + 5) - 0.5) * 1.2;
+    // Small enough that there is night sky between them: at 0.82-1.12
+    // the stars crowded into each other and the sky disappeared.
+    const size = 0.6 + h * 0.24;
 
     const points = 5;
     const sector = (Math.PI * 2) / points;
-    // +PI/2 stands the star upright rather than resting on a point.
-    const a = Math.atan2(cy, cx) + Math.PI / 2;
-    const folded = ((a % sector) + sector) % sector;
     const half = sector / 2;
-    // 0 in the valley between two points, `half` along a point.
-    const t = Math.abs(folded - half) / half;
-
     const INNER = 0.42;
-    const boundary = INNER + (1 - INNER) * t;
-    return r <= boundary * 0.95 ? 1 : 0;
+
+    // 3x3 supersample: without it the five thin points are a staircase.
+    let hit = 0;
+    for (let sy = 0; sy < 3; sy++) {
+      for (let sx = 0; sx < 3; sx++) {
+        const px = x + (sx - 1) / 3;
+        const py = y + (sy - 1) / 3;
+        const cx = ((((px + offset) % cell) + cell) % cell - cell / 2) / (cell / 2);
+        const cy = ((((py % cell) + cell) % cell) - cell / 2) / (cell / 2);
+        const r = Math.hypot(cx, cy) / size;
+        if (r > 1) continue;
+        // +PI/2 stands the star upright rather than resting on a point.
+        const a = Math.atan2(cy, cx) + Math.PI / 2 + spin;
+        const folded = ((a % sector) + sector) % sector;
+        const t = Math.abs(folded - half) / half;
+        if (r <= (INNER + (1 - INNER) * t) * 0.95) hit++;
+      }
+    }
+    return hit / 9;
   },
 
   /**
@@ -541,7 +598,12 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
       threshold is itself a slow noise rather than one number.
     */
     const width = 0.03 + wrappedNoise(x + 5, y + 41, 32) * 0.08;
-    const vein = (1 - smoothstep(0, width, Math.abs(field))) * 0.82;
+    // Full strength. At 0.82 with a #7f8792 ink on a #f2efe8 body, the
+    // most expensive die in the Store read as a near-white cube with
+    // almost nothing on it — hard to tell from a plain pale one in a
+    // thumbnail. It is still quiet under the face sticker; it is just
+    // actually visible now.
+    const vein = (1 - smoothstep(0, width, Math.abs(field))) * 1.0;
     // A soft bleed either side, so a vein sits IN the stone rather than
     // being painted on top of it.
     const halo = (1 - smoothstep(width, width + 0.22, Math.abs(field))) * 0.16;
@@ -553,10 +615,12 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
       lattice on a 64px tile is 16 cells across, and its contours were
       shorter than the cells they lived in.
     */
-    // Widened from 0.02: where the field's gradient is steep, a threshold
-    // that tight fell between pixels and the hairline came out as a
-    // dotted line rather than a faint one.
-    const hair = (1 - smoothstep(0, 0.045, Math.abs(field - 0.52))) * 0.22;
+    // Widened twice. 0.02 fell between pixels wherever the field's
+    // gradient is steep and drew a dotted line; 0.045 still did it often
+    // enough that the veining read as speckle or a printing fault rather
+    // than as stone, which at 525 coins is the most expensive die in the
+    // Store looking like the least finished. 0.08 holds a continuous line.
+    const hair = (1 - smoothstep(0, 0.08, Math.abs(field - 0.52))) * 0.22;
 
     // Broad cloudiness in the stone itself, darkening rather than inking.
     const cloud = (wrappedNoise(x, y, 32) - 0.5) * 0.13;
@@ -578,14 +642,27 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     // the mask most of its full range, which at this size reads as
     // television static rather than as stone — David asked for smoother
     // and this is where nearly all of the coarseness was.
+    /*
+      SPARSE flecks, not a per-pixel jitter.
+
+      Every pixel used to be perturbed by up to 0.17 — the same amplitude
+      as the coarse mottle below — so the two-scale structure that tells
+      stone from noise was completely swamped, and the surface crawled
+      and fizzed as the die tumbled, which is the one texture artefact
+      that always gets noticed in motion. Now only the top and bottom
+      tenth of the hash draw anything, harder each, and the rest of the
+      face is clean rock.
+    */
     const hash = Math.abs((Math.sin(x * 127.1 + y * 311.7) * 43758.5453) % 1);
-    const fleck = (hash - 0.5) * 0.34;
+    const fleck =
+      hash > 0.9 ? (hash - 0.9) * 3.4 : hash < 0.1 ? (hash - 0.1) * 2.6 : 0;
 
     // Two smooth scales of mottling under the flecks. Two rather than one
     // is what still tells stone from noise: broad patches of lighter and
-    // darker rock, with a finer drift inside them.
-    const coarse = Math.sin(x / 11 + Math.sin(y / 8) * 1.6) * 0.16;
-    const fine = Math.sin(x / 5.5 + y / 6.5 + Math.sin(x / 17) * 1.3) * 0.08;
+    // darker rock, with a finer drift inside them. Raised now that the
+    // flecks are not drowning them.
+    const coarse = Math.sin(x / 11 + Math.sin(y / 8) * 1.6) * 0.24;
+    const fine = Math.sin(x / 5.5 + y / 6.5 + Math.sin(x / 17) * 1.3) * 0.12;
     return coarse + fine + fleck;
   },
 
@@ -613,7 +690,7 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     const light = bar(0.4, 0.19, 1.5) + bar(1.02, 0.12, 0.5) - 0.5;
     // Brushing runs ALONG the highlight, so it uses the other diagonal.
     // Fine — at the first attempt's frequency it read as corduroy.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.05;
+    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.05;
     return light + brush;
   },
 
@@ -640,7 +717,7 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     // warm metal, at the same shape.
     const light = bar(0.4, 0.15, 1.65) + bar(1.02, 0.13, 0.62) - 0.52;
     // The same faint polishing marks along the highlight that gold has.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.045;
+    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.045;
     return light + brush;
   },
 
@@ -687,6 +764,27 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     const mottle = fbm(x + 27, y + 31, [32, 16], [1, 0.5]) * 0.04;
 
     return sheen + grain + mottle;
+  },
+
+  /**
+   * The quietest shell in the file: ivory's sheen and nothing else.
+   *
+   * Mint, Bubblegum and Midnight were `plain` — a single flat fill, no
+   * shell material at all. Ivory got grain and a sheen on 31 Aug for
+   * exactly this reason, and the three of them missed it, so the ladder
+   * PRIZES ended up looking blanker than the die a player starts with.
+   *
+   * Just the sheen, though. The grain and the mottle are what make
+   * ivory read as bone; these three are painted plastic, and the flat
+   * ladder / patterned store split is deliberate. One broad sweep of
+   * light is enough to say "this is a solid object" without taking any
+   * attention off the face stickers.
+   */
+  satin: (x, y) => {
+    const d = (x * 0.62 + y * 0.78) / SIZE;
+    const bar = (centre: number, width: number, strength: number) =>
+      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
+    return bar(0.38, 0.26, 0.55) + bar(1.05, 0.16, 0.16) - 0.1;
   },
 
   /*
@@ -747,11 +845,20 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     const offset = row % 2 === 0 ? 0 : cell / 2;
     const cx = ((x + offset) % cell) - cell / 2;
     const cy = (y % cell) - cell / 2;
-    // Main pad: a wide ellipse low in the cell.
-    if (Math.hypot(cx / 1.3, cy - 2.5) < 3.4) return 0.95;
-    // Three toes arched above it.
-    for (const [tx, ty] of [[-3.6, -2.2], [0, -3.8], [3.6, -2.2]] as const) {
-      if (Math.hypot(cx - tx, cy - ty) < 1.7) return 0.95;
+    // Main pad: a wide ellipse low in the cell. Trimmed from 3.4 so
+    // there is still visible ground between the pad and the toe row.
+    if (Math.hypot(cx / 1.3, cy - 2.5) < 3.1) return 0.95;
+    /*
+      FOUR toes on an arc, which is what a cat's or a dog's print
+      actually has. With three, this was the only animal skin in the set
+      whose name could not be guessed from the picture — it read as a
+      mushroom, or a little crowned figure. The radius comes down from
+      1.7 so four fit in the 21px cell with clear gaps between them.
+    */
+    for (const [tx, ty] of [
+      [-4.4, -1.6], [-1.7, -3.7], [1.7, -3.7], [4.4, -1.6],
+    ] as const) {
+      if (Math.hypot(cx - tx, cy - ty) < 1.5) return 0.95;
     }
     return 0;
   },
@@ -857,13 +964,30 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     // middle third, which is the one part of a face nobody ever sees.
     const turnAt = 3 + h * 52;
     const padAt = turnAt + 5 + hashCell(lane, 7) * 8;
-    // The run along the lane, then the stub after the turn.
-    const online =
-      Math.abs(inY - 4) < 1 &&
-      (x < turnAt || (x > turnAt && x < padAt && Math.abs(inY - 4) < 1));
-    if (Math.hypot(x - padAt, inY - 4) < 2.4) return 0.95;
+    /*
+      THE TURN IS A RIGHT ANGLE, which is the whole reason a circuit
+      board is recognisable as one.
+
+      It used to be a no-op in the code as well as visually: both
+      branches of `online` tested `Math.abs(inY - 4) < 1`, the same row,
+      so `turnAt` only punched a one-pixel gap in an otherwise dead
+      straight line. Every trace entered from the left and ran to the
+      right, nothing ever turned or ran up or down, and eight parallel
+      lines is all you saw — a striped teal die, not a board.
+
+      Now the stub after the turn sits on its own row, three pixels
+      above or below by the lane's own hash, joined to the run by a
+      vertical riser.
+    */
+    const dir = hashCell(lane, 11) > 0.5 ? 1 : -1;
+    const toY = 4 + dir * 3;
+    const onRun = Math.abs(inY - 4) < 1 && x < turnAt;
+    const onRiser =
+      Math.abs(x - turnAt) < 1 && (inY - 4) * dir >= -1 && (inY - 4) * dir <= 3.2;
+    const onStub = Math.abs(inY - toY) < 1 && x > turnAt && x < padAt;
+    if (Math.hypot(x - padAt, inY - toY) < 2.4) return 0.95;
     if (Math.hypot(x - turnAt, inY - 4) < 1.6) return 0.95;
-    return online ? 0.7 : (wrappedNoise(x, y, 16) - 0.5) * 0.08;
+    return onRun || onRiser || onStub ? 0.7 : (wrappedNoise(x, y, 16) - 0.5) * 0.08;
   },
 
 };
@@ -941,10 +1065,23 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   },
 
   donut: (x, y) => {
-    // The glaze covers the face except a scalloped lower-right margin.
-    const dripEdge = 50 + tiling(x - y, 4) * 5;
-    const onCake = x + y > dripEdge + 46;
-    if (onCake) return mixRgb(rgb('#d9a55c'), rgb('#c2882e'), wrappedNoise(x, y, 8) * 0.5);
+    /*
+      The glaze covers the face except a scalloped lower-right margin.
+
+      The scallops used to be finer than the texture could resolve — a
+      5px swing on a 4px period across a 64px shell, so the teeth were
+      bigger than their spacing and aliased into a staircase of big
+      square steps you could count. It was the one obviously unfinished
+      thing across all the dice: it read as the picture having failed to
+      draw rather than as a scalloped edge. Longer and shallower gives
+      three or four readable scallops.
+    */
+    const dripEdge = 50 + tiling(x - y, 16) * 2.5;
+    // Blended across about two pixels rather than a hard boolean, so
+    // the icing has a lip instead of a cut.
+    const cake = smoothstep(dripEdge + 45, dripEdge + 47, x + y);
+    const cakePx = mixRgb(rgb('#d9a55c'), rgb('#c2882e'), wrappedNoise(x, y, 8) * 0.5);
+    if (cake >= 1) return cakePx;
     // Sprinkles: short capsules in five colours, angled by their cell.
     const cell = 11;
     const row = Math.floor(y / cell);
@@ -956,11 +1093,12 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const a = h * Math.PI;
     const along = cx * Math.cos(a) + cy * Math.sin(a);
     const across = -cx * Math.sin(a) + cy * Math.cos(a);
-    if (Math.abs(along) < 3 && Math.abs(across) < 1.1) {
-      const jimmies = ['#e84a6e', '#3fa35c', '#3f7fd0', '#f0c020', '#ffffff'];
-      return rgb(jimmies[Math.floor(h * jimmies.length)]);
-    }
-    return rgb('#e8a8b8');
+    const jimmies = ['#e84a6e', '#3fa35c', '#3f7fd0', '#f0c020', '#ffffff'];
+    const glaze =
+      Math.abs(along) < 3 && Math.abs(across) < 1.1
+        ? rgb(jimmies[Math.floor(h * jimmies.length)])
+        : rgb('#e8a8b8');
+    return mixRgb(glaze, cakePx, cake);
   },
 
   /** Six soft bands on the diagonal, sky between. */
@@ -1151,15 +1289,33 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       red. The mask version could draw the seed or the hollow, never the
       seed lit inside the hollow.
     */
+    /*
+      Two later fixes, both from looking at the render.
+
+      The pale ring round every seed was the loudest thing on the face,
+      so at a glance the die read as pink polka dots or bubble wrap and
+      only became a strawberry once you noticed the yellow. It is a
+      narrow, weak lip now, and the dimple under it is deeper to
+      compensate, so a seed reads as SUNK into the skin rather than
+      ringed on top of it.
+
+      And the seeds sat on a tidy repeating grid, which is wallpaper
+      rather than fruit skin — so each one takes the same per-cell
+      jitter the cookie painter already uses for its chocolate chips.
+    */
     const cell = 11;
     const row = Math.floor(y / cell);
     const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
+    const col = Math.floor((x + offset) / cell);
+    const h = hashCell(col + 5, row + 13);
+    const jx = (h - 0.5) * 3;
+    const jy = (hashCell(col + 19, row + 2) - 0.5) * 3;
+    const cx = ((x + offset) % cell) - cell / 2 - jx;
+    const cy = (y % cell) - cell / 2 - jy;
     const d = Math.hypot(cx, cy);
     let px = mixRgb(rgb('#c93a52'), rgb('#e0687a'), wrappedNoise(x, y, 16) * 0.9);
-    px = mixRgb(px, rgb('#9e2a40'), smoothstep(4.6, 1.9, d) * 0.55);
-    px = mixRgb(px, rgb('#ef939c'), smoothstep(2.6, 4.4, d) * smoothstep(6, 4.4, d) * 0.5);
+    px = mixRgb(px, rgb('#9e2a40'), smoothstep(4.6, 1.9, d) * 0.7);
+    px = mixRgb(px, rgb('#ef939c'), smoothstep(2.0, 3.0, d) * smoothstep(4.4, 3.0, d) * 0.22);
     const seed = Math.hypot(cx / 0.78, cy / 1.4);
     if (seed < 1.7) return mixRgb(rgb('#f7e6a0'), rgb('#b8932e'), smoothstep(0.2, 1.7, seed));
     return px;
@@ -1224,7 +1380,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     px = mixRgb(px, rgb('#ff9ab0'), Math.max(0, light - 0.76) * 1.9);
     px = mixRgb(px, rgb('#2b0511'), Math.max(0, 0.2 - light) * 1.2);
     // The same fine polishing marks the other three carry.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.05 + (hashCell(x, y) - 0.5) * 0.05;
+    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.05 + (hashCell(x, y) - 0.5) * 0.02;
     return mixRgb(px, brush > 0 ? rgb('#ffffff') : rgb('#000000'), Math.abs(brush));
   },
   slate: (x, y) => {
@@ -1260,7 +1416,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     px = mixRgb(px, rgb('#ffd9a8'), Math.max(0, light - 0.78) * 1.8);
     px = mixRgb(px, rgb('#3d7a6e'), Math.max(0, 0.2 - light) * 1.1);
     // The same fine polishing marks along the sweep the other two have.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 2.4) * 0.05 + (hashCell(x, y) - 0.5) * 0.05;
+    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.05 + (hashCell(x, y) - 0.5) * 0.02;
     return mixRgb(px, brush > 0 ? rgb('#ffffff') : rgb('#000000'), Math.abs(brush));
   },
 
@@ -1378,7 +1534,26 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const ball = 1 - (x + y) / (SIZE * 2.6);
     let px = mixRgb(rgb('#e4e9e4'), rgb('#ffffff'), ball);
     // The band first, so the dimples carve into it like everything else.
-    px = mixRgb(px, rgb('#1a3a8c'), smoothstep(4.6, 3.4, Math.abs(y - 9)));
+    /*
+      The band runs corner to corner through the middle of the face, not
+      along its top edge. Hugging the top, it read as a stray printed
+      stripe or a seam — and because every face carried it near its own
+      top edge, the bands on adjacent faces never lined up, so a
+      tumbling die showed disconnected navy slashes.
+
+      Through the centre, the colour sticker (radius 0.33 x 64 = 21px,
+      dead centre) covers the middle of it, and what shows is two
+      matching wedges at opposite corners — which is what a range ball's
+      painted band looks like whichever way the ball is turned.
+
+      #1a3a8c stays: the note above records it clearing the deltaLab
+      guard against the blue face sticker.
+    */
+    px = mixRgb(
+      px,
+      rgb('#1a3a8c'),
+      smoothstep(4.6, 3.4, Math.abs(x + y - SIZE) / Math.SQRT2),
+    );
     // The hollow: an overall step down, a deeper lower-left crescent, a
     // lit upper-right crescent. Scaling the pixel instead of mixing to a
     // fixed grey keeps the same relief readable on white AND on navy.
@@ -1514,9 +1689,19 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   },
 
   volleyball: (x, y) => {
-    // Panels in threes, each one domed, with a real seam channel between
-    // them and the grain of synthetic leather over the lot.
-    const t = (x * 0.78 + y * 0.62) / 15;
+    /*
+      Panels in threes, each one domed, with a real seam channel between
+      them and the grain of synthetic leather over the lot — and each
+      GROUP turned ninety degrees against its neighbour.
+
+      That turn is the whole thing. Run on one axis across the whole
+      face, the bands went edge to edge in one direction and the die sat
+      on the shelf next to Candy Cane and Rainbow as a third stripey
+      die. A real volleyball's signature is groups of three panels that
+      cross each other, and the crossing is what the eye reads as a ball.
+    */
+    const flip = (Math.floor(x / 32) + Math.floor(y / 32)) % 2 === 0;
+    const t = (flip ? x * 0.78 + y * 0.62 : y * 0.78 - x * 0.62) / 15;
     const band = ((Math.floor(t) % 3) + 3) % 3;
     const frac = t - Math.floor(t);
     // Deeper than the old #f0c020: that sat ΔLab 18.6 from the yellow
@@ -1541,8 +1726,19 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     px = mixRgb(px, rgb('#6b4da3'), smoothstep(0.25, 1, swirl) * 0.6);
     const g = Math.hypot(x - SIZE * 0.9, y - SIZE * 0.84);
     px = mixRgb(px, rgb('#bfb2e0'), smoothstep(22, 8, g) * 0.5);
-    px = mixRgb(px, rgb('#ffffff'), smoothstep(8, 3, g) * 0.75);
-    for (const [hx, hy] of [[8, 11], [18, 8], [13, 21]] as const) {
+    // A tighter gloss dot rather than a white blob.
+    px = mixRgb(px, rgb('#ffffff'), smoothstep(6, 2.5, g) * 0.5);
+    /*
+      All three holes clear of the colour sticker.
+
+      The sticker is an opaque disc of radius 21 at the centre (32, 32),
+      and the third hole used to sit 21.95 from that centre — so its
+      inner side was covered and a player saw two holes and a nick,
+      which reads as a defect rather than as a ball. Every centre here
+      is at least 28 out, so the whole 4.3px hole clears it, and the
+      tight finger-hole triangle is kept, just nudged into the corner.
+    */
+    for (const [hx, hy] of [[9, 9], [19, 6], [7, 20]] as const) {
       const d = Math.hypot(x - hx, y - hy);
       if (d < 4.3) {
         px = mixRgb(px, rgb('#8f86a8'), smoothstep(3.3, 4.3, d) * 0.55);

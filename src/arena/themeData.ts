@@ -359,7 +359,12 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       picture.
     */
     structure: 'station',
-    meadow: '#a8cbd4', hill: '#93b8c4', mountain: '#7ba2b0', cloud: null,
+    // Floor, wall, meadow and hill all used to sit in one narrow value
+    // band under the night rig — exactly the fault the glade's own note
+    // warns about — so the whole arena read flat and foggy. The outside
+    // is pulled DOWN out of that band and the board stays pale, so it
+    // reads as a lit clearing in a dark snowfield.
+    meadow: '#6e93a0', hill: '#5d818e', mountain: '#4e6f7c', cloud: null,
     floor: { a: '#b6d4dc', b: '#a2c3cd' },
     wall: { color: '#8fb2bf', cap: '#7a9daa', metalness: 0.25 },
     tower: { body: '#8fb2bf', roof: '#57e8a9' },
@@ -618,7 +623,11 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     */
     meadow: '#2b5747', hill: '#1e453c', mountain: '#3c7a64',
     cloud: null,
-    floor: { a: '#74b183', b: '#549062' },
+    // Paler and less saturated than the moss outside, so the green die
+    // #33cc6b separates from the lawn by LIGHTNESS as well as hue. At
+    // the old #74b183/#549062 a green die on this floor was the hardest
+    // colour to find in any of the sixteen arenas.
+    floor: { a: '#a3c9a5', b: '#8bb18e' },
     wall: { color: '#77624b', cap: '#8a7f6d' },
     tower: { body: '#77624b', roof: '#4fd0c9' },
     jail: { platform: '#2f5a48', bars: '#152e22' },
@@ -816,8 +825,15 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     structure: 'blocks',
     meadow: '#d9a05c', hill: '#c98d4a', mountain: null, cloud: null,
     floor: { a: '#e8c076', b: '#d9a95c' },
-    wall: { color: '#c23b3b', cap: '#3f7fd0' },
-    tower: { body: '#3f7fd0', roof: '#ffd21f' },
+    // The cap and roof are OFF the dice palette. The crest cycles
+    // [wall.color, cap, accent], and at #c23b3b / #3f7fd0 / #ffd21f that
+    // put 48 red, blue and yellow cubes the size and colour of dice
+    // along the rim — so the wall looked like a row of dice and you had
+    // to look twice to find the real ones. It is the last arena a
+    // player unlocks, at 3350 coins, and it should be the clearest.
+    // Red toy frame stays; the rim goes mint and cream.
+    wall: { color: '#c23b3b', cap: '#7fc4a8' },
+    tower: { body: '#3f7fd0', roof: '#f0dfb4' },
     jail: { platform: '#9e2f2f', bars: '#4a2a1a' },
     retreat: { padA: '#f0dfb4', padB: '#e0c98e', post: '#8a5a34', canopy: '#3fa35c', pool: '#57c9e8' },
     sky: { sun: { color: '#fff6d8', size: 1.4 }, stars: false, body: null },

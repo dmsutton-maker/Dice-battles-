@@ -1,4 +1,7 @@
+import './storageMock';
+import { readFileSync } from 'node:fs';
 import { assert, assertEqual, suite, test } from './harness';
+import { getProgress, resetProgressForTests, setRun } from '../src/game/progress';
 import {
   TOURNAMENTS,
   advanceRun,
@@ -118,5 +121,50 @@ suite('tournament · a run', () => {
       );
     }
     assertEqual(tournamentById('no-such-cup'), undefined, 'invented a cup');
+  });
+});
+
+suite('cups · a run survives the app being killed', () => {
+  test('entering, winning a round and giving up all reach the save', () => {
+    /*
+      A run used to live only in React state. Force-quitting mid-run lost
+      the run AND the 50 or 150 coins paid to enter it, with nothing on
+      screen to say so — the one thing a player owns that did not
+      survive being killed was the thing they had actually paid for.
+    */
+    const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    assert(
+      screen.includes('setRun as saveRun'),
+      'the screen no longer writes the run to the save',
+    );
+    assert(
+      /const setRun = useCallback\(\(next: RunState \| null\) => \{[\s\S]*?saveRun\(/.test(screen),
+      'changing the run no longer writes it to the save',
+    );
+    assert(
+      screen.includes('if (progress.run && tournamentById(progress.run.tournamentId))'),
+      'a saved run is never picked back up on launch',
+    );
+  });
+
+  test('the save keeps a run going and forgets a finished one', () => {
+    resetProgressForTests();
+    assertEqual(getProgress().run ?? null, null, 'a fresh save has no run');
+
+    setRun({ tournamentId: 'grand', wins: 2 });
+    assertEqual(getProgress().run?.tournamentId, 'grand', 'the cup is remembered');
+    assertEqual(getProgress().run?.wins, 2, 'the rounds won are remembered');
+
+    setRun(null);
+    assertEqual(getProgress().run ?? null, null, 'a finished run is forgotten');
+  });
+
+  test('a saved run always names a cup that still exists', () => {
+    // A save written before a cup was renamed or removed must not strand
+    // the Cups tab on a run nobody can play.
+    for (const t of TOURNAMENTS) {
+      assert(tournamentById(t.id) !== undefined, `${t.id} cannot be looked up`);
+    }
+    assertEqual(tournamentById('a-cup-that-never-was'), undefined, 'unknown ids resolve');
   });
 });
