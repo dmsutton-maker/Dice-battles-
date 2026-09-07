@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.69.0 — 2026-09-07 · requested by David
+
+David asked to make sure the game does not kill the battery on people's
+phones. It was killing it, in three separate ways.
+
+### Fixed
+- **The board no longer draws when there is nothing to see.** The 3D
+  scene ran flat out — sixty frames a second, the most expensive thing
+  the app can do to a phone — behind every menu, on every screen, for as
+  long as the game was open. It now runs during a roll, a prisoner's
+  leap and the moments after one settles, and stops the rest of the
+  time. A tap restarts it in the same frame it is handled, because the
+  throw itself tells the loop to wake.
+- **Both split-screen boards, which was twice the cost.** Two canvases
+  are on screen at once there, and both ran continuously — including
+  behind the solid card that asks you to lay the phone on the table.
+- **Nothing renders while the phone is in your pocket.** iOS suspends
+  the 3D surface on its own, but not everything else, and Android is
+  looser about both.
+- **The opponent kept rolling while your phone was locked.** This one
+  was a real bug rather than only waste: JavaScript timers keep firing
+  through a lock screen, so the computer went on rolling — with haptics
+  and sound — through a battle nobody was in. A player could come back
+  to a game they had lost without playing it.
+
+### Added
+- `tests/power.test.ts`, which pins the reasoning rather than the
+  saving: every path that starts motion wakes the loop, the awake window
+  outlasts the animation it covers, the one screen that waits on real
+  frames is never the one that stops, nothing holds the screen awake,
+  audio does not run in the background, and nothing polls the network on
+  a timer. Both fixes were checked by breaking them again and watching
+  the tests fail.
+
+### Not measured
+There is no phone in CI. These tests prove the rules hold; the actual
+saving has to be seen on a device.
+
 ## v1.68.0 — 2026-09-07 · requested by David
 
 David asked for every payment option in the first public release. This

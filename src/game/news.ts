@@ -37,6 +37,26 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-69-0-battery',
+    date: '7 September 2026',
+    version: 'v1.69.0',
+    title: 'Kinder to your battery',
+    emoji: '\ud83d\udd0b',
+    body:
+      'The 3D board used to keep drawing itself sixty times a second even ' +
+      'when nothing was moving \u2014 while you were reading the menu, while ' +
+      'the split screen sat waiting on the table, even with the phone ' +
+      'locked in a pocket. That is the most expensive thing this game can ' +
+      'do to a phone, and it was doing it for nothing.\n\n' +
+      'Now the board only draws when there is something to see: a roll, a ' +
+      'prisoner leaping across, a wobble settling. Tap and it wakes ' +
+      'instantly \u2014 you should not be able to tell, except that the ' +
+      'phone stays cooler and lasts longer.\n\n' +
+      'One real bug went with it: while your phone was locked, the ' +
+      'computer opponent kept rolling. You could come back to a game you ' +
+      'had lost without playing it. It waits for you now.',
+  },
+  {
     id: 'v1-68-0-shop',
     date: '7 September 2026',
     version: 'v1.68.0',

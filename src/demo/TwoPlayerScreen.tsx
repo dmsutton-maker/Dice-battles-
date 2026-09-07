@@ -30,6 +30,7 @@ import {
   velocityFromSamples,
 } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
+import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME } from '../ui/theme';
 
 /**
@@ -68,6 +69,8 @@ interface TwoPlayerScreenProps {
 interface ZoneViewProps {
   rotated: boolean;
   phase: Phase;
+  /** False while the phone is not showing the game — see useAppActive. */
+  appActive: boolean;
   /** true won, false lost, null a draw (Skirmish can end level). */
   won: boolean | null;
   score: number;
@@ -100,6 +103,7 @@ interface ZoneViewProps {
 function ZoneView({
   rotated,
   phase,
+  appActive,
   won,
   score,
   oppScore,
@@ -159,6 +163,24 @@ function ZoneView({
     <View style={[styles.zone, rotated && styles.rotated]}>
       <Canvas
         style={styles.canvas}
+        /*
+          TWO canvases are on screen here, one per player, and until now
+          both ran flat out the whole time the split screen was open —
+          including behind the solid "lay the phone flat" card before a
+          match starts and behind the result card after it ends, when
+          nobody can see either board.
+
+          Single player has stopped its board outside a round since the
+          overlays went solid; this is the same rule, applied where it
+          costs twice as much. Two phones' worth of GPU, on the one
+          screen most likely to be left face-up on a table between two
+          people.
+        */
+        frameloop={
+          appActive && (phase === 'arm' || phase === 'go' || phase === 'battle')
+            ? 'always'
+            : 'never'
+        }
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
           camera.lookAt(0, 0, -0.2);
@@ -235,6 +257,8 @@ export function TwoPlayerScreen({
   symbols,
   onExit,
 }: TwoPlayerScreenProps) {
+  // Both boards stop drawing when the phone is not showing the game.
+  const appActive = useAppActive();
   // Color War gives each player one colour to rescue. Fixed for the match
   // so both boards agree on whose is whose.
   const zoneColors = useRef<[PrisonerColorId, PrisonerColorId]>([
@@ -418,6 +442,7 @@ export function TwoPlayerScreen({
       <ZoneView
         rotated
         phase={phase}
+        appActive={appActive}
         won={winner === null ? null : winner === 1}
         score={scoreB}
         oppScore={scoreA}
@@ -443,6 +468,7 @@ export function TwoPlayerScreen({
       <ZoneView
         rotated={false}
         phase={phase}
+        appActive={appActive}
         won={winner === null ? null : winner === 0}
         score={scoreA}
         oppScore={scoreB}

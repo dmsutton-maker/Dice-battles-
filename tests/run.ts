@@ -40,6 +40,7 @@ async function main(): Promise<void> {
   await import('./crashGuard.test');
   await import('./submission.test');
   await import('./purchases.test');
+  await import('./power.test');
   process.exit(await runAll());
 }
 

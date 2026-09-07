@@ -97,8 +97,10 @@ import {
 import { TUNING } from '../game/tuning';
 import { initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { initPurchases } from '../game/purchases';
+import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
+import { FLIGHT_SECONDS } from '../game/flight';
 import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
 import {
   awardCoins,
@@ -177,6 +179,8 @@ type Phase =
 
 export function DiceDemoScreen() {
   const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
+  // Whether the phone is actually showing the game — see useAppActive.
+  const appActive = useAppActive();
 
   useEffect(() => {
     initSounds();
@@ -475,14 +479,56 @@ export function DiceDemoScreen() {
     setRolling(false);
   }, []);
 
+  /*
+    THE BOARD IS BUSY: something on it is still moving.
+
+    A battle is mostly waiting. The dice sit on the tray while somebody
+    decides to tap, and the board was being redrawn sixty times a second
+    to show a picture that had not changed — which on a phone is the
+    single most expensive thing this game does. A three-minute Classic
+    battle is perhaps a third dice in the air; a nine-minute Ultimate is
+    far less.
+
+    So the loop runs while anything moves and stops when nothing does.
+    `rolling` covers the dice. This covers the prisoners, whose leaps
+    take FLIGHT_SECONDS and are NOT tied to the player's roll — the
+    opponent moves figures too, on its own timer, in Skirmish.
+
+    A TIMER rather than a flag the animation clears, deliberately: the
+    worst case of an over-long window is a second of wasted drawing,
+    and the worst case of a missed clear would be a board frozen
+    mid-leap. Every path that starts motion extends the window, and the
+    window always ends.
+  */
+  const [boardBusy, setBoardBusy] = useState(false);
+  const boardBusyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markBoardBusy = useCallback(() => {
+    setBoardBusy(true);
+    if (boardBusyTimer.current) clearTimeout(boardBusyTimer.current);
+    boardBusyTimer.current = setTimeout(
+      () => setBoardBusy(false),
+      FLIGHT_SECONDS * 1000 + 400,
+    );
+  }, []);
+  useEffect(
+    () => () => {
+      if (boardBusyTimer.current) clearTimeout(boardBusyTimer.current);
+    },
+    [],
+  );
+
   const moveUnit = useCallback((key: string, station: Station) => {
+    // Every prisoner leap in the game goes through here — the player's
+    // and the opponent's — which is what makes this the one place the
+    // render loop has to be told about.
+    markBoardBusy();
     const next = unitsRef.current.map((u) =>
       u.key === key ? { ...u, station } : u,
     );
     unitsRef.current = next;
     setUnits(next);
     return next;
-  }, []);
+  }, [markBoardBusy]);
 
   const retreatCount = () =>
     unitsRef.current.filter((u) => u.station.kind === 'retreat').length;
@@ -870,6 +916,14 @@ export function DiceDemoScreen() {
   // What a match DOES depends on the mode.
   useEffect(() => {
     if (phase !== 'battle') return;
+    /*
+      And not while the phone is in a pocket. A setInterval keeps firing
+      through a lock screen, so the opponent used to carry on rolling —
+      with haptics, sound and React state — for a battle nobody was
+      watching, until the player came back to find they had lost. It
+      resumes on return, which is also the fair thing.
+    */
+    if (!appActive) return;
     const { rollIntervalMs } = AI_DIFFICULTIES[difficulty];
     const id = setInterval(() => {
       // The interval outlives the winning roll by a tick: it is cleared
@@ -962,18 +1016,22 @@ export function DiceDemoScreen() {
       }
     }, rollIntervalMs);
     return () => clearInterval(id);
-  }, [phase, difficulty, finishRound, moveUnit, showCallout]);
+  }, [phase, appActive, difficulty, finishRound, moveUnit, showCallout]);
 
   const handleThrow = useCallback(() => {
+    markBoardBusy();
     setRolling(true);
     setRolledFaces(null);
-  }, []);
+  }, [markBoardBusy]);
 
   const handleSettled = useCallback(
     (faces: ColorDef[]) => {
       setRolling(false);
       setRolledFaces(faces);
       setMatchNote(null);
+      // Belt and braces: a settle can be followed by a sinking die or a
+      // celebration shake, neither of which goes through moveUnit.
+      markBoardBusy();
       if (phaseRef.current !== 'battle') return;
       const isMatch = faces.length === 2 && faces[0].id === faces[1].id;
       if (!isMatch) {
@@ -1464,12 +1522,27 @@ export function DiceDemoScreen() {
          * through) or in an item preview, and a phone should not be
          * running a 3D scene nobody can see.
          */
+        /*
+          Three questions, in order of how much they save.
+
+          Is the game even on screen? Is the board visible at all — it is
+          hidden behind solid paper on every menu and result screen. And
+          during a battle, is anything on it actually MOVING: dice in the
+          air, or a prisoner mid-leap. A battle is mostly somebody
+          deciding whether to tap, and redrawing an unchanged picture
+          sixty times a second through all of that is the most expensive
+          thing this game does to a phone.
+
+          The countdown phases stay on: they are under two seconds and
+          the board is what the player is looking at.
+        */
         frameloop={
-          preview !== null ||
-          phase === 'matching' ||
-          phase === 'arm' ||
-          phase === 'go' ||
-          phase === 'battle'
+          appActive &&
+          (preview !== null ||
+            phase === 'matching' ||
+            phase === 'arm' ||
+            phase === 'go' ||
+            (phase === 'battle' && (rolling || boardBusy)))
             ? 'always'
             : 'never'
         }
