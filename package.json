@@ -37,7 +37,7 @@
     "test": "tsx tests/run.ts",
     "typecheck": "tsc --noEmit",
     "bundle": "expo export --platform ios --output-dir /tmp/dice-battles-bundle-check",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test && npm run bundle"
   },
   "private": true
 }

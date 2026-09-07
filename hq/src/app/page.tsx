@@ -142,16 +142,17 @@ export default async function HomePage() {
           }}
         >
           <div style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <span
+            <h2
               style={{
                 font: `800 12px ${fonts.body}`,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
                 color: colors.orangeText,
+                margin: 0,
               }}
             >
               Who we are
-            </span>
+            </h2>
             <p
               style={{
                 font: `600 17px/1.65 ${fonts.body}`,
@@ -176,16 +177,17 @@ export default async function HomePage() {
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <span
+            <h2
               style={{
                 font: `800 12px ${fonts.body}`,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
                 color: colors.orangeText,
+                margin: 0,
               }}
             >
               {appsHeading}
-            </span>
+            </h2>
             <div
               className="psg-row-wrap"
               style={{

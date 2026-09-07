@@ -63,13 +63,37 @@ export async function sendMessage(
   try {
     const supabase = supabaseAdmin();
 
-    // A soft brake on floods: same address, more than five in an hour.
+    /*
+      A soft brake on floods.
+
+      Keyed on the address, which meant leaving the email box empty
+      walked straight past it — and the box is optional, so that was one
+      unauthenticated write path with no limit at all. Blank submissions
+      are now counted together, against the same five an hour.
+    */
     if (email) {
       const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const { count } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
         .eq('email', email)
+        .gte('created_at', hourAgo);
+      if ((count ?? 0) >= 5) {
+        return {
+          ok: false,
+          message:
+            'That is a lot of messages in one hour — give us a chance to read the first ones.',
+          values,
+        };
+      }
+    } else {
+      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      // The insert below writes '' rather than null when the box is
+      // empty, so that is what is counted.
+      const { count } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('email', '')
         .gte('created_at', hourAgo);
       if ((count ?? 0) >= 5) {
         return {

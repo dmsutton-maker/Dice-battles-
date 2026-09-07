@@ -70,9 +70,9 @@ export default async function SupportPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 0', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
+          <h2 style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText, margin: 0 }}>
             FAQ by game
-          </span>
+          </h2>
           <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -114,9 +114,9 @@ export default async function SupportPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 90px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
+          <h2 style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText, margin: 0 }}>
             Policies
-          </span>
+          </h2>
           <div style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
             <Link
               href="/privacy"

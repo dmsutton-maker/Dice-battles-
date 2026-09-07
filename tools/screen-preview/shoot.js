@@ -2,7 +2,10 @@ const { chromium } = require('playwright');
 const path = require('path');
 (async () => {
   const browser = await chromium.launch({
-    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    // Playwright finds its own bundled Chromium unless CHROME_PATH
+    // says otherwise. This used to be one hard-coded container path,
+    // so every one of these tools failed on any other machine.
+    ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
     args: ['--no-sandbox'],
   });
   const page = await browser.newPage({ viewport: { width: 393, height: 1400 } });

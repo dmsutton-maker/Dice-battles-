@@ -45,6 +45,9 @@ export function SiteHeader({ active }: { active: 'Home' | 'Apps' | 'Support' | '
             key={item.href}
             href={item.href}
             className={styles.link}
+            // Darker ink is the only cue a sighted visitor gets; this is
+            // the same fact, said out loud for a screen reader.
+            aria-current={active === item.label ? 'page' : undefined}
             style={{ color: active === item.label ? colors.ink : colors.body, textDecoration: 'none' }}
           >
             {item.label}

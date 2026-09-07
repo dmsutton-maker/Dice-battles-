@@ -24,6 +24,7 @@ height both — rather than to a scale factor. The board shots still bleed
 off the sides on purpose.
 
 ```sh
+# CHROME_PATH=/path/to/chrome  # only if Playwright's own Chromium is not wanted
 npm i --no-save --legacy-peer-deps react-dom@19.1.0 playwright@1.49.0
 mkdir -p /tmp/fonts && cd /tmp/fonts \
   && curl -s -o baloo-800.ttf  "https://fonts.gstatic.com/s/baloo2/v23/wXK0E3kTposypRydzVT08TS3JnAmtdj9yqpv.ttf" \

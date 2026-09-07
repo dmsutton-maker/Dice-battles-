@@ -178,9 +178,9 @@ export default async function DiceBattlesAppPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 0', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
+          <h2 style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText, margin: 0 }}>
             Highlights
-          </span>
+          </h2>
           <div className="psg-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20, marginTop: 20 }}>
             {highlights.map((h, i) => (
               <div key={h.title} style={{ padding: 26, borderRadius: 18, background: HIGHLIGHT_TINTS[i % HIGHLIGHT_TINTS.length], display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -195,9 +195,9 @@ export default async function DiceBattlesAppPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 0', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
+          <h2 style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText, margin: 0 }}>
             FAQ
-          </span>
+          </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20, maxWidth: 720 }}>
             {faqs.map((item) => (
               <details key={item.q} className={styles.details} style={{ padding: '18px 22px', borderRadius: 14, background: colors.offWhite }}>

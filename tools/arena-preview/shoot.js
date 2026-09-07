@@ -3,7 +3,10 @@ const path = require('path');
 const IDS = process.argv.slice(2);
 (async () => {
   const browser = await chromium.launch({
-    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    // Playwright finds its own bundled Chromium unless CHROME_PATH
+    // says otherwise. This used to be one hard-coded container path,
+    // so every one of these tools failed on any other machine.
+    ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
   });
   const page = await browser.newPage({ viewport: { width: 393, height: 852 } });

@@ -60,11 +60,10 @@ export function InventoryScreen({
   return (
     <View style={styles.overlay}>
       <View style={styles.header}>
+        {/* No trophy count here: the shared HUD already draws one over
+            this page, and two of the same number on one screen reads as
+            two different things. Same reason StoreScreen dropped its. */}
         <Text style={styles.title}>Inventory</Text>
-        <View style={styles.trophies}>
-          <TrophyIcon size={16} />
-          <Text style={styles.trophiesText}>{trophies}</Text>
-        </View>
       </View>
 
       <ScrollView

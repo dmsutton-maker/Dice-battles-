@@ -99,7 +99,7 @@ export default async function PeoplePage() {
                   name="email"
                   type="email"
                   required
-                  placeholder="marcsutton2010@gmail.com"
+                  placeholder="name@example.com"
                 />
               </div>
               <div>

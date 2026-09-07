@@ -5,6 +5,7 @@ Renders any themed battlefield in a real browser, through the real
 and writes a PNG.
 
 ```sh
+# CHROME_PATH=/path/to/chrome  # only if Playwright's own Chromium is not wanted
 npm i --no-save --legacy-peer-deps react-dom@19.1.0 playwright@1.49.0
 npx esbuild tools/arena-preview/entry.tsx --bundle \
   --outfile=tools/arena-preview/bundle.js --loader:.tsx=tsx \

@@ -63,25 +63,32 @@ red screen — and returns undefined without rethrowing, so the catch is
 never reached. This applies to `gameCenter.ts` exactly as it does to
 `ads.ts`; neither pattern is a safety net.
 
-**`runtimeVersion` is the only real gate, and it has two states.** Which
-one is correct depends on whether the JavaScript bundle reaches for a
-native module that older binaries do not contain.
+**`runtimeVersion` is the only real gate, and it has two states.** The
+test is whether a native package the JavaScript names can THROW AT LOAD
+on a binary that does not contain it — not whether the package is new.
+`expo-game-center` is a native package that live JavaScript requires
+today and the policy is still correct for it, because that package
+swallows its own load failure. Getting this distinction wrong in either
+direction breaks something.
 
-- **While the bundle needs nothing extra, it stays on the `sdkVersion`
-  policy** — the state `app.json` is in today, with ads switched off.
-  Pinning an explicit string with no binary reporting that runtime
-  freezes over-the-air delivery to every install: that is exactly what
-  commit `5b6ef13` did on 25 Aug 2026, and `a390b7e` undid it the same
-  day.
-- **The moment a native module goes into the bundle** — restoring the
-  require in `src/game/adSdk.ts`, or adding any other one — the same
-  change makes `runtimeVersion` an explicit string and raises it, and a
-  build follows immediately. Old installs then stay on the last update
+- **While every native package live JS names either resolves lazily or
+  swallows its own load failure, `runtimeVersion` stays on the
+  `sdkVersion` policy** — the state `app.json` is in today. Pinning an
+  explicit string with no binary reporting that runtime freezes
+  over-the-air delivery to every install, silently, with no error
+  anywhere: that is exactly what commit `5b6ef13` did on 25 Aug 2026,
+  and `a390b7e` undid it the same day.
+- **From the moment one CAN throw at module scope** — restoring the
+  require in `src/game/adSdk.ts`, or adding StoreKit — the same change
+  makes `runtimeVersion` an explicit string, RAISES it, and a build
+  follows immediately. Old installs then stay on the last update
   matching their runtime, which is correct, because the new JavaScript
   would red-screen them.
-- `tests/ads.test.ts` enforces exactly this pairing, so the tests and the
-  rule agree. Do not "correct" `app.json` to a pinned string to match a
-  half-remembered rule — read the test first.
+- `tests/ads.test.ts` enforces this for every native package in
+  `package.json`, not just the ad SDK, with an exemption list that has to
+  carry a reason. So the tests and the rule agree. Do not "correct"
+  `app.json` to a pinned string to match a half-remembered rule — read
+  the test first.
 - **A test that passes in node proves nothing about this.** Node resolves
   modules itself and throws an ordinary catchable Error; Metro does not.
   Anything about module loading has to be checked in a real bundle on a

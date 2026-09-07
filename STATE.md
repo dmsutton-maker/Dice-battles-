@@ -159,9 +159,13 @@ and the same day the listing was brought up to date:
   keeps database and email access when it fires automatically is not yet
   confirmed. `/admin/automation` shows nothing under "what has actually
   happened" if it silently failed.
-- **The app icon on phones is stale** — `assets/icon.png` holds the
-  settled "Perfect Match" design, but an icon is compiled in, not sent
-  over the air. It reaches phones in the next native build.
+- **The icon set is settled, and reaches phones in the next build.** The
+  three files `app.json` actually points at are
+  `assets/icon/light.png`, `dark.png` and `tinted.png` — the "Perfect
+  Match" design in the three appearances iOS 18 asks for.
+  `assets/icon.png` is a superseded orphan that nothing references any
+  more; it is safe to ignore. An icon is compiled in rather than sent
+  over the air, so what is on a phone today is whatever build 5 carried.
 - **Android now has a build, but has never shipped to a store.** The
   first Android APK was built 20 Aug 2026 (`eas build --platform android
   --profile adhoc`), on the `main` channel, so it receives every

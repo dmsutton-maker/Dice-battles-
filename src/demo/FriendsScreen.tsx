@@ -147,6 +147,15 @@ export function FriendsScreen({
       setActionError(result.error);
       return;
     }
+    /*
+      Say so. After "Ask to be friends" the card simply vanished and the
+      typed code cleared, which is exactly what a failure looks like too
+      — and the other person sees nothing until they next play, so there
+      was no other confirmation coming.
+    */
+    setSearchNote(
+      action === 'request' ? 'Asked! They will see it next time they play.' : null,
+    );
     setFound(null);
     setCode('');
     setShowing(null);

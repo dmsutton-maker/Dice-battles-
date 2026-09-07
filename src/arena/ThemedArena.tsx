@@ -1907,7 +1907,14 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
   const floorD = innerDepth + wallThickness * 2;
   const floorTexture = useMemo(
     () =>
-      cachedTexture(`themed-floor-${id}`, () =>
+      cachedTexture(
+        // Everything the picture is built FROM is in the key. Keyed on
+        // the arena id alone, repainting a theme's floor colours — which
+        // this project does — would hand back the picture painted from
+        // the old ones, and the deps array below would be the only thing
+        // that noticed.
+        `themed-floor-${id}-${theme.structure}-${theme.floor.a}-${theme.floor.b}` +
+          `-${theme.wall.cap}-${floorW}x${floorD}`, () =>
         createTraySurface(
           theme.structure,
           { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
@@ -1920,7 +1927,9 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
   /* The ground outside it, in the same material family a shade duller. */
   const groundTexture = useMemo(
     () =>
-      cachedTexture(`themed-ground-${id}`, () =>
+      cachedTexture(
+        `themed-ground-${id}-${theme.structure}-${theme.meadow}-${theme.hill}` +
+          `-${theme.mountain ?? theme.wall.cap}`, () =>
         createGroundSurface(
           theme.structure,
           { a: theme.meadow, b: theme.hill, accent: theme.mountain ?? theme.wall.cap },

@@ -115,7 +115,7 @@ export default async function VotesPage() {
             className="idea"
             style={{
               borderLeftColor:
-                proposal.status === 'open' ? '#ffe521' : '#33cc6b',
+                proposal.status === 'open' ? 'var(--yellow, #f2c53d)' : '#33cc6b',
             }}
           >
             <div className="spread">

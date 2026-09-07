@@ -89,18 +89,27 @@ async function authenticate(body: Record<string, unknown>) {
   if (!playerId || !secret) return { error: 'playerId and secret are required' };
 
   const supabase = supabaseAdmin();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('player_profiles')
     .select('player_id, secret_hash')
     .eq('player_id', playerId)
     .maybeSingle();
 
+  /*
+    A read that FAILED is not a player who does not exist.
+
+    The error used to be dropped, so a database blip made an existing
+    profile look new — and the caller would then try to insert over it,
+    fail on the primary key, and report something that had nothing to do
+    with what went wrong.
+  */
+  if (error) return { error: 'could not reach the database' };
   if (!data) return { playerId, secret, isNew: true as const };
   if (!sameSecret(secret, data.secret_hash)) return { error: 'wrong secret' };
   return { playerId, secret, isNew: false as const };
 }
 
-/** GET ?code=K7M29XPQ — find somebody, or ?playerId=… — read your own. */
+/** GET ?code=K7M29XPQ — find somebody by their friend code. */
 export async function GET(request: NextRequest) {
   const supabase = supabaseAdmin();
   const code = request.nextUrl.searchParams.get('code');
@@ -194,7 +203,11 @@ export async function POST(request: NextRequest) {
       // the game can draw a new one rather than guess at the failure.
       const taken = error.code === '23505' && error.message.includes('friend_code');
       return NextResponse.json(
-        { error: taken ? 'friend code taken' : error.message },
+        // The database's own message is not shown to a player: it can
+        // name columns and constraints, and none of that helps anyone
+        // holding a phone. The one collision worth naming is the friend
+        // code, so the game can draw a new one rather than guess.
+        { error: taken ? 'friend code taken' : 'could not save that' },
         { status: taken ? 409 : 500 },
       );
     }

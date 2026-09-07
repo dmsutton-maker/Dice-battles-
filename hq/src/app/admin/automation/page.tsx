@@ -48,7 +48,7 @@ const STANDING: Standing[] = [
     asks:
       'Priority 1 ("Drop everything") is fixed straight away without asking. Everything else asks David and waits for a yes.',
     caveat:
-      'Confirmed working on 19 August 2026 — the first automatic run reached the board and the email account it needs.',
+      'Set up on 19 August 2026. Whether a run has actually reached the board since is not something this page can see — the rows below are the record.',
   },
   {
     emoji: '✍️',
@@ -292,7 +292,7 @@ export default async function AutomationPage() {
           </div>
         ))}
         <p className="faint" style={{ marginTop: 12, marginBottom: 0 }}>
-          The last 40. <Link href="/admin/activity">Full history →</Link>
+          The last 20. <Link href="/admin/activity">Full history →</Link>
         </p>
       </div>
     </>

@@ -4,7 +4,7 @@ Two things in one small Next.js app:
 
 - **The public site** — what the game is, plus the Privacy Policy, Terms
   and Support pages Apple requires a live URL for.
-- **The private HQ** at `/hq` — ideas, approvals, phases and timeline for
+- **The private HQ** at `/admin` — ideas, approvals, phases and timeline for
   the family. Invitation only.
 
 ## How the work actually flows
@@ -28,7 +28,7 @@ would make the board pointless.
 
 - Public site at `/`, with `/privacy` and `/support` — the two URLs Apple
   requires for the App Store listing.
-- The board at `/hq`, invitation only.
+- The board at `/admin`, invitation only.
 
 Hosting is David's personal Vercel (`suttonsteam`, Hobby plan) and
 personal Supabase (org "Dice Battles"). The setup steps below are kept

@@ -254,7 +254,7 @@ const toLab = (hex: string) => {
 
 suite('screen · the colours the pattern painters mix themselves', () => {
   /*
-    Eight of the skins are painted by full-colour painters rather than by
+    Thirty-two of the skins are painted by full-colour painters rather than by
     tinting the shell: the volleyball's panels, the watermelon's flesh,
     the pizza's pepperoni, the galaxy's dust. Those colours are hex
     literals inside patterns.ts and belong to no skin, so the two checks
@@ -577,6 +577,32 @@ suite('screen · assets', () => {
     assert(
       eas.build?.production?.channel === 'main',
       'the production build must follow the same update channel as testers',
+    );
+
+    /*
+      The three fields that stop a submission dead, none of which this
+      test used to look at. Each has been set once and would be quietly
+      lost by an app.json rewrite.
+    */
+    assert(
+      ios.infoPlist?.ITSAppUsesNonExemptEncryption === false,
+      'app.json lost ITSAppUsesNonExemptEncryption: false — every submission ' +
+        'then stops and asks the export-compliance question by hand',
+    );
+    assert(
+      ios.entitlements?.['com.apple.developer.game-center'] === true,
+      'the Game Center entitlement is gone — leaderboards and the Friends ' +
+        'identity both depend on it, and it is baked into the binary',
+    );
+    assert(
+      ios.requireFullScreen === true,
+      'iPad is no longer portrait-locked, so App Review will exercise the ' +
+        'board, split screen and every popup in landscape — see safeArea.ts, ' +
+        'which reads the window size once and says the game is portrait-locked',
+    );
+    assert(
+      config.expo.orientation === 'portrait',
+      'the app no longer declares portrait',
     );
   });
 });

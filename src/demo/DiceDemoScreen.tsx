@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Keyboard,
@@ -714,6 +714,31 @@ export function DiceDemoScreen() {
   // through a ref rather than a captured value.
   runRef.current = run;
 
+  /*
+    Memoised, because FriendsScreen refreshes whenever it changes.
+
+    Built inline in the JSX, this object was a NEW object on every single
+    render of this screen — which meant every render while Friends was
+    open re-published the profile, re-fetched the list, and flipped the
+    page back to its loading spinner. A tap anywhere was enough.
+
+    COUNTS, never lists. A friend seeing "22 dice sets" is the
+    interesting fact; sending which 22 would be a bigger payload saying
+    less.
+  */
+  const friendStats = useMemo(
+    () => ({
+      trophies,
+      wins,
+      modeWins,
+      diceOwned: DICE_SKINS.filter((s) => isSkinUnlocked(s.id, trophies)).length,
+      arenasOwned: ARENA_ORDER.filter((id) => isArenaUnlocked(id, trophies)).length,
+      favouriteDie: loadout.skinId,
+      favouriteArena: loadout.arenaId,
+    }),
+    [trophies, wins, modeWins, loadout.skinId, loadout.arenaId],
+  );
+
   const menuTab: Tab | null =
     phase === 'pick' && tab !== 'play' ? tab : null;
 
@@ -837,6 +862,12 @@ export function DiceDemoScreen() {
     if (phase !== 'battle') return;
     const { rollIntervalMs } = AI_DIFFICULTIES[difficulty];
     const id = setInterval(() => {
+      // The interval outlives the winning roll by a tick: it is cleared
+      // in the effect cleanup, which runs after the commit. Without this
+      // a tick landing between the player's winning settle and that
+      // cleanup can call finishRound a second time, and the AI carries
+      // on rolling after the game is over. Same guard as handleSettled.
+      if (phaseRef.current !== 'battle') return;
       const roll = rollAiDice();
       setAiLastRoll(roll);
       const [a, b] = roll;
@@ -1373,7 +1404,7 @@ export function DiceDemoScreen() {
         {obstacleHint(difficulty, obstacleLook(arenaId).words)}
       </Text>
       <Text style={styles.stakesText}>
-        Win +{rangeLabel(stakes.win)} · Lose −{rangeLabel(stakes.loss)} trophies
+        Win +{rangeLabel(stakes.win)} · Lose {rangeLabel(stakes.loss)} trophies
       </Text>
     </View>
   );
@@ -1626,7 +1657,10 @@ export function DiceDemoScreen() {
             onLayout={(e) => measurePick({ viewport: e.nativeEvent.layout.height })}
             onContentSizeChange={(_w, h) => measurePick({ content: h })}
           >
-            <Text style={styles.overlayTitle}>Dice Battles</Text>
+            {/* The whole name, the way the rule says — on two lines because
+                "Dice Battles: Color Rush" at 34pt/900 is about 470pt wide
+                and would wrap wherever it felt like. */}
+            <Text style={styles.overlayTitle}>Dice Battles{'\n'}Color Rush</Text>
             <Text style={styles.tagline}>
               Race other players to free your prisoners!
             </Text>
@@ -1702,6 +1736,9 @@ export function DiceDemoScreen() {
           <Text style={styles.trophyLine}>
             {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} trophies → {trophies}
           </Text>
+          <Text style={[styles.coinLine, styles.onGlass]}>
+            +{lastCoins} coins → {wallet.coins}
+          </Text>
           {upNext && (
             <Text style={[styles.trophyNext, styles.onGlass]} numberOfLines={1} maxFontSizeMultiplier={1.5}>
               Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
@@ -1721,6 +1758,9 @@ export function DiceDemoScreen() {
           <Text style={[styles.overlayBody, styles.onGlass]}>
             {playerScore}–{aiScore} — nobody loses trophies.{'\n'}Settle it in a
             rematch!
+          </Text>
+          <Text style={[styles.coinLine, styles.onGlass]}>
+            +{lastCoins} coins → {wallet.coins}
           </Text>
           {difficultyRow}
           {roundOverButtons}
@@ -1767,18 +1807,7 @@ export function DiceDemoScreen() {
       {showFriends && me && menuTab === 'leaderboard' && (
         <FriendsScreen
           me={me}
-          stats={{
-            trophies,
-            wins,
-            modeWins,
-            // COUNTS, never lists. A friend seeing "22 dice sets" is the
-            // interesting fact; sending which 22 would be a bigger
-            // payload saying less.
-            diceOwned: DICE_SKINS.filter((s) => isSkinUnlocked(s.id, trophies)).length,
-            arenasOwned: ARENA_ORDER.filter((id) => isArenaUnlocked(id, trophies)).length,
-            favouriteDie: loadout.skinId,
-            favouriteArena: loadout.arenaId,
-          }}
+          stats={friendStats}
           onClose={() => setShowFriends(false)}
         />
       )}
@@ -2054,6 +2083,9 @@ export function DiceDemoScreen() {
         <View style={styles.roundOver}>
           <Text style={styles.overlayTitle}>Defeat!</Text>
           <Text style={styles.trophyLine}>{lastDelta} trophies → {trophies}</Text>
+          <Text style={[styles.coinLine, styles.onGlass]}>
+            +{lastCoins} coins → {wallet.coins}
+          </Text>
           <Text style={[styles.overlayBody, styles.onGlass]}>
             {opponent.name} wins this {MODES[mode].name} battle {aiScore}–{playerScore}.{'\n'}
             Avenge your prisoners!
@@ -2233,6 +2265,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 6,
   },
+  /*
+    Coins were computed and stored after every battle and never shown
+    anywhere, while the tutorial promises "You earn coins too". This is
+    trophyNext without its fixed height, which only exists to stop the
+    home-screen column shifting.
+  */
+  coinLine: { color: THEME.inkSoft, fontSize: 13.5, fontWeight: '700', marginTop: 4 },
   trophyNext: {
     color: THEME.inkSoft,
     fontSize: 13.5,
@@ -2395,7 +2434,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 64,
+    // 100, the same top inset every other menu page uses — the coin and
+    // trophy pills sit at y52-90, and at 64 the title ran under them the
+    // moment the content grew tall enough to overflow. A no-op when it
+    // fits, since justifyContent centres inside flexGrow.
+    paddingTop: 100,
     // Clear of the bottom bar, or START BATTLE sits behind it.
     paddingBottom: 64 + BOTTOM_NAV_HEIGHT,
     paddingHorizontal: 4,

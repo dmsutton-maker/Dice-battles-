@@ -143,7 +143,15 @@ export async function loadIdentity(): Promise<Identity> {
     const writes: Promise<void>[] = [];
     if (storedId !== localId) writes.push(AsyncStorage.setItem(ID_KEY, localId));
     if (storedCode !== friendCode) writes.push(AsyncStorage.setItem(CODE_KEY, friendCode));
-    if (storedName !== name) writes.push(AsyncStorage.setItem(NAME_KEY, name));
+    /*
+      The Apple alias is never written to the device's own name.
+
+      It is read from `apple.name` every launch anyway (see above), so
+      storing it changes nothing while signed in — and it is what made
+      signing OUT of Game Center leave the local profile wearing the
+      Apple alias for ever, with no way back to the name it had.
+    */
+    if (!apple && storedName !== name) writes.push(AsyncStorage.setItem(NAME_KEY, name));
     if (storedSecret !== secret) writes.push(AsyncStorage.setItem(SECRET_KEY, secret));
     await Promise.all(writes);
   } catch {

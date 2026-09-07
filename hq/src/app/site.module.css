@@ -68,6 +68,10 @@
   }
   .page :global(.psg-hero-text) {
     max-width: 100% !important;
+    /* The hero's own 40px 24px is the phone padding. This block had its
+       own on top of the inline desktop one, so the headline sat in about
+       48px of side gutter on a 390px screen. */
+    padding: 0 !important;
   }
   .page :global(.psg-hero-h1) {
     font-size: 30px !important;

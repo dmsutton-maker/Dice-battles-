@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber/native';
 import * as CANNON from 'cannon-es';
 import * as Haptics from 'expo-haptics';
+import { AppState } from 'react-native';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { playClack, playThrow } from '../audio/sounds';
@@ -169,6 +170,30 @@ export function DiceScene({
       shake.current = 1;
     }
   }, [shakeSignal]);
+
+  /*
+    Coming back from the background does not decide the roll.
+
+    The 3200 ms backstop in src/dice/settle.ts is the one settle path
+    with no motion, sleep or grounded test — it fires purely on elapsed
+    time, and elapsed is wall-clock while the render loop stops the
+    moment the app goes away. So backgrounding mid-roll for four seconds
+    used to mean the very first resumed frame hit the backstop, teleported
+    a still-airborne die to the floor on whatever face happened to be
+    nearest up, and counted it.
+
+    Restarting the clock on return is the same fix the moat respawn
+    already uses further down: measuring from the original throw charges
+    the roll for time it did not spend rolling.
+  */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && awaitingSettle.current) {
+        throwStartedAt.current = Date.now();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Collision haptics: light tick on hard impacts, throttled.
   useEffect(() => {

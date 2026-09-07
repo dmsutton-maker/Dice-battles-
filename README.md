@@ -45,10 +45,22 @@ Scan the QR code with the iPhone camera and open in **Expo Go**.
 There is no device and no CI here, so correctness is checked headlessly:
 
 ```bash
-npm test        # ~3s: physics simulation, rules, camera fit, assets
+npm run check   # THE GATE: typecheck, then tests, then the bundle. ~1 min.
+```
+
+`check` is the one to run, and it now includes the bundle. It used to be
+typecheck plus tests only, which quietly left out the single step that
+exercises Metro — the step whose absence red-screened David's phone on
+25 August 2026. AGENTS.md lists the bundle as mandatory before every
+over-the-air update; the command named `check` should not have been able
+to pass without it.
+
+The three parts, if you need one on its own:
+
+```bash
+npm test        # ~30s: physics simulation, rules, camera fit, assets
 npm run typecheck
-npm run bundle  # Metro/Hermes bundle check (slow; catches device-only import breaks)
-npm run check   # typecheck + tests
+npm run bundle  # ~15-30s: Metro/Hermes export; catches device-only import breaks
 ```
 
 `tests/` runs the **real** modules, not copies: rolls are simulated through
@@ -190,8 +202,14 @@ start screen). Remaining: nearby multi-device play.
 4. **Remove-ads / family pack IAP.** See the revenue research: ads to a
    5+ audience are heavily restricted (Apple's Kids Category forbids
    third-party ads outright; outside it, COPPA allows only
-   non-personalised ads through certified SDKs). The recommendation is to
-   sell the unlock and skip ads entirely.
+   non-personalised ads through certified SDKs). That research was
+   written before the decision: David chose on 24 Aug 2026 that ads DO
+   ship in 1.0 — one child-directed, non-personalised, G-rated
+   interstitial after every third finished game, and nothing else — and
+   the remove-ads unlock sits alongside them rather than replacing them.
+   Which is also why the app belongs in Games → Family/Board and never
+   in the Kids Category. See AGENTS.md for the rules that decision now
+   carries.
 
 Any of these that add a native module (ads SDK, in-app purchase library)
 need a fresh EAS build — they cannot ship as an over-the-air update.

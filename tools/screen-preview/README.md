@@ -4,6 +4,7 @@ Renders a real screen through `react-native-web`, at iPhone width, and
 writes a PNG.
 
 ```sh
+# CHROME_PATH=/path/to/chrome  # only if Playwright's own Chromium is not wanted
 npm i --no-save --legacy-peer-deps \
   react-dom@19.1.0 react-native-web@0.19.13 playwright@1.49.0
 npx esbuild tools/screen-preview/entry.tsx --bundle \

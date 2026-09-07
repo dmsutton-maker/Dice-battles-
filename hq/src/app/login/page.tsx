@@ -25,7 +25,11 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Seeded from the URL: the auth callback redirects here with
+  // ?error=<message> when a magic link fails, and until now the page
+  // read it, ignored it and showed the plain form — so an expired link
+  // looked exactly like a link that had not been clicked yet.
+  const [error, setError] = useState<string | null>(params.get('error'));
   const [linkSent, setLinkSent] = useState(false);
 
   async function signIn(event: React.FormEvent) {

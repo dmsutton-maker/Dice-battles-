@@ -80,9 +80,18 @@ export async function GET(request: NextRequest) {
   const rows = links ?? [];
   if (rows.length === 0) return NextResponse.json({ friends: [], requests: [], blocked: [] });
 
+  /*
+    Named columns, not `*`. The old select pulled secret_hash and
+    friend_code of every friend into this process — a credential and a
+    code that lets anyone who has it add you, neither of which any
+    caller here reads. Nothing was ever serialised out, but the safest
+    place for a secret is not in the request at all.
+
+    These ten are exactly what full() and peek() below use.
+  */
   const { data: profiles } = await supabase
     .from('player_profiles')
-    .select('*')
+    .select('player_id, name, trophies, wins, mode_wins, dice_owned, arenas_owned, favourite_die, favourite_arena, last_played')
     .in('player_id', rows.map((r) => r.other_id));
 
   const byId = new Map((profiles ?? []).map((p) => [p.player_id, p]));

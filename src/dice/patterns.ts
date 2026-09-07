@@ -242,7 +242,7 @@ function hexCell(x: number, y: number, size: number): {
   return { q, r, cx, cy, d, t: d / boundary };
 }
 
-/** The eight patterns painted in full colour rather than through a mask. */
+/** The thirty-two patterns painted in full colour rather than through a mask. */
 export type ColorPatternId =
   | 'volleyball' | 'watermelon' | 'pizza' | 'donut'
   | 'rainbow' | 'galaxy' | 'camo' | 'tartan'
@@ -1011,7 +1011,7 @@ const mixRgb = (
 ];
 
 /**
- * The eight patterns that need MORE than base-plus-ink.
+ * The thirty-two patterns that need MORE than base-plus-ink.
  *
  * The mask system deliberately keeps every pattern to two colours, which
  * is right for materials — but a watermelon is red, white, green and
@@ -2382,7 +2382,7 @@ export function patternPixels(
   const [br, bg, bb] = parse(base);
   const [ir, ig, ib] = parse(ink);
 
-  // The eight full-colour patterns paint their own pixels outright.
+  // The full-colour patterns paint their own pixels outright.
   if (COLOR_IDS.has(pattern)) {
     const paintColor = COLOR_PAINTERS[pattern as ColorPatternId];
     const out: number[] = [];

@@ -4,6 +4,7 @@ Renders every icon in `src/ui/Icon.tsx` at 96pt and at 22pt, through the
 real components, and writes a PNG.
 
 ```sh
+# CHROME_PATH=/path/to/chrome  # only if Playwright's own Chromium is not wanted
 npm i --no-save --legacy-peer-deps \
   react-dom@19.1.0 react-native-web@0.21.0 playwright@1.49.0
 npx esbuild tools/icon-preview/entry.tsx --bundle \

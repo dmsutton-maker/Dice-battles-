@@ -1,5 +1,82 @@
 # Changelog
 
+## v1.66.0 — 2026-09-07 · requested by David
+
+The rest of the launch review: the minor and cosmetic findings, and the
+test coverage the review itself asked for.
+
+### Fixed
+- **The AI could roll one more time after you had already won**, and in
+  the worst case score the round twice. The tick that lands between your
+  winning roll and the timer being cleared is now ignored.
+- **Backgrounding the app mid-roll no longer decides the roll for you.**
+  The 3.2-second backstop measures wall-clock time while the game is
+  paused, so coming back after a few seconds used to teleport a die
+  still in the air onto the floor and count whichever face was nearest
+  up. The clock restarts when you return.
+- **Sending a bug report gives up rather than hanging for ever.** On a
+  hotel or airport wifi the Send button could sit at "Sending…" until
+  the app was killed.
+- **Signing out of Game Center gives you your own name back.** The Apple
+  alias was written into the device's own profile, so it stayed for ever.
+- **Friends stopped reloading itself.** Every render of the game while
+  the page was open re-published your profile, re-fetched the list and
+  flipped the page back to its spinner.
+- **"Ask to be friends" says it worked.** The card just disappeared,
+  which is also what a failure looked like.
+- **The battlefield pictures rebuild when a battlefield is repainted.**
+  They were cached under the arena's name alone, so a repaint handed
+  back the old picture.
+
+### Changed
+- **Every result screen shows the coins you earned**, next to the
+  trophies. They were counted and paid and never once shown, while the
+  tutorial promises "you earn coins too".
+- **The home screen carries the whole name**, Dice Battles: Color Rush.
+- **"Lose −3–8 trophies" is now "Lose 3–8 trophies".** The minus in
+  front of a range read as arithmetic.
+- **News points at Report a bug**, which is the channel that exists.
+- **Items shows the trophy count once**, not twice.
+- The pick screen's title clears the coin and trophy pills.
+
+### Website and admin
+- **The admin, the sign-in page and the password page get their security
+  headers back.** They were still aimed at /hq, which the board left on
+  18 August, so for three weeks the pages they protect had none of them.
+- **A missing database key no longer takes the whole public site down**
+  — it falls back to the copy in the code, which is what the fallbacks
+  were built for.
+- **A failed sign-in link says why.** It redirected with the reason and
+  the page ignored it.
+- **A 404 that belongs to us**, plus a robots file and a sitemap.
+- **The legal pages date themselves from when their text was last
+  edited**, rather than claiming August for ever.
+- Section labels are real headings, the pages have a main landmark, and
+  the current nav item says so — for anyone using a screen reader.
+- The contact form no longer claims "nothing is passed on to anyone",
+  which stopped being true when replies started being drafted.
+- Anonymous contact messages are rate-limited like signed ones were.
+- A child's real email address is no longer the example in the admin.
+
+### Tests
+- **`npm run check` now includes the bundle check.** It was typecheck
+  plus tests only — leaving out the one step that exercises Metro, which
+  is the step whose absence red-screened a phone on 25 August.
+- The function that decides trophies, wins and unlocks after every
+  battle now has a real test: the bands, the floor at zero, the unlocks
+  crossed, and the counters.
+- The friends network client is tested against a dead network, a captive
+  portal, a server error and an empty answer, and the device secret is
+  proved to stay out of every URL.
+- The crash guard — the thing that keeps a fatal on screen instead of
+  letting the app vanish — is tested for the first time.
+- Old and corrupt saves are tested: a save from before per-mode counting
+  opens, and a half-written one is a fresh start rather than a crash.
+- The runtime-version gate covers every native package in the project
+  rather than only the ad SDK, with an exemption list that has to carry
+  a reason.
+
+
 ## v1.65.0 — 2026-09-07 · requested by David
 
 David asked for a full front-to-back review of the game and everything

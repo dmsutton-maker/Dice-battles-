@@ -68,8 +68,8 @@ export function NewsScreen() {
         ))}
 
         <Text style={styles.footer}>
-          Got an idea, or found something broken? Tell us from the Settings
-          screen — every message is read by a person.
+          Found something broken? Tap Report a bug in Settings — every
+          message is read by a person.
         </Text>
       </ScrollView>
     </View>

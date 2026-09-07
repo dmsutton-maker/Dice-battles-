@@ -12,12 +12,26 @@ import { supabaseAdmin } from './supabase/server';
 export type ContentMap = Record<string, unknown>;
 
 export async function getSiteContent(): Promise<ContentMap> {
-  const { data, error } = await supabaseAdmin()
-    .from('site_content')
-    .select('key, value');
+  /*
+    A THROW here takes the whole public site down, so it cannot escape.
 
-  if (error || !data) return {};
-  return Object.fromEntries(data.map((row) => [row.key, row.value]));
+    `supabaseAdmin()` throws outright when SUPABASE_SERVICE_ROLE_KEY or
+    the project URL is unset — a missing environment variable on a new
+    deployment, or a key rotated without redeploying. Every caller
+    already falls back to the copy in its own page file through text(),
+    faqList() and the rest, so an empty map renders the complete site
+    from code. A 500 renders nothing.
+  */
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from('site_content')
+      .select('key, value');
+
+    if (error || !data) return {};
+    return Object.fromEntries(data.map((row) => [row.key, row.value]));
+  } catch {
+    return {};
+  }
 }
 
 export function text(content: ContentMap, key: string, fallback: string): string {
@@ -87,4 +101,35 @@ export function labelList(
   return value
     .map((v) => (typeof v === 'string' ? v : (v as LabelItem)?.label))
     .filter((v): v is string => typeof v === 'string' && v.trim() !== '');
+}
+
+/**
+ * When the copy under a key prefix was last edited.
+ *
+ * The legal pages carried "Last updated August 2026" as a literal, so
+ * every edit David makes in the admin changes the policy and leaves the
+ * date claiming otherwise — on the two pages where the date is part of
+ * what the page is FOR. Wrapped like getSiteContent, because a missing
+ * service key must not take a page down: null falls back to the literal.
+ */
+export async function getContentUpdatedAt(prefix: string): Promise<Date | null> {
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from('site_content')
+      .select('updated_at')
+      .like('key', `${prefix}%`)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    if (error || !data || data.length === 0) return null;
+    const when = new Date(data[0].updated_at as string);
+    return Number.isNaN(when.getTime()) ? null : when;
+  } catch {
+    return null;
+  }
+}
+
+/** "August 2026", from a date or from the fallback when there is none. */
+export function monthYear(when: Date | null, fallback: string): string {
+  if (!when) return fallback;
+  return when.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }

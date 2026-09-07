@@ -2,6 +2,9 @@ import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { Dimensions, Platform } from 'react-native';
 import { MAX_DEVICE_LENGTH, prepareBugReport } from './bugReportValidation';
+
+/** Long enough for a slow phone, short enough not to feel broken. */
+const TIMEOUT_MS = 8000;
 import { GAME_VERSION } from '../game/version';
 
 /**
@@ -50,10 +53,23 @@ export async function sendBugReport(message: string): Promise<BugReportResult> {
     return { ok: false, message: prepared.error };
   }
 
+  /*
+    A timeout, like the friends and news calls have.
+
+    Without one, a captive-portal wifi — the hotel, the airport, the
+    coffee shop — accepts the connection and then says nothing, and the
+    Send button sits at "Sending…" until the app is killed. The report
+    is lost either way; the difference is whether the person is told.
+  */
+  const controller =
+    typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = setTimeout(() => controller?.abort(), TIMEOUT_MS);
+
   try {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      signal: controller?.signal,
       body: JSON.stringify({
         message: prepared.message,
         device: deviceContext().slice(0, MAX_DEVICE_LENGTH),
@@ -74,5 +90,7 @@ export async function sendBugReport(message: string): Promise<BugReportResult> {
       ok: false,
       message: 'Could not reach the server. Check your connection and try again.',
     };
+  } finally {
+    clearTimeout(timer);
   }
 }

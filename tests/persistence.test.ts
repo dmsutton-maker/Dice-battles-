@@ -12,13 +12,19 @@ import {
   applyMatchResult,
   getProgress,
   isUnlocked,
+  loadProgress,
   parseCoinCode,
   parseTrophyCode,
+  resetProgressForTests,
   setTrophies,
   COIN_CODE_MAX,
+  TIERS,
   TROPHY_CODE_MAX,
+  TROPHY_STAKES,
 } from '../src/game/progress';
-import { assert, assertEqual, suite, test } from './harness';
+import type { AiDifficultyId } from '../src/game/ai';
+import { MODE_ORDER } from '../src/game/modes';
+import { assert, assertEqual, note, suite, test } from './harness';
 
 /**
  * What the game remembers between launches. The device is the only storage
@@ -177,5 +183,191 @@ suite('codes · "500 COIN" sets the coin balance', () => {
     assertEqual(huge?.coins, COIN_CODE_MAX, 'capped value');
     assertEqual(huge?.clamped, true, 'reports that it capped');
     assertEqual(parseCoinCode('500 COIN')?.clamped, false, 'a sane number is not capped');
+  });
+});
+
+suite('progress · what a battle does to the record', () => {
+  /*
+    applyMatchResult is the function that decides trophies, wins and
+    unlocks after every single battle, and until 7 Sep 2026 it was called
+    in exactly one test — which asserted only that a cheat code left the
+    win counters alone. Nothing pinned the bands, the floor, the unlocks
+    or the counters.
+
+    It takes its `rng` as a parameter, so all of this is deterministic
+    without touching the source, the same way currency.test.ts pins the
+    coin bands.
+  */
+  const LOW = () => 0;
+  const HIGH = () => 0.999999999;
+  const DIFFICULTIES: AiDifficultyId[] = ['easy', 'medium', 'hard'];
+
+  test('a win pays inside its difficulty band, every time', () => {
+    for (const d of DIFFICULTIES) {
+      const band = TROPHY_STAKES[d].win;
+      resetProgressForTests({ trophies: 5000 });
+      assertEqual(applyMatchResult(true, d, 'classic', LOW).delta, band.min,
+        `${d}: the bottom of the win band`);
+      resetProgressForTests({ trophies: 5000 });
+      assertEqual(applyMatchResult(true, d, 'classic', HIGH).delta, band.max,
+        `${d}: the top of the win band`);
+      // And nothing outside it, across the whole range of the roll.
+      for (let i = 0; i < 200; i++) {
+        resetProgressForTests({ trophies: 5000 });
+        const { delta } = applyMatchResult(true, d, 'classic', () => i / 200);
+        assert(
+          delta >= band.min && delta <= band.max,
+          `${d}: a win paid ${delta}, outside ${band.min}-${band.max}`,
+        );
+      }
+      note(`${d} win: ${band.min}-${band.max} trophies`);
+    }
+  });
+
+  test('a loss costs inside its band, and never below zero', () => {
+    for (const d of DIFFICULTIES) {
+      const band = TROPHY_STAKES[d].loss;
+      resetProgressForTests({ trophies: 5000 });
+      assertEqual(applyMatchResult(false, d, 'classic', LOW).delta, -band.min,
+        `${d}: the gentlest loss`);
+      resetProgressForTests({ trophies: 5000 });
+      assertEqual(applyMatchResult(false, d, 'classic', HIGH).delta, -band.max,
+        `${d}: the worst loss`);
+      note(`${d} loss: ${band.min}-${band.max} trophies`);
+    }
+  });
+
+  test('losing on zero trophies takes nothing, and says so', () => {
+    /*
+      The floor and the honesty of the reported delta are one rule, not
+      two. `after` clamps at zero and the returned delta is after-before
+      rather than the roll — so a player on 2 trophies who loses 8 is
+      told they lost 2, which is what actually happened. Reporting the
+      roll would show "-8" beside a counter that only moved by two.
+    */
+    resetProgressForTests({ trophies: 0 });
+    const flat = applyMatchResult(false, 'hard', 'classic', HIGH);
+    assertEqual(flat.trophies, 0, 'trophies went negative');
+    assertEqual(flat.delta, 0, 'a loss on zero reported a cost it did not take');
+
+    resetProgressForTests({ trophies: 2 });
+    const partial = applyMatchResult(false, 'hard', 'classic', HIGH);
+    assertEqual(partial.trophies, 0, 'the floor did not hold');
+    assertEqual(partial.delta, -2, 'the reported loss is not what was taken');
+  });
+
+  test('new unlocks are exactly the tiers crossed, and only on a win', () => {
+    resetProgressForTests({ trophies: 0 });
+    const { trophies, newUnlocks } = applyMatchResult(true, 'hard', 'classic', HIGH);
+    const crossed = TIERS.filter((t) => t.at > 0 && t.at <= trophies);
+    assertEqual(
+      newUnlocks.map((t) => t.id).join(','),
+      crossed.map((t) => t.id).join(','),
+      'the unlocks reported are not the tiers actually crossed',
+    );
+    // A tier exactly ON the old count is NOT crossed again.
+    const tier = TIERS.find((t) => t.at > 0)!;
+    resetProgressForTests({ trophies: tier.at });
+    const again = applyMatchResult(true, 'easy', 'classic', LOW);
+    assert(
+      !again.newUnlocks.some((t) => t.id === tier.id),
+      `${tier.id} was awarded twice for standing on its own threshold`,
+    );
+    // And a loss never unlocks anything, however far it moves you.
+    resetProgressForTests({ trophies: 5000 });
+    assertEqual(
+      applyMatchResult(false, 'hard', 'classic', HIGH).newUnlocks.length,
+      0,
+      'a loss handed out an unlock',
+    );
+  });
+
+  test('the counters move on a win and stand still on a loss', () => {
+    resetProgressForTests({ trophies: 100 });
+    applyMatchResult(true, 'medium', 'skirmish', LOW);
+    assertEqual(getProgress().wins.medium, 1, 'the medium win was not counted');
+    assertEqual(getProgress().wins.easy, 0, 'a win counted against the wrong difficulty');
+    assertEqual(getProgress().modeWins.skirmish, 1, 'the Skirmish win was not counted');
+    assertEqual(getProgress().modeWins.classic, 0, 'a win counted against the wrong mode');
+
+    applyMatchResult(false, 'medium', 'skirmish', LOW);
+    assertEqual(getProgress().wins.medium, 1, 'a loss counted as a win');
+    assertEqual(getProgress().modeWins.skirmish, 1, 'a loss counted as a mode win');
+  });
+
+  test('the smallest win always beats the biggest loss', () => {
+    // The rule the stakes table states in its own comment: an unlucky
+    // win followed by a lucky loss must never cost you rank for playing
+    // well. Stated there, never checked until now.
+    for (const d of DIFFICULTIES) {
+      const { win, loss } = TROPHY_STAKES[d];
+      assert(
+        win.min > loss.max,
+        `${d}: a ${win.min}-trophy win does not survive a ${loss.max}-trophy loss`,
+      );
+    }
+  });
+});
+
+suite('persistence · old saves and broken ones', () => {
+  /*
+    loadProgress fills in fields that did not exist when a save was
+    written — modeWins arrived after the game had shipped, and every
+    phone in the family has a save from before it. None of that was
+    tested, and a `undefined` where a count is expected is the kind of
+    thing that renders as "NaN" on a Records page rather than crashing.
+  */
+  test('a save from before per-mode counting still opens', async () => {
+    resetProgressForTests();
+    store.set(
+      'dice-battles:progress',
+      JSON.stringify({ trophies: 420, wins: { easy: 3, medium: 1, hard: 0 } }),
+    );
+    const p = await loadProgress();
+    assertEqual(p.trophies, 420, 'the trophies were lost');
+    assertEqual(p.wins.easy, 3, 'the easy wins were lost');
+    assertEqual(p.wins.medium, 1, 'the medium wins were lost');
+    for (const mode of MODE_ORDER) {
+      assertEqual(
+        p.modeWins[mode],
+        0,
+        `${mode} came back as ${p.modeWins[mode]} rather than 0`,
+      );
+    }
+  });
+
+  test('a save with a field missing gets a zero, not an undefined', async () => {
+    resetProgressForTests();
+    store.set('dice-battles:progress', JSON.stringify({ trophies: 7 }));
+    const p = await loadProgress();
+    assertEqual(p.trophies, 7, 'the trophies were lost');
+    for (const d of ['easy', 'medium', 'hard'] as const) {
+      assertEqual(p.wins[d], 0, `wins.${d} is not a number`);
+    }
+  });
+
+  test('a corrupt save is a fresh start, never a crash', async () => {
+    // A half-written file after a kill, or a hand-edited backup. The
+    // player loses their record, which is sad; the app not opening at
+    // all is worse.
+    for (const junk of ['{', 'null', '[]', 'not json at all', '']) {
+      resetProgressForTests();
+      store.set('dice-battles:progress', junk);
+      const p = await loadProgress();
+      assert(
+        typeof p.trophies === 'number' && Number.isFinite(p.trophies),
+        `a save of ${JSON.stringify(junk)} produced trophies of ${p.trophies}`,
+      );
+      assert(typeof p.wins?.easy === 'number', `a save of ${JSON.stringify(junk)} lost wins`);
+    }
+  });
+
+  test('a battle result survives a round trip through storage', async () => {
+    resetProgressForTests({ trophies: 100 });
+    const after = applyMatchResult(true, 'hard', 'ultimate', () => 0.5);
+    const reloaded = await loadProgress();
+    assertEqual(reloaded.trophies, after.trophies, 'the trophies changed on the way back');
+    assertEqual(reloaded.wins.hard, 1, 'the win was not written');
+    assertEqual(reloaded.modeWins.ultimate, 1, 'the mode win was not written');
   });
 });

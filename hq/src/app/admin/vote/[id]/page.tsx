@@ -97,7 +97,7 @@ export default async function VotePage({
               key={option.id}
               className="card"
               style={{
-                borderColor: won ? '#33cc6b' : isMine ? '#ffe521' : undefined,
+                borderColor: won ? '#33cc6b' : isMine ? 'var(--yellow, #f2c53d)' : undefined,
                 borderWidth: won || isMine ? 2 : 1,
               }}
             >
@@ -138,7 +138,7 @@ export default async function VotePage({
                 style={{
                   height: 10,
                   borderRadius: 5,
-                  background: 'rgba(255,255,255,0.14)',
+                  background: 'var(--line, #ece9e5)',
                   overflow: 'hidden',
                   margin: '10px 0 6px',
                 }}
@@ -147,7 +147,7 @@ export default async function VotePage({
                   style={{
                     width: `${share}%`,
                     height: '100%',
-                    background: won ? '#33cc6b' : '#ffe521',
+                    background: won ? '#33cc6b' : 'var(--yellow, #f2c53d)',
                   }}
                 />
               </div>

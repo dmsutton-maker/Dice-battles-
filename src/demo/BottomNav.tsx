@@ -74,14 +74,18 @@ export function BottomNav({
                 It scales, but only so far.
 
                 This label used to be pinned at 10pt with scaling off
-                entirely, which made the NAVIGATION the one place in the
-                game that ignored a grandparent's larger-text setting —
-                exactly backwards, since it is the thing you have to read
-                to get anywhere. Five cells on the narrowest iPhone leave
-                about 75pt each, and the longest label is "Battle": at
-                1.6x that is still one comfortable line, so the cap is
-                where the row would break rather than at no scaling at
-                all.
+                entirely, and the comment justifying that still described
+                SEVEN cells of about 53pt — a layout that has not existed
+                since the bar went down to five. Five cells on the
+                narrowest iPhone leave about 75pt each, and the longest
+                labels are "Battle" and "Store": at 1.6x both still hold
+                one comfortable line, so the cap is where the row would
+                actually break rather than at no scaling at all.
+
+                Pinning it made the NAVIGATION the one place in the game
+                that ignored a grandparent's larger-text setting, which
+                is exactly backwards — it is the thing you have to read
+                to get anywhere else.
               */
               numberOfLines={1}
               maxFontSizeMultiplier={1.6}

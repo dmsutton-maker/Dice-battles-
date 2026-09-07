@@ -471,3 +471,104 @@ suite('ads · nothing here can break a game when the SDK is absent', () => {
     );
   });
 });
+
+/**
+ * The same gate, but for every native package rather than only AdMob.
+ *
+ * The AdMob test above is specific to one SDK, and StoreKit is next.
+ * The distinction that actually decides whether runtimeVersion has to be
+ * pinned is NOT "is this package new" — expo-game-center is a native
+ * package that live JavaScript requires today and the sdkVersion policy
+ * is still correct for it. It is whether the package can THROW AT LOAD
+ * on a binary that does not contain it.
+ *
+ * A package that throws at module scope red-screens every old install
+ * the moment the update lands, because Metro's loader catches a throwing
+ * module factory before any try/catch in this repo can. A package that
+ * resolves lazily, or swallows its own load failure, cannot.
+ *
+ * So: any native package named by a literal require in live source must
+ * either be on the exemption list below, with a reason, or the app must
+ * be on an explicit runtimeVersion string.
+ */
+suite('release · every native package is gated, not just the ad SDK', () => {
+  /**
+   * Native packages that live JS may require while runtimeVersion is
+   * still the sdkVersion policy. Each needs a reason that says why it
+   * cannot throw at module scope on a binary without it.
+   */
+  const SAFE_TO_LOAD: Record<string, string> = {
+    'expo-game-center':
+      'ExpoGameCenterModule.js wraps requireNativeModule in its own ' +
+      'try/catch and returns null — see the test in this file that ' +
+      'watches for that guard disappearing.',
+    'expo-haptics':
+      'Compiled into build 5 on 16 Aug 2026, so every install that can ' +
+      'receive an update already contains it.',
+    'expo-audio':
+      'Added the same day as expo-haptics (16 Aug 2026, commit 70d3142) ' +
+      'and compiled into build 5 alongside it. Every update since has ' +
+      'shipped sound, on the phones the family plays on.',
+    'expo-updates':
+      'It IS the over-the-air machinery. A binary without expo-updates ' +
+      'cannot receive an update at all, so it can never be handed ' +
+      'JavaScript that requires it — this one holds whatever the build ' +
+      'history says.',
+  };
+
+  /** Packages in package.json that ship native code of their own. */
+  const NATIVE = [
+    'react-native-google-mobile-ads',
+    'expo-game-center',
+    'expo-haptics',
+    'expo-audio',
+    'expo-gl',
+    'expo-file-system',
+    'expo-updates',
+    'expo-splash-screen',
+  ];
+
+  test('a package that can throw at load forces an explicit runtimeVersion', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+    const deps = Object.keys(pkg.dependencies ?? {});
+    const app = JSON.parse(readFileSync('app.json', 'utf8'));
+    const runtime = app.expo.runtimeVersion;
+    const pinned = typeof runtime === 'string' && /^\d+\.\d+\.\d+$/.test(runtime);
+
+    const files = liveSourceFiles();
+    const risky: string[] = [];
+    for (const dep of NATIVE) {
+      if (!deps.includes(dep)) continue;
+      const named = files.filter(([, code]) => code.includes(`'${dep}'`));
+      if (named.length === 0) continue;
+      if (dep in SAFE_TO_LOAD) continue;
+      risky.push(`${dep} (in ${named.map(([f]) => f).join(', ')})`);
+    }
+
+    note(
+      `native packages required by live JS: ${
+        risky.length === 0 ? 'none that can throw at load' : risky.join('; ')
+      }; runtimeVersion ${JSON.stringify(runtime)}`,
+    );
+
+    if (risky.length > 0 && !pinned) {
+      assert(
+        false,
+        `${risky.join('; ')} can throw at module scope on a binary without it, ` +
+          `and runtimeVersion is ${JSON.stringify(runtime)}. Either add the package ` +
+          'to SAFE_TO_LOAD in this test with a reason it cannot throw, or pin ' +
+          'runtimeVersion to an explicit string, RAISE it, and ship a build in ' +
+          'the same change. Pinning without shipping the binary strands every ' +
+          'installed phone on its last matching update, with no error anywhere.',
+      );
+    }
+  });
+
+  test('the exemption list says why, not just that', () => {
+    // An exemption with no reason is how a list like this rots: the next
+    // session sees a name, assumes it was checked, and adds another.
+    for (const [pkg, why] of Object.entries(SAFE_TO_LOAD)) {
+      assert(why.length > 40, `${pkg} is exempted with no real reason given`);
+    }
+  });
+});

@@ -4,7 +4,7 @@ import { changeMyPassword } from '../admin/actions';
 import { PasswordField } from '@/components/PasswordField';
 
 export const metadata = {
-  title: 'Choose a password — Dice Battles HQ',
+  title: 'Choose a password — Paper Ship Studio',
   robots: { index: false, follow: false },
 };
 

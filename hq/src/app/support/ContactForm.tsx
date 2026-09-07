@@ -163,8 +163,7 @@ export function ContactForm() {
 
       <span style={{ font: `600 12.5px ${fonts.body}`, color: colors.muted }}>
         We read every message ourselves — usually pretty quickly. Your message and, if you give
-        one, your email address are stored so we can read and reply. Nothing else, and nothing
-        is passed on to anyone.
+        one, your email address are stored so we can read and reply. Nothing else.
       </span>
     </form>
   );

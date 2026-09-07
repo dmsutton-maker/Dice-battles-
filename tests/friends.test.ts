@@ -410,3 +410,185 @@ suite('friends · the app and the server agree about the rules', () => {
     }
   });
 });
+
+/**
+ * The network client, with the network replaced.
+ *
+ * src/game/friendsApi.ts shipped in v1.64.0 with no tests at all. Its
+ * own header sets the rule it has to keep — "nothing here may throw or
+ * reject", because a player on a plane or a bad train connection must
+ * see a friends screen that says so rather than a crash or a spinner
+ * that never stops. Every one of those branches was unexercised.
+ */
+suite('friends · the client survives a bad network', () => {
+  const { pushProfile, findByCode, fetchFriends, actOnFriend } =
+    require('../src/game/friendsApi') as typeof import('../src/game/friendsApi');
+
+  const ME = {
+    playerId: 'G:123',
+    secret: 'a-very-secret-string',
+    friendCode: 'K7M29XPQ',
+    name: 'Tester',
+    portable: true,
+  };
+  const STATS = {
+    trophies: 42,
+    wins: { easy: 3, medium: 2, hard: 1 },
+    modeWins: { classic: 4, ultimate: 1, skirmish: 1, colorwar: 0 },
+    diceOwned: 7,
+    arenasOwned: 3,
+    favouriteDie: 'ivory',
+    favouriteArena: 'castle',
+  } as never;
+
+  /** Swap global fetch for the run of one call, and record what it saw. */
+  async function withFetch<T>(
+    impl: (url: string, init?: RequestInit) => Promise<unknown>,
+    run: () => Promise<T>,
+  ): Promise<{ result: T; calls: { url: string; init?: RequestInit }[] }> {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const real = (globalThis as { fetch?: unknown }).fetch;
+    (globalThis as { fetch?: unknown }).fetch = async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return impl(url, init);
+    };
+    try {
+      return { result: await run(), calls };
+    } finally {
+      (globalThis as { fetch?: unknown }).fetch = real;
+    }
+  }
+
+  const respond = (status: number, body: unknown) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  });
+
+  test('a server error becomes the server’s own words, not a crash', async () => {
+    const { result } = await withFetch(
+      async () => respond(409, { error: 'friend code taken' }),
+      () => findByCode('K7M29XPQ'),
+    );
+    assert(!result.ok, 'a 409 was treated as success');
+    assertEqual(
+      (result as { error: string }).error,
+      'friend code taken',
+      'the server’s explanation was thrown away',
+    );
+  });
+
+  test('a server error with no explanation still says something', async () => {
+    const { result } = await withFetch(
+      async () => respond(500, {}),
+      () => findByCode('K7M29XPQ'),
+    );
+    assert(!result.ok, 'a 500 was treated as success');
+    assert(
+      (result as { error: string }).error.length > 0,
+      'a failure with no message left the screen with nothing to show',
+    );
+  });
+
+  test('being offline reads as being offline', async () => {
+    // fetch REJECTING is the plane, the tunnel and the dead server, and
+    // it must not propagate: this is called straight from a screen.
+    const { result } = await withFetch(
+      async () => {
+        throw new TypeError('Network request failed');
+      },
+      () => fetchFriends(ME as never),
+    );
+    assert(!result.ok, 'a dead network was treated as success');
+    assertEqual((result as { error: string }).error, 'No connection', 'wrong wording offline');
+  });
+
+  test('an answer that is not JSON is a failure, not an exception', async () => {
+    // A captive-portal wifi answers 200 with a login page. Parsing that
+    // throws inside the client, and the screen must never see the throw.
+    const { result } = await withFetch(
+      async () => ({
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new SyntaxError('Unexpected token < in JSON');
+        },
+      }),
+      () => fetchFriends(ME as never),
+    );
+    assert(!result.ok, 'an HTML login page was read as a friend list');
+    assertEqual((result as { error: string }).error, 'No connection', 'wrong wording');
+  });
+
+  test('the device secret never appears in a URL', async () => {
+    /*
+      It used to ride in the query string on the friends fetch, where it
+      lands in Vercel's request log and every proxy in between — a
+      long-lived credential that never rotates, written down on every
+      single open of the Friends screen.
+    */
+    const { calls } = await withFetch(
+      async () => respond(200, { friends: [], requests: [], blocked: [] }),
+      () => fetchFriends(ME as never),
+    );
+    assertEqual(calls.length, 1, 'the friends fetch made the wrong number of calls');
+    assert(
+      !calls[0].url.includes(ME.secret),
+      `the secret is in the URL: ${calls[0].url}`,
+    );
+    const headers = (calls[0].init?.headers ?? {}) as Record<string, string>;
+    assertEqual(headers['x-player-secret'], ME.secret, 'the secret is not in the header');
+
+    // The POSTs are allowed to carry it — in the body, never the URL.
+    const posts: [string, () => Promise<unknown>][] = [
+      ['pushProfile', () => pushProfile(ME as never, STATS)],
+      ['actOnFriend', () => actOnFriend(ME as never, 'G:456', 'request')],
+    ];
+    for (const [what, run] of posts) {
+      const { calls: posted } = await withFetch(
+        async () => respond(200, { ok: true }),
+        run,
+      );
+      assert(!posted[0].url.includes(ME.secret), `${what} put the secret in the URL`);
+      assert(
+        String(posted[0].init?.body ?? '').includes(ME.secret),
+        `${what} never sent the secret at all`,
+      );
+    }
+  });
+
+  test('a missing list comes back empty rather than undefined', async () => {
+    // The server answers {} for a player with no friendships at all, and
+    // the screen maps over all three arrays without checking.
+    const { result } = await withFetch(
+      async () => respond(200, {}),
+      () => fetchFriends(ME as never),
+    );
+    assert(result.ok, 'an empty answer was treated as a failure');
+    const { list } = result as { list: { friends: unknown[]; requests: unknown[]; blocked: unknown[] } };
+    assertEqual(list.friends.length, 0, 'friends is not an empty array');
+    assertEqual(list.requests.length, 0, 'requests is not an empty array');
+    assertEqual(list.blocked.length, 0, 'blocked is not an empty array');
+  });
+
+  test('nobody with that code is not the same as an error', async () => {
+    const { result } = await withFetch(
+      async () => respond(200, { found: false }),
+      () => findByCode('AAAAAAAA'),
+    );
+    assert(result.ok, 'a valid "nobody has that code" was reported as a failure');
+    assertEqual((result as { profile: unknown }).profile, null, 'a phantom profile came back');
+  });
+
+  test('every call gives up rather than hanging for ever', async () => {
+    // A captive portal accepts the connection and then says nothing. With
+    // no timeout the promise never settles and the screen spins until the
+    // app is killed, which is worse than an error.
+    const source = readFileSync(join(__dirname, '..', 'src/game/friendsApi.ts'), 'utf8');
+    assert(/TIMEOUT_MS\s*=\s*\d+/.test(source), 'the client has no timeout at all');
+    assert(
+      source.includes('controller?.abort()') && source.includes('signal: controller?.signal'),
+      'the timeout is declared but never wired to the fetch',
+    );
+  });
+});

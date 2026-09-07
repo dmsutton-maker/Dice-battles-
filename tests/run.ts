@@ -37,6 +37,7 @@ async function main(): Promise<void> {
   await import('./coinLabelLayout.test');
   await import('./achievements.test');
   await import('./news.test');
+  await import('./crashGuard.test');
   process.exit(await runAll());
 }
 
