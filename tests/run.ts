@@ -41,6 +41,7 @@ async function main(): Promise<void> {
   await import('./submission.test');
   await import('./purchases.test');
   await import('./power.test');
+  await import('./reinstall.test');
   process.exit(await runAll());
 }
 

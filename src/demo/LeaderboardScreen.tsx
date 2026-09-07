@@ -120,7 +120,7 @@ export function LeaderboardScreen({
   return (
     <View style={styles.overlay}>
       <View style={styles.header}>
-        <Text style={styles.title}>Leaderboard</Text>
+        <Text style={styles.title}>Ranks</Text>
       </View>
 
       <ScrollView

@@ -1,5 +1,69 @@
 # Changelog
 
+## v1.70.0 — 2026-09-07 · requested by David
+
+Two decisions off the launch list: number 6, one word per place, and
+number 9, option B — signing in should get your profile back after a
+reinstall.
+
+### Fixed
+- **Deleting the game no longer loses your friends.** iOS deletes an
+  app's own folder along with the app, and the device secret lived in
+  it. That secret is the only thing proving to the server that a phone
+  owns a profile, so after a reinstall every write came back "wrong
+  secret" — permanently, with no way back. The friend code on the card
+  in a child's pocket was dead. The secret is now kept in the keychain
+  as well, which the delete does not reach, so a reinstall finds the
+  profile it had. The game says "Welcome back" once when that happens,
+  because otherwise eight letters look exactly like eight new ones.
+- **The dead end, when there is one, is now a sentence rather than a
+  raw server error.** Apple does not promise keychain survival, so the
+  recovery can miss. When it does the screen explains it and drops the
+  "Try again" button, which could never have fixed that one.
+
+### Changed
+- **One word per place.** The tab said "Items", the page it opened said
+  "Inventory", and a hint called it "your bag"; the tab said "Ranks" and
+  its page said "Leaderboard". David picked Inventory and Ranks, and
+  both now match end to end.
+- "Inventory" is the longest label the bottom bar has ever carried — at
+  the largest text setting it is about 72pt of a 75pt cell — so the nav
+  labels now shrink slightly before they truncate, rather than two tabs
+  running together.
+
+### Added
+- `src/game/deviceVault.ts`, the only file allowed to touch the
+  keychain, in the same shape as `ads.ts` and `gameCenter.ts`: required
+  lazily, and nothing in it can throw.
+- `tests/reinstall.test.ts` — the recovery, the upgrade path for phones
+  that already have a profile, the keychain that keeps nothing, and the
+  rule that a friend code without its secret is not a recovery.
+- The native-package gate in `tests/ads.test.ts` now FINDS native
+  packages instead of reading a hand-written list. It had gone stale the
+  moment expo-secure-store was added, which is precisely the failure it
+  exists to catch; it now reads node_modules and checks it found at
+  least everything the old list named.
+
+### Why Game Center does not do the verifying
+Decision 9B said "let signing in to Game Center reclaim the old
+profile". The airtight version of that is Apple's identity signature,
+which the server can check against Apple's public key —
+`expo-game-center@1.0.1` does not expose it. Without it the server
+cannot tell a returning player from anyone who has typed their id, and
+ids are handed out by the friend-code lookup, so a server-side "reclaim
+by id" would give a child's profile to anybody holding the code they had
+shared. The keychain gets the same outcome and needs no such trust: the
+phone still has the secret it always had. It also covers players who are
+not signed into Game Center at all.
+
+### runtimeVersion stays at 2.0.0
+expo-secure-store is new native code, which normally means raising it.
+Checked against EAS rather than assumed: every FINISHED iOS build
+reports `exposdk:54.0.0`, and the only build at 2.0.0 is the one that
+errored today. Nothing is installed on 2.0.0, so the pin already
+excludes every phone a raise would exclude — and raising would orphan
+v1.69.0 for nothing. It moves when a build finally exists.
+
 ## v1.69.0 — 2026-09-07 · requested by David
 
 David asked to make sure the game does not kill the battery on people's

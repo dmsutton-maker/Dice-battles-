@@ -49,6 +49,33 @@ import {
 
 type Page = 'list' | 'profile';
 
+/**
+ * Turn the one server error a player can actually hit into English.
+ *
+ * "wrong secret" means this phone is asking about a profile it cannot
+ * prove it owns, and there is exactly one ordinary way to arrive there:
+ * the game was deleted and installed again, and the keychain copy of the
+ * secret did not survive with it. Apple does not promise it will (see
+ * deviceVault.ts), so this is the honest end of that road rather than a
+ * fault to report.
+ *
+ * Said plainly, and without blaming them or pretending it is temporary —
+ * "Try again" cannot fix this one, and telling somebody to retry
+ * something that can never work is worse than telling them the truth.
+ */
+function explain(error: string): { text: string; retryable: boolean } {
+  if (/wrong secret/i.test(error)) {
+    return {
+      text:
+        'This phone was set up fresh, so it cannot get back into the ' +
+        'profile it had before. Your new code is above — ask your friends ' +
+        'to add you with it, and everything you have unlocked is still here.',
+      retryable: false,
+    };
+  }
+  return { text: error, retryable: true };
+}
+
 /** Everything a profile shows about me. Gathered by the caller, which
  *  is the screen that already holds the game's state. */
 export type MyStats = Parameters<typeof pushProfile>[1];
@@ -243,6 +270,22 @@ export function FriendsScreen({
         </Pressable>
         <Text style={styles.title}>Friends</Text>
 
+        {/*
+          Said before the code, not after it, because it is the reason
+          the code is the one they already know. Without this a player
+          who has just reinstalled has no way of telling whether the
+          eight letters in front of them are their old ones.
+        */}
+        {me.recovered && (
+          <Card style={styles.recoveredCard} background={THEME.sunk} drop={0}>
+            <Text style={styles.recoveredTitle}>Welcome back</Text>
+            <Text style={styles.recoveredBody}>
+              This phone had your profile from before, so your friend code
+              is the same one and your friends are still your friends.
+            </Text>
+          </Card>
+        )}
+
         {/* Your own code, big enough to read out to somebody. */}
         <Card style={styles.meCard}>
           <Text style={styles.meLabel}>YOUR FRIEND CODE</Text>
@@ -347,10 +390,12 @@ export function FriendsScreen({
           <ActivityIndicator color={THEME.ink} style={styles.spinner} />
         ) : problem ? (
           <Card style={styles.rowCard}>
-            <Text style={styles.note}>{problem}</Text>
-            <SecondaryButton style={styles.smallButton} onPress={() => void refresh()}>
-              <Text style={styles.smallSecondaryText}>Try again</Text>
-            </SecondaryButton>
+            <Text style={styles.note}>{explain(problem).text}</Text>
+            {explain(problem).retryable && (
+              <SecondaryButton style={styles.smallButton} onPress={() => void refresh()}>
+                <Text style={styles.smallSecondaryText}>Try again</Text>
+              </SecondaryButton>
+            )}
           </Card>
         ) : list.friends.length === 0 ? (
           <Card style={styles.emptyCard}>
@@ -495,6 +540,14 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18, paddingBottom: 40 },
   title: { ...TYPE.title, color: THEME.ink, marginBottom: 14 },
 
+  recoveredCard: { padding: 14, marginBottom: 10 },
+  recoveredTitle: { ...TYPE.cardTitle, color: THEME.ink, marginBottom: 3 },
+  recoveredBody: {
+    ...TYPE.small,
+    color: THEME.inkSoft,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
   meCard: { padding: 16, alignItems: 'center' },
   meLabel: { ...TYPE.label, color: THEME.inkFaint, letterSpacing: 1 },
   meCode: {

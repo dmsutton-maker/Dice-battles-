@@ -38,7 +38,7 @@ type IconFn = (props: { size?: number; color?: string }) => React.ReactElement;
  */
 const TABS: { id: Tab; label: string; Icon: IconFn }[] = [
   { id: 'store', label: 'Store', Icon: BagIcon },
-  { id: 'inventory', label: 'Items', Icon: CrateIcon },
+  { id: 'inventory', label: 'Inventory', Icon: CrateIcon },
   { id: 'play', label: 'Battle', Icon: DieIcon },
   { id: 'cups', label: 'Cups', Icon: BracketIcon },
   { id: 'leaderboard', label: 'Ranks', Icon: RanksIcon },
@@ -71,24 +71,44 @@ export function BottomNav({
             <Text
               style={[styles.label, on && styles.labelOn]}
               /*
-                It scales, but only so far.
+                It scales, but only so far, and it shrinks before it
+                truncates.
 
                 This label used to be pinned at 10pt with scaling off
                 entirely, and the comment justifying that still described
                 SEVEN cells of about 53pt — a layout that has not existed
                 since the bar went down to five. Five cells on the
-                narrowest iPhone leave about 75pt each, and the longest
-                labels are "Battle" and "Store": at 1.6x both still hold
-                one comfortable line, so the cap is where the row would
-                actually break rather than at no scaling at all.
+                narrowest supported iPhone (SE, 375pt) leave about 75pt
+                each.
 
                 Pinning it made the NAVIGATION the one place in the game
                 that ignored a grandparent's larger-text setting, which
                 is exactly backwards — it is the thing you have to read
-                to get anywhere else.
+                to get anywhere else. So it scales to 1.6x.
+
+                THE LONGEST LABEL IS NOW "Inventory", not "Battle". That
+                matters: measured in a bold sans at 16pt (10pt at the 1.6x
+                cap) "Battle" is about 45pt inside a 75pt cell, and
+                "Inventory" is about 72pt — it fits, but with roughly 1pt
+                of air either side, so two neighbouring labels at maximum
+                text size would read as one run of letters.
+
+                adjustsFontSizeToFit is what closes that gap. At ordinary
+                text sizes nothing shrinks at all; only at the top of the
+                range does "Inventory" give back the few points it needs,
+                and 0.85 is a floor low enough to cover the worst case
+                while staying legible. numberOfLines={1} is still what
+                stops a wrap, and it is now the last resort rather than
+                the first thing to fire.
+
+                iOS only, which is where this ships. On Android the
+                largest text setting truncates instead — the same thing
+                it would have done without this.
               */
               numberOfLines={1}
               maxFontSizeMultiplier={1.6}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
             >
               {tab.label}
             </Text>

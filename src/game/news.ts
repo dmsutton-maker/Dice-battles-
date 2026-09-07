@@ -37,6 +37,26 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-70-0-names-and-reinstalls',
+    date: '7 September 2026',
+    version: 'v1.70.0',
+    title: 'Your friends survive a reinstall',
+    emoji: '\ud83d\udd11',
+    body:
+      'Delete the game, install it again, and it used to forget who you ' +
+      'were. Not your trophies \u2014 your PROFILE: a new friend code, an ' +
+      'empty friends list, and the code written on the card in your ' +
+      'pocket suddenly belonging to nobody. There was no way back.\n\n' +
+      'The phone now keeps the one thing that proves the profile is ' +
+      'yours somewhere deleting the game does not reach. Reinstall and ' +
+      'your code is the same code and your friends are still there, and ' +
+      'the game says so when it happens.\n\n' +
+      'Also: the tab that said Items now says Inventory, and the page ' +
+      'behind Ranks is called Ranks instead of Leaderboard. The word you ' +
+      'tap is now the word you land on \u2014 which matters most if you ' +
+      'are five, or would rather not squint.',
+  },
+  {
     id: 'v1-69-0-battery',
     date: '7 September 2026',
     version: 'v1.69.0',

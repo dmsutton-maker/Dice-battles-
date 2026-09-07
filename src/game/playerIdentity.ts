@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { localPlayer } from './gameCenter';
 import { makeFriendCode } from './friendCodes';
+import { vaultGet, vaultSet } from './deviceVault';
 
 /**
  * Who this player is — the ONE file that answers that.
@@ -25,6 +26,18 @@ import { makeFriendCode } from './friendCodes';
  * NOTHING HERE IS PERSONAL DATA. A local id is random. A Game Center id
  * is Apple's opaque per-game identifier, not an Apple ID. Neither can be
  * turned back into a person by anyone holding it, including us.
+ *
+ * TWO PLACES TO KEEP IT, ADDED 7 SEP 2026. The friend code, the local id
+ * and the secret are written to BOTH the ordinary store and the keychain
+ * (see deviceVault.ts), and read back from the keychain first. iOS
+ * deletes the app's own folder when the app is deleted but leaves the
+ * keychain alone, so this is what makes a reinstall keep your profile
+ * instead of stranding it: the phone still holds the secret that proves
+ * the profile is yours, so the friends you had are still your friends.
+ *
+ * It is a recovery, not a guarantee — Apple does not promise keychain
+ * survival, so `recovered` says which happened and the Friends screen
+ * tells the player the truth either way.
  */
 
 const ID_KEY = 'dice-battles/player-id';
@@ -38,6 +51,16 @@ export interface Identity {
   friendCode: string;
   /** False when this identity lives only on this device. */
   portable: boolean;
+  /**
+   * True when this launch found a secret in the keychain that the app's
+   * own storage had lost — i.e. the game was reinstalled and the old
+   * profile came back rather than being replaced by a stranger.
+   *
+   * Only ever true once per install, on the launch that healed it. The
+   * Friends screen uses it to say what happened instead of leaving a
+   * player to wonder why their code changed (it did not).
+   */
+  recovered: boolean;
   /**
    * A password the player never sees.
    *
@@ -109,6 +132,50 @@ export async function loadIdentity(): Promise<Identity> {
     // Unreadable storage. Fall through and make a fresh one for now.
   }
 
+  /*
+    THE REINSTALL PATH.
+
+    The keychain outlives the app's own folder, so after a reinstall the
+    three lines above come back empty while these three do not. Reading
+    the vault SECOND and only filling gaps is deliberate: the ordinary
+    store is the faster and more certain of the two, so it wins whenever
+    it has an answer, and the keychain is consulted for what it lost.
+
+    A player who has never reinstalled never notices any of this — the
+    two agree, nothing is filled in, and `recovered` stays false.
+  */
+  const [vaultId, vaultCode, vaultSecret] = await Promise.all([
+    storedId ? Promise.resolve(null) : vaultGet(ID_KEY),
+    storedCode ? Promise.resolve(null) : vaultGet(CODE_KEY),
+    storedSecret ? Promise.resolve(null) : vaultGet(SECRET_KEY),
+  ]);
+
+  /*
+    The SECRET is what makes this a recovery rather than a coincidence.
+
+    A friend code or a local id coming back alone would be cosmetic: the
+    server would still refuse every write, because the secret is the only
+    thing it checks. So this is the one that decides what to tell the
+    player, and it is deliberately not "the vault had anything in it".
+  */
+  const recovered = storedSecret === null && vaultSecret !== null;
+
+  /*
+    The merged values go in NEW names, and the `stored*` ones keep
+    meaning "what the ordinary store actually had".
+
+    That distinction is the whole of it. The write-back further down
+    only writes what has changed, by comparing against `stored*` — so
+    merging into those variables made every recovered value compare
+    equal to itself, skip its write, and never reach ordinary storage.
+    The profile still worked, because the keychain was read again every
+    launch, but the app said "welcome back" every single time and leant
+    on the keychain for ever instead of healing itself once.
+  */
+  const knownId = storedId ?? vaultId;
+  const knownCode = storedCode ?? vaultCode;
+  const knownSecret = storedSecret ?? vaultSecret;
+
   const apple = await localPlayer();
 
   /*
@@ -129,15 +196,15 @@ export async function loadIdentity(): Promise<Identity> {
     in, and drops back to the same local profile they had before —
     rather than to a new stranger — the moment they sign out.
   */
-  const localId = storedId ?? makeLocalId();
+  const localId = knownId ?? makeLocalId();
   const playerId = apple?.playerId ?? localId;
   const name = apple?.name || storedName || ANONYMOUS_NAME;
 
   // The code belongs to the DEVICE and is kept across sign-in: a code
   // that changed when you signed into Game Center would break every
   // card a child had already written it on.
-  const friendCode = storedCode ?? makeFriendCode();
-  const secret = storedSecret ?? makeSecret();
+  const friendCode = knownCode ?? makeFriendCode();
+  const secret = knownSecret ?? makeSecret();
 
   try {
     const writes: Promise<void>[] = [];
@@ -158,7 +225,25 @@ export async function loadIdentity(): Promise<Identity> {
     // Not written this time; made again next launch. Nothing breaks.
   }
 
-  cached = { playerId, name, friendCode, secret, portable: apple !== null };
+  /*
+    And into the keychain, every launch, unconditionally.
+
+    Not only on first run: an install that predates this code already
+    has a secret in ordinary storage and nothing in the vault, and the
+    whole point is that it is in the vault BEFORE the player deletes the
+    game rather than after. Writing the same three values again is a few
+    microseconds and it is what quietly upgrades every existing phone.
+
+    Not awaited, and it cannot throw — see deviceVault.ts. The name is
+    deliberately absent: it is Apple's alias while signed in and a
+    default otherwise, so there is nothing there worth surviving, and
+    the keychain is for the things that cannot be made again.
+  */
+  void vaultSet(ID_KEY, localId);
+  void vaultSet(CODE_KEY, friendCode);
+  void vaultSet(SECRET_KEY, secret);
+
+  cached = { playerId, name, friendCode, secret, portable: apple !== null, recovered };
   return cached;
 }
 

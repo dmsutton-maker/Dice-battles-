@@ -94,7 +94,7 @@ export function ItemPreviewBar({
           {action.kind === 'in-store'
             ? // The one dead button that has somewhere to send you, so it
               // says where rather than only that you cannot do it here.
-              'Dice are bought on the Store tab, not in your bag.'
+              'Dice are bought on the Store tab, not in the Inventory.'
             : pressable
               ? 'Tap ✕ to go back without changing anything.'
               : 'This is what it looks like on the board.'}

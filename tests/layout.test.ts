@@ -86,7 +86,7 @@ suite('layout · the tab bar clears the home indicator', () => {
     );
   });
 
-  test('the labels grow with the system text size, up to where the row breaks', () => {
+  test('the labels grow with the system text size, and shrink before they truncate', () => {
     /*
       This used to assert `allowFontScaling={false}`, back when there
       were seven cells of about 53pt each. There are five now, of about
@@ -94,10 +94,16 @@ suite('layout · the tab bar clears the home indicator', () => {
       the game that ignores a grandparent's larger-text setting — the
       thing you have to read to get anywhere.
 
-      So they scale, and the cap is where the row would actually break:
-      the longest label is "Battle" and 1.6x of 10pt still holds one
-      line in 75pt. Cap and one-line together are the guarantee; either
-      alone is not.
+      So they scale to 1.6x. What changed on 7 Sep 2026 is that the
+      longest label stopped being "Battle": David asked for one word per
+      place, and the tab that said "Items" now says "Inventory" to match
+      the page it opens. At the 1.6x cap that is about 72pt of a 75pt
+      cell — it fits, but two neighbours at maximum text size would run
+      together.
+
+      adjustsFontSizeToFit is what buys that back, and it costs nothing
+      at ordinary text sizes because nothing shrinks until it has to.
+      All three together are the guarantee; any one alone is not.
     */
     const label = nav.match(/<Text\s+style=\{\[styles\.label[\s\S]*?>/)?.[0];
     assert(label !== undefined, 'could not find the tab label');
@@ -111,9 +117,56 @@ suite('layout · the tab bar clears the home indicator', () => {
     const times = Number(cap![1]);
     assert(
       times > 1 && times <= 1.6,
-      `the label cap is ${times}x — above 1.6x "Battle" no longer holds one line in a 75pt cell`,
+      `the label cap is ${times}x — above 1.6x even a shrunk "Inventory" ` +
+        'stops being legible in a 75pt cell',
     );
-    note(`tab labels scale to ${times}x of ${'10pt'}`);
+    assert(
+      /adjustsFontSizeToFit/.test(label!),
+      'the longest label is "Inventory", which at the scaling cap all but ' +
+        'fills its cell — without adjustsFontSizeToFit two tabs would touch',
+    );
+    const floor = label!.match(/minimumFontScale=\{([\d.]+)\}/);
+    assert(floor !== null, 'shrinking has no floor, so a label could shrink to nothing');
+    assert(
+      Number(floor![1]) >= 0.8,
+      `labels may shrink to ${floor![1]} of their size, which is too small to read`,
+    );
+    note(`tab labels scale to ${times}x of 10pt, shrinking to ${floor![1]} only if they must`);
+  });
+
+  test('the word on the tab is the word on the page it opens', () => {
+    /*
+      David's call, 7 Sep 2026. The tab said "Items", the page it opened
+      said "Inventory", and a hint elsewhere called it "your bag"; the
+      tab said "Ranks" and its page said "Leaderboard". For someone who
+      cannot read yet — or would rather not squint — the label you tap
+      has to be the heading you land on. He picked Inventory and Ranks.
+
+      Checked against the screens themselves rather than a list here, so
+      renaming one half and forgetting the other fails.
+    */
+    const pages: [string, string][] = [
+      ['inventory', 'src/demo/InventoryScreen.tsx'],
+      ['leaderboard', 'src/demo/LeaderboardScreen.tsx'],
+    ];
+    for (const [id, file] of pages) {
+      const tab = nav.match(new RegExp(`\\{ id: '${id}', label: '([^']+)'`));
+      assert(tab !== null, `there is no ${id} tab any more`);
+      const body = readFileSync(join(root, file), 'utf8');
+      const title = body.match(/<Text style=\{styles\.title\}>([^<]+)<\/Text>/);
+      assert(title !== null, `${file} has no title to compare the tab against`);
+      assertEqual(title![1].trim(), tab![1], `the ${id} tab label and its page heading`);
+      note(`${tab![1]} → ${title![1].trim()}`);
+    }
+  });
+
+  test('nothing still calls the Inventory "your bag"', () => {
+    // The third name for the same place, in the one hint that pointed at it.
+    const bar = readFileSync(join(root, 'src/demo/ItemPreviewBar.tsx'), 'utf8');
+    assert(
+      !/your bag/i.test(bar),
+      'the item preview still calls the Inventory "your bag"',
+    );
   });
 
   test('every tab cell is at least the theme’s own tap floor', () => {

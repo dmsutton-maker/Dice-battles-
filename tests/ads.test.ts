@@ -1,5 +1,6 @@
 import './storageMock';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { assert, assertEqual, note, suite, test } from './harness';
 import {
   GAMES_BEFORE_FIRST_AD,
@@ -516,8 +517,21 @@ suite('release · every native package is gated, not just the ad SDK', () => {
       'history says.',
   };
 
-  /** Packages in package.json that ship native code of their own. */
-  const NATIVE = [
+  /**
+   * Packages in package.json that ship native code of their own.
+   *
+   * FOUND, not listed. This was a hand-written array until 7 Sep 2026,
+   * which made it exactly the wrong shape for what it guards: a new
+   * native dependency is invisible to a list somebody has to remember
+   * to update, and being invisible to this test is the whole failure
+   * mode. Adding expo-secure-store proved it — the gate went on saying
+   * "none that can throw" with a native package sitting in live code.
+   *
+   * A package ships native code if it has an ios/ folder or declares
+   * itself an Expo module. Both are read from node_modules, which is
+   * the only place the truth lives.
+   */
+  const KNOWN_NATIVE = [
     'react-native-google-mobile-ads',
     'expo-game-center',
     'expo-haptics',
@@ -526,7 +540,41 @@ suite('release · every native package is gated, not just the ad SDK', () => {
     'expo-file-system',
     'expo-updates',
     'expo-splash-screen',
+    'expo-secure-store',
   ];
+
+  function shipsNativeCode(dep: string): boolean {
+    const at = join('node_modules', dep);
+    return (
+      existsSync(join(at, 'ios')) || existsSync(join(at, 'expo-module.config.json'))
+    );
+  }
+
+  const installed = existsSync('node_modules');
+  const NATIVE = installed
+    ? Object.keys(
+        JSON.parse(readFileSync('package.json', 'utf8')).dependencies ?? {},
+      ).filter(shipsNativeCode)
+    : KNOWN_NATIVE;
+
+  test('the list of native packages finds itself, and finds the known ones', () => {
+    /*
+      If detection silently returned nothing, every check below would
+      pass vacuously — the most dangerous way for a guard to fail. So
+      the found set has to contain everything previously listed by hand.
+    */
+    if (!installed) {
+      note('node_modules absent; falling back to the written list');
+      return;
+    }
+    const missing = KNOWN_NATIVE.filter((dep) => !NATIVE.includes(dep));
+    assertEqual(
+      missing.join(', '),
+      '',
+      'these ship native code but detection did not find them',
+    );
+    note(`${NATIVE.length} native packages found: ${NATIVE.join(', ')}`);
+  });
 
   test('a package that can throw at load forces an explicit runtimeVersion', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
