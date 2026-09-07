@@ -21,7 +21,7 @@ import {
   volumeLabel,
   knobLeft,
 } from '../src/audio/slider';
-import { assert, assertClose, assertEqual, suite, test } from './harness';
+import { assert, assertClose, assertEqual, note, suite, test } from './harness';
 
 /**
  * Volume. A slider is only trustworthy if its ends are absolute: all the
@@ -279,5 +279,71 @@ suite('audio · slider knob', () => {
     assertEqual(knobLeft(0.5, Number.NaN, KNOB), 0, 'unmeasured width');
     // A track narrower than the knob has nowhere to travel, not a negative.
     assertEqual(knobLeft(1, 10, KNOB), 0, 'track narrower than the knob');
+  });
+});
+
+suite('audio · the licences are honoured where a player can find them', () => {
+  const root = join(__dirname, '..');
+  const credits = readFileSync(join(root, 'assets/sounds/CREDITS.md'), 'utf8');
+  const settings = readFileSync(join(root, 'src/demo/DiceDemoScreen.tsx'), 'utf8');
+
+  /*
+    CC-BY is a condition, not a courtesy: the names have to be somewhere a
+    player can actually reach, or the game has no licence to the music.
+
+    Read out of CREDITS.md rather than listed here, so adding a CC-BY
+    sound and forgetting to credit it fails instead of shipping.
+  */
+  const required = [...credits.matchAll(/credit ['"]([^'"]+)['"] in the app credits/g)]
+    .map((m) => m[1]);
+
+  test('CREDITS.md still names who must be credited', () => {
+    assert(
+      required.length >= 2,
+      'no attribution-required rows found — either the licences changed or ' +
+        'the wording in CREDITS.md did, and this test has stopped checking anything',
+    );
+    note(`attribution required for: ${required.join(' · ')}`);
+  });
+
+  test('every one of them is in the app', () => {
+    for (const who of required) {
+      // The credit line may phrase it differently; the NAME is the part
+      // the licence cares about.
+      const name = who.replace(/^Music by /, '').replace(/ \(.*/, '').trim();
+      assert(
+        settings.includes(name),
+        `"${name}" must be credited in the app and is not on the Settings screen`,
+      );
+    }
+  });
+
+  test('and they do not look like the version number', () => {
+    /*
+      David could not find these on 7 Sep 2026, having been told exactly
+      where they were. They were two 11pt faint centred lines directly
+      above the 11pt faint centred version stamp — reachable, and
+      invisible. A credit nobody can pick out is not attribution.
+    */
+    const style = settings.slice(settings.indexOf('  creditLine: {'));
+    const block = style.slice(0, style.indexOf('},'));
+    assert(
+      !/textAlign: 'center'/.test(block),
+      'the credits are centred again, which makes them read as a version stamp',
+    );
+    assert(
+      !/THEME\.inkFaint/.test(block),
+      'the credits are back to the faintest ink in the theme',
+    );
+    const size = /fontSize: ([\d.]+)/.exec(block);
+    assert(size !== null, 'the credits have no stated size');
+    assert(
+      Number(size![1]) >= 12,
+      `the credits are ${size![1]}pt, small enough to be missed by the person who commissioned them`,
+    );
+    assert(
+      /SOUNDS &amp; MUSIC/.test(settings),
+      'the credits have no heading, so nothing says what they are',
+    );
   });
 });

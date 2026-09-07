@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.71.0 — 2026-09-07 · requested by David
+
+David went looking for the music credits in Settings, where this project's
+notes say they are, and could not find them.
+
+### Fixed
+- **The Creative Commons credits are now findable, not merely present.**
+  They were the last two lines of a long scroll — 11pt, the faintest ink
+  in the theme, centred, and sitting directly above the 11pt faint centred
+  version stamp. Three near-identical whispers in a row with nothing
+  saying which was which. They now have a divider and a `SOUNDS & MUSIC`
+  heading like every other section of that panel, are left-aligned at
+  12.5pt in the same ink as the rest of the text, and read as credits
+  rather than as part of the version number.
+- Kenney is credited too — the dice recordings, the fanfare and the
+  announcer are all his. CC0, so it is a courtesy rather than a
+  condition, but he is the single largest contributor of sound in the
+  game and was the only one unnamed.
+
+### Added
+- Two tests in `tests/audio.test.ts` that read `assets/sounds/CREDITS.md`
+  for the rows marked **attribution required** and check each named
+  person appears on the Settings screen — so adding a CC-BY sound and
+  forgetting to credit it fails rather than shipping. A third refuses to
+  let the credits go back to being centred, faint, or under 12pt.
+
+### Why this mattered more than it looks
+CC-BY is a condition of the licence, not a courtesy: without the names
+somewhere a player can reach, the game has no licence to the music. It
+was arguably satisfied before. But the person who commissioned the
+credits, who knew they existed and had been told where to look, could
+not find them — which is the strongest possible evidence that nobody
+else would either.
+
 ## v1.70.0 — 2026-09-07 · requested by David
 
 Two decisions off the launch list: number 6, one word per place, and

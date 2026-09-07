@@ -37,6 +37,24 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-71-0-credits',
+    date: '7 September 2026',
+    version: 'v1.71.0',
+    title: 'The people who made the sounds',
+    emoji: '\ud83c\udfb5',
+    body:
+      'The music and the crowd cheer are borrowed under a licence that ' +
+      'asks for one thing in return: the names have to be somewhere you ' +
+      'can find them. They were in Settings \u2014 but as two tiny grey ' +
+      'lines at the very bottom, right above the tiny grey version ' +
+      'number, with nothing saying what they were.\n\n' +
+      'Somebody went looking for them and could not find them, which is ' +
+      'about as clear a verdict as you can get. They now have a heading ' +
+      'of their own, in the same ink as everything else on the page, and ' +
+      'Kenney is thanked too \u2014 the dice, the fanfare and the ' +
+      'announcer are all his.',
+  },
+  {
     id: 'v1-70-0-names-and-reinstalls',
     date: '7 September 2026',
     version: 'v1.70.0',

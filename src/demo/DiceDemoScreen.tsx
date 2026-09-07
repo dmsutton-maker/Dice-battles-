@@ -2143,12 +2143,31 @@ export function DiceDemoScreen() {
               lists these as a condition of the licence, not a courtesy —
               the music and the crowd are CC-BY 4.0, which requires the
               names to be somewhere a player can actually reach.
+
+              REACHABLE IS NOT THE SAME AS FINDABLE, learned 7 Sep 2026.
+              These sat at the very bottom of a long scroll as two 11pt
+              faint centred lines, immediately above the 11pt faint centred
+              version stamp — three near-identical whispers in a row, with
+              nothing saying which was which. David, who knew they existed
+              and had been told where to look, could not find them. If the
+              person who commissioned them cannot, a licence auditor
+              certainly cannot.
+
+              So they get a heading and a divider like every other section
+              of this panel, and the same ink as the rest of the text.
+              Nothing was added or moved — they are just no longer
+              disguised as a version number.
             */}
+            <View style={styles.settingsDividerLine} />
+            <Text style={styles.settingsSectionTitle}>SOUNDS &amp; MUSIC</Text>
             <Text style={styles.creditLine}>
               Music by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0
             </Text>
             <Text style={styles.creditLine}>
               Crowd cheering by Gregor Quendel, licensed under CC BY 4.0
+            </Text>
+            <Text style={styles.creditLine}>
+              Dice, fanfare and announcer by Kenney (kenney.nl)
             </Text>
             </ScrollView>
             {/*
@@ -2637,12 +2656,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   creditLine: {
-    marginTop: 10,
-    color: THEME.inkFaint,
-    fontSize: 11,
-    lineHeight: 15,
+    /*
+      Left-aligned and the same ink as the rest of the panel, which is
+      what separates a credit from the version stamp below it. Centred
+      11pt faint text is exactly what a version number looks like, and
+      that is precisely how these went unnoticed.
+    */
+    marginTop: 8,
+    color: THEME.inkSoft,
+    fontSize: 12.5,
+    lineHeight: 17,
     fontWeight: '600',
-    textAlign: 'center',
   },
   versionLine: {
     // The one row outside the scroll, so it needs the inset stated rather
