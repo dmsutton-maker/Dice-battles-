@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { adsRemoved } from './purchases';
 import { loadAdSdk } from './adSdk';
 import { gamesUntilAd, shouldShowAd } from './adRules';
 import { getProgress } from './progress';
@@ -218,6 +219,9 @@ function moduleOrNull(): NativeAds | null {
  * phone.
  */
 export async function initAds(): Promise<void> {
+  // Nothing to start up for somebody who bought the adverts away — no
+  // SDK, no consent form, no network.
+  if (adsRemoved()) return;
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     const n = Number(raw);
@@ -287,6 +291,9 @@ let closedResolve: (() => void) | null = null;
 
 /** Fetch the next interstitial so it is ready before its turn comes. */
 function preload(): void {
+  // No point fetching an advert that will never be shown, and no point
+  // spending somebody's data on one they have paid not to see.
+  if (adsRemoved()) return;
   const mod = moduleOrNull();
   if (!mod || !ready || interstitial) return;
   try {
@@ -357,6 +364,18 @@ export function noteGameFinished(): void {
  */
 export async function showAdIfDue(): Promise<boolean> {
   if (!adDue) return false;
+  /*
+    Somebody who paid to be rid of adverts never sees another one.
+
+    Checked HERE rather than at the counting end, so the every-third-game
+    counter keeps running: if they ever restore onto a phone where the
+    purchase is not recognised, or a refund goes through, the rhythm is
+    already correct rather than starting over.
+  */
+  if (adsRemoved()) {
+    adDue = false;
+    return false;
+  }
 
   const mod = moduleOrNull();
   if (!mod || !ready || !interstitial || !loaded) {

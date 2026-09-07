@@ -96,6 +96,7 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { initAds, noteGameFinished, showAdIfDue } from '../game/ads';
+import { initPurchases } from '../game/purchases';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
 import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
@@ -230,7 +231,16 @@ export function DiceDemoScreen() {
       interstitial. Neither may hold up the first frame of the game, and
       neither can fail in a way the player sees — see src/game/ads.ts.
     */
-    initAds();
+    /*
+      Entitlements BEFORE adverts, and both outside the chain above.
+
+      initPurchases reads what this phone has already bought, which is
+      what initAds then checks before starting the SDK at all — so
+      somebody who paid to remove adverts never even loads one. Neither
+      may hold up the first frame, and neither can fail in a way the
+      player sees.
+    */
+    initPurchases().finally(() => initAds());
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
@@ -1779,6 +1789,9 @@ export function DiceDemoScreen() {
       {menuTab === 'store' && preview === null && (
         <StoreScreen
           wallet={wallet}
+          // Coins bought with money land in the same purse as coins won,
+          // so the HUD and the price tags have to be told to look again.
+          onBought={() => setWallet({ ...getWallet() })}
           onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })}
           onPreviewArena={(id) => showPreview({ kind: 'arena', id, from: 'store' })}
         />

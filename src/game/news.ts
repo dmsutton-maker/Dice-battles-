@@ -37,6 +37,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-68-0-shop',
+    date: '7 September 2026',
+    version: 'v1.68.0',
+    title: 'A shop that takes real money — soon',
+    emoji: '\ud83d\udecd\ufe0f',
+    body:
+      'Groundwork for buying things: switching the adverts off for good, ' +
+      'and coins for anyone who would rather not grind for the last ' +
+      'battlefield. It is not switched on yet — that needs a new version ' +
+      'of the game from the App Store.\n\n' +
+      'One promise that will not change: nothing you can buy will ever ' +
+      'change how the dice land. Everything for sale is something to ' +
+      'look at, or an advert switched off. The moment money buys wins, ' +
+      'the game stops being fair, and fair is the whole point of it.',
+  },
+  {
     id: 'v1-67-0-adverts',
     date: '7 September 2026',
     version: 'v1.67.0',

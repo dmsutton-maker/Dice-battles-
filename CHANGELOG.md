@@ -1,5 +1,50 @@
 # Changelog
 
+## v1.68.0 — 2026-09-07 · requested by David
+
+David asked for every payment option in the first public release. This
+is the machinery for all of it, and it is deliberately switched OFF —
+the same two-state switch the adverts use, for the same reason.
+
+### Added
+- **The whole purchase system**: a catalogue of what is sold, a purchase
+  and restore layer that can never throw or block, entitlements
+  remembered on the device, and a real shelf in the Store.
+- **On sale once it is switched on**: No more adverts ($3.99), and coin
+  packs at $0.99 / $4.99 / $9.99 for 500 / 3,000 / 7,000 coins. Sized
+  against the real economy — the whole shop is 46,695 coins, so even the
+  biggest pack is about a seventh of it and playing stays the way things
+  are got.
+- **Buying adverts away actually works everywhere**: the advert SDK is
+  never started, no advert is ever fetched, and none is ever shown.
+- **"Bought before? Put it back"**, which Apple requires of any app
+  selling one-off unlocks, and which is what a new phone needs.
+- **Every purchase asks in the game's own words first**, with the price
+  in it, before Apple's payment sheet — so a stray tap cannot reach a
+  payment sheet at all.
+- **The fairness promise is printed on the shelf**: nothing sold changes
+  how the dice land. A test proves it of everything on sale.
+
+### Parked, with the reason written down
+Five products the family chose are in the catalogue and switched off,
+because each needs something that does not exist:
+- The starter pack needs the Supporter die drawn.
+- Money-only dice and battlefields need exclusive ones made — every one
+  in the game today can be earned.
+- Dice Club is a monthly charge, and Apple requires continuing value for
+  those. That is a promise to ship new content every month, for as long
+  as anybody subscribes, and it is David's to make deliberately.
+- The season pass needs an XP and levels system, which is a piece of
+  game design rather than a product id.
+
+### Not yet switched on
+`expo-iap` is not installed and not named in any live file, so this
+ships safely to every phone and the Store says "not on this phone yet"
+rather than showing buttons that cannot work. Turning it on needs the
+library installed, the require restored, `runtimeVersion` raised again,
+a build — and every product id created in App Store Connect first.
+
+
 ## v1.67.0 — 2026-09-07 · requested by David
 
 **Adverts are on.** David asked for advertising in the first public

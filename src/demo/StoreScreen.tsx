@@ -12,6 +12,7 @@ import { rangeLabel } from '../game/rewards';
 import { playClick } from '../audio/sounds';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
+import { MoneyShelf } from './MoneyShelf';
 
 /**
  * The Store: spend coins earned by playing.
@@ -29,13 +30,20 @@ interface StoreScreenProps {
    * balance and the old OWNED tags the moment you came back.
    */
   wallet: Wallet;
+  /** Called after a real-money purchase, so the screen above can refresh. */
+  onBought?: () => void;
   /** Opens the die on the real battlefield, where it is bought. */
   onPreview: (skinId: string) => void;
   /** Opens the battlefield itself, standing in it — bought there too. */
   onPreviewArena: (arenaId: (typeof STORE_ARENAS)[number]) => void;
 }
 
-export function StoreScreen({ wallet, onPreview, onPreviewArena }: StoreScreenProps) {
+export function StoreScreen({
+  wallet,
+  onBought,
+  onPreview,
+  onPreviewArena,
+}: StoreScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
   // Restore before the first paint the player sees.
   useEffect(() => {
@@ -165,20 +173,8 @@ export function StoreScreen({ wallet, onPreview, onPreviewArena }: StoreScreenPr
           })}
         </View>
 
-        {/*
-          Written for whoever is holding the phone, not for us. The old
-          copy explained our App Store payment paperwork, which is not a
-          player's problem and reads like a broken screen.
-        */}
-        <Text style={styles.sectionTitle}>HOW TO GET COINS</Text>
-        <View style={styles.comingSoon}>
-          <Text style={styles.comingTitle}>Win them</Text>
-          <Text style={styles.comingBody}>
-            Every battle you win pays coins, and harder rivals pay more.
-            Cups pay the biggest prizes of all. There is nothing here to
-            buy — playing is the only way in, for everybody.
-          </Text>
-        </View>
+        <Text style={styles.sectionTitle}>WITH REAL MONEY</Text>
+        <MoneyShelf onBought={onBought} />
       </ScrollView>
 
       {/*
