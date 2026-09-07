@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { colors, fonts } from '@/components/site/tokens';
 import siteStyles from '../site.module.css';
 import { sendMessage, type ContactResult } from './actions';
@@ -28,6 +28,33 @@ export function ContactForm() {
     null,
   );
 
+  /*
+    CONTROLLED fields, so a rejected message keeps what was typed.
+
+    React 19 resets a <form action={…}> as soon as the action resolves.
+    With uncontrolled inputs that wiped the name, the address and the
+    whole body on every validation failure, leaving somebody staring at
+    "that email address does not look right" above three empty boxes —
+    and nobody types it all out again. `defaultValue` is not enough
+    either: a second identical failure would not change any prop, so
+    React would leave the emptied DOM alone.
+
+    So the values live in state here, and the server hands them back on
+    a failure for the effect below to restore.
+  */
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    subject: TOPICS[0],
+    body: '',
+  });
+  const set = (key: keyof typeof form) => (value: string) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  useEffect(() => {
+    if (result && !result.ok && result.values) setForm(result.values);
+  }, [result]);
+
   if (result?.ok) {
     return (
       <div style={{ padding: 32, borderRadius: 20, background: colors.offWhite }}>
@@ -52,6 +79,8 @@ export function ContactForm() {
             type="text"
             name="name"
             maxLength={80}
+            value={form.name}
+            onChange={(e) => set('name')(e.target.value)}
             placeholder="Your name"
             style={fieldInput}
           />
@@ -63,6 +92,8 @@ export function ContactForm() {
             type="email"
             name="email"
             maxLength={160}
+            value={form.email}
+            onChange={(e) => set('email')(e.target.value)}
             placeholder="you@example.com"
             style={fieldInput}
           />
@@ -71,7 +102,13 @@ export function ContactForm() {
 
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span style={fieldLabel}>What&apos;s this about?</span>
-        <select className={siteStyles.field} name="subject" style={fieldInput} defaultValue={TOPICS[0]}>
+        <select
+          className={siteStyles.field}
+          name="subject"
+          style={fieldInput}
+          value={form.subject}
+          onChange={(e) => set('subject')(e.target.value)}
+        >
           {TOPICS.map((topic) => (
             <option key={topic} value={topic}>
               {topic}
@@ -88,6 +125,8 @@ export function ContactForm() {
           required
           rows={5}
           maxLength={4000}
+          value={form.body}
+          onChange={(e) => set('body')(e.target.value)}
           placeholder="Tell us what's going on..."
           style={{ ...fieldInput, resize: 'vertical' }}
         />
@@ -100,7 +139,7 @@ export function ContactForm() {
       </div>
 
       {result && !result.ok && (
-        <p style={{ font: `700 13.5px ${fonts.body}`, color: colors.orangeDeep, margin: 0 }}>{result.message}</p>
+        <p style={{ font: `700 13.5px ${fonts.body}`, color: colors.orangeText, margin: 0 }}>{result.message}</p>
       )}
 
       <button

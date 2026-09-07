@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { updateAppsContent } from '../../actions';
 import { ContentForm } from '../ContentForm';
-import { loadContent } from '../fields';
+import { SearchFields, loadContent } from '../fields';
 
 export default async function AppsContentPage() {
   const c = await loadContent();
@@ -18,6 +18,10 @@ export default async function AppsContentPage() {
 
         <label htmlFor="card_description">HOW THE GAME IS DESCRIBED ON THE CARD</label>
         <textarea id="card_description" name="card_description" defaultValue={c.text('apps.card_description')} />
+        <SearchFields
+          title={c.text('apps.metaTitle')}
+          description={c.text('apps.metaDescription')}
+        />
       </ContentForm>
     </>
   );

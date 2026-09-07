@@ -1,13 +1,14 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
 import { getSiteContent, sectionList, text } from '@/lib/content';
 
-export const metadata: Metadata = {
+// Editable in the admin, with the copy below as the default.
+export const generateMetadata = pageMetadata('privacy', {
   title: 'Privacy Policy — Paper Ship Studio',
   description:
     'No accounts and no tracking. Adding a friend, reporting a bug or writing to us sends a little information — this page says exactly what, and why.',
-};
+});
 
 export const dynamic = 'force-dynamic';
 

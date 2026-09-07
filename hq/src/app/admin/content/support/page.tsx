@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { updateSupportContent } from '../../actions';
 import { ContentForm } from '../ContentForm';
-import { loadContent } from '../fields';
+import { SearchFields, loadContent } from '../fields';
 
 export default async function SupportContentPage() {
   const c = await loadContent();
@@ -20,6 +20,10 @@ export default async function SupportContentPage() {
 
         <label htmlFor="form_note">THE SMALL PRINT UNDER THE CONTACT FORM</label>
         <textarea id="form_note" name="form_note" defaultValue={c.text('support.form_note')} />
+        <SearchFields
+          title={c.text('support.metaTitle')}
+          description={c.text('support.metaDescription')}
+        />
       </ContentForm>
     </>
   );

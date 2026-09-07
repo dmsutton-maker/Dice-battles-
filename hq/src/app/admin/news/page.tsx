@@ -138,12 +138,14 @@ export default async function NewsAdminPage() {
             </label>
           </ContentForm>
 
-          {/* Its own form so deleting cannot be confused with saving —
-              ContentForm's Save button is the only button in a form. */}
-          <ContentForm action={deleteNewsPost}>
+          {/* Its own form, and its button says what it does. It used to
+              be a "Save changes" button under a line of small print
+              explaining that saving would delete the post. */}
+          <ContentForm action={deleteNewsPost} destructive="Delete this post">
             <input type="hidden" name="id" value={post.id} />
             <p className="faint" style={{ margin: 0 }}>
-              Saving below <strong>deletes</strong> this post for good.
+              This removes the post for good. Players who already read it
+              simply stop seeing it.
             </p>
           </ContentForm>
         </div>

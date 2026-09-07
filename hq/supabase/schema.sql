@@ -642,3 +642,69 @@ cross join (values
    'Leans into the new name and the speed of a round.',
    '/icons/d-colour-rush.svg', 4)
 ) as option(label, detail, image_url, position);
+
+-- ── Friends and profiles ────────────────────────────────────────────
+--
+-- Applied live as migration 20260903234809 "friends_and_profiles" on
+-- 6 Sep 2026 and, until 7 Sep, existing ONLY there. The two routes at
+-- hq/src/app/api/{players,friends} depend on these tables, so a fresh
+-- Supabase project built from this file alone would have failed at the
+-- first request with no clue why. Written down here now.
+
+
+-- Friends and profiles for Dice Battles.
+--
+-- Deliberately holds NOTHING personal: no email, no real name, no age,
+-- no country, no free text. A player_id is either Apple's opaque
+-- per-game Game Center id or a random device id; neither can be turned
+-- back into a person by anyone holding it, including us. The name comes
+-- from Game Center, where Apple moderates it.
+
+create table if not exists public.player_profiles (
+  player_id       text primary key,
+  -- The Game Center alias, or 'New Player'. Never typed by the player.
+  name            text not null default 'New Player',
+  -- Eight Crockford base32 characters, shared to be added as a friend.
+  friend_code     text not null unique,
+  -- A per-device secret the player never sees, hashed. It is what stops
+  -- anyone claiming somebody else's player_id, and it is the thing a
+  -- real account upgrades FROM when accounts arrive.
+  secret_hash     text not null,
+  trophies        integer not null default 0 check (trophies >= 0),
+  wins            jsonb   not null default '{}'::jsonb,
+  mode_wins       jsonb   not null default '{}'::jsonb,
+  dice_owned      integer not null default 0 check (dice_owned >= 0),
+  arenas_owned    integer not null default 0 check (arenas_owned >= 0),
+  favourite_die   text    not null default 'ivory',
+  favourite_arena text    not null default 'castle',
+  last_played     timestamptz not null default now(),
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists player_profiles_friend_code_idx
+  on public.player_profiles (friend_code);
+
+-- One row per DIRECTION, not per pair.
+--
+-- That is what makes a block one-way and quiet: I can hold 'blocked'
+-- against you while your side still reads 'friends', and you are told
+-- nothing. A single symmetric row could not express that without
+-- announcing it.
+create table if not exists public.friendships (
+  player_id  text not null references public.player_profiles(player_id) on delete cascade,
+  other_id   text not null references public.player_profiles(player_id) on delete cascade,
+  state      text not null check (state in ('none','requested','pending','friends','blocked')),
+  since      timestamptz not null default now(),
+  primary key (player_id, other_id),
+  -- Befriending yourself is not a thing.
+  constraint friendship_not_self check (player_id <> other_id)
+);
+
+create index if not exists friendships_player_idx on public.friendships (player_id, state);
+
+-- No client talks to these tables directly. Every read and write goes
+-- through the HQ API, which holds the service key and checks the
+-- device secret first, so RLS is on with no policies: the anon key can
+-- do nothing at all here.
+alter table public.player_profiles enable row level security;
+alter table public.friendships     enable row level security;

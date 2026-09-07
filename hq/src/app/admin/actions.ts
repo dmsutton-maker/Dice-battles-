@@ -758,6 +758,8 @@ export async function updateHomeContent(
     setContent('home.apps_card_tagline', field(formData, 'apps_card_tagline'), member.display_name),
     setContent('home.apps_card_note', field(formData, 'apps_card_note'), member.display_name),
     setContent('home.cta_label', field(formData, 'cta_label'), member.display_name),
+    setContent('home.metaTitle', field(formData, 'metaTitle'), member.display_name),
+    setContent('home.metaDescription', field(formData, 'metaDescription'), member.display_name),
   ]);
   revalidatePath('/');
   revalidatePath('/admin/content/home');
@@ -773,6 +775,8 @@ export async function updateAppsContent(
     setContent('apps.intro', field(formData, 'intro'), member.display_name),
     setContent('apps.card_kicker', field(formData, 'card_kicker'), member.display_name),
     setContent('apps.card_description', field(formData, 'card_description'), member.display_name),
+    setContent('apps.metaTitle', field(formData, 'metaTitle'), member.display_name),
+    setContent('apps.metaDescription', field(formData, 'metaDescription'), member.display_name),
   ]);
   revalidatePath('/apps');
   revalidatePath('/admin/content/apps');
@@ -801,6 +805,8 @@ export async function updateDiceBattlesContent(
     setContent('dice_battles.highlights', highlights, member.display_name),
     setContent('dice_battles.faq', faq, member.display_name),
     setContent('dice_battles.extra_sections', extraSections, member.display_name),
+    setContent('dice_battles.metaTitle', field(formData, 'metaTitle'), member.display_name),
+    setContent('dice_battles.metaDescription', field(formData, 'metaDescription'), member.display_name),
   ]);
   revalidatePath('/apps/dice-battles-color-rush');
   // Support shows the first few of these same questions, so it has to be
@@ -823,6 +829,8 @@ export async function updateSupportContent(
   await Promise.all([
     setContent('support.intro', field(formData, 'intro'), member.display_name),
     setContent('support.form_note', field(formData, 'form_note'), member.display_name),
+    setContent('support.metaTitle', field(formData, 'metaTitle'), member.display_name),
+    setContent('support.metaDescription', field(formData, 'metaDescription'), member.display_name),
   ]);
   revalidatePath('/support');
   revalidatePath('/admin/content/support');
@@ -841,6 +849,8 @@ export async function updatePrivacyContent(
       collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading'),
       member.display_name,
     ),
+    setContent('privacy.metaTitle', field(formData, 'metaTitle'), member.display_name),
+    setContent('privacy.metaDescription', field(formData, 'metaDescription'), member.display_name),
   ]);
   revalidatePath('/privacy');
   revalidatePath('/admin/content/privacy');
@@ -859,6 +869,8 @@ export async function updateTermsContent(
       collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading'),
       member.display_name,
     ),
+    setContent('terms.metaTitle', field(formData, 'metaTitle'), member.display_name),
+    setContent('terms.metaDescription', field(formData, 'metaDescription'), member.display_name),
   ]);
   revalidatePath('/terms');
   revalidatePath('/admin/content/terms');

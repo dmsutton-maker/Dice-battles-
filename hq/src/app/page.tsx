@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SitePage } from '@/components/site/SitePage';
@@ -6,11 +6,12 @@ import styles from './site.module.css';
 import { colors, fonts, heroGradient } from '@/components/site/tokens';
 import { getSiteContent, text } from '@/lib/content';
 
-export const metadata: Metadata = {
+// Editable in the admin, with the copy below as the default.
+export const generateMetadata = pageMetadata('home', {
   title: 'Paper Ship Studio — Games your whole family will actually love',
   description:
     'Paper Ship Studio is an independent studio building simple, well-made games for players of any age — starting with Dice Battles: Color Rush.',
-};
+});
 
 // Reads editable copy from the database on every request, so a save in
 // the admin shows up on the next load — never frozen from a past build.
@@ -118,7 +119,7 @@ export default async function HomePage() {
                   marginTop: 8,
                   padding: '13px 26px',
                   background: '#fff',
-                  color: colors.cyan,
+                  color: colors.cyanText,
                   font: `800 15px ${fonts.body}`,
                   borderRadius: 999,
                   textDecoration: 'none',
@@ -146,7 +147,7 @@ export default async function HomePage() {
                 font: `800 12px ${fonts.body}`,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
-                color: colors.orange,
+                color: colors.orangeText,
               }}
             >
               Who we are
@@ -180,7 +181,7 @@ export default async function HomePage() {
                 font: `800 12px ${fonts.body}`,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
-                color: colors.orange,
+                color: colors.orangeText,
               }}
             >
               {appsHeading}

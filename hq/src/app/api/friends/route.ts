@@ -165,18 +165,34 @@ export async function POST(request: NextRequest) {
   }
 
   /*
+    Their side of the pair, read for EVERY action.
+
+    It used to be read only inside `if (action === 'request')`, and that
+    was the bug: every other action upserted their row unconditionally
+    from the MOVES table, so a block could be wiped by the person who
+    had been blocked. B blocks A; A calls `remove`, which is legal from
+    'friends'; B's row is overwritten to 'none' and the block is gone —
+    A can then ask again and B gets a request they had deliberately shut
+    off. Worse from a pending request: B asked A and then blocked, A
+    accepts, and B's blocked row becomes 'friends'.
+
+    src/game/friends.ts calls blocked terminal and promises the blocked
+    player cannot send another request. This is what makes that true.
+  */
+  const { data: theirRow } = await supabase
+    .from('friendships')
+    .select('state')
+    .eq('player_id', otherId)
+    .eq('other_id', auth.playerId)
+    .maybeSingle();
+
+  /*
     A request is refused if THEY have blocked me — and the refusal is
     deliberately indistinguishable from any other failure, because a
     message saying "they blocked you" is exactly the confrontation a
     quiet block exists to avoid.
   */
   if (action === 'request') {
-    const { data: theirRow } = await supabase
-      .from('friendships')
-      .select('state')
-      .eq('player_id', otherId)
-      .eq('other_id', auth.playerId)
-      .maybeSingle();
     if (theirRow?.state === 'blocked') {
       return NextResponse.json({ ok: true, sent: true });
     }
@@ -199,9 +215,13 @@ export async function POST(request: NextRequest) {
       since: now,
     }),
   ];
-  // `block` deliberately leaves their side alone; every other move is
-  // agreed by both, so both rows move together.
-  if (action !== 'block') {
+  /*
+    `block` deliberately leaves their side alone; every other move is
+    agreed by both, so both rows move together — UNLESS their row holds
+    a block. A row that says 'blocked' is never overwritten by the other
+    side, whatever they do, which is what makes a block survive.
+  */
+  if (action !== 'block' && theirRow?.state !== 'blocked') {
     writes.push(
       supabase.from('friendships').upsert({
         player_id: otherId,

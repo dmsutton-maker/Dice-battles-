@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { updateDiceBattlesContent } from '../../actions';
 import { ContentForm } from '../ContentForm';
-import { ListHint, loadContent } from '../fields';
+import { ListHint, SearchFields, loadContent } from '../fields';
 
 export default async function DiceBattlesContentPage() {
   const c = await loadContent();
@@ -93,6 +93,10 @@ export default async function DiceBattlesContentPage() {
 
         <label htmlFor="cta_subhead">THE DARK CONTACT BOX — LINE UNDERNEATH</label>
         <input id="cta_subhead" name="cta_subhead" defaultValue={c.text('dice_battles.cta_subhead')} />
+        <SearchFields
+          title={c.text('dice_battles.metaTitle')}
+          description={c.text('dice_battles.metaDescription')}
+        />
       </ContentForm>
     </>
   );

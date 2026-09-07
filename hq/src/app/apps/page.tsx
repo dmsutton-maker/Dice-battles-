@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
@@ -6,10 +6,11 @@ import { colors, fonts, heroGradient } from '@/components/site/tokens';
 import styles from '../site.module.css';
 import { getSiteContent, text } from '@/lib/content';
 
-export const metadata: Metadata = {
+// Editable in the admin, with the copy below as the default.
+export const generateMetadata = pageMetadata('apps', {
   title: 'Our Apps — Paper Ship Studio',
   description: 'The apps we make at Paper Ship Studio.',
-};
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -101,7 +102,7 @@ export default async function AppsPage() {
                   alignItems: 'center',
                   padding: '13px 24px',
                   background: '#fff',
-                  color: colors.cyan,
+                  color: colors.cyanText,
                   font: `800 14px ${fonts.body}`,
                   borderRadius: 999,
                   flexShrink: 0,

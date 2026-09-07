@@ -13,6 +13,18 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 export interface ContactResult {
   ok: boolean;
   message: string;
+  /*
+    What the visitor typed, handed straight back on a failure.
+
+    React 19 resets a <form action={…}> once the action resolves, so a
+    rejected message — a short body, an email with a typo in it — used
+    to clear the name, the address and everything the person had
+    written, leaving them staring at "that email address does not look
+    right" above three empty boxes. Nobody types it all again.
+
+    Only sent back when `ok` is false; a success replaces the form.
+  */
+  values?: { name: string; email: string; subject: string; body: string };
 }
 
 const LIMITS = { name: 80, email: 160, subject: 120, body: 4000, device: 80 };
@@ -38,12 +50,14 @@ export async function sendMessage(
   const name = field('name');
   const email = field('email');
   const body = field('body');
+  const subject = field('subject');
+  const values = { name, email, subject, body };
 
   if (body.length < 5) {
-    return { ok: false, message: 'Please write a bit more about the problem.' };
+    return { ok: false, message: 'Please write a bit more about the problem.', values };
   }
   if (email && !looksLikeEmail(email)) {
-    return { ok: false, message: 'That email address does not look right.' };
+    return { ok: false, message: 'That email address does not look right.', values };
   }
 
   try {
@@ -62,6 +76,7 @@ export async function sendMessage(
           ok: false,
           message:
             'That is a lot of messages in one hour — give us a chance to read the first ones.',
+          values,
         };
       }
     }
@@ -69,7 +84,7 @@ export async function sendMessage(
     const { error } = await supabase.from('messages').insert({
       name,
       email,
-      subject: field('subject'),
+      subject,
       body,
       device: field('device'),
     });
@@ -87,6 +102,7 @@ export async function sendMessage(
       ok: false,
       message:
         'Something went wrong sending that. Please try again in a moment.',
+      values,
     };
   }
 }

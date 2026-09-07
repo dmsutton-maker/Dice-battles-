@@ -50,3 +50,44 @@ export function ListHint({ what }: { what: string }) {
     </p>
   );
 }
+
+/**
+ * The title and the sentence a search result or a link preview shows.
+ *
+ * Every public page has these two, they are what Google and every chat
+ * app quote, and until 7 Sep 2026 they were the one thing on the site
+ * nobody could edit — hard-coded in the page files while this admin's
+ * own index promised "everything written on the public site".
+ */
+export function SearchFields({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <>
+      <label style={{ marginTop: 22 }}>SEARCH AND LINK PREVIEWS</label>
+      <p className="faint" style={{ marginTop: -2 }}>
+        What Google shows, and what appears when somebody pastes a link to
+        this page into a message. Leave a box empty to keep the wording
+        that ships with the site.
+      </p>
+      <input
+        name="metaTitle"
+        defaultValue={title}
+        placeholder="Page title — about 60 characters"
+        maxLength={70}
+        style={{ fontWeight: 800 }}
+      />
+      <textarea
+        name="metaDescription"
+        defaultValue={description}
+        placeholder="One sentence — about 155 characters"
+        maxLength={200}
+        style={{ minHeight: 70, marginTop: 4 }}
+      />
+    </>
+  );
+}

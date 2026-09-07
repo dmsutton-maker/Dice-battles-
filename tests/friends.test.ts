@@ -327,8 +327,44 @@ suite('friends · the app and the server agree about the rules', () => {
       their own friend list.
     */
     assert(
-      /if \(action !== 'block'\)/.test(server),
+      /if \(action !== 'block' && theirRow\?\.state !== 'blocked'\)/.test(server),
       'the server writes both sides on a block, so a block is no longer quiet',
+    );
+  });
+
+  test('the blocked side can never overwrite a block', () => {
+    /*
+      The other half of the same asymmetry, and the one that was missing.
+
+      Every non-block action used to upsert the OTHER party's row
+      unconditionally from the MOVES table, so the person who had been
+      blocked could wipe the block by doing something perfectly legal.
+      B blocks A; A calls `remove`, which is allowed from 'friends'; B's
+      row is overwritten to 'none' and the block is gone — A can ask
+      again and B gets the request they had shut off. From a pending
+      request it is worse: B asked A then blocked, A accepts, and B ends
+      up 'friends' with somebody they blocked.
+
+      src/game/friends.ts calls blocked terminal. Two things have to
+      hold for that to be true, and this is the second: a row that says
+      'blocked' is never written by the other side.
+    */
+    assert(
+      /theirRow\?\.state !== 'blocked'/.test(server),
+      'a blocked row can still be overwritten by the person who was blocked',
+    );
+    // And their row has to be READ for every action, not only requests —
+    // reading it inside `if (action === 'request')` is how this was
+    // missed in the first place.
+    // Comments stripped: this file's own prose describes the old shape,
+    // and matching that would make the check pass on the bug it names.
+    const code = server.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const readAt = code.indexOf('const { data: theirRow }');
+    const requestAt = code.indexOf("if (action === 'request')");
+    assert(readAt > 0 && requestAt > 0, 'the server no longer reads their row');
+    assert(
+      readAt < requestAt,
+      'their row is read only for requests, so every other action ignores a block',
     );
   });
 

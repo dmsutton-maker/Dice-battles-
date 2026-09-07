@@ -1,12 +1,13 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
 import { getSiteContent, sectionList, text } from '@/lib/content';
 
-export const metadata: Metadata = {
+// Editable in the admin, with the copy below as the default.
+export const generateMetadata = pageMetadata('terms', {
   title: 'Terms of Use — Paper Ship Studio',
   description: 'The terms that cover your use of any app published by Paper Ship Studio.',
-};
+});
 
 export const dynamic = 'force-dynamic';
 

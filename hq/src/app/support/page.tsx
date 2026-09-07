@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
@@ -7,10 +7,11 @@ import styles from '../site.module.css';
 import { ContactForm } from './ContactForm';
 import { faqList, getSiteContent, text } from '@/lib/content';
 
-export const metadata: Metadata = {
+// Editable in the admin, with the copy below as the default.
+export const generateMetadata = pageMetadata('support', {
   title: 'Support — Paper Ship Studio',
   description: "We're a small studio, so support is just us — reading every message ourselves.",
-};
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +70,7 @@ export default async function SupportPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 0', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orange }}>
+          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
             FAQ by game
           </span>
           <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -101,7 +102,7 @@ export default async function SupportPage() {
               <Link
                 href="/apps/dice-battles-color-rush"
                 className={styles.link}
-                style={{ font: `700 13px ${fonts.body}`, color: colors.cyan, alignSelf: 'flex-start' }}
+                style={{ font: `700 13px ${fonts.body}`, color: colors.cyanText, alignSelf: 'flex-start' }}
               >
                 Full FAQ on the app page &rarr;
               </Link>
@@ -113,14 +114,14 @@ export default async function SupportPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 90px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orange }}>
+          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
             Policies
           </span>
           <div style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
             <Link
               href="/privacy"
               className={styles.link}
-              style={{ padding: '12px 20px', borderRadius: 999, background: colors.cyanTint, color: colors.cyan, font: `800 13.5px ${fonts.body}` }}
+              style={{ padding: '12px 20px', borderRadius: 999, background: colors.cyanTint, color: colors.cyanText, font: `800 13.5px ${fonts.body}` }}
             >
               Privacy Policy
             </Link>

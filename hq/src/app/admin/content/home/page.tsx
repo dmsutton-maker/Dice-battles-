@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { updateHomeContent } from '../../actions';
 import { ContentForm } from '../ContentForm';
-import { loadContent } from '../fields';
+import { SearchFields, loadContent } from '../fields';
 
 export default async function HomeContentPage() {
   const c = await loadContent();
@@ -31,6 +31,10 @@ export default async function HomeContentPage() {
         <label htmlFor="apps_card_note">DICE BATTLES CARD — SMALL NOTE UNDERNEATH</label>
         <input id="apps_card_note" name="apps_card_note" defaultValue={c.text('home.apps_card_note')} />
         <p className="faint">Leave this empty to show nothing there at all.</p>
+        <SearchFields
+          title={c.text('home.metaTitle')}
+          description={c.text('home.metaDescription')}
+        />
       </ContentForm>
     </>
   );

@@ -36,16 +36,34 @@ function sameSecret(supplied: string, storedHash: string): boolean {
 
 const FRIEND_CODE = /^[0-9A-HJKMNP-TV-Z]{8}$/;
 
+/*
+  The counter keys the game actually sends. Anything else is dropped.
+
+  `wins` and `mode_wins` used to be waved through as "any object", which
+  meant a modified client could push an arbitrary JSON blob of any size
+  and any shape into a column that a friend's profile page then renders.
+  These are the four difficulties and the four modes, and there is never
+  going to be a fifth without a code change here.
+*/
+const WIN_KEYS = ['easy', 'medium', 'hard'] as const;
+const MODE_KEYS = ['classic', 'ultimate', 'skirmish', 'colorwar'] as const;
+
 /** Only these fields, and only of these shapes, are ever written. */
 function cleanProfile(body: Record<string, unknown>) {
   const int = (v: unknown, cap: number) =>
     Math.max(0, Math.min(cap, Math.floor(Number(v) || 0)));
   const id = (v: unknown) =>
     typeof v === 'string' && /^[a-z0-9_-]{1,40}$/i.test(v) ? v : null;
+  const counters = (v: unknown, keys: readonly string[]) => {
+    const src = (typeof v === 'object' && v ? v : {}) as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    for (const k of keys) out[k] = int(src[k], 10_000_000);
+    return out;
+  };
   return {
     trophies: int(body.trophies, 10_000_000),
-    wins: typeof body.wins === 'object' && body.wins ? body.wins : {},
-    mode_wins: typeof body.modeWins === 'object' && body.modeWins ? body.modeWins : {},
+    wins: counters(body.wins, WIN_KEYS),
+    mode_wins: counters(body.modeWins, MODE_KEYS),
     dice_owned: int(body.diceOwned, 10_000),
     arenas_owned: int(body.arenasOwned, 10_000),
     favourite_die: id(body.favouriteDie) ?? 'ivory',
@@ -132,6 +150,31 @@ export async function POST(request: NextRequest) {
   const fields = cleanProfile(body);
 
   if (auth.isNew) {
+    /*
+      A soft brake on profile floods, the same shape as the one on
+      /api/bug-report: count what has been created in the last minute
+      and refuse past a ceiling.
+
+      This does not stop a determined person making profiles — the note
+      at the top of this file is honest that nothing short of real
+      accounts would, and a 4+ game is deliberately avoiding those. It
+      stops a script filling the table in an afternoon, which is the
+      difference between a nuisance and a bill. Updates to an EXISTING
+      profile are not counted: they are authenticated, and the game
+      writes one every time Friends is opened.
+    */
+    const minuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from('player_profiles')
+      .select('player_id', { count: 'exact', head: true })
+      .gte('created_at', minuteAgo);
+    if ((count ?? 0) >= 30) {
+      return NextResponse.json(
+        { error: 'Busy right now — please try again shortly.' },
+        { status: 429 },
+      );
+    }
+
     const friendCode =
       typeof body.friendCode === 'string' && FRIEND_CODE.test(body.friendCode)
         ? body.friendCode

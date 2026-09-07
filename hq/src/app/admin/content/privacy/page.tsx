@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { updatePrivacyContent } from '../../actions';
 import { ContentForm } from '../ContentForm';
-import { ListHint, loadContent } from '../fields';
+import { ListHint, SearchFields, loadContent } from '../fields';
 
 export default async function PrivacyContentPage() {
   const c = await loadContent();
@@ -30,6 +30,10 @@ export default async function PrivacyContentPage() {
             <textarea name={`section_body_${i}`} defaultValue={s.body} placeholder="What it says" style={{ minHeight: 90 }} />
           </div>
         ))}
+        <SearchFields
+          title={c.text('privacy.metaTitle')}
+          description={c.text('privacy.metaDescription')}
+        />
       </ContentForm>
     </>
   );

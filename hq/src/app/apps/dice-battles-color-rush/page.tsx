@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
@@ -6,11 +6,12 @@ import { colors, fonts } from '@/components/site/tokens';
 import styles from '../../site.module.css';
 import { faqList, getSiteContent, highlightList, labelList, sectionList, text } from '@/lib/content';
 
-export const metadata: Metadata = {
+// Editable in the admin, with the copy below as the default.
+export const generateMetadata = pageMetadata('dice_battles', {
   title: 'Dice Battles: Color Rush — Paper Ship Studio',
   description:
     'Two dice, six colors, six prisoners to set free. Roll both dice — match the colors and a prisoner runs free. First to free all six wins. Nothing to read and nothing to count, so a five-year-old and a grandparent can play the same game at the same table.',
-};
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -18,9 +19,9 @@ const HIGHLIGHT_TINTS = [colors.cyanTint, colors.cream, colors.orangeTint, color
 
 /** Badge colours, cycled so any number of badges still reads as a set. */
 const PILL_TINTS = [
-  { bg: colors.cyanTint, ink: colors.cyan },
-  { bg: colors.cream, ink: colors.yellowDeepText2 },
-  { bg: colors.orangeTint, ink: colors.orangeDeep },
+  { bg: colors.cyanTint, ink: colors.cyanText },
+  { bg: colors.cream, ink: colors.yellowDeepText },
+  { bg: colors.orangeTint, ink: colors.orangeText },
 ];
 
 const DEFAULT_HIGHLIGHTS = [
@@ -157,15 +158,15 @@ export default async function DiceBattlesAppPage() {
         >
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             <Image
-              src="/images/game-screenshot-1.jpeg"
-              alt="Dice Battles gameplay screenshot — battle in progress"
+              src="/images/game-screenshot-1.png"
+              alt="Dice Battles: two color dice landing on a sky-castle board — match them and a prisoner goes free"
               width={260}
               height={565}
               style={{ borderRadius: 20, boxShadow: '0 12px 30px rgba(0,0,0,0.14)', objectFit: 'cover' }}
             />
             <Image
-              src="/images/game-screenshot-2.jpeg"
-              alt="Dice Battles two-player pass-and-play screenshot"
+              src="/images/game-screenshot-2.png"
+              alt="Dice Battles two-player split screen: one phone flat on the table, a board facing each player"
               width={260}
               height={565}
               style={{ borderRadius: 20, boxShadow: '0 12px 30px rgba(0,0,0,0.14)', objectFit: 'cover' }}
@@ -177,7 +178,7 @@ export default async function DiceBattlesAppPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 0', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orange }}>
+          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
             Highlights
           </span>
           <div className="psg-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20, marginTop: 20 }}>
@@ -194,7 +195,7 @@ export default async function DiceBattlesAppPage() {
           className="psg-wrap"
           style={{ padding: '56px 56px 0', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orange }}>
+          <span style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText }}>
             FAQ
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20, maxWidth: 720 }}>
