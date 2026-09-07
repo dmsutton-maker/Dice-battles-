@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
 const DEFAULT_GAME_FAQS = [
   {
     q: 'Does the game have ads?',
-    a: 'One full-screen ad after every third finished game, and nothing else — never during a game. They are always non-personalised and G-rated, and they can be switched off for good with a one-time purchase.',
+    a: 'One full-screen ad after every third finished game, and nothing else — never during a game. They are always non-personalised and G-rated.',
   },
   { q: 'Do I need to create an account?', a: 'No sign-in, no account, nothing to lose. Open it and play.' },
   {

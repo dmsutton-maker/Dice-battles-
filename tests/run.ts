@@ -38,6 +38,7 @@ async function main(): Promise<void> {
   await import('./achievements.test');
   await import('./news.test');
   await import('./crashGuard.test');
+  await import('./submission.test');
   process.exit(await runAll());
 }
 

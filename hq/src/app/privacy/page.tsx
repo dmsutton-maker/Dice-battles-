@@ -30,7 +30,7 @@ const DEFAULT_SECTIONS = [
   },
   {
     heading: 'Advertising',
-    body: 'Dice Battles: Color Rush is free, and adverts are what pay for it: one full-screen advert after every third finished game, and nothing else — no banners, no video rewards, nothing during a game. They come from Google AdMob, and every single request is marked as child-directed and non-personalised and capped at a G rating. In plain terms: AdMob is told not to build a profile of whoever is holding the phone and not to use anything about them to choose the advert. That is why the game never asks permission to track you. If you would rather have none at all, adverts can be switched off permanently with a one-time purchase.',
+    body: 'Dice Battles: Color Rush is free, and adverts are what pay for it: one full-screen advert after every third finished game, and nothing else — no banners, no video rewards, nothing during a game. They come from Google AdMob, and every single request is marked as child-directed and non-personalised and capped at a G rating. In plain terms: AdMob is told not to build a profile of whoever is holding the phone and not to use anything about them to choose the advert. That is why the game never asks permission to track you.',
   },
   {
     heading: 'Where it is kept, and for how long',

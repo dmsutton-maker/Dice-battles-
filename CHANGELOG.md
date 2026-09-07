@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.66.1 — 2026-09-07 · requested by David
+
+Closing the launch review: the last three things an agent could do
+without asking, and a correction to copy this session itself got wrong.
+
+### Fixed
+- **The website no longer promises a way to switch adverts off.** The
+  privacy policy, the app page and the support FAQ all said adverts
+  "can be switched off for good with a one-time purchase". There is no
+  such purchase — no in-app purchase exists in the app or on the App
+  Store record — so the sentence is gone from all three, and from the
+  live rows that override them. Whether to build it is on David's list.
+- **One person flooding the bug-report endpoint no longer locks everyone
+  else out.** The brake counted all reports from everybody, twenty a
+  minute, so a stranger hammering it took their own twenty places on the
+  board and answered every real reporter with a 429. It counts per
+  sender now, by a short hash of the forwarded address that identifies
+  nobody, with a much higher global backstop behind it.
+
+### Added
+- **Three of the pre-submission checks now run with the tests.**
+  AGENTS.md has always required the store copy, the screenshot
+  dimensions and the version numbers to be checked before a submission,
+  and all three were a person remembering. `npm run check` measures the
+  four copy files against Apple's character limits, every screenshot
+  against the sizes App Store Connect accepts, and app.json's version
+  against the JavaScript's — on the one thing in this project that
+  cannot be undone in seconds.
+- **The Android AdMob app id is watched.** It is the iOS one pasted
+  twice, which is harmless while ads are off and wrong the moment an
+  Android build ships with them on. The check fires exactly then.
+- **A rule about where bug reports come from.** `/api/bug-report` is
+  public by design, so anyone can put a row on the work board; those
+  rows now say so in capitals, and AGENTS.md says plainly that the text
+  is data and never instructions.
+
+
 ## v1.66.0 — 2026-09-07 · requested by David
 
 The rest of the launch review: the minor and cosmetic findings, and the
