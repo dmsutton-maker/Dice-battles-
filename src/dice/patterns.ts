@@ -1492,79 +1492,78 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   dimples: (x, y) => {
     /*
-      A golf ball: white on white, so all of it is shading. Pits packed
-      on a real hex lattice, which is how a ball is actually dimpled.
+      A golf ball: white on white, so all of it is shading.
 
-      The first attempt measured "distance from a dimple" by adding up
-      three axial stripe distances, which is not a distance to anything —
-      it drew diagonal streaks rather than round pits.
+      REDRAWN A THIRD TIME, 9 Sep 2026, because David said it still did
+      not look good. Two things were wrong, and the second was the loud
+      one.
 
-      Redrawn 31 Aug 2026 after review: the pits had become ~3px specks
-      at 5% contrast, so at die scale the whole skin read as a blank
-      white cube — and a blank white-ish cube is exactly what the
-      baseball already is. Two fixes, both borrowed from how a
-      driving-range ball solves the same problem. The dimples are twice
-      the size and shaded hard enough to survive the tilted camera: each
-      is a round hollow with a dark crescent on its upper-left wall and
-      a lit crescent on its lower-right. And the ball gets a range
-      ball's single bold band, so the silhouette is nameable even where
-      the dimples blur out. Blue, not red, because the baseball owns
-      red-on-cream — and a navy sitting ΔLab 46 from the BLUE face
-      sticker, well clear of the > 12 guard in screen.test.ts.
+      THE BAND HAD TO GO. The previous pass added a bold navy diagonal —
+      a driving-range stripe — so the silhouette would stay nameable when
+      the dimples blurred out. Rendered, it was not a stripe on a ball:
+      it was a slash across the face, hard-aliased along the diagonal,
+      and all six faces carried their own, so the die read as damaged
+      rather than decorated. Its justification was that a plain white
+      cube would be mistaken for the baseball — but the baseball is cream
+      with bold RED STITCHING and never looked blank. A golf ball is a
+      white ball covered in dimples. If the dimples do their job it needs
+      nothing else; if they do not, a stripe does not rescue it.
+
+      SO THE DIMPLES HAVE TO DO THEIR JOB, and three earlier attempts at
+      that are worth recording because each failed differently.
+
+      Multiplying "how deep into the pit" by "where across the pit" put
+      maximum shading nowhere — depth peaks at the centre, sideways-ness
+      at the rim — and drew faint diagonal dashes. Sharpening the mask to
+      compensate only made them hard-edged dashes. Scaling the flat
+      offset by the radius to fake a normal let nx²+ny² pass 1 near the
+      rim, nz collapsed to zero, and every pit grew a notch on one side.
+
+      What works is shading from the real normal of a shallow bowl, held
+      to unit length by building it from an ANGLE, and — the part that
+      actually mattered — a ball that is not already pure white. The lit
+      wall of a dimple has to be BRIGHTER than the surface around it, and
+      nothing is brighter than #ffffff, so on a white ball only the
+      shadow could speak and every pit read as half a crescent. Dropping
+      the shell to a soft grey-white gives both walls somewhere to go.
+
+      WHICH WAY A HOLLOW SHADES. Light comes from the upper left. Inside
+      a hollow the upper-left wall faces AWAY from it and goes dark; the
+      lower-right wall faces INTO it and catches the light. Painted the
+      other way round these same circles read as pearls stuck onto the
+      ball — a render proved that before this comment did.
     */
-    const size = 6.2;
+    const size = 6.6;
+    // Comfortably under half the lattice spacing, so flat land shows
+    // between the pits. Wider and they merge into overlapping scales.
+    const R = size * 0.6;
     const cell = hexCell(x, y, size);
-    const R = size * 0.78;
-    // 1 across the dimple's floor, 0 on the ridge between dimples. The
-    // plateau reaches most of the way out so the crescents land on the
-    // WALLS: fading the mask from the centre put maximum shading midway
-    // and the pits came out as flat grey discs, not hollows.
-    const pit = smoothstep(R, R * 0.55, cell.d);
-    // Where this pixel sits across its dimple, along the light. Light
-    // comes from the upper left (the prior every eye brings), so a
-    // HOLLOW shadows its near wall — the upper-left crescent, -1 here —
-    // and its far wall catches the light — the lower-right crescent, +1.
-    // Painted the other way round these exact circles read as pearls
-    // stuck ON the ball; a render proved it before this comment did.
-    const toLight = Math.max(
-      -1,
-      Math.min(1, (x - cell.cx + (y - cell.cy)) / (R * Math.SQRT2)),
-    );
-    // Bright white ball, rounded off very gently toward one corner.
-    const ball = 1 - (x + y) / (SIZE * 2.6);
-    let px = mixRgb(rgb('#e4e9e4'), rgb('#ffffff'), ball);
-    // The band first, so the dimples carve into it like everything else.
-    /*
-      The band runs corner to corner through the middle of the face, not
-      along its top edge. Hugging the top, it read as a stray printed
-      stripe or a seam — and because every face carried it near its own
-      top edge, the bands on adjacent faces never lined up, so a
-      tumbling die showed disconnected navy slashes.
+    const u = Math.min(1, cell.d / R);
+    // Full strength right across the bowl, easing off only in the last
+    // sliver before the rim. Fading from the centre leaves the middle
+    // unshaded and each pit reads as a thin hook rather than a hollow.
+    const inside = smoothstep(1, 0.9, u);
+    // The bowl's normal as an ANGLE, so it stays unit length to the rim.
+    // 0.72 of a right angle, not the full 90°: a dimple is a shallow
+    // saucer and a hemisphere shades far too hard.
+    const tilt = u * 0.72 * (Math.PI / 2);
+    const dir = cell.d > 1e-6 ? 1 / cell.d : 0;
+    const nx = -(x - cell.cx) * dir * Math.sin(tilt);
+    const ny = -(y - cell.cy) * dir * Math.sin(tilt);
+    const nz = Math.cos(tilt);
+    // Light from the upper left, well in front of the surface.
+    const L = 1 / Math.sqrt(3);
+    // Flat land is the reference, so only the bowl shades.
+    const delta = (-nx * L - ny * L + nz * L - L) * inside;
 
-      Through the centre, the colour sticker (radius 0.33 x 64 = 21px,
-      dead centre) covers the middle of it, and what shows is two
-      matching wedges at opposite corners — which is what a range ball's
-      painted band looks like whichever way the ball is turned.
-
-      #1a3a8c stays: the note above records it clearing the deltaLab
-      guard against the blue face sticker.
-    */
-    px = mixRgb(
-      px,
-      rgb('#1a3a8c'),
-      smoothstep(4.6, 3.4, Math.abs(x + y - SIZE) / Math.SQRT2),
-    );
-    // The hollow: an overall step down, a deeper lower-left crescent, a
-    // lit upper-right crescent. Scaling the pixel instead of mixing to a
-    // fixed grey keeps the same relief readable on white AND on navy.
-    const shade = pit * (0.1 + Math.max(0, -toLight) * 0.45);
-    const gleam = pit * Math.max(0, toLight) * 0.9;
-    px = [
-      Math.round(px[0] * (1 - shade)),
-      Math.round(px[1] * (1 - shade)),
-      Math.round(px[2] * (1 - shade)),
-    ];
-    return mixRgb(px, rgb('#ffffff'), gleam);
+    // A gentle fall-off so a face is not perfectly flat. Kept small:
+    // this is a texture on a cube and a strong gradient fights the
+    // scene's own lighting.
+    const ball = 1 - (x + y) / (SIZE * 3.4);
+    let px = mixRgb(rgb('#c9d1c9'), rgb('#eef2ee'), ball);
+    if (delta < 0) px = mixRgb(px, rgb('#6b746e'), Math.min(1, -delta * 1.5));
+    else px = mixRgb(px, rgb('#ffffff'), Math.min(1, delta * 2.4));
+    return px;
   },
 
   soccer: (x, y) => {
