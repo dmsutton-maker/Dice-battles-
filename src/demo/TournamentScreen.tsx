@@ -13,7 +13,7 @@ import {
   roundsToWin,
   tournamentById,
 } from '../game/tournament';
-import { MENU_PAGE_AREA } from './BottomNav';
+import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { PrimaryButton } from '../ui/Card';
 import { Confirm } from '../ui/Confirm';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -51,7 +51,7 @@ export function TournamentScreen({
   >(null);
 
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, useMenuPageArea()]}>
       <View style={styles.header}>
         <Text style={styles.title}>Cups</Text>
       </View>
@@ -215,7 +215,7 @@ export function TournamentScreen({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...MENU_PAGE_AREA,
+    ...MENU_PAGE_EDGES,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: THEME.ground,

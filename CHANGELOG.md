@@ -1,5 +1,63 @@
 # Changelog
 
+## v1.72.0 — 2026-09-09 · requested by David
+
+Apple announced the iPhone Duo, a book-style folding iPhone, this
+morning. David asked what it would take for the game to show well on it.
+Two assumptions in this codebase expired that morning, and both were
+written down in comments as though they were permanent.
+
+### Fixed
+- **A folded screen was mistaken for a phone with a home button.**
+  `safeAreaRules.ts` decided on height: "every iPhone with a home
+  indicator is at least 812pt tall... nothing lives in the gap". The
+  Duo's folded screen is reported at 1422×2088px, which at @3x is
+  474×696pt — shorter than the 736pt iPhone 8 Plus, and with no home
+  button, because no iPhone has had one since 2022. The rule would have
+  returned an inset of **zero** and drawn the navigation labels into the
+  strip the system takes the swipe from: exactly the fault that file was
+  written to fix, reappearing because its premise quietly expired.
+  Home-button iPhones are now named exactly — a closed set of four that
+  will never grow — matched on **both** sides so a folded screen that
+  happens to be 667pt tall is not mistaken for an SE, and everything
+  else is assumed to have an indicator. Unknown hardware now fails in
+  the safe direction by design rather than by luck.
+- **The screen was measured once, at launch.** `safeArea.ts` said so:
+  "Read once: the game is portrait-locked and the home indicator does
+  not come and go." Unfolding swaps a 474×696pt screen for a 640×904pt
+  one without relaunching the app, so every constant derived from it —
+  the bar's height, its padding, and the page area six screens use —
+  kept the old answer for ever. All of it is now measured during render.
+  **This was already wrong on iPad Split View and Stage Manager**; the
+  fold only makes it impossible to miss.
+
+### Not changed, because it needs no changing
+The 3D board already adapts: `CameraRig` re-fits the camera on every
+canvas resize, and `fitCamera` frames the whole battlefield at all four
+new shapes — folded (0.681), unfolded portrait (0.708), unfolded
+landscape (1.413) and half an unfolded screen (0.354). There is now a
+test saying so rather than an assumption.
+
+### Added
+- `tests/foldable.test.ts` — the inset rule at both fold states, the
+  four real home-button iPhones still getting nothing, unknown shapes
+  erring towards keeping the inset, no layout value derived at import
+  time, and the camera framing every fold state. Verified by restoring
+  the old height rule and watching three of them fail.
+
+### Not measured
+There is no folding phone in CI and no renderer in this suite, and the
+dimensions above are day-one press figures that may be wrong in detail.
+What is pinned is the reasoning. Whether it LOOKS right has to be seen
+on the hardware.
+
+### Still open, and David's call
+`app.json` sets `orientation: "portrait"` and
+`ios.requireFullScreen: true`. Neither is obviously right on a screen
+that unfolds into something close to square, and both change what iOS is
+allowed to do with the window. Left exactly as they are rather than
+guessed at.
+
 ## v1.71.0 — 2026-09-07 · requested by David
 
 David went looking for the music credits in Settings, where this project's

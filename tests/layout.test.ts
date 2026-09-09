@@ -77,12 +77,44 @@ suite('layout · the tab bar clears the home indicator', () => {
     // A flat 18pt was about half what an iPhone 15 needs, so the labels sat
     // in the home indicator strip and the row read as not fitting.
     assert(
-      /BOTTOM_NAV_HEIGHT = BAR_CONTENT_HEIGHT \+ BOTTOM_INSET/.test(nav),
+      /BAR_CONTENT_HEIGHT \+ useBottomInset\(\)/.test(nav),
       'the bar height does not include the home indicator inset',
     );
     assert(
-      /paddingBottom: 18 \+ BOTTOM_INSET/.test(nav),
+      /paddingBottom: 18 \+ inset/.test(nav),
       'the bar padding does not clear the home indicator',
+    );
+  });
+
+  test('the bar measures the inset at render, not at import', () => {
+    /*
+      Added 9 Sep 2026, the day Apple announced a folding iPhone.
+
+      Unfolding one swaps a 474x696pt screen for a 640x904pt one without
+      relaunching the app. Every number here used to be a module-scope
+      constant worked out from the window size the first time the file was
+      imported, so a phone opened after launch kept the folded screen's
+      home-indicator inset for ever — and one launched folded kept an
+      inset of zero.
+
+      The same was already true of iPad Split View and Stage Manager. The
+      fold only makes it impossible to miss.
+    */
+    assert(
+      !/^export const BOTTOM_NAV_HEIGHT/m.test(nav),
+      'the bar height is a module constant again, frozen at whatever size ' +
+        'the screen was when the app started',
+    );
+    assert(
+      /export function useBottomNavHeight\(\)/.test(nav),
+      'there is no hook for the bar height, so nothing can react to a fold',
+    );
+    const bar = nav.match(/bar: \{[\s\S]*?\n  \},/)?.[0];
+    assert(bar !== undefined, 'the bar style is gone');
+    assert(
+      !/height:|paddingBottom:/.test(bar!),
+      'the bar bakes its height or padding into a StyleSheet, which is ' +
+        'built once and never recomputed',
     );
   });
 
@@ -304,11 +336,15 @@ suite('layout · no screen hides its own way out', () => {
   test('the in-battle HUD clears the home indicator by derivation', () => {
     // It was a hardcoded 34 — correct on a Face ID iPhone purely because
     // that is the inset, and 34pt of wasted board on a home-button phone.
+    assert(
+      /styles\.bottomHud, \{ bottom: bottomInset \+ \d+ \}/.test(screen),
+      'the in-battle HUD no longer derives its distance from the live inset',
+    );
     const style = screen.match(/bottomHud: \{[\s\S]*?\n  \},/)?.[0];
     assert(style !== undefined, 'bottomHud is not defined');
     assert(
-      /bottom: BOTTOM_INSET \+ \d+/.test(style!),
-      'the in-battle HUD still hardcodes its distance from the bottom edge',
+      !/bottom: \d+/.test(style!),
+      'the in-battle HUD hardcodes a bottom offset in its StyleSheet again',
     );
   });
 
@@ -348,8 +384,13 @@ suite('layout · the tab bar is its own section, not a thing pages dodge', () =>
     for (const name of pages) {
       const src = readFileSync(join(root, `src/demo/${name}.tsx`), 'utf8');
       assert(
-        src.includes('...MENU_PAGE_AREA'),
+        src.includes('...MENU_PAGE_EDGES'),
         `${name} still fills the whole screen, so the tab bar covers its bottom`,
+      );
+      assert(
+        src.includes('useMenuPageArea()'),
+        `${name} takes the bar height from a frozen constant, so it would ` +
+          'be wrong the moment a folding phone is opened',
       );
       assert(
         !src.includes('absoluteFillObject'),
@@ -360,13 +401,20 @@ suite('layout · the tab bar is its own section, not a thing pages dodge', () =>
 
   test('the page area really does stop at the top of the bar', () => {
     const nav = readFileSync(join(root, 'src/demo/BottomNav.tsx'), 'utf8');
-    const area = nav.match(/MENU_PAGE_AREA = \{[\s\S]*?\} as const;/)?.[0];
-    assert(area !== undefined, 'MENU_PAGE_AREA is not defined');
+    const edges = nav.match(/MENU_PAGE_EDGES = \{[\s\S]*?\} as const;/)?.[0];
+    assert(edges !== undefined, 'MENU_PAGE_EDGES is not defined');
+    assert(/position: 'absolute'/.test(edges!), 'the page area is not positioned');
     assert(
-      /bottom: BOTTOM_NAV_HEIGHT/.test(area!),
+      !/bottom:/.test(edges!),
+      'the fixed part of the page area pins a bottom edge, which cannot ' +
+        'follow a fold',
+    );
+    const area = nav.match(/useMenuPageArea\(\)[\s\S]*?\n\}/)?.[0];
+    assert(area !== undefined, 'useMenuPageArea is not defined');
+    assert(
+      /bottom: useBottomNavHeight\(\)/.test(area!),
       'the page area does not stop at the bar',
     );
-    assert(/position: 'absolute'/.test(area!), 'the page area is not positioned');
   });
 
   test('nobody reserves the bar height twice', () => {

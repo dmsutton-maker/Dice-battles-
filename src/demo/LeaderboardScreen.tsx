@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiDifficultyId } from '../game/ai';
-import { MENU_PAGE_AREA } from './BottomNav';
+import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { getWallet } from '../game/currency';
@@ -118,7 +118,7 @@ export function LeaderboardScreen({
   const toNext = upNext ? upNext.at - trophies : 0;
 
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, useMenuPageArea()]}>
       <View style={styles.header}>
         <Text style={styles.title}>Ranks</Text>
       </View>
@@ -314,7 +314,7 @@ export function LeaderboardScreen({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...MENU_PAGE_AREA,
+    ...MENU_PAGE_EDGES,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: THEME.ground,

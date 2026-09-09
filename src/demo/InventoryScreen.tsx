@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
 import { playClick } from '../audio/sounds';
-import { MENU_PAGE_AREA } from './BottomNav';
+import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { recallScroll, rememberScroll } from './menuScroll';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -58,7 +58,7 @@ export function InventoryScreen({
   }, []);
 
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, useMenuPageArea()]}>
       <View style={styles.header}>
         {/* No trophy count here: the shared HUD already draws one over
             this page, and two of the same number on one screen reads as
@@ -218,7 +218,7 @@ export function InventoryScreen({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...MENU_PAGE_AREA,
+    ...MENU_PAGE_EDGES,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: THEME.ground,

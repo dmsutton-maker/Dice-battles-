@@ -4,7 +4,7 @@ import { STORE_SKINS } from '../game/diceSkins';
 import { ARENA_PRICES, STORE_ARENAS, arenaKey } from '../game/loadout';
 import { ARENAS } from '../arena/arenas';
 import { ARENA_ART } from '../arena/arenaArt';
-import { MENU_PAGE_AREA } from './BottomNav';
+import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { recallScroll, rememberScroll } from './menuScroll';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { COIN_REWARDS, Wallet } from '../game/currency';
@@ -52,7 +52,7 @@ export function StoreScreen({
   }, []);
 
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, useMenuPageArea()]}>
       {/* No coin count here — the shared HUD shows it on every screen. */}
       <View style={styles.header}>
         <Text style={styles.title}>Store</Text>
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(29,26,46,0.25)',
   },
   overlay: {
-    ...MENU_PAGE_AREA,
+    ...MENU_PAGE_EDGES,
     // Solid, not 96%: the arena used to show faintly through every
     // menu. Only the battle screen shows the board now.
     backgroundColor: THEME.ground,

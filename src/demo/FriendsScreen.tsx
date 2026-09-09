@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { MENU_PAGE_AREA } from './BottomNav';
+import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { Card, PrimaryButton, SecondaryButton } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -112,6 +112,8 @@ export function FriendsScreen({
   */
   const [actionError, setActionError] = useState<string | null>(null);
   const page: Page = showing ? 'profile' : 'list';
+  // Live: the bar's height changes when a folding phone is opened.
+  const pageArea = useMenuPageArea();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -257,7 +259,7 @@ export function FriendsScreen({
   }
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, pageArea]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/*
           A real way out. The tab bar is drawn over this page and would
@@ -468,12 +470,13 @@ function ProfileView({
   onRemove: () => void;
   onBlock: () => void;
 }) {
+  const pageArea = useMenuPageArea();
   const arena = ARENAS[profile.favouriteArena as keyof typeof ARENAS];
   const totalWins =
     (profile.wins?.easy ?? 0) + (profile.wins?.medium ?? 0) + (profile.wins?.hard ?? 0);
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, pageArea]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Pressable onPress={onBack} style={styles.back}>
           <Text style={styles.backText}>‹ Friends</Text>
@@ -536,7 +539,7 @@ function Stat({ label, value, text }: { label: string; value?: number; text?: st
 }
 
 const styles = StyleSheet.create({
-  page: { ...MENU_PAGE_AREA, backgroundColor: THEME.ground, zIndex: 20, paddingTop: 100 },
+  page: { ...MENU_PAGE_EDGES, backgroundColor: THEME.ground, zIndex: 20, paddingTop: 100 },
   scroll: { paddingHorizontal: 18, paddingBottom: 40 },
   title: { ...TYPE.title, color: THEME.ink, marginBottom: 14 },
 

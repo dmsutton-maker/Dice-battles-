@@ -37,6 +37,28 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-72-0-folding-phone',
+    date: '9 September 2026',
+    version: 'v1.72.0',
+    title: 'Ready for the folding iPhone',
+    emoji: '\ud83d\udcf1',
+    body:
+      'Apple announced a folding iPhone today, and the game had two ' +
+      'problems waiting for it.\n\n' +
+      'The first: the game works out how much room to leave at the ' +
+      'bottom for the bar you swipe up on, and it decided by height \u2014 ' +
+      'short screen, old phone, no bar. A folded phone is short and ' +
+      'definitely has the bar, so the buttons would have sat right on ' +
+      'top of it. It now recognises the four old phones by name and ' +
+      'assumes everything else has the bar.\n\n' +
+      'The second: it measured the screen once, when the game started, ' +
+      'because a phone never changed shape. Open a folding one and it ' +
+      'does. Everything now measures as it draws.\n\n' +
+      'Nobody has one yet, so this is groundwork rather than something ' +
+      'you will notice \u2014 and the same fix quietly helps anyone ' +
+      'running the game side by side with another app on an iPad.',
+  },
+  {
     id: 'v1-71-0-credits',
     date: '7 September 2026',
     version: 'v1.71.0',

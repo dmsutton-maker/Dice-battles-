@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
-import { BOTTOM_INSET } from '../game/safeArea';
+import { useBottomInset } from '../game/safeArea';
 import { BagIcon, BracketIcon, CrateIcon, DieIcon, RanksIcon } from '../ui/Icon';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 
@@ -51,8 +51,15 @@ export function BottomNav({
   active: Tab;
   onSelect: (tab: Tab) => void;
 }) {
+  const inset = useBottomInset();
   return (
-    <View style={styles.bar}>
+    <View
+      style={[
+        styles.bar,
+        // Live, because a fold changes both of these mid-session.
+        { height: BAR_CONTENT_HEIGHT + inset, paddingBottom: 18 + inset },
+      ]}
+    >
       {TABS.map((tab) => {
         const on = tab.id === active;
         return (
@@ -128,7 +135,18 @@ export function BottomNav({
  * labels sat in the home indicator strip and the row read as not fitting.
  */
 const BAR_CONTENT_HEIGHT = 82;
-export const BOTTOM_NAV_HEIGHT = BAR_CONTENT_HEIGHT + BOTTOM_INSET;
+
+/**
+ * The bar's total height, for THIS window size.
+ *
+ * A hook rather than a constant since 9 Sep 2026: a folding iPhone
+ * changes the home-indicator inset without relaunching the app, and a
+ * number worked out when this file was first imported keeps the old
+ * screen's answer for ever. See safeArea.ts.
+ */
+export function useBottomNavHeight(): number {
+  return BAR_CONTENT_HEIGHT + useBottomInset();
+}
 
 /**
  * The area a menu page gets: the whole screen ABOVE the bar.
@@ -142,13 +160,23 @@ export const BOTTOM_NAV_HEIGHT = BAR_CONTENT_HEIGHT + BOTTOM_INSET;
  *
  * A page's own paddingBottom is now just breathing room, not clearance.
  */
-export const MENU_PAGE_AREA = {
+/** The part that never changes, so it can still live in a StyleSheet. */
+export const MENU_PAGE_EDGES = {
   position: 'absolute',
   top: 0,
   left: 0,
   right: 0,
-  bottom: BOTTOM_NAV_HEIGHT,
 } as const;
+
+/**
+ * The area a menu page gets, for this window size. Spread it AFTER the
+ * page's own StyleSheet entry so the live `bottom` wins:
+ *
+ *     <View style={[styles.page, useMenuPageArea()]}>
+ */
+export function useMenuPageArea(): { bottom: number } {
+  return { bottom: useBottomNavHeight() };
+}
 
 const styles = StyleSheet.create({
   bar: {
@@ -156,12 +184,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: BOTTOM_NAV_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    // The original 18pt of breathing room, and then clear of the home
-    // indicator on top of it.
-    paddingBottom: 18 + BOTTOM_INSET,
+    // height and paddingBottom are applied at render — they depend on the
+    // home-indicator inset, which changes when a folding phone is opened.
     paddingTop: 6,
     backgroundColor: THEME.surface,
     borderTopWidth: SHAPE.line,

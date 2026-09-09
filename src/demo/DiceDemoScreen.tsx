@@ -126,8 +126,8 @@ import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
-import { BottomNav, BOTTOM_NAV_HEIGHT, Tab } from './BottomNav';
-import { BOTTOM_INSET } from '../game/safeArea';
+import { BottomNav, useBottomNavHeight, Tab } from './BottomNav';
+import { useBottomInset } from '../game/safeArea';
 import { NewsScreen } from './NewsScreen';
 import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
@@ -181,6 +181,10 @@ export function DiceDemoScreen() {
   const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
   // Whether the phone is actually showing the game — see useAppActive.
   const appActive = useAppActive();
+  // Both live: a folding phone changes the home-indicator inset, and
+  // therefore the bar's height, without the app relaunching.
+  const bottomInset = useBottomInset();
+  const navHeight = useBottomNavHeight();
 
   useEffect(() => {
     initSounds();
@@ -1677,7 +1681,10 @@ export function DiceDemoScreen() {
 
       {/* Player status HUD at the bottom, in the thumb zone. */}
       {phase === 'battle' && (
-        <View pointerEvents="none" style={styles.bottomHud}>
+        <View
+          pointerEvents="none"
+          style={[styles.bottomHud, { bottom: bottomInset + 12 }]}
+        >
           <View style={styles.resultRow}>
             {rolledFaces ? (
               <>
@@ -1733,7 +1740,7 @@ export function DiceDemoScreen() {
             (iPhone SE) still has to be able to reach the START button.
           */}
           <ScrollView
-            contentContainerStyle={styles.pickScroll}
+            contentContainerStyle={[styles.pickScroll, { paddingBottom: 64 + navHeight }]}
             showsVerticalScrollIndicator={false}
             bounces={false}
             scrollEnabled={pickOverflows}
@@ -2428,7 +2435,7 @@ const styles = StyleSheet.create({
     // the iPhone home-indicator inset. On a phone with a home button it
     // wasted 34pt of board for nothing. Derived now, so it is right on
     // purpose rather than by accident.
-    bottom: BOTTOM_INSET + 12,
+    // bottom is applied at render — see safeArea.ts, a fold changes it.
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -2545,7 +2552,7 @@ const styles = StyleSheet.create({
     // fits, since justifyContent centres inside flexGrow.
     paddingTop: 100,
     // Clear of the bottom bar, or START BATTLE sits behind it.
-    paddingBottom: 64 + BOTTOM_NAV_HEIGHT,
+    // paddingBottom is applied at render, for the same reason.
     paddingHorizontal: 4,
   },
   startButton: {

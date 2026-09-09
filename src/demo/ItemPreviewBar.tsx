@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BOTTOM_INSET } from '../game/safeArea';
+import { useBottomInset } from '../game/safeArea';
 import { CloseIcon } from '../ui/Icon';
 import { SHAPE, THEME } from '../ui/theme';
 import { CoinLabel } from './GoldCoin';
@@ -37,6 +37,7 @@ export function ItemPreviewBar({
   onAct: () => void;
   onClose: () => void;
 }) {
+  const inset = useBottomInset();
   const pressable = isActionPressable(action);
   const label = actionLabel(action);
   const showsCoin =
@@ -64,7 +65,7 @@ export function ItemPreviewBar({
         <View style={styles.back} />
       </View>
 
-      <View style={styles.bottom}>
+      <View style={[styles.bottom, { marginBottom: inset + 16 }]}>
         <Pressable
           style={[
             styles.action,
@@ -161,7 +162,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginHorizontal: 14,
-    marginBottom: BOTTOM_INSET + 16,
+    // marginBottom is applied at render — it tracks the home-indicator
+    // inset, which changes when a folding phone is opened.
   },
   action: {
     minWidth: 220,
