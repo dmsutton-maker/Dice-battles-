@@ -10,6 +10,15 @@ import {
   scanIndexAt,
   stageAt,
 } from '../game/matchmaking';
+import {
+  isSearchOver,
+  searchProgress,
+  searchesForPlayers,
+  secondsShown,
+  SEARCH_POLL_MS,
+  type Pairing,
+} from '../game/matchSearch';
+import { findWaitingPlayer } from '../game/onlineMatch';
 
 
 /**
@@ -21,11 +30,25 @@ import {
  */
 export function MatchmakingOverlay({
   opponent,
+  trophies,
   onDone,
 }: {
   opponent: AiOpponent;
+  /** Decides whether a search for a real player happens at all. */
+  trophies: number;
   onDone: () => void;
 }) {
+  /*
+    Below the trophy floor there is no search: it is a bot, immediately,
+    which is the point of the floor. Above it the game looks for a real
+    player — but only where there is somewhere to look. See
+    onlineMatch.ts: with no matchmaking service the honest answer is that
+    the question cannot be asked, and a fifteen-second wait for an answer
+    that was never coming is theatre.
+  */
+  const [pairing, setPairing] = useState<Pairing | null>(
+    searchesForPlayers(trophies) ? null : { kind: 'bot', reason: 'below-threshold' },
+  );
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(Date.now());
   const finished = useRef(false);
@@ -33,10 +56,50 @@ export function MatchmakingOverlay({
   done.current = onDone;
 
   useEffect(() => {
+    if (pairing !== null) return;
+    let live = true;
+    const ask = async () => {
+      const found = await findWaitingPlayer();
+      if (!live || found === null) return;
+      setPairing(found);
+    };
+    void ask();
+    const id = setInterval(() => void ask(), SEARCH_POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(id);
+    };
+  }, [pairing]);
+
+  // Waiting for people is the only thing that takes fifteen seconds. Once
+  // the pairing is settled the overlay is the reveal it has always been.
+  const waiting = pairing === null;
+  const waitingRef = useRef(waiting);
+  waitingRef.current = waiting;
+
+  /*
+    When the pairing settles, the reveal starts from THERE rather than
+    from when the search began — otherwise a search that took ten seconds
+    would skip straight past the reveal into the countdown, and nobody
+    would see who they were playing.
+  */
+  const settledAt = useRef(0);
+  useEffect(() => {
+    if (pairing !== null && settledAt.current === 0) {
+      settledAt.current = Date.now() - startedAt.current;
+    }
+  }, [pairing]);
+
+  useEffect(() => {
     const id = setInterval(() => {
       const next = Date.now() - startedAt.current;
       setElapsed(next);
-      if (isComplete(next) && !finished.current) {
+      if (waitingRef.current) {
+        // Out of time: take the bot rather than keep somebody staring.
+        if (isSearchOver(next)) setPairing({ kind: 'bot', reason: 'nobody-found' });
+        return;
+      }
+      if (isComplete(next - settledAt.current) && !finished.current) {
         finished.current = true;
         clearInterval(id);
         done.current();
@@ -45,8 +108,10 @@ export function MatchmakingOverlay({
     return () => clearInterval(id);
   }, []);
 
-  const stage = stageAt(elapsed);
-  const scanning = stage === 'scanning';
+  // The reveal's own clock starts when the pairing settles.
+  const revealElapsed = waiting ? 0 : elapsed - settledAt.current;
+  const stage = stageAt(revealElapsed);
+  const scanning = waiting || stage === 'scanning';
   const shown = scanning
     ? AI_ROSTER[scanIndexAt(elapsed, AI_ROSTER.length)]
     : opponent;
@@ -54,7 +119,11 @@ export function MatchmakingOverlay({
   return (
     <View style={styles.overlay}>
       <Text style={styles.kicker}>
-        {scanning ? `FINDING YOUR OPPONENT${dotsAt(elapsed)}` : 'YOUR OPPONENT'}
+        {waiting
+          ? `LOOKING FOR A PLAYER${dotsAt(elapsed)}`
+          : scanning
+            ? `FINDING YOUR OPPONENT${dotsAt(elapsed)}`
+            : 'YOUR OPPONENT'}
       </Text>
 
       <View style={[styles.card, !scanning && styles.cardFound]}>
@@ -65,14 +134,22 @@ export function MatchmakingOverlay({
       </View>
 
       <Text style={styles.footer}>
-        {scanning ? ' ' : 'Get ready to battle!'}
+        {waiting
+          ? `${secondsShown(elapsed)}s — a rival is picked if nobody joins`
+          : scanning
+            ? ' '
+            : 'Get ready to battle!'}
       </Text>
 
       <View style={styles.track}>
         <View
           style={[
             styles.fill,
-            { width: `${Math.min(100, (elapsed / MATCH_TOTAL_MS) * 100)}%` },
+            {
+              width: waiting
+                ? `${searchProgress(elapsed) * 100}%`
+                : `${Math.min(100, (revealElapsed / MATCH_TOTAL_MS) * 100)}%`,
+            },
           ]}
         />
       </View>

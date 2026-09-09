@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.73.0 — 2026-09-09 · requested by David
+
+Three things: a trophy floor for bot-only games, a fifteen-second search
+before falling back to a bot, and the golf ball redrawn.
+
+### Added
+- **Every game below 100 trophies is against a bot**, with no search at
+  all — a beginner presses Start and is in a battle. The floor is about
+  the first hour: losing your first games to somebody who already owns
+  the ladder is how a player stops playing, and 100 is where the first
+  trophy reward already sits.
+- **A fifteen-second search above the floor**, counting up, with the bar
+  filling once over the wait and a fallback to a rival when it expires.
+  The reveal has its own clock, started when the pairing settles, so a
+  long search cannot eat the "here is who you are playing" beat.
+- `src/game/matchSearch.ts` (the rule), `src/game/onlineMatch.ts` (the
+  switch), and `tests/matchSearch.test.ts`. The floor and the no-service
+  honesty were both verified by breaking them and watching the right
+  test fail.
+
+### The part that has to be said plainly
+**There is no online play in this game, so there is nobody for the
+search to find.** No matchmaking server, no shared round; the opponent's
+rolls come from a timer in `ai.ts`. `matchmaking.ts` has said so in its
+own header since it was written, and deliberately never used the words
+"searching for players online" because that is a promise the game cannot
+keep to an audience that includes five-year-olds.
+
+So the rule is written in full and tested, and the one step it cannot
+take is behind the same kind of switch the adverts and purchases use.
+**While it is off nobody waits fifteen seconds for an answer that was
+never coming** — the lookup returns "there is nowhere to ask" on its
+first call and the round begins as it always has. A made-up wait ending
+in a made-up disappointment would be worse than not building it.
+
+`onlineMatch.ts` writes down what turning it on actually needs: a queue
+two players can be paired out of (small — the Supabase project already
+holds profiles), a shared round both phones agree on including what
+happens when one walks into a lift (large), and a rethink of what the
+opponent's rolls are when they arrive over a network instead of from a
+timer. Unlike the adverts, this is a feature, not a flag.
+
+### Fixed
+- **The golf ball looks like a golf ball.** The navy diagonal band is
+  gone — rendered, it was a hard-aliased slash across every face rather
+  than a stripe on a ball, and its justification (that a plain white cube
+  would be mistaken for the baseball) never held, since the baseball is
+  cream with bold red stitching. The dimples now carry it alone: shaded
+  from the real normal of a shallow bowl, held to unit length by building
+  it from an angle, on a shell dropped off pure white so the lit wall of
+  each pit has somewhere brighter to go. Three earlier approaches are
+  recorded in the file with what each got wrong.
+
 ## v1.72.0 — 2026-09-09 · requested by David
 
 Apple announced the iPhone Duo, a book-style folding iPhone, this

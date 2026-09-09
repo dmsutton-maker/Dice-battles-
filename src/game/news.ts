@@ -37,6 +37,28 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-73-0-pairing',
+    date: '9 September 2026',
+    version: 'v1.73.0',
+    title: 'Your first hundred trophies are yours',
+    emoji: '\ud83c\udfc1',
+    body:
+      'Under 100 trophies you are always matched with a rival the game ' +
+      'picks, never thrown in against somebody who already owns the ' +
+      'ladder. Losing your first few battles to an expert is how people ' +
+      'stop playing, and the first hundred trophies should belong to ' +
+      'learning the game.\n\n' +
+      'Above 100, the game is now built to spend up to fifteen seconds ' +
+      'looking for another person before picking a rival instead \u2014 ' +
+      'with a timer counting up so you can see how long is left.\n\n' +
+      'Being straight with you: there is nobody to find yet. Playing ' +
+      'against another person over the internet does not exist in this ' +
+      'game, so the search has nowhere to look and goes straight to your ' +
+      'rival rather than making you watch a countdown that was never ' +
+      'going to end any other way. The rule is written and waiting for ' +
+      'the day it can do something.',
+  },
+  {
     id: 'v1-72-0-folding-phone',
     date: '9 September 2026',
     version: 'v1.72.0',

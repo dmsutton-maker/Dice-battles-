@@ -1807,7 +1807,11 @@ export function DiceDemoScreen() {
         </View>
       )}
       {phase === 'matching' && (
-        <MatchmakingOverlay opponent={opponent} onDone={beginCountdown} />
+        <MatchmakingOverlay
+          opponent={opponent}
+          trophies={trophies}
+          onDone={beginCountdown}
+        />
       )}
 
       {phase === 'arm' && (
