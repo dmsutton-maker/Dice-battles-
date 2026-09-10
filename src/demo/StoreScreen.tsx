@@ -9,6 +9,7 @@ import { recallScroll, rememberScroll } from './menuScroll';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { COIN_REWARDS, Wallet } from '../game/currency';
 import { rangeLabel } from '../game/rewards';
+import { useGridCardWidth } from './grid';
 import { playClick } from '../audio/sounds';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
@@ -57,6 +58,8 @@ export function StoreScreen({
   hidden = false,
 }: StoreScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
+  // Live: a fold changes how many cards fit across.
+  const cardWidth = useGridCardWidth();
   // Restore before the first paint the player sees.
   useEffect(() => {
     const y = recallScroll('store');
@@ -117,6 +120,7 @@ export function StoreScreen({
                 }}
                 style={[
                   styles.card,
+                  { width: cardWidth },
                   bought && styles.cardOwned,
                   !bought && !affordable && styles.cardLocked,
                 ]}
@@ -159,6 +163,7 @@ export function StoreScreen({
                 }}
                 style={[
                   styles.card,
+                  { width: cardWidth },
                   bought && styles.cardOwned,
                   !bought && !affordable && styles.cardLocked,
                 ]}
@@ -258,7 +263,7 @@ const styles = StyleSheet.create({
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   card: {
-    width: '31%',
+    // width comes from useGridCardWidth() at the call site — see grid.ts.
     borderRadius: SHAPE.radius,
     paddingVertical: 10,
     paddingHorizontal: 6,

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
+import { useGridCardWidth } from './grid';
 import { playClick } from '../audio/sounds';
 import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { recallScroll, rememberScroll } from './menuScroll';
@@ -63,6 +64,8 @@ export function InventoryScreen({
   hidden = false,
 }: InventoryScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
+  // Live: a fold changes how many cards fit across.
+  const cardWidth = useGridCardWidth();
   // Restore before the first paint the player sees.
   useEffect(() => {
     const y = recallScroll('inventory');
@@ -111,6 +114,7 @@ export function InventoryScreen({
                 }}
                 style={[
                   styles.card,
+                  { width: cardWidth },
                   equipped && styles.cardEquipped,
                   !unlocked && styles.cardLocked,
                 ]}
@@ -172,6 +176,7 @@ export function InventoryScreen({
                 }}
                 style={[
                   styles.card,
+                  { width: cardWidth },
                   equipped && styles.cardEquipped,
                   !unlocked && styles.cardLocked,
                 ]}
@@ -289,7 +294,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   card: {
-    width: '31%',
+    // width comes from useGridCardWidth() at the call site — see grid.ts.
     borderRadius: SHAPE.radius,
     paddingVertical: 10,
     paddingHorizontal: 6,

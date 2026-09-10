@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.79.0 — 2026-09-10 · requested by David
+
+"I don't know what you are asking me — can you do all this?"
+
+The Mac-and-Xcode instructions in v1.78.0 were a set of chores handed
+back rather than an answer. This does the looking here instead, with no
+Mac involved, and the first thing it found was a real fault.
+
+### Added
+- **`tools/duo-preview`** — renders the real menu screens and the real
+  bottom navigation through `react-native-web` at the Duo's exact point
+  sizes, and writes a PNG of each. The browser viewport IS the phone, so
+  `useWindowDimensions` reports 474x696 or 640x904 and the page is laid
+  out as a Duo rather than scaled to look like one. `Platform.OS` is
+  forced to `ios` at the module boundary, because react-native-web
+  honestly answers `web` and would send the inset down the 12pt Android
+  branch instead of the 34pt iPhone one — a preview drawing the tab row
+  22pt low is worse than none.
+
+### Fixed
+- **The card grids use the width they are given.** Every grid in
+  Inventory and the Store was `width: '31%'`, which is three columns at
+  any size. Three is a fact about a 390pt phone, not about the game: at
+  640pt across it made a 190pt card with a 58pt thumbnail adrift in the
+  middle, and showed twelve items where twenty fit. The column count now
+  follows the screen (`src/demo/gridRules.ts`), aiming at a 160pt card.
+  - **Nothing changes on any iPhone.** 320pt through 440pt all still get
+    exactly three columns, and a 393pt screen moves from a 112pt card to
+    a 113pt one. A test asserts that for every one of those widths, so
+    the change cannot quietly reach the hardware the family holds.
+  - The unfolded Duo gets four columns at 144pt. An iPad — which has had
+    this problem since the day `supportsTablet` was switched on, and
+    which nobody had looked at — gets five at 190pt.
+  - Card widths are POINTS now, not a percentage. A percentage cannot
+    know about the 10pt gaps between cards, which is why the old number
+    was a hand-tuned 31% rather than 33%; a test walks every width from
+    320pt to 1366pt and checks a row plus its gaps still fits.
+
+### Worth writing down
+This is the fault that reasoning does not find. `width: '31%'` was not a
+bug, a typo, or a shortcut — it did exactly what it said, correctly, on
+every screen that existed when it was written. It only became wrong when
+the hardware changed, and the only way to notice was to look at a
+picture. v1.72.0 said as much and had no way to act on it. Now there is
+one.
+
 ## v1.78.0 — 2026-09-10 · requested by David
 
 "This session is now on a Mac with Xcode — how can we load the app in

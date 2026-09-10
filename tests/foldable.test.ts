@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import * as THREE from 'three';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { bottomInsetFor, hasHomeButton, IPHONE_INDICATOR } from '../src/game/safeAreaRules';
+import { gridCardWidth, gridColumns, GRID_EDGE, GRID_GAP, MAX_COLUMNS } from '../src/demo/gridRules';
 import { fitCamera } from '../src/demo/cameraFit';
 import { FIGURE_RADIUS, JAIL_SLOTS, RETREAT_SLOTS } from '../src/game/stations';
 
@@ -256,5 +257,70 @@ suite('foldable · the on-screen ruler', () => {
       !/Dimensions\.get/.test(ruler),
       'the ruler reads Dimensions.get, which freezes at module scope',
     );
+  });
+});
+
+suite('foldable · the card grids use the extra width', () => {
+  /*
+    Found by looking rather than by reasoning, which is the whole point
+    of tools/duo-preview: at 640pt across, `width: '31%'` gave a 190pt
+    card with a 58pt thumbnail marooned in it. Three columns is a fact
+    about a 390pt phone, not a fact about the game.
+  */
+
+  test('every real iPhone still gets exactly three columns', () => {
+    // The safety property. This change is meant to be invisible on the
+    // hardware the family actually holds.
+    for (const width of [320, 375, 390, 393, 402, 414, 428, 430, 440]) {
+      assertEqual(gridColumns(width), 3, `${width}pt should stay at three columns`);
+    }
+    note('320-440pt: three columns, unchanged');
+  });
+
+  test('the folded Duo stays at three and the unfolded one gains a fourth', () => {
+    assertEqual(gridColumns(DUO_FOLDED.w), 3, 'the folded Duo is still phone-shaped');
+    assertEqual(gridColumns(DUO_UNFOLDED.w), 4, 'the unfolded Duo should use the room');
+    note(
+      `folded ${gridColumns(DUO_FOLDED.w)} columns at ${gridCardWidth(DUO_FOLDED.w)}pt, ` +
+        `unfolded ${gridColumns(DUO_UNFOLDED.w)} at ${gridCardWidth(DUO_UNFOLDED.w)}pt`,
+    );
+  });
+
+  test('a row of cards and their gaps always fits the screen', () => {
+    /*
+      The bug a percentage invites: 33% x 3 plus two 10pt gaps overflows,
+      which is why the old value was a hand-tuned 31%. Points do the
+      arithmetic instead, so check the arithmetic.
+    */
+    for (let width = 320; width <= 1366; width += 1) {
+      const columns = gridColumns(width);
+      const row = gridCardWidth(width) * columns + GRID_GAP * (columns - 1);
+      assert(
+        row <= width - GRID_EDGE * 2,
+        `${width}pt: a row of ${columns} is ${row}pt inside ${width - GRID_EDGE * 2}pt`,
+      );
+    }
+  });
+
+  test('cards never get silly at either end', () => {
+    // An iPad is 1024pt wide and would otherwise ask for six or seven
+    // columns of postage stamps; a narrow split view would ask for one.
+    for (let width = 300; width <= 1366; width += 1) {
+      const columns = gridColumns(width);
+      assert(columns >= 3 && columns <= MAX_COLUMNS, `${width}pt asked for ${columns} columns`);
+      assert(gridCardWidth(width) > 58, `${width}pt: card narrower than its 58pt thumbnail`);
+    }
+    note(`iPad 1024pt: ${gridColumns(1024)} columns at ${gridCardWidth(1024)}pt`);
+  });
+
+  test('the screens ask for the width live, so a fold re-flows the grid', () => {
+    for (const file of ['src/demo/InventoryScreen.tsx', 'src/demo/StoreScreen.tsx']) {
+      const text = src(file);
+      assert(/useGridCardWidth\(\)/.test(text), `${file} does not use useGridCardWidth`);
+      assert(
+        !/width: '31%'/.test(text),
+        `${file} still has the fixed 31% card, which cannot re-flow`,
+      );
+    }
   });
 });
