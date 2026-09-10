@@ -37,6 +37,24 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-74-0-friends-corner',
+    date: '10 September 2026',
+    version: 'v1.74.0',
+    title: 'Friends is one tap away now',
+    emoji: '\ud83d\udc65',
+    body:
+      'Friends has moved to the top corner of the home screen, where the ' +
+      'question mark used to be. It was two taps deep behind the Ranks ' +
+      'tab, which is a long way for the thing you check most often.\n\n' +
+      'How to play went the other way, into Settings. It opens by itself ' +
+      'the first time you ever play and most people never need it again, ' +
+      'so it was holding a permanent button for a one-off \u2014 and ' +
+      'Settings is where you look for the thing you want once in a ' +
+      'while. It is still there whenever you want it.\n\n' +
+      'And when you type in a friend code, the dash now puts itself in ' +
+      'after the first four. One less thing to remember.',
+  },
+  {
     id: 'v1-73-0-pairing',
     date: '9 September 2026',
     version: 'v1.73.0',

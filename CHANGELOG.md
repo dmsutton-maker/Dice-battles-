@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.74.0 — 2026-09-10 · requested by David
+
+Three small things, one of which turned out to be a trap.
+
+### Changed
+- **Friends took How to play's slot** in the top-right corner of the home
+  screen, and **How to play moved into Settings**. The swap is the right
+  way round: How to play opens itself on a first launch and most people
+  never need it again, so it was holding a permanent button for a
+  one-off, while Friends is somewhere you go back to and was two taps
+  deep behind the Ranks tab. Friends is no longer a button on Ranks —
+  it moved rather than being duplicated.
+- **The dash types itself** into the friend-code box after the first four
+  characters. The code is printed with a dash everywhere else in the
+  game, so a box without one looked like the wrong box.
+
+### The trap, caught by an existing test
+Friends was closed by `if (menuTab !== 'leaderboard') setShowFriends(false)`,
+which was correct while the only door in was a button on the Ranks page.
+The home screen has no menu tab at all, so with Friends moved to the
+corner that rule would have opened the page and shut it in the same
+breath — one tap, nothing happens, no way to tell why. It now compares
+against the PREVIOUS tab: standing still keeps Friends open, navigating
+away closes it, so the tab highlight and the screen still cannot
+disagree. Its back button says "‹ Back" rather than "‹ Ranks", since it
+can now be opened from anywhere.
+
+### Why the dash waits for the fifth character
+Adding a trailing dash the moment the fourth lands breaks the delete key:
+the field reads `K7M2-`, the delete removes the dash, and the formatter
+puts it straight back — the caret sticks and the only way out is to clear
+the whole box. Grouping only BETWEEN characters means every delete
+removes something. Same rule a card-number field follows, for the same
+reason, and there is a test that fails on the naive version.
+
+### Added
+- `typedFriendCode()` in `friendCodes.ts`, and six tests covering the
+  dash, backspace, paste, the eight-character cap, and confusable letters
+  (O→0, I→1) being fixed as they are typed rather than silently at lookup
+  time — so what the box shows is always what gets searched for.
+- `FriendsIcon` in `Icon.tsx`, drawn rather than an emoji like every
+  other icon here.
+
 ## v1.73.0 — 2026-09-09 · requested by David
 
 Three things: a trophy floor for bot-only games, a fifteen-second search

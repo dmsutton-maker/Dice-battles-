@@ -17,7 +17,11 @@ import { DiceSwatch } from './DiceSwatch';
 import { ARENAS } from '../arena/arenas';
 import { skinById } from '../game/diceSkins';
 import { MODES, MODE_ORDER } from '../game/modes';
-import { formatFriendCode, normaliseFriendCode } from '../game/friendCodes';
+import {
+  formatFriendCode,
+  normaliseFriendCode,
+  typedFriendCode,
+} from '../game/friendCodes';
 import type { Identity } from '../game/playerIdentity';
 import type { PublicProfile } from '../game/friends';
 import {
@@ -268,7 +272,7 @@ export function FriendsScreen({
           their Done buttons sat invisible under the bar.
         */}
         <Pressable onPress={onClose} style={styles.back}>
-          <Text style={styles.backText}>‹ Ranks</Text>
+          <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
         <Text style={styles.title}>Friends</Text>
 
@@ -306,12 +310,14 @@ export function FriendsScreen({
           <TextInput
             style={styles.input}
             value={code}
-            onChangeText={setCode}
+            // The dash puts itself in — see typedFriendCode.
+            onChangeText={(text) => setCode(typedFriendCode(text))}
             placeholder="Their code, like K7M2-9XPQ"
             placeholderTextColor={THEME.inkFaint}
             autoCapitalize="characters"
             autoCorrect={false}
-            maxLength={12}
+            // Eight characters and the one dash between them.
+            maxLength={9}
           />
           {found ? (
             <View style={styles.foundRow}>

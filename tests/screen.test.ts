@@ -1309,20 +1309,37 @@ suite('release · the version number is real', () => {
     }
   });
 
-  test('Friends closes when you leave the Ranks tab', () => {
-    // It used to be drawn on `showFriends && me` alone, so tapping Store
-    // moved the highlight and left Friends covering the screen.
+  test('Friends closes when you navigate away, but not the moment it opens', () => {
+    /*
+      Two failures, one either side of the same line.
+
+      Drawn on `showFriends && me` alone, tapping Store moved the tab
+      highlight and left Friends covering the screen. Closed on
+      `menuTab !== 'leaderboard'`, which is what fixed that, Friends
+      became unopenable from the home-screen button added on 10 Sep 2026
+      — the home screen has no menu tab, so the page opened and shut in
+      the same breath.
+
+      Comparing against the PREVIOUS tab is what satisfies both: standing
+      still keeps it open, moving closes it.
+    */
     const screen = readFileSync(
       join(root, 'src/demo/DiceDemoScreen.tsx'),
       'utf8',
     );
     assert(
-      screen.includes("showFriends && me && menuTab === 'leaderboard'"),
-      'Friends is still drawn without checking which tab is showing',
+      !screen.includes("if (menuTab !== 'leaderboard') setShowFriends(false)"),
+      'Friends is closed whenever the Ranks tab is not showing, so the ' +
+        'home-screen button cannot open it at all',
     );
     assert(
-      screen.includes("if (menuTab !== 'leaderboard') setShowFriends(false)"),
-      'leaving the Ranks tab never closes the Friends page',
+      /tabBeforeRef\.current !== menuTab/.test(screen),
+      'nothing compares the tab against the previous one',
+    );
+    assert(
+      /if \(moved\) setShowFriends\(false\)/.test(screen),
+      'navigating away no longer closes the Friends page, so the tab ' +
+        'highlight and the screen can disagree',
     );
   });
 

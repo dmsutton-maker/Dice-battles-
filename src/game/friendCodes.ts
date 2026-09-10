@@ -90,3 +90,38 @@ export function formatFriendCode(code: string): string {
   if (clean.length !== CODE_LENGTH) return code;
   return `${clean.slice(0, 4)}-${clean.slice(4)}`;
 }
+
+/**
+ * What to show in the box while somebody is still typing a code.
+ *
+ * David, 10 Sep 2026: put the dash in for them after the first four.
+ * Typing eight characters and remembering a separator is a lot to ask of
+ * a child copying a code off a bit of paper, and the code is PRINTED
+ * with the dash everywhere else in the game — so a box that does not
+ * have one looks like the wrong box.
+ *
+ * THE DASH APPEARS ON THE FIFTH CHARACTER, NOT THE FOURTH, and that is
+ * deliberate rather than an off-by-one. Adding a trailing dash the
+ * moment the fourth lands breaks the backspace key: the field would read
+ * "K7M2-", the delete would take the dash off, and this function would
+ * put it straight back, so the caret sticks and the only way out is to
+ * clear the whole box. Grouping only BETWEEN characters means every
+ * delete removes something. It is the same rule a card-number field
+ * follows, for the same reason.
+ *
+ * Confusables are fixed as they are typed — O becomes 0, I becomes 1 —
+ * because `normaliseFriendCode` already accepts them when the code is
+ * looked up. Correcting silently at the end would show one thing and
+ * search for another; correcting under the finger is at least honest,
+ * and it stops somebody typing a letter that can never match.
+ */
+export function typedFriendCode(input: string): string {
+  if (typeof input !== 'string') return '';
+  let clean = '';
+  for (const ch of input.toUpperCase().replace(/[^0-9A-Z]/g, '')) {
+    if (clean.length === CODE_LENGTH) break;
+    clean += CONFUSABLE[ch] ?? ch;
+  }
+  if (clean.length <= 4) return clean;
+  return `${clean.slice(0, 4)}-${clean.slice(4)}`;
+}

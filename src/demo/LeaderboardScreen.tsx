@@ -86,10 +86,6 @@ interface LeaderboardScreenProps {
   trophies: number;
   wins: Record<AiDifficultyId, number>;
   modeWins: Record<ModeId, number>;
-  /** Opens the Friends page. */
-  onFriends: () => void;
-  /** False until the device identity has been read — see the button. */
-  friendsReady?: boolean;
 }
 
 const DIFFICULTIES: { id: AiDifficultyId; label: string }[] = [
@@ -102,8 +98,6 @@ export function LeaderboardScreen({
   trophies,
   wins,
   modeWins,
-  onFriends,
-  friendsReady = true,
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
   const totalWins = DIFFICULTIES.reduce((sum, d) => sum + wins[d.id], 0);
@@ -265,21 +259,13 @@ export function LeaderboardScreen({
             )}
             <View style={styles.gcButtons}>
               {/*
-                Friends live here rather than in the tab bar. The bar is
-                five cells on purpose — seven left about 53pt each on a
-                small phone and five leave 75 — and a sixth would undo
-                that. Ranks is also where the rest of the social side
-                already is, so it is where somebody would look.
+                Friends used to be the first button here. It moved to the
+                corner of the home screen on 10 Sep 2026 (David's call),
+                taking How to play's slot — it is somewhere people go back
+                to repeatedly, and two taps behind a tab was too far. The
+                bar is still five cells on purpose, so it did not become a
+                sixth tab.
               */}
-              <Pressable
-                style={[styles.gcButton, !friendsReady && styles.gcButtonWaiting]}
-                onPress={friendsReady ? onFriends : undefined}
-                disabled={!friendsReady}
-              >
-                <Text style={styles.gcButtonText}>
-                  {friendsReady ? 'Friends' : 'Friends — one moment'}
-                </Text>
-              </Pressable>
               <Pressable style={styles.gcButton} onPress={openLeaderboard}>
                 <Text style={styles.gcButtonText}>World ranking</Text>
               </Pressable>

@@ -21,6 +21,7 @@ import {
   visibleProfile,
 } from '../src/game/friends';
 import { ANONYMOUS_NAME, isLocalId, loadIdentity, resetIdentityForTest } from '../src/game/playerIdentity';
+import { typedFriendCode } from '../src/game/friendCodes';
 
 /**
  * Friends, and the promises this game makes about children's data.
@@ -590,5 +591,74 @@ suite('friends · the client survives a bad network', () => {
       source.includes('controller?.abort()') && source.includes('signal: controller?.signal'),
       'the timeout is declared but never wired to the fetch',
     );
+  });
+});
+
+suite('friends · the dash types itself', () => {
+  /*
+    David, 10 Sep 2026: put the dash in after the first four. The code is
+    printed WITH a dash everywhere else in the game, so a box without one
+    looks like the wrong box — and remembering a separator is a lot to
+    ask of a child copying a code off a bit of paper.
+  */
+  test('four characters, then the dash appears on the fifth', () => {
+    assertEqual(typedFriendCode('K'), 'K', 'one');
+    assertEqual(typedFriendCode('K7M2'), 'K7M2', 'four, no dash yet');
+    assertEqual(typedFriendCode('K7M29'), 'K7M2-9', 'the fifth brings the dash');
+    assertEqual(typedFriendCode('K7M29XPQ'), 'K7M2-9XPQ', 'all eight');
+  });
+
+  test('BACKSPACE STILL WORKS, which is why the dash waits for the fifth', () => {
+    /*
+      THE WHOLE REASON FOR THE OFF-BY-ONE.
+
+      Put a trailing dash in the moment the fourth character lands and
+      the delete key stops working: the field reads "K7M2-", the delete
+      removes the dash, and the formatter puts it straight back. The
+      caret sticks and the only way out is to clear the whole box.
+
+      A delete gives this function the text with one character already
+      gone, so these are what the field is handed mid-backspace.
+    */
+    assertEqual(typedFriendCode('K7M2-'), 'K7M2', 'deleting the dash re-added it');
+    assertEqual(typedFriendCode('K7M2-9'), 'K7M2-9', 'stable while there is a fifth');
+    assertEqual(typedFriendCode('K7M'), 'K7M', 'deleting back past four');
+    assertEqual(typedFriendCode(''), '', 'cleared');
+  });
+
+  test('it never lets somebody type more than a code', () => {
+    assertEqual(typedFriendCode('K7M29XPQZZZZ'), 'K7M2-9XPQ', 'capped at eight');
+  });
+
+  test('a pasted code with its own dash is not doubled', () => {
+    assertEqual(typedFriendCode('K7M2-9XPQ'), 'K7M2-9XPQ', 'paste with dash');
+    assertEqual(typedFriendCode('k7m2 9xpq'), 'K7M2-9XPQ', 'paste with a space, lower case');
+  });
+
+  test('confusable letters are fixed under the finger, not silently later', () => {
+    /*
+      The alphabet has no I, L, O or U. normaliseFriendCode already
+      accepts them and swaps them when the code is looked up — so
+      correcting only at that point would show one thing on screen and
+      search for another. Correcting as it is typed is at least honest,
+      and it stops somebody entering a letter that could never match.
+    */
+    const typed = typedFriendCode('OI7M29XP');
+    assertEqual(typed, normaliseFriendCode(typed) ? typed : 'INVALID', 'still a valid code');
+    assert(!/[ILOU]/.test(typed), `a confusable letter survived: ${typed}`);
+  });
+
+  test('whatever the box shows is what gets looked up', () => {
+    // The end of the chain: anything this produces at full length must
+    // be something normaliseFriendCode accepts, or the search fails on
+    // text the player can see is right.
+    for (const raw of ['K7M29XPQ', 'k7m2-9xpq', 'OI7M29XP', '0123456789']) {
+      const typed = typedFriendCode(raw);
+      if (typed.replace('-', '').length !== 8) continue;
+      assert(
+        normaliseFriendCode(typed) !== null,
+        `the box would show "${typed}" and the lookup would reject it`,
+      );
+    }
   });
 });

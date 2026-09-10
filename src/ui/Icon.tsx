@@ -417,6 +417,61 @@ export function RanksIcon({ size = 22, color = THEME.ink }: IconProps) {
   );
 }
 
+/**
+ * Two people side by side — Friends.
+ *
+ * Added 10 Sep 2026, when David moved Friends up into the corner row and
+ * How to play down into Settings. Drawn rather than an emoji, like every
+ * other icon here, so it looks the same on every phone.
+ *
+ * The far figure is smaller, set back and behind: two identical heads
+ * side by side read as a pause button at 19pt, which is the size these
+ * are actually used at.
+ */
+export function FriendsIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const person = (
+    left: number,
+    scale: number,
+    tint: string,
+    key: string,
+  ) => (
+    <View key={key} style={{ position: 'absolute', left: size * left, top: size * (0.5 - 0.34 * scale) }}>
+      {/* Head */}
+      <View
+        style={{
+          width: size * 0.3 * scale,
+          height: size * 0.3 * scale,
+          borderRadius: size * 0.15 * scale,
+          backgroundColor: tint,
+          borderWidth: s * 0.55,
+          borderColor: color,
+        }}
+      />
+      {/* Shoulders, a dome tucked under the head */}
+      <View
+        style={{
+          width: size * 0.46 * scale,
+          height: size * 0.3 * scale,
+          marginLeft: -size * 0.08 * scale,
+          marginTop: size * 0.05 * scale,
+          borderTopLeftRadius: size * 0.23 * scale,
+          borderTopRightRadius: size * 0.23 * scale,
+          backgroundColor: tint,
+          borderWidth: s * 0.55,
+          borderColor: color,
+        }}
+      />
+    </View>
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {person(0.42, 0.82, ICON.silver, 'back')}
+      {person(0.06, 1, ICON.leather, 'front')}
+    </View>
+  );
+}
+
 /** A gear — Settings. */
 export function GearIcon({ size = 22, color = THEME.ink, fill = ICON.steel }: IconProps) {
   const s = w(size);

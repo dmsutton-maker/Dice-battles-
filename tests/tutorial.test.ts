@@ -101,13 +101,33 @@ suite('tutorial · it opens once and stays reachable', () => {
     assertEqual(await loadTutorialSeen(), true, 'not remembered across a launch');
   });
 
-  test('it is still one tap away after that', () => {
-    // The automatic showing is a one-off; the button is forever. Losing
-    // the button would leave the rules unreachable for anyone handed the
-    // phone later.
+  test('it is still reachable after that, from Settings', () => {
+    /*
+      The automatic showing is a one-off; a way back in is forever.
+      Losing it would leave the rules unreachable for anyone handed the
+      phone later.
+
+      It lived in the corner row until 10 Sep 2026, when David moved it
+      into Settings and gave its slot to Friends. Which is the right way
+      round — this opens itself on a first launch and most people never
+      want it again, while Friends is somewhere you go back to — but it
+      means the button must be findable in the Settings panel now, and
+      this test follows it there rather than pinning where it used to be.
+    */
+    const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    assert(
+      /onPress=\{\(\) => setPopup\('howto'\)\}/.test(screen),
+      'nothing opens the how-to-play page any more',
+    );
+    assert(
+      /<Text style=\{styles\.bugReportButtonText\}>How to play<\/Text>/.test(screen),
+      'the how-to-play button is not in the Settings panel',
+    );
     const top = readFileSync('src/demo/TopButtons.tsx', 'utf8');
-    assert(top.includes('onHowToPlay'), 'the how-to-play button is gone');
-    assert(top.includes('How to play'), 'the button has no accessible name');
+    assert(
+      !top.includes('onHowToPlay'),
+      'how to play is still in the corner row as well, so it is in two places',
+    );
   });
 });
 

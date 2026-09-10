@@ -802,12 +802,27 @@ export function DiceDemoScreen() {
   const menuTab: Tab | null =
     phase === 'pick' && tab !== 'play' ? tab : null;
 
-  // Friends is a page ON the Ranks tab, not a fifth thing floating over
-  // everything. Without this, tapping Store moved the highlight and left
-  // Friends covering the screen, and its "‹ Ranks" button dropped you on
-  // whichever tab was now lit.
+  /*
+    Close Friends when the player NAVIGATES, not when they are simply
+    somewhere other than Ranks.
+
+    This used to read `if (menuTab !== 'leaderboard')`, which was right
+    while the only door into Friends was a button on the Ranks page.
+    When Friends moved to the corner of the home screen on 10 Sep 2026
+    that rule became a trap: the home screen has no menu tab at all, so
+    the page opened and this effect shut it in the same breath — one tap,
+    nothing happens, no way to tell why.
+
+    Comparing against the PREVIOUS tab keeps what the old rule was
+    actually for. Tapping Store while Friends is open still closes it, so
+    the highlight and the screen never disagree; opening it from the home
+    screen and standing still leaves it open.
+  */
+  const tabBeforeRef = useRef(menuTab);
   useEffect(() => {
-    if (menuTab !== 'leaderboard') setShowFriends(false);
+    const moved = tabBeforeRef.current !== menuTab;
+    tabBeforeRef.current = menuTab;
+    if (moved) setShowFriends(false);
   }, [menuTab]);
 
   // Leaving Settings clears the code feedback — the Done button used to
@@ -1885,23 +1900,22 @@ export function DiceDemoScreen() {
           trophies={trophies}
           wins={wins}
           modeWins={modeWins}
-          // Until the identity has been read there is no friend code to
-          // show, so the button says so rather than swallowing the tap
-          // and popping the page open some seconds later.
-          friendsReady={me !== null}
-          onFriends={() => {
-            playClick();
-            setShowFriends(true);
-          }}
         />
       )}
       {/*
-        Friends sits OVER the Ranks page rather than being a tab of its
-        own: the bar is five cells on purpose and a sixth would squeeze
-        every label. It draws only once an identity has been read, so
-        the screen never flashes an empty friend code.
+        Friends is a full-screen page over whatever is behind it, not a
+        tab of its own: the bar is five cells on purpose and a sixth
+        would squeeze every label.
+
+        The `menuTab === 'leaderboard'` condition came off on 10 Sep 2026
+        when Friends moved to the corner button. It was correct while the
+        only way in was the Ranks page — it closed Friends when you left
+        that tab — but the corner button is reachable from anywhere, so
+        keeping it meant tapping Friends from the Store did nothing at
+        all. It still draws only once an identity has been read, so the
+        screen never flashes an empty friend code.
       */}
-      {showFriends && me && menuTab === 'leaderboard' && (
+      {showFriends && me && (
         <FriendsScreen
           me={me}
           stats={friendStats}
@@ -1957,7 +1971,8 @@ export function DiceDemoScreen() {
       */}
       {phase === 'pick' && preview === null && (
         <TopButtons
-          onHowToPlay={() => setPopup('howto')}
+          friendsReady={me !== null}
+          onFriends={() => setShowFriends(true)}
           onSettings={() => setPopup('settings')}
           onNews={() => setPopup('news')}
         />
@@ -2143,6 +2158,21 @@ export function DiceDemoScreen() {
               </Text>
             )}
             <View style={styles.settingsDividerLine} />
+            {/*
+              How to play moved here on 10 Sep 2026, out of the corner
+              row, at David's request. It opens by itself on a first
+              launch and most people never want it again, so it was
+              holding a permanent button for a one-off — and Settings is
+              exactly where somebody looks for the thing they want once
+              in a while. First in this group because it is the one a
+              person is most likely to be hunting for.
+            */}
+            <Pressable
+              style={styles.bugReportButton}
+              onPress={() => setPopup('howto')}
+            >
+              <Text style={styles.bugReportButtonText}>How to play</Text>
+            </Pressable>
             <Pressable
               style={styles.bugReportButton}
               onPress={() => setShowBugReport(true)}
