@@ -213,3 +213,48 @@ suite('foldable · the battlefield frames at both shapes', () => {
     );
   });
 });
+
+suite('foldable · the on-screen ruler', () => {
+  /*
+    The ruler exists to answer the one question the tests above admit
+    they cannot: whether the folded shape LOOKS right. It reads the
+    window size back out on screen so that dragging a resizable
+    simulator to 474x696pt is a thing you can see rather than guess.
+
+    It is also the one piece of debug UI mounted in the real app, so
+    what matters here is that a player can never see it.
+  */
+
+  test('the ruler is mounted behind __DEV__, so no player ever sees it', () => {
+    // __DEV__ is false in every release bundle AND every OTA update, so
+    // this guard is what keeps a debug overlay out of the App Store.
+    const app = src('App.tsx');
+    assert(/\{__DEV__ && <ScreenRuler \/>\}/.test(app), 'ScreenRuler is not guarded by __DEV__');
+    note('App.tsx renders ScreenRuler only when __DEV__');
+  });
+
+  test('the ruler names the Duo at exactly the sizes the rest of this file uses', () => {
+    // If these ever drift apart, the ruler would say "not a shape we
+    // know" on the very screen everything else here is written for.
+    const ruler = src('src/debug/ScreenRuler.tsx');
+    assert(
+      ruler.includes(`[${DUO_FOLDED.w}, ${DUO_FOLDED.h}, 'iPhone Duo (folded)']`),
+      'the ruler does not recognise the folded Duo',
+    );
+    assert(
+      ruler.includes(`[${DUO_UNFOLDED.w}, ${DUO_UNFOLDED.h}, 'iPhone Duo (unfolded)']`),
+      'the ruler does not recognise the unfolded Duo',
+    );
+  });
+
+  test('the ruler reads the live window, not a value frozen at import', () => {
+    // The same mistake safeArea.ts had to unlearn. A ruler that reports
+    // the launch size while you drag the window is worse than none.
+    const ruler = src('src/debug/ScreenRuler.tsx');
+    assert(/useWindowDimensions\(\)/.test(ruler), 'the ruler does not use useWindowDimensions');
+    assert(
+      !/Dimensions\.get/.test(ruler),
+      'the ruler reads Dimensions.get, which freezes at module scope',
+    );
+  });
+});

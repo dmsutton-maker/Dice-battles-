@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.78.0 — 2026-09-10 · requested by David
+
+"This session is now on a Mac with Xcode — how can we load the app in
+there and see how it will look on the iPhone Duo screen?"
+
+Nothing here changes the game for a player. It is the missing half of
+v1.72.0, which adapted the layout to Apple's folding phone entirely by
+reasoning and said so plainly: *"there is no folding phone in CI and no
+renderer in this suite... whether it LOOKS right has to be seen."* A Mac
+with Xcode is the first chance to actually look.
+
+### Added
+- **A screen ruler, mounted only when `__DEV__` is true**
+  (`src/debug/ScreenRuler.tsx`). It prints the live window size in
+  points, names the shape when it recognises one, and shows the bottom
+  inset the game has worked out for it. Dragging a resizable simulator to
+  the Duo's exact 474x696pt stops being guesswork: you drag until the
+  corner reads "iPhone Duo (folded)".
+  - `__DEV__` is false in every release bundle and every over-the-air
+    update, so it can never appear for a player. A test reads `App.tsx`
+    and fails if that guard is ever removed.
+  - It reads `useWindowDimensions()`, never `Dimensions.get()` — a ruler
+    frozen at launch would report the old size all the way through a
+    fold, which is precisely the bug `safeArea.ts` had to unlearn.
+- **`tools/duo-sim/run.sh`** — one command on a Mac. It finds a folding
+  simulator if this Xcode has shipped one, falls back to the resizable
+  iPhone if not, creates and boots it, and prints the exact
+  `npx expo run:ios --device ...` line plus what to look at once the game
+  is up. It touches nothing in the repo and nothing in Xcode.
+
+### Still open, and still David's call
+`app.json` keeps `orientation: "portrait"` and
+`ios.requireFullScreen: true`. Both were deliberately left alone in
+v1.72.0 and are left alone again here, because both are decisions about
+what the game should be on a folding phone rather than bugs to fix — and
+now there is a way to see each one before deciding.
+
 ## v1.77.0 — 2026-09-10 · requested by David
 
 "Have the friends tab be a pop up like the settings and news."

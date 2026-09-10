@@ -2,6 +2,7 @@ import React from 'react';
 import { InteractionManager } from 'react-native';
 import { CrashScreen } from './src/debug/CrashScreen';
 import { getLastFatal, onFatal, reportFatal } from './src/debug/crashGuard';
+import { ScreenRuler } from './src/debug/ScreenRuler';
 import { DiceDemoScreen } from './src/demo/DiceDemoScreen';
 import { BootSplash } from './src/demo/BootSplash';
 
@@ -99,6 +100,8 @@ export default class App extends React.Component<Record<string, never>, State> {
       <>
         {this.state.loading && <DiceDemoScreen />}
         {this.state.booting && <BootSplash onDone={this.onCardDone} />}
+        {/* Never in a release bundle: __DEV__ is false in every OTA update. */}
+        {__DEV__ && <ScreenRuler />}
       </>
     );
   }
