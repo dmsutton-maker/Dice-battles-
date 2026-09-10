@@ -1187,11 +1187,20 @@ suite('screen · the menu does not jump', () => {
     // A fixed height without numberOfLines clips mid-wrap instead of
     // ellipsising, which looks broken rather than tidy.
     for (const name of ['modeRules', 'difficultyHint', 'trophyNext']) {
-      // Read the WHOLE opening tag, not just the style attribute — the
-      // first version of this test matched `style={styles.x}` as a prefix
-      // of `style={styles.x} numberOfLines={2}` and failed on correct code.
+      /*
+        Read the WHOLE opening tag, not just the style attribute — the
+        first version of this test matched `style={styles.x}` as a prefix
+        of `style={styles.x} numberOfLines={2}` and failed on correct
+        code.
+
+        `\s+` rather than a literal space for the same class of reason:
+        a tag that grew enough props to be wrapped over several lines
+        stopped matching at all, and "no matches" was read as "not used
+        anywhere". A formatting change must not be able to fail a
+        behaviour test, in either direction.
+      */
       const tags = [
-        ...source.matchAll(new RegExp(`<Text style=\\{styles\\.${name}\\}[^>]*>`, 'g')),
+        ...source.matchAll(new RegExp(`<Text\\s+style=\\{styles\\.${name}\\}[^>]*>`, 'g')),
       ];
       assert(tags.length > 0, `${name} is not used anywhere`);
       for (const [tag] of tags) {

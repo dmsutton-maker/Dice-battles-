@@ -136,6 +136,7 @@ import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
 import { ColorsIcon } from '../ui/Icon';
+import { TierIcon } from './TierIcon';
 import { FirstFrame } from './FirstFrame';
 import {
   loadTutorialSeen,
@@ -1888,9 +1889,27 @@ export function DiceDemoScreen() {
               </Text>
             ) : (
               upNext && (
-                <Text style={styles.trophyNext} numberOfLines={1} maxFontSizeMultiplier={1.5}>
-                  Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
-                </Text>
+                /*
+                  David, 10 Sep 2026: "it has an emoji to represent the
+                  item but it should be the drawn icons instead."
+
+                  The picture is the ITEM — the painted die or the
+                  battlefield's own art — drawn by the same component
+                  the ladder uses, so the two screens cannot disagree
+                  about what Ruby Dice looks like. A row rather than a
+                  character inside the sentence, because a picture in a
+                  line of text has to be a real view.
+                */
+                <View style={styles.trophyNextRow}>
+                  <TierIcon tier={upNext} size={22} />
+                  <Text
+                    style={styles.trophyNext}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.5}
+                  >
+                    Next unlock: {upNextLabel!.name} at {upNext.at} trophies
+                  </Text>
+                </View>
               )
             )}
             {modeRow}
@@ -1952,9 +1971,16 @@ export function DiceDemoScreen() {
             +{lastCoins} coins → {wallet.coins}
           </Text>
           {upNext && (
-            <Text style={[styles.trophyNext, styles.onGlass]} numberOfLines={1} maxFontSizeMultiplier={1.5}>
-              Next unlock: {upNextLabel!.emoji} {upNextLabel!.name} at {upNext.at} trophies
-            </Text>
+            <View style={styles.trophyNextRow}>
+              <TierIcon tier={upNext} size={22} />
+              <Text
+                style={[styles.trophyNext, styles.onGlass]}
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.5}
+              >
+                Next unlock: {upNextLabel!.name} at {upNext.at} trophies
+              </Text>
+            </View>
           )}
           <Text style={[styles.overlayBody, styles.onGlass]}>
             {MODES[mode].name} victory!{'\n'}
@@ -2526,6 +2552,18 @@ const styles = StyleSheet.create({
     home-screen column shifting.
   */
   coinLine: { color: THEME.inkSoft, fontSize: 13.5, fontWeight: '700', marginTop: 4 },
+  /*
+    The picture and the sentence sit on one line together. Centred,
+    because everything else in this column is, and with the row carrying
+    the top margin so the two cannot drift apart vertically.
+  */
+  trophyNextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    marginTop: 4,
+  },
   trophyNext: {
     color: THEME.inkSoft,
     fontSize: 13.5,

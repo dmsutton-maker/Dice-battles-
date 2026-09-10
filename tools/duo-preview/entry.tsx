@@ -6,6 +6,8 @@ import { InventoryScreen } from '../../src/demo/InventoryScreen';
 import { StoreScreen } from '../../src/demo/StoreScreen';
 import { LeaderboardScreen } from '../../src/demo/LeaderboardScreen';
 import { NewsScreen } from '../../src/demo/NewsScreen';
+import { TierIcon } from '../../src/demo/TierIcon';
+import { TIERS } from '../../src/game/progress';
 import { VolumeSlider } from '../../src/demo/VolumeSlider';
 import { ColorsIcon } from '../../src/ui/Icon';
 import { Text } from 'react-native';
@@ -47,6 +49,24 @@ function Screen() {
       </View>
     );
   }
+  if (which === 'unlocks') {
+    // Every rung of the ladder, as the "Next unlock" line draws it.
+    return (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 14 }}>
+        {TIERS.slice(0, 14).map((tier) => (
+          <View
+            key={tier.id}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}
+          >
+            <TierIcon tier={tier} size={22} />
+            <Text style={{ fontSize: 13.5, fontWeight: '700', color: '#4a4458' }}>
+              Next unlock: {tier.name} at {tier.at} trophies
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
   if (which === 'settings') {
     // The volume sliders and the colourblind row, which live inside a
     // popup in the real game and cannot be reached from here.
@@ -83,7 +103,7 @@ function Screen() {
 }
 
 const TAB = which === 'store' ? 'store' : which === 'leaderboard' ? 'leaderboard' : 'inventory';
-const BARE = which === 'news' || which === 'settings';
+const BARE = which === 'news' || which === 'settings' || which === 'unlocks';
 
 createRoot(host).render(
   // Fills the viewport, so useWindowDimensions and the absolute-positioned

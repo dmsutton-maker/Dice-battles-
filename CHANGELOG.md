@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.83.0 — 2026-09-10 · requested by David
+
+"On the Home Screen where it says 'next unlock: x at y trophies' it has
+an emoji to represent the item but it should be the drawn icons instead."
+
+### Changed
+- **The "Next unlock" line shows the item itself.** Not a drawn icon
+  standing for it — the actual painted die, or the battlefield's own
+  picture, the same one the Store and the Inventory show. A cherry for
+  Ruby Dice was the last place in the game where a picture of fruit stood
+  in for a thing the player can see two taps away.
+  - It appears twice, on the home screen and after a victory. Both.
+- **`TierIcon` moved out of `LeaderboardScreen.tsx` into its own file.**
+  Marc asked for exactly this on the ladder on 27 Aug and it was written
+  inside that screen. Copying it into the home screen would have been two
+  pictures of the same rung in two files, and two copies drift — then the
+  ladder and the home screen disagree about what Ruby Dice looks like.
+- **Courtyard Treasure gets a drawn gold coin.** It is the one rung that
+  hands over no item of its own — it adds the pile of gold to the Castle
+  Courtyard — so it kept its emoji for want of anything better. The pile
+  is made of coins and the game already draws one.
+
+### Another test that stopped testing
+`tests/screen.test.ts` matched `<Text style={styles.trophyNext}` with a
+literal space. Wrapping that tag over several lines, as adding a picture
+beside it did, meant it matched nothing at all — and "no matches" was
+being read as "not used anywhere", which is how it failed. It reads
+`\s+` now. The file already carried a comment about a formatting change
+failing a behaviour test; this is the same fault, on the same line, from
+the other direction.
+
+### Still emoji, and not touched
+The unlock popup ("UNLOCKED: 🍒 Ruby Dice!"), the tournament cards and
+the matchmaking overlay all still use them. They are a bigger job than
+this one — those build a string rather than a row — so they are named
+here rather than quietly swept in.
+
 ## v1.82.0 — 2026-09-10 · requested by David
 
 "When I went to add another person as a friend with their friend code, it

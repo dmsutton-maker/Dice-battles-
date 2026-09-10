@@ -543,6 +543,51 @@ suite('icons · nothing left that types a picture', () => {
     note(`${fields.length} posts, all drawn`);
   });
 
+  test('the "Next unlock" line shows the item, not an emoji', () => {
+    /*
+      David, 10 Sep 2026. The same complaint Marc made about the ladder
+      on 27 Aug — a cherry standing in for Ruby Dice while the Store two
+      taps away shows the real painted die.
+
+      It appears twice, on the home screen and on the victory screen,
+      and neither may reach for tier.emoji.
+    */
+    const screen = read('src/demo/DiceDemoScreen.tsx');
+    const lines = [...screen.matchAll(/Next unlock:[^\n]*/g)].map((m) => m[0]);
+    assertEqual(lines.length, 2, `expected two "Next unlock" lines, found ${lines.length}`);
+    for (const line of lines) {
+      assert(!/emoji/.test(line), `the "Next unlock" line still shows an emoji: ${line.trim()}`);
+    }
+    assert(
+      (screen.match(/<TierIcon tier=\{upNext\}/g) ?? []).length === 2,
+      'the "Next unlock" lines do not both draw the item',
+    );
+    note('both "Next unlock" lines draw the item');
+  });
+
+  test('the ladder and the home screen draw a rung the same way', () => {
+    /*
+      The reason TierIcon is its own file rather than a second copy: two
+      pictures of the same rung, written in two screens, drift — and then
+      the ladder and the home screen disagree about what Ruby Dice looks
+      like.
+    */
+    assert(
+      /import \{ TierIcon \} from '\.\/TierIcon'/.test(read('src/demo/LeaderboardScreen.tsx')),
+      'the ladder draws rungs with something other than TierIcon',
+    );
+    assert(
+      /import \{ TierIcon \} from '\.\/TierIcon'/.test(read('src/demo/DiceDemoScreen.tsx')),
+      'the home screen draws rungs with something other than TierIcon',
+    );
+    const icon = read('src/demo/TierIcon.tsx');
+    assert(!PICTURE.test(icon), 'TierIcon still types a picture somewhere');
+    assert(
+      /GoldCoin/.test(icon),
+      'the rung with no item of its own has nothing drawn for it',
+    );
+  });
+
   test('every kind of news post has a drawing behind it', () => {
     // The Record in newsIcons.tsx makes this a compile error too. This
     // catches the other half: a drawing named there that Icon.tsx does

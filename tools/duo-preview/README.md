@@ -12,12 +12,19 @@ npx esbuild tools/duo-preview/entry.tsx --bundle \
   --outfile=tools/duo-preview/bundle.js --loader:.tsx=tsx \
   --loader:.png=dataurl --loader:.jpg=dataurl --loader:.wav=dataurl \
   --loader:.mp3=dataurl --loader:.m4a=dataurl --loader:.ttf=dataurl \
-  --alias:react-native=./tools/duo-preview/rn.ts \
+  --alias:react-native=./tools/duo-preview/rn.ts --jsx=automatic \
   --define:process.env.NODE_ENV='"production"' --define:__DEV__=false
 mkdir -p /tmp/duo
 node tools/duo-preview/shoot.js inventory,store,leaderboard folded,unfolded,iphone /tmp/duo
+node tools/duo-preview/shoot.js news,settings,unlocks iphone /tmp/duo
 npm uninstall --no-save react-dom react-native-web playwright   # ← REQUIRED
 ```
+
+`--jsx=automatic` matches what Metro does. Without it esbuild uses the
+classic transform, and any component file that does not itself
+`import React` throws "React is not defined" at runtime — a real page
+error, but one that only shows up as a blank screenshot unless you read
+the tool's output.
 
 ## Take the three packages back out when you are done
 
