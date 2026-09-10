@@ -58,10 +58,16 @@ let started = false;
  *
  * `schedule` is injected so the headless tests can run it to completion
  * without a timer, and so the caller can decide what "later" means.
+ *
+ * `onDone` fires once the last picture is cached, and only then. It
+ * exists because mounting the Store or the Inventory asks for all 53
+ * pictures in a single commit — do that before the queue has drained
+ * and you have simply moved the 846ms stall rather than removed it.
  */
 export function warmDicePreviews(
   schedule: (run: () => void) => void = (run) => setTimeout(run, 0),
   shouldContinue: () => boolean = () => true,
+  onDone: () => void = () => {},
 ): void {
   if (started) return;
   started = true;
@@ -82,7 +88,19 @@ export function warmDicePreviews(
         // One bad skin must not stop the other fifty-two.
       }
     }
-    if (i < queue.length) schedule(step);
+    if (i < queue.length) {
+      schedule(step);
+      return;
+    }
+    // Every picture is cached. Anything that wanted to wait for that —
+    // building the Store and the Inventory, which ask for all 53 the
+    // moment they mount — can go now without causing the stall this
+    // whole file exists to avoid.
+    try {
+      onDone();
+    } catch {
+      // A caller that fails must not look like a failed paint.
+    }
   };
 
   schedule(step);

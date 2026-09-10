@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.80.0 — 2026-09-10 · requested by David
+
+"Now when you click on the store and inventory tabs, it shows the Home
+Screen for a split second before loading in."
+
+A fault introduced by v1.75.0, and worth stating plainly rather than
+tidying away.
+
+### Fixed
+- **No more flash of the board on the way into Store or Inventory.**
+  Keeping those pages alive between visits meant their existence was
+  decided by a `useState`, and that state was set from a `useEffect` —
+  which runs AFTER the render it belongs to has been painted. So the
+  first tap painted one frame in which the tab had changed and the page
+  did not exist yet: the board showing through the hole where the Store
+  should be, then the page arriving on the next frame. Exactly one frame,
+  exactly as described.
+  - The page is now asked for during render — "draw it if it is the
+    current tab, or if it has been built before" — so it is in the very
+    first frame that knows about the tap. The effect stays, because it is
+    what keeps the page alive after you leave, which is what made the
+    second visit free in the first place.
+- **And no pause in its place.** Removing the empty frame on its own
+  would have swapped a flash for a stutter: mounting seventy cards is not
+  free even when every picture is already painted. Both pages are now
+  built the moment the background painting finishes, so the first tap has
+  nothing left to do but reveal them.
+  - Order matters and is now enforced by a test. Mounting either page
+    asks for all 53 pictures in a single commit, so building them BEFORE
+    the queue drains would have moved the 846ms stall rather than removed
+    it. `warmDicePreviews` gained an `onDone` that fires once, only after
+    the last picture is cached, and never when the warming was stopped
+    partway by the app going into a pocket.
+
+### A test that passed against broken code
+The first version of the regression test grepped `DiceDemoScreen.tsx`
+for `menuTab === id` — and passed with the fix deleted, because the
+comment explaining the fix contained that phrase. It now reads the file
+with comments stripped, and was checked by removing the fix and watching
+it fail. Any test in this suite that greps source has the same trap in
+it; this one at least no longer does.
+
 ## v1.79.0 — 2026-09-10 · requested by David
 
 "I don't know what you are asking me — can you do all this?"

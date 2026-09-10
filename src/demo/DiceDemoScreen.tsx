@@ -290,6 +290,12 @@ export function DiceDemoScreen() {
       warmDicePreviews(
         (run) => setTimeout(run, 0),
         () => activeRef.current,
+        // Every picture is now cached, so building the two heavy pages
+        // costs React work and nothing else. Doing it here means the
+        // first tap has nothing left to do but reveal them — without
+        // this, the tap itself pays for ~70 cards and the tab appears a
+        // beat late even though the flash is gone.
+        () => setBuiltHeavyTabs((seen) => ({ ...seen, store: true, inventory: true })),
       );
     });
     return () => handle.cancel();
@@ -851,6 +857,28 @@ export function DiceDemoScreen() {
     if (menuTab !== 'store' && menuTab !== 'inventory') return;
     setBuiltHeavyTabs((seen) => (seen[menuTab] ? seen : { ...seen, [menuTab]: true }));
   }, [menuTab]);
+
+  /*
+    Is this heavy tab on screen RIGHT NOW?
+
+    The `|| menuTab === id` half is the whole point, and it is not
+    redundant with the effect above. David, 10 Sep 2026: "now when you
+    click on the store and inventory tabs, it shows the Home Screen for a
+    split second before loading in."
+
+    An effect runs AFTER the render it belongs to has been painted. So
+    the first tap on Store rendered a frame in which the tab had changed
+    but `builtHeavyTabs.store` was still false — nothing to draw, and the
+    board showing through where the Store should be — and only the NEXT
+    render, triggered by the effect, put the page up. One frame of the
+    wrong screen, exactly as described.
+
+    Asking during render instead means the page is in the very first
+    frame that knows about the tap. The effect still runs, and still
+    matters: it is what keeps the page mounted after you leave, which is
+    what made the second visit free in v1.75.0.
+  */
+  const heavyTabUp = (id: 'store' | 'inventory') => builtHeavyTabs[id] === true || menuTab === id;
 
 
   /*
@@ -1936,7 +1964,7 @@ export function DiceDemoScreen() {
         by design — the board used to glow through them — so leaving one up
         would hide the very thing the preview exists to show.
       */}
-      {builtHeavyTabs.store && (
+      {heavyTabUp('store') && (
         <StoreScreen
           hidden={menuTab !== 'store' || preview !== null}
           wallet={wallet}
@@ -1974,7 +2002,7 @@ export function DiceDemoScreen() {
           onClose={() => setShowFriends(false)}
         />
       )}
-      {builtHeavyTabs.inventory && (
+      {heavyTabUp('inventory') && (
         <InventoryScreen
           hidden={menuTab !== 'inventory' || preview !== null}
           trophies={trophies}

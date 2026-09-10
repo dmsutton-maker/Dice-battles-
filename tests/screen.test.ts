@@ -1008,7 +1008,7 @@ suite('screen · the board belongs to the battle screen', () => {
           'so it would sit over the board',
       );
       assert(
-        new RegExp(`builtHeavyTabs\\.${tab} &&`).test(source),
+        new RegExp(`heavyTabUp\\('${tab}'\\) &&`).test(source),
         `the ${tab} page is not built once and kept, so it pays to rebuild ` +
           'every time the tab is opened',
       );
