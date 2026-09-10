@@ -7,8 +7,7 @@ import { ARENA_ART } from '../arena/arenaArt';
 import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { recallScroll, rememberScroll } from './menuScroll';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
-import { COIN_REWARDS, Wallet } from '../game/currency';
-import { rangeLabel } from '../game/rewards';
+import { Wallet } from '../game/currency';
 import { useGridCardWidth } from './grid';
 import { playClick } from '../audio/sounds';
 import { CoinLabel } from './GoldCoin';
@@ -99,11 +98,13 @@ export function StoreScreen({
           six colours on the faces are the same on every set, so a match is
           always a match.
         </Text>
-        <Text style={styles.sectionNote}>
-          Coins come from playing. {rangeLabel(COIN_REWARDS.easy.win)} for an
-          Easy win, up to {rangeLabel(COIN_REWARDS.hard.win)} on Hard, and
-          losing still pays a little — it never costs you coins.
-        </Text>
+        {/*
+          There was a third paragraph here explaining where coins come
+          from — the exact payout for an Easy win, for a Hard win, and
+          that losing still pays. David asked for it out on 10 Sep 2026.
+          The shelf is what this screen is for, and three blocks of text
+          above it pushed the dice off the bottom of the screen.
+        */}
 
         <View style={styles.grid}>
           {STORE_SKINS.map((skin) => {

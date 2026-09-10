@@ -5,6 +5,10 @@ import { BottomNav } from '../../src/demo/BottomNav';
 import { InventoryScreen } from '../../src/demo/InventoryScreen';
 import { StoreScreen } from '../../src/demo/StoreScreen';
 import { LeaderboardScreen } from '../../src/demo/LeaderboardScreen';
+import { NewsScreen } from '../../src/demo/NewsScreen';
+import { VolumeSlider } from '../../src/demo/VolumeSlider';
+import { ColorsIcon } from '../../src/ui/Icon';
+import { Text } from 'react-native';
 
 /**
  * The menus, at whatever size the browser window is, with the real
@@ -36,6 +40,31 @@ const which = new URLSearchParams(location.search).get('screen') ?? 'inventory';
 const WALLET = { coins: 2450, owned: ['skin_frost', 'skin_lava', 'arena_autumn'] };
 
 function Screen() {
+  if (which === 'news') {
+    return (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 12 }}>
+        <NewsScreen />
+      </View>
+    );
+  }
+  if (which === 'settings') {
+    // The volume sliders and the colourblind row, which live inside a
+    // popup in the real game and cannot be reached from here.
+    return (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 18, gap: 14 }}>
+        <VolumeSlider label="Everything" value={0.8} onChange={() => {}} emphasis />
+        <VolumeSlider label="Sound effects" value={0.5} onChange={() => {}} />
+        <VolumeSlider label="Music" value={0.2} onChange={() => {}} />
+        <VolumeSlider label="Voice" value={0} onChange={() => {}} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <ColorsIcon size={16} />
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1d1a2e' }}>
+            Colorblind mode
+          </Text>
+        </View>
+      </View>
+    );
+  }
   if (which === 'store') {
     return <StoreScreen wallet={WALLET} onPreview={() => {}} onPreviewArena={() => {}} />;
   }
@@ -54,13 +83,14 @@ function Screen() {
 }
 
 const TAB = which === 'store' ? 'store' : which === 'leaderboard' ? 'leaderboard' : 'inventory';
+const BARE = which === 'news' || which === 'settings';
 
 createRoot(host).render(
   // Fills the viewport, so useWindowDimensions and the absolute-positioned
   // menu pages both measure the size the window actually is.
   <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
     <Screen />
-    <BottomNav active={TAB as never} onSelect={() => {}} />
+    {!BARE && <BottomNav active={TAB as never} onSelect={() => {}} />}
   </View>,
 );
 

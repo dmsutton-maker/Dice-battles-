@@ -12,9 +12,10 @@ import {
   fillPercent,
   knobLeft,
   volumeFromTouch,
-  volumeIcon,
   volumeLabel,
+  volumeLevel,
 } from '../audio/slider';
+import { SpeakerIcon } from '../ui/Icon';
 
 /**
  * A volume slider, drawn and driven in plain React Native.
@@ -91,9 +92,15 @@ export function VolumeSlider({
   return (
     <View style={styles.row}>
       <View style={styles.header}>
-        <Text style={[styles.label, emphasis && styles.labelEmphasis]}>
-          {volumeIcon(value)} {label}
-        </Text>
+        <View style={styles.labelRow}>
+          {/*
+            A drawn speaker, not an emoji. Its box is a fixed size at
+            every level, so the label beside it does not move as the
+            slider is dragged — which is what the four emoji did.
+          */}
+          <SpeakerIcon size={emphasis ? 18 : 16} level={volumeLevel(value)} />
+          <Text style={[styles.label, emphasis && styles.labelEmphasis]}>{label}</Text>
+        </View>
         <Text style={[styles.value, muted && styles.valueMuted]}>
           {volumeLabel(value)}
         </Text>
@@ -134,6 +141,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 2,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   label: {
     color: THEME.ink,

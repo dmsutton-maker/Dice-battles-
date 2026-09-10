@@ -33,7 +33,20 @@ const CODE = SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 function drawingOf(icon: string, next: string | null): string {
   const start = CODE.indexOf(`export function ${icon}`);
   assert(start >= 0, `${icon} is gone`);
-  if (next === null) return CODE.slice(start);
+  /*
+    `next` used to be the only way to find the end, and `null` meant
+    "this one is last in the file". That broke silently on 10 Sep 2026
+    when six new icons were added after ChevronIcon: the slice ran to the
+    end of the file and swept up drawings belonging to other icons.
+
+    So null now means "to the next export, whatever it is", which is what
+    every caller actually wanted. Naming a `next` still works and still
+    asserts the order, for the tests that care about it.
+  */
+  if (next === null) {
+    const after = CODE.indexOf('export function ', start + 1);
+    return after > start ? CODE.slice(start, after) : CODE.slice(start);
+  }
   const end = CODE.indexOf(`export function ${next}`);
   assert(end > start, `${next} no longer follows ${icon}`);
   return CODE.slice(start, end);
@@ -451,5 +464,98 @@ suite('icons · colour that still reads as a drawing', () => {
         `${icon} has been given an object colour — controls stay ink`,
       );
     }
+  });
+});
+
+/**
+ * The last three places that were still typing pictures instead of
+ * drawing them.
+ *
+ * David, 10 Sep 2026: "make the volume icons and colorblind mode icon
+ * drawn images in the same style as everything else, rather than
+ * emojis", and the same for the News tab.
+ *
+ * The argument is the one at the top of Icon.tsx, and it is not only
+ * taste: an emoji is a glyph from whatever font the phone happens to
+ * have, so the game could not know what its own volume control looked
+ * like. The four speaker emoji were different WIDTHS from each other,
+ * which shifted the label beside the slider as you dragged it.
+ */
+suite('icons · nothing left that types a picture', () => {
+  /** Anything in the pictographic blocks, plus the variation selector. */
+  const PICTURE = /[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{FE0F}\u{2B00}-\u{2BFF}]/u;
+
+  /*
+    Comments stripped, every time. A comment is allowed to SAY 🔇 — the
+    one on volumeLevel explains what it replaced, and the news post about
+    this very change is prose about emoji. What must not survive is an
+    emoji the game actually draws. Grepping raw source cannot tell the
+    difference, and a test that cannot tell the difference either fails
+    on documentation or passes on the real thing.
+  */
+  const read = (path: string) =>
+    readFileSync(path, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+
+  test('the volume control is drawn, not typed', () => {
+    const slider = read('src/audio/slider.ts');
+    assert(
+      !PICTURE.test(slider),
+      'src/audio/slider.ts still has an emoji in it',
+    );
+    assert(
+      /export function volumeLevel/.test(slider),
+      'the slider no longer says how full the speaker should be',
+    );
+    assert(
+      /SpeakerIcon/.test(read('src/demo/VolumeSlider.tsx')),
+      'the slider does not draw a speaker',
+    );
+  });
+
+  test('colorblind mode is drawn, not typed', () => {
+    const screen = read('src/demo/DiceDemoScreen.tsx');
+    const row = screen.slice(
+      screen.indexOf('Colorblind mode') - 400,
+      screen.indexOf('Colorblind mode') + 40,
+    );
+    assert(row.length > 0, 'the colourblind row is gone');
+    assert(!PICTURE.test(row), 'the colourblind row still types its picture');
+    assert(/ColorsIcon/.test(row), 'the colourblind row draws nothing');
+  });
+
+  test('every news post is drawn, not typed', () => {
+    const news = read('src/game/news.ts');
+    /*
+      Read only the icon FIELDS, not the whole file: the posts themselves
+      are prose, and one of them is literally about replacing emoji.
+    */
+    const fields = news.match(/^\s*icon: '[^']*',$/gm) ?? [];
+    assert(fields.length > 40, `only found ${fields.length} posts with a picture`);
+    for (const field of fields) {
+      assert(!PICTURE.test(field), `a post still types its picture: ${field.trim()}`);
+    }
+    assert(
+      !/^\s*emoji: /m.test(news),
+      'a post still carries an emoji field',
+    );
+    note(`${fields.length} posts, all drawn`);
+  });
+
+  test('every kind of news post has a drawing behind it', () => {
+    // The Record in newsIcons.tsx makes this a compile error too. This
+    // catches the other half: a drawing named there that Icon.tsx does
+    // not actually export would fail at runtime, not at build.
+    const map = read('src/ui/newsIcons.tsx');
+    const used = [...map.matchAll(/^  \w+: (\w+Icon),$/gm)].map((m) => m[1]);
+    assert(used.length >= 10, `only ${used.length} kinds are mapped`);
+    for (const icon of new Set(used)) {
+      assert(
+        SOURCE.includes(`export function ${icon}`),
+        `newsIcons.tsx uses ${icon}, which Icon.tsx does not export`,
+      );
+    }
+    note(`${used.length} kinds drawn by ${new Set(used).size} icons`);
   });
 });

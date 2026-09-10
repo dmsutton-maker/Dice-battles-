@@ -992,8 +992,14 @@ suite('screen · the board belongs to the battle screen', () => {
       render condition carries the check. The Store and the Inventory are
       now kept MOUNTED and hidden instead — they build about seventy
       cards each and rebuilding them cost a second every single time —
-      so for those the guarantee moved into the `hidden` prop. The
-      behaviour is identical: neither is over the board during a preview.
+      so for those the guarantee moved into the `hidden` prop.
+
+      With one deliberate exception, added the same day: `&& !holdShelf`.
+      The shelf stays up for the two frames it takes the board to draw
+      the new scene, because the alternative the player actually saw was
+      a flat slab of the arena's sky colour. It is still gone before
+      anybody could interact with the preview, and `holdShelf` cannot be
+      true unless a preview is open — checked below rather than assumed.
     */
     for (const tab of ['leaderboard', 'cups']) {
       assert(
@@ -1003,7 +1009,9 @@ suite('screen · the board belongs to the battle screen', () => {
     }
     for (const tab of ['store', 'inventory']) {
       assert(
-        new RegExp(`hidden=\\{menuTab !== '${tab}' \\|\\| preview !== null\\}`).test(source),
+        new RegExp(
+          `hidden=\\{menuTab !== '${tab}' \\|\\| \\(preview !== null && !holdShelf\\)\\}`,
+        ).test(source),
         `the ${tab} page is kept mounted but is not hidden during a preview, ` +
           'so it would sit over the board',
       );
@@ -1013,6 +1021,20 @@ suite('screen · the board belongs to the battle screen', () => {
           'every time the tab is opened',
       );
     }
+    /*
+      The hold can only ever be a couple of frames, and only while a
+      preview is open. `stale` is itself `preview !== null && ...`, so
+      leaving a preview cannot leave the shelf stuck over the board.
+    */
+    assert(
+      /const holdShelf = stale;/.test(source),
+      'the shelf hold is no longer tied to the frame watch',
+    );
+    assert(
+      /const stale = preview !== null && drawnToken !== sceneToken;/.test(source),
+      'stale no longer requires a preview to be open, so the shelf could stick',
+    );
+
     // Read the guard in front of the bar rather than matching an exact
     // line: this used to be a literal `preview === null && <BottomNav`,
     // which broke the moment the guard grew a second clause and wrapped

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { fetchNews, NEWS, NewsItem } from '../game/news';
+import { fetchNews, NEWS, newsIconId, NewsItem } from '../game/news';
+import { NEWS_ICONS } from '../ui/newsIcons';
 import { SHAPE, THEME } from '../ui/theme';
 
 /**
@@ -16,6 +17,18 @@ import { SHAPE, THEME } from '../ui/theme';
  * to be a whole page behind a tab of its own, which was a lot of ceremony
  * for something you read once when something changes.
  */
+/**
+ * The picture for a post.
+ *
+ * Goes through newsIconId rather than reading item.icon directly:
+ * posts can arrive from the board over the network, so an unknown kind
+ * has to come back as a real drawing rather than as nothing.
+ */
+function renderIcon(icon: NewsItem['icon']) {
+  const Drawing = NEWS_ICONS[newsIconId(icon)];
+  return <Drawing size={28} />;
+}
+
 export function NewsScreen() {
   const [items, setItems] = useState<NewsItem[]>(NEWS);
 
@@ -54,7 +67,16 @@ export function NewsScreen() {
         {items.map((item) => (
           <View key={item.id} style={styles.card}>
             <View style={styles.cardHead}>
-              <Text style={styles.cardEmoji}>{item.emoji}</Text>
+              {/*
+                A drawn icon, not an emoji. Fifty-five posts carried
+                forty-eight different emoji between them — forty-eight
+                borrowed pictures that each look different on every
+                phone. A post now says what KIND of change it is about
+                and the set decides what that looks like, so the picture
+                beside a post about the Store is the same bag that is on
+                the Store button.
+              */}
+              <View style={styles.cardIcon}>{renderIcon(item.icon)}</View>
               <View style={styles.cardHeadText}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text style={styles.cardMeta}>
@@ -104,8 +126,16 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 8,
   },
-  cardEmoji: {
-    fontSize: 30,
+  /*
+    A fixed box, so every title in the list starts at the same place.
+    The emoji it replaced were different widths from each other, which
+    left the titles very slightly ragged down the page.
+  */
+  cardIcon: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardHeadText: {
     flex: 1,

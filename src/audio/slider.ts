@@ -26,15 +26,23 @@ export function volumeLabel(volume: number): string {
 }
 
 /**
- * A speaker that fills up as the slider rises — readable before a five
- * year old can read the percentage.
+ * How many waves the speaker beside the slider should have — readable
+ * before a five year old can read the percentage.
+ *
+ * It used to return an emoji (🔇 🔈 🔉 🔊). David asked on 10 Sep 2026
+ * for these to be drawn like every other icon in the game, and there was
+ * a second reason to want it: those four are four glyphs from the
+ * phone's emoji font, not one set, and the muted one is a different
+ * WIDTH from the loud one — so the label beside the slider shifted
+ * sideways as you dragged it. A number here, a drawn icon in Icon.tsx,
+ * and the shape stays put.
  */
-export function volumeIcon(volume: number): string {
+export function volumeLevel(volume: number): 0 | 1 | 2 | 3 {
   const v = clampVolume(volume);
-  if (v === 0) return '🔇';
-  if (v <= 0.33) return '🔈';
-  if (v <= 0.66) return '🔉';
-  return '🔊';
+  if (v === 0) return 0;
+  if (v <= 0.33) return 1;
+  if (v <= 0.66) return 2;
+  return 3;
 }
 
 /**

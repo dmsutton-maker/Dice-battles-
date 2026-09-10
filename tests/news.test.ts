@@ -1,6 +1,13 @@
 import { store } from './storageMock';
 import { assert, assertEqual, note, suite, test } from './harness';
-import { fetchNews, mergeNews, NEWS, NewsItem } from '../src/game/news';
+import {
+  fetchNews,
+  mergeNews,
+  NEWS,
+  NEWS_ICON_IDS,
+  newsIconId,
+  NewsItem,
+} from '../src/game/news';
 import { GAME_VERSION } from '../src/game/version';
 
 /**
@@ -14,7 +21,7 @@ function post(id: string, over: Partial<NewsItem> = {}): NewsItem {
     id,
     date: '24 August 2026',
     title: `Post ${id}`,
-    emoji: '📣',
+    icon: 'news',
     body: 'Something happened, and here is a sentence about it.',
     ...over,
   };
@@ -43,7 +50,10 @@ suite('news · the bundled posts', () => {
       ids.add(item.id);
       assert(item.title.length > 0, `${item.id} has no title`);
       assert(item.body.length > 20, `${item.id} says almost nothing`);
-      assert(item.emoji.length > 0, `${item.id} has no picture`);
+      assert(
+        NEWS_ICON_IDS.includes(item.icon!),
+        `${item.id} has no picture, or one the icon set does not have`,
+      );
       assert(item.date.length > 0, `${item.id} has no date`);
     }
     note(`${NEWS.length} bundled posts`);
@@ -216,5 +226,59 @@ suite('news · every way the network can fail', () => {
       const news = await withFetch(breaker, fetchNews);
       assert(Array.isArray(news) && news.length > 0, 'fetchNews returned nothing');
     }
+  });
+});
+
+/**
+ * The pictures beside the posts.
+ *
+ * They were emoji until 10 Sep 2026 — forty-eight different ones across
+ * fifty-five posts, each rendering differently on every phone. A post
+ * now names a KIND and the drawn set decides what that looks like.
+ *
+ * The posts a player sees are not only the bundled ones: the board can
+ * publish over the top of them. So the thing that must hold is that
+ * ANYTHING a post carries in that field still produces a picture.
+ */
+suite('news · every post has a drawn picture', () => {
+  test('no post carries an emoji any more', () => {
+    for (const item of NEWS) {
+      assert(
+        typeof item.icon === 'string' && /^[a-z]+$/.test(item.icon),
+        `${item.id} has ${JSON.stringify(item.icon)} where a kind should be`,
+      );
+    }
+    note(`${NEWS.length} posts, ${new Set(NEWS.map((i) => i.icon)).size} kinds in use`);
+  });
+
+  test('every kind in the set is one the game can draw', () => {
+    // The map in src/ui/newsIcons.tsx is a Record over this list, so a
+    // kind added here without a drawing fails to compile. This is the
+    // other direction: no duplicates, nothing empty.
+    assertEqual(new Set(NEWS_ICON_IDS).size, NEWS_ICON_IDS.length, 'a kind is listed twice');
+    for (const id of NEWS_ICON_IDS) assert(id.length > 0, 'a kind has no name');
+  });
+
+  test('a post from the board always gets a picture, whatever it says', () => {
+    /*
+      The feed is written by a person in a browser and read over the
+      network. Losing a post over its picture would be much worse than
+      showing the wrong picture, so anything unrecognised becomes the
+      plain news drawing rather than nothing.
+    */
+    for (const junk of [undefined, null, '', 'sparkles', 42, {}, [], '📣', 'NEWS']) {
+      assertEqual(newsIconId(junk), 'news', `${JSON.stringify(junk)} should fall back`);
+    }
+    for (const id of NEWS_ICON_IDS) {
+      assertEqual(newsIconId(id), id, `${id} should be kept as it is`);
+    }
+  });
+
+  test('a post with no picture at all still survives the feed', () => {
+    // isNewsItem stopped requiring the field on 10 Sep 2026. If it ever
+    // starts again, every post the board writes without one vanishes.
+    const merged = mergeNews([], [{ ...post('from-the-board'), icon: undefined }]);
+    assertEqual(merged.length, 1, 'a post with no picture was dropped');
+    assertEqual(newsIconId(merged[0].icon), 'news', 'it should fall back to plain news');
   });
 });

@@ -17,7 +17,7 @@ import {
 import {
   fillPercent,
   volumeFromTouch,
-  volumeIcon,
+  volumeLevel,
   volumeLabel,
   knobLeft,
 } from '../src/audio/slider';
@@ -187,10 +187,20 @@ suite('audio · the slider itself', () => {
     assertEqual(volumeLabel(0), 'OFF', 'zero should read OFF');
     assertEqual(volumeLabel(1), '100%', 'full should read 100%');
     assertEqual(volumeLabel(0.35), '35%', 'a middling level');
-    // The icon has to be readable by a player too young for percentages.
-    assertEqual(volumeIcon(0), '🔇', 'muted icon');
-    const icons = [0, 0.2, 0.5, 1].map(volumeIcon);
-    assertEqual(new Set(icons).size, 4, 'every step should look different');
+    /*
+      The icon has to be readable by a player too young for percentages,
+      so the four steps must genuinely look different from each other.
+      This used to compare four emoji; since 10 Sep 2026 it is a number
+      of waves on a drawn speaker, and the check is the same one.
+    */
+    assertEqual(volumeLevel(0), 0, 'silence must be the muted icon');
+    assertEqual(volumeLevel(1), 3, 'full must be the loudest icon');
+    const levels = [0, 0.2, 0.5, 1].map(volumeLevel);
+    assertEqual(new Set(levels).size, 4, 'every step should look different');
+    assert(
+      levels.every((l, i) => i === 0 || l > levels[i - 1]),
+      'the speaker must fill up as the slider rises, never drop back',
+    );
   });
 });
 

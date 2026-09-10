@@ -135,6 +135,7 @@ import { TopButtons } from './TopButtons';
 import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
+import { ColorsIcon } from '../ui/Icon';
 import { FirstFrame } from './FirstFrame';
 import {
   loadTutorialSeen,
@@ -1355,6 +1356,29 @@ export function DiceDemoScreen() {
   const [drawnToken, setDrawnToken] = useState('');
   const stale = preview !== null && drawnToken !== sceneToken;
 
+  /*
+    Hold the shelf up until the board has really drawn.
+
+    David, 10 Sep 2026: "when you click on an item in the store or
+    inventory, for a second it just shows the main color of the arena you
+    have selected or are viewing."
+
+    That colour was OURS. The cover below — added on 26 Aug to hide the
+    canvas's stale last frame — is painted in the arena's own sky colour,
+    on the reasoning that the arena then "fades out into that place". It
+    does, when you are already standing in the arena and only the die
+    changes. Coming from a shelf full of white cards it is a flat slab of
+    sky with nothing in it, and two frames is long enough to read as a
+    blank screen.
+
+    So the shelf itself is the cover now. It is already mounted, already
+    opaque, and already the thing the player was looking at, so there is
+    no visible transition at all until the board is genuinely ready. The
+    sky slab stays for the paths that have no shelf up — previewing from
+    inside another preview — where fading into the arena is right.
+  */
+  const holdShelf = stale;
+
   const showPreview = (target: PreviewTarget | null) => {
     previewRef.current = target;
     setPreview(target);
@@ -1966,7 +1990,7 @@ export function DiceDemoScreen() {
       */}
       {heavyTabUp('store') && (
         <StoreScreen
-          hidden={menuTab !== 'store' || preview !== null}
+          hidden={menuTab !== 'store' || (preview !== null && !holdShelf)}
           wallet={wallet}
           // Coins bought with money land in the same purse as coins won,
           // so the HUD and the price tags have to be told to look again.
@@ -2004,7 +2028,7 @@ export function DiceDemoScreen() {
       )}
       {heavyTabUp('inventory') && (
         <InventoryScreen
-          hidden={menuTab !== 'inventory' || preview !== null}
+          hidden={menuTab !== 'inventory' || (preview !== null && !holdShelf)}
           trophies={trophies}
           arenaId={arenaId}
           skinId={loadout.skinId}
@@ -2187,7 +2211,10 @@ export function DiceDemoScreen() {
                   "shapes" losing its shape whenever it was off was the one
                   state where the icon had nothing to say.
                 */}
-                <Text style={styles.toggleLabel}>🔷 Colorblind mode</Text>
+                <View style={styles.toggleLabelRow}>
+                  <ColorsIcon size={16} />
+                  <Text style={styles.toggleLabel}>Colorblind mode</Text>
+                </View>
                 <Text style={styles.toggleNote}>
                   Every colour gets its own shape, on the dice and the
                   prisoners.
@@ -2948,6 +2975,11 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     flex: 1,
+  },
+  toggleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   toggleLabel: {
     color: THEME.ink,

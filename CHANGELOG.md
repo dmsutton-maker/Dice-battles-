@@ -1,5 +1,62 @@
 # Changelog
 
+## v1.81.0 — 2026-09-10 · requested by David
+
+Four things at once: "make the volume icons and colorblind mode icon
+drawn images in the same style as everything else, rather than emojis",
+the same for the News tab, "get rid of the 'coins come from…' line in the
+store", and "when you click on an item in the store or inventory, for a
+second it just shows the main color of the arena you have selected or are
+viewing".
+
+### Changed
+- **The volume controls and the colourblind setting are drawn.** They
+  were 🔇 🔈 🔉 🔊 and 🔷 — five glyphs from the phone's emoji font
+  pretending to be part of a set. `volumeIcon` is now `volumeLevel`,
+  returning how many waves the drawn speaker should have, and there is a
+  `SpeakerIcon` and a `ColorsIcon` in the icon set.
+  - Not only taste: the four speaker emoji are different WIDTHS from each
+    other on iOS, so the label beside the slider shifted sideways as you
+    dragged it. The drawn one is a fixed box at every level.
+  - The colourblind icon is two overlapping discs in the game's own red
+    and green — the pair the setting exists to separate — read from
+    `PRISONER_COLORS` rather than copied.
+- **The News tab is drawn too, by KIND rather than by post.** Fifty-five
+  posts carried forty-eight different emoji between them, which is not a
+  set. Drawing forty-eight would have been the wrong answer: what the
+  list needs is to say what kind of change a post is about. A post now
+  picks one of twelve kinds and `src/ui/newsIcons.tsx` decides what it
+  looks like — so the picture beside a post about the Store is the same
+  bag that is on the Store button.
+  - Six new drawings: a speaker, two colour discs, a stopwatch, a
+    sticking plaster, a paintbrush, a phone and a little landscape. The
+    other six kinds reuse icons the game already had.
+  - Posts fetched from the board may carry no kind at all, or one this
+    version has never heard of. `newsIconId` turns anything into a real
+    drawing, and `isNewsItem` no longer requires the field — losing a
+    post over its picture would be far worse than showing a plain one.
+- **The "coins come from playing" paragraph is out of the Store.** Three
+  blocks of text above the shelf pushed the dice off the bottom of the
+  screen. One more row is visible now.
+
+### Fixed
+- **Tapping an item no longer flashes a slab of the arena's colour.**
+  That colour was ours: the cover added on 26 Aug to hide the canvas's
+  stale last frame is painted in the arena's own sky colour, on the
+  reasoning that the arena then fades out into that place. It does, when
+  you are already standing in the arena. Coming from a shelf full of
+  white cards it is a blank coloured screen. The shelf now stays up for
+  the two frames the board needs, so there is no transition to see at
+  all. The sky cover stays for the paths that have no shelf behind them.
+
+### A test that had quietly stopped testing anything
+`drawingOf(icon, null)` in `tests/icons.test.ts` meant "this icon is last
+in the file" and sliced to the end of it. Adding six icons after
+ChevronIcon made that slice swallow their drawings, and the rule that
+controls stay ink started failing against icons it was never about. It
+now means "up to the next export, whatever it is", which is what every
+caller wanted.
+
 ## v1.80.0 — 2026-09-10 · requested by David
 
 "Now when you click on the store and inventory tabs, it shows the Home

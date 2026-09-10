@@ -962,3 +962,455 @@ export function ChevronIcon({
     </View>
   );
 }
+
+/**
+ * A speaker, with as many waves as there is volume — and a cross when
+ * there is none.
+ *
+ * David, 10 Sep 2026: "make the volume icons and colorblind mode icon
+ * drawn images in the same style as everything else, rather than
+ * emojis." They were 🔇 🔈 🔉 🔊, which is four different pictures from
+ * four different fonts pretending to be one set: the mute glyph is a
+ * different WIDTH from the loud one on iOS, so the label beside the
+ * slider shifted as you dragged it.
+ *
+ * The waves are arcs, drawn as circles with only their right border
+ * inked — the same trick the chevron uses, and the reason this needs no
+ * SVG. Each is a ring wide enough that only its right-hand curve falls
+ * inside the box.
+ */
+export function SpeakerIcon({
+  size = 22,
+  color = THEME.ink,
+  fill = ICON.steel,
+  level = 3,
+}: IconProps & {
+  /** 0 is muted and draws a cross; 1-3 draw that many waves. */
+  level?: 0 | 1 | 2 | 3;
+}) {
+  const s = w(size);
+  /*
+    The cone is a real triangle, made the only way a View can be one: a
+    box with no width or height whose thick right border IS the shape,
+    apex on the left where it meets the speaker box. There is no stroke
+    on a border triangle, so the outline is a second, larger triangle in
+    ink sitting behind the filled one.
+  */
+  const cone = (grow: number, tint: string, key: string) => (
+    <View
+      key={key}
+      style={{
+        position: 'absolute',
+        left: size * 0.16 - grow,
+        top: size * 0.5 - (size * 0.34 + grow),
+        width: 0,
+        height: 0,
+        borderTopWidth: size * 0.34 + grow,
+        borderBottomWidth: size * 0.34 + grow,
+        borderRightWidth: size * 0.24 + grow,
+        borderTopColor: 'transparent',
+        borderBottomColor: 'transparent',
+        borderRightColor: tint,
+      }}
+    />
+  );
+  /*
+    A wave is a ring with only its right border inked, so what shows is
+    the right-hand quarter of a circle. All three share a CENTRE at the
+    mouth of the cone — the first version gave them a shared right EDGE
+    instead, which stacked all three arcs on top of each other and drew
+    what looked like one wave.
+  */
+  const CENTRE = 0.4;
+  const wave = (i: number) => {
+    const d = 0.5 + i * 0.25;
+    return (
+      <View
+        key={i}
+        style={{
+          position: 'absolute',
+          left: size * (CENTRE - d / 2),
+          top: size * (0.5 - d / 2),
+          width: size * d,
+          height: size * d,
+          borderRadius: size * d * 0.5,
+          borderWidth: s * 0.7,
+          borderColor: 'transparent',
+          borderRightColor: color,
+        }}
+      />
+    );
+  };
+  return (
+    <View style={{ width: size, height: size }}>
+      {/* The box of the speaker, behind the cone. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.02,
+          top: size * 0.35,
+          width: size * 0.22,
+          height: size * 0.3,
+          borderRadius: size * 0.05,
+          backgroundColor: fill,
+          borderWidth: s * 0.6,
+          borderColor: color,
+        }}
+      />
+      {cone(s * 0.8, color, 'ink')}
+      {cone(0, fill, 'fill')}
+      {level > 0 && [0, 1, 2].slice(0, level).map(wave)}
+      {level === 0 && (
+        // A cross where the waves would be, rather than a slash across
+        // the whole icon: at 19pt a full slash reads as a scratch.
+        <View
+          style={{
+            position: 'absolute',
+            left: size * 0.5,
+            top: size * 0.28,
+            width: size * 0.44,
+            height: size * 0.44,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {[45, -45].map((deg) => (
+            <View
+              key={deg}
+              style={{
+                position: 'absolute',
+                width: size * 0.36,
+                height: s * 0.9,
+                borderRadius: s,
+                backgroundColor: color,
+                transform: [{ rotate: `${deg}deg` }],
+              }}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Two overlapping colour discs — colourblind mode.
+ *
+ * It was 🔷, a blue diamond, which says nothing about colour vision and
+ * everything about whatever font the phone happened to have. Two discs
+ * that overlap is the shape every colour-vision test uses, and the two
+ * colours are read from the game's own palette rather than picked here:
+ * red and green are the exact pair the setting exists to separate, so
+ * the icon is a small demonstration of the problem it solves.
+ */
+export function ColorsIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  const disc = (left: number, tint: string, key: string) => (
+    <View
+      key={key}
+      style={{
+        position: 'absolute',
+        left: size * left,
+        top: size * 0.22,
+        width: size * 0.56,
+        height: size * 0.56,
+        borderRadius: size * 0.28,
+        backgroundColor: tint,
+        borderWidth: s * 0.6,
+        borderColor: color,
+      }}
+    />
+  );
+  return (
+    <View style={{ width: size, height: size }}>
+      {disc(0.02, hex('red'), 'red')}
+      {disc(0.42, hex('green'), 'green')}
+    </View>
+  );
+}
+
+/**
+ * A stopwatch — anything about the game being quicker.
+ *
+ * Chosen over a lightning bolt, which was the emoji this replaces (⚡),
+ * because a bolt drawn out of rectangles reads as a scribble at 19pt
+ * while a circle with a stem on top is unmistakable at any size.
+ */
+export function TimerIcon({ size = 22, color = THEME.ink, fill = ICON.steel }: IconProps) {
+  const s = w(size);
+  return (
+    <View style={{ width: size, height: size }}>
+      {/* The winder. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.38,
+          top: size * 0.03,
+          width: size * 0.24,
+          height: size * 0.12,
+          borderRadius: size * 0.04,
+          backgroundColor: fill,
+          borderWidth: s * 0.55,
+          borderColor: color,
+        }}
+      />
+      {/* The case. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.1,
+          top: size * 0.14,
+          width: size * 0.8,
+          height: size * 0.8,
+          borderRadius: size * 0.4,
+          backgroundColor: fill,
+          borderWidth: s * 0.75,
+          borderColor: color,
+        }}
+      />
+      {/*
+        The hand, pivoting on the middle of the case.
+
+        A View cannot be given a transform origin, so the hand is the top
+        half of a box centred on the pivot: rotating the box turns the
+        hand around the centre instead of around its own middle, which is
+        what made the first version look like a bar laid across the face.
+      */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.54 - s * 0.45,
+          top: size * 0.54 - size * 0.26,
+          width: s * 0.9,
+          height: size * 0.52,
+          alignItems: 'center',
+          transform: [{ rotate: '38deg' }],
+        }}
+      >
+        <View
+          style={{
+            width: s * 0.9,
+            height: size * 0.26,
+            borderRadius: s,
+            backgroundColor: color,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A sticking plaster — something that was broken and is now mended.
+ *
+ * The news list used a dozen different emoji for this idea (🔧 🩹 🐛 ✅),
+ * which is a dozen pictures for one thing. A plaster is what a child
+ * already reads as "that got fixed", and it draws cleanly out of two
+ * rounded rectangles.
+ */
+export function PatchIcon({ size = 22, color = THEME.ink, fill = ICON.leather }: IconProps) {
+  const s = w(size);
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <View
+        style={{
+          width: size * 0.86,
+          height: size * 0.42,
+          borderRadius: size * 0.21,
+          backgroundColor: fill,
+          borderWidth: s * 0.65,
+          borderColor: color,
+          transform: [{ rotate: '-35deg' }],
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* The pad in the middle, lighter, with its four dots. */}
+        <View
+          style={{
+            width: size * 0.3,
+            height: size * 0.3,
+            borderRadius: size * 0.05,
+            backgroundColor: THEME.surface,
+            borderWidth: s * 0.5,
+            borderColor: color,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              style={{
+                width: s * 0.7,
+                height: s * 0.7,
+                borderRadius: s,
+                margin: size * 0.02,
+                backgroundColor: color,
+              }}
+            />
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** A paintbrush — anything about how the game LOOKS. */
+export function BrushIcon({ size = 22, color = THEME.ink, fill = ICON.wood }: IconProps) {
+  const s = w(size);
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <View style={{ transform: [{ rotate: '38deg' }], alignItems: 'center' }}>
+        {/* The handle. */}
+        <View
+          style={{
+            width: size * 0.24,
+            height: size * 0.44,
+            borderTopLeftRadius: size * 0.12,
+            borderTopRightRadius: size * 0.12,
+            backgroundColor: fill,
+            borderWidth: s * 0.55,
+            borderColor: color,
+          }}
+        />
+        {/* The ferrule: the metal band that always reads as "brush". */}
+        <View
+          style={{
+            width: size * 0.32,
+            height: size * 0.14,
+            marginTop: -s * 0.55,
+            backgroundColor: ICON.silver,
+            borderWidth: s * 0.55,
+            borderColor: color,
+          }}
+        />
+        {/* The bristles, tapering to a point. */}
+        <View
+          style={{
+            width: size * 0.3,
+            height: size * 0.26,
+            marginTop: -s * 0.55,
+            borderBottomLeftRadius: size * 0.15,
+            borderBottomRightRadius: size * 0.15,
+            backgroundColor: hex('red'),
+            borderWidth: s * 0.55,
+            borderColor: color,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/** A phone — anything about the device the game is running on. */
+export function PhoneIcon({ size = 22, color = THEME.ink, fill = THEME.surface }: IconProps) {
+  const s = w(size);
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: size * 0.58,
+          height: size * 0.88,
+          borderRadius: size * 0.14,
+          backgroundColor: fill,
+          borderWidth: s * 0.75,
+          borderColor: color,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingBottom: size * 0.06,
+        }}
+      >
+        {/* The home bar, which is what makes a rounded box a phone. */}
+        <View
+          style={{
+            width: size * 0.24,
+            height: s * 0.8,
+            borderRadius: s,
+            backgroundColor: color,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A place to battle in — hills under a sky.
+ *
+ * Deliberately not one particular arena: the news talks about the whole
+ * set of them, and a picture of the Volcano would be wrong for a post
+ * about the Ocean. Sky above, ground below, two hills where they meet.
+ */
+export function ArenaIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = w(size);
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.18,
+        borderWidth: s * 0.75,
+        borderColor: color,
+        backgroundColor: ICON.sky,
+        overflow: 'hidden',
+      }}
+    >
+      {/*
+        Two hills FIRST, each outlined in ink, then the ground drawn over
+        their feet. Without the outlines the hills were the same green as
+        the ground and the whole lower half read as one flat block, which
+        is what the first version looked like.
+      */}
+      {[
+        { left: -0.16, d: 0.62 },
+        { left: 0.38, d: 0.78 },
+      ].map((h) => (
+        <View
+          key={h.left}
+          style={{
+            position: 'absolute',
+            left: size * h.left,
+            bottom: size * 0.3,
+            width: size * h.d,
+            height: size * h.d * 0.55,
+            borderTopLeftRadius: size * h.d * 0.5,
+            borderTopRightRadius: size * h.d * 0.5,
+            backgroundColor: hex('green'),
+            borderWidth: s * 0.6,
+            borderColor: color,
+          }}
+        />
+      ))}
+      {/* The ground, with its own ink horizon along the top. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: -size,
+          right: -size,
+          bottom: -size * 0.1,
+          height: size * 0.45,
+          backgroundColor: ICON.ground,
+          borderTopWidth: s * 0.6,
+          borderTopColor: color,
+        }}
+      />
+    </View>
+  );
+}

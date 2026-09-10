@@ -97,6 +97,16 @@ export const ICON = {
   info: '#3478c8',
   /** A mark reversed OUT of a filled icon — the ? on the blue disc. */
   onFill: '#ffffff',
+  /**
+   * The little landscape in the battlefield icon.
+   *
+   * The hills are the game's own green (from PRISONER_COLORS, like every
+   * other icon that carries a game colour); this is the darker ground
+   * they stand on. Two shades, because one made the whole lower half of
+   * the icon read as a single flat block with a line through it.
+   */
+  sky: '#9ad4f0',
+  ground: '#2a8f4e',
 } as const;
 
 /**

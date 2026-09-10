@@ -25,11 +25,63 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * knows which one they are. `tests/news.test.ts` fails on a first name.
  */
 
+/**
+ * The pictures a post can carry.
+ *
+ * Every post used to name its own emoji, and fifty-five posts had
+ * forty-eight different ones — which is not a set, it is forty-eight
+ * borrowed pictures that each render differently on every phone. David
+ * asked on 10 Sep 2026 for these to be drawn like the rest of the game.
+ *
+ * Drawing forty-eight would have been the wrong answer: what the list
+ * actually needs is to say what KIND of change a post is about, and a
+ * dozen kinds covers every post there has ever been. So a post picks a
+ * kind and `src/ui/newsIcons.tsx` decides what that looks like.
+ *
+ * Kept here, in the rules, rather than beside the drawings, because the
+ * headless tests read this file and have no renderer at all.
+ */
+export const NEWS_ICON_IDS = [
+  'news',
+  'dice',
+  'arena',
+  'look',
+  'speed',
+  'sound',
+  'people',
+  'cups',
+  'shop',
+  'fix',
+  'phone',
+  'help',
+] as const;
+
+export type NewsIconId = (typeof NEWS_ICON_IDS)[number];
+
+/**
+ * Read a kind off a post, whatever the post actually contains.
+ *
+ * Posts can arrive from the board over the network, written by a person
+ * in a browser, so this must never throw and never render nothing: an
+ * unknown kind, a missing one, or an old post still carrying an emoji
+ * all come back as the plain news picture. A post with a slightly wrong
+ * icon is a small thing; a post that fails to draw is a hole in the
+ * list.
+ */
+export function newsIconId(value: unknown): NewsIconId {
+  return NEWS_ICON_IDS.includes(value as NewsIconId) ? (value as NewsIconId) : 'news';
+}
+
 export interface NewsItem {
   id: string;
   date: string;
   title: string;
-  emoji: string;
+  /**
+   * Optional because a post fetched from the board may not have one, and
+   * losing the post would be worse than losing its picture. Every post
+   * bundled with the game does have one — `npm test` checks that.
+   */
+  icon?: NewsIconId;
   body: string;
   /** Set when the post is about a released version. */
   version?: string;
@@ -37,11 +89,33 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-81-0-drawn-icons',
+    date: '10 September 2026',
+    version: 'v1.81.0',
+    title: 'Every picture in the game is drawn now',
+    icon: 'look',
+    body:
+      'The volume controls, the colourblind setting and every post on ' +
+      'this page used to borrow their little pictures from the phone\u2019s ' +
+      'emoji font. They are drawn now, in the same style as the rest of ' +
+      'the game, so they look the same on every phone.\n\n' +
+      'The volume ones had a second problem worth mentioning: the four ' +
+      'speaker emoji were different widths from each other, so the word ' +
+      'next to the slider slid sideways as you dragged it. It stays put ' +
+      'now.\n\n' +
+      'Also gone: the paragraph in the Store explaining where coins come ' +
+      'from. It was pushing the dice off the bottom of the screen, and ' +
+      'the Store is for looking at dice.\n\n' +
+      'And tapping an item no longer flashes a blank sheet of colour ' +
+      'before it opens \u2014 the shelf now stays put until the ' +
+      'battlefield behind it is really ready.',
+  },
+  {
     id: 'v1-77-0-friends-popup',
     date: '10 September 2026',
     version: 'v1.77.0',
     title: 'Friends opens over the game',
-    emoji: '\ud83e\ude9f',
+    icon: 'people',
     body:
       'Friends is a panel now, the same as Settings and News \u2014 it ' +
       'opens on top of the game instead of taking you somewhere else, ' +
@@ -56,7 +130,7 @@ export const NEWS: NewsItem[] = [
     date: '10 September 2026',
     version: 'v1.76.0',
     title: 'Every side of a die is different now',
-    emoji: '\ud83c\udfb2',
+    icon: 'dice',
     body:
       'Until now a dice skin was one picture stamped on all six sides. ' +
       'Zebra was the same stripes six times, so the die looked like a ' +
@@ -75,7 +149,7 @@ export const NEWS: NewsItem[] = [
     date: '10 September 2026',
     version: 'v1.75.0',
     title: 'Items and Store open straight away',
-    emoji: '\u26a1',
+    icon: 'speed',
     body:
       'The Items tab took two or three seconds the first time you opened ' +
       'it, and about a second every time after. Both are gone.\n\n' +
@@ -94,7 +168,7 @@ export const NEWS: NewsItem[] = [
     date: '10 September 2026',
     version: 'v1.74.0',
     title: 'Friends is one tap away now',
-    emoji: '\ud83d\udc65',
+    icon: 'people',
     body:
       'Friends has moved to the top corner of the home screen, where the ' +
       'question mark used to be. It was two taps deep behind the Ranks ' +
@@ -112,7 +186,7 @@ export const NEWS: NewsItem[] = [
     date: '9 September 2026',
     version: 'v1.73.0',
     title: 'Your first hundred trophies are yours',
-    emoji: '\ud83c\udfc1',
+    icon: 'people',
     body:
       'Under 100 trophies you are always matched with a rival the game ' +
       'picks, never thrown in against somebody who already owns the ' +
@@ -134,7 +208,7 @@ export const NEWS: NewsItem[] = [
     date: '9 September 2026',
     version: 'v1.72.0',
     title: 'Ready for the folding iPhone',
-    emoji: '\ud83d\udcf1',
+    icon: 'phone',
     body:
       'Apple announced a folding iPhone today, and the game had two ' +
       'problems waiting for it.\n\n' +
@@ -156,7 +230,7 @@ export const NEWS: NewsItem[] = [
     date: '7 September 2026',
     version: 'v1.71.0',
     title: 'The people who made the sounds',
-    emoji: '\ud83c\udfb5',
+    icon: 'sound',
     body:
       'The music and the crowd cheer are borrowed under a licence that ' +
       'asks for one thing in return: the names have to be somewhere you ' +
@@ -174,7 +248,7 @@ export const NEWS: NewsItem[] = [
     date: '7 September 2026',
     version: 'v1.70.0',
     title: 'Your friends survive a reinstall',
-    emoji: '\ud83d\udd11',
+    icon: 'people',
     body:
       'Delete the game, install it again, and it used to forget who you ' +
       'were. Not your trophies \u2014 your PROFILE: a new friend code, an ' +
@@ -194,7 +268,7 @@ export const NEWS: NewsItem[] = [
     date: '7 September 2026',
     version: 'v1.69.0',
     title: 'Kinder to your battery',
-    emoji: '\ud83d\udd0b',
+    icon: 'phone',
     body:
       'The 3D board used to keep drawing itself sixty times a second even ' +
       'when nothing was moving \u2014 while you were reading the menu, while ' +
@@ -214,7 +288,7 @@ export const NEWS: NewsItem[] = [
     date: '7 September 2026',
     version: 'v1.68.0',
     title: 'A shop that takes real money — soon',
-    emoji: '\ud83d\udecd\ufe0f',
+    icon: 'shop',
     body:
       'Groundwork for buying things: switching the adverts off for good, ' +
       'and coins for anyone who would rather not grind for the last ' +
@@ -230,7 +304,7 @@ export const NEWS: NewsItem[] = [
     date: '7 September 2026',
     version: 'v1.67.0',
     title: 'One advert every third game',
-    emoji: '\ud83d\udcf0',
+    icon: 'shop',
     body:
       'The game is free, and from this update one full-screen advert ' +
       'appears after every third finished game. That is the whole of it: ' +
@@ -247,7 +321,7 @@ export const NEWS: NewsItem[] = [
     date: '7 September 2026',
     version: 'v1.66.0',
     title: 'You can see the coins you won',
-    emoji: '\ud83e\ude99',
+    icon: 'shop',
     body:
       'Every result screen now shows the coins that battle paid, next to ' +
       'the trophies. They were being paid the whole time and never shown ' +
@@ -262,7 +336,7 @@ export const NEWS: NewsItem[] = [
     date: '7 September 2026',
     version: 'v1.65.0',
     title: 'Cups are safe, and the dice show up',
-    emoji: '\ud83c\udfc6',
+    icon: 'cups',
     body:
       'A normal battle used to count as a cup round, so an ordinary loss ' +
       'could knock you out of a cup you had paid to enter. Only rounds ' +
@@ -279,7 +353,7 @@ export const NEWS: NewsItem[] = [
     date: '28 August 2026',
     version: 'v1.63.2',
     title: 'Sharper floors everywhere',
-    emoji: '\ud83d\udd0d',
+    icon: 'arena',
     body:
       'The arena floors were being drawn at half the detail they needed, ' +
       'so edges came out fuzzy and stepped instead of clean. Every ' +
@@ -294,7 +368,7 @@ export const NEWS: NewsItem[] = [
     date: '28 August 2026',
     version: 'v1.63.1',
     title: 'Bigger pieces on the cavern floor',
-    emoji: '\ud83d\udd37',
+    icon: 'arena',
     body:
       'The Crystal Cavern floor we put in yesterday was cut into small ' +
       'pieces, and up close that looks more like gravel than crystal. ' +
@@ -307,7 +381,7 @@ export const NEWS: NewsItem[] = [
     date: '28 August 2026',
     version: 'v1.63.0',
     title: 'The Crystal Cavern is made of crystal',
-    emoji: '\ud83d\udc8e',
+    icon: 'arena',
     body:
       'The family picked these two off a set of designs. The floor is ' +
       'no longer rock with a few crystals on it — the whole board is ' +
@@ -322,7 +396,7 @@ export const NEWS: NewsItem[] = [
     date: '28 August 2026',
     version: 'v1.62.3',
     title: 'You start on both of them',
-    emoji: '\u2b50',
+    icon: 'cups',
     body:
       'The Castle Courtyard and the Ivory Dice are both yours the moment ' +
       'you open the game, but the ladder was only highlighting one of ' +
@@ -334,7 +408,7 @@ export const NEWS: NewsItem[] = [
     date: '27 August 2026',
     version: 'v1.62.2',
     title: 'The floors build five times faster',
-    emoji: '\u26a1',
+    icon: 'speed',
     body:
       'Nothing looks different — this one is under the bonnet. The code ' +
       'that paints an arena floor was doing the same work six times ' +
@@ -349,7 +423,7 @@ export const NEWS: NewsItem[] = [
     date: '27 August 2026',
     version: 'v1.62.1',
     title: 'The floors are one piece now',
-    emoji: '\ud83d\udd2e',
+    icon: 'arena',
     body:
       'Every arena floor had a line across it about two thirds of the ' +
       'way down, where the picture ran out and started again. It was ' +
@@ -364,7 +438,7 @@ export const NEWS: NewsItem[] = [
     date: '27 August 2026',
     version: 'v1.62.0',
     title: 'The ladder shows what you are climbing for',
-    emoji: '\ud83e\uddd7',
+    icon: 'cups',
     body:
       'Every rung of the ladder used to have a little emoji next to it. ' +
       'It now shows the actual thing you get — the real dice, the real ' +
@@ -381,7 +455,7 @@ export const NEWS: NewsItem[] = [
     date: '27 August 2026',
     version: 'v1.61.1',
     title: 'A football that looks like a football',
-    emoji: '\u26bd',
+    icon: 'dice',
     body:
       'The Soccer Ball skin was picking its black panels at random, so ' +
       'they kept landing next to each other and running together, and ' +
@@ -397,7 +471,7 @@ export const NEWS: NewsItem[] = [
     date: '27 August 2026',
     version: 'v1.61.0',
     title: 'Every wall, the whole way round',
-    emoji: '🧱',
+    icon: 'arena',
     body:
       'The orange rocks on Volcano Rim were all down one side. Fixing ' +
       'that turned up three more: the fence in the Snowy Woods was ' +
@@ -414,7 +488,7 @@ export const NEWS: NewsItem[] = [
     date: '27 August 2026',
     version: 'v1.60.1',
     title: 'Frozen Lights goes all the way round',
-    emoji: '🧊',
+    icon: 'arena',
     body:
       'The little ribs along the top of the wall in Frozen Lights were ' +
       'all down one side and none down the other. ' +
@@ -430,7 +504,7 @@ export const NEWS: NewsItem[] = [
     date: '27 August 2026',
     version: 'v1.60.0',
     title: 'Decorations all the way round, and a lot of redrawing',
-    emoji: '🪸',
+    icon: 'arena',
     body:
       'The pegs and decorations along the tops of the walls used to stop ' +
       'short at every corner, so the two short walls looked bare. They ' +
@@ -455,7 +529,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.59.0',
     title: 'The Ultimate icon, finally',
-    emoji: '🔁',
+    icon: 'look',
     body:
       'The little loop-and-arrows icon for Ultimate mode has been wrong ' +
       'twice, both times on the arrowheads. The first version left odd ' +
@@ -471,7 +545,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.58.0',
     title: 'Copper was showing as a plain brown cube',
-    emoji: '🥉',
+    icon: 'fix',
     body:
       'Copper had no pattern on it at all — and nor did Ruby, Ocean or ' +
       'Slate. All four are painted a different way from the rest and ' +
@@ -497,7 +571,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.57.0',
     title: 'Sorry about the giant blob',
-    emoji: '🫧',
+    icon: 'fix',
     body:
       'The last update put an enormous brown dome across the top of ' +
       'every battlefield. It was meant to be a distant horizon and it ' +
@@ -516,7 +590,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.56.0',
     title: 'The new battlefields were being decorated off screen',
-    emoji: '🔭',
+    icon: 'fix',
     body:
       'Somebody said the new maps looked unfinished, and they were ' +
       'right for a reason nobody had spotted: all the scenery was ' +
@@ -540,7 +614,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.55.0',
     title: 'The Fish has fish on it, and every arena is its own place',
-    emoji: '🐟',
+    icon: 'look',
     body:
       'The Fish dice had scales on it, which is what a fish is covered ' +
       'in — not what a fish looks like. It has fish on it now. The ' +
@@ -567,7 +641,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.54.0',
     title: 'The dice designs were hiding under the colours',
-    emoji: '🎲',
+    icon: 'dice',
     body:
       'The coloured circle on each side of a die covers the middle of ' +
       'that side — and a lot of the dice had their design drawn right ' +
@@ -588,7 +662,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.53.0',
     title: 'Brighter battlefields, and not a castle in sight',
-    emoji: '🏞️',
+    icon: 'arena',
     body:
       'Some of the new battlefields were so dark you could not tell what ' +
       'you were looking at. Rooftop City is dusk now instead of ' +
@@ -613,7 +687,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.50.0',
     title: 'Sixteen new battlefields and forty new dice',
-    emoji: '🗺️',
+    icon: 'arena',
     body:
       'The biggest update the game has ever had. Sixteen brand new ' +
       'battlefields: a snowy hollow, desert dunes, a volcano rim, a ' +
@@ -632,7 +706,7 @@ export const NEWS: NewsItem[] = [
     date: '26 August 2026',
     version: 'v1.46.0',
     title: 'See your board again, and a proper How to Play',
-    emoji: '👆',
+    icon: 'look',
     body:
       'The screen you get after a game used to be solid paper, so the ' +
       'board you had just played on vanished behind it. It is see-through ' +
@@ -649,7 +723,7 @@ export const NEWS: NewsItem[] = [
     date: '25 August 2026',
     version: 'v1.41.0',
     title: 'The dice have to actually land now',
-    emoji: '🎲',
+    icon: 'dice',
     body:
       'You could tap as fast as your thumb would go and the game would ' +
       'read the dice while they were still in the air — so a whole board ' +
@@ -668,7 +742,7 @@ export const NEWS: NewsItem[] = [
     date: '25 August 2026',
     version: 'v1.39.0',
     title: 'A bracket for Cups, and real wood and stone',
-    emoji: '🪵',
+    icon: 'look',
     body:
       'The Cups tab had the same trophy picture as your trophy count, so ' +
       'there was no telling which one meant what. It is a tournament ' +
@@ -681,7 +755,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.38.0',
     title: 'No more winning by swiping as fast as you can',
-    emoji: '🎲',
+    icon: 'fix',
     body:
       'You could spam the screen and free all six colours in about three ' +
       'seconds, because a new swipe ended the previous roll instantly. ' +
@@ -694,7 +768,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.36.0',
     title: 'Ads are coming, and here is the deal',
-    emoji: '📺',
+    icon: 'shop',
     body:
       'To pay for the game being free, an ad now shows after every third ' +
       'finished game. Never in the middle of a battle, never on top of a ' +
@@ -708,7 +782,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.34.0',
     title: 'A golden trophy and a proper coin',
-    emoji: '🏆',
+    icon: 'look',
     body:
       'The trophy symbol is gold now instead of a plain outline, and the ' +
       'coin got a raised rim, an inner ring and a little sparkle stamped ' +
@@ -721,7 +795,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.32.0',
     title: 'A whole new look: Paper & Ink',
-    emoji: '🎨',
+    icon: 'look',
     body:
       'Every menu, button and popup has been redrawn. The game now looks ' +
       'like pieces of white card laid out on a warm paper table — clean ' +
@@ -735,7 +809,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.31.0',
     title: 'Ultimate soldiers stop sharing a spot',
-    emoji: '🐛',
+    icon: 'fix',
     body:
       'Somebody spotted that in Ultimate two rescued soldiers could end ' +
       'up standing on exactly the same spot. It happened after a prisoner ' +
@@ -748,7 +822,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.29.0',
     title: 'Every battlefield has its own traps',
-    emoji: '🕳️',
+    icon: 'arena',
     body:
       'On Medium and Hard the hill and the water used to be drawn the same ' +
       'everywhere — a grassy bump and a stone-edged pond, even on a space ' +
@@ -762,7 +836,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.28.0',
     title: 'Battlefields open straight away',
-    emoji: '⚡',
+    icon: 'speed',
     body:
       'Looking through the battlefields used to show you the last one for a ' +
       'moment before the new one appeared. The ground and walls are drawn dot ' +
@@ -775,7 +849,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.27.0',
     title: 'The Jungle Clearing, rebuilt',
-    emoji: '🌴',
+    icon: 'arena',
     body:
       'The jungle was quietly using the castle\'s stone floor with green paint ' +
       'on it — you could see the slabs and the lines between them. It has ' +
@@ -787,7 +861,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.26.0',
     title: 'Never wait for the dice again',
-    emoji: '🎲',
+    icon: 'speed',
     body:
       'Swipe whenever you like. You no longer wait for the dice to stop ' +
       'rolling — the moment you swipe, the roll counts and the next one is on ' +
@@ -799,7 +873,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.25.0',
     title: 'Snowflakes on the Frost dice',
-    emoji: '❄️',
+    icon: 'dice',
     body:
       'The Frost dice have proper snowflakes now, six arms with branches off ' +
       'each one and a little bar across every tip. Every flake is a different ' +
@@ -810,7 +884,7 @@ export const NEWS: NewsItem[] = [
     date: '24 August 2026',
     version: 'v1.24.0',
     title: 'Wood, marble, granite, gold and silver',
-    emoji: '✨',
+    icon: 'dice',
     body:
       'Dice that look like what they are made of. The wooden ones have growth ' +
       'rings, the marble has veins running through it, the granite is flecked ' +
@@ -822,7 +896,7 @@ export const NEWS: NewsItem[] = [
     date: '23 August 2026',
     version: 'v1.23.0',
     title: 'World rankings are coming',
-    emoji: '🌍',
+    icon: 'people',
     body:
       'Your trophies and battles won will go up against everyone else\'s ' +
       'through Game Center, with ten things to earn along the way — your first ' +
@@ -836,7 +910,7 @@ export const NEWS: NewsItem[] = [
     date: '23 August 2026',
     version: 'v1.22.0',
     title: 'The battlefields stopped looking the same',
-    emoji: '🏰',
+    icon: 'arena',
     body:
       'Every arena used to be four tall walls with a different ornament on ' +
       'top, so they all read as the castle in another colour. The jungle and ' +
@@ -848,7 +922,7 @@ export const NEWS: NewsItem[] = [
     date: '23 August 2026',
     version: 'v1.21.0',
     title: 'How to play',
-    emoji: '❓',
+    icon: 'help',
     body:
       'Six short pages explaining the whole game: the six prisoners, how to ' +
       'throw, the one rule everything is built on, the four modes, and what ' +
@@ -860,7 +934,7 @@ export const NEWS: NewsItem[] = [
     date: '22 August 2026',
     version: 'v1.18.0',
     title: 'See an item before you buy it',
-    emoji: '👀',
+    icon: 'shop',
     body:
       'Tap anything in the Store or the Inventory and you see it on the real ' +
       'board — the actual dice, the actual battlefield — rather than a small ' +
@@ -872,7 +946,7 @@ export const NEWS: NewsItem[] = [
     date: '19 August 2026',
     version: 'v1.11.0',
     title: 'Tournaments, News and a bottom menu',
-    emoji: '🏆',
+    icon: 'cups',
     body:
       'Three cups to enter, each a knockout bracket against the opponents ' +
       'you already know. Win every round to be champion — lose one and the ' +
@@ -884,7 +958,7 @@ export const NEWS: NewsItem[] = [
     date: '19 August 2026',
     version: 'v1.10.2',
     title: 'The dice follow your finger properly now',
-    emoji: '🎲',
+    icon: 'dice',
     body:
       'If you flicked the dice and paused for a moment before lifting your ' +
       'finger, the game read it as a gentle tap and rolled them slowly ' +
@@ -896,7 +970,7 @@ export const NEWS: NewsItem[] = [
     date: '19 August 2026',
     version: 'v1.10.2',
     title: 'Every mode plays in split screen',
-    emoji: '👥',
+    icon: 'people',
     body:
       'Two-player split screen used to be Color Rush only. Ultimate, ' +
       'Skirmish and Color War all play head-to-head now. In Skirmish you ' +
@@ -908,7 +982,7 @@ export const NEWS: NewsItem[] = [
     date: '19 August 2026',
     version: 'v1.10.2',
     title: 'Colorblind mode',
-    emoji: '🔷',
+    icon: 'look',
     body:
       'A new setting gives every colour its own shape as well — a circle ' +
       'for red, a square for blue, and so on. Helpful if colours are hard ' +
@@ -946,7 +1020,8 @@ function isNewsItem(value: unknown): value is NewsItem {
     item.id.length > 0 &&
     typeof item.date === 'string' &&
     typeof item.title === 'string' &&
-    typeof item.emoji === 'string' &&
+    // No check on `icon`: newsIconId turns anything at all into a real
+    // picture, so a post is never dropped over one.
     typeof item.body === 'string' &&
     (item.version === undefined || typeof item.version === 'string')
   );
