@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { cachedTexture } from '../arena/textureCache';
 
 /**
  * Procedural patterns for dice shells. Built pixel by pixel because React
@@ -2373,6 +2374,19 @@ export function patternPixels(
   pattern: Exclude<PatternId, 'plain'>,
   base: string,
   ink: string,
+  /**
+   * Where this square sits on a larger sheet, in whole squares.
+   *
+   * Every painter is a function of position, so asking it for the square
+   * one to the right yields the CONTINUATION of the pattern rather than
+   * a copy of it. That is what lets the six sides of a die be six
+   * different views of one design instead of the same picture stamped
+   * six times — see createDieFaceTextures.
+   *
+   * Defaults to the origin, which is what the shelf pictures use.
+   */
+  cellX = 0,
+  cellY = 0,
 ): number[] {
   const parse = (hex: string) => {
     const n = parseInt(hex.slice(1), 16);
@@ -2387,7 +2401,7 @@ export function patternPixels(
     const out: number[] = [];
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
-        out.push(...paintColor(x, y));
+        out.push(...paintColor(x + cellX * SIZE, y + cellY * SIZE));
       }
     }
     return out;
@@ -2398,7 +2412,7 @@ export function patternPixels(
   const out: number[] = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      const mask = Math.max(-1, Math.min(1, paint(x, y)));
+      const mask = Math.max(-1, Math.min(1, paint(x + cellX * SIZE, y + cellY * SIZE)));
       // Positive tints toward the ink, negative darkens the shell itself.
       const mix = (base: number, ink: number) =>
         mask >= 0 ? base + (ink - base) * mask : base * (1 + mask * SHADE_DEPTH);
@@ -2422,12 +2436,86 @@ export const PATTERN_SIZE = SIZE;
  * Build the shell texture for a pattern. `base` is the skin's own colour
  * and `ink` is the pattern colour drawn over it.
  */
+/**
+ * Where each side of the die sits on an unfolded cube.
+ *
+ * David, 10 Sep 2026: "make all the dice have unique sides that make the
+ * entire dice a continuous pattern rather than the same image on every
+ * side." Until now one 64x64 picture was handed to all six faces, so a
+ * zebra die was the same six stripes six times and the eye read it as
+ * wallpaper rather than an object.
+ *
+ * The layout is the paper cube every child cuts out:
+ *
+ *            [ UP ]
+ *     [LEFT][FRONT][RIGHT][BACK]
+ *            [DOWN]
+ *
+ * Because every painter is a function of position, asking one for the
+ * square to the right of FRONT gives the pattern CONTINUING, not
+ * repeating. So the four sides round the middle flow into each other,
+ * and up and down flow out of the front.
+ *
+ * ONE SEAM IS UNAVOIDABLE and it is worth saying so rather than
+ * pretending. A cube cannot be unwrapped onto a flat sheet without
+ * cutting some edges: BACK meets LEFT again round the far side, and UP
+ * and DOWN only truly join FRONT. Four of the twelve edges line up
+ * exactly, the rest are as close as any cut-out cube manages — and every
+ * face is different, which is the thing that was actually wrong.
+ *
+ * The order is three.js's own for a box: +X, -X, +Y, -Y, +Z, -Z.
+ */
+export const CUBE_NET_CELLS: readonly (readonly [number, number])[] = [
+  [2, 1], // +X  right
+  [0, 1], // -X  left
+  [1, 0], // +Y  up
+  [1, 2], // -Y  down
+  [1, 1], // +Z  front
+  [3, 1], // -Z  back
+];
+
+/**
+ * Six textures, one per side, cut from one continuous design.
+ *
+ * Costs six squares of painting rather than one — about 115ms on a
+ * desktop for a whole die — and is built once per skin per run by the
+ * same cache everything else uses. The shelf pictures still paint a
+ * single square (the FRONT one), so the Store and the Inventory are
+ * unaffected.
+ */
+export function createDieFaceTextures(
+  pattern: Exclude<PatternId, 'plain'>,
+  base: string,
+  ink: string,
+): THREE.DataTexture[] {
+  /*
+    Through the app-wide cache, not a useMemo.
+
+    Six squares is six times the painting — about 115ms for a whole die
+    on a desktop and more on a phone. DieMesh's useMemo only caches for
+    the life of one component, and there are two dice on the table that
+    remount whenever the scene rebuilds, so without this the cost would
+    land again on every roll of a newly equipped skin. Keyed on
+    everything the painting depends on, so two skins cannot collide.
+  */
+  return CUBE_NET_CELLS.map(
+    ([cx, cy]) =>
+      cachedTexture(`die:${pattern}:${base}:${ink}:${cx},${cy}`, () =>
+        textureFromPixels(patternPixels(pattern, base, ink, cx, cy)),
+      ) as THREE.DataTexture,
+  );
+}
+
 export function createPatternTexture(
   pattern: Exclude<PatternId, 'plain'>,
   base: string,
   ink: string,
 ): THREE.DataTexture {
-  const rgb = patternPixels(pattern, base, ink);
+  return textureFromPixels(patternPixels(pattern, base, ink));
+}
+
+/** The shared tail: raw RGB in, a configured three.js texture out. */
+function textureFromPixels(rgb: number[]): THREE.DataTexture {
   const data = new Uint8Array(SIZE * SIZE * 4);
   for (let i = 0, p = 0; i < data.length; i += 4, p += 3) {
     data[i] = rgb[p];

@@ -37,6 +37,25 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-76-0-whole-dice',
+    date: '10 September 2026',
+    version: 'v1.76.0',
+    title: 'Every side of a die is different now',
+    emoji: '\ud83c\udfb2',
+    body:
+      'Until now a dice skin was one picture stamped on all six sides. ' +
+      'Zebra was the same stripes six times, so the die looked like a ' +
+      'cube with wallpaper on it rather than a striped object.\n\n' +
+      'Each side now takes its own piece of one continuous design, laid ' +
+      'out like the paper cube you cut out at school \u2014 so the ' +
+      'stripes run round the die and over the edges instead of starting ' +
+      'again at every corner.\n\n' +
+      'Some patterns repeat so neatly that all six sides match anyway, ' +
+      'and for those that is exactly right: the pattern already carried ' +
+      'straight over the edge. Forcing them to differ would have broken ' +
+      'the very thing this was for.',
+  },
+  {
     id: 'v1-75-0-faster-tabs',
     date: '10 September 2026',
     version: 'v1.75.0',

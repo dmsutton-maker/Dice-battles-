@@ -1,5 +1,7 @@
 import { DICE_SKINS } from '../game/diceSkins';
 import { shellPreviewUri } from './preview';
+import { createDieFaceTextures, PatternId } from './patterns';
+import type { DiceSkin } from '../game/diceSkins';
 
 /**
  * Paint the dice pictures BEFORE anybody asks for them.
@@ -89,4 +91,30 @@ export function warmDicePreviews(
 /** Test seam: allow warming to be started again. */
 export function resetWarmForTest(): void {
   started = false;
+}
+
+/**
+ * Paint the six sides of the die the player is actually holding.
+ *
+ * Since 10 Sep 2026 each side of a die is its own square of one
+ * continuous design, which is six times the painting — about 157ms for a
+ * whole die on a desktop, more on a phone. It is cached for the life of
+ * the app, so it is a one-off, but a one-off in the middle of somebody's
+ * first roll is still a stutter. Doing it here means it has already
+ * happened.
+ *
+ * Only the EQUIPPED skin. Warming all fifty-three would be six times the
+ * work for fifty-two dice nobody is about to roll.
+ */
+export function warmEquippedDie(skin: DiceSkin | undefined): void {
+  if (!skin || skin.pattern === 'plain') return;
+  try {
+    createDieFaceTextures(
+      skin.pattern as Exclude<PatternId, 'plain'>,
+      skin.body,
+      skin.ink ?? skin.body,
+    );
+  } catch {
+    // Painted again on demand, exactly as it was before this existed.
+  }
 }

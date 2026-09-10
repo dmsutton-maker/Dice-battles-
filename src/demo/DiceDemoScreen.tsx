@@ -97,7 +97,7 @@ import {
 import { TUNING } from '../game/tuning';
 import { initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { initPurchases } from '../game/purchases';
-import { warmDicePreviews } from '../dice/warmPreviews';
+import { warmDicePreviews, warmEquippedDie } from '../dice/warmPreviews';
 import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
@@ -185,26 +185,6 @@ export function DiceDemoScreen() {
   const activeRef = useRef(appActive);
   activeRef.current = appActive;
 
-  /*
-    Paint the dice pictures in the background, so the Items and Store
-    tabs are already warm the first time anybody opens them.
-
-    Deliberately AFTER the first interactions rather than at launch: the
-    player wants a battle, and a second of blocked JavaScript there is
-    worse than a second in a menu they may never open. It also stops
-    while the game is in a pocket — there is nothing to be warm for, and
-    it is the same thread the battery work just quietened.
-  */
-  useEffect(() => {
-    const { InteractionManager } = require('react-native');
-    const handle = InteractionManager.runAfterInteractions(() => {
-      warmDicePreviews(
-        (run) => setTimeout(run, 0),
-        () => activeRef.current,
-      );
-    });
-    return () => handle.cancel();
-  }, []);
   // Both live: a folding phone changes the home-indicator inset, and
   // therefore the bar's height, without the app relaunching.
   const bottomInset = useBottomInset();
@@ -282,6 +262,38 @@ export function DiceDemoScreen() {
   const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
   const [twoPlayer, setTwoPlayer] = useState(false);
   const [loadout, setLoadout] = useState(getLoadout());
+  /*
+    The equipped skin, readable from an effect that must not re-run every
+    time it changes. The warmer only reads it once, at the moment it
+    starts; equipping a different die later paints its sides on the first
+    roll exactly as it did before any of this existed.
+  */
+  const equippedRef = useRef(loadout.skinId);
+  equippedRef.current = loadout.skinId;
+
+  /*
+    Paint the dice pictures in the background, so the Items and Store
+    tabs are already warm the first time anybody opens them.
+
+    Deliberately AFTER the first interactions rather than at launch: the
+    player wants a battle, and a second of blocked JavaScript there is
+    worse than a second in a menu they may never open. It also stops
+    while the game is in a pocket — there is nothing to be warm for, and
+    it is the same thread the battery work just quietened.
+  */
+  useEffect(() => {
+    const { InteractionManager } = require('react-native');
+    const handle = InteractionManager.runAfterInteractions(() => {
+      // The die in the player's hand first — it is the one thing here
+      // that would otherwise stutter during an actual roll.
+      warmEquippedDie(skinById(equippedRef.current));
+      warmDicePreviews(
+        (run) => setTimeout(run, 0),
+        () => activeRef.current,
+      );
+    });
+    return () => handle.cancel();
+  }, []);
   const [tab, setTab] = useState<Tab>('play');
   const [showFriends, setShowFriends] = useState(false);
   /*

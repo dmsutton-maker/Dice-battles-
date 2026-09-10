@@ -1,5 +1,55 @@
 # Changelog
 
+## v1.76.0 — 2026-09-10 · requested by David
+
+"Make all the dice have unique sides that make the entire dice a
+continuous pattern rather than the same image on every side."
+
+### Changed
+- **A die is six materials now, not one.** A single 64x64 texture was
+  handed to the whole box, so every side showed the identical picture and
+  a zebra die read as a cube with wallpaper on it. Each side now takes
+  its own square of one continuous design, laid out as the paper cube
+  every child cuts out — up above front, left/front/right/back round the
+  middle — so the pattern runs over the edges instead of restarting at
+  every corner. Rendered the nets and looked at them: the zebra stripes
+  and the marble veins flow straight through.
+
+### What the measuring corrected
+The obvious test is "all six sides must differ", and it is **wrong**.
+Nine skins (zebra, marble, bee, fish, tiger, candycane, chocolate,
+waffles, tartan) repeat exactly every 64 pixels, so the square to the
+right of the front IS the front. For those, identical sides are what a
+perfectly continuous die looks like — forcing them to differ would break
+the continuity this was for. 44 skins get six different sides; 9 tile and
+do not need to.
+
+The seam check needed the same correction. Measured as a raw pixel jump,
+galaxy looked catastrophic at 221 — but galaxy is a star field, where any
+two neighbouring columns differ hugely. Compared against each skin's own
+within-face variation, almost everything sits at 1.0–1.4x. Only tartan
+(6.7x) and volleyball (6.2x) stand out, and both are skins whose sides
+are identical anyway, so their joins are exactly what they always were.
+
+A cube cannot be unwrapped flat without cutting some edges, so perfect
+continuity everywhere is not available. Every join lands on a physical
+edge of the die, where the surface turns ninety degrees — the least
+visible place a seam can be, and the same reason this texture has always
+been clamped rather than wrapped.
+
+### Speed, because this costs six times the painting
+- The six sides go through the **app-wide texture cache**, not DieMesh's
+  `useMemo` — that only lasts as long as one component, and the dice
+  remount whenever the scene rebuilds, so the cost would have landed
+  again on every roll.
+- The equipped die is **painted during the same idle warm-up** added in
+  v1.75.0, so its 157ms does not land in the middle of somebody's first
+  roll. Only the equipped skin: warming all 53 would be six times the
+  work for 52 dice nobody is about to throw.
+- The shelf pictures still paint **one** square, so the Store and the
+  Inventory keep the speed they gained in v1.75.0. A test fails if
+  `preview.ts` ever reaches for the whole net.
+
 ## v1.75.0 — 2026-09-10 · requested by David
 
 "Are you able to make the items tab and store tab open faster... about

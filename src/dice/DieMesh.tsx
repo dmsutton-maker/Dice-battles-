@@ -3,7 +3,11 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { DIE_FACE_COLORS } from '../game/colors';
 import { TUNING } from '../game/tuning';
-import { createPatternTexture, PatternId, STICKER_FRACTION } from './patterns';
+import {
+  createDieFaceTextures,
+  PatternId,
+  STICKER_FRACTION,
+} from './patterns';
 import { createSymbolTexture } from './symbols';
 import { COLOR_SYMBOLS } from '../game/colorblind';
 
@@ -72,12 +76,24 @@ export const DieMesh = forwardRef<
     if (pattern === 'plain') {
       return new THREE.MeshBasicMaterial({ color: bodyColor, toneMapped: false });
     }
-    return new THREE.MeshBasicMaterial({
+    /*
+      SIX materials, not one, since 10 Sep 2026.
+
+      A single texture handed to the whole box put the same picture on
+      every side, so a zebra die was the same stripes six times and read
+      as wallpaper rather than an object. Each side now takes its own
+      square of one continuous design — see CUBE_NET_CELLS — so the
+      pattern runs around the die instead of restarting at every corner.
+
+      An array of materials on a BoxGeometry is matched to its groups in
+      three.js's own face order, which is the order CUBE_NET_CELLS is
+      written in. Do not reorder one without the other.
+    */
+    return createDieFaceTextures(pattern, bodyColor, patternInk ?? bodyColor).map(
       // A colour painter ignores the ink; a mask painter cannot do
       // without one.
-      map: createPatternTexture(pattern, bodyColor, patternInk ?? bodyColor),
-      toneMapped: false,
-    });
+      (map) => new THREE.MeshBasicMaterial({ map, toneMapped: false }),
+    );
   }, [bodyColor, pattern, patternInk]);
   // Unlit stickers with toneMapped:false — the face color IS the game
   // signal, so it must render as the exact palette hex from every angle and

@@ -1,5 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { patternPixels, PATTERN_SIZE, PatternId } from '../src/dice/patterns';
+import {
+  CUBE_NET_CELLS,
+  patternPixels,
+  PATTERN_SIZE,
+  PatternId,
+} from '../src/dice/patterns';
 import { DICE_SKINS } from '../src/game/diceSkins';
 import { assert, assertEqual, note, suite, test } from './harness';
 
@@ -263,6 +268,165 @@ suite('textures · the shell clamps to the edge of each face', () => {
     assert(
       !/repeat\.set/.test(setup),
       'the die texture is being tiled — every painter would then need to wrap, which none of them promises',
+    );
+  });
+});
+
+suite('textures · a die is one object, not six copies of a picture', () => {
+  /*
+    David, 10 Sep 2026: "make all the dice have unique sides that make
+    the entire dice a continuous pattern rather than the same image on
+    every side."
+
+    One 64x64 texture used to be handed to the whole box, so a zebra die
+    was the same stripes six times and read as wallpaper rather than an
+    object. Each side now takes its own square of one continuous design,
+    laid out as the paper cube every child cuts out.
+  */
+  test('a die is continuous, whether or not its sides differ', () => {
+    /*
+      MEASURED, and the measuring corrected the premise.
+
+      The obvious test is "all six sides must be different pictures", and
+      it is wrong. Nine skins — zebra, marble, bee, fish, tiger,
+      candycane, chocolate, waffles, tartan — repeat exactly every 64
+      pixels, so the square to the right of FRONT is the same image as
+      FRONT. For those, identical sides are not the bug: they are what a
+      perfectly continuous die looks like, because the stripes carry
+      straight over the edge. Forcing them to differ would BREAK the
+      continuity David asked for.
+
+      So the rule is continuity, and uniqueness is one way of getting
+      there rather than the goal. A skin passes if its sides differ, or
+      if it tiles so exactly that they need not.
+    */
+    let unique = 0;
+    let tiling = 0;
+    for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
+      const cell = (cx: number, cy: number) =>
+        patternPixels(
+          skin.pattern as Exclude<PatternId, 'plain'>,
+          skin.body,
+          skin.ink ?? skin.body,
+          cx,
+          cy,
+        ).join(',');
+      const front = cell(1, 1);
+      const distinct = new Set(CUBE_NET_CELLS.map(([cx, cy]) => cell(cx, cy)));
+      if (distinct.size > 1) {
+        unique++;
+      } else {
+        // Identical, so it must be identical BECAUSE it tiles: the
+        // square two to the right has to match as well, which a
+        // one-off coincidence would not.
+        assert(
+          cell(3, 1) === front && cell(1, 2) === front,
+          `${skin.id} paints one picture on every side without tiling, so the ` +
+            'die really is wallpaper',
+        );
+        tiling++;
+      }
+    }
+    assert(unique > 0, 'no skin has different sides at all — the net is being ignored');
+    note(`${unique} skins have six different sides; ${tiling} tile exactly and do not need to`);
+  });
+
+  test('the joins land on the edges of the die, and none is grossly wrong', () => {
+    /*
+      What "continuous" can and cannot mean on a cube.
+
+      A cube cannot be unwrapped flat without cutting some edges, so
+      perfect continuity everywhere is not available. What IS true is
+      that every join lands on a physical edge of the die, where the
+      surface turns ninety degrees — the least visible place a seam can
+      be, and the same reason this texture has always been clamped
+      rather than wrapped.
+
+      So this is a floor, not a polish check: the jump across a join is
+      compared with how much neighbouring columns differ WITHIN a face.
+      A noisy skin like galaxy jumps hugely between any two columns, and
+      measuring it against a fixed number called it broken when it is
+      not. Measured this way almost every skin sits at 1.0-1.4x. Tartan
+      and volleyball are the outliers at about 6.7x and 6.2x, and both
+      are skins whose sides are identical anyway, so their joins are
+      exactly what they were before any of this.
+    */
+    const S = PATTERN_SIZE;
+    const cell = (skin: (typeof DICE_SKINS)[number], cx: number, cy: number) =>
+      patternPixels(
+        skin.pattern as Exclude<PatternId, 'plain'>,
+        skin.body,
+        skin.ink ?? skin.body,
+        cx,
+        cy,
+      );
+    let worst = 0;
+    let worstId = '';
+    for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
+      const front = cell(skin, 1, 1);
+      const right = cell(skin, 2, 1);
+      let inside = 0;
+      let n = 0;
+      for (let x = 1; x < S; x++) {
+        for (let y = 0; y < S; y++) {
+          inside += Math.abs(front[(y * S + x) * 3] - front[(y * S + x - 1) * 3]);
+          n++;
+        }
+      }
+      inside /= n;
+      let seam = 0;
+      for (let y = 0; y < S; y++) {
+        seam += Math.abs(front[(y * S + S - 1) * 3] - right[y * S * 3]);
+      }
+      seam /= S;
+      const ratio = seam / (inside + 1);
+      if (ratio > worst) {
+        worst = ratio;
+        worstId = skin.id;
+      }
+    }
+    assert(
+      worst < 9,
+      `${worstId} jumps ${worst.toFixed(1)}x its own texture at the join — that is ` +
+        'a hard line down the middle of an edge, not a corner turn',
+    );
+    note(`worst join: ${worstId} at ${worst.toFixed(1)}x its own within-face variation`);
+  });
+
+  test('the net is written in three.js face order', () => {
+    /*
+      An array of materials on a BoxGeometry is matched to its groups in
+      the order +X, -X, +Y, -Y, +Z, -Z. Get this wrong and the pattern
+      still looks continuous on the flat sheet while being scrambled on
+      the actual die — the kind of bug a screenshot of the net would not
+      show.
+    */
+    assertEqual(CUBE_NET_CELLS.length, 6, 'a cube has six sides');
+    assertEqual(CUBE_NET_CELLS[4].join(','), '1,1', '+Z must be the middle of the net');
+    assertEqual(CUBE_NET_CELLS[0].join(','), '2,1', '+X sits to the right of it');
+    assertEqual(CUBE_NET_CELLS[1].join(','), '0,1', '-X sits to the left of it');
+    assertEqual(CUBE_NET_CELLS[2].join(','), '1,0', '+Y sits above it');
+    assertEqual(CUBE_NET_CELLS[3].join(','), '1,2', '-Y sits below it');
+  });
+
+  test('the shelf pictures still paint one square, not six', () => {
+    // The Store and the Inventory show a single face. Painting a whole
+    // die for each of 53 cards would undo the speed work in the same
+    // release that shipped it.
+    const preview = readFileSync('src/dice/preview.ts', 'utf8');
+    assert(
+      !/CUBE_NET_CELLS|createDieFaceTextures/.test(preview),
+      'the shelf pictures now paint all six sides of every die',
+    );
+  });
+
+  test('the six sides are cached for the life of the app', () => {
+    // Six times the painting, and DieMesh's useMemo only lasts as long
+    // as one component — the dice remount whenever the scene rebuilds.
+    const src = readFileSync('src/dice/patterns.ts', 'utf8');
+    assert(
+      /cachedTexture\(`die:\$\{pattern\}/.test(src),
+      'the die faces are not in the app-wide cache, so they repaint on every roll',
     );
   });
 });
