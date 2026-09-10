@@ -11,21 +11,24 @@ import { vaultGet, vaultSet } from './deviceVault';
  * only of an opaque `playerId` and a `name`, so swapping the source for
  * a real signed-in account means rewriting this file and nothing else.
  *
- * TWO SOURCES, IN ORDER.
+ * THE ID IS THE DEVICE'S. THE NAME IS APPLE'S.
  *
- *   1. GAME CENTER, when it is there. Apple holds the identity, has the
- *      parent's consent, and moderates the alias — which is why this
- *      game can have friends at all without collecting anything or
- *      asking a child to invent a username.
- *   2. A LOCAL ID, when it is not. Android has no Game Center; nor does
- *      a simulator, a player signed out, or a binary older than the
- *      `getLocalPlayer` call. Those players still get a profile and a
- *      friend code, stored on the device. It is not portable to a new
- *      phone, and that is stated plainly on screen rather than hidden.
+ * A random local id, made on first run and kept for ever, is who the
+ * server thinks you are. Game Center supplies the NAME and nothing else
+ * — the alias a player chose, which Apple already moderates, which is
+ * why this game can have friends without asking a child to invent a
+ * username or collecting anything at all.
  *
- * NOTHING HERE IS PERSONAL DATA. A local id is random. A Game Center id
- * is Apple's opaque per-game identifier, not an Apple ID. Neither can be
- * turned back into a person by anyone holding it, including us.
+ * Those two used to be the same thing, with Apple's id taking over the
+ * moment it was available. See loadIdentity for what that did on
+ * 10 Sep 2026 and why it cannot come back: the friend code is unique on
+ * the server and belongs to the device, so an id that moves under it
+ * strands the player with no profile and a friends screen that answers
+ * "no such player".
+ *
+ * NOTHING HERE IS PERSONAL DATA. A local id is random, and a Game Center
+ * alias is a nickname Apple moderates. Neither can be turned back into a
+ * person by anyone holding it, including us.
  *
  * TWO PLACES TO KEEP IT, ADDED 7 SEP 2026. The friend code, the local id
  * and the secret are written to BOTH the ordinary store and the keychain
@@ -49,8 +52,17 @@ export interface Identity {
   playerId: string;
   name: string;
   friendCode: string;
-  /** False when this identity lives only on this device. */
-  portable: boolean;
+  /**
+   * True when Game Center answered and the name above is Apple's alias
+   * rather than the anonymous default.
+   *
+   * It was called `portable` and meant "the id came from Apple", which
+   * was read as "this profile follows you to a new phone". It never
+   * did: the server authenticates with a device secret, so the same
+   * Apple account on a second phone is refused whatever the id says.
+   * The name is the honest thing it was actually telling you.
+   */
+  signedIn: boolean;
   /**
    * True when this launch found a secret in the keychain that the app's
    * own storage had lost — i.e. the game was reinstalled and the old
@@ -179,25 +191,39 @@ export async function loadIdentity(): Promise<Identity> {
   const apple = await localPlayer();
 
   /*
-    Game Center wins when it is available, even if a local id was made
-    first: a player who opened the game on a plane and signed in later
-    should become their real self rather than being stuck as a local
-    stranger for ever. The local id is left in storage untouched, so
-    signing out returns them to the profile they had.
-  */
-  /*
-    The stored id is always the LOCAL one, made on first run and then
-    left alone for ever. Game Center's id is never written: it comes
-    from Apple every launch, and storing a copy would only create a
-    second thing that could disagree with it.
+    THE PLAYER ID IS THE DEVICE'S, ALWAYS. Game Center supplies a NAME
+    and nothing else.
 
-    That is what makes signing out safe. A player who signs into Game
-    Center becomes their Apple identity for as long as they are signed
-    in, and drops back to the same local profile they had before —
-    rather than to a new stranger — the moment they sign out.
+    It used to be `apple?.playerId ?? localId`, on the reasoning that a
+    player who signed in later "should become their real self". David
+    found what that actually did, on 10 Sep 2026: a name showing as
+    "New Player", and then "ask to be friends" answering "no such
+    player".
+
+    Here is the whole chain. The friend code belongs to the DEVICE and
+    deliberately never changes, and on the server `friend_code` is
+    UNIQUE. So the first launch where Game Center answers in time, the
+    id flips from local to Apple's while the code stays — and pushing
+    the profile tries to INSERT a second row carrying a friend code that
+    the first row already holds. The insert fails on the unique index.
+    The player now has no profile under the id they are using, so every
+    friends call answers "no such player": no list, no requests, and no
+    way to add anybody. The failure is silent because nothing read the
+    result of the push.
+
+    Nothing was gained for that. Keying on the Apple id was supposed to
+    make a profile portable between phones, and it never could: the
+    server authenticates with a DEVICE secret, so the same Apple account
+    on a second phone is refused as "wrong secret" whatever the id says.
+    A promise that never worked, in exchange for a breakage that always
+    would.
+
+    So the id is the local one, for ever, and it can never collide with
+    itself. Signing in or out of Game Center changes the name on the
+    profile and nothing else.
   */
   const localId = knownId ?? makeLocalId();
-  const playerId = apple?.playerId ?? localId;
+  const playerId = localId;
   const name = apple?.name || storedName || ANONYMOUS_NAME;
 
   // The code belongs to the DEVICE and is kept across sign-in: a code
@@ -243,7 +269,63 @@ export async function loadIdentity(): Promise<Identity> {
   void vaultSet(CODE_KEY, friendCode);
   void vaultSet(SECRET_KEY, secret);
 
-  cached = { playerId, name, friendCode, secret, portable: apple !== null, recovered };
+  cached = { playerId, name, friendCode, secret, signedIn: apple !== null, recovered };
+  return cached;
+}
+
+/**
+ * Ask Apple for the name again, and keep it if one has arrived.
+ *
+ * The other half of what David reported: every profile on the board was
+ * called "New Player". Game Center's sign-in is not instant — on a cold
+ * start it can be answering its system sheet while the game is already
+ * drawing — so `loadIdentity` runs, finds nobody signed in, and caches
+ * the anonymous name for the rest of the session. The name is then
+ * PUBLISHED under that default, and stays wrong on everyone else's
+ * friends list until something overwrites it.
+ *
+ * Cheap to call: `localPlayer` is a no-op once signed in, and this
+ * returns the identity unchanged when nothing has changed, so a caller
+ * can compare by reference to decide whether to publish again.
+ *
+ * Never throws, for the same reason nothing else here does.
+ */
+export async function refreshName(): Promise<Identity> {
+  const me = cached ?? (await loadIdentity());
+  const apple = await localPlayer();
+  const name = apple?.name?.trim();
+  if (!name || (name === me.name && me.signedIn)) return me;
+  cached = { ...me, name, signedIn: true };
+  return cached;
+}
+
+/**
+ * Give up this device's friend code and take a fresh one.
+ *
+ * The one honest answer to the server saying "friend code taken" on a
+ * FIRST publish. That means some other row already holds this code and
+ * this phone cannot prove it owns it — which is a real, if rare, way to
+ * arrive: a reinstall where the keychain returned the code but not the
+ * secret, or a collision in the eight characters.
+ *
+ * Before this existed the game simply reported the failure and stopped,
+ * leaving a player with no profile at all and nothing they could do
+ * about it. A new code costs them the one they had written down; no
+ * profile costs them the whole feature.
+ *
+ * The player id and the secret are deliberately untouched: the code is
+ * the only thing that collided.
+ */
+export async function replaceFriendCode(): Promise<Identity> {
+  const me = cached ?? (await loadIdentity());
+  const friendCode = makeFriendCode();
+  cached = { ...me, friendCode };
+  try {
+    await AsyncStorage.setItem(CODE_KEY, friendCode);
+  } catch {
+    // Made again next launch; the profile still works this session.
+  }
+  void vaultSet(CODE_KEY, friendCode);
   return cached;
 }
 

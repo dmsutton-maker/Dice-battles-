@@ -32,9 +32,11 @@ import {
   FriendList,
   fetchFriends,
   findByCode,
+  isCodeTaken,
   ProfilePeek,
   pushProfile,
 } from '../game/friendsApi';
+import { refreshName, replaceFriendCode } from '../game/playerIdentity';
 
 /**
  * Friends, and their profiles.
@@ -95,6 +97,16 @@ export function FriendsScreen({
   stats: MyStats;
   onClose: () => void;
 }) {
+  /*
+    My own identity, held here rather than read from the prop.
+
+    Two things can change it while this screen is open: Game Center
+    finishing its sign-in and handing over a real name, and a friend
+    code that had to be redrawn because the server said it was taken.
+    Reading the prop would leave the card showing a code the server has
+    never heard of.
+  */
+  const [who, setWho] = useState<Identity>(me);
   const [list, setList] = useState<FriendList>(EMPTY_LIST);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
@@ -122,6 +134,18 @@ export function FriendsScreen({
   const refresh = useCallback(async () => {
     setLoading(true);
     /*
+      Ask Apple for the name again first.
+
+      Game Center's sign-in is not instant, so a cold start can settle on
+      the anonymous name and then publish it — which is why every profile
+      on the board was called "New Player" when David looked on 10 Sep
+      2026. Asking here costs nothing once signed in and means the name
+      that goes up is the one Apple has now, not the one it had a second
+      after launch.
+    */
+    let mine = await refreshName();
+
+    /*
       Publish MY profile before reading anyone else's, every time.
       Two reasons, and the first is not optional: the friends endpoint
       only knows players who exist, so without this the very first visit
@@ -130,8 +154,39 @@ export function FriendsScreen({
       it keeps a friend's view of my trophies fresh without needing a
       separate sync anywhere else in the game.
     */
-    await pushProfile(me, stats);
-    const result = await fetchFriends(me);
+    let push = await pushProfile(mine, stats);
+
+    /*
+      One collision has a cure, so try it rather than reporting it.
+
+      "friend code taken" on a first publish means another row holds this
+      code and this phone cannot prove it owns it. Drawing a new code and
+      publishing again turns a player with no profile at all into a
+      player with a profile and a different code — see replaceFriendCode.
+    */
+    if (!push.ok && isCodeTaken(push.error)) {
+      mine = await replaceFriendCode();
+      push = await pushProfile(mine, stats);
+    }
+
+    /*
+      A FAILED PUBLISH IS THE ERROR, and it used to be thrown away.
+
+      The result of the push was ignored, so when it failed the very next
+      line asked for a friend list belonging to a profile that had never
+      been created — and the player was shown "no such player", which is
+      true, useless, and blames the wrong step. Whatever went wrong up
+      there is the thing worth saying.
+    */
+    setWho(mine);
+
+    if (!push.ok) {
+      setProblem(push.error);
+      setLoading(false);
+      return;
+    }
+
+    const result = await fetchFriends(mine);
     if (result.ok) {
       setList(result.list);
       setProblem(null);
@@ -152,7 +207,7 @@ export function FriendsScreen({
       setFound(null);
       return;
     }
-    if (clean === me.friendCode) {
+    if (clean === who.friendCode) {
       setSearchNote('That is your own code!');
       setFound(null);
       return;
@@ -174,7 +229,7 @@ export function FriendsScreen({
   };
 
   const act = async (otherId: string, action: Parameters<typeof actOnFriend>[2]) => {
-    const result = await actOnFriend(me, otherId, action);
+    const result = await actOnFriend(who, otherId, action);
     if (!result.ok) {
       setProblem(result.error);
       setActionError(result.error);
@@ -310,7 +365,7 @@ export function FriendsScreen({
           who has just reinstalled has no way of telling whether the
           eight letters in front of them are their old ones.
         */}
-        {me.recovered && (
+        {who.recovered && (
           <Card style={styles.recoveredCard} background={THEME.sunk} drop={0}>
             <Text style={styles.recoveredTitle}>Welcome back</Text>
             <Text style={styles.recoveredBody}>
@@ -324,12 +379,17 @@ export function FriendsScreen({
         <Card style={styles.meCard}>
           <Text style={styles.meLabel}>YOUR FRIEND CODE</Text>
           <Text style={styles.meCode} selectable>
-            {formatFriendCode(me.friendCode)}
+            {formatFriendCode(who.friendCode)}
           </Text>
           <Text style={styles.meNote}>
-            Give this to someone so they can add you. {me.portable
-              ? 'It goes with your Game Center account.'
-              : 'It lives on this phone — sign in to Game Center to keep it if you change phones.'}
+            {/*
+              It used to say the code "goes with your Game Center
+              account", which was never true: your profile is proved by
+              a secret kept on this phone, so it cannot follow you to
+              another one whoever you are signed in as. Saying so.
+            */}
+            Give this to someone so they can add you. It lives on this
+            phone.
           </Text>
         </Card>
 

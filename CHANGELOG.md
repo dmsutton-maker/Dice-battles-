@@ -1,5 +1,71 @@
 # Changelog
 
+## v1.82.0 — 2026-09-10 · requested by David
+
+"When I went to add another person as a friend with their friend code, it
+showed their name as 'New Player' when it should show their Game Center
+username probably. And when I clicked 'ask to be friends' it said 'that
+did not go through' and 'no such player'."
+
+Both halves are the same bug, and the chain is worth writing down.
+
+### The fault
+The player id used to become Apple's the moment Game Center answered
+(`apple?.playerId ?? localId`), on the reasoning that somebody who
+signed in later should "become their real self". The friend code
+deliberately does NOT move — it belongs to the device, because a code a
+child has written down cannot change — and on the server `friend_code`
+is a UNIQUE index.
+
+So the first launch where Game Center won the race, publishing the
+profile tried to INSERT a second row carrying a friend code the first row
+already held. The unique index refused it, the player now had no profile
+under the id they were using, and every friends call answered "no such
+player" — truthfully, uselessly, and blaming the wrong step. Confirmed
+against the live table: both profiles on it are `local-` ids named
+"New Player", and `player_profiles_friend_code_key` is the index that
+would have refused the second write.
+
+It bought nothing, either. Keying on the Apple id was meant to make a
+profile portable between phones. It could not: the server authenticates
+with a secret kept on the device, so the same Apple account on a second
+phone is refused as "wrong secret" whatever the id says. A promise that
+never worked, in exchange for a breakage that always would.
+
+### Fixed
+- **The player id is the device's, for ever.** Game Center supplies the
+  NAME and nothing else. Signing in or out changes what a friend sees
+  you called, and nothing else at all.
+- **A late name is picked up.** Game Center's sign-in is not instant, so
+  a cold start could settle on "New Player" and then PUBLISH it, where it
+  sat on everybody else's friends list. `refreshName()` asks again, and
+  the Friends screen calls it before publishing.
+- **A failed publish is the error now.** `pushProfile` returned a bare
+  boolean and the caller ignored even that, so a failure fell straight
+  through to a friend-list request for a profile that had never been
+  created. It returns the reason, and the screen stops there and says it.
+- **A taken friend code is redrawn rather than reported.** The server has
+  always named that one collision specifically so the game could draw a
+  new code; nothing ever did. Now it does, and republishes. Losing a code
+  you wrote down is bad; having no profile at all is worse.
+- **The Friends screen holds its own copy of your identity**, so a name
+  that arrives late or a code that had to be redrawn is what the card
+  shows — not a stale prop.
+- **The friend-code note stops claiming something untrue.** It said the
+  code "goes with your Game Center account". It never did.
+
+### Healing
+No server change and no migration. A phone stranded under an Apple id
+drops back to its local id on the next launch, where its profile — and
+its friendships — have been waiting all along.
+
+### Still true, and worth knowing
+A friend's name on your screen is the one THEY last published, so
+somebody who has never opened their own Friends tab since signing in will
+still read "New Player" until they do. The profile is pushed when Friends
+is opened and not on every launch, which is a deliberate trade against
+making a network call for every player who never uses the feature.
+
 ## v1.81.0 — 2026-09-10 · requested by David
 
 Four things at once: "make the volume icons and colorblind mode icon

@@ -73,7 +73,7 @@ async function call<T>(
 export async function pushProfile(
   me: Identity,
   stats: Omit<PublicProfile, 'playerId' | 'name' | 'friendCode' | 'lastPlayed'>,
-): Promise<boolean> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const result = await call<{ ok: boolean }>('/players', {
     method: 'POST',
     body: JSON.stringify({
@@ -84,7 +84,19 @@ export async function pushProfile(
       ...stats,
     }),
   });
-  return result.ok;
+  return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
+
+/**
+ * The server's word for "somebody else already has that friend code".
+ *
+ * Matched on the message because that is all an HTTP error carries here.
+ * The server names this one collision deliberately, precisely so the
+ * game can draw a new code instead of guessing at the failure — see the
+ * comment on the insert in hq/src/app/api/players/route.ts.
+ */
+export function isCodeTaken(error: string): boolean {
+  return /friend code taken/i.test(error);
 }
 
 /** Look somebody up by the code they gave you. */

@@ -20,7 +20,15 @@ import {
   PublicProfile,
   visibleProfile,
 } from '../src/game/friends';
-import { ANONYMOUS_NAME, isLocalId, loadIdentity, resetIdentityForTest } from '../src/game/playerIdentity';
+import {
+  ANONYMOUS_NAME,
+  isLocalId,
+  loadIdentity,
+  refreshName,
+  replaceFriendCode,
+  resetIdentityForTest,
+} from '../src/game/playerIdentity';
+import { setNativeForTests } from '../src/game/gameCenter';
 import { typedFriendCode } from '../src/game/friendCodes';
 
 /**
@@ -245,7 +253,7 @@ suite('friends · identity without an account', () => {
     const me = await loadIdentity();
     assert(me.playerId.length > 0, 'no player id');
     assert(isLocalId(me.playerId), 'a test with no Game Center got a non-local id');
-    assertEqual(me.portable, false, 'a local identity claimed to be portable');
+    assertEqual(me.signedIn, false, 'a signed-out identity claimed Game Center answered');
     assertEqual(me.name, ANONYMOUS_NAME, 'default name');
     assertEqual(normaliseFriendCode(me.friendCode), me.friendCode, 'code is valid');
   });
@@ -430,7 +438,7 @@ suite('friends · the client survives a bad network', () => {
     secret: 'a-very-secret-string',
     friendCode: 'K7M29XPQ',
     name: 'Tester',
-    portable: true,
+    signedIn: true,
   };
   const STATS = {
     trophies: 42,
@@ -745,6 +753,181 @@ suite('friends · it is a popup, like Settings and News', () => {
     assert(
       /<KeyboardAvoidingView/.test(friends),
       'the friend-code box can be covered by the keyboard',
+    );
+  });
+});
+
+/**
+ * The friends screen answering "no such player".
+ *
+ * David, 10 Sep 2026: adding somebody by their code showed their name as
+ * "New Player", and "ask to be friends" came back "that did not go
+ * through — no such player".
+ *
+ * Both halves came from the same decision. The player id used to switch
+ * to Apple's the moment Game Center answered, while the friend code —
+ * which is UNIQUE on the server and belongs to the DEVICE — stayed put.
+ * So the first launch where Game Center won the race, publishing the
+ * profile tried to insert a SECOND row carrying a code the first row
+ * already held, the unique index refused it, and the player was left
+ * with no profile under the id they were now using. Every friends call
+ * then answers "no such player", truthfully and uselessly.
+ *
+ * It bought nothing. Keying on the Apple id was meant to make a profile
+ * portable between phones, and could not: the server authenticates with
+ * a device secret, so a second phone is refused whatever the id says.
+ */
+suite('friends · the id that must never move', () => {
+  /** A phone signed into Game Center as somebody. */
+  function appleSignedInAs(alias: string) {
+    setNativeForTests({
+      isGameCenterAvailable: async () => true,
+      authenticateLocalPlayer: async () => true,
+      submitScore: async () => true,
+      reportAchievement: async () => true,
+      presentLeaderboard: async () => {},
+      presentAchievements: async () => {},
+      getLocalPlayer: async () => ({
+        playerID: 'A:_apple_1234567890',
+        displayName: alias,
+        alias,
+      }),
+    });
+  }
+
+  test('signing into Game Center does NOT change the player id', async () => {
+    /*
+      The whole bug in one assertion. The id the server knows has to
+      survive Apple turning up, because the friend code it is paired
+      with cannot change.
+    */
+    setNativeForTests(null);
+    resetIdentityForTest();
+    const before = await loadIdentity();
+    assert(isLocalId(before.playerId), 'the signed-out id should be a local one');
+
+    appleSignedInAs('Rolling Thunder');
+    resetIdentityForTest();
+    const after = await loadIdentity();
+
+    assertEqual(after.playerId, before.playerId, 'the id moved when Game Center answered');
+    assert(isLocalId(after.playerId), 'the id became Apple’s, which strands the profile');
+    assertEqual(after.friendCode, before.friendCode, 'the friend code moved');
+    setNativeForTests(null);
+    note(`id held at ${after.playerId} across signing in`);
+  });
+
+  test('but the NAME does become the Game Center alias', async () => {
+    // The half of this that David actually wanted.
+    appleSignedInAs('Rolling Thunder');
+    resetIdentityForTest();
+    const me = await loadIdentity();
+    assertEqual(me.name, 'Rolling Thunder', 'the alias did not become the name');
+    assertEqual(me.signedIn, true, 'signedIn should say Apple answered');
+    setNativeForTests(null);
+  });
+
+  test('a name that arrives late still gets picked up', async () => {
+    /*
+      Why every profile on the board said "New Player". Game Center's
+      sign-in is not instant, so a cold start settles on the anonymous
+      name — and then PUBLISHES it, where it sits on everyone else's
+      friends list until something overwrites it.
+    */
+    setNativeForTests(null);
+    resetIdentityForTest();
+    const early = await loadIdentity();
+    assertEqual(early.name, ANONYMOUS_NAME, 'nobody signed in yet');
+
+    appleSignedInAs('Late Arrival');
+    const later = await refreshName();
+    assertEqual(later.name, 'Late Arrival', 'the late alias was not picked up');
+    assertEqual(later.playerId, early.playerId, 'refreshing the name changed the id');
+    assertEqual(later.friendCode, early.friendCode, 'refreshing the name changed the code');
+    assertEqual(later.secret, early.secret, 'refreshing the name changed the secret');
+    setNativeForTests(null);
+  });
+
+  test('refreshing when nobody is signed in leaves everything alone', async () => {
+    setNativeForTests(null);
+    resetIdentityForTest();
+    const me = await loadIdentity();
+    const again = await refreshName();
+    assertEqual(again.name, me.name, 'the name changed with nobody signed in');
+    assertEqual(again.playerId, me.playerId, 'the id changed with nobody signed in');
+  });
+
+  test('a taken friend code can be given up without losing the profile', async () => {
+    /*
+      The one collision with a cure. "friend code taken" on a first
+      publish means another row holds this code and this phone cannot
+      prove it owns it — rare, but it left the player with no profile at
+      all and nothing to do about it. A new code costs them the one they
+      wrote down; no profile costs them the feature.
+    */
+    setNativeForTests(null);
+    resetIdentityForTest();
+    const before = await loadIdentity();
+    const after = await replaceFriendCode();
+
+    assert(after.friendCode !== before.friendCode, 'the code did not actually change');
+    assertEqual(
+      normaliseFriendCode(after.friendCode),
+      after.friendCode,
+      'the replacement is not a valid code',
+    );
+    assertEqual(after.playerId, before.playerId, 'the player id was thrown away too');
+    assertEqual(after.secret, before.secret, 'the secret was thrown away too');
+
+    // And it sticks: the next read agrees.
+    resetIdentityForTest();
+    const reread = await loadIdentity();
+    assertEqual(reread.friendCode, after.friendCode, 'the new code was not kept');
+  });
+});
+
+suite('friends · a failed publish is never silent', () => {
+  const screen = readFileSync(
+    join(__dirname, '..', 'src/demo/FriendsScreen.tsx'),
+    'utf8',
+  );
+  const api = readFileSync(join(__dirname, '..', 'src/game/friendsApi.ts'), 'utf8');
+
+  test('pushProfile reports WHY, not just that it failed', () => {
+    // It returned a bare boolean, and the caller ignored even that.
+    assert(
+      /Promise<\{ ok: true \} \| \{ ok: false; error: string \}>/.test(api),
+      'pushProfile no longer hands back the reason it failed',
+    );
+  });
+
+  test('the screen stops at a failed publish instead of asking for a list', () => {
+    /*
+      The chain that produced David's message. The push failed, its
+      result was dropped, and the very next line asked for the friend
+      list of a profile that had never been created — so the player was
+      shown "no such player", which blames the wrong step entirely.
+    */
+    assert(
+      /if \(!push\.ok\) \{\s*setProblem\(push\.error\);/.test(screen),
+      'a failed publish is not shown to the player',
+    );
+    const stop = screen.indexOf('if (!push.ok) {');
+    const fetchAt = screen.indexOf('await fetchFriends(');
+    assert(stop > 0 && fetchAt > stop, 'the friend list is fetched before the push is checked');
+  });
+
+  test('the screen redraws a taken code rather than reporting a dead end', () => {
+    assert(/isCodeTaken\(push\.error\)/.test(screen), 'a taken friend code is not handled');
+    assert(/replaceFriendCode\(\)/.test(screen), 'nothing draws a new code');
+  });
+
+  test('the code on screen is the one that was published', () => {
+    // Redrawing the code means the prop is stale. Showing a code the
+    // server has never heard of is worse than the original bug.
+    assert(
+      /formatFriendCode\(who\.friendCode\)/.test(screen),
+      'the friend code card reads a value that redrawing cannot update',
     );
   });
 });

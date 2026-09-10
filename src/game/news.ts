@@ -89,6 +89,31 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-82-0-friends-identity',
+    date: '10 September 2026',
+    version: 'v1.82.0',
+    title: 'Adding a friend works again',
+    icon: 'people',
+    body:
+      'Two things were wrong with adding somebody by their code. ' +
+      'Everybody showed up as \u201cNew Player\u201d instead of their ' +
+      'Game Center name, and asking to be friends could come back with ' +
+      '\u201cthat did not go through \u2014 no such player\u201d.\n\n' +
+      'Both came from the same mistake. The game used to swap your ' +
+      'player id over to your Game Center one the moment you signed in, ' +
+      'but your friend code belongs to your phone and never changes \u2014 ' +
+      'so the two stopped matching and your profile could not be saved ' +
+      'at all. Your id now stays put for good. Game Center supplies your ' +
+      'name and nothing else.\n\n' +
+      'The name also used to get stuck. Signing in to Game Center takes a ' +
+      'moment, and if the game had already given up waiting it published ' +
+      '\u201cNew Player\u201d and left it there. It now asks again every ' +
+      'time you open Friends.\n\n' +
+      'If a friend still shows as \u201cNew Player\u201d, ask them to ' +
+      'open their own Friends tab once \u2014 that is when their name ' +
+      'goes up.',
+  },
+  {
     id: 'v1-81-0-drawn-icons',
     date: '10 September 2026',
     version: 'v1.81.0',
