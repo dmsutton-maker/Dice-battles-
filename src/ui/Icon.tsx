@@ -1094,37 +1094,68 @@ export function SpeakerIcon({
 }
 
 /**
- * Two overlapping colour discs — colourblind mode.
+ * A circle and a triangle — colourblind mode.
  *
- * It was 🔷, a blue diamond, which says nothing about colour vision and
- * everything about whatever font the phone happened to have. Two discs
- * that overlap is the shape every colour-vision test uses, and the two
- * colours are read from the game's own palette rather than picked here:
- * red and green are the exact pair the setting exists to separate, so
- * the icon is a small demonstration of the problem it solves.
+ * David asked for the emoji to go on 10 Sep 2026, and then, looking at
+ * what replaced it: "the colorblind mode icon should be a shape."
+ *
+ * He is right, and it is not a preference. The setting does not change
+ * any colour — the palette is already CIEDE2000-checked and separated by
+ * lightness (see colors.ts). What it does is stamp a SHAPE on every
+ * colour, so telling red from green stops being a judgement call. Two
+ * colour discs drew the problem; the shapes are the answer, and the icon
+ * should show the answer.
+ *
+ * The two drawn here are exactly what the mode gives those two colours —
+ * red gets a circle, green a triangle, straight out of COLOR_SYMBOLS —
+ * so the icon is a small, true sample of the thing it switches on rather
+ * than a picture of the idea of it.
  */
-export function ColorsIcon({ size = 22, color = THEME.ink }: IconProps) {
+export function ShapesIcon({ size = 22, color = THEME.ink }: IconProps) {
   const s = w(size);
-  const disc = (left: number, tint: string, key: string) => (
-    <View
-      key={key}
-      style={{
-        position: 'absolute',
-        left: size * left,
-        top: size * 0.22,
-        width: size * 0.56,
-        height: size * 0.56,
-        borderRadius: size * 0.28,
-        backgroundColor: tint,
-        borderWidth: s * 0.6,
-        borderColor: color,
-      }}
-    />
-  );
   return (
     <View style={{ width: size, height: size }}>
-      {disc(0.02, hex('red'), 'red')}
-      {disc(0.42, hex('green'), 'green')}
+      {/* Red's circle. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.02,
+          top: size * 0.08,
+          width: size * 0.52,
+          height: size * 0.52,
+          borderRadius: size * 0.26,
+          backgroundColor: hex('red'),
+          borderWidth: s * 0.6,
+          borderColor: color,
+        }}
+      />
+      {/*
+        Green's triangle, drawn twice: an ink one and a smaller green one
+        over it. A border triangle has no stroke of its own, so the
+        outline has to be a second, larger triangle behind — the same
+        trick the speaker's cone uses.
+      */}
+      {[
+        { grow: s * 0.75, tint: color, key: 'ink' },
+        { grow: 0, tint: hex('green'), key: 'fill' },
+      ].map(({ grow, tint, key }) => (
+        <View
+          key={key}
+          style={{
+            position: 'absolute',
+            left: size * 0.44 - grow,
+            top: size * 0.36 - grow * 0.6,
+            width: 0,
+            height: 0,
+            borderLeftWidth: size * 0.28 + grow,
+            borderRightWidth: size * 0.28 + grow,
+            borderBottomWidth: size * 0.52 + grow,
+            borderLeftColor: 'transparent',
+            borderRightColor: 'transparent',
+            borderBottomColor: tint,
+          }}
+        />
+      ))}
     </View>
   );
 }

@@ -135,7 +135,7 @@ import { TopButtons } from './TopButtons';
 import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
-import { ColorsIcon } from '../ui/Icon';
+import { ShapesIcon } from '../ui/Icon';
 import { TierIcon } from './TierIcon';
 import { FirstFrame } from './FirstFrame';
 import {
@@ -2238,7 +2238,7 @@ export function DiceDemoScreen() {
                   state where the icon had nothing to say.
                 */}
                 <View style={styles.toggleLabelRow}>
-                  <ColorsIcon size={16} />
+                  <ShapesIcon size={18} />
                   <Text style={styles.toggleLabel}>Colorblind mode</Text>
                 </View>
                 <Text style={styles.toggleNote}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -37,6 +37,8 @@ import {
   pushProfile,
 } from '../game/friendsApi';
 import { refreshName, replaceFriendCode } from '../game/playerIdentity';
+import { nextPollDelay, sameList } from '../game/friendsPoll';
+import { useAppActive } from '../game/useAppActive';
 
 /**
  * Friends, and their profiles.
@@ -107,6 +109,10 @@ export function FriendsScreen({
     never heard of.
   */
   const [who, setWho] = useState<Identity>(me);
+  /** False until the first poll cycle has been set up. See below. */
+  const started = useRef(false);
+  /** True while refresh() is in flight, so a poll cannot overtake it. */
+  const refreshing = useRef(false);
   const [list, setList] = useState<FriendList>(EMPTY_LIST);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
@@ -132,6 +138,7 @@ export function FriendsScreen({
   const page: Page = showing ? 'profile' : 'list';
 
   const refresh = useCallback(async () => {
+    refreshing.current = true;
     setLoading(true);
     /*
       Ask Apple for the name again first.
@@ -183,6 +190,7 @@ export function FriendsScreen({
     if (!push.ok) {
       setProblem(push.error);
       setLoading(false);
+      refreshing.current = false;
       return;
     }
 
@@ -194,11 +202,87 @@ export function FriendsScreen({
       setProblem(result.error);
     }
     setLoading(false);
+    refreshing.current = false;
   }, [me, stats]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /*
+    KEEP LOOKING, while somebody is actually looking.
+
+    David, 10 Sep 2026: "when I send a friend request, it should update on
+    my phone in the friends tab immediately when the other person accepts
+    it and so I don't have to close the friends tab and reopen it." Until
+    now the list was fetched once, on open, and nothing ever changed it
+    again — so an accepted request appeared only if you left the screen
+    and came back.
+
+    A quiet re-read rather than `refresh()`: no spinner, no republishing
+    of my own profile, and the list is left exactly as it was if the
+    answer has not changed (sameList) so the rows do not re-render under
+    the player every few seconds.
+
+    Stops when the app leaves the foreground, and stops when this screen
+    unmounts. That is the rule v1.69.0 set for every repeating timer
+    here, and a friends list polling from inside a pocket is precisely
+    what that release was about.
+  */
+  const appActive = useAppActive();
+  const busy = useRef(false);
+  const failures = useRef(0);
+
+  const poll = useCallback(async () => {
+    /*
+      One at a time, and never while a full refresh is in flight. A poll
+      that overtook a refresh would put the older answer on screen — for
+      four seconds, which is long enough to see.
+    */
+    if (busy.current || refreshing.current) return;
+    busy.current = true;
+    try {
+      const result = await fetchFriends(who);
+      if (result.ok) {
+        failures.current = 0;
+        setList((current) => (sameList(current, result.list) ? current : result.list));
+      } else {
+        /*
+          A failed poll is deliberately SILENT. The list on screen is
+          still the last true answer, and replacing it with an error
+          because one background check missed would be a worse screen
+          than a slightly stale one. The backoff is the response.
+        */
+        failures.current += 1;
+      }
+    } finally {
+      busy.current = false;
+    }
+  }, [who]);
+
+  useEffect(() => {
+    if (!appActive) return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    /*
+      Coming back from the background asks straight away — that is the
+      moment most likely to have news waiting. The very first run after
+      mount does not, because refresh() has just fetched the same thing.
+    */
+    const immediate = started.current;
+    started.current = true;
+
+    const tick = async () => {
+      await poll();
+      if (!alive) return;
+      timer = setTimeout(tick, nextPollDelay(failures.current));
+    };
+    timer = setTimeout(tick, immediate ? 0 : nextPollDelay(failures.current));
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [appActive, poll]);
 
   const search = async () => {
     const clean = normaliseFriendCode(code);

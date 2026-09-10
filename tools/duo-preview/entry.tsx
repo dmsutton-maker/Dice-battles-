@@ -9,7 +9,7 @@ import { NewsScreen } from '../../src/demo/NewsScreen';
 import { TierIcon } from '../../src/demo/TierIcon';
 import { TIERS } from '../../src/game/progress';
 import { VolumeSlider } from '../../src/demo/VolumeSlider';
-import { ColorsIcon } from '../../src/ui/Icon';
+import { ShapesIcon } from '../../src/ui/Icon';
 import { Text } from 'react-native';
 
 /**
@@ -77,7 +77,7 @@ function Screen() {
         <VolumeSlider label="Music" value={0.2} onChange={() => {}} />
         <VolumeSlider label="Voice" value={0} onChange={() => {}} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <ColorsIcon size={16} />
+          <ShapesIcon size={16} />
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#1d1a2e' }}>
             Colorblind mode
           </Text>

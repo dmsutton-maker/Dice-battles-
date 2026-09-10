@@ -89,6 +89,23 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-84-0-live-friends',
+    date: '10 September 2026',
+    version: 'v1.84.0',
+    title: 'Friends updates while you watch',
+    icon: 'people',
+    body:
+      'When somebody accepts your friend request, it now appears on your ' +
+      'friends list straight away. You used to have to close the Friends ' +
+      'panel and open it again before anything changed.\n\n' +
+      'It only looks while you are looking: the checking stops the moment ' +
+      'you close the panel or put your phone down, and slows itself right ' +
+      'down if there is no signal.\n\n' +
+      'The colourblind setting also has a new picture beside it \u2014 a ' +
+      'circle and a triangle, which is exactly what that mode does: every ' +
+      'colour gets its own shape.',
+  },
+  {
     id: 'v1-82-0-friends-identity',
     date: '10 September 2026',
     version: 'v1.82.0',

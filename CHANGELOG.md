@@ -1,5 +1,50 @@
 # Changelog
 
+## v1.84.0 — 2026-09-10 · requested by David
+
+"When I send a friend request, it should update on my phone in the
+friends tab immediately when the other person accepts it and so I don't
+have to close the friends tab and reopen it." And: "the colorblind mode
+icon should be a shape."
+
+### Added
+- **The friends list keeps itself up to date while it is open.** It was
+  fetched once, on open, and nothing ever changed it again — so an
+  accepted request appeared only if you left the screen and came back.
+  - **Polling, not push, and that is a real limit rather than laziness.**
+    The friends API is a handful of serverless functions on Vercel, so
+    there is nothing holding a socket. Real push notifications need a
+    native module, an Apple push certificate, a permission prompt this
+    4+ game does not ask for, and a new build through Apple. Asking again
+    every four seconds while somebody is actually looking at the screen
+    is the honest version of the same thing.
+  - **It stops when nobody is looking** — the panel closing or the phone
+    going in a pocket both end it. That is the rule v1.69.0 set for every
+    repeating timer in this game, and a friends list polling from inside
+    a pocket is exactly what that release was about.
+  - **It backs off when the server is not answering**, doubling to a
+    minute, and one success puts it straight back to four seconds. A
+    failed poll is silent: the list on screen is still the last true
+    answer, and replacing it with an error because one background check
+    missed would be a worse screen than a slightly stale one.
+  - **An unchanged answer is left alone.** Replacing the list object
+    re-renders every row and every dice swatch on it; doing that every
+    four seconds is a visible flicker on a long list.
+  - **A poll cannot overtake a refresh.** Both write the same state, so
+    a poll that started first and answered second would put the older
+    list back on screen — long enough to watch a friend you just accepted
+    turn back into a request.
+
+### Changed
+- **The colourblind icon is a circle and a triangle.** It was two colour
+  discs, which drew the PROBLEM. The setting changes no colour at all —
+  the palette is already CIEDE2000-checked and separated by lightness —
+  it stamps a shape on each one, and the shapes are the answer. The two
+  drawn are the ones the mode really gives those colours (red → circle,
+  green → triangle, straight from `COLOR_SYMBOLS`), so the icon is a true
+  sample of what it switches on. A test fails if that mapping changes and
+  the icon does not.
+
 ## v1.83.0 — 2026-09-10 · requested by David
 
 "On the Home Screen where it says 'next unlock: x at y trophies' it has

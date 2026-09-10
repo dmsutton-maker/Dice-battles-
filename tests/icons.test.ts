@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { COLOR_SYMBOLS } from '../src/game/colorblind';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { ICON, THEME } from '../src/ui/theme';
 import { PRISONER_COLORS } from '../src/game/colors';
@@ -514,6 +515,37 @@ suite('icons · nothing left that types a picture', () => {
     );
   });
 
+  test('the colourblind icon is a SHAPE, because that is what the mode does', () => {
+    /*
+      David, 10 Sep 2026, after the emoji went: "the colorblind mode icon
+      should be a shape." He is right and it is not a preference — the
+      setting changes no colour at all, it stamps a shape on each one, so
+      an icon made of two colour discs drew the problem rather than the
+      answer.
+
+      The two drawn are the ones the mode really gives those colours.
+    */
+    const icon = read('src/ui/Icon.tsx');
+    const body = icon.slice(
+      icon.indexOf('export function ShapesIcon'),
+      icon.indexOf('export function TimerIcon'),
+    );
+    assert(body.length > 0, 'ShapesIcon is gone');
+    assert(/borderBottomWidth/.test(body), 'the icon has no triangle in it');
+    assert(/borderRadius/.test(body), 'the icon has no circle in it');
+    for (const [colour, symbol] of [['red', 'circle'], ['green', 'triangle']] as const) {
+      assert(
+        body.includes(`hex('${colour}')`),
+        `the icon does not use the game's own ${colour}`,
+      );
+      assertEqual(
+        COLOR_SYMBOLS[colour],
+        symbol,
+        `the mode gives ${colour} a ${COLOR_SYMBOLS[colour]} now, so the icon is drawing the wrong shape`,
+      );
+    }
+  });
+
   test('colorblind mode is drawn, not typed', () => {
     const screen = read('src/demo/DiceDemoScreen.tsx');
     const row = screen.slice(
@@ -522,7 +554,7 @@ suite('icons · nothing left that types a picture', () => {
     );
     assert(row.length > 0, 'the colourblind row is gone');
     assert(!PICTURE.test(row), 'the colourblind row still types its picture');
-    assert(/ColorsIcon/.test(row), 'the colourblind row draws nothing');
+    assert(/ShapesIcon/.test(row), 'the colourblind row draws nothing');
   });
 
   test('every news post is drawn, not typed', () => {

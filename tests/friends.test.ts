@@ -29,6 +29,13 @@ import {
   resetIdentityForTest,
 } from '../src/game/playerIdentity';
 import { setNativeForTests } from '../src/game/gameCenter';
+import {
+  nextPollDelay,
+  POLL_MAX_MS,
+  POLL_MS,
+  sameList,
+} from '../src/game/friendsPoll';
+import { EMPTY_LIST, type FriendList } from '../src/game/friendsApi';
 import { typedFriendCode } from '../src/game/friendCodes';
 
 /**
@@ -928,6 +935,169 @@ suite('friends · a failed publish is never silent', () => {
     assert(
       /formatFriendCode\(who\.friendCode\)/.test(screen),
       'the friend code card reads a value that redrawing cannot update',
+    );
+  });
+});
+
+/**
+ * An accepted request that arrives without being asked for.
+ *
+ * David, 10 Sep 2026: "when I send a friend request, it should update on
+ * my phone in the friends tab immediately when the other person accepts
+ * it and so I don't have to close the friends tab and reopen it." The
+ * list was fetched once, on open, and nothing ever changed it again.
+ *
+ * There is no push to be had: the friends API is a few serverless
+ * functions, so there is nothing holding a socket, and real push
+ * notifications need a native module, an Apple certificate, a permission
+ * prompt this game does not ask for, and a new build. Asking again while
+ * somebody is looking at the screen is the honest version.
+ */
+suite('friends · the list keeps itself up to date', () => {
+  const peekOf = (id: string, trophies = 10) => ({ playerId: id, name: id, trophies });
+
+  test('a working connection is asked again promptly', () => {
+    assertEqual(nextPollDelay(0), POLL_MS, 'the ordinary gap moved');
+    assert(POLL_MS <= 5000, `${POLL_MS}ms is too slow to feel immediate`);
+  });
+
+  test('a dead connection is backed off, not hammered', () => {
+    /*
+      A phone on a dead train connection would otherwise ask every four
+      seconds for as long as the screen is open — battery spent on
+      nothing. It has to climb, and it has to stop climbing.
+    */
+    let last = nextPollDelay(0);
+    for (let failures = 1; failures <= 12; failures++) {
+      const delay = nextPollDelay(failures);
+      assert(delay >= last, `the delay went DOWN at ${failures} failures`);
+      assert(delay <= POLL_MAX_MS, `${delay}ms is past the ceiling at ${failures}`);
+      last = delay;
+    }
+    assertEqual(nextPollDelay(12), POLL_MAX_MS, 'the backoff never reaches its ceiling');
+    note(`backoff: ${[0, 1, 2, 3, 4, 5].map(nextPollDelay).join('ms → ')}ms`);
+  });
+
+  test('one success puts it straight back to normal', () => {
+    // Modelled the way the screen does it: failures reset to zero.
+    assertEqual(nextPollDelay(0), POLL_MS, 'a recovered connection stays backed off');
+  });
+
+  test('an unchanged answer is recognised, so the rows do not re-render', () => {
+    /*
+      Not an optimisation for its own sake: replacing the list object
+      re-renders every row and every dice swatch on it. Doing that every
+      four seconds on a list that has not changed is a visible flicker.
+    */
+    const list: FriendList = {
+      friends: [],
+      requests: [{ ...peekOf('them'), incoming: false }],
+      blocked: [],
+    };
+    const copy: FriendList = JSON.parse(JSON.stringify(list));
+    assert(sameList(list, copy), 'an identical list was seen as a change');
+    assert(sameList(EMPTY_LIST, { friends: [], requests: [], blocked: [] }), 'empty vs empty');
+  });
+
+  test('the moment David asked about IS seen as a change', () => {
+    // Outgoing request becomes a friend: the one transition this whole
+    // feature exists to notice.
+    const asked: FriendList = {
+      friends: [],
+      requests: [{ ...peekOf('them'), incoming: false }],
+      blocked: [],
+    };
+    const accepted: FriendList = {
+      friends: [
+        {
+          ...peekOf('them'),
+          wins: { easy: 0, medium: 0, hard: 0 },
+          modeWins: { classic: 0, ultimate: 0, skirmish: 0, colorwar: 0 },
+          diceOwned: 1,
+          arenasOwned: 1,
+          favouriteDie: 'ivory',
+          favouriteArena: 'castle',
+          lastPlayed: 0,
+          friendCode: 'AAAAAAAA',
+        } as unknown as FriendList['friends'][number],
+      ],
+      requests: [],
+      blocked: [],
+    };
+    assert(!sameList(asked, accepted), 'an accepted request looked like no change at all');
+  });
+
+  test('a changed trophy count counts as a change', () => {
+    // It is drawn beside their name, so a stale one is a visible lie.
+    const before: FriendList = { ...EMPTY_LIST, requests: [{ ...peekOf('them', 10), incoming: true }] };
+    const after: FriendList = { ...EMPTY_LIST, requests: [{ ...peekOf('them', 20), incoming: true }] };
+    assert(!sameList(before, after), 'a trophy count changed and nothing noticed');
+  });
+
+  test('the screen stops polling in a pocket, and on the way out', () => {
+    /*
+      The rule v1.69.0 set for every repeating timer in this game. A
+      friends list asking the server every four seconds from inside a
+      pocket is exactly what that release was about.
+    */
+    const screen = readFileSync(
+      join(__dirname, '..', 'src/demo/FriendsScreen.tsx'),
+      'utf8',
+    );
+    assert(/useAppActive\(\)/.test(screen), 'the poll does not know whether the app is in front');
+    assert(/if \(!appActive\) return;/.test(screen), 'the poll runs whatever the app is doing');
+    assert(/clearTimeout\(timer\)/.test(screen), 'the poll is not stopped when the screen goes');
+    assert(
+      /alive = false;/.test(screen),
+      'a poll in flight can still write to a screen that has gone',
+    );
+  });
+
+  test('a poll never republishes the profile or shows a spinner', () => {
+    /*
+      It is a quiet re-read. Pushing the profile every four seconds would
+      turn a look into a write, and flipping `loading` would blink a
+      spinner over a list the player is reading.
+    */
+    const screen = readFileSync(
+      join(__dirname, '..', 'src/demo/FriendsScreen.tsx'),
+      'utf8',
+    );
+    const poll = screen.slice(
+      screen.indexOf('const poll = useCallback'),
+      screen.indexOf('useEffect(() => {\n    if (!appActive) return;'),
+    );
+    assert(poll.length > 0, 'the poll is gone');
+    assert(!/pushProfile/.test(poll), 'the poll republishes the profile');
+    assert(!/setLoading/.test(poll), 'the poll blinks the spinner');
+    assert(/sameList/.test(poll), 'the poll replaces the list even when nothing changed');
+  });
+
+  test('a poll cannot overtake a full refresh', () => {
+    /*
+      Both write the same piece of state. A poll that started first and
+      answered second would put the OLDER list on screen and leave it
+      there until the next tick — four seconds, which is long enough to
+      watch a friend you just accepted turn back into a request.
+    */
+    const screen = readFileSync(
+      join(__dirname, '..', 'src/demo/FriendsScreen.tsx'),
+      'utf8',
+    );
+    assert(
+      /if \(busy\.current \|\| refreshing\.current\) return;/.test(screen),
+      'a poll can run while a refresh is in flight',
+    );
+    // And the flag has to be cleared on EVERY way out of refresh, or the
+    // polling stops for good the first time a publish fails.
+    const refresh = screen.slice(
+      screen.indexOf('const refresh = useCallback'),
+      screen.indexOf('useEffect(() => {\n    void refresh();'),
+    );
+    assertEqual(
+      (refresh.match(/refreshing\.current = false/g) ?? []).length,
+      (refresh.match(/setLoading\(false\)/g) ?? []).length,
+      'refresh has an exit that leaves polling switched off for ever',
     );
   });
 });
