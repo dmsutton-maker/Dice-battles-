@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.77.0 — 2026-09-10 · requested by David
+
+"Have the friends tab be a pop up like the settings and news."
+
+### Changed
+- **Friends is a Popup**, not a full page. Settings and News stopped
+  being pages for a reason worth repeating: as panels they read as
+  things you glance at and dismiss, and the game stays visible behind
+  them so it is obvious you have not gone anywhere. Friends is the same
+  kind of thing.
+- **Its own back button is gone from the list.** That existed because
+  the tab bar was drawn over the page and would swallow a tap near the
+  bottom, so the exit had to be at the top. A popup is drawn above the
+  bar and dims it, and already guarantees two ways out — the ✕ and a tap
+  on the dim — so a third was clutter.
+- **A friend's page keeps its "‹ Friends"**, because that one is not a
+  way out of Friends: it is the way back to the list, while the ✕ leaves
+  altogether. The panel title becomes the friend's name so it is obvious
+  whose page it is.
+
+### The bug this would have shipped with
+`Confirm` fills its PARENT, not the screen, and `Popup`'s panel clips
+with `overflow: hidden`. Wrapping Friends in a popup from the outside
+would have squeezed "Remove this friend?" and "Block this person?" into
+the panel and cut them off instead of covering the screen. That is why
+the popup is built INSIDE `FriendsScreen` rather than around it by the
+caller — it lets the ask dialogs be siblings of the panel. There is now
+a test that reads the file and fails if any `{overlays}` ever ends up
+between a `<Popup>` and its close; verified by moving them inside and
+watching it fail.
+
+### Also
+- A `KeyboardAvoidingView` around the panel's scroll. The friend-code
+  box sits partway down it, and without this the keyboard covered the
+  very thing being typed into — the same fault the Settings code box had,
+  fixed the same way.
+
 ## v1.76.0 — 2026-09-10 · requested by David
 
 "Make all the dice have unique sides that make the entire dice a

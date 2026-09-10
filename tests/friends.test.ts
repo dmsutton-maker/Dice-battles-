@@ -662,3 +662,89 @@ suite('friends · the dash types itself', () => {
     }
   });
 });
+
+suite('friends · it is a popup, like Settings and News', () => {
+  const friends = readFileSync(
+    join(__dirname, '..', 'src/demo/FriendsScreen.tsx'),
+    'utf8',
+  );
+
+  /*
+    David, 10 Sep 2026. Settings and News stopped being pages a long time
+    ago for a reason worth repeating: as popups they read as things you
+    glance at and dismiss, and the game stays visible behind them, so it
+    is obvious you have not gone anywhere. Friends is the same kind of
+    thing and was still a full page.
+  */
+  test('it opens in a Popup and no longer builds its own page', () => {
+    assert(/<Popup title="Friends"/.test(friends), 'Friends is not a popup');
+    assert(
+      !/MENU_PAGE_EDGES|useMenuPageArea/.test(friends),
+      'it still reserves a full menu page for itself',
+    );
+  });
+
+  test('it has no back button of its own on the list', () => {
+    /*
+      The old "‹ Back" existed because the tab bar was drawn over this
+      page and would swallow a tap near the bottom, so the exit had to be
+      at the top. A popup is drawn ABOVE the bar and dims it, and it
+      already guarantees two ways out — the ✕ and a tap on the dim — so a
+      third would just be clutter.
+    */
+    const list = friends.slice(friends.indexOf('<Popup title="Friends"'));
+    assert(
+      !/‹ Back/.test(list),
+      'the list still draws its own back button on top of the popup’s ✕',
+    );
+  });
+
+  test('the profile keeps ITS back button, because it goes somewhere else', () => {
+    // Not a way out of Friends — the way back to the list. The ✕ leaves
+    // altogether. Two exits doing two different things.
+    assert(/‹ Friends/.test(friends), 'there is no way back from a friend to the list');
+    assert(
+      /<Popup title=\{showing\.name\}/.test(friends),
+      'the profile does not name whose page it is',
+    );
+  });
+
+  test('THE ASK DIALOGS ARE OUTSIDE THE PANEL', () => {
+    /*
+      The one that would have shipped broken and that no rendering test
+      here could catch.
+
+      Confirm fills its PARENT, not the screen, and Popup's panel clips
+      with overflow:hidden. Rendered inside it, "Remove this friend?"
+      would have been squeezed into the panel and cut off instead of
+      covering the screen. That is the whole reason the popup is built
+      inside this component rather than wrapped around it by the caller —
+      it lets the overlays be siblings of the panel.
+
+      So: every {overlays} must come AFTER a </Popup>, never between a
+      <Popup> and its close.
+    */
+    const opens = [...friends.matchAll(/<Popup /g)].map((m) => m.index ?? 0);
+    const closes = [...friends.matchAll(/<\/Popup>/g)].map((m) => m.index ?? 0);
+    const overlays = [...friends.matchAll(/\{overlays\}/g)].map((m) => m.index ?? 0);
+    assert(opens.length > 0 && closes.length === opens.length, 'the popups are unbalanced');
+    assert(overlays.length > 0, 'the confirm dialogs are not rendered at all');
+    for (const at of overlays) {
+      const inside = opens.some((o, i) => at > o && at < closes[i]);
+      assert(
+        !inside,
+        'an ask dialog is rendered inside the popup panel, where it would be ' +
+          'clipped to the panel instead of covering the screen',
+      );
+    }
+  });
+
+  test('the code box is not left under the keyboard', () => {
+    // The same fault the Settings code box had: the input sits partway
+    // down the panel and the keyboard covered the thing being typed in.
+    assert(
+      /<KeyboardAvoidingView/.test(friends),
+      'the friend-code box can be covered by the keyboard',
+    );
+  });
+});

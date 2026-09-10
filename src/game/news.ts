@@ -37,6 +37,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-77-0-friends-popup',
+    date: '10 September 2026',
+    version: 'v1.77.0',
+    title: 'Friends opens over the game',
+    emoji: '\ud83e\ude9f',
+    body:
+      'Friends is a panel now, the same as Settings and News \u2014 it ' +
+      'opens on top of the game instead of taking you somewhere else, ' +
+      'and the game stays visible behind it so it is obvious you have ' +
+      'not left. Close it with the \u2715 or by tapping outside it.\n\n' +
+      'Tapping a friend still opens their page inside the same panel, ' +
+      'with their name at the top, and \u2039 Friends brings you back to ' +
+      'the list.',
+  },
+  {
     id: 'v1-76-0-whole-dice',
     date: '10 September 2026',
     version: 'v1.76.0',

@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
+import { Popup } from './Popup';
 import { Card, PrimaryButton, SecondaryButton } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -116,8 +118,6 @@ export function FriendsScreen({
   */
   const [actionError, setActionError] = useState<string | null>(null);
   const page: Page = showing ? 'profile' : 'list';
-  // Live: the bar's height changes when a folding phone is opened.
-  const pageArea = useMenuPageArea();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -247,34 +247,62 @@ export function FriendsScreen({
   if (page === 'profile' && showing) {
     return (
       <>
-        <ProfileView
-          profile={showing}
-          onBack={() => setShowing(null)}
-          onRemove={() =>
-            setAsking({ action: 'remove', playerId: showing.playerId, name: showing.name })
-          }
-          onBlock={() =>
-            setAsking({ action: 'block', playerId: showing.playerId, name: showing.name })
-          }
-        />
+        {/*
+          The profile is a second page INSIDE the same popup — the title
+          becomes the friend's name so it is obvious whose page this is,
+          and the ✕ still leaves Friends altogether.
+        */}
+        <Popup title={showing.name} onClose={onClose}>
+          <ProfileView
+            profile={showing}
+            onBack={() => setShowing(null)}
+            onRemove={() =>
+              setAsking({ action: 'remove', playerId: showing.playerId, name: showing.name })
+            }
+            onBlock={() =>
+              setAsking({ action: 'block', playerId: showing.playerId, name: showing.name })
+            }
+          />
+        </Popup>
+        {/*
+          OUTSIDE the popup, deliberately. Confirm fills its PARENT, and
+          the popup's panel clips with overflow:hidden — rendered inside
+          it, "Remove this friend?" would have been squeezed into the
+          panel and cut off rather than covering the screen. That is the
+          whole reason the popup is built here rather than wrapped around
+          this component by the caller.
+        */}
         {overlays}
       </>
     );
   }
 
+  /*
+    A POPUP, not a page, since 10 Sep 2026 — David asked for it to behave
+    like Settings and News.
+
+    So the frame is gone: no absolute page box, no title of its own, and
+    no back button. `Popup` supplies all three, plus the two ways out it
+    guarantees (the ✕ and a tap on the dim around the panel), and the
+    game stays visible behind it so it is obvious you have not gone
+    anywhere. The old "‹ Back" existed because the tab bar was drawn over
+    this page and would have swallowed a tap near the bottom; a popup is
+    drawn above the bar and dims it, so that problem is gone with it.
+  */
   return (
-    <View style={[styles.page, pageArea]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+    <>
+      <Popup title="Friends" onClose={onClose}>
         {/*
-          A real way out. The tab bar is drawn over this page and would
-          take a tap meant for anything near the bottom, so the exit
-          goes at the TOP — the same lesson the menu pages learned when
-          their Done buttons sat invisible under the bar.
+          The friend-code box sits partway down this panel, and on a
+          phone the keyboard would cover the very thing being typed
+          into — the same fault the Settings code box had, fixed the
+          same way: the panel gives up the keyboard's height so the
+          list scrolls into what is left of the view.
         */}
-        <Pressable onPress={onClose} style={styles.back}>
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
-        <Text style={styles.title}>Friends</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView contentContainerStyle={styles.scroll}>
 
         {/*
           Said before the code, not after it, because it is the reason
@@ -458,9 +486,11 @@ export function FriendsScreen({
             ))}
           </>
         )}
-      </ScrollView>
+        </ScrollView>
+        </KeyboardAvoidingView>
+      </Popup>
       {overlays}
-    </View>
+    </>
   );
 }
 
@@ -476,13 +506,18 @@ function ProfileView({
   onRemove: () => void;
   onBlock: () => void;
 }) {
-  const pageArea = useMenuPageArea();
   const arena = ARENAS[profile.favouriteArena as keyof typeof ARENAS];
   const totalWins =
     (profile.wins?.easy ?? 0) + (profile.wins?.medium ?? 0) + (profile.wins?.hard ?? 0);
 
+  /*
+    Inside the popup too, so it keeps its own "‹ Friends" — that one is
+    not a way OUT of Friends, it is the way back to the list, and the
+    popup's ✕ is what leaves entirely. Two different exits doing two
+    different things, which is why this one stayed when the list's went.
+  */
   return (
-    <View style={[styles.page, pageArea]}>
+    <>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Pressable onPress={onBack} style={styles.back}>
           <Text style={styles.backText}>‹ Friends</Text>
@@ -531,7 +566,7 @@ function ProfileView({
           Blocking is quiet. They are not told, and they cannot ask again.
         </Text>
       </ScrollView>
-    </View>
+    </>
   );
 }
 
@@ -545,7 +580,6 @@ function Stat({ label, value, text }: { label: string; value?: number; text?: st
 }
 
 const styles = StyleSheet.create({
-  page: { ...MENU_PAGE_EDGES, backgroundColor: THEME.ground, zIndex: 20, paddingTop: 100 },
   scroll: { paddingHorizontal: 18, paddingBottom: 40 },
   title: { ...TYPE.title, color: THEME.ink, marginBottom: 14 },
 
