@@ -985,10 +985,32 @@ suite('screen · the board belongs to the battle screen', () => {
    */
   test('nothing opaque is left over the board while a preview is open', () => {
     const source = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
-    for (const tab of ['store', 'leaderboard', 'inventory', 'cups']) {
+    /*
+      Two ways of saying the same thing, since 10 Sep 2026.
+
+      Ranks and Cups are still thrown away when you leave them, so their
+      render condition carries the check. The Store and the Inventory are
+      now kept MOUNTED and hidden instead — they build about seventy
+      cards each and rebuilding them cost a second every single time —
+      so for those the guarantee moved into the `hidden` prop. The
+      behaviour is identical: neither is over the board during a preview.
+    */
+    for (const tab of ['leaderboard', 'cups']) {
       assert(
         new RegExp(`menuTab === '${tab}' && preview === null &&`).test(source),
         `the ${tab} page stays up during a preview and hides the board`,
+      );
+    }
+    for (const tab of ['store', 'inventory']) {
+      assert(
+        new RegExp(`hidden=\\{menuTab !== '${tab}' \\|\\| preview !== null\\}`).test(source),
+        `the ${tab} page is kept mounted but is not hidden during a preview, ` +
+          'so it would sit over the board',
+      );
+      assert(
+        new RegExp(`builtHeavyTabs\\.${tab} &&`).test(source),
+        `the ${tab} page is not built once and kept, so it pays to rebuild ` +
+          'every time the tab is opened',
       );
     }
     // Read the guard in front of the bar rather than matching an exact

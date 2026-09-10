@@ -24,6 +24,17 @@ import { MoneyShelf } from './MoneyShelf';
  */
 interface StoreScreenProps {
   /**
+   * Kept mounted but out of sight.
+   *
+   * This screen builds ~70 cards, and rebuilding them cost about a
+   * second every time the tab was opened (David, 10 Sep 2026). Hiding
+   * rather than unmounting pays that once. `display: 'none'` takes it
+   * out of layout as well as out of sight, so a hidden screen costs
+   * nothing to lay out.
+   */
+  hidden?: boolean;
+
+  /**
    * Passed in rather than read here, because buying now happens in the
    * preview. This screen is mounted the whole time a preview is open over
    * it, so reading the wallet once on mount would leave it showing the old
@@ -43,6 +54,7 @@ export function StoreScreen({
   onBought,
   onPreview,
   onPreviewArena,
+  hidden = false,
 }: StoreScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
   // Restore before the first paint the player sees.
@@ -52,7 +64,7 @@ export function StoreScreen({
   }, []);
 
   return (
-    <View style={[styles.overlay, useMenuPageArea()]}>
+    <View style={[styles.overlay, useMenuPageArea(), hidden && styles.hidden]}>
       {/* No coin count here — the shared HUD shows it on every screen. */}
       <View style={styles.header}>
         <Text style={styles.title}>Store</Text>
@@ -190,6 +202,8 @@ export function StoreScreen({
 }
 
 const styles = StyleSheet.create({
+  // Out of sight AND out of layout — see the `hidden` prop.
+  hidden: { display: 'none' },
   /** Same footprint as the 58pt dice swatch, so the two shelves align. */
   arenaArt: {
     width: 58,

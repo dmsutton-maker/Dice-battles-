@@ -37,6 +37,25 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-75-0-faster-tabs',
+    date: '10 September 2026',
+    version: 'v1.75.0',
+    title: 'Items and Store open straight away',
+    emoji: '\u26a1',
+    body:
+      'The Items tab took two or three seconds the first time you opened ' +
+      'it, and about a second every time after. Both are gone.\n\n' +
+      'Every dice picture on those shelves is drawn dot by dot while you ' +
+      'wait, because a phone game has no quick way to draw them. Fifty-' +
+      'three dice, all at once, in the same instant the tab was trying to ' +
+      'appear. They are now drawn quietly in the background while you are ' +
+      'doing something else, so by the time you tap Items they are ' +
+      'already sitting there.\n\n' +
+      'The second part: the shelves used to be thrown away and rebuilt ' +
+      'from nothing every single time you left the tab and came back. ' +
+      'They are kept now.',
+  },
+  {
     id: 'v1-74-0-friends-corner',
     date: '10 September 2026',
     version: 'v1.74.0',

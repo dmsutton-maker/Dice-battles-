@@ -97,6 +97,7 @@ import {
 import { TUNING } from '../game/tuning';
 import { initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { initPurchases } from '../game/purchases';
+import { warmDicePreviews } from '../dice/warmPreviews';
 import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
@@ -181,6 +182,29 @@ export function DiceDemoScreen() {
   const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
   // Whether the phone is actually showing the game — see useAppActive.
   const appActive = useAppActive();
+  const activeRef = useRef(appActive);
+  activeRef.current = appActive;
+
+  /*
+    Paint the dice pictures in the background, so the Items and Store
+    tabs are already warm the first time anybody opens them.
+
+    Deliberately AFTER the first interactions rather than at launch: the
+    player wants a battle, and a second of blocked JavaScript there is
+    worse than a second in a menu they may never open. It also stops
+    while the game is in a pocket — there is nothing to be warm for, and
+    it is the same thread the battery work just quietened.
+  */
+  useEffect(() => {
+    const { InteractionManager } = require('react-native');
+    const handle = InteractionManager.runAfterInteractions(() => {
+      warmDicePreviews(
+        (run) => setTimeout(run, 0),
+        () => activeRef.current,
+      );
+    });
+    return () => handle.cancel();
+  }, []);
   // Both live: a folding phone changes the home-indicator inset, and
   // therefore the bar's height, without the app relaunching.
   const bottomInset = useBottomInset();
@@ -801,6 +825,21 @@ export function DiceDemoScreen() {
 
   const menuTab: Tab | null =
     phase === 'pick' && tab !== 'play' ? tab : null;
+
+  /*
+    The Store and the Inventory build about seventy cards each, and
+    rebuilding them cost roughly a second EVERY time the tab was opened,
+    not just the first (David, 10 Sep 2026). They are now built once and
+    then hidden rather than thrown away, so the cost is paid a single
+    time. Nothing else on the bar is heavy enough to be worth keeping
+    alive, so nothing else is.
+  */
+  const [builtHeavyTabs, setBuiltHeavyTabs] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (menuTab !== 'store' && menuTab !== 'inventory') return;
+    setBuiltHeavyTabs((seen) => (seen[menuTab] ? seen : { ...seen, [menuTab]: true }));
+  }, [menuTab]);
+
 
   /*
     Close Friends when the player NAVIGATES, not when they are simply
@@ -1885,8 +1924,9 @@ export function DiceDemoScreen() {
         by design — the board used to glow through them — so leaving one up
         would hide the very thing the preview exists to show.
       */}
-      {menuTab === 'store' && preview === null && (
+      {builtHeavyTabs.store && (
         <StoreScreen
+          hidden={menuTab !== 'store' || preview !== null}
           wallet={wallet}
           // Coins bought with money land in the same purse as coins won,
           // so the HUD and the price tags have to be told to look again.
@@ -1922,8 +1962,9 @@ export function DiceDemoScreen() {
           onClose={() => setShowFriends(false)}
         />
       )}
-      {menuTab === 'inventory' && preview === null && (
+      {builtHeavyTabs.inventory && (
         <InventoryScreen
+          hidden={menuTab !== 'inventory' || preview !== null}
           trophies={trophies}
           arenaId={arenaId}
           skinId={loadout.skinId}

@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.75.0 — 2026-09-10 · requested by David
+
+"Are you able to make the items tab and store tab open faster... about
+2-3 seconds at first and then about 1 second every time after."
+
+Measured before touching anything: painting all 53 dice previews takes
+**846ms on a desktop**, and a phone is several times slower — so 2-3
+seconds is exactly right. Encoding the PNGs is nearly free by comparison;
+it is the per-pixel painting that costs.
+
+### Fixed
+- **The 2-3 seconds on first open.** React Native has no canvas, so each
+  dice picture is painted pixel by pixel in JavaScript, and the Store and
+  the Inventory are plain ScrollViews — every one of the ~70 cards mounts
+  at once and asks for its picture in the same frame the tab is trying to
+  appear in. Nothing was wrong with the cache; the second open was
+  already free. The cost is now MOVED rather than shrunk: the pictures
+  are painted one at a time in the background once the game is idle, so
+  the tab opens at the speed it always had on the second try. Measured
+  after warming: **0ms**. Nothing about how they look changes.
+- **The ~1 second on every open after that.** That part was not painting
+  at all — it was rebuilding about seventy cards from scratch each time
+  the tab was opened. The two heavy screens are now built once and hidden
+  with `display: 'none'` (out of layout as well as out of sight) rather
+  than thrown away.
+
+### Deliberately not done
+- Painting at launch. Launch is when a player wants their first battle,
+  and a second of blocked JavaScript there is worse than a second in a
+  menu they may never open. The warming waits for the game to settle.
+- One skin per background tick, not several. A single die is already a
+  whole frame's worth of work; painting two to "get it over with" would
+  drop one and make the warming visible, which defeats the point.
+- The warming stops while the app is backgrounded — nothing to be warm
+  for, and it is the same thread the battery work quietened — and can
+  start again on return.
+
+### Added
+- `src/dice/warmPreviews.ts` and `tests/warmup.test.ts`, including a test
+  that measures the tab-open cost after warming rather than trusting it.
+
 ## v1.74.0 — 2026-09-10 · requested by David
 
 Three small things, one of which turned out to be a trap.

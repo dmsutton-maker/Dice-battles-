@@ -29,6 +29,17 @@ import {
  * is the point of a trophy ladder.
  */
 interface InventoryScreenProps {
+  /**
+   * Kept mounted but out of sight.
+   *
+   * This screen builds ~70 cards, and rebuilding them cost about a
+   * second every time the tab was opened (David, 10 Sep 2026). Hiding
+   * rather than unmounting pays that once. `display: 'none'` takes it
+   * out of layout as well as out of sight, so a hidden screen costs
+   * nothing to lay out.
+   */
+  hidden?: boolean;
+
   trophies: number;
   arenaId: ArenaId;
   skinId: string;
@@ -49,6 +60,7 @@ export function InventoryScreen({
   arenaId,
   skinId,
   onPreview,
+  hidden = false,
 }: InventoryScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
   // Restore before the first paint the player sees.
@@ -58,7 +70,7 @@ export function InventoryScreen({
   }, []);
 
   return (
-    <View style={[styles.overlay, useMenuPageArea()]}>
+    <View style={[styles.overlay, useMenuPageArea(), hidden && styles.hidden]}>
       <View style={styles.header}>
         {/* No trophy count here: the shared HUD already draws one over
             this page, and two of the same number on one screen reads as
@@ -217,6 +229,8 @@ export function InventoryScreen({
 }
 
 const styles = StyleSheet.create({
+  // Out of sight AND out of layout — see the `hidden` prop.
+  hidden: { display: 'none' },
   overlay: {
     ...MENU_PAGE_EDGES,
     // Solid, not 96%: the arena used to show faintly through every
