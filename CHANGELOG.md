@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.89.0 — 2026-09-11 · requested by David
+
+"Make the ruby, copper, silver, and gold all have the exact same skin and
+texture just different colours. Make sure they're all shiny."
+
+### Changed
+- **One polished surface, four colours.** Gold, Silver, Copper and Ruby
+  all use `sheen` and differ only in `body` (the material) and `ink` (the
+  colour the hotspot reaches). Ruby and Copper were still on the old
+  sheet-positioned highlight that v1.86.0 fixed for the other two, so
+  **only two of their six faces caught the light** — and since you see
+  three faces at once, they mostly read as a flat brown and a flat dark
+  red.
+- **Three painters deleted, not left unused.** `brushed`, `ruby` and
+  `copper` are gone. The note in `tests/currency.test.ts` had already
+  been uneasy about the first of them — Silver was rewritten into gold's
+  polished sweep back in August and the two only passed the
+  no-two-skins-alike rule "on a technicality", being two painters with
+  two ids. Three more copies of one look, each free to drift, is not a
+  better answer than one.
+- **Ruby and Copper lifted.** Ruby's `#8e2f4a` went nearly black once the
+  polished shadow came off it; Copper's `#b56a3d` was the colour of a
+  dull penny.
+
+### The suite refused the first ruby, and was right
+`#c0304f` came back at **ΔLab 19 from the RED face colour**, against a
+bar of 28. The shell surrounds the six face stickers and the six colours
+are the entire game signal, so a shell that close hides a face. Ruby
+leans magenta instead of brighter — `#b02a5c`, ΔLab 32.7 — which is also
+what separates a garnet from a fire engine.
+
+### Two tests that had to change their minds
+- **"No two dice skins are the same picture"** now exempts `sheen`
+  alongside `plain` and `satin`, because four dice sharing one picture is
+  exactly what was asked for. The exemption is not free: those four fall
+  under "every shapeless skin is a clearly different colour", which is
+  the rule that makes sharing a picture safe.
+- **The metals' exemption from the smooth-join rule** checked that each
+  face reached 235 on the red channel, which is really asking "is this
+  skin pale" — ruby is a dark stone and failed at 231 with a perfectly
+  good highlight on every side. It measures each face's own brightest
+  point against its own darkest now, in luminance, which is what a
+  highlight actually is and works whatever colour the skin is. Verified
+  by putting the old sheet-positioned sweep back and watching gold fail
+  at a range of 23.
+
 ## v1.88.0 — 2026-09-11 · requested by David
 
 "I played 4 games and still haven't gotten any ads. Make sure the ad

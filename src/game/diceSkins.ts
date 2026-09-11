@@ -43,13 +43,23 @@ export const DICE_SKINS: DiceSkin[] = [
     name: 'Gold',
     emoji: '✨',
     body: '#ffd76a',
-    // The dice are drawn unlit, so gold got no highlight from the scene
-    // and read as a flat yellow cube. The sweep of light is painted in.
-    //
-    // The ink is the colour the HOTSPOT reaches, and it is nearly white
-    // on purpose (11 Sep 2026): a glint on polished metal is the light
-    // source itself, not the metal. #fff8dc left the brightest point
-    // still visibly cream, which is what a satin finish does.
+    /*
+      ONE POLISHED SURFACE, FOUR COLOURS.
+
+      David, 11 Sep 2026: "make the ruby, copper, silver, and gold all
+      have the exact same skin and texture just different colours. Make
+      sure they're all shiny." So gold, silver, copper and ruby all use
+      `sheen` and differ ONLY in these two colours. Three separate
+      painters — `brushed`, `ruby` and `copper` — were deleted rather
+      than left unused; a painter nobody calls is a second version of
+      the look waiting to drift.
+
+      `body` is the material and `ink` is the colour the HOTSPOT
+      reaches. The ink is near-white on purpose: a glint on a polished
+      surface is the light SOURCE, not the material, so it is white with
+      the faintest tint of the metal in it. #fff8dc left gold's
+      brightest point visibly cream, which is what a satin finish does.
+    */
     pattern: 'sheen',
     ink: '#fffdf2',
     unlock: 'golden-dice',
@@ -173,7 +183,9 @@ export const DICE_SKINS: DiceSkin[] = [
     body: '#c3cad1',
     // Brushed, not polished like gold. Sharing gold's pattern would make
     // the two one picture in two tints.
-    pattern: 'brushed',
+    // The same painter as gold — see the note there. Silver is the
+    // coolest of the four, so its glint is pure white.
+    pattern: 'sheen',
     ink: '#ffffff',
     price: 925,
   },
@@ -197,7 +209,19 @@ export const DICE_SKINS: DiceSkin[] = [
    */
 
   // The trophy ladder's six new rungs, flat colours as ever.
-  { id: 'ruby', name: 'Ruby', emoji: '🍒', body: '#8e2f4a', pattern: 'ruby', unlock: 'ruby-dice' },
+  /*
+    Ruby was #8e2f4a, which is nearly black once the polished shadow is
+    taken off it — there was nowhere for a highlight to go. Lifted so the
+    stone has a lit side as well as a dark one.
+
+    NOT as far as it wanted to go. The first lift was #c0304f, and the
+    suite refused it at ΔLab 19 from the RED face colour: the shell
+    surrounds the six face stickers, and a shell that close to one of
+    them hides that face. The six colours are the whole game signal, and
+    no dice skin is allowed to eat one. So it leans magenta instead of
+    brighter — which is also what separates a garnet from a fire engine.
+  */
+  { id: 'ruby', name: 'Ruby', emoji: '🍒', body: '#b02a5c', pattern: 'sheen', ink: '#ffdfe6', unlock: 'ruby-dice' },
   { id: 'ocean', name: 'Ocean', emoji: '🌊', body: '#1f6e8a', pattern: 'ocean', unlock: 'ocean-dice' },
   // Lavender mixes its own paint too (green stems, purple bud spikes),
   // so like blossom it carries no ink.
@@ -206,7 +230,9 @@ export const DICE_SKINS: DiceSkin[] = [
   // Blossom mixes its own paint (white petals, gold hearts), so like
   // the other colour-painted skins it carries no ink.
   { id: 'blossom', name: 'Blossom', emoji: '🌸', body: '#f5d7e3', pattern: 'blossom', unlock: 'blossom-dice' },
-  { id: 'copper', name: 'Copper', emoji: '🥉', body: '#b56a3d', pattern: 'copper', unlock: 'copper-dice' },
+  // Lifted from #b56a3d for the same reason as ruby: polished copper is
+  // a bright warm metal, and the old one was the colour of a dull penny.
+  { id: 'copper', name: 'Copper', emoji: '🥉', body: '#cf7a41', pattern: 'sheen', ink: '#ffe6d2', unlock: 'copper-dice' },
 
   // Animals.
   { id: 'paws', name: 'Paw Prints', emoji: '🐾', body: '#b98a5e', pattern: 'paws', ink: '#4a2f16', price: 280 },

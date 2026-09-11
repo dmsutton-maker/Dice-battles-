@@ -198,14 +198,6 @@ suite('currency · items are telling apart-able', () => {
     // one picture in two tints — indistinguishable in the Inventory and on
     // the table. A skin has to differ in SHAPE, not just colour.
     //
-    // ONE DELIBERATE EXCEPTION, and this test can no longer see it. David
-    // asked on 24 Aug 2026 for Silver to be the silver version of Gold, so
-    // `brushed` was rewritten from scratches into the same polished sweep
-    // of light that `sheen` paints. They are still separate painters with
-    // separate ids, so this check passes — but it passes on a technicality
-    // now, not because the two pictures differ the way Frost and Starry
-    // were made to. Anyone tightening this to compare PIXELS should know
-    // that gold and silver are meant to match and everything else is not.
     /*
       `satin` joins `plain` as an exemption, 7 Sep 2026, and for the same
       reason: it carries no SHAPE at all. It is ivory's sweep of light on
@@ -215,7 +207,28 @@ suite('currency · items are telling apart-able', () => {
       alone, exactly as they were as `plain`, and the colour-distance
       check below now covers them too.
     */
-    const SHAPELESS = ['plain', 'satin'];
+    /*
+      `sheen` joins them on 11 Sep 2026, and this one is a decision
+      rather than a technicality.
+
+      David: "make the ruby, copper, silver, and gold all have the exact
+      same skin and texture just different colours. Make sure they're all
+      shiny." So those four deliberately ARE one picture in four tints —
+      the precinct this test was written to forbid.
+
+      The note that used to sit here was already uneasy about it. Silver
+      had been rewritten into gold's polished sweep back in August, and
+      the two only passed because they were still two painters with two
+      ids: "it passes on a technicality now". Three more of those would
+      have been three more copies of one look, each free to drift.
+
+      So the painters are gone — `brushed`, `ruby` and `copper` were
+      deleted, not left unused — the four share `sheen`, and the rule
+      they must now satisfy is the one below: a shapeless skin is told
+      apart by COLOUR, and the colours have to be far enough apart to do
+      it.
+    */
+    const SHAPELESS = ['plain', 'satin', 'sheen'];
     const patterned = DICE_SKINS.filter((s) => !SHAPELESS.includes(s.pattern));
     const patterns = patterned.map((s) => s.pattern);
     assertEqual(
@@ -226,11 +239,18 @@ suite('currency · items are telling apart-able', () => {
   });
 
   test('every shapeless skin is a clearly different colour', () => {
-    // A skin with no shape on it has only its body colour to tell it
-    // apart, so that colour has to carry the whole job. Both `plain` and
-    // `satin` are in that position — see the note above.
-    const plain = DICE_SKINS.filter(
-      (s) => s.pattern === 'plain' || s.pattern === 'satin',
+    /*
+      A skin with no shape of its own has only its body colour to tell it
+      apart, so that colour has to carry the whole job. `plain`, `satin`
+      and — since the four metals were made one polished surface in four
+      tints — `sheen` are all in that position.
+
+      This is the check that lets the exemption above be granted rather
+      than merely claimed: four dice that share a picture have to be four
+      obviously different colours.
+    */
+    const plain = DICE_SKINS.filter((s) =>
+      ['plain', 'satin', 'sheen'].includes(s.pattern),
     );
     const rgb = (hex: string) => [
       parseInt(hex.slice(1, 3), 16),

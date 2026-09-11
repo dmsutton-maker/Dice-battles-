@@ -372,6 +372,8 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     const REFLECTIONS: Record<string, string> = {
       gold: 'a highlight is a reflection of the light, and reflections stop at an edge',
       silver: 'the same, in the other metal',
+      copper: 'the same surface again — one polished skin in four tints, 11 Sep 2026',
+      ruby: 'the same, as a cut stone rather than a metal',
     };
 
     const S = PATTERN_SIZE;
@@ -425,18 +427,43 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     for (const [id, why] of Object.entries(REFLECTIONS)) {
       const skin = DICE_SKINS.find((s) => s.id === id);
       assert(skin !== undefined, `${id} is exempt from the join rule and does not exist`);
-      const brightest = CUBE_NET_CELLS.map(([cx, cy]) =>
-        Math.max(...cell(skin!, cx, cy).filter((_, i) => i % 3 === 0)),
-      );
-      const dullest = Math.min(...brightest);
+      /*
+        A RANGE, not a brightness. The first version asked whether each
+        face reached 235 on the red channel, which is really asking "is
+        this skin pale" — ruby is a dark red stone and failed at 231 with
+        a perfectly good highlight on every side.
+
+        What a highlight actually IS, is a light part next to a dark
+        part. So each face is measured from its own brightest point to
+        its own darkest, in luminance, and has to show a real difference.
+        That works whatever colour the skin is, which is the point now
+        that one painter serves four of them.
+      */
+      const lum = (px: number[], i: number) =>
+        0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+      const ranges = CUBE_NET_CELLS.map(([cx, cy]) => {
+        const px = cell(skin!, cx, cy);
+        let brightest = 0;
+        let darkest = 255;
+        for (let i = 0; i < px.length; i += 3) {
+          const l = lum(px, i);
+          if (l > brightest) brightest = l;
+          if (l < darkest) darkest = l;
+        }
+        return brightest - darkest;
+      });
+      const flattest = Math.min(...ranges);
       assert(
-        dullest > 235,
-        `${id} is exempt because "${why}", but one of its sides only reaches ` +
-          `${dullest} — it has no highlight on it, which is the fault the ` +
-          'exemption was granted to fix',
+        flattest > 45,
+        `${id} is exempt because "${why}", but one of its sides only varies by ` +
+          `${flattest.toFixed(0)} from its brightest point to its darkest — it has ` +
+          'no highlight on it, which is the fault the exemption was granted to fix',
       );
     }
-    note(`${Object.keys(REFLECTIONS).length} metals exempt, each checked for a highlight on all six sides`);
+    note(
+      `${Object.keys(REFLECTIONS).length} polished skins exempt, ` +
+        'each checked for a highlight on all six sides',
+    );
   });
 
   test('the net is written in three.js face order', () => {

@@ -89,6 +89,24 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-89-0-four-polished',
+    date: '11 September 2026',
+    version: 'v1.89.0',
+    title: 'Gold, Silver, Copper and Ruby all shine now',
+    icon: 'dice',
+    body:
+      'The four shiny dice are one polished surface in four colours. ' +
+      'Ruby and Copper were still using the old drawing, where only two ' +
+      'of the six sides caught the light \u2014 so most of the time they ' +
+      'looked like a flat brown or a flat dark red. Every side of all ' +
+      'four shines now.\n\n' +
+      'Ruby and Copper are a bit brighter as well, so there is somewhere ' +
+      'for the shine to go. Ruby stops short of where it wanted to be: ' +
+      'any redder and it would start to look like the RED face on the ' +
+      'dice, and no dice can be allowed to swallow one of the six ' +
+      'colours the whole game is played with.',
+  },
+  {
     id: 'v1-88-0-ads-actually-show',
     date: '11 September 2026',
     version: 'v1.88.0',

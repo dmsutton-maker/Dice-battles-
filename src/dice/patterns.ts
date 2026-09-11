@@ -23,7 +23,6 @@ export type PatternId =
   | 'marble'
   | 'granite'
   | 'sheen'
-  | 'brushed'
   | 'satin'
   // The 26 Aug 2026 batch — David asked for ~40 new skins. Mask painters:
   | 'rosettes'
@@ -56,9 +55,7 @@ export type PatternId =
   // for the skins to be "more accurate and textured if they need
   // texture". Ruby, Slate, Copper and Ocean are named after MATERIALS,
   // and a material with no texture is just a colour.
-  | 'ruby'
   | 'slate'
-  | 'copper'
   | 'ocean'
   // Ivory, 31 Aug 2026 — the default die shipped as a flat pure-white
   // square, the one skin whose material name delivered nothing at all.
@@ -258,7 +255,7 @@ export type ColorPatternId =
     two-tone smudge until it got its own paint.
   */
   | 'shell' | 'peacock' | 'waffle' | 'strawberry' | 'chocolate' | 'denim'
-  | 'ruby' | 'slate' | 'copper' | 'ocean'
+  | 'slate' | 'ocean'
   /*
     The thirteen David named on 26 Aug 2026 — "make the golf ball, cow,
     bumblebee, turtle, soccer ball, denim, snake, basketball, football,
@@ -762,63 +759,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     return light + brush;
   },
 
-  /**
-   * Polished silver: the same surface as gold, in the other metal.
-   *
-   * This used to be brushed — thousands of fine scratches running one way
-   * — deliberately a different SHAPE from gold so the two could never be
-   * one picture in two tints. David asked on 24 Aug 2026 for silver to be
-   * the silver version of the gold skin, which is that rule overruled on
-   * purpose, so it is a polished sweep of light now.
-   *
-   * They still cannot be confused, and not only because of the colour:
-   * silver is a harder, cooler mirror than gold, so the bar of light is
-   * tighter and brighter and the second reflection off the far edge is
-   * stronger. Gold spreads its highlight; silver snaps it.
-   */
-  brushed: (x, y) => {
-    /*
-      Face-local, for the reason written at length on `sheen`: rendering
-      all six sides on 11 Sep 2026 showed four of them flat, because the
-      highlight was positioned across the unwrapped sheet and landed on
-      two. Silver had it worse than gold, since a mirror with no
-      reflection in it is just grey.
-
-      David asked for the GOLD to be shinier and this is silver, which is
-      scope he did not ask for — done anyway, and said out loud, because
-      it is the identical fault in the other half of a two-skin family
-      and a gleaming gold beside a flat silver reads as a mistake rather
-      than a decision.
-    */
-    const faceX = ((x % SIZE) + SIZE) % SIZE;
-    const faceY = ((y % SIZE) + SIZE) % SIZE;
-    const cell = Math.floor(x / SIZE) * 2 + Math.floor(y / SIZE) * 5;
-    const lean = ((cell % 5) - 2) * 0.055;
-
-    const d = (faceX * 0.62 + faceY * 0.78) / SIZE;
-    const bar = (centre: number, width: number, strength: number) =>
-      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-    /*
-      Harder than gold at every step — a narrower core, a tighter glow
-      and a stronger far-edge catch. Gold spreads its highlight; silver
-      snaps it. That is still the whole difference in shape between the
-      two, and it is why they cannot be confused for one picture in two
-      tints.
-    */
-    const core = bar(0.52 + lean, 0.038, 0.8);
-    const glow = bar(0.52 + lean, 0.17, 0.45);
-    const second = bar(1.16 + lean, 0.062, 0.42);
-    // Cool bounce, shallower than gold's: a mirror reflects its
-    // surroundings rather than its own colour.
-    const bounce = Math.sin(d * 8.1 + 0.4) * 0.045;
-    const light = core + glow + second - 0.5 + bounce;
-
-    // The same faint polishing marks gold has, at the same frequency —
-    // 1.1 radians per pixel aliased into visible stair-steps, which on
-    // grey read as corduroy across the whole face.
-    const brush = Math.sin((faceX * 0.78 - faceY * 0.62) * 0.34) * 0.03 * (1 - core / 0.8);
-    return light + brush;
-  },
 
   /**
    * Ivory: the material, painted at a whisper.
@@ -1461,27 +1401,6 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     }
     return px;
   },
-  ruby: (x, y) => {
-    /*
-      Gold's sheen, in red. David: "make the ruby dice color look like
-      the gold but red." It was a cut gem of triangular facets, which is
-      what a ruby IS but not what the ladder's metals look like — and
-      Gold, Silver and Copper are one family the ruby ought to join.
-
-      One soft bar of light sweeping the face, a hot core to it, and the
-      stone going almost black where the light never reaches.
-    */
-    const d = (x * 0.62 + y * 0.78) / SIZE;
-    const bar = (centre: number, width: number, strength: number) =>
-      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-    const light = bar(0.38, 0.18, 1.0) + bar(1.02, 0.14, 0.42);
-    let px = mixRgb(rgb('#4a0a1c'), rgb('#c22a48'), Math.min(1, light + 0.2));
-    px = mixRgb(px, rgb('#ff9ab0'), Math.max(0, light - 0.76) * 1.9);
-    px = mixRgb(px, rgb('#2b0511'), Math.max(0, 0.2 - light) * 1.2);
-    // The same fine polishing marks the other three carry.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.05 + (hashCell(x, y) - 0.5) * 0.02;
-    return mixRgb(px, brush > 0 ? rgb('#ffffff') : rgb('#000000'), Math.abs(brush));
-  },
   slate: (x, y) => {
     // Slate splits along its bedding: flat planes, a stepped edge where
     // one layer sits proud of the next, and the fine cleavage grain.
@@ -1493,31 +1412,6 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return mixRgb(px, rgb('#39404a'), (hashCell(x, y) - 0.5) * 0.24 + 0.12);
   },
 
-  copper: (x, y) => {
-    /*
-      Polished copper, lit the way Gold and Silver are: one soft bar of
-      light sweeping the face, a hot core to it, and the metal falling to
-      shadow either side.
-
-      It was a hammered surface of dimples before — accurate, and at the
-      size a die is actually seen it read as nothing. David: "make it
-      look like the gold and silver texture." He is right that the three
-      metals should be one family; what separates them is the width of
-      the sweep and what the shadow is made of. Gold's shadow is warm
-      brown, Silver's is cold grey, and Copper's is the first breath of
-      verdigris.
-    */
-    const d = (x * 0.62 + y * 0.78) / SIZE;
-    const bar = (centre: number, width: number, strength: number) =>
-      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-    const light = bar(0.38, 0.18, 1.0) + bar(1.02, 0.14, 0.42);
-    let px = mixRgb(rgb('#66300f'), rgb('#c9793d'), Math.min(1, light + 0.2));
-    px = mixRgb(px, rgb('#ffd9a8'), Math.max(0, light - 0.78) * 1.8);
-    px = mixRgb(px, rgb('#3d7a6e'), Math.max(0, 0.2 - light) * 1.1);
-    // The same fine polishing marks along the sweep the other two have.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.05 + (hashCell(x, y) - 0.5) * 0.02;
-    return mixRgb(px, brush > 0 ? rgb('#ffffff') : rgb('#000000'), Math.abs(brush));
-  },
 
 
   ocean: (x, y) => {
