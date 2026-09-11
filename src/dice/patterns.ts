@@ -2356,6 +2356,75 @@ export function isColorPattern(pattern: PatternId): boolean {
  * and `ink` is the pattern colour drawn over it.
  */
 /**
+ * The designs that are ONE MOTIF, and belong once on every side.
+ *
+ * David, 11 Sep 2026: "a lot of skins don't have any of the designs on
+ * some of their sides and it's just a blank one or two colors. I think
+ * this is because I asked you to make each side unique but I also want
+ * every side of the dice, if possible, to be a continuous pattern."
+ *
+ * He diagnosed it correctly. Since v1.76.0 each side takes its own
+ * square of one continuous design laid out as a paper cube net, and a
+ * painter that places its motif at particular SHEET coordinates — one
+ * pizza, one baseball's seams, one bowling ball's finger holes — puts it
+ * on the two or three squares it happens to cover and leaves the other
+ * three or four empty. It looks perfect on the shelf thumbnail, because
+ * that only ever shows the middle square of the net.
+ *
+ * THE TWO WISHES CANNOT BOTH BE HAD BY EVERY SKIN, and the right answer
+ * depends on the design rather than on a preference:
+ *
+ *   - A design that TILES — stripes, marble, honeycomb, stars — really is
+ *     continuous round the die, and its six sides are six different
+ *     views of it. Those are untouched.
+ *   - A design that is one OBJECT is not a wallpaper and never was. A
+ *     pizza die has a pizza on each side; it does not have one pizza
+ *     smeared across a flattened cube with four sides of bare cheese.
+ *     For these, "continuous" means the motif repeats per face, which is
+ *     also what a real die of pizzas looks like.
+ *
+ * So these are painted in FACE coordinates, and every side gets the
+ * whole picture. The seam at each join is the edge of the die, where the
+ * surface turns ninety degrees — the same argument that earned gold and
+ * silver their exemption in tests/textures.test.ts.
+ *
+ * `sheen` is not in this list although it belongs to the same idea: it
+ * wraps its own coordinates because it also needs to know WHICH face it
+ * is on, to tilt the highlight a little differently on each.
+ */
+const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
+  'baseball',
+  'pizza',
+  'circuit',
+  'citrus',
+  'blossom',
+  'tennis',
+  'donut',
+  'watermelon',
+  'laces',
+  'bowling',
+]);
+
+/**
+ * Is this design painted per FACE rather than across the whole sheet?
+ *
+ * Exported because it is the honest definition of "this skin's joins are
+ * edges of a die, not seams in a wallpaper" — tests/textures.test.ts
+ * reads it rather than keeping a hand-written list that could disagree
+ * with this one.
+ *
+ * `sheen` is included here and absent from the set above: it wraps its
+ * own coordinates, because it also needs to know which face it is on to
+ * tilt the highlight differently on each.
+ */
+export function isPerFace(pattern: string): boolean {
+  return pattern === 'sheen' || PER_FACE_MOTIFS.has(pattern);
+}
+
+/** A sheet coordinate, wrapped back onto its own face. */
+const onFace = (v: number) => ((v % SIZE) + SIZE) % SIZE;
+
+/**
  * Raw RGB bytes for a pattern, one triple per pixel.
  *
  * Shared by the 3D shell texture and the 2D preview in the Store and the
@@ -2390,21 +2459,32 @@ export function patternPixels(
   // The full-colour patterns paint their own pixels outright.
   if (COLOR_IDS.has(pattern)) {
     const paintColor = COLOR_PAINTERS[pattern as ColorPatternId];
+    const perFace = PER_FACE_MOTIFS.has(pattern);
     const out: number[] = [];
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
-        out.push(...paintColor(x + cellX * SIZE, y + cellY * SIZE));
+        // A motif design is asked for its own face; everything else is
+        // asked for its place on the whole sheet. See PER_FACE.
+        const sx = x + cellX * SIZE;
+        const sy = y + cellY * SIZE;
+        out.push(...paintColor(perFace ? onFace(sx) : sx, perFace ? onFace(sy) : sy));
       }
     }
     return out;
   }
 
   const paint = PAINTERS[pattern as MaskPatternId];
+  const perFace = PER_FACE_MOTIFS.has(pattern);
 
   const out: number[] = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      const mask = Math.max(-1, Math.min(1, paint(x + cellX * SIZE, y + cellY * SIZE)));
+      const sx = x + cellX * SIZE;
+      const sy = y + cellY * SIZE;
+      const mask = Math.max(
+        -1,
+        Math.min(1, paint(perFace ? onFace(sx) : sx, perFace ? onFace(sy) : sy)),
+      );
       // Positive tints toward the ink, negative darkens the shell itself.
       const mix = (base: number, ink: number) =>
         mask >= 0 ? base + (ink - base) * mask : base * (1 + mask * SHADE_DEPTH);

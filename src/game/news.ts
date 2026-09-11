@@ -89,6 +89,28 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-90-0-no-blank-sides',
+    date: '11 September 2026',
+    version: 'v1.90.0',
+    title: 'No more blank sides on the dice',
+    icon: 'dice',
+    body:
+      'Ten dice had sides with nothing on them \u2014 the pizza, the ' +
+      'baseball, the donut, the watermelon, the bowling ball, the tennis ' +
+      'ball, the football, the lemon, the blossom and the circuit board. ' +
+      'Roll one and you would often be looking at plain cheese, or plain ' +
+      'white, or plain pink.\n\n' +
+      'It came from the change that gave every dice six joined-up sides. ' +
+      'That works beautifully for a pattern like zebra stripes or marble, ' +
+      'which really does run round the whole dice. It does not work for a ' +
+      'dice with one big picture on it: a pizza dice should have a pizza ' +
+      'on every side, not one pizza smeared across the whole thing with ' +
+      'four sides of bare cheese.\n\n' +
+      'So those ten now put the whole picture on each side, and every ' +
+      'patterned dice in the game has been checked, side by side, to make ' +
+      'sure none of them has a blank one.',
+  },
+  {
     id: 'v1-89-0-four-polished',
     date: '11 September 2026',
     version: 'v1.89.0',

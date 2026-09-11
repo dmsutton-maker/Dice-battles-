@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import {
+  isPerFace,
   CUBE_NET_CELLS,
   patternPixels,
   PATTERN_SIZE,
@@ -352,29 +353,20 @@ suite('textures · a die is one object, not six copies of a picture', () => {
       exactly what they were before any of this.
     */
     /*
-      THE ONE KIND OF SKIN THIS RULE DOES NOT APPLY TO, with its reason
-      written down rather than a bare list.
+      THE KIND OF SKIN THIS RULE DOES NOT APPLY TO, read from the code
+      rather than listed here.
 
-      Gold and silver are a specular HIGHLIGHT — a reflection of the
-      light source, not a design printed on the die. A reflection does
-      not carry round a corner: face A catches the light and face B,
-      ninety degrees away, catches it somewhere else or not at all. So
-      for these two a join is not a seam in a pattern, it is an edge
-      between two faces that reflect differently, which is what makes
-      them read as metal.
+      A design painted per FACE is one object repeated on each side — a
+      pizza, a baseball's seams, a polished highlight. Its joins are not
+      seams in a wallpaper: they are the edges of the die, where the
+      surface turns ninety degrees and a pizza genuinely stops.
 
-      Found on 11 Sep 2026 while making gold shinier: the highlight used
-      to be positioned across the unwrapped sheet, which flowed beautifully
-      across the joins and left FOUR of the six faces with no highlight
-      at all. It passed this test and looked like a plain yellow cube in
-      the hand.
+      This used to be a hand-written list of two metals. It is now
+      `isPerFace` from patterns.ts, so the exemption cannot drift from
+      the thing it describes — which matters, because ten more designs
+      joined that set on 11 Sep 2026 when David reported "a lot of skins
+      don't have any of the designs on some of their sides".
     */
-    const REFLECTIONS: Record<string, string> = {
-      gold: 'a highlight is a reflection of the light, and reflections stop at an edge',
-      silver: 'the same, in the other metal',
-      copper: 'the same surface again — one polished skin in four tints, 11 Sep 2026',
-      ruby: 'the same, as a cut stone rather than a metal',
-    };
 
     const S = PATTERN_SIZE;
     const cell = (skin: (typeof DICE_SKINS)[number], cx: number, cy: number) =>
@@ -388,7 +380,7 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     let worst = 0;
     let worstId = '';
     for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
-      if (REFLECTIONS[skin.id]) continue;
+      if (isPerFace(skin.pattern)) continue;
       const front = cell(skin, 1, 1);
       const right = cell(skin, 2, 1);
       let inside = 0;
@@ -418,51 +410,92 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     );
     note(`worst join: ${worstId} at ${worst.toFixed(1)}x its own within-face variation`);
 
-    /*
-      An exemption has to be EARNED, or it is just a way to turn the test
-      off. Each exempt skin must genuinely have a per-face highlight —
-      every one of its six sides bright somewhere — which is the thing
-      that costs it the smooth join.
-    */
-    for (const [id, why] of Object.entries(REFLECTIONS)) {
-      const skin = DICE_SKINS.find((s) => s.id === id);
-      assert(skin !== undefined, `${id} is exempt from the join rule and does not exist`);
-      /*
-        A RANGE, not a brightness. The first version asked whether each
-        face reached 235 on the red channel, which is really asking "is
-        this skin pale" — ruby is a dark red stone and failed at 231 with
-        a perfectly good highlight on every side.
+    note(
+      `${DICE_SKINS.filter((k) => isPerFace(k.pattern)).length} per-face skins are ` +
+        'exempt from the join rule',
+    );
+  });
 
-        What a highlight actually IS, is a light part next to a dark
-        part. So each face is measured from its own brightest point to
-        its own darkest, in luminance, and has to show a real difference.
-        That works whatever colour the skin is, which is the point now
-        that one painter serves four of them.
+  /**
+   * NO SIDE OF ANY DIE IS BLANK.
+   *
+   * David, 11 Sep 2026: "a lot of skins don't have any of the designs on
+   * some of their sides and it's just a blank one or two colors."
+   *
+   * He diagnosed it himself, and correctly: since v1.76.0 each side takes
+   * its own square of one continuous design laid out as a paper cube net,
+   * so a painter that places its motif at particular SHEET coordinates —
+   * one pizza, one baseball's seams, one bowling ball's finger holes —
+   * puts it on the two or three squares it covers and leaves the others
+   * empty. Ten skins were doing exactly that.
+   *
+   * THIS RUNS ON EVERY SKIN, not only the ones exempt from the join rule
+   * above, and that is the whole point. The first version checked only
+   * the exempt ones, and taking a skin OUT of the per-face set then
+   * removed it from this check in the same move — so the fault could be
+   * reintroduced and nothing would say a word. Found by doing exactly
+   * that on purpose.
+   */
+  test('every side of every die carries the design', () => {
+    /*
+      `plain` and `satin` carry no shape at all, on purpose: the starting
+      Ivory and the three ladder prizes are told apart by colour alone.
+      Flagging them is true and useless.
+    */
+    const SHAPELESS = ['plain', 'satin'];
+    const lum = (px: number[], i: number) =>
+      0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
+    const faceRange = (px: number[]) => {
+      let hi = 0;
+      let lo = 255;
+      for (let i = 0; i < px.length; i += 3) {
+        const l = lum(px, i);
+        if (l > hi) hi = l;
+        if (l < lo) lo = l;
+      }
+      return hi - lo;
+    };
+
+    let tightest = 1;
+    let tightestId = '';
+    let checked = 0;
+    for (const skin of DICE_SKINS) {
+      if (SHAPELESS.includes(skin.pattern)) continue;
+      checked++;
+      const ranges = CUBE_NET_CELLS.map(([cx, cy]) =>
+        faceRange(
+          patternPixels(
+            skin.pattern as Exclude<PatternId, 'plain'>,
+            skin.body,
+            skin.ink ?? skin.body,
+            cx,
+            cy,
+          ),
+        ),
+      );
+      const quietest = Math.min(...ranges);
+      const busiest = Math.max(...ranges);
+      /*
+        Measured against the BUSIEST side of the same die, never against
+        a fixed number: ruby is a dark stone and volleyball is nearly
+        white, and any threshold that suited one would libel the other.
+        A blank side is one much quieter than its own siblings.
       */
-      const lum = (px: number[], i: number) =>
-        0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
-      const ranges = CUBE_NET_CELLS.map(([cx, cy]) => {
-        const px = cell(skin!, cx, cy);
-        let brightest = 0;
-        let darkest = 255;
-        for (let i = 0; i < px.length; i += 3) {
-          const l = lum(px, i);
-          if (l > brightest) brightest = l;
-          if (l < darkest) darkest = l;
-        }
-        return brightest - darkest;
-      });
-      const flattest = Math.min(...ranges);
+      const ratio = busiest === 0 ? 1 : quietest / busiest;
+      if (ratio < tightest) {
+        tightest = ratio;
+        tightestId = skin.id;
+      }
       assert(
-        flattest > 45,
-        `${id} is exempt because "${why}", but one of its sides only varies by ` +
-          `${flattest.toFixed(0)} from its brightest point to its darkest — it has ` +
-          'no highlight on it, which is the fault the exemption was granted to fix',
+        ratio > 0.5,
+        `${skin.id}: one side carries ${(ratio * 100).toFixed(0)}% of the design the ` +
+          'busiest side has — that is a blank side',
       );
     }
+    assert(checked > 40, `only ${checked} skins were checked — the filter is too wide`);
     note(
-      `${Object.keys(REFLECTIONS).length} polished skins exempt, ` +
-        'each checked for a highlight on all six sides',
+      `${checked} skins, every side carrying the design; the least even is ` +
+        `${tightestId} at ${(tightest * 100).toFixed(0)}%`,
     );
   });
 

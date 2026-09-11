@@ -1,5 +1,70 @@
 # Changelog
 
+## v1.90.0 — 2026-09-11 · requested by David
+
+"A lot of skins don't have any of the designs on some of their sides and
+it's just a blank one or two colors. I think this is because I asked you
+to make each side unique but I also want every side of the dice, if
+possible, to be a continuous pattern. Make sure you fix all this."
+
+He diagnosed it himself, and correctly.
+
+### What was wrong
+Since v1.76.0 each side of a die takes its own square of one continuous
+design, laid out as a paper cube net. That is right for a design that
+TILES — zebra stripes, marble, honeycomb, stars genuinely run round the
+die — and wrong for a design that is one OBJECT. A painter that places
+its motif at particular SHEET coordinates puts it on the two or three
+squares it happens to cover and leaves the other three or four empty.
+
+It looked perfect everywhere anybody had been looking: the shelf
+thumbnail only ever shows the middle square of the net.
+
+**Ten skins**, found by measuring rather than by eye: pizza, baseball,
+donut, watermelon, bowling, tennis, football, lemon, blossom, circuit.
+Some were at literally 0% — a face with nothing on it at all.
+
+### The two wishes, and why they are not in conflict
+"Every side unique" and "every side continuous" cannot both be had by
+every skin, and which one applies is a fact about the design rather than
+a preference:
+
+- A design that tiles is continuous round the die, and its six sides are
+  six different views of it. Those are untouched — most of the set.
+- A design that is one object is not a wallpaper and never was. A pizza
+  die has a pizza on each side; it does not have one pizza smeared across
+  a flattened cube with four sides of bare cheese. For those,
+  "continuous" means the motif repeats per face, which is also what a
+  real die of pizzas looks like.
+
+`PER_FACE_MOTIFS` in `patterns.ts` is that list, with the reasoning
+written above it, and `patternPixels` wraps the coordinates for anything
+in it. One change at the dispatch, rather than editing ten painters.
+
+### Added
+- **`tools/die-preview/audit.ts`** — every side of every die, measured
+  for how much of the design it carries. This is what found the ten, and
+  it would have found them months ago.
+
+### Two tests, and one of them was a trap I walked into
+- **"Every side of every die carries the design"** is new, and runs on
+  every skin except the deliberately shapeless ones. Each face's own
+  brightest point is measured against its own darkest, and compared with
+  the BUSIEST face of the same die — never a fixed number, because ruby
+  is a dark stone and volleyball is nearly white, and any threshold
+  suiting one would libel the other.
+- **The join rule's exemption is now read from the code**, via
+  `isPerFace()`, instead of a hand-written list of two metals that would
+  have had to grow to fourteen.
+
+The trap: the first version of the blank-side check ran ONLY on the skins
+exempt from the join rule. Taking a skin out of the per-face set then
+removed it from the check in the same move — so the fault could be
+reintroduced and nothing would say a word. Found by doing exactly that on
+purpose: pizza came out of the set, went back to blank sides, and the
+suite stayed green. It now runs on all fifty, and the same mutation fails
+it at "one side carries 0% of the design".
+
 ## v1.89.0 — 2026-09-11 · requested by David
 
 "Make the ruby, copper, silver, and gold all have the exact same skin and
