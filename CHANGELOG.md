@@ -1,5 +1,73 @@
 # Changelog
 
+## v1.86.0 — 2026-09-11 · requested by David
+
+"Make the gold dice shinier." And: "there's no ads in the game."
+
+### Changed — the metals
+- **Every side of the gold die catches the light now.** The real fault
+  was not the brightness. Rendering all six sides side by side showed
+  **four of them completely flat**: the highlight was positioned across
+  the unwrapped net, so it landed on two faces and missed the rest. You
+  only ever see three faces at once, so most of the time the gold die
+  was a plain yellow cube — which is what David was looking at. The
+  highlight is measured per FACE now, shifted a little on each, the way
+  a real cube's faces sit at different angles to one light.
+- **Shiny is a narrow highlight, not a bright one.** The old sweep
+  peaked at 1.5 against a mask that clamps at 1.0, so a third of the
+  face sat at exactly the ink colour: a wide flat stripe with no shape
+  in it. The same light is spent differently now — a small hard core
+  inside a broad soft glow, deeper shadow either side, and a warm bounce
+  so the dark parts read as metal rather than paint.
+- **The brush lines stopped aliasing.** They ran at 1.1 radians per
+  pixel — the Nyquist limit — so they rendered as visible stair-steps
+  rather than fine lines, and were the loudest thing on the face.
+- **Silver got the identical fix, and that is scope David did not ask
+  for.** Done anyway and said out loud: it is the same fault in the other
+  half of a two-skin family, and a gleaming gold beside a flat silver
+  reads as a mistake rather than a decision.
+- `tests/textures.test.ts` exempts the two metals from the smooth-join
+  rule, with the reason written down: a highlight is a reflection of the
+  light source, and a reflection stops at an edge rather than carrying
+  round it. **The exemption is earned** — each exempt skin must have a
+  highlight on all six sides, which is the thing that costs it the
+  smooth join. Verified by reverting the fix and watching that check
+  fail.
+
+### Added
+- **`tools/die-preview`** — one command to write a skin's shelf picture,
+  or all six of its sides, straight to a PNG. It paid for itself on its
+  first run: the shelf thumbnail showed a perfectly good highlight while
+  four of the real faces were flat, and no amount of looking at the
+  thumbnail would have shown that.
+
+### Ads — what was actually wrong, and what is now findable
+Nothing here is a confirmed fix, because none of it can be reproduced
+without the phone. What can be said:
+- **The code is ON and the SDK is in the bundle** — checked by building
+  it and grepping, not by reading. `grep -c RNGoogleMobileAds` on the
+  export returns 4.
+- **The comments said the opposite.** `adSdk.ts` announced "CURRENT
+  STATE: OFF" and `ads.ts` described the OFF arrangement, months after
+  ads were switched on. That is the first thing anybody would read when
+  asking why there are no ads, and it answered wrongly and with
+  certainty. Both corrected.
+- **A failed start-up was permanent for the session, and now is not.**
+  `initAds()` ran once, at launch, within a second of the app opening —
+  before the phone necessarily has a usable connection. The consent
+  fetch then fails, `canRequestAds` is false, and there are no ads until
+  the app is killed and reopened at a luckier moment. It can be tried
+  again now, and `showAdIfDue` asks for another go when an ad is
+  genuinely due — a moment when there is demonstrably a player, a
+  finished game and a working session.
+- **Settings now says where it got to, in family tester mode.** Every
+  failure in `ads.ts` is swallowed on purpose, which is right for a
+  player and useless for finding this out, and there is no Mac here to
+  read a device log with. Type FAMILY and Settings prints one line:
+  which step stopped, how many games are counted, when the next ad is
+  due, whether one is waiting, and whether it would be a test advert or
+  a real one.
+
 ## v1.85.0 — 2026-09-11 · requested by David
 
 "The game is very slow and laggy when you click to open an item to view

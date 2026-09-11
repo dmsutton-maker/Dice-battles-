@@ -45,8 +45,13 @@ export const DICE_SKINS: DiceSkin[] = [
     body: '#ffd76a',
     // The dice are drawn unlit, so gold got no highlight from the scene
     // and read as a flat yellow cube. The sweep of light is painted in.
+    //
+    // The ink is the colour the HOTSPOT reaches, and it is nearly white
+    // on purpose (11 Sep 2026): a glint on polished metal is the light
+    // source itself, not the metal. #fff8dc left the brightest point
+    // still visibly cream, which is what a satin finish does.
     pattern: 'sheen',
-    ink: '#fff8dc',
+    ink: '#fffdf2',
     unlock: 'golden-dice',
   },
   /*

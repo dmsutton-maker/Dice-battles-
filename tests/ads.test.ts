@@ -126,8 +126,25 @@ suite('ads · the promises made to Apple and Google', () => {
     // answered is the violation, so a failure has to mean no ads at all
     // rather than ads anyway.
     assert(
-      /canRequestAds\s*=\s*false/.test(source) && /if\s*\(!canRequestAds\)\s*return;/.test(source),
+      /canRequestAds\s*=\s*false/.test(source),
+      'a consent failure no longer leaves canRequestAds false',
+    );
+    /*
+      Matched across the block rather than as `if (...) return;` on one
+      line: the branch grew a line recording WHY it stopped, and a test
+      that reads punctuation rather than behaviour fails on that. What
+      has to hold is that nothing between the check and the return can
+      request an ad.
+    */
+    const gate = /if\s*\(!canRequestAds\)\s*\{([\s\S]*?)\}/.exec(source);
+    assert(gate !== null, 'the consent gate is gone entirely');
+    assert(
+      /return;/.test(gate![1]),
       'a consent failure no longer blocks ad requests',
+    );
+    assert(
+      !/(initialize|createForAdRequest)/.test(gate![1]),
+      'the consent gate starts the SDK on its way out',
     );
   });
 
@@ -347,11 +364,25 @@ suite('ads · an ad can never cost a player anything', () => {
   });
 
   test('an ad that is not ready is skipped, never waited for', () => {
-    // A child must not sit watching a spinner because the network is
-    // slow. The next ad comes round in three games anyway.
+    /*
+      A child must not sit watching a spinner because the network is
+      slow. The next ad comes round in three games anyway.
+
+      Read as "nothing in this branch waits", not as three exact lines in
+      an exact order — that version failed the moment the branch grew a
+      line asking the SDK to have another go at starting up, which is a
+      change it must be allowed to make.
+    */
+    const branch = /if \(!mod \|\| !ready \|\| !interstitial \|\| !loaded\) \{([\s\S]*?)\n  \}/.exec(
+      source,
+    );
+    assert(branch !== null, 'the not-ready branch is gone');
+    const body = branch![1];
+    assert(/adDue = false;/.test(body), 'a skipped ad stays due for ever');
+    assert(/return false;/.test(body), 'a due-but-unloaded ad no longer gives up immediately');
     assert(
-      /adDue = false;\s*\n\s*preload\(\);\s*\n\s*return false;/.test(source),
-      'a due-but-unloaded ad no longer gives up immediately',
+      !/\bawait\b/.test(body),
+      'the game now waits on something when no ad is ready',
     );
   });
 

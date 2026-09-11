@@ -678,20 +678,87 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * along the direction of the sheen.
    */
   sheen: (x, y) => {
+    /*
+      EVERY FACE CATCHES THE LIGHT. This one is measured in face-local
+      coordinates rather than across the unwrapped sheet, and it is the
+      difference between a shiny die and a dull one.
+
+      Rendering all six sides side by side on 11 Sep 2026 showed FOUR of
+      them completely flat: the highlight was one sweep positioned in
+      sheet coordinates, so it fell on two faces and missed the rest.
+      Since you only ever see three faces at once, most of the time the
+      gold die was a plain yellow cube — which is exactly what David was
+      looking at when he asked for it to be shinier.
+
+      A sweep across a flattened net is not a physical thing anyway. A
+      cube in one light has a highlight on every face it turns toward the
+      light, so each face gets its own — shifted a little per face, the
+      way a real cube's faces sit at different angles, so it does not
+      read as one picture stamped six times.
+
+      This is the tenth skin whose sides are identical-ish rather than
+      continuous, and for the same reason as the other nine: for THIS
+      design that is what continuous means. See createDieFaceTextures.
+    */
+    const faceX = ((x % SIZE) + SIZE) % SIZE;
+    const faceY = ((y % SIZE) + SIZE) % SIZE;
+    // Which square of the net this is. Stable, so a face always catches
+    // the light in the same place however many times it is painted.
+    const cell = Math.floor(x / SIZE) * 2 + Math.floor(y / SIZE) * 5;
+    const lean = ((cell % 5) - 2) * 0.055;
+
     // Diagonal position across the face, roughly 0..1.4.
-    const d = (x * 0.62 + y * 0.78) / SIZE;
-    // ONE highlight sweeping the face, not a repeating band. A cosine here
-    // gave a striped ribbon — a Gaussian gives a single soft bar of light
-    // with the metal falling away to shadow on both sides, which is what
-    // one light source on a polished surface actually looks like.
+    const d = (faceX * 0.62 + faceY * 0.78) / SIZE;
     const bar = (centre: number, width: number, strength: number) =>
       Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-    // The main highlight, plus a much weaker one where the far edge
-    // catches the light again.
-    const light = bar(0.4, 0.19, 1.5) + bar(1.02, 0.12, 0.5) - 0.5;
-    // Brushing runs ALONG the highlight, so it uses the other diagonal.
-    // Fine — at the first attempt's frequency it read as corduroy.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.05;
+
+    /*
+      SHINY IS A NARROW HIGHLIGHT, NOT A BRIGHT ONE.
+
+      David, 11 Sep 2026: "make the gold dice shinier." The first instinct
+      is to turn the light up, and that is what the old version did —
+      `bar(0.4, 0.19, 1.5)`, a peak of 1.5 against a mask that clamps at
+      1.0. Everything above 1.0 is thrown away, so a third of the face sat
+      at exactly the ink colour: not a glint, a wide flat stripe of cream
+      with no shape in it. Rendered and looked at; it read as brushed
+      satin.
+
+      What makes a surface look polished is the SIZE of the hotspot
+      relative to the falloff. So the same light is spent differently: a
+      narrow core that only just reaches the top of the range, sitting
+      inside a broad soft glow, with the metal falling further into
+      shadow either side. Chrome has a small hard glint and dark
+      surroundings; matte paint has a big soft one.
+    */
+    const core = bar(0.52 + lean, 0.052, 0.72);
+    const glow = bar(0.52 + lean, 0.23, 0.5);
+    /*
+      The far edge catching the light again — tighter and slightly
+      stronger than before, because a second small glint reads as another
+      reflection while a broad one reads as the paint being uneven.
+    */
+    const second = bar(1.16 + lean, 0.075, 0.34);
+    /*
+      Warm bounce in the shadows. Real gold is never black in the dark
+      parts: it picks up its own colour reflected off everything around
+      it, which is the difference between metal and a yellow cube. A
+      shallow ripple across the shadow, always negative so it can only
+      deepen or lift the shell rather than tint it.
+    */
+    const bounce = Math.sin(d * 7.3 + 1.1) * 0.06;
+    const light = core + glow + second - 0.46 + bounce;
+
+    /*
+      Brushing runs ALONG the highlight, so it uses the other diagonal.
+
+      The frequency was 1.1 radians per pixel — nearly two samples per
+      cycle, which is the Nyquist limit — so it aliased into visible
+      stair-steps rather than fine lines, and at 0.05 those steps were
+      the loudest thing on the face. Slower and fainter, and faded out
+      inside the hotspot: polishing marks disappear in a specular
+      highlight, they do not sit on top of it.
+    */
+    const brush = Math.sin((faceX * 0.78 - faceY * 0.62) * 0.34) * 0.035 * (1 - core / 0.72);
     return light + brush;
   },
 
@@ -710,15 +777,46 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * stronger. Gold spreads its highlight; silver snaps it.
    */
   brushed: (x, y) => {
-    const d = (x * 0.62 + y * 0.78) / SIZE;
+    /*
+      Face-local, for the reason written at length on `sheen`: rendering
+      all six sides on 11 Sep 2026 showed four of them flat, because the
+      highlight was positioned across the unwrapped sheet and landed on
+      two. Silver had it worse than gold, since a mirror with no
+      reflection in it is just grey.
+
+      David asked for the GOLD to be shinier and this is silver, which is
+      scope he did not ask for — done anyway, and said out loud, because
+      it is the identical fault in the other half of a two-skin family
+      and a gleaming gold beside a flat silver reads as a mistake rather
+      than a decision.
+    */
+    const faceX = ((x % SIZE) + SIZE) % SIZE;
+    const faceY = ((y % SIZE) + SIZE) % SIZE;
+    const cell = Math.floor(x / SIZE) * 2 + Math.floor(y / SIZE) * 5;
+    const lean = ((cell % 5) - 2) * 0.055;
+
+    const d = (faceX * 0.62 + faceY * 0.78) / SIZE;
     const bar = (centre: number, width: number, strength: number) =>
       Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-    // Tighter (0.15 against gold's 0.19) and a touch brighter, with a
-    // stronger far-edge catch — the difference between a mirror and a
-    // warm metal, at the same shape.
-    const light = bar(0.4, 0.15, 1.65) + bar(1.02, 0.13, 0.62) - 0.52;
-    // The same faint polishing marks along the highlight that gold has.
-    const brush = Math.sin((x * 0.78 - y * 0.62) * 1.1) * 0.045;
+    /*
+      Harder than gold at every step — a narrower core, a tighter glow
+      and a stronger far-edge catch. Gold spreads its highlight; silver
+      snaps it. That is still the whole difference in shape between the
+      two, and it is why they cannot be confused for one picture in two
+      tints.
+    */
+    const core = bar(0.52 + lean, 0.038, 0.8);
+    const glow = bar(0.52 + lean, 0.17, 0.45);
+    const second = bar(1.16 + lean, 0.062, 0.42);
+    // Cool bounce, shallower than gold's: a mirror reflects its
+    // surroundings rather than its own colour.
+    const bounce = Math.sin(d * 8.1 + 0.4) * 0.045;
+    const light = core + glow + second - 0.5 + bounce;
+
+    // The same faint polishing marks gold has, at the same frequency —
+    // 1.1 radians per pixel aliased into visible stair-steps, which on
+    // grey read as corduroy across the whole face.
+    const brush = Math.sin((faceX * 0.78 - faceY * 0.62) * 0.34) * 0.03 * (1 - core / 0.8);
     return light + brush;
   },
 

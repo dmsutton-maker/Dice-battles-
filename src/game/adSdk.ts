@@ -14,30 +14,36 @@
  *     catches the throw first and escalates it to a fatal — this is what
  *     crashed David's phone on 25 Aug 2026. See AGENTS.md.
  *
- * ── CURRENT STATE: OFF ────────────────────────────────────────────────
+ * ── CURRENT STATE: ON ─────────────────────────────────────────────────
  *
- * The require is absent, so the ad SDK is not in the bundle at all. This
- * is provable rather than argued: build the bundle and grep it.
+ * The require is present, so the ad SDK ships in every over-the-air
+ * update, and `runtimeVersion` in app.json is an explicit string so those
+ * updates only reach binaries that have the native side compiled in.
+ *
+ * This block said OFF until 11 Sep 2026, long after the require was
+ * restored. Nobody had read it against the code below it, and a comment
+ * that confidently describes the opposite of what the file does is worse
+ * than no comment: it is what you check when you are asking "why are
+ * there no ads", and it answers wrongly and with certainty.
+ *
+ * Provable rather than argued, either way — build the bundle and grep it:
  *
  *     npx expo export --platform ios --output-dir /tmp/export-test
  *     grep -c RNGoogleMobileAds /tmp/export-test/_expo/static/js/ios/*.hbc
  *
- * That is why over-the-air updates can go out to build 6, which has no ad
- * SDK compiled into it, and why `runtimeVersion` is back on the sdkVersion
- * policy. The family gets fixes now; ads wait for a binary.
- *
- * ── TURNING IT ON ─────────────────────────────────────────────────────
+ * ── TURNING IT OFF AGAIN ──────────────────────────────────────────────
  *
  * Both halves, in the SAME change, or not at all:
  *
- *   1. Restore the require (the commented line in `loadAdSdk` below).
- *   2. Set `runtimeVersion` in app.json to an explicit "1.1.0".
+ *   1. Comment the require out of `loadAdSdk` below.
+ *   2. Return `runtimeVersion` in app.json to the sdkVersion policy.
  *
- * Then BUILD. Until that binary exists and is installed, every old
- * install correctly stays on the last update matching its runtime.
- *
- * Doing (1) without (2) ships the crash again. `tests/ads.test.ts` fails
- * if the two ever disagree, so this is checked rather than remembered.
+ * Turning it back ON is the same two in reverse, followed immediately by
+ * a BUILD: until that binary exists and is installed, every old install
+ * correctly stays on the last update matching its runtime. Restoring the
+ * require without pinning the runtime ships the crash again.
+ * `tests/ads.test.ts` fails if the two ever disagree, so this is checked
+ * rather than remembered.
  */
 
 /**

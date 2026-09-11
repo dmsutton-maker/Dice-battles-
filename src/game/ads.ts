@@ -45,16 +45,16 @@ import { getProgress } from './progress';
  *
  * TWO THINGS KEEP OLD BINARIES SAFE, and neither of them is a catch.
  *
- * 1. `src/game/adSdk.ts` is the single file holding the require, and it
- *    is currently OFF — so the SDK is not in the over-the-air bundle at
- *    all. Provable by grepping the built bundle, not by argument.
- * 2. `runtimeVersion` in app.json. While ads are OFF it is back on the
- *    sdkVersion policy, because there is nothing native to gate and the
- *    family needs the rest of the fixes. When ads are turned on it must
- *    become an explicit version in the SAME change, so builds without the
- *    SDK compiled in are never offered this JavaScript.
+ * 1. `src/game/adSdk.ts` is the single file holding the require. It is
+ *    currently ON, so the SDK does ship in the over-the-air bundle.
+ *    Provable by grepping the built bundle, not by argument.
+ * 2. `runtimeVersion` in app.json, which is therefore an explicit string
+ *    — so a binary built before the SDK was added is never offered this
+ *    JavaScript at all.
  *
  * Those two must agree, and `tests/ads.test.ts` fails if they do not.
+ * Both of these paragraphs described the OFF state until 11 Sep 2026,
+ * months after it had been switched on.
  *
  * Everything below still runs on a build with no ads: the games-finished
  * tally is kept, and every entry point returns quietly. That is what
@@ -173,8 +173,28 @@ export function usingTestAds(): boolean {
 
 const STORAGE_KEY = 'dice-battles/games-finished';
 
+/**
+ * Where the ad machinery got to, in one word.
+ *
+ * David, 11 Sep 2026: "there's no ads in the game." Nothing in this file
+ * reported anything — every failure is swallowed on purpose, which is
+ * right for a player and useless for working out WHY. Without a Mac
+ * there is no device log to read either, so the state is kept here and
+ * shown in Settings under family tester mode: one line that says which
+ * step stopped, instead of a guess.
+ */
+export type AdStage =
+  | 'not-started'
+  | 'bought-out'
+  | 'no-sdk'
+  | 'no-consent'
+  | 'init-failed'
+  | 'ready';
+
 let native: NativeAds | null | undefined;
 let ready = false;
+let stage: AdStage = 'not-started';
+let starting: Promise<void> | null = null;
 let interstitial: LoadedInterstitial | null = null;
 let loaded = false;
 let gamesFinished = 0;
@@ -219,9 +239,37 @@ function moduleOrNull(): NativeAds | null {
  * phone.
  */
 export async function initAds(): Promise<void> {
+  /*
+    SAFE TO CALL AGAIN, and something does.
+
+    This used to run once, on launch, and a failure was permanent for the
+    session. That is the wrong shape for the most likely failure there
+    is: a cold start reaches this within a second of the app opening,
+    before the phone has a usable connection, so the consent fetch below
+    fails and ads are off until the app is killed and reopened at a
+    luckier moment. Which is indistinguishable, from the sofa, from "the
+    ads do not work".
+
+    So a finished run that did not reach `ready` may be tried again, and
+    `showAdIfDue` asks for one when an ad is actually due. Concurrent
+    calls share the one attempt rather than racing two consent forms onto
+    the screen.
+  */
+  if (ready) return;
+  if (starting) return starting;
+  starting = attemptInit().finally(() => {
+    starting = null;
+  });
+  return starting;
+}
+
+async function attemptInit(): Promise<void> {
   // Nothing to start up for somebody who bought the adverts away — no
   // SDK, no consent form, no network.
-  if (adsRemoved()) return;
+  if (adsRemoved()) {
+    stage = 'bought-out';
+    return;
+  }
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     const n = Number(raw);
@@ -231,7 +279,10 @@ export async function initAds(): Promise<void> {
   }
 
   const mod = moduleOrNull();
-  if (!mod) return;
+  if (!mod) {
+    stage = 'no-sdk';
+    return;
+  }
 
   try {
     // Consent FIRST. In the EU an ad may not be requested before the user
@@ -262,7 +313,10 @@ export async function initAds(): Promise<void> {
       // of the form is that skipping it is not allowed.
       canRequestAds = false;
     }
-    if (!canRequestAds) return;
+    if (!canRequestAds) {
+      stage = 'no-consent';
+      return;
+    }
 
     await mod.default().setRequestConfiguration({
       maxAdContentRating: mod.MaxAdContentRating.G,
@@ -271,9 +325,11 @@ export async function initAds(): Promise<void> {
     });
     await mod.default().initialize();
     ready = true;
+    stage = 'ready';
     preload();
   } catch {
     ready = false;
+    stage = 'init-failed';
   }
 }
 
@@ -383,6 +439,14 @@ export async function showAdIfDue(): Promise<boolean> {
     // network fetch to get back to their game — the next one comes
     // around in three more games anyway.
     adDue = false;
+    /*
+      And try to get further next time. If the SDK never started — a
+      cold launch that beat the network to it — this is the moment to
+      have another go, because there is now demonstrably a player, a
+      finished game and a working session. Deliberately not awaited:
+      nothing here may delay a child getting back to their game.
+    */
+    if (mod && !ready) void initAds();
     preload();
     return false;
   }
@@ -417,6 +481,32 @@ export async function showAdIfDue(): Promise<boolean> {
   }
 }
 
+/**
+ * What the ad machinery is doing, for the tester line in Settings.
+ *
+ * Reading only — it starts nothing and shows nothing. Every field is
+ * something that was already being decided silently.
+ */
+export function adStatus(): {
+  stage: AdStage;
+  sdk: boolean;
+  loaded: boolean;
+  due: boolean;
+  gamesFinished: number;
+  untilNext: number;
+  unit: 'test' | 'real';
+} {
+  return {
+    stage,
+    sdk: moduleOrNull() !== null,
+    loaded,
+    due: adDue,
+    gamesFinished,
+    untilNext: gamesUntilAd(gamesFinished),
+    unit: hasRealAdUnit() && !usingTestAds() ? 'real' : 'test',
+  };
+}
+
 /** Total finished games on this device. Exposed for the tests. */
 export function gamesPlayed(): number {
   return gamesFinished;
@@ -427,6 +517,8 @@ export function resetAdsForTest(): void {
   closedResolve = null;
   native = undefined;
   ready = false;
+  stage = 'not-started';
+  starting = null;
   interstitial = null;
   loaded = false;
   gamesFinished = 0;

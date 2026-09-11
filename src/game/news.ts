@@ -89,6 +89,24 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-86-0-shiny-metals',
+    date: '11 September 2026',
+    version: 'v1.86.0',
+    title: 'The gold and silver dice actually shine',
+    icon: 'dice',
+    body:
+      'The gold dice were meant to catch the light as they turned, and ' +
+      'mostly they did not \u2014 four of the six sides had no shine on ' +
+      'them at all, so whichever way the dice landed you were usually ' +
+      'looking at a flat yellow cube.\n\n' +
+      'Every side catches the light now, each in a slightly different ' +
+      'place, the way a real cube does. The bright bit is also smaller ' +
+      'and sharper, which is what makes something look polished rather ' +
+      'than painted.\n\n' +
+      'Silver had exactly the same problem and got exactly the same fix. ' +
+      'It is still the harder, cooler one of the two.',
+  },
+  {
     id: 'v1-85-0-dice-stay-put',
     date: '11 September 2026',
     version: 'v1.85.0',

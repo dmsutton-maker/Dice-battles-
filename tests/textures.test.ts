@@ -351,6 +351,29 @@ suite('textures · a die is one object, not six copies of a picture', () => {
       are skins whose sides are identical anyway, so their joins are
       exactly what they were before any of this.
     */
+    /*
+      THE ONE KIND OF SKIN THIS RULE DOES NOT APPLY TO, with its reason
+      written down rather than a bare list.
+
+      Gold and silver are a specular HIGHLIGHT — a reflection of the
+      light source, not a design printed on the die. A reflection does
+      not carry round a corner: face A catches the light and face B,
+      ninety degrees away, catches it somewhere else or not at all. So
+      for these two a join is not a seam in a pattern, it is an edge
+      between two faces that reflect differently, which is what makes
+      them read as metal.
+
+      Found on 11 Sep 2026 while making gold shinier: the highlight used
+      to be positioned across the unwrapped sheet, which flowed beautifully
+      across the joins and left FOUR of the six faces with no highlight
+      at all. It passed this test and looked like a plain yellow cube in
+      the hand.
+    */
+    const REFLECTIONS: Record<string, string> = {
+      gold: 'a highlight is a reflection of the light, and reflections stop at an edge',
+      silver: 'the same, in the other metal',
+    };
+
     const S = PATTERN_SIZE;
     const cell = (skin: (typeof DICE_SKINS)[number], cx: number, cy: number) =>
       patternPixels(
@@ -363,6 +386,7 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     let worst = 0;
     let worstId = '';
     for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
+      if (REFLECTIONS[skin.id]) continue;
       const front = cell(skin, 1, 1);
       const right = cell(skin, 2, 1);
       let inside = 0;
@@ -391,6 +415,28 @@ suite('textures · a die is one object, not six copies of a picture', () => {
         'a hard line down the middle of an edge, not a corner turn',
     );
     note(`worst join: ${worstId} at ${worst.toFixed(1)}x its own within-face variation`);
+
+    /*
+      An exemption has to be EARNED, or it is just a way to turn the test
+      off. Each exempt skin must genuinely have a per-face highlight —
+      every one of its six sides bright somewhere — which is the thing
+      that costs it the smooth join.
+    */
+    for (const [id, why] of Object.entries(REFLECTIONS)) {
+      const skin = DICE_SKINS.find((s) => s.id === id);
+      assert(skin !== undefined, `${id} is exempt from the join rule and does not exist`);
+      const brightest = CUBE_NET_CELLS.map(([cx, cy]) =>
+        Math.max(...cell(skin!, cx, cy).filter((_, i) => i % 3 === 0)),
+      );
+      const dullest = Math.min(...brightest);
+      assert(
+        dullest > 235,
+        `${id} is exempt because "${why}", but one of its sides only reaches ` +
+          `${dullest} — it has no highlight on it, which is the fault the ` +
+          'exemption was granted to fix',
+      );
+    }
+    note(`${Object.keys(REFLECTIONS).length} metals exempt, each checked for a highlight on all six sides`);
   });
 
   test('the net is written in three.js face order', () => {

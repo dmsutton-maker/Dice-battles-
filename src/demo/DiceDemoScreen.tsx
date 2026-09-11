@@ -95,7 +95,7 @@ import {
   Station,
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
-import { initAds, noteGameFinished, showAdIfDue } from '../game/ads';
+import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { initPurchases } from '../game/purchases';
 import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
 import { useAppActive } from '../game/useAppActive';
@@ -179,6 +179,35 @@ type Phase =
   | 'won'
   | 'lost'
   | 'tie';
+
+/**
+ * One line saying which step the adverts stopped at.
+ *
+ * Only ever drawn in family tester mode. The wording is deliberately
+ * plain rather than technical — the person reading it is holding a phone
+ * and wants to know whether to tell somebody, not to debug an SDK.
+ */
+function AdStatusLine() {
+  const status = adStatus();
+  const WHY: Record<ReturnType<typeof adStatus>['stage'], string> = {
+    'not-started': 'not started yet',
+    'bought-out': 'switched off — adverts bought away',
+    'no-sdk': 'not in this build — needs a new build from Apple',
+    'no-consent': 'consent not granted, so no ad may be asked for',
+    'init-failed': 'the ad service would not start (often no connection)',
+    ready: 'ready',
+  };
+  return (
+    <Text style={styles.settingsStats}>
+      Ads: {WHY[status.stage]}
+      {'\n'}
+      {status.gamesFinished} games played · next ad in {status.untilNext} ·{' '}
+      {status.loaded ? 'one waiting' : 'none waiting'}
+      {'\n'}
+      {status.unit === 'test' ? 'test adverts (tester mode)' : 'real adverts'}
+    </Text>
+  );
+}
 
 export function DiceDemoScreen() {
   const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
@@ -2270,6 +2299,20 @@ export function DiceDemoScreen() {
               {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×
               {wins.medium}   Hard ×{wins.hard}
             </Text>
+            {/*
+              WHERE THE ADS GOT TO — testers only.
+
+              David, 11 Sep 2026: "there's no ads in the game." Every
+              failure in ads.ts is swallowed on purpose, which is right
+              for a player and useless for finding out why, and there is
+              no Mac here to read a device log with. So the state says
+              itself, on the phone, to the people who typed FAMILY.
+
+              Read at render rather than held in state: it is only ever
+              looked at by somebody who has just opened Settings, and a
+              subscription would be machinery for a line of text.
+            */}
+            {unlockAll && <AdStatusLine />}
             <View style={styles.settingsDividerLine} />
             <View
               style={styles.codeRow}
