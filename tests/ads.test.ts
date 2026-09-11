@@ -292,7 +292,7 @@ suite('ads · an ad can never cost a player anything', () => {
       assert(start > 0, `${name} is gone`);
       const body = screen.slice(start, start + 2200);
       assert(
-        body.includes('showAdIfDue()'),
+        /showAdIfDue\(\{ wait: (true|false) \}\)/.test(body),
         `leaving via ${name} never shows a due ad`,
       );
     }
@@ -344,10 +344,10 @@ suite('ads · an ad can never cost a player anything', () => {
     const start = screen.indexOf('const startCountdown');
     const body = screen.slice(start, start + 2200);
     assert(
-      body.includes('void showAdIfDue().then('),
+      body.includes('void showAdIfDue({ wait: true }).then('),
       'startCountdown no longer waits for the ad before starting the battle',
     );
-    const after = body.slice(body.indexOf('void showAdIfDue().then('));
+    const after = body.slice(body.indexOf('void showAdIfDue({ wait: true }).then('));
     assert(
       after.includes("setPhaseBoth('matching')"),
       'the countdown starts outside the ad wait, so it runs under the ad',
@@ -363,26 +363,104 @@ suite('ads · an ad can never cost a player anything', () => {
     );
   });
 
-  test('an ad that is not ready is skipped, never waited for', () => {
+  test('a due ad is WAITED for on the way into a battle, but never for ever', () => {
     /*
-      A child must not sit watching a spinner because the network is
-      slow. The next ad comes round in three games anyway.
+      This test used to assert the exact opposite — "an ad that is not
+      ready is skipped, never waited for" — on the reasoning that a child
+      must not sit watching a spinner because the network is slow.
 
-      Read as "nothing in this branch waits", not as three exact lines in
-      an exact order — that version failed the moment the branch grew a
-      line asking the SDK to have another go at starting up, which is a
-      change it must be allowed to make.
+      That instinct is why David saw no ads at all. An interstitial has
+      to be fetched; the fetch only ever ran in the background; and if
+      the SDK had not finished starting up — which on a cold launch it
+      usually has not — there was nothing in hand when the turn came, so
+      the advert was thrown away and the counter moved on three games, to
+      do the same thing again.
+
+      So it is inverted, WITH A CAP, and the cap is the half that still
+      matters: a phone in a tunnel must be a pause, never a hang.
     */
-    const branch = /if \(!mod \|\| !ready \|\| !interstitial \|\| !loaded\) \{([\s\S]*?)\n  \}/.exec(
-      source,
-    );
-    assert(branch !== null, 'the not-ready branch is gone');
-    const body = branch![1];
-    assert(/adDue = false;/.test(body), 'a skipped ad stays due for ever');
-    assert(/return false;/.test(body), 'a due-but-unloaded ad no longer gives up immediately');
+    const cap = /AD_LOAD_WAIT_MS = (\d+)/.exec(source);
+    assert(cap !== null, 'there is no limit on how long the game waits for an ad');
+    const ms = Number(cap![1]);
+    assert(ms > 0 && ms <= 10_000, `${ms}ms is not a pause, it is a hang`);
     assert(
-      !/\bawait\b/.test(body),
-      'the game now waits on something when no ad is ready',
+      /while \(Date\.now\(\) < until\)/.test(source),
+      'the wait is no longer bounded by a clock',
+    );
+    note(`a due ad is waited for up to ${ms}ms`);
+  });
+
+  test('a due ad is never silently thrown away', () => {
+    /*
+      The other half of the same bug. `adDue = false` used to run
+      whatever happened, so a turn that could not show an advert skipped
+      it and the next chance was three games later. The flag now survives
+      until one has actually been on screen.
+
+      The single exception is a binary with no ad SDK compiled in, where
+      it really can never happen and retrying for ever would be a lie.
+    */
+    /*
+      Read INSIDE showAdIfDue only. The declaration and the test reset
+      also say `adDue = false`, and the first version of this counted
+      both and failed on correct code.
+    */
+    const body = source.slice(
+      source.indexOf('export async function showAdIfDue'),
+      source.indexOf('/** Total finished games on this device'),
+    );
+    assert(body.length > 0, 'showAdIfDue is gone');
+    /*
+      THE GIVING-UP PATH SPECIFICALLY. A first version of this checked
+      that every clear had one of several reasons somewhere in the 700
+      characters before it, and passed when the clear was moved INTO the
+      gave-up branch — because "await waitForAd(" was one of those
+      reasons and sat a few lines above. Caught by breaking the code on
+      purpose and watching it stay green.
+
+      So the branch is read on its own, and the total is pinned: exactly
+      three places may clear the flag, and a fourth has to justify itself
+      here rather than slipping in.
+    */
+    /*
+      Comments stripped first. The branch's own comment says the words
+      "`adDue` is deliberately LEFT SET", which is exactly what this is
+      grepping for — the third time today a test has read its own
+      documentation and reported the opposite of the truth.
+    */
+    const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const gaveUp = /if \(!arrived\) \{([\s\S]*?)\n      \}/.exec(code);
+    assert(gaveUp !== null, 'the give-up branch is gone');
+    assert(
+      !/adDue/.test(gaveUp![1]),
+      'a due ad is thrown away when the fetch was merely slow, which is the whole bug',
+    );
+
+    const clears = [...code.matchAll(/adDue = false;/g)];
+    assertEqual(
+      clears.length,
+      3,
+      'the number of places that clear the due flag changed — bought out, ' +
+        'no SDK at all, and one about to go on screen are the only three',
+    );
+    note(`${clears.length} places clear the due flag, none of them a slow fetch`);
+  });
+
+  test('the menu does not wait, and the battle does', () => {
+    // Two callers, two rules. An advert arriving six seconds after
+    // somebody got back to the menu is worse than no advert; the same
+    // six seconds before a battle starts is a pause before a game.
+    assert(
+      /showAdIfDue\(\{ wait: false \}\)/.test(screen),
+      'leaving to the menu now waits for an ad to be fetched',
+    );
+    assert(
+      /showAdIfDue\(\{ wait: true \}\)/.test(screen),
+      'starting a battle no longer waits for a due ad',
+    );
+    assert(
+      /if \(!options\.wait\) return false;/.test(source),
+      'the two callers are no longer told apart',
     );
   });
 

@@ -89,6 +89,27 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-88-0-ads-actually-show',
+    date: '11 September 2026',
+    version: 'v1.88.0',
+    title: 'The adverts actually turn up now',
+    icon: 'fix',
+    body:
+      'There is meant to be one advert after every third finished game, ' +
+      'and for a lot of people there were none at all.\n\n' +
+      'An advert has to be fetched over the internet before it can be ' +
+      'shown, and the game was only ever asking for one quietly in the ' +
+      'background. If it had not arrived by the time your third game ' +
+      'ended \u2014 which, just after opening the app, it usually had ' +
+      'not \u2014 the game skipped it and waited another three games to ' +
+      'try again.\n\n' +
+      'Now it waits a few seconds for one when you press Start battle or ' +
+      'Play again, and if it still cannot get one it keeps owing you it ' +
+      'rather than forgetting. Going back to the menu never waits: an ' +
+      'advert appearing six seconds after you got there would be worse ' +
+      'than none.',
+  },
+  {
     id: 'v1-87-0-friendly-battles',
     date: '11 September 2026',
     version: 'v1.87.0',

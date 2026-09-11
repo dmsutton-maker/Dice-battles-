@@ -862,10 +862,17 @@ export function DiceDemoScreen() {
     setCallout(null);
     setMatchNote(null);
     setPhaseBoth('pick');
-    // Leaving the result screen is the moment for an ad, if one is due.
-    // Not awaited: the menu appears immediately either way, and an ad
-    // that is not ready is skipped rather than waited for.
-    showAdIfDue();
+    /*
+      Leaving the result screen is a moment for an ad, if one is already
+      in hand.
+
+      Deliberately NOT the waiting kind. The menu appears immediately
+      either way, and this player is already looking at it — an advert
+      that turned up six seconds later, over the menu, would be worse
+      than none. A due ad that cannot be shown now is kept owed, and the
+      next Start battle pays it.
+    */
+    void showAdIfDue({ wait: false });
   }, [resetRace, setPhaseBoth]);
 
   const finishRound = useCallback(
@@ -1142,10 +1149,16 @@ export function DiceDemoScreen() {
       player who got an interstitial here closed it to find the battle
       already running and the rival ahead of them.
 
-      showAdIfDue resolves immediately when no ad is due or none has
-      loaded, so the ordinary path costs one microtask.
+      showAdIfDue resolves immediately when no ad is due, so the ordinary
+      path costs one microtask.
+
+      THIS is the one that waits, since 11 Sep 2026 — David: "make sure
+      the ad happens when you press play again or start battle". It will
+      start the SDK and fetch an advert rather than skipping, for up to
+      six seconds, because a pause before a battle starts is a pause
+      before a game rather than an interruption of one.
     */
-    void showAdIfDue().then(() => {
+    void showAdIfDue({ wait: true }).then(() => {
       const rival = pickOpponent(opponentRef.current ?? undefined);
       opponentRef.current = rival;
       setOpponent(rival);

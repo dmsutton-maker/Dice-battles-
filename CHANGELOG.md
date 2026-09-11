@@ -1,5 +1,57 @@
 # Changelog
 
+## v1.88.0 — 2026-09-11 · requested by David
+
+"I played 4 games and still haven't gotten any ads. Make sure the ad
+happens when you press play again or start battle."
+
+### Fixed — and the instruction was also the diagnosis
+This file carried the opposite rule, in as many words: *"Due, but nothing
+ready: SKIP it. Never make a child wait on a network fetch to get back to
+their game — the next one comes around in three more games anyway."*
+Good instinct, and exactly why there were no adverts.
+
+An interstitial has to be FETCHED. The fetch only ever ran in the
+background, and it needs the SDK to have finished starting up — which on
+a cold launch it usually has not, because that start-up races the phone's
+connection within a second of the app opening. So when the third game
+ended there was nothing in hand, the advert was thrown away, `adDue` was
+cleared, and the counter moved on to three games' time to do the same
+thing again. Four games, no ads, exactly as reported.
+
+- **A due ad is now waited for, with a cap.** Six seconds: long enough
+  for a normal fetch, short enough that a phone in a tunnel is a pause
+  rather than a hang. The SDK is started at that moment too if it never
+  managed it at launch — by then there is demonstrably a player, a
+  finished game and a working session.
+- **A due ad is never silently thrown away.** `adDue` survives until an
+  advert has actually been on screen, so a slow fetch costs a moment
+  rather than three free games. The only exception is a binary with no
+  ad SDK compiled in, where it truly can never happen.
+- **The two ways out of the result screen are no longer the same call.**
+  Start battle / Play again waits — that is what David asked for, and a
+  few seconds before a battle starts is a pause before a game rather than
+  an interruption of one. Going back to the MENU does not: that player is
+  already looking at the menu, and an advert arriving six seconds later
+  over it would be worse than none. A due ad it could not show stays
+  owed, and the next Start battle pays it.
+
+### A test that passed against broken code, twice
+The new guard — "a due ad is never silently thrown away" — was written,
+then verified by putting the bug back. It passed. Twice.
+
+First it looked for a reason anywhere in the 700 characters before each
+`adDue = false`, and `await waitForAd(` counted; moving the clear INTO
+the give-up branch put it a few lines under exactly that phrase. Tightened
+to read the branch on its own, it passed again — because the branch's
+comment contains the words "`adDue` is deliberately LEFT SET", so
+grepping for `adDue` found the documentation saying it was not there.
+
+It now strips comments and pins the number of places that may clear the
+flag at three. That is the third time today a test in this repo has read
+its own prose and reported the opposite of the truth; every one was found
+by breaking the code on purpose, and none by reading.
+
 ## v1.87.0 — 2026-09-11 · requested by David
 
 "Add the ability to play someone on your friends list in a trophyless

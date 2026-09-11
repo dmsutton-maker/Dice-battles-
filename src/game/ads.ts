@@ -411,15 +411,74 @@ export function noteGameFinished(): void {
 }
 
 /**
- * Show the interstitial if one is due and one is ready.
+ * How long the game will WAIT for a due ad to arrive before giving up
+ * on that turn.
  *
- * Called when the player leaves the result screen. Returns true only if
- * an ad actually went on screen, so a caller can tell "none was due"
- * from "one was due and none had loaded" — from the player's side those
- * are identical, and neither may delay anything by even a frame.
+ * David, 11 Sep 2026: "I played 4 games and still haven't gotten any
+ * ads. Make sure the ad happens when you press play again or start
+ * battle."
+ *
+ * This file used to hold the opposite rule, in as many words: "Due, but
+ * nothing ready: SKIP it. Never make a child wait on a network fetch to
+ * get back to their game." That was the right instinct and it was also
+ * exactly why he saw no ads. An interstitial has to be FETCHED, the
+ * fetch was only ever started in the background, and if the SDK had not
+ * finished starting up — which on a cold launch it usually has not,
+ * because it is racing the phone's connection — there was never
+ * anything in hand when the turn came. The advert was then thrown away
+ * and the counter moved on to three games' time, where the same thing
+ * happened again.
+ *
+ * So the rule is inverted, with a cap. A due ad is now waited for, but
+ * only for as long as an advert is worth waiting for, and the game
+ * carries on regardless afterwards. Six seconds is the number: long
+ * enough for a normal fetch on a normal connection, short enough that a
+ * phone in a tunnel is a pause rather than a hang.
  */
-export async function showAdIfDue(): Promise<boolean> {
-  if (!adDue) return false;
+const AD_LOAD_WAIT_MS = 6000;
+
+/** Stop two callers showing the same ad twice. */
+let showing = false;
+
+/** Resolve once an ad is in hand, or once the wait is up. */
+async function waitForAd(ms: number): Promise<boolean> {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    if (loaded && interstitial) return true;
+    await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+  return loaded && interstitial !== null;
+}
+
+/**
+ * Show the interstitial if one is due.
+ *
+ * Called on both ways out of the result screen, and they are NOT the
+ * same call.
+ *
+ * `wait: true` is the one David asked about — "make sure the ad happens
+ * when you press play again or start battle". That caller is starting a
+ * battle, the countdown is about to run, and a few seconds there is a
+ * pause before a game rather than an interruption of one.
+ *
+ * The other way out is back to the MENU, and it does not wait. That
+ * player is already looking at the menu; an advert arriving six seconds
+ * later, over it, out of nothing, is worse than no advert. It shows one
+ * only if there is already one in hand.
+ *
+ * A DUE AD IS NO LONGER LOST. It used to clear `adDue` whatever
+ * happened, so a turn that could not show one silently skipped it and
+ * the next chance was three games away. Now the flag survives until an
+ * advert has actually been on screen, so the very next "play again"
+ * tries again.
+ *
+ * Returns true only if one really went up, so a caller can tell "none
+ * was due" from "one was due and could not be fetched".
+ */
+export async function showAdIfDue(
+  options: { wait?: boolean } = {},
+): Promise<boolean> {
+  if (!adDue || showing) return false;
   /*
     Somebody who paid to be rid of adverts never sees another one.
 
@@ -434,24 +493,57 @@ export async function showAdIfDue(): Promise<boolean> {
   }
 
   const mod = moduleOrNull();
-  if (!mod || !ready || !interstitial || !loaded) {
-    // Due, but nothing ready: SKIP it. Never make a child wait on a
-    // network fetch to get back to their game — the next one comes
-    // around in three more games anyway.
-    adDue = false;
+  if (!mod) {
     /*
-      And try to get further next time. If the SDK never started — a
-      cold launch that beat the network to it — this is the moment to
-      have another go, because there is now demonstrably a player, a
-      finished game and a working session. Deliberately not awaited:
-      nothing here may delay a child getting back to their game.
+      No SDK in this binary at all — an old build from before ads
+      existed. This one really can never happen, so the flag is cleared
+      rather than left to be retried for ever.
     */
-    if (mod && !ready) void initAds();
-    preload();
+    adDue = false;
     return false;
   }
 
+  showing = true;
+  try {
+    /*
+      Start the SDK if it is not started. This is the moment to have
+      another go at it: there is demonstrably a player, a finished game,
+      and a session that has been running long enough to have a
+      connection — which is exactly what a cold launch did not have.
+    */
+    if (!ready) {
+      /*
+        Only the waiting caller may start the SDK. The other one is the
+        player arriving back at the menu, and they are already looking at
+        it — an advert that appeared six seconds later, over the menu,
+        out of nothing, would be worse than no advert.
+      */
+      if (!options.wait) return false;
+      await initAds();
+    }
+    if (!ready) return false;
+
+    // Ask for one if there is not one in hand, then wait a little.
+    preload();
+    if (!(loaded && interstitial)) {
+      if (!options.wait) return false;
+      const arrived = await waitForAd(AD_LOAD_WAIT_MS);
+      if (!arrived) {
+        /*
+          `adDue` is deliberately LEFT SET. The advert is still owed and
+          the next way out of a result screen will try again, rather than
+          the player getting three more free games because one fetch was
+          slow.
+        */
+        return false;
+      }
+    }
+  } finally {
+    showing = false;
+  }
+
   adDue = false;
+  showing = true;
   try {
     /*
       Resolve on CLOSED, not on shown — but never wait forever. If the
@@ -469,7 +561,7 @@ export async function showAdIfDue(): Promise<boolean> {
         }
       }, AD_CLOSE_TIMEOUT_MS);
     });
-    await interstitial.show();
+    await interstitial!.show();
     await closed;
     return true;
   } catch {
@@ -478,6 +570,8 @@ export async function showAdIfDue(): Promise<boolean> {
     interstitial = null;
     preload();
     return false;
+  } finally {
+    showing = false;
   }
 }
 
@@ -519,6 +613,7 @@ export function resetAdsForTest(): void {
   ready = false;
   stage = 'not-started';
   starting = null;
+  showing = false;
   interstitial = null;
   loaded = false;
   gamesFinished = 0;
