@@ -1,5 +1,56 @@
 # Changelog
 
+## v1.85.0 — 2026-09-11 · requested by David
+
+"The game is very slow and laggy when you click to open an item to view
+it." And: "when a dice lands too close to the wall and doesn't land flat,
+it teleports down to be flat, but don't make it do that, just make it
+count whatever's on top like what it used to do."
+
+### Fixed
+- **Opening a die to look at it no longer stalls.** Measured, not
+  guessed: one die's six sides is **192ms on a desktop** and several
+  times that on a phone, and all of it was painted in the frame the
+  preview was trying to appear in. That is the exact cost v1.76.0 added
+  when a die stopped being one picture six times and became six that join
+  up — the equipped die was warmed then, and every other die was left to
+  pay at the moment of the tap.
+  - All fifty-three are now painted in the background, one die per tick,
+    **after** the shelf pictures and after the two heavy pages are built.
+    It is the biggest of the warm-up jobs (4.4s of desktop painting), and
+    nobody can open a preview before the shelf it is opened from exists.
+  - It stops when the app goes into a pocket, like every other warm-up
+    here.
+- **A die that lands leaning is left exactly where it lands.** There was
+  a righting step at settle: anything below `flatEnough` was turned
+  square and dropped flat before the result was shown. Watching a die you
+  just threw jump to a new position is worse than reading it at an angle,
+  because it looks like the game moved your dice — and it did.
+  - **The result does not change.** `topFaceColor` reports the nearest-up
+    face, which is the same face the snap used to turn upward. The colour
+    counted is the colour on top, before and after. The only difference
+    is that the die is no longer moved to make it obvious.
+
+### What that costs, measured
+With the righting gone, the test harness now reports the REAL resting
+angles rather than the angles of dice the game had already straightened:
+roughly **5% of dice come to rest more than 18° off flat, 1.5% more than
+37°**, and — the one that matters — about **0.5% rest close enough to a
+tie that the counted colour is not readable off the die at all**. The old
+`worstMargin > 0.05` assertion failed on its first run at 0.0258, which
+is how that number was found rather than assumed.
+
+So the suite now measures the tie RATE and fails if it goes above 2%,
+instead of promising something the game no longer does. Putting the
+righting back — for genuine ties only, or at all — is one line in
+`DiceScene.tsx`, and `snapDieToNearestFace` and `TUNING.settle.flatEnough`
+are both kept for exactly that.
+
+### Added
+- `topFaceMargin` — how far the winning face beats the runner-up. Once a
+  die is not straightened before it is read, "is it flat" stops being the
+  useful question and "is it obvious which face won" starts.
+
 ## v1.84.0 — 2026-09-10 · requested by David
 
 "When I send a friend request, it should update on my phone in the

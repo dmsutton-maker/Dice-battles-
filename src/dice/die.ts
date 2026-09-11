@@ -24,8 +24,11 @@ const scratchNormal = new THREE.Vector3();
  * DEAD STILL at 0.58 — about 54 degrees off flat, perched on an obstacle
  * on Hard. Stopped and flat are two different questions, and reading a
  * colour off a die at 45° is picking one of two faces at random and
- * calling it a result. That is what this measures and `TUNING.settle
- * .flatEnough` is the bar it is measured against.
+ * calling it a result. That is what this measures.
+ *
+ * Nothing acts on it any more — see TUNING.settle.flatEnough, which the
+ * game stopped reading on 10 Sep 2026. `topFaceMargin` below is the
+ * question that replaced it.
  */
 export function topFaceAlignment(quaternion: THREE.Quaternion): number {
   let bestDot = -Infinity;
@@ -34,6 +37,34 @@ export function topFaceAlignment(quaternion: THREE.Quaternion): number {
     if (dot > bestDot) bestDot = dot;
   }
   return bestDot;
+}
+
+/**
+ * How much the winning face beats the runner-up by.
+ *
+ * The question that matters once a die is no longer straightened before
+ * it is read (10 Sep 2026 — see the note in DiceScene). "Is it flat?" is
+ * not really the worry: a die leaning at 30 degrees still has one face
+ * plainly higher than the rest. The worry is a TIE — a die balanced on
+ * an edge has two faces equally up, and whichever one the loop happens
+ * to pick is a coin flip the player cannot read either way.
+ *
+ * Zero means exactly balanced. A flat die is 2 (one face at 1, its
+ * opposite at -1... but the runner-up is a side face at 0, so 1).
+ */
+export function topFaceMargin(quaternion: THREE.Quaternion): number {
+  let best = -Infinity;
+  let second = -Infinity;
+  for (let i = 0; i < FACE_NORMALS.length; i++) {
+    const dot = scratchNormal.copy(FACE_NORMALS[i]).applyQuaternion(quaternion).y;
+    if (dot > best) {
+      second = best;
+      best = dot;
+    } else if (dot > second) {
+      second = dot;
+    }
+  }
+  return best - second;
 }
 
 /** Which color face is pointing up for the given body orientation. */

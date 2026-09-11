@@ -89,6 +89,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-85-0-dice-stay-put',
+    date: '11 September 2026',
+    version: 'v1.85.0',
+    title: 'Your dice stay where they land',
+    icon: 'dice',
+    body:
+      'A die that landed leaning against a wall used to jump down flat ' +
+      'before the colour was counted. It looked like the game had moved ' +
+      'your dice, because it had. It does not any more \u2014 whatever is ' +
+      'on top is what counts, exactly as it lies.\n\n' +
+      'Opening a dice set to look at it is also much faster. Every side ' +
+      'of every die is now painted quietly in the background while you ' +
+      'are on the menu, instead of all six being drawn in the instant you ' +
+      'tap.',
+  },
+  {
     id: 'v1-84-0-live-friends',
     date: '10 September 2026',
     version: 'v1.84.0',

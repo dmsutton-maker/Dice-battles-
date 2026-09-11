@@ -167,10 +167,17 @@ export const TUNING = {
      * balanced on an edge, 0.577 on a corner.
      *
      * A die that has stopped is NOT automatically flat, which is easy to
-     * assume and wrong: 720 simulated rolls on 25 Aug 2026 turned up a die
-     * resting motionless at 0.58 — perched on an obstacle at about 54
-     * degrees. Anything below this bar gets turned square before the
-     * result is shown, so the player sees the colour the game counted.
+     * assume and wrong: simulated rolls find dice resting motionless at
+     * 0.62 — about 52 degrees, wedged against a wall or perched on an
+     * obstacle. Stopped and flat are two different questions.
+     *
+     * NOTHING READS THIS SINCE 10 Sep 2026. Anything below the bar used
+     * to be turned square before the result was shown, and David asked
+     * for that to stop: "when a dice lands too close to the wall and
+     * doesn't land flat, it teleports down to be flat, but don't make it
+     * do that, just make it count whatever's on top". The number is kept
+     * because putting the righting back is one line in DiceScene and
+     * this is the line it would need.
      */
     flatEnough: 0.999,
   },

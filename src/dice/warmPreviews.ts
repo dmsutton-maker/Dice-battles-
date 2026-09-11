@@ -106,13 +106,74 @@ export function warmDicePreviews(
   schedule(step);
 }
 
+let startedFaces = false;
+
+/**
+ * Paint the SIX SIDES of every die, one die per tick.
+ *
+ * David, 10 Sep 2026: "the game is very slow and laggy when you click to
+ * open an item to view it." Measured rather than guessed, the same way
+ * the shelf was: one die's six sides is **192ms on a desktop** — several
+ * times that on a phone — and every one of them is painted in the frame
+ * the preview is trying to appear in. That is the lag, and it is the
+ * exact cost v1.76.0 added when a die stopped being one picture six
+ * times and became six pictures that join up.
+ *
+ * The equipped die has been warmed since v1.76.0, because it is the one
+ * that would otherwise stutter mid-roll. Every OTHER die is one tap away
+ * in the Store or the Inventory, and paying 192ms at the moment of the
+ * tap is what a player feels.
+ *
+ * RUN THIS LAST. It is by far the biggest of the warm-up jobs — 4.4s of
+ * desktop painting for all fifty-three — so it goes behind the shelf
+ * pictures, which are what makes the tabs open at all, and behind
+ * building the two heavy pages. Nobody can open a preview before the
+ * shelf it is opened from exists.
+ *
+ * ONE DIE PER TICK, not one face: the six faces of a die share a single
+ * cache entry, so there is nothing finer to stop between. It is a bigger
+ * bite than the shelf's single face and deliberately still small.
+ */
+export function warmAllDieFaces(
+  schedule: (run: () => void) => void = (run) => setTimeout(run, 0),
+  shouldContinue: () => boolean = () => true,
+  onDone: () => void = () => {},
+): void {
+  if (startedFaces) return;
+  startedFaces = true;
+
+  const queue = DICE_SKINS.filter((s) => s.pattern !== 'plain');
+  let i = 0;
+
+  const step = () => {
+    if (!shouldContinue()) {
+      // Stopped rather than finished — let a later call pick it up.
+      startedFaces = false;
+      return;
+    }
+    if (i < queue.length) warmDieFaces(queue[i++]);
+    if (i < queue.length) {
+      schedule(step);
+      return;
+    }
+    try {
+      onDone();
+    } catch {
+      // A caller that fails must not look like a failed paint.
+    }
+  };
+
+  schedule(step);
+}
+
 /** Test seam: allow warming to be started again. */
 export function resetWarmForTest(): void {
   started = false;
+  startedFaces = false;
 }
 
 /**
- * Paint the six sides of the die the player is actually holding.
+ * Paint the six sides of one die.
  *
  * Since 10 Sep 2026 each side of a die is its own square of one
  * continuous design, which is six times the painting — about 157ms for a
@@ -121,10 +182,12 @@ export function resetWarmForTest(): void {
  * first roll is still a stutter. Doing it here means it has already
  * happened.
  *
- * Only the EQUIPPED skin. Warming all fifty-three would be six times the
- * work for fifty-two dice nobody is about to roll.
+ * Called first for the EQUIPPED skin, which is the one that would
+ * otherwise stutter in the middle of a roll, and later for every other
+ * die by warmAllDieFaces — see the note there for why the two are not
+ * the same job.
  */
-export function warmEquippedDie(skin: DiceSkin | undefined): void {
+export function warmDieFaces(skin: DiceSkin | undefined): void {
   if (!skin || skin.pattern === 'plain') return;
   try {
     createDieFaceTextures(

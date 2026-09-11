@@ -9,7 +9,7 @@ import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { obstacleLook } from '../arena/obstacleLooks';
 import { TreasureChest } from '../arena/TreasureChest';
-import { createDieBody, snapDieToNearestFace, throwDie, topFaceAlignment } from '../dice/die';
+import { createDieBody, throwDie } from '../dice/die';
 import {
   dieSpeed,
   freezeDice,
@@ -373,31 +373,37 @@ export function DiceScene({
 
       if (shouldCallRoll(diceBodies, elapsed, stillFrames.current)) {
         awaitingSettle.current = false;
-        // Right a die that has come to rest COCKED — perched on an
-        // obstacle or leaning on a wall. Measured on 25 Aug 2026: the
-        // worst case in 720 simulated rolls was 0.58, a die sitting dead
-        // still at about 54 degrees off flat, so "it has stopped" and "it
-        // is lying flat" are genuinely two different questions on Hard.
-        //
-        // This never changes the RESULT: `topFaceColor` already reports
-        // the nearest-up face, which is the same face `snapDieToNearestFace`
-        // turns squarely upward. It changes what the player SEES, so the
-        // colour counted is the colour on top of the die in front of them.
-        //
-        // Keyed off the dice, not off the player. It used to run whenever
-        // somebody had tapped again, which is how a die still in the air
-        // got put onto a face and counted as a roll.
-        diceBodies.forEach((body) => {
-          const q = new THREE.Quaternion(
-            body.quaternion.x,
-            body.quaternion.y,
-            body.quaternion.z,
-            body.quaternion.w,
-          );
-          if (topFaceAlignment(q) < TUNING.settle.flatEnough) {
-            snapDieToNearestFace(body);
-          }
-        });
+        /*
+          THE DIE IS LEFT EXACTLY WHERE IT LANDED.
+
+          There used to be a righting step here. A die that came to rest
+          cocked — perched on an obstacle, or leaning on a wall — was
+          turned square and dropped flat before the result was shown, on
+          the reasoning that the player should see the colour the game
+          counted rather than a die at an angle.
+
+          David, 10 Sep 2026: "when a dice lands too close to the wall
+          and doesn't land flat, it teleports down to be flat, but don't
+          make it do that, just make it count whatever's on top like what
+          it used to do." Watching a die you have just thrown jump to a
+          new position is worse than reading it at an angle — it looks
+          like the game moved your dice, because it did.
+
+          NOTHING ABOUT THE RESULT CHANGES. That was true of the righting
+          step too, and it is the reason removing it is safe:
+          `topFaceColor` reports the nearest-up face, which is the same
+          face the snap used to turn upward. The colour counted is the
+          colour on top, before and after — the only difference is that
+          the die is no longer moved to make it obvious.
+
+          What it costs: a die wedged at an angle can have two faces
+          nearly equally up, and then the one the game counts is not
+          obviously the one on top. That is the trade David asked for,
+          knowingly, and it is one line to put back.
+
+          `snapDieToNearestFace` is kept, and still tested, for exactly
+          that reason.
+        */
         freezeDice(diceBodies);
         onSettled(readFaces(diceBodies));
 

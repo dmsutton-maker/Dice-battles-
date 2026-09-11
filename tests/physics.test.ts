@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import * as THREE from 'three';
-import { createDieBody, snapDieToNearestFace, throwDie, topFaceAlignment, topFaceColor } from '../src/dice/die';
+import {
+  createDieBody,
+  snapDieToNearestFace,
+  throwDie,
+  topFaceAlignment,
+  topFaceColor,
+  topFaceMargin,
+} from '../src/dice/die';
 import {
   allStill,
   freezeDice,
@@ -132,20 +140,13 @@ function simulateRoll(
       const movingWhenCalled = bodies.some(
         (b) => b.velocity.length() + b.angularVelocity.length() * 0.5 > 1.2,
       );
-      // Mirrors DiceScene: a die that has come to rest cocked — perched
-      // on an obstacle — is turned square, so the colour counted is the
-      // colour showing. A properly landed die is left alone.
-      bodies.forEach((body) => {
-        const q = new THREE.Quaternion(
-          body.quaternion.x,
-          body.quaternion.y,
-          body.quaternion.z,
-          body.quaternion.w,
-        );
-        if (topFaceAlignment(q) < TUNING.settle.flatEnough) {
-          snapDieToNearestFace(body);
-        }
-      });
+      /*
+        Mirrors DiceScene, which since 10 Sep 2026 does NOT right a
+        cocked die — see the long note there. The dice are frozen exactly
+        where they landed and read as they lie, so what this harness
+        measures below is the real resting angle rather than the angle of
+        a die the game had already straightened.
+      */
       freezeDice(bodies);
       return {
         ms: elapsed,
@@ -192,6 +193,8 @@ suite('physics · rolling', () => {
         fault shows up as an occasional red build, not as a failing test.
       */
       const SAMPLES = Number(process.env.ROLL_SAMPLES ?? 240);
+    /** Two faces this close to level: the player cannot tell which won. */
+    const TIE = 0.05;
       const rolls = Array.from({ length: SAMPLES }, () =>
         simulateRoll(generateObstacleLayout(difficulty)),
       );
@@ -477,18 +480,34 @@ suite('physics · obstacles', () => {
  * the cadence from that measurement instead of from a tuning value.
  */
 suite('physics · a roll is over when the dice are, not when a thumb says so', () => {
-  test('a cocked die is still turned square before it is read', () => {
+  test('nothing rights a die once it has landed', () => {
     /*
-      Not a formality. Removing the old blanket snap exposed something
-      that had been hidden by it: a die can come to REST cocked, perched
-      on an obstacle. In 720 rolls the worst was 0.58 — roughly 54 degrees
-      — sitting motionless on Hard. "It has stopped" and "it is lying
-      flat" are two different questions, and only the second one decides
-      whether the player can see the colour that was counted.
+      David, 10 Sep 2026: "when a dice lands too close to the wall and
+      doesn't land flat, it teleports down to be flat, but don't make it
+      do that, just make it count whatever's on top like what it used to
+      do."
+
+      This used to assert the opposite — that a cocked die WAS turned
+      square before being read — so it is inverted rather than deleted,
+      because the reason it existed is still worth stating: a die that
+      has stopped is not automatically flat, and the game now shows that
+      honestly instead of tidying it away.
+
+      Read from DiceScene rather than from a constant: the tuning value
+      is deliberately kept for the day somebody wants it back, so its
+      presence proves nothing about what the game does.
     */
+    const scene = readFileSync(
+      join(__dirname, '..', 'src/demo/DiceScene.tsx'),
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     assert(
-      TUNING.settle.flatEnough >= 0.99,
-      `flatEnough is ${TUNING.settle.flatEnough} — a die can be visibly cocked and still pass`,
+      !/snapDieToNearestFace\(/.test(scene),
+      'the dice are being moved after they land again',
+    );
+    assert(
+      !/flatEnough/.test(scene),
+      'DiceScene is reading the flatness bar again, which is how the righting comes back',
     );
   });
 
@@ -526,9 +545,15 @@ suite('physics · a roll is over when the dice are, not when a thumb says so', (
         "leaves the dice lying flat" test passed throughout.
       */
       const SAMPLES = Number(process.env.ROLL_SAMPLES ?? 240);
+    /** Two faces this close to level: the player cannot tell which won. */
+    const TIE = 0.05;
       const stuck: number[] = [];
       let moving = 0;
       let worstFlatness = 1;
+      let worstMargin = 1;
+      let cocked = 0;
+      let leaning = 0;
+      let ties = 0;
       for (let i = 0; i < SAMPLES; i++) {
         const roll = simulateRoll(generateObstacleLayout(difficulty));
         assertEqual(roll.faces.length, 2, 'a roll was lost');
@@ -537,7 +562,13 @@ suite('physics · a roll is over when the dice are, not when a thumb says so', (
           stuck.push(roll.settleMs);
         }
         for (const q of roll.orientations) {
-          worstFlatness = Math.min(worstFlatness, topFaceAlignment(q));
+          const flat = topFaceAlignment(q);
+          worstFlatness = Math.min(worstFlatness, flat);
+          if (flat < 0.95) cocked++;
+          if (flat < 0.8) leaning++;
+          const margin = topFaceMargin(q);
+          worstMargin = Math.min(worstMargin, margin);
+          if (margin < TIE) ties++;
         }
       }
       note(
@@ -578,22 +609,49 @@ suite('physics · a roll is over when the dice are, not when a thumb says so', (
         note(`${difficulty}: ${stuck.length} stuck-die timeout(s), all at the backstop`);
       }
       /*
-        And every die is square enough that the colour counted is plainly
-        the colour on top. This used to be guaranteed by SNAPPING every
-        die, which is a very different claim — a die put onto a face in
-        mid-air is flat too.
+        MEASURED, NOT ASSERTED. Until 10 Sep 2026 this asserted
+        `worstFlatness > 0.99`, and it held for one reason: every cocked
+        die was SNAPPED square before being read, so the thing being
+        measured had already been straightened by the game.
 
-        The bar here is 0.99 (about 8 degrees) rather than the 0.999 the
-        snap threshold uses, deliberately. Asserting the threshold back at
-        itself would be circular and would sit one ULP from failing: dice
-        that legitimately land just inside the bar measure 0.9990. 0.99 is
-        an independent statement about what a player can read — an edge is
-        0.707 and a corner 0.577, so this is nowhere near ambiguous.
+        David asked for the snapping to stop — "when a dice lands too
+        close to the wall and doesn't land flat, it teleports down to be
+        flat, but don't make it do that, just make it count whatever's on
+        top". So the guarantee is gone, honestly rather than quietly, and
+        what is left is the number: how often a die really does rest at
+        an angle, and how far.
       */
+      note(
+        `${difficulty}: resting angle — worst ${worstFlatness.toFixed(3)}, ` +
+          `${cocked} of ${SAMPLES * 2} dice below 0.95 (~18°), ` +
+          `${leaning} below 0.80 (~37°)`,
+      );
+
+      /*
+        WHAT IS LEFT TO PROMISE, and it is a rate rather than a
+        guarantee.
+
+        The first version of this asserted `worstMargin > 0.05` — no die
+        ever within a hair of a tie — and it failed on the first run, at
+        0.0258. That is the honest consequence of not righting a die: a
+        die really can come to rest balanced on an edge, with two faces
+        equally up, and then the colour counted is one the player cannot
+        read off the die either way.
+
+        So the promise is that it stays RARE. A tie every few hundred
+        dice is a curiosity; a tie every twenty rolls would be the game
+        deciding matches by itself, and that is what this catches.
+      */
+      const tieRate = ties / (SAMPLES * 2);
+      note(
+        `${difficulty}: closest call ${worstMargin.toFixed(3)}, ` +
+          `${ties} of ${SAMPLES * 2} dice within ${TIE} of a tie ` +
+          `(${(tieRate * 100).toFixed(1)}%)`,
+      );
       assert(
-        worstFlatness > 0.99,
-        `${difficulty}: a die was read at ${worstFlatness.toFixed(4)} off flat — ` +
-          'the colour counted is not the one showing',
+        tieRate < 0.02,
+        `${difficulty}: ${(tieRate * 100).toFixed(1)}% of dice rested near a tie — ` +
+          'the game is deciding too many of these by itself',
       );
     });
   }

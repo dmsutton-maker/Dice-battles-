@@ -97,7 +97,7 @@ import {
 import { TUNING } from '../game/tuning';
 import { initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { initPurchases } from '../game/purchases';
-import { warmDicePreviews, warmEquippedDie } from '../dice/warmPreviews';
+import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
 import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
@@ -288,7 +288,7 @@ export function DiceDemoScreen() {
     const handle = InteractionManager.runAfterInteractions(() => {
       // The die in the player's hand first — it is the one thing here
       // that would otherwise stutter during an actual roll.
-      warmEquippedDie(skinById(equippedRef.current));
+      warmDieFaces(skinById(equippedRef.current));
       warmDicePreviews(
         (run) => setTimeout(run, 0),
         () => activeRef.current,
@@ -297,7 +297,22 @@ export function DiceDemoScreen() {
         // first tap has nothing left to do but reveal them — without
         // this, the tap itself pays for ~70 cards and the tab appears a
         // beat late even though the flash is gone.
-        () => setBuiltHeavyTabs((seen) => ({ ...seen, store: true, inventory: true })),
+        () => {
+          setBuiltHeavyTabs((seen) => ({ ...seen, store: true, inventory: true }));
+          /*
+            Last, and biggest. Opening a die to look at it paints its six
+            sides — 192ms on a desktop, more on a phone — in the frame
+            the preview is trying to appear in, which is the lag David
+            reported on 10 Sep 2026. Painting them all takes 4.4s of
+            desktop work, so it goes behind everything that makes a tab
+            open at all: nobody can open a preview before the shelf it is
+            opened from exists.
+          */
+          warmAllDieFaces(
+            (run) => setTimeout(run, 0),
+            () => activeRef.current,
+          );
+        },
       );
     });
     return () => handle.cancel();
