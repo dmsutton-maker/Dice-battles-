@@ -2393,6 +2393,7 @@ export function isColorPattern(pattern: PatternId): boolean {
  * is on, to tilt the highlight a little differently on each.
  */
 const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
+  // Found in the first pass, 11 Sep 2026: a whole object each.
   'baseball',
   'pizza',
   'circuit',
@@ -2403,6 +2404,33 @@ const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
   'watermelon',
   'laces',
   'bowling',
+  /*
+    A SECOND PASS, same day, after rendering all fifty dice six sides
+    each and LOOKING at them — which is what should have happened the
+    first time. These hid from the first measure, which asked how much
+    LIGHT AND DARK a face has: every one of them has a busy background
+    that scores well while its actual subject is missing.
+
+    `fish` is the clearest. Its four orange goldfish sit at y=8..56 on
+    the painter's own canvas, and NOT ONE square of the cube net covers
+    that patch — so every side was plain rippling water, all six agreed
+    about it perfectly, and it measured as fine.
+
+    `waffle` came out of the third version of that test, the one that
+    compares each face with the SHELF PICTURE instead of with the other
+    faces. This skin is chicken AND waffles: two fried drumsticks at
+    (15,18) and (46,45). They land on the painter's own canvas, which is
+    what the Store card shows, and on no square of the net at all. Every
+    card in the game promised chicken and every die delivered a plain
+    waffle grid.
+  */
+  'fish',
+  'denim',
+  'basketball',
+  'ivory',
+  'lavender',
+  'satin',
+  'waffle',
 ]);
 
 /**

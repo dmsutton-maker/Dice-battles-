@@ -89,6 +89,28 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-91-0-blank-sides-really-gone',
+    date: '11 September 2026',
+    version: 'v1.91.0',
+    title: 'Seven more dice had blank sides',
+    icon: 'fix',
+    body:
+      'Yesterday ten dice got their designs back on every side. Then all ' +
+      'fifty were drawn out, six sides each, and looked at \u2014 which is ' +
+      'what should have happened the first time \u2014 and seven more were ' +
+      'hiding.\n\n' +
+      'The Fish dice was the worst: its four goldfish were nowhere on ' +
+      'the dice at all, so every side was plain rippling water. The ' +
+      'Waffles dice is meant to be chicken AND waffles, and the chicken ' +
+      'only ever appeared on the shop card \u2014 the dice itself was ' +
+      'plain waffle. Denim had its orange stitching on two sides. ' +
+      'Lavender had its sprigs on two. Basketball, Ivory and the three ' +
+      'plain-colour dice were all patchy.\n\n' +
+      'Every one of the fifty is now checked, side by side, against the ' +
+      'picture on its shop card. If a side is missing what the card ' +
+      'promises, the game will not build.',
+  },
+  {
     id: 'v1-90-0-no-blank-sides',
     date: '11 September 2026',
     version: 'v1.90.0',

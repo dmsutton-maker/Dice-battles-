@@ -25,25 +25,42 @@ const lum = (px: number[], i: number) =>
   0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
 
 interface FaceStat {
+  /** Brightest point minus darkest, in luminance. */
   range: number;
+  /** Distinct colours, quantised so a gradient is not a thousand of them. */
   colours: number;
+  /**
+   * How much of the face is NOT its most common colour.
+   *
+   * The measure that matters, and the one the first version of this tool
+   * did not have. A face can have plenty of light and dark in it — a
+   * rippling blue background, a mottled denim weave — while the thing
+   * the skin is actually OF is missing entirely. Fish scored perfectly
+   * on range with four of its six sides showing nothing but water.
+   */
+  design: number;
 }
 
 function faceStats(px: number[]): FaceStat {
   let hi = 0;
   let lo = 255;
-  const seen = new Set<number>();
+  const counts = new Map<number, number>();
   for (let i = 0; i < px.length; i += 3) {
     const l = lum(px, i);
     if (l > hi) hi = l;
     if (l < lo) lo = l;
-    // Quantised, so a smooth gradient does not read as a thousand colours.
-    seen.add(((px[i] >> 4) << 8) | ((px[i + 1] >> 4) << 4) | (px[i + 2] >> 4));
+    const q = ((px[i] >> 4) << 8) | ((px[i + 1] >> 4) << 4) | (px[i + 2] >> 4);
+    counts.set(q, (counts.get(q) ?? 0) + 1);
   }
-  return { range: hi - lo, colours: seen.size };
+  const commonest = Math.max(...counts.values());
+  return {
+    range: hi - lo,
+    colours: counts.size,
+    design: 1 - commonest / (px.length / 3),
+  };
 }
 
-const rows: { id: string; pattern: string; worst: number; best: number; ratio: number; colours: number }[] = [];
+const rows: { id: string; pattern: string; range: number; design: number; colours: number }[] = [];
 
 /*
   `satin` and `plain` carry no shape at all, on purpose — they are the
@@ -65,40 +82,40 @@ for (const skin of DICE_SKINS) {
       ),
     ),
   );
-  const ranges = stats.map((s) => s.range);
-  const worst = Math.min(...ranges);
-  const best = Math.max(...ranges);
+  /*
+    THREE RATIOS, each face against the BUSIEST face of the same die.
+    Never a fixed threshold: ruby is a dark stone and volleyball is
+    nearly white, and any number suiting one would libel the other.
+  */
+  const ratio = (pick: (s: FaceStat) => number) => {
+    const values = stats.map(pick);
+    const best = Math.max(...values);
+    return best === 0 ? 1 : Math.min(...values) / best;
+  };
   rows.push({
     id: skin.id,
     pattern: skin.pattern,
-    worst,
-    best,
-    ratio: best === 0 ? 1 : worst / best,
-    colours: Math.min(...stats.map((s) => s.colours)),
+    range: ratio((s) => s.range),
+    design: ratio((s) => s.design),
+    colours: ratio((s) => s.colours),
   });
 }
 
-rows.sort((a, b) => a.ratio - b.ratio);
-console.log('skin'.padEnd(14), 'pattern'.padEnd(16), 'quietest', 'busiest', 'ratio', 'colours');
+const worst = (r: { range: number; design: number; colours: number }) =>
+  Math.min(r.range, r.design, r.colours);
+
+rows.sort((a, b) => worst(a) - worst(b));
+console.log('skin'.padEnd(14), 'pattern'.padEnd(16), '  light/dark', '  design', ' colours');
 for (const r of rows) {
-  /*
-    RATIO ONLY. The first version also flagged anything with fewer than
-    six distinct colours, and that fired on paws, fish, leopard, cookie
-    and tartan — designs that are simply made of two or three colours and
-    are IDENTICAL on all six sides, which is the opposite of the fault.
-    What "a blank side" means is one side much quieter than another side
-    of the same die.
-  */
-  const flag = r.ratio < 0.5 ? '  <-- BLANK SIDE' : '';
+  const flag = worst(r) < 0.6 ? '  <-- BLANK SIDE' : '';
   console.log(
     r.id.padEnd(14),
     r.pattern.padEnd(16),
-    r.worst.toFixed(0).padStart(8),
-    r.best.toFixed(0).padStart(7),
-    r.ratio.toFixed(2).padStart(5),
-    String(r.colours).padStart(7),
+    r.range.toFixed(2).padStart(12),
+    r.design.toFixed(2).padStart(8),
+    r.colours.toFixed(2).padStart(8),
     flag,
   );
 }
-const bad = rows.filter((r) => r.ratio < 0.5);
+const bad = rows.filter((r) => worst(r) < 0.6);
 console.log(`\n${bad.length} of ${rows.length} skins have at least one blank side`);

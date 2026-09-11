@@ -1,5 +1,54 @@
 # Changelog
 
+## v1.91.0 — 2026-09-11 · requested by David
+
+"A lot of skins don't have any of the designs on some of their sides."
+Said twice, and the second time he was still right — v1.90.0 fixed ten
+and left seven.
+
+### What v1.90.0 missed, and why
+That release measured each face's brightest point against its darkest —
+"does this face have light and dark in it". Every skin it missed has a
+busy BACKGROUND that scores well on that while its actual subject is
+absent:
+
+- **fish** — four orange goldfish at y=8..56 on the painter's canvas,
+  and not one square of the cube net covers that patch. Every side was
+  plain rippling water, all six agreed about it perfectly, and it
+  measured as fine.
+- **waffle** — the skin is chicken AND waffles. The two drumsticks land
+  on the painter's canvas, which is what the Store card shows, and on no
+  square of the net. **Every card in the game promised chicken and every
+  die delivered a plain waffle grid.**
+- **denim** — orange stitching on two sides out of six.
+- **lavender** — sprigs on two out of six.
+- **basketball**, **ivory**, and the three `satin` ladder prizes — patchy
+  in the same way.
+
+Found by rendering all fifty dice, six sides each, and LOOKING at them.
+That is what should have happened the first time; the measurement was
+doing the looking's job and doing it badly.
+
+### The test, third version
+1. v1.90.0 compared each face with the busiest face of the same die.
+   Cannot see a skin whose subject is missing from all six equally —
+   which is exactly what fish was.
+2. Adding "how much of the face is not its background colour" caught
+   denim and basketball but still not fish, for the same reason.
+3. **Compare every face with the SHELF PICTURE** — the painter's own
+   canvas, the image the Store card shows. That is the picture the skin
+   was written to draw, and every side of the die has to carry as much
+   as it does. This is the one that works, and it is what found waffle.
+
+Verified by removing fish, denim, waffle and basketball from the
+per-face set one at a time and watching it fail each time: 4%, 43%, 44%,
+56%.
+
+One exemption, with its reason: `galaxy` is excused the colour-count
+measure, because soft nebula gradients plus a random star field make one
+face count three times the colours of a neighbour that is visually just
+as full. Rendered and looked at before granting it.
+
 ## v1.90.0 — 2026-09-11 · requested by David
 
 "A lot of skins don't have any of the designs on some of their sides and

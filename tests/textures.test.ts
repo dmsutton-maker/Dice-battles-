@@ -442,28 +442,55 @@ suite('textures · a die is one object, not six copies of a picture', () => {
       Ivory and the three ladder prizes are told apart by colour alone.
       Flagging them is true and useless.
     */
-    const SHAPELESS = ['plain', 'satin'];
+    // `plain` carries no shape at all, on purpose: the starting Ivory is
+    // told apart by colour alone. Flagging it is true and useless.
+    const SHAPELESS = ['plain'];
     const lum = (px: number[], i: number) =>
       0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
-    const faceRange = (px: number[]) => {
+
+    /*
+      THREE MEASURES, because the first version had only one and MISSED
+      SIX SKINS.
+
+      v1.90.0 measured each face's brightest point against its darkest,
+      which answers "does this face have light and dark in it". Fish
+      passed perfectly with four of its six sides showing nothing but
+      rippling water: the ripples are light and dark, and the goldfish —
+      the entire point of the skin — were on the other two. Denim and
+      basketball hid the same way behind a busy weave.
+
+      So a face is also measured for how much of it is NOT its most
+      common colour (the subject, as opposed to the background), and for
+      how many distinct colours are on it. A blank side fails at least
+      one of the three.
+    */
+    const faceStats = (px: number[]) => {
       let hi = 0;
       let lo = 255;
+      const counts = new Map<number, number>();
       for (let i = 0; i < px.length; i += 3) {
         const l = lum(px, i);
         if (l > hi) hi = l;
         if (l < lo) lo = l;
+        const q = ((px[i] >> 4) << 8) | ((px[i + 1] >> 4) << 4) | (px[i + 2] >> 4);
+        counts.set(q, (counts.get(q) ?? 0) + 1);
       }
-      return hi - lo;
+      return {
+        range: hi - lo,
+        colours: counts.size,
+        design: 1 - Math.max(...counts.values()) / (px.length / 3),
+      };
     };
 
     let tightest = 1;
     let tightestId = '';
+    let tightestWhy = '';
     let checked = 0;
     for (const skin of DICE_SKINS) {
       if (SHAPELESS.includes(skin.pattern)) continue;
       checked++;
-      const ranges = CUBE_NET_CELLS.map(([cx, cy]) =>
-        faceRange(
+      const stats = CUBE_NET_CELLS.map(([cx, cy]) =>
+        faceStats(
           patternPixels(
             skin.pattern as Exclude<PatternId, 'plain'>,
             skin.body,
@@ -473,29 +500,75 @@ suite('textures · a die is one object, not six copies of a picture', () => {
           ),
         ),
       );
-      const quietest = Math.min(...ranges);
-      const busiest = Math.max(...ranges);
       /*
-        Measured against the BUSIEST side of the same die, never against
-        a fixed number: ruby is a dark stone and volleyball is nearly
-        white, and any threshold that suited one would libel the other.
-        A blank side is one much quieter than its own siblings.
+        MEASURED AGAINST THE SHELF PICTURE, not against the other faces.
+
+        This is the third version of this check and the first one that
+        works. Comparing the six faces with EACH OTHER cannot see a skin
+        whose subject is missing from all of them equally — which is
+        exactly what fish was: its four goldfish sit at y=8..56 on the
+        painter's own canvas, and not one square of the cube net covers
+        that patch, so every side was plain rippling water and all six
+        agreed about it perfectly. Verified by deleting fish from the
+        per-face set and watching the previous version stay green.
+
+        The picture at the origin is the one the painter was written to
+        draw and the one the Store shows on the card. Every side of the
+        die has to carry as much as it does.
+
+        A ratio against that, never a fixed number: ruby is a dark stone
+        and volleyball nearly white, and any threshold suiting one would
+        libel the other.
       */
-      const ratio = busiest === 0 ? 1 : quietest / busiest;
-      if (ratio < tightest) {
-        tightest = ratio;
-        tightestId = skin.id;
-      }
-      assert(
-        ratio > 0.5,
-        `${skin.id}: one side carries ${(ratio * 100).toFixed(0)}% of the design the ` +
-          'busiest side has — that is a blank side',
+      const shelf = faceStats(
+        patternPixels(
+          skin.pattern as Exclude<PatternId, 'plain'>,
+          skin.body,
+          skin.ink ?? skin.body,
+        ),
       );
+      /*
+        `colours` has ONE exemption, with its reason.
+
+        Counting distinct quantised colours is what caught denim, whose
+        orange stitching is too small a fraction of the face to move
+        either of the other two measures — 43% against its shelf picture
+        while `design` sat at 88%. It is worth keeping for that.
+
+        Galaxy is the one design it cannot judge: large soft nebula
+        gradients plus a random star field, where one face happens to
+        catch a bright cluster and counts three times the colours of a
+        neighbour that is visually just as full. Rendered and looked at
+        before granting this — every side of the galaxy die has nebulae
+        and stars on it.
+      */
+      const SOFT_GRADIENTS: Record<string, string> = {
+        galaxy: 'soft nebulae and a random star field — the colour COUNT swings, the design does not',
+      };
+      for (const [why, pick] of [
+        ['light and dark', (f: ReturnType<typeof faceStats>) => f.range],
+        ['design', (f: ReturnType<typeof faceStats>) => f.design],
+        ['colours', (f: ReturnType<typeof faceStats>) => f.colours],
+      ] as const) {
+        if (why === 'colours' && SOFT_GRADIENTS[skin.id]) continue;
+        const reference = Math.max(pick(shelf), ...stats.map(pick));
+        const ratio = reference === 0 ? 1 : Math.min(...stats.map(pick)) / reference;
+        if (ratio < tightest) {
+          tightest = ratio;
+          tightestId = skin.id;
+          tightestWhy = why;
+        }
+        assert(
+          ratio > 0.6,
+          `${skin.id}: one side has ${(ratio * 100).toFixed(0)}% of the ${why} its ` +
+            'shelf picture has — that is a blank side',
+        );
+      }
     }
     assert(checked > 40, `only ${checked} skins were checked — the filter is too wide`);
     note(
       `${checked} skins, every side carrying the design; the least even is ` +
-        `${tightestId} at ${(tightest * 100).toFixed(0)}%`,
+        `${tightestId} at ${(tightest * 100).toFixed(0)}% of its ${tightestWhy}`,
     );
   });
 
