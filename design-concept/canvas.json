@@ -1,0 +1,24 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Compare the two" },
+    { "id": "page-2", "name": "Paper & Ink — more screens" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Paper & Ink — light", "page": "page-1" },
+    { "file": "HomeDark.dc.html", "x": 470, "y": 0, "w": 390, "h": 844, "title": "Paper & Ink — dark", "page": "page-1" },
+    { "file": "HomeALight.dc.html", "x": 1030, "y": 0, "w": 390, "h": 844, "title": "Deep Table — light", "page": "page-1" },
+    { "file": "HomeADark.dc.html", "x": 1500, "y": 0, "w": 390, "h": 844, "title": "Deep Table — dark", "page": "page-1" },
+
+    { "file": "Store.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Store — light", "page": "page-2" },
+    { "file": "StoreDark.dc.html", "x": 470, "y": 0, "w": 390, "h": 844, "title": "Store — dark", "page": "page-2" },
+    { "file": "Result.dc.html", "x": 1030, "y": 0, "w": 390, "h": 844, "title": "After a battle — light", "page": "page-2" },
+    { "file": "ResultDark.dc.html", "x": 1500, "y": 0, "w": 390, "h": 844, "title": "After a battle — dark", "page": "page-2" }
+  ],
+  "annotations": [
+    { "id": "pi", "x": 0, "y": -215, "w": 430, "page": "page-1", "text": "PAPER & INK\n\nDepth from SHAPE — a 2px outline and a hard offset shadow, so every card is a physical piece on a table. Fredoka + Nunito.\n\nInverts cleanly, because geometry does not care which way round the ground is. Reads younger and more playful." },
+    { "id": "dt", "x": 1030, "y": -215, "w": 430, "page": "page-1", "text": "DEEP TABLE\n\nDepth from LIGHT — glow, glass, one gold accent per screen. Gabarito + Manrope.\n\nDark is its native mode. In light the glow has to become a cast shadow instead, which is a translation rather than an inversion — look at how much quieter the light version is than the dark one. That gap is the honest cost of this direction." },
+    { "id": "check", "x": 1970, "y": -215, "w": 400, "page": "page-1", "text": "CONTRAST, MEASURED\n\nAll four builds clear WCAG AA at 4.5:1.\n\nDeep Table's light build failed first time — its faint text came out at 2.80:1, because 42% white on a dark ground is fine and 45% dark on white is not. The alphas were solved for, not nudged by eye. That is the trap in every light/dark pair." },
+    { "id": "more", "x": 0, "y": -180, "w": 430, "page": "page-2", "text": "Paper & Ink carried through two more screens, both modes.\n\nThe battle screen is not drawn: its chrome is two score pills and a hint line, and the screen is almost entirely the 3D board, which does not change with the theme." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

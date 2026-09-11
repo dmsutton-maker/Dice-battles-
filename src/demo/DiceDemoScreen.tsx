@@ -1,148 +1,3025 @@
 import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useRef, useState } from 'react';
-import { PanResponder, StyleSheet, Text, View } from 'react-native';
-import { ColorDef } from '../game/colors';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  PanResponder,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  GestureResponderEvent,
+} from 'react-native';
+import { ArenaId, ARENAS } from '../arena/arenas';
+import { obstacleLook } from '../arena/obstacleLooks';
+import {
+  activeArena,
+  activeSkin,
+  ARENA_UNLOCKS,
+  equipArena,
+  equipSkin,
+  ARENA_ORDER,
+  isArenaUnlocked,
+  isSkinUnlocked,
+  getLoadout,
+  loadLoadout,
+  ARENA_PRICES,
+  arenaKey,
+} from '../game/loadout';
+import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
+import {
+  AudioLevelKey,
+  AudioSettings,
+  getAudioSettings,
+  loadAudioSettings,
+  setAudioVolume,
+} from '../audio/settings';
+import {
+  initSounds,
+  playCheer,
+  playClick,
+  playEquip,
+  playFanfare,
+  playThrow,
+  startMusic,
+  stopMusic,
+} from '../audio/sounds';
+import {
+  AI_DIFFICULTIES,
+  AiDifficultyId,
+  AiOpponent,
+  pickOpponent,
+  rollAiDice,
+} from '../game/ai';
+import {
+  EMPTY_LAYOUT,
+  generateObstacleLayout,
+  obstacleHint,
+  ObstacleLayout,
+} from '../game/obstacles';
+import { sync as syncGameCenter } from '../game/gameCenter';
+import {
+  applyMatchResult,
+  parseTrophyCode,
+  parseCoinCode,
+  setTrophies as writeTrophies,
+  TROPHY_CODE_MAX,
+  COIN_CODE_MAX,
+  getProgress,
+  isUnlocked,
+  loadProgress,
+  nextTier,
+  setUnlockAll as persistUnlockAll,
+  TESTER_CODE,
+  RESET_CODE,
+  TESTER_LOCK_CODE,
+  TIERS,
+  tierLabel,
+  TROPHY_STAKES,
+  setRun as saveRun,
+} from '../game/progress';
+import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
+import {
+  firstFreeIndex,
+  makeUnits,
+  MODE_ORDER,
+  MODES,
+  ModeId,
+  PrisonerUnit,
+  Station,
+} from '../game/modes';
 import { TUNING } from '../game/tuning';
+import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
+import { initPurchases } from '../game/purchases';
+import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
+import { useAppActive } from '../game/useAppActive';
+import { SHAPE, THEME, TYPE } from '../ui/theme';
+import { GAME_VERSION } from '../game/version';
+import { FLIGHT_SECONDS } from '../game/flight';
+import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
+import {
+  awardCoins,
+  buyWithCoins,
+  getWallet,
+  grantCoins,
+  setCoins as writeCoins,
+  clearPurchases,
+  loadWallet,
+  spendCoins,
+} from '../game/currency';
+import { DEFAULT_SKIN_ID, skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
+import { InventoryScreen } from './InventoryScreen';
+import { LeaderboardScreen } from './LeaderboardScreen';
+import { FriendsScreen } from './FriendsScreen';
+import { DICE_SKINS } from '../game/diceSkins';
+import { Identity, loadIdentity } from '../game/playerIdentity';
+import {
+  answerChallenge,
+  fetchChallenges,
+  pulseBattle,
+  sendChallenge,
+  type BattleHandle,
+  type ChallengeState,
+} from '../game/battlesApi';
+import {
+  BATTLE_SYNC_MS,
+  CHALLENGE_POLL_MS,
+  POPUP_MS,
+  secondsLeft,
+  topChallenge,
+} from '../game/friendlyBattle';
+import { ChallengeBanner } from './ChallengeBanner';
+import { StoreScreen } from './StoreScreen';
+import { TwoPlayerScreen } from './TwoPlayerScreen';
+import { VolumeSlider } from './VolumeSlider';
+import { BugReportModal } from '../debug/BugReportModal';
+import { MatchmakingOverlay } from './MatchmakingOverlay';
+import { rangeLabel } from '../game/rewards';
+import { StatsHud } from './StatsHud';
+import { BottomNav, useBottomNavHeight, Tab } from './BottomNav';
+import { useBottomInset } from '../game/safeArea';
+import { NewsScreen } from './NewsScreen';
+import { Popup } from './Popup';
+import { TopButtons } from './TopButtons';
+import { ItemPreviewBar } from './ItemPreviewBar';
+import { TutorialScreen } from './TutorialScreen';
+import { MODE_ICONS } from '../ui/modeIcons';
+import { ShapesIcon } from '../ui/Icon';
+import { TierIcon } from './TierIcon';
+import { FirstFrame } from './FirstFrame';
+import {
+  loadTutorialSeen,
+  markTutorialSeen,
+} from '../game/tutorial';
+import {
+  previewAction,
+  PreviewTarget,
+} from '../game/itemPreview';
+import { TournamentScreen } from './TournamentScreen';
+import {
+  RunState,
+  TournamentDef,
+  advanceRun,
+  startRun,
+  tournamentById,
+} from '../game/tournament';
+import { rollReward } from '../game/rewards';
+import { Reward, RewardPopup } from './RewardPopup';
+import {
+  loadColorblindMode,
+  setColorblindMode,
+} from '../game/colorblind';
 
 /**
- * Dice-feel demo screen: full-screen 3D tray with a gesture overlay.
+ * Classic mode vs one AI opponent.
  *
- * - Touch down anywhere = throw (instant, so rapid tapping = rolling frenzy).
- * - Release with speed = directional flick that steers the throw.
- * - On settle: haptic + the two rolled colors shown at the top; a MATCH
- *   banner when both faces agree (the moment that will free a prisoner).
+ * Round flow: pick screen -> "ARM YOUR DICE!" -> "BATTLE!" -> race. The
+ * player rolls real physics dice (flick to throw, tap for a straight roll);
+ * a new throw is LOCKED until the dice settle, so every roll is binding.
+ * The AI rolls fair virtual dice on a timer (difficulty = speed).
  */
-export function DiceDemoScreen() {
-  const controlsRef = useRef<SceneControls | null>(null);
-  const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
-  const [rolling, setRolling] = useState(false);
 
-  const handleThrow = useCallback(() => {
-    setRolling(true);
-    setRolledFaces(null);
+type Phase =
+  | 'pick'
+  | 'matching'
+  | 'arm'
+  | 'go'
+  | 'battle'
+  | 'won'
+  | 'lost'
+  | 'tie';
+
+/**
+ * One line saying which step the adverts stopped at.
+ *
+ * Only ever drawn in family tester mode. The wording is deliberately
+ * plain rather than technical — the person reading it is holding a phone
+ * and wants to know whether to tell somebody, not to debug an SDK.
+ */
+function AdStatusLine() {
+  const status = adStatus();
+  const WHY: Record<ReturnType<typeof adStatus>['stage'], string> = {
+    'not-started': 'not started yet',
+    'bought-out': 'switched off — adverts bought away',
+    'no-sdk': 'not in this build — needs a new build from Apple',
+    'no-consent': 'consent not granted, so no ad may be asked for',
+    'init-failed': 'the ad service would not start (often no connection)',
+    ready: 'ready',
+  };
+  return (
+    <Text style={styles.settingsStats}>
+      Ads: {WHY[status.stage]}
+      {'\n'}
+      {status.gamesFinished} games played · next ad in {status.untilNext} ·{' '}
+      {status.loaded ? 'one waiting' : 'none waiting'}
+      {'\n'}
+      {status.unit === 'test' ? 'test adverts (tester mode)' : 'real adverts'}
+    </Text>
+  );
+}
+
+export function DiceDemoScreen() {
+  const [audioPrefs, setAudioPrefs] = useState<AudioSettings>(getAudioSettings());
+  // Whether the phone is actually showing the game — see useAppActive.
+  const appActive = useAppActive();
+  const activeRef = useRef(appActive);
+  activeRef.current = appActive;
+
+  // Both live: a folding phone changes the home-indicator inset, and
+  // therefore the bar's height, without the app relaunching.
+  const bottomInset = useBottomInset();
+  const navHeight = useBottomNavHeight();
+
+  useEffect(() => {
+    initSounds();
+    initAnnouncer();
+    // Nothing is drawn until the saved loadout and progress are in hand:
+    // rendering first would show the default castle for a frame before
+    // swapping to the battlefield the player actually left equipped.
+    Promise.all([
+      loadAudioSettings(),
+      loadLoadout(),
+      loadProgress(),
+      loadWallet(),
+      loadColorblindMode(),
+      loadTutorialSeen(),
+    ])
+      .then(([audio, saved, progress, purse, cb, tutorialSeen]) => {
+        setAudioPrefs(audio);
+        setLoadout(saved);
+        setWallet(purse);
+        setTrophies(progress.trophies);
+        setWins(progress.wins);
+        setModeWins(progress.modeWins);
+        setUnlockAll(!!progress.unlockAll);
+        setColorblind(cb);
+        /*
+          Pick the cup run back up. Only ever an unfinished one is
+          stored, and it is checked against the cup list on the way in
+          so a save written before a cup was renamed or removed cannot
+          strand the Cups tab on a run that no longer exists.
+        */
+        if (progress.run && tournamentById(progress.run.tournamentId)) {
+          setRunState({
+            tournamentId: progress.run.tournamentId,
+            wins: progress.run.wins,
+            finished: null,
+          });
+        }
+        // First launch opens the tutorial on its own. Never again after
+        // that — it stays behind the ❓ for whoever picks the phone up in
+        // six months and has no idea what any of this is.
+        if (!tutorialSeen) setPopup('howto');
+      })
+      .catch(() => {
+        // Defaults are fine if storage is unavailable.
+      })
+      .finally(() => setHydrated(true));
+
+    /*
+      Ads start themselves up in the background, deliberately outside the
+      chain above: initAds gathers consent, which in the EU puts Google's
+      own form on screen, and reaches the network to fetch the first
+      interstitial. Neither may hold up the first frame of the game, and
+      neither can fail in a way the player sees — see src/game/ads.ts.
+    */
+    /*
+      Entitlements BEFORE adverts, and both outside the chain above.
+
+      initPurchases reads what this phone has already bought, which is
+      what initAds then checks before starting the SDK at all — so
+      somebody who paid to remove adverts never even loads one. Neither
+      may hold up the first frame, and neither can fail in a way the
+      player sees.
+    */
+    initPurchases().finally(() => initAds());
   }, []);
 
-  const handleSettled = useCallback((faces: ColorDef[]) => {
-    setRolling(false);
-    setRolledFaces(faces);
-    const isMatch = faces.length === 2 && faces[0].id === faces[1].id;
-    if (isMatch) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
+  const controlsRef = useRef<SceneControls | null>(null);
+  const [phase, setPhase] = useState<Phase>('pick');
+  const [difficulty, setDifficulty] = useState<AiDifficultyId>('easy');
+  const [mode, setMode] = useState<ModeId>('classic');
+  const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
+  const [twoPlayer, setTwoPlayer] = useState(false);
+  const [loadout, setLoadout] = useState(getLoadout());
+  /*
+    The equipped skin, readable from an effect that must not re-run every
+    time it changes. The warmer only reads it once, at the moment it
+    starts; equipping a different die later paints its sides on the first
+    roll exactly as it did before any of this existed.
+  */
+  const equippedRef = useRef(loadout.skinId);
+  equippedRef.current = loadout.skinId;
+
+  /*
+    Paint the dice pictures in the background, so the Items and Store
+    tabs are already warm the first time anybody opens them.
+
+    Deliberately AFTER the first interactions rather than at launch: the
+    player wants a battle, and a second of blocked JavaScript there is
+    worse than a second in a menu they may never open. It also stops
+    while the game is in a pocket — there is nothing to be warm for, and
+    it is the same thread the battery work just quietened.
+  */
+  useEffect(() => {
+    const { InteractionManager } = require('react-native');
+    const handle = InteractionManager.runAfterInteractions(() => {
+      // The die in the player's hand first — it is the one thing here
+      // that would otherwise stutter during an actual roll.
+      warmDieFaces(skinById(equippedRef.current));
+      warmDicePreviews(
+        (run) => setTimeout(run, 0),
+        () => activeRef.current,
+        // Every picture is now cached, so building the two heavy pages
+        // costs React work and nothing else. Doing it here means the
+        // first tap has nothing left to do but reveal them — without
+        // this, the tap itself pays for ~70 cards and the tab appears a
+        // beat late even though the flash is gone.
+        () => {
+          setBuiltHeavyTabs((seen) => ({ ...seen, store: true, inventory: true }));
+          /*
+            Last, and biggest. Opening a die to look at it paints its six
+            sides — 192ms on a desktop, more on a phone — in the frame
+            the preview is trying to appear in, which is the lag David
+            reported on 10 Sep 2026. Painting them all takes 4.4s of
+            desktop work, so it goes behind everything that makes a tab
+            open at all: nobody can open a preview before the shelf it is
+            opened from exists.
+          */
+          warmAllDieFaces(
+            (run) => setTimeout(run, 0),
+            () => activeRef.current,
+          );
+        },
       );
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    });
+    return () => handle.cancel();
+  }, []);
+  const [tab, setTab] = useState<Tab>('play');
+  const [showFriends, setShowFriends] = useState(false);
+  /*
+    Who this player is, for the Friends page. Read once on mount and
+    never awaited by anything that draws: loadIdentity talks to Game
+    Center, which shows a system sheet the first time, and a menu that
+    waited on that would appear to hang.
+  */
+  const [me, setMe] = useState<Identity | null>(null);
+  const meRef = useRef<Identity | null>(null);
+  meRef.current = me;
+
+  /*
+    FRIENDLY BATTLES — a live game against somebody on your friends list.
+
+    David, 11 Sep 2026, and then: "you challenge someone who's on right
+    now. It should be live only." So this is never restored from storage
+    and never survives a relaunch: if the app was closed, the battle is
+    over, which is the honest meaning of live.
+  */
+  const [challenges, setChallenges] = useState<ChallengeState>({
+    incoming: [],
+    outgoing: null,
+    battle: null,
+  });
+  const [friendly, setFriendly] = useState<
+    { battleId: string; opponentId: string; opponentName: string } | null
+  >(null);
+  const friendlyRef = useRef<typeof friendly>(null);
+  friendlyRef.current = friendly;
+  /** The challenge the banner is showing, and when to slide it away. */
+  const [banner, setBanner] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  /** Ids already shown, so a banner is not re-shown every poll. */
+  const bannerSeen = useRef(new Set<string>());
+  /*
+    The poll is declared above `startFriendly` and has to call it. A ref
+    rather than reordering three hundred lines of hooks, and rather than
+    putting the poll below — where it would be further from the state it
+    fills in than from the one thing it calls.
+  */
+  const startFriendlyRef = useRef<
+    ((battle: BattleHandle, opponentName: string) => void) | null
+  >(null);
+  useEffect(() => {
+    let alive = true;
+    loadIdentity()
+      .then((identity) => {
+        if (alive) setMe(identity);
+      })
+      .catch(() => {
+        // loadIdentity never rejects, but a caller assuming that is how
+        // an unhandled rejection gets shipped.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  /*
+    ASKING WHETHER ANYBODY WANTS A BATTLE.
+
+    App-wide rather than inside the Friends panel, because the banner has
+    to be able to slide in over whatever the player is doing — that is
+    what David asked for. It stops the moment the phone is in a pocket,
+    and it stops during a friendly battle, where the live sync below is
+    already talking to the same server every second.
+
+    Stopped during an ordinary battle too: somebody mid-round does not
+    want a popup over their dice, and a challenge that expires unseen
+    while they finish is exactly what "live only" means.
+  */
+  useEffect(() => {
+    if (!me || !appActive) return;
+    if (friendly) return;
+    if (phase !== 'pick') return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const ask = async () => {
+      const state = await fetchChallenges(me);
+      if (!alive) return;
+      setChallenges(state);
+      /*
+        The other half of accepting. Whoever SENT the challenge never
+        taps anything — a battle simply appears in their answer here, and
+        they drop into it. That is why the server hands back the room on
+        this call rather than only to the accepter.
+      */
+      if (state.battle) {
+        startFriendlyRef.current?.(
+          state.battle,
+          state.battle.opponentName ?? 'Your friend',
+        );
+        return;
+      }
+      const top = topChallenge(state.incoming);
+      if (top && !bannerSeen.current.has(top.id)) {
+        bannerSeen.current.add(top.id);
+        setBanner(top.id);
+      }
+      timer = setTimeout(ask, CHALLENGE_POLL_MS);
+    };
+    timer = setTimeout(ask, 0);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [me, appActive, friendly, phase]);
+
+  /* The countdown on the banner, and the banner's own short life. */
+  useEffect(() => {
+    if (!banner) return;
+    const tick = setInterval(() => setNow(Date.now()), 500);
+    const gone = setTimeout(() => setBanner(null), POPUP_MS);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(gone);
+    };
+  }, [banner]);
+
+  /*
+    Settings and News open OVER whatever you were doing rather than
+    replacing it, so they are their own bit of state — not a sixth and
+    seventh value of `tab`. Only one can be open at a time; there is
+    nowhere to open the second from while the first is covering the screen.
+  */
+  const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | null>(null);
+  // The cup being played, if any. A round started from a cup reports back
+  // to it when it finishes.
+  const [run, setRunState] = useState<RunState | null>(null);
+
+  /**
+   * Change the cup run, on screen and on disk together.
+   *
+   * A run used to live only in React state, so force-quitting mid-run
+   * lost the run and the 50 or 150 coins paid to enter it. Everything
+   * else a player owns survives being killed; something they paid for
+   * has to as well.
+   */
+  const setRun = useCallback((next: RunState | null) => {
+    setRunState(next);
+    saveRun(next ? { tournamentId: next.tournamentId, wins: next.wins } : null);
+  }, []);
+  const [wallet, setWallet] = useState(getWallet());
+  const [hydrated, setHydrated] = useState(false);
+  const [unlockAll, setUnlockAll] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
+  /*
+    Getting the code box out from under the keyboard.
+
+    The box sits low in the Settings page, so on a phone the keyboard
+    covered the very thing being typed into. Two halves to the fix: the
+    panel shrinks by the keyboard's height (KeyboardAvoidingView below),
+    and the page scrolls the box into what is left of the view.
+
+    The scroll waits for `keyboardDidShow` rather than firing on focus,
+    because at focus the keyboard has not finished animating and its height
+    is not yet known — scrolling then lands in the wrong place, and by a
+    different amount depending on whether the autocorrect bar is showing.
+  */
+  const settingsScrollRef = useRef<ScrollView | null>(null);
+  const codeRowY = useRef(0);
+  const codeFocused = useRef(false);
+
+  const revealCodeBox = useCallback(() => {
+    if (!codeFocused.current) return;
+    // A little above the box, so it does not sit flush against the
+    // keyboard with its label cut off.
+    settingsScrollRef.current?.scrollTo({
+      y: Math.max(0, codeRowY.current - 24),
+      animated: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', revealCodeBox);
+    return () => shown.remove();
+  }, [revealCodeBox]);
+  // Rewards queue rather than replace each other: crossing two tiers in one
+  // battle used to show only the second one.
+  const [rewards, setRewards] = useState<Reward[]>([]);
+
+  const [colorblind, setColorblind] = useState(false);
+  /**
+   * The item being tried on, if any. Nothing about the loadout changes
+   * while this is set — the board simply shows the previewed item instead
+   * of the equipped one until the preview closes.
+   */
+  const [preview, setPreview] = useState<PreviewTarget | null>(null);
+  /**
+   * The same value, for the throw gesture to read.
+   *
+   * The PanResponder is built once and closes over its first render, so it
+   * cannot see `preview` changing. It has to, because the preview bar is
+   * deliberately see-through in the middle: without this, a stray tap on
+   * the open part of a preview fell straight through to the gesture layer
+   * and started a real battle behind it.
+   */
+  const previewRef = useRef<PreviewTarget | null>(null);
+  const [showBugReport, setShowBugReport] = useState(false);
+  const [rolledFaces, setRolledFaces] = useState<ColorDef[] | null>(null);
+  const [rolling, setRolling] = useState(false);
+  const [units, setUnits] = useState<PrisonerUnit[]>(() =>
+    makeUnits('classic', PRISONER_COLORS, null, null),
+  );
+  const [warColors, setWarColors] = useState<{ player: ColorDef; ai: ColorDef } | null>(null);
+  const [aiFreed, setAiFreed] = useState<PrisonerColorId[]>([]);
+  const [aiLastRoll, setAiLastRoll] = useState<[ColorDef, ColorDef] | null>(null);
+  const [shakeSignal, setShakeSignal] = useState(0);
+  const [callout, setCallout] = useState<{ key: number; text: string } | null>(null);
+  /*
+    What the last matched pair actually DID. Two faces landing the same
+    is not the same thing as somebody getting out: in Ultimate it can
+    send one back, in Skirmish the other side may already have taken it,
+    and in Color War it may not be your colour at all. The HUD used to
+    shout "RED RESCUED!" for every one of those.
+  */
+  const [matchNote, setMatchNote] = useState<{ text: string; good: boolean } | null>(
+    null,
+  );
+  const [layout, setLayout] = useState<ObstacleLayout>(EMPTY_LAYOUT);
+  const [round, setRound] = useState(0);
+  const [trophies, setTrophies] = useState(0);
+  const [wins, setWins] = useState({ easy: 0, medium: 0, hard: 0 });
+  const [modeWins, setModeWins] = useState<Record<ModeId, number>>({
+    classic: 0,
+    ultimate: 0,
+    skirmish: 0,
+    colorwar: 0,
+  });
+  const [lastDelta, setLastDelta] = useState<number | null>(null);
+  const [lastCoins, setLastCoins] = useState(0);
+  const [aiFlash, setAiFlash] = useState(false);
+  const [playerFlash, setPlayerFlash] = useState(false);
+
+  // Refs mirroring state that gesture/timer callbacks need synchronously.
+  const phaseRef = useRef<Phase>('pick');
+  const difficultyRef = useRef<AiDifficultyId>('easy');
+  const arenaIdRef = useRef<ArenaId>('castle');
+  const modeRef = useRef<ModeId>('classic');
+  const opponentRef = useRef<AiOpponent | null>(null);
+  const runRef = useRef<RunState | null>(null);
+  /**
+   * Is the battle now being played a CUP round?
+   *
+   * A run used to be enough on its own: any battle finished while one was
+   * open reported into the bracket. So a casual game started from the
+   * home screen — on Easy, for fun — could knock you out of a 150-coin
+   * Grand Championship you had paid for and were three rounds into.
+   *
+   * Only the Cups tab sets this. Play again keeps whatever the last
+   * round was, so "one more" after a cup round continues the cup and
+   * after a casual round stays casual.
+   */
+  const cupRoundRef = useRef(false);
+  const unitsRef = useRef<PrisonerUnit[]>([]);
+  const warRef = useRef<{ player: ColorDef; ai: ColorDef } | null>(null);
+  const aiFreedRef = useRef<PrisonerColorId[]>([]);
+  const countdownTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const lastSplash = useRef(0);
+
+  // Whether the start screen's content is taller than the screen itself.
+  const pickHeights = useRef({ viewport: 0, content: 0 });
+  const [pickOverflows, setPickOverflows] = useState(false);
+  const measurePick = useCallback(
+    (next: { viewport?: number; content?: number }) => {
+      pickHeights.current = { ...pickHeights.current, ...next };
+      const { viewport, content } = pickHeights.current;
+      setPickOverflows(viewport > 0 && content > viewport + 1);
+    },
+    [],
+  );
+
+  const setPhaseBoth = useCallback((next: Phase) => {
+    phaseRef.current = next;
+    setPhase(next);
+    // A preview belongs to the home screen. If anything at all moves the
+    // game off it, the preview goes too — otherwise its buy button would
+    // still be live, and pressable, on top of a battle.
+    if (next !== 'pick' && previewRef.current !== null) {
+      previewRef.current = null;
+      setPreview(null);
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      countdownTimers.current.forEach(clearTimeout);
+      flashTimers.current.forEach(clearTimeout);
+      if (calloutTimer.current) clearTimeout(calloutTimer.current);
+      stopAnnouncer();
+      stopMusic();
+    };
+  }, []);
+
+  const resetRace = useCallback(() => {
+    // Color War: draw two distinct fighter colors for this round.
+    let war: { player: ColorDef; ai: ColorDef } | null = null;
+    if (modeRef.current === 'colorwar') {
+      const shuffled = [...PRISONER_COLORS].sort(() => Math.random() - 0.5);
+      war = { player: shuffled[0], ai: shuffled[1] };
+    }
+    warRef.current = war;
+    setWarColors(war);
+    const fresh = makeUnits(
+      modeRef.current,
+      PRISONER_COLORS,
+      war?.player ?? null,
+      war?.ai ?? null,
+    );
+    unitsRef.current = fresh;
+    setUnits(fresh);
+    aiFreedRef.current = [];
+    setAiFreed([]);
+    setRolledFaces(null);
+    setAiLastRoll(null);
+    setRolling(false);
+  }, []);
+
+  /*
+    THE BOARD IS BUSY: something on it is still moving.
+
+    A battle is mostly waiting. The dice sit on the tray while somebody
+    decides to tap, and the board was being redrawn sixty times a second
+    to show a picture that had not changed — which on a phone is the
+    single most expensive thing this game does. A three-minute Classic
+    battle is perhaps a third dice in the air; a nine-minute Ultimate is
+    far less.
+
+    So the loop runs while anything moves and stops when nothing does.
+    `rolling` covers the dice. This covers the prisoners, whose leaps
+    take FLIGHT_SECONDS and are NOT tied to the player's roll — the
+    opponent moves figures too, on its own timer, in Skirmish.
+
+    A TIMER rather than a flag the animation clears, deliberately: the
+    worst case of an over-long window is a second of wasted drawing,
+    and the worst case of a missed clear would be a board frozen
+    mid-leap. Every path that starts motion extends the window, and the
+    window always ends.
+  */
+  const [boardBusy, setBoardBusy] = useState(false);
+  const boardBusyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markBoardBusy = useCallback(() => {
+    setBoardBusy(true);
+    if (boardBusyTimer.current) clearTimeout(boardBusyTimer.current);
+    boardBusyTimer.current = setTimeout(
+      () => setBoardBusy(false),
+      FLIGHT_SECONDS * 1000 + 400,
+    );
+  }, []);
+  useEffect(
+    () => () => {
+      if (boardBusyTimer.current) clearTimeout(boardBusyTimer.current);
+    },
+    [],
+  );
+
+  const moveUnit = useCallback((key: string, station: Station) => {
+    // Every prisoner leap in the game goes through here — the player's
+    // and the opponent's — which is what makes this the one place the
+    // render loop has to be told about.
+    markBoardBusy();
+    const next = unitsRef.current.map((u) =>
+      u.key === key ? { ...u, station } : u,
+    );
+    unitsRef.current = next;
+    setUnits(next);
+    return next;
+  }, [markBoardBusy]);
+
+  const retreatCount = () =>
+    unitsRef.current.filter((u) => u.station.kind === 'retreat').length;
+  /**
+   * The colours I have freed, for a friendly battle to send.
+   *
+   * Read off the board rather than kept as a second list, so the number
+   * on the other phone is the number of figures standing in my retreat —
+   * there is no way for the two to drift.
+   */
+  const retreatColorIds = () =>
+    unitsRef.current
+      .filter((u) => u.station.kind === 'retreat')
+      .map((u) => u.colorId as string);
+  const wallCount = () =>
+    unitsRef.current.filter((u) => u.station.kind === 'wall').length;
+  const jailCount = () =>
+    unitsRef.current.filter((u) => u.station.kind === 'jail').length;
+  /**
+   * Color War stands both fighters' rescues along the same bottom row —
+   * yours on the left three spots, your opponent's on the right three —
+   * so counting has to go by COLOUR. retreatCount() would add the two
+   * together and hand each side the other's score.
+   */
+  const warRetreatCount = (colorId: PrisonerColorId): number =>
+    unitsRef.current.filter(
+      (u) => u.station.kind === 'retreat' && u.colorId === colorId,
+    ).length;
+
+  const showCallout = useCallback((text: string, cue?: VoiceCue | null) => {
+    setCallout({ key: Date.now(), text });
+    if (calloutTimer.current) clearTimeout(calloutTimer.current);
+    calloutTimer.current = setTimeout(() => setCallout(null), 2300);
+    if (cue) playCue(cue);
+  }, []);
+
+  const submitCode = useCallback(() => {
+    const code = codeInput.trim().toUpperCase();
+    setCodeInput('');
+    // Parsed once, up front: "500 TROPHY" and "500 COIN" carry a value, so
+    // they cannot be matched by comparison like the others.
+    const trophyCode = parseTrophyCode(code);
+    const coinCode = parseCoinCode(code);
+    if (code === TESTER_CODE) {
+      persistUnlockAll(true);
+      setUnlockAll(true);
+      setCodeFeedback('Everything unlocked — have fun testing!');
+      playFanfare();
+    } else if (coinCode) {
+      // Checked before the catch-all, so "500 COIN" is never met with
+      // "that's not the secret code".
+      const coins = writeCoins(coinCode.coins);
+      setWallet({ ...getWallet() });
+      setCodeFeedback(
+        coinCode.clamped
+          // No coin emoji here: the game draws its own gold coin now, and
+          // this line sitting one tap away from the HUD was the last place
+          // still showing the other one.
+          ? `That is more coins than the game holds — set to ${COIN_CODE_MAX.toLocaleString()}.`
+          : `Coins set to ${coins.toLocaleString()}.`,
+      );
+      playFanfare();
+    } else if (code === RESET_CODE) {
+      const removed = clearPurchases();
+      setWallet({ ...getWallet() });
+      // A wiped skin may still be the equipped one. activeDieBody already
+      // falls back, but the Inventory would show "equipped" on a card it
+      // also shows as locked, so put the loadout back to the free dice.
+      setLoadout({ ...equipSkin(DEFAULT_SKIN_ID) });
+      setCodeFeedback(
+        removed === 0
+          ? 'Nothing bought yet — the Store is already untouched.'
+          : `${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
+      );
+      playClick();
+    } else if (trophyCode) {
+      // Checked before the catch-all, so "500 TROPHY" is never met with
+      // "that's not the secret code".
+      const result = writeTrophies(trophyCode.trophies);
+      setTrophies(result.trophies);
+      // Going down relocks things, so the equipped skin may no longer be
+      // owned. activeDieBody falls back on its own, but the Inventory would
+      // still print "equipped" on a card it also shows as locked.
+      setLoadout({ ...getLoadout() });
+      if (result.newUnlocks.length > 0) {
+        setRewards((queue) => [
+          ...queue,
+          ...result.newUnlocks.map((tier) => ({
+            emoji: tier.emoji,
+            name: tier.name,
+            kicker: 'NEW REWARD UNLOCKED',
+            note: 'Put it on in the Inventory whenever you like.',
+          })),
+        ]);
+      }
+      setCodeFeedback(
+        trophyCode.clamped
+          ? `That is more trophies than the game holds — set to ${TROPHY_CODE_MAX.toLocaleString()}.`
+          : `Trophies set to ${result.trophies.toLocaleString()}.`,
+      );
+      playFanfare();
+    } else if (code === TESTER_LOCK_CODE) {
+      persistUnlockAll(false);
+      setUnlockAll(false);
+      setCodeFeedback('Tester mode off — back to earning unlocks.');
+    } else if (code) {
+      setCodeFeedback("Hmm, that's not the secret code…");
+    }
+  }, [codeInput]);
+
+  const handleMoatSink = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSplash.current < 2500 || phaseRef.current !== 'battle') return;
+    lastSplash.current = now;
+    // In the words of the battlefield: a pond at the castle, a lake in
+    // the jungle, and on the station a die does not sink at all — it
+    // falls out through the hatch.
+    showCallout(obstacleLook(arenaIdRef.current).words.sink);
+  }, [showCallout]);
+
+  const quitToMenu = useCallback(() => {
+    // An abandoned cup round is simply replayed, not lost.
+    cupRoundRef.current = false;
+    countdownTimers.current.forEach(clearTimeout);
+    stopAnnouncer();
+    resetRace();
+    setCallout(null);
+    setMatchNote(null);
+    setPhaseBoth('pick');
+    /*
+      Leaving the result screen is a moment for an ad, if one is already
+      in hand.
+
+      Deliberately NOT the waiting kind. The menu appears immediately
+      either way, and this player is already looking at it — an advert
+      that turned up six seconds later, over the menu, would be worse
+      than none. A due ad that cannot be shown now is kept owed, and the
+      next Start battle pays it.
+    */
+    void showAdIfDue({ wait: false });
+  }, [resetRace, setPhaseBoth]);
+
+  const finishRound = useCallback(
+    (outcome: 'won' | 'lost' | 'tie') => {
+      setPhaseBoth(outcome);
+      /*
+        A FRIENDLY BATTLE PAYS NOTHING, as David asked — "a trophyless
+        friendly battle". No trophies, no coins, no cup progress, and
+        nothing reported to Game Center.
+
+        It also does not count toward the advert every third game.
+        Charging somebody an interstitial for playing with their brother
+        would be the wrong thing to monetise, and an ad landing between
+        two people who are both waiting to play again breaks the one
+        thing this mode is for.
+
+        Done first and with a `return`, so none of the paying paths below
+        can be reached by accident when a fifth one is added.
+      */
+      const playing = friendlyRef.current;
+      if (playing) {
+        const who = meRef.current;
+        if (who) {
+          // Tell the server, and only claim to have WON if we did. A
+          // loss is already known there — it was their claim.
+          void pulseBattle(who, playing.battleId, retreatColorIds(), {
+            claimWin: outcome === 'won',
+            leave: outcome !== 'won',
+          });
+        }
+        setFriendly(null);
+        friendlyRef.current = null;
+        setLastDelta(0);
+        setLastCoins(0);
+        return;
+      }
+      // Counted here, at the real end of the game, but NOT shown here —
+      // see src/game/ads.ts. An interstitial over the fanfare and the
+      // trophy count would bury the reward the player just earned.
+      noteGameFinished();
+      const coins = awardCoins(outcome, difficultyRef.current);
+      setWallet({ ...getWallet() });
+      setLastCoins(coins);
+
+      // A cup round reports back to the bracket. A tie does not advance
+      // you and does not knock you out — you play the round again.
+      if (runRef.current && cupRoundRef.current && outcome !== 'tie') {
+        const cup = tournamentById(runRef.current.tournamentId);
+        if (cup) {
+          const next = advanceRun(runRef.current, cup, outcome === 'won');
+          /*
+            A finished run is cleared, not kept. Held on to, the Cups tab
+            went on saying "YOU ARE IN THE …" and offering "Play the
+            Final" after the player had already been knocked out — and
+            the champion popup below reads from `next` and `cup`, which
+            are locals, so clearing loses nothing.
+          */
+          setRun(next.finished ? null : next);
+          cupRoundRef.current = false;
+          if (next.finished === 'knocked-out') {
+            setRewards((queue) => [
+              ...queue,
+              {
+                emoji: cup.emoji,
+                name: `Out of the ${cup.name}`,
+                kicker: 'CUP OVER',
+                note: 'Lose once and the run is over. Enter again from Cups whenever you like.',
+              },
+            ]);
+          }
+          if (next.finished === 'champion') {
+            const prize = rollReward(cup.prize);
+            grantCoins(prize);
+            setWallet({ ...getWallet() });
+            setRewards((queue) => [
+              ...queue,
+              {
+                emoji: cup.emoji,
+                name: `${cup.name} champion!`,
+                kicker: 'CUP WON',
+                note: `You beat the whole bracket. ${prize} coins are yours.`,
+              },
+            ]);
+          }
+        }
+      }
+      if (outcome === 'tie') {
+        showCallout("It's a tie!", 'tie');
+        setLastDelta(0);
+        return;
+      }
+      const result = applyMatchResult(
+        outcome === 'won',
+        difficultyRef.current,
+        modeRef.current,
+      );
+      setTrophies(result.trophies);
+      if (result.newUnlocks.length > 0) {
+        setRewards((queue) => [
+          ...queue,
+          ...result.newUnlocks.map((tier) => ({
+            emoji: tier.emoji,
+            name: tier.name,
+            kicker: 'NEW REWARD UNLOCKED',
+            note: 'Put it on in the Inventory whenever you like.',
+          })),
+        ]);
+      }
+      setWins(getProgress().wins);
+      setModeWins(getProgress().modeWins);
+      setLastDelta(result.delta);
+      // Game Center gets the whole picture after every battle, win or
+      // lose. Deliberately not awaited: it reaches the network, and the
+      // victory fanfare must not wait on Apple to answer.
+      syncGameCenter();
+      if (outcome === 'won') {
+        playFanfare();
+        showCallout('Victory!', 'win');
+        if (result.newUnlocks.length > 0) {
+          const unlock = result.newUnlocks[result.newUnlocks.length - 1];
+          flashTimers.current.push(
+            setTimeout(
+              () => showCallout(`UNLOCKED: ${unlock.emoji} ${unlock.name}!`, 'congrats'),
+              1900,
+            ),
+          );
+        }
+      } else {
+        showCallout(`Oh no — ${opponentRef.current?.name ?? 'your rival'} wins!`, 'lose');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+          () => {},
+        );
+      }
+    },
+    [setPhaseBoth, showCallout],
+  );
+
+  /**
+   * Start of a round: pick the rival, then show who it is for a couple of
+   * seconds before the countdown. `beginCountdown` is the old body of this
+   * function and runs when the reveal finishes.
+   */
+  /**
+   * Which menu page is showing. A battle always takes the screen back —
+   * being three rounds into a cup with the Store open would be nonsense.
+   */
+  // finishRound runs from a callback created once, so the run is read
+  // through a ref rather than a captured value.
+  runRef.current = run;
+
+  /*
+    Memoised, because FriendsScreen refreshes whenever it changes.
+
+    Built inline in the JSX, this object was a NEW object on every single
+    render of this screen — which meant every render while Friends was
+    open re-published the profile, re-fetched the list, and flipped the
+    page back to its loading spinner. A tap anywhere was enough.
+
+    COUNTS, never lists. A friend seeing "22 dice sets" is the
+    interesting fact; sending which 22 would be a bigger payload saying
+    less.
+  */
+  const friendStats = useMemo(
+    () => ({
+      trophies,
+      wins,
+      modeWins,
+      diceOwned: DICE_SKINS.filter((s) => isSkinUnlocked(s.id, trophies)).length,
+      arenasOwned: ARENA_ORDER.filter((id) => isArenaUnlocked(id, trophies)).length,
+      favouriteDie: loadout.skinId,
+      favouriteArena: loadout.arenaId,
+    }),
+    [trophies, wins, modeWins, loadout.skinId, loadout.arenaId],
+  );
+
+  const menuTab: Tab | null =
+    phase === 'pick' && tab !== 'play' ? tab : null;
+
+  /*
+    The Store and the Inventory build about seventy cards each, and
+    rebuilding them cost roughly a second EVERY time the tab was opened,
+    not just the first (David, 10 Sep 2026). They are now built once and
+    then hidden rather than thrown away, so the cost is paid a single
+    time. Nothing else on the bar is heavy enough to be worth keeping
+    alive, so nothing else is.
+  */
+  const [builtHeavyTabs, setBuiltHeavyTabs] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (menuTab !== 'store' && menuTab !== 'inventory') return;
+    setBuiltHeavyTabs((seen) => (seen[menuTab] ? seen : { ...seen, [menuTab]: true }));
+  }, [menuTab]);
+
+  /*
+    Is this heavy tab on screen RIGHT NOW?
+
+    The `|| menuTab === id` half is the whole point, and it is not
+    redundant with the effect above. David, 10 Sep 2026: "now when you
+    click on the store and inventory tabs, it shows the Home Screen for a
+    split second before loading in."
+
+    An effect runs AFTER the render it belongs to has been painted. So
+    the first tap on Store rendered a frame in which the tab had changed
+    but `builtHeavyTabs.store` was still false — nothing to draw, and the
+    board showing through where the Store should be — and only the NEXT
+    render, triggered by the effect, put the page up. One frame of the
+    wrong screen, exactly as described.
+
+    Asking during render instead means the page is in the very first
+    frame that knows about the tap. The effect still runs, and still
+    matters: it is what keeps the page mounted after you leave, which is
+    what made the second visit free in v1.75.0.
+  */
+  const heavyTabUp = (id: 'store' | 'inventory') => builtHeavyTabs[id] === true || menuTab === id;
+
+
+  /*
+    Close Friends when the player NAVIGATES, not when they are simply
+    somewhere other than Ranks.
+
+    This used to read `if (menuTab !== 'leaderboard')`, which was right
+    while the only door into Friends was a button on the Ranks page.
+    When Friends moved to the corner of the home screen on 10 Sep 2026
+    that rule became a trap: the home screen has no menu tab at all, so
+    the page opened and this effect shut it in the same breath — one tap,
+    nothing happens, no way to tell why.
+
+    Comparing against the PREVIOUS tab keeps what the old rule was
+    actually for. Tapping Store while Friends is open still closes it, so
+    the highlight and the screen never disagree; opening it from the home
+    screen and standing still leaves it open.
+  */
+  const tabBeforeRef = useRef(menuTab);
+  useEffect(() => {
+    const moved = tabBeforeRef.current !== menuTab;
+    tabBeforeRef.current = menuTab;
+    if (moved) setShowFriends(false);
+  }, [menuTab]);
+
+  // Leaving Settings clears the code feedback — the Done button used to
+  // do this on its way out, and without it "10,000 coins added!" would
+  // still be sitting there next time you opened the page.
+  useEffect(() => {
+    if (popup !== 'settings') setCodeFeedback(null);
+  }, [popup]);
+
+  /** Pay the entry fee and open a bracket. */
+  const enterTournament = useCallback((tournament: TournamentDef) => {
+    if (tournament.entry > 0) {
+      if (!spendCoins(tournament.entry)) return;
+      setWallet({ ...getWallet() });
+    }
+    setRun(startRun(tournament));
+    setDifficulty(tournament.difficulty);
+    difficultyRef.current = tournament.difficulty;
+  }, []);
+
+  const startCountdown = useCallback((origin: 'cup' | 'casual' | 'again' | 'friendly' = 'casual') => {
+    /*
+      `origin` is a STRING, not a boolean, and every call site passes it
+      explicitly. `onPress={startCountdown}` would hand this the press
+      event — truthy, and enough to make a casual game count as a cup
+      round if the flag were a boolean. The default is the safe one.
+    */
+    if (origin === 'cup') cupRoundRef.current = true;
+    else if (origin === 'casual' || origin === 'friendly') cupRoundRef.current = false;
+    /*
+      The battle waits BEHIND the ad, rather than starting under it.
+
+      Same moment as quitToMenu: the player is leaving the result screen,
+      this time straight into another battle. showAdIfDue used to be
+      fire-and-forget, and the matching overlay, its 1100/1800ms arm and
+      go timers and then the AI's roll interval are all ordinary JS
+      timers — which do not pause under a native full-screen ad. A
+      player who got an interstitial here closed it to find the battle
+      already running and the rival ahead of them.
+
+      showAdIfDue resolves immediately when no ad is due, so the ordinary
+      path costs one microtask.
+
+      THIS is the one that waits, since 11 Sep 2026 — David: "make sure
+      the ad happens when you press play again or start battle". It will
+      start the SDK and fetch an advert rather than skipping, for up to
+      six seconds, because a pause before a battle starts is a pause
+      before a game rather than an interruption of one.
+    */
+    void showAdIfDue({ wait: true }).then(() => {
+      const rival = pickOpponent(opponentRef.current ?? undefined);
+      opponentRef.current = rival;
+      setOpponent(rival);
+      resetRace();
+      // Fresh obstacle spots every battle.
+      setLayout(generateObstacleLayout(difficultyRef.current));
+      setRound((r) => r + 1);
+      setCallout(null);
+      setMatchNote(null);
+      setPhaseBoth('matching');
+    });
+  }, [resetRace, setPhaseBoth]);
+
+  /** Start the next bracket round: same flow as a normal battle. */
+  const playCupRound = useCallback(() => {
+    setTab('play');
+    /*
+      Re-pin the cup's difficulty. It is set once on entering, but the
+      chips on the Play tab and on every result screen stayed live, so a
+      Grand Championship advertised as Hard could be played through on
+      Easy.
+    */
+    const cup = runRef.current ? tournamentById(runRef.current.tournamentId) : undefined;
+    if (cup) {
+      setDifficulty(cup.difficulty);
+      difficultyRef.current = cup.difficulty;
+    }
+    startCountdown('cup');
+  }, [startCountdown]);
+
+  const beginCountdown = useCallback(() => {
+    setPhaseBoth('arm');
+    playCue('ready');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    countdownTimers.current.forEach(clearTimeout);
+    countdownTimers.current = [
+      setTimeout(() => {
+        setPhaseBoth('go');
+        playCue('go');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+        playThrow();
+      }, 1100),
+      setTimeout(() => {
+        setPhaseBoth('battle');
+      }, 1800),
+    ];
+  }, [setPhaseBoth]);
+
+  // Background music plays through the countdown and the race. The music
+  // level is not a dependency: the player can move that slider mid-battle
+  // and the loop follows it without being restarted (see syncMusic).
+  useEffect(() => {
+    if (
+      phase === 'matching' ||
+      phase === 'arm' ||
+      phase === 'go' ||
+      phase === 'battle'
+    ) {
+      startMusic();
+    } else {
+      stopMusic();
+    }
+  }, [phase]);
+
+  // The AI opponent: fair virtual rolls on a fixed cadence while battling.
+  // What a match DOES depends on the mode.
+  useEffect(() => {
+    if (phase !== 'battle') return;
+    /*
+      And not while the phone is in a pocket. A setInterval keeps firing
+      through a lock screen, so the opponent used to carry on rolling —
+      with haptics, sound and React state — for a battle nobody was
+      watching, until the player came back to find they had lost. It
+      resumes on return, which is also the fair thing.
+    */
+    if (!appActive) return;
+    /*
+      AND NOT WHEN THE OPPONENT IS A PERSON.
+
+      In a friendly battle the rival's prisoners are moved by the live
+      sync, from what their phone reports. Leaving this timer running
+      would have a bot rolling dice into the same state, so the two would
+      fight over `aiFreedRef` and the score would jump about.
+    */
+    if (friendlyRef.current) return;
+    const { rollIntervalMs } = AI_DIFFICULTIES[difficulty];
+    const id = setInterval(() => {
+      // The interval outlives the winning roll by a tick: it is cleared
+      // in the effect cleanup, which runs after the commit. Without this
+      // a tick landing between the player's winning settle and that
+      // cleanup can call finishRound a second time, and the AI carries
+      // on rolling after the game is over. Same guard as handleSettled.
+      if (phaseRef.current !== 'battle') return;
+      const roll = rollAiDice();
+      setAiLastRoll(roll);
+      const [a, b] = roll;
+      if (a.id !== b.id) return;
+      const m = modeRef.current;
+      const aiPing = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        setAiFlash(true);
+        flashTimers.current.push(setTimeout(() => setAiFlash(false), 650));
+      };
+
+      if (m === 'classic' || m === 'ultimate') {
+        // AI races its own abstract set of six.
+        if (aiFreedRef.current.includes(a.id)) {
+          if (m === 'ultimate') {
+            // Prisoner exchange bites the AI too!
+            const next = aiFreedRef.current.filter((c) => c !== a.id);
+            aiFreedRef.current = next;
+            setAiFreed(next);
+            showCallout(`Ha! ${opponentRef.current?.name}'s ${a.label} was captured again!`);
+          }
+          return;
+        }
+        const next = [...aiFreedRef.current, a.id];
+        aiFreedRef.current = next;
+        setAiFreed(next);
+        aiPing();
+        const ac = next.length;
+        const pc = retreatCount();
+        if (ac === PRISONER_COLORS.length) {
+          finishRound('lost');
+        } else if (ac === PRISONER_COLORS.length - 1) {
+          showCallout('He needs only ONE more — hurry!', 'hurry');
+        } else if (ac === pc && pc > 0) {
+          showCallout(`${opponentRef.current?.name} ties it up ${ac}–${pc}!`, 'lookout');
+        } else if (ac === pc + 1) {
+          showCallout(`${opponentRef.current?.name} freed ${a.label} — you're falling behind!`, 'lookout');
+        } else {
+          showCallout(`${opponentRef.current?.name} freed ${a.label}!`, 'lookout');
+        }
+        return;
+      }
+
+      if (m === 'skirmish') {
+        // Shared pool: grab the prisoner if it's still in jail.
+        const unit = unitsRef.current.find(
+          (u) => u.colorId === a.id && u.station.kind === 'jail',
+        );
+        if (!unit) return;
+        moveUnit(unit.key, { kind: 'wall', index: wallCount() });
+        aiPing();
+        const pc = retreatCount();
+        const ac = wallCount();
+        if (jailCount() === 0) {
+          finishRound(pc > ac ? 'won' : pc < ac ? 'lost' : 'tie');
+        } else {
+          showCallout(`${opponentRef.current?.name} GRABBED ${a.label}! ${pc}–${ac}`, 'lookout');
+        }
+        return;
+      }
+
+      // Color War: only the AI's own color counts.
+      const war = warRef.current;
+      if (!war || a.id !== war.ai.id) return;
+      const unit = unitsRef.current.find(
+        (u) => u.colorId === war.ai.id && u.station.kind === 'jail',
+      );
+      if (!unit) return;
+      // Right three spots of the bottom row: indices 3, 4, 5.
+      moveUnit(unit.key, {
+        kind: 'retreat',
+        index: 3 + warRetreatCount(war.ai.id),
+      });
+      aiPing();
+      const ac = warRetreatCount(war.ai.id);
+      if (ac >= 3) {
+        finishRound('lost');
+      } else if (ac === 2) {
+        showCallout(`${opponentRef.current?.name} has 2 of 3 — hurry!`, 'hurry');
+      } else {
+        showCallout(`${opponentRef.current?.name} rescued a ${war.ai.label}!`, 'lookout');
+      }
+    }, rollIntervalMs);
+    return () => clearInterval(id);
+  }, [phase, appActive, difficulty, finishRound, moveUnit, showCallout]);
+
+  const handleThrow = useCallback(() => {
+    markBoardBusy();
+    setRolling(true);
+    setRolledFaces(null);
+  }, [markBoardBusy]);
+
+  const handleSettled = useCallback(
+    (faces: ColorDef[]) => {
+      setRolling(false);
+      setRolledFaces(faces);
+      setMatchNote(null);
+      // Belt and braces: a settle can be followed by a sinking die or a
+      // celebration shake, neither of which goes through moveUnit.
+      markBoardBusy();
+      if (phaseRef.current !== 'battle') return;
+      const isMatch = faces.length === 2 && faces[0].id === faces[1].id;
+      if (!isMatch) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        return;
+      }
+      const color = faces[0];
+      const m = modeRef.current;
+
+      const celebrate = () => {
+        setMatchNote({ text: `${color.label.toUpperCase()} RESCUED!`, good: true });
+        setShakeSignal((s2) => s2 + 1);
+        setPlayerFlash(true);
+        flashTimers.current.push(setTimeout(() => setPlayerFlash(false), 650));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+          () => {},
+        );
+        playCheer();
+      };
+
+      if (m === 'classic' || m === 'ultimate') {
+        const jailUnit = unitsRef.current.find(
+          (u) => u.colorId === color.id && u.station.kind === 'jail',
+        );
+        if (!jailUnit) {
+          if (m === 'ultimate') {
+            // Prisoner exchange: an already-rescued color goes BACK to jail.
+            const freedUnit = unitsRef.current.find(
+              (u) => u.colorId === color.id && u.station.kind === 'retreat',
+            );
+            if (freedUnit) {
+              moveUnit(freedUnit.key, { kind: 'jail', index: freedUnit.jailIndex });
+              setMatchNote({
+                text: `${color.label.toUpperCase()} SENT BACK!`,
+                good: false,
+              });
+              showCallout(`Oh no! ${color.label} was captured again!`, 'wrong');
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Warning,
+              ).catch(() => {});
+            }
+          } else {
+            setMatchNote({
+              text: `${color.label.toUpperCase()} IS ALREADY OUT`,
+              good: false,
+            });
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          }
+          return;
+        }
+        // First FREE spot, not the count: in Ultimate an exchange can have
+        // sent a figure back to jail, leaving a hole mid-row — and the
+        // count would then stand this rescue on an occupied slot.
+        moveUnit(jailUnit.key, {
+          kind: 'retreat',
+          index: firstFreeIndex(unitsRef.current, 'retreat'),
+        });
+        celebrate();
+        const n = retreatCount();
+        const ac = aiFreedRef.current.length;
+        if (n === PRISONER_COLORS.length) {
+          finishRound('won');
+        } else if (n === PRISONER_COLORS.length - 1) {
+          showCallout(`${color.label} rescued — one more to win!`, 'gogogo');
+        } else if (n === ac && ac > 0) {
+          showCallout(`${color.label} rescued — you're tied ${n}–${ac}!`, countCue(n));
+        } else if (n === ac + 1) {
+          showCallout(`${color.label} rescued — you take the lead!`, countCue(n));
+        } else {
+          showCallout(`${color.label} rescued!`, countCue(n));
+        }
+        return;
+      }
+
+      if (m === 'skirmish') {
+        const unit = unitsRef.current.find(
+          (u) => u.colorId === color.id && u.station.kind === 'jail',
+        );
+        if (!unit) {
+          setMatchNote({
+            text: `${color.label.toUpperCase()} IS ALREADY OUT`,
+            good: false,
+          });
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          return;
+        }
+        moveUnit(unit.key, {
+          kind: 'retreat',
+          index: firstFreeIndex(unitsRef.current, 'retreat'),
+        });
+        celebrate();
+        const pc = retreatCount();
+        const ac = wallCount();
+        if (jailCount() === 0) {
+          finishRound(pc > ac ? 'won' : pc < ac ? 'lost' : 'tie');
+        } else {
+          showCallout(`You grabbed ${color.label}! ${pc}–${ac}`, countCue(pc));
+        }
+        return;
+      }
+
+      // Color War: only YOUR color counts.
+      const war = warRef.current;
+      if (!war) return;
+      if (color.id !== war.player.id) {
+        setMatchNote({
+          text: `${color.label.toUpperCase()} IS NOT YOUR COLOR`,
+          good: false,
+        });
+        showCallout(
+          color.id === war.ai.id
+            ? `That's your opponent's color — hands off!`
+            : `${color.label} isn't your color!`,
+        );
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        return;
+      }
+      const unit = unitsRef.current.find(
+        (u) => u.colorId === war.player.id && u.station.kind === 'jail',
+      );
+      if (!unit) return;
+      // Left three spots of the bottom row: indices 0, 1, 2.
+      moveUnit(unit.key, {
+        kind: 'retreat',
+        index: warRetreatCount(war.player.id),
+      });
+      celebrate();
+      const n = warRetreatCount(war.player.id);
+      if (n >= 3) {
+        finishRound('won');
+      } else if (n === 2) {
+        showCallout(`Two down — one more ${war.player.label}!`, 'gogogo');
+      } else {
+        showCallout(`${war.player.label} rescued!`, countCue(n));
+      }
+    },
+    [finishRound, moveUnit, showCallout],
+  );
+
+  // Touch samples for the release velocity. PanResponder's own vx/vy is a
+  // whole-gesture average and dies to nearly zero if the finger hesitates
+  // before lifting, which turned real flicks into taps.
+  const samples = useRef<TouchSample[]>([]);
+  const sample = (event: GestureResponderEvent) => {
+    const { pageX, pageY, timestamp } = event.nativeEvent;
+    samples.current.push({ x: pageX, y: pageY, t: timestamp });
+    // A tenth of a second of history is all the tail needs.
+    if (samples.current.length > 12) samples.current.shift();
+  };
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      // Throw on touch-down so rapid tapping feels instant.
-      onPanResponderGrant: () => {
-        controlsRef.current?.throwAll();
+      // Refused outright rather than ignored in the handlers: a claimed
+      // gesture is one the board owns, and owning a touch that belongs to
+      // the preview is how a tap on an open preview started a battle.
+      onStartShouldSetPanResponder: () => previewRef.current === null,
+      onMoveShouldSetPanResponder: () => previewRef.current === null,
+      // Once the throw gesture is claimed, nothing may take it away
+      // mid-flick — a stolen gesture never reaches release and the dice
+      // simply never move.
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (event) => {
+        samples.current = [];
+        sample(event);
+        if (previewRef.current !== null) return;
+        if (phaseRef.current === 'pick') startCountdown('casual');
+        // battle: the throw waits for release, so a flick can carry the
+        // player's own direction and speed into the dice. arm/go: inputs
+        // locked during the ritual. won/lost/tie: the buttons decide.
       },
-      // A fast release re-throws as a directional flick.
-      onPanResponderRelease: (_event, gesture) => {
-        const speed = Math.hypot(gesture.vx, gesture.vy);
-        if (speed < TUNING.throw.flickThreshold) return;
-        const scale = TUNING.throw.flickScale;
-        const max = TUNING.throw.flickMaxSpeed;
-        const clamp = (v: number) => Math.max(-max, Math.min(max, v));
-        controlsRef.current?.throwAll({
-          x: clamp(gesture.vx * scale),
-          // Screen up (negative vy) throws away from the player (-z).
-          z: clamp(gesture.vy * scale),
-        });
+      // Lifting the finger throws: a fast gesture is a flick, carrying its
+      // direction and speed into the dice; a slow one is a tap and rolls
+      // them gently forward.
+      onPanResponderMove: sample,
+      onPanResponderRelease: (event, gesture) => {
+        sample(event);
+        if (phaseRef.current !== 'battle') return;
+        const velocity = velocityFromSamples(samples.current);
+        controlsRef.current?.throwAll(
+          flickFromGesture(gesture, { velocity }) ?? undefined,
+        );
+        samples.current = [];
       },
     }),
   ).current;
+
+  // Equipped in the Inventory, falling back if it is no longer unlocked
+  // (which happens when family tester mode is switched back off).
+  const arenaId: ArenaId = activeArena(trophies);
+  // The splash callout fires from a callback created on the first render,
+  // so it reads the battlefield from a ref rather than from the value
+  // above — otherwise a die falling in the lake would always be announced
+  // as the castle's pond.
+  useEffect(() => {
+    arenaIdRef.current = arenaId;
+  }, [arenaId]);
+  const equippedSkin = activeSkin(trophies);
+  // What the board actually draws. While a preview is open that is the
+  // previewed item, which is the whole trick: there is no second scene and
+  // no painted mock-up, so the preview cannot disagree with the game.
+  const sceneArenaId: ArenaId =
+    preview?.kind === 'arena' ? preview.id : arenaId;
+  const sceneSkin =
+    preview?.kind === 'die' ? skinById(preview.id) : equippedSkin;
+  const dieBodyColor = sceneSkin.body;
+
+  /*
+    Which scene the canvas is actually SHOWING, as opposed to which one it
+    has been told to show.
+    
+    David, 26 Aug 2026: "the arena preview doesn't load fast enough when
+    you click on an arena, you can still see the previous arena you
+    clicked on for a split second."
+    
+    It is not a loading problem. The board runs at `frameloop: 'never'`
+    while a menu is up, and a GL surface that has stopped rendering keeps
+    displaying its last frame. Opening a preview therefore uncovered a
+    canvas still holding a picture of the arena previewed BEFORE this one.
+    `sceneToken` is what we want drawn; `drawnToken` is what FirstFrame
+    has confirmed really was drawn; the gap between them is covered.
+  */
+  const sceneToken = `${sceneArenaId}|${sceneSkin.id}`;
+  const [drawnToken, setDrawnToken] = useState('');
+  const stale = preview !== null && drawnToken !== sceneToken;
+
+  /*
+    Hold the shelf up until the board has really drawn.
+
+    David, 10 Sep 2026: "when you click on an item in the store or
+    inventory, for a second it just shows the main color of the arena you
+    have selected or are viewing."
+
+    That colour was OURS. The cover below — added on 26 Aug to hide the
+    canvas's stale last frame — is painted in the arena's own sky colour,
+    on the reasoning that the arena then "fades out into that place". It
+    does, when you are already standing in the arena and only the die
+    changes. Coming from a shelf full of white cards it is a flat slab of
+    sky with nothing in it, and two frames is long enough to read as a
+    blank screen.
+
+    So the shelf itself is the cover now. It is already mounted, already
+    opaque, and already the thing the player was looking at, so there is
+    no visible transition at all until the board is genuinely ready. The
+    sky slab stays for the paths that have no shelf up — previewing from
+    inside another preview — where fading into the arena is right.
+  */
+  const holdShelf = stale;
+
+  const showPreview = (target: PreviewTarget | null) => {
+    previewRef.current = target;
+    setPreview(target);
+  };
+
+  /**
+   * Everything the preview bar needs to draw itself, worked out from the
+   * item being looked at. Null when nothing is open.
+   *
+   * The rules live in game/itemPreview.ts; this only looks up the name,
+   * the price and whether it is already yours.
+   */
+  /*
+    Starting a friendly battle. Both phones run this within a second of
+    each other — whoever accepted, and whoever sent it and then saw a
+    battle appear on the next poll.
+
+    The mode and difficulty come from the SERVER's copy of the challenge,
+    not from whatever this phone had selected, so the two games are the
+    same game.
+  */
+  const startFriendly = useCallback(
+    (battle: BattleHandle, opponentName: string) => {
+      if (friendlyRef.current) return;
+      setBanner(null);
+      setMode(battle.mode);
+      modeRef.current = battle.mode;
+      setDifficulty(battle.difficulty);
+      difficultyRef.current = battle.difficulty;
+      setOpponent({ name: opponentName, short: opponentName.slice(0, 7).toUpperCase(), emoji: '' });
+      setFriendly({
+        battleId: battle.id,
+        opponentId: battle.opponentId ?? '',
+        opponentName,
+      });
+      friendlyRef.current = {
+        battleId: battle.id,
+        opponentId: battle.opponentId ?? '',
+        opponentName,
+      };
+      setTab('play');
+      setShowFriends(false);
+      startCountdown('friendly');
+    },
+    [startCountdown],
+  );
+  startFriendlyRef.current = startFriendly;
+
+  const answerBattle = useCallback(
+    async (inviteId: string, action: 'accept' | 'decline' | 'cancel') => {
+      const who = meRef.current;
+      if (!who) return;
+      setBanner(null);
+      const result = await answerChallenge(who, inviteId, action);
+      if (!result.ok) {
+        showCallout(result.error, 'lookout');
+        return;
+      }
+      if (action === 'accept' && result.battle) {
+        const from = challenges.incoming.find((c) => c.id === inviteId);
+        startFriendly(result.battle, from?.who?.name ?? 'Your friend');
+      } else {
+        setChallenges((c) => ({
+          ...c,
+          incoming: c.incoming.filter((x) => x.id !== inviteId),
+          outgoing: action === 'cancel' ? null : c.outgoing,
+        }));
+      }
+    },
+    [challenges.incoming, showCallout, startFriendly],
+  );
+
+  /*
+    THE LIVE BATTLE, one beat a second.
+
+    This REPLACES the opponent's roll timer rather than running beside
+    it — see the guard on that effect. The rival's prisoners move because
+    a real person's dice landed, not because two seconds went by.
+
+    `aiFreedRef` is the same state the timer used to drive, so everything
+    downstream of it — the scoreboard, the callouts, the dots — carries on
+    working without knowing the difference.
+  */
+  useEffect(() => {
+    if (!friendly || !me) return;
+    if (!appActive) return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const beat = async () => {
+      const pulse = await pulseBattle(me, friendly.battleId, retreatColorIds());
+      if (!alive) return;
+      if (pulse) {
+        const theirs = pulse.theirs as PrisonerColorId[];
+        if (theirs.length !== aiFreedRef.current.length) {
+          aiFreedRef.current = theirs;
+          setAiFreed(theirs);
+        }
+        if (pulse.theyDropped && phaseRef.current === 'battle') {
+          showCallout(`${friendly.opponentName} has gone — you win!`, 'congrats');
+          finishRound('won');
+          return;
+        }
+        if (pulse.winner && pulse.winner !== me.playerId && phaseRef.current === 'battle') {
+          finishRound('lost');
+          return;
+        }
+      }
+      timer = setTimeout(beat, BATTLE_SYNC_MS);
+    };
+    timer = setTimeout(beat, 0);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [friendly, me, appActive, finishRound, showCallout]);
+
+  const previewView = (() => {
+    if (!preview) return null;
+
+    if (preview.kind === 'arena') {
+      const arena = ARENAS[preview.id];
+      const need = TIERS.find((t) => t.id === ARENA_UNLOCKS[preview.id])?.at ?? 0;
+      const price = ARENA_PRICES[preview.id];
+      return {
+        name: arena.name,
+        note: 'Every battlefield plays the same — only the view changes.',
+        action: previewAction({
+          trophies,
+          coins: wallet.coins,
+          // The wallet key is prefixed — see arenaKey.
+          owned: price !== undefined && wallet.owned.includes(arenaKey(preview.id)),
+          unlocked: isArenaUnlocked(preview.id, trophies),
+          equipped: arenaId === preview.id,
+          needTrophies: need,
+          price,
+          // Coins are spent in the Store and nowhere else, exactly as for
+          // dice — the Inventory shows the price but points at the shop.
+          canBuy: preview.from === 'store',
+        }),
+      };
+    }
+
+    const skin = skinById(preview.id);
+    return {
+      name: `${skin.emoji} ${skin.name} dice`,
+      note: 'The shell is all that changes — the six face colours never do.',
+      action: previewAction({
+        trophies,
+        coins: wallet.coins,
+        owned: skin.price !== undefined && wallet.owned.includes(skin.id),
+        // The board's own question, not a re-derivation of it. Asking
+        // "does it have a price?" instead would have charged a family
+        // tester for Store dice that tester mode had already opened.
+        unlocked: isSkinUnlocked(skin.id, trophies),
+        equipped: loadout.skinId === skin.id,
+        price: skin.price,
+        needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
+        canBuy: preview.from === 'store',
+      }),
+    };
+  })();
+
+  /**
+   * The one button.
+   *
+   * Buying closes the preview and hands over to the reward popup. Spending
+   * coins is the biggest thing that happens in this game, and it deserves
+   * the same moment as earning an unlock rather than a button quietly
+   * changing what it says.
+   */
+  const commitPreview = () => {
+    if (!preview || !previewView) return;
+    const action = previewView.action;
+
+    if (action.kind === 'buy') {
+      // One flow for both kinds of purchase; only the wallet key and the
+      // words on the reward popup differ.
+      const bought =
+        preview.kind === 'arena'
+          ? {
+              key: arenaKey(preview.id),
+              emoji: ARENAS[preview.id].emoji,
+              name: ARENAS[preview.id].name,
+              note: 'Tap it again to battle there.',
+            }
+          : {
+              key: preview.id,
+              emoji: skinById(preview.id).emoji,
+              name: `${skinById(preview.id).name} dice`,
+              note: 'Tap it again to put it on.',
+            };
+      const result = buyWithCoins(bought.key, action.price);
+      if (!result.ok) return;
+      setWallet({ ...getWallet() });
+      showPreview(null);
+      setRewards((queue) => [
+        ...queue,
+        { emoji: bought.emoji, name: bought.name, kicker: 'PURCHASED', note: bought.note },
+      ]);
+      playFanfare();
+      return;
+    }
+
+    if (action.kind !== 'equip') return;
+    playEquip();
+    setLoadout(
+      preview.kind === 'arena'
+        ? { ...equipArena(preview.id) }
+        : { ...equipSkin(preview.id) },
+    );
+  };
+  // In Color War both sides stand in the retreat row, so each side's
+  // score is its own colour rather than everyone standing there.
+  const inRetreat = (colorId: PrisonerColorId) =>
+    units.filter((u) => u.station.kind === 'retreat' && u.colorId === colorId)
+      .length;
+  const playerScore =
+    mode === 'colorwar' && warColors
+      ? inRetreat(warColors.player.id)
+      : units.filter((u) => u.station.kind === 'retreat').length;
+  const aiScore =
+    mode === 'colorwar'
+      ? warColors
+        ? inRetreat(warColors.ai.id)
+        : 0
+      : mode === 'skirmish'
+        ? units.filter((u) => u.station.kind === 'wall').length
+        : aiFreed.length;
+  const target = mode === 'colorwar' ? 3 : 6;
+  const upNext = nextTier(trophies);
+  const upNextLabel = upNext ? tierLabel(upNext, trophies) : null;
+  const stakes = TROPHY_STAKES[difficulty];
 
   const isMatch =
     rolledFaces !== null &&
     rolledFaces.length === 2 &&
     rolledFaces[0].id === rolledFaces[1].id;
 
+  const modeRow = (
+    <View style={styles.modeBlock}>
+      <View style={styles.modeGrid}>
+        {MODE_ORDER.map((id) => (
+          <Pressable
+            key={id}
+            onPress={() => {
+              modeRef.current = id;
+              playClick();
+              setMode(id);
+            }}
+            style={[styles.modeButton, mode === id && styles.difficultyButtonActive]}
+          >
+            <View style={styles.modeLabel}>
+              {/*
+                The icon is always ink, in both states, because the
+                selected chip is GOLD and its text is ink too — there is
+                no reversed-out version of this chip to match.
+              */}
+              {React.createElement(MODE_ICONS[id], { size: 21 })}
+              <Text
+                style={[
+                  styles.modeText,
+                  mode === id && styles.difficultyTextActive,
+                ]}
+              >
+                {MODES[id].name}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
+      {/*
+        Two lines' worth of height is always reserved. Color War's rules
+        fit on one line where the others take two, so picking it used to
+        pull the whole screen up by a line and push it back down again on
+        the next tap.
+      */}
+      <Text style={styles.modeRules} numberOfLines={2} maxFontSizeMultiplier={1.5}>
+        {MODES[mode].rules}
+      </Text>
+    </View>
+  );
+
+  const difficultyRow = (
+    <View style={styles.difficultyBlock}>
+      <View style={styles.difficultyRow}>
+      {Object.values(AI_DIFFICULTIES).map((d) => (
+        <Pressable
+          key={d.id}
+          onPress={() => {
+            difficultyRef.current = d.id;
+            playClick();
+            setDifficulty(d.id);
+          }}
+          style={[
+            styles.difficultyButton,
+            difficulty === d.id && styles.difficultyButtonActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.difficultyText,
+              difficulty === d.id && styles.difficultyTextActive,
+            ]}
+          >
+            {d.label}
+          </Text>
+        </Pressable>
+      ))}
+      </View>
+      {/*
+        Two lines' worth of height always. Easy's hint wraps to two where
+        Medium's and Hard's fit on one, so picking a difficulty shifted
+        the stakes line and everything under it — the same fault the mode
+        rules had.
+      */}
+      <Text style={styles.difficultyHint} numberOfLines={2} maxFontSizeMultiplier={1.5}>
+        {obstacleHint(difficulty, obstacleLook(arenaId).words)}
+      </Text>
+      <Text style={styles.stakesText}>
+        Win +{rangeLabel(stakes.win)} · Lose {rangeLabel(stakes.loss)} trophies
+      </Text>
+    </View>
+  );
+
+  // Every round ends with an explicit choice — one more battle, or back to
+  // the menu to change mode, difficulty or arena. Tapping the result screen
+  // used to restart instantly, which meant a stray tap started a fresh
+  // round (and on Hard, put 25 trophies back on the line).
+  const roundOverButtons = (
+    <View style={styles.endButtons}>
+      <Pressable style={styles.playAgainButton} onPress={() => startCountdown('again')}>
+        <Text style={styles.playAgainText}>Play again</Text>
+      </Pressable>
+      <Pressable style={styles.homeButton} onPress={quitToMenu}>
+        <Text style={styles.homeText}>Home</Text>
+      </Pressable>
+    </View>
+  );
+
+  if (!hydrated) {
+    // One or two frames on a cold start, in the app's own background.
+    return <View style={styles.hydrating} />;
+  }
+
+  if (twoPlayer) {
+    return (
+      <TwoPlayerScreen
+        arenaId={arenaId}
+        dieBodyColor={equippedSkin.body}
+        mode={mode}
+        difficulty={difficulty}
+        symbols={colorblind}
+        onExit={() => setTwoPlayer(false)}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Canvas
         style={styles.canvas}
+        /*
+         * The board is not just hidden — it stops rendering. Now that the
+         * home and round-over overlays are solid paper, the scene is only
+         * ever visible during a round (matching's dim still lets it ghost
+         * through) or in an item preview, and a phone should not be
+         * running a 3D scene nobody can see.
+         */
+        /*
+          Three questions, in order of how much they save.
+
+          Is the game even on screen? Is the board visible at all — it is
+          hidden behind solid paper on every menu and result screen. And
+          during a battle, is anything on it actually MOVING: dice in the
+          air, or a prisoner mid-leap. A battle is mostly somebody
+          deciding whether to tap, and redrawing an unchanged picture
+          sixty times a second through all of that is the most expensive
+          thing this game does to a phone.
+
+          The countdown phases stay on: they are under two seconds and
+          the board is what the player is looking at.
+        */
+        frameloop={
+          appActive &&
+          (preview !== null ||
+            phase === 'matching' ||
+            phase === 'arm' ||
+            phase === 'go' ||
+            (phase === 'battle' && (rolling || boardBusy)))
+            ? 'always'
+            : 'never'
+        }
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
           camera.lookAt(0, 0, -0.2);
         }}
       >
-        <color attach="background" args={['#1b1430']} />
+        <color attach="background" args={[ARENAS[sceneArenaId].skyColor]} />
         <DiceScene
+          /*
+            The arena is deliberately NOT in this key.
+            
+            It used to be, which tore down and rebuilt the physics world,
+            both dice bodies and every mesh in the scene each time you
+            looked at a different battlefield — for a change that is
+            purely scenery. `physics` is a useMemo with no dependencies
+            and relies on this remount, so the key still carries the
+            difficulty and the round, which is what actually changes the
+            LAYOUT. Nothing about which arena you are standing in touches
+            the simulation: `ArenaComponent`, `look` and `lighting` are
+            all read per render inside DiceScene.
+          */
+          key={`${difficulty}-${round}`}
+          layout={layout}
+          arenaId={sceneArenaId}
+          dieBodyColor={dieBodyColor}
+          diePattern={sceneSkin.pattern}
+          diePatternInk={sceneSkin.ink}
+          dieSymbols={colorblind}
+          showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}
           onThrow={handleThrow}
           onSettled={handleSettled}
+          onMoatSink={handleMoatSink}
+          units={units}
+          shakeSignal={shakeSignal}
+          throwsEnabled={phase === 'battle'}
         />
+        <FirstFrame token={sceneToken} onDrawn={setDrawnToken} />
       </Canvas>
+
+      {/*
+        The cover over a canvas that has not caught up yet.
+        
+        Painted in the new arena's own sky, so the reveal reads as walking
+        out into that place rather than as a panel being removed: the sky
+        arrives first and the ground appears under it. It is only ever up
+        for a frame or two — `pointerEvents="none"` so it cannot swallow a
+        tap in that time.
+      */}
+      {stale && (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: ARENAS[sceneArenaId].skyColor },
+          ]}
+        />
+      )}
+
+      {/*
+        "Marc wants a battle!" — across the top of whatever you were
+        doing, for a few seconds. Rendered before the gesture layer and
+        with its own zIndex so it sits over the board, the menus and the
+        tab bar alike: it is the one thing in this game that interrupts.
+      */}
+      {banner && me && (() => {
+        const c = challenges.incoming.find((x) => x.id === banner);
+        if (!c) return null;
+        return (
+          <ChallengeBanner
+            key={c.id}
+            challenge={c}
+            secondsLeft={secondsLeft(c.expiresAt, now)}
+            onAccept={() => void answerBattle(c.id, 'accept')}
+            onDecline={() => void answerBattle(c.id, 'decline')}
+          />
+        );
+      })()}
 
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
-      {/* HUD */}
-      <View pointerEvents="none" style={styles.hud}>
-        <Text style={styles.title}>DICE BATTLES</Text>
-        <View style={styles.resultRow}>
-          {rolledFaces ? (
-            <>
-              {rolledFaces.map((face, i) => (
-                <View
-                  key={i}
-                  style={[styles.swatch, { backgroundColor: face.hex }]}
-                />
-              ))}
-              <Text style={[styles.resultText, isMatch && styles.matchText]}>
-                {isMatch
-                  ? `${rolledFaces[0].label.toUpperCase()} MATCH!`
-                  : `${rolledFaces[0].label} · ${rolledFaces[1].label}`}
-              </Text>
-            </>
-          ) : (
-            <Text style={styles.hint}>
-              {rolling ? 'Rolling…' : 'Tap to roll · flick to throw'}
-            </Text>
-          )}
+      {/*
+        There is no game-name bar across the top any more. It sat at y58
+        spanning the full width while the trophy and coin pills sit at
+        y52 on the left, so the two ran into each other — and the name was
+        already on the launch card and again in the heading below.
+      */}
+
+      {/* Scoreboard */}
+      {(phase === 'battle' || phase === 'won' || phase === 'lost' || phase === 'tie') && (
+        <View pointerEvents="none" style={styles.scoreboard}>
+          <View style={[styles.scoreSide, playerFlash && styles.scoreFlashYou]}>
+            <Text style={styles.scoreLabel}>YOU</Text>
+            {warColors && (
+              <View style={[styles.aiRollSwatch, { backgroundColor: warColors.player.hex }]} />
+            )}
+            <Text style={styles.scoreNumber}>{playerScore}</Text>
+          </View>
+          <Text style={styles.scoreVs}>vs</Text>
+          <View style={[styles.scoreSide, aiFlash && styles.scoreFlashAi]}>
+            <Text style={styles.scoreNumber}>{aiScore}</Text>
+            {warColors && (
+              <View style={[styles.aiRollSwatch, { backgroundColor: warColors.ai.hex }]} />
+            )}
+            <Text style={styles.scoreLabel}>{opponent.short}</Text>
+          </View>
+          <View style={styles.aiMeta}>
+            {(mode === 'classic' || mode === 'ultimate') && (
+              <View style={styles.aiDots}>
+                {PRISONER_COLORS.map((c) => (
+                  <View
+                    key={c.id}
+                    style={[
+                      styles.aiDot,
+                      { backgroundColor: c.hex },
+                      !aiFreed.includes(c.id) && styles.aiDotPending,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+            {aiLastRoll && (
+              <View style={styles.aiRoll}>
+                {aiLastRoll.map((c, i) => (
+                  <View
+                    key={i}
+                    style={[styles.aiRollSwatch, { backgroundColor: c.hex }]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      )}
+
+      {/* Restart (quit to menu) during a round */}
+      {(phase === 'battle' || phase === 'arm' || phase === 'go') && (
+        <Pressable style={styles.quitButton} onPress={quitToMenu}>
+          <Text style={styles.quitText}>↺</Text>
+        </Pressable>
+      )}
+
+      {/* Announcer callout banner */}
+      {callout && (
+        <View pointerEvents="none" style={styles.calloutWrap} key={callout.key}>
+          <Text style={styles.calloutText}>{callout.text}</Text>
+        </View>
+      )}
+
+      {/* Player status HUD at the bottom, in the thumb zone. */}
+      {phase === 'battle' && (
+        <View
+          pointerEvents="none"
+          style={[styles.bottomHud, { bottom: bottomInset + 12 }]}
+        >
+          <View style={styles.resultRow}>
+            {rolledFaces ? (
+              <>
+                {rolledFaces.map((face, i) => (
+                  <View
+                    key={i}
+                    style={[styles.swatch, { backgroundColor: face.hex }]}
+                  />
+                ))}
+                <Text
+                  style={[
+                    styles.resultText,
+                    matchNote?.good && styles.matchText,
+                    matchNote && !matchNote.good && styles.noMatchText,
+                  ]}
+                >
+                  {matchNote
+                    ? matchNote.text
+                    : isMatch
+                      ? `${rolledFaces[0].label.toUpperCase()} — NOBODY FREED`
+                      : `${rolledFaces[0].label} · ${rolledFaces[1].label}`}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.hint}>
+                {rolling ? 'Rolling…' : 'Tap to roll · flick to throw'}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.rescueCount}>
+            {playerScore} / {target} RESCUED
+          </Text>
+        </View>
+      )}
+
+      {/*
+        Pick / countdown / result overlays.
+
+        The home screen goes away during a preview along with the tab bar
+        and the pills. It is the biggest thing on this screen — the mode
+        picker, the difficulty picker, the next-unlock line and the START
+        button — and leaving it up meant a preview showed the item behind a
+        full set of controls that have nothing to do with it. The point of
+        opening one is to see the item and nothing else.
+      */}
+      {phase === 'pick' && preview === null && (
+        <View style={styles.overlay}>
+          {/* The floating gear moved to the bottom bar. */}
+          {/*
+            Scrolling is enabled only when the content genuinely overflows.
+            On most phones everything fits, and a screen that rubber-bands
+            with nothing to scroll to feels broken — but a small screen
+            (iPhone SE) still has to be able to reach the START button.
+          */}
+          <ScrollView
+            contentContainerStyle={[styles.pickScroll, { paddingBottom: 64 + navHeight }]}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            scrollEnabled={pickOverflows}
+            onLayout={(e) => measurePick({ viewport: e.nativeEvent.layout.height })}
+            onContentSizeChange={(_w, h) => measurePick({ content: h })}
+          >
+            {/* The whole name, the way the rule says — on two lines because
+                "Dice Battles: Color Rush" at 34pt/900 is about 470pt wide
+                and would wrap wherever it felt like. */}
+            <Text style={styles.overlayTitle}>Dice Battles{'\n'}Color Rush</Text>
+            <Text style={styles.tagline}>
+              Race other players to free your prisoners!
+            </Text>
+            {unlockAll ? (
+              <Text
+                style={styles.trophyNext}
+                numberOfLines={1}
+                // Longer than any "Next unlock" line this slot has ever
+                // held — and the tail, "test ads only", is the half that
+                // matters: it is how a tester confirms they are not
+                // loading real ads. Ellipsising it would hide exactly
+                // the word they came to check, so shrink instead.
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                Family tester mode — everything unlocked, test ads only
+              </Text>
+            ) : (
+              upNext && (
+                /*
+                  David, 10 Sep 2026: "it has an emoji to represent the
+                  item but it should be the drawn icons instead."
+
+                  The picture is the ITEM — the painted die or the
+                  battlefield's own art — drawn by the same component
+                  the ladder uses, so the two screens cannot disagree
+                  about what Ruby Dice looks like. A row rather than a
+                  character inside the sentence, because a picture in a
+                  line of text has to be a real view.
+                */
+                <View style={styles.trophyNextRow}>
+                  <TierIcon tier={upNext} size={22} />
+                  <Text
+                    style={styles.trophyNext}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.5}
+                  >
+                    Next unlock: {upNextLabel!.name} at {upNext.at} trophies
+                  </Text>
+                </View>
+              )
+            )}
+            {modeRow}
+            {difficultyRow}
+            <Pressable style={styles.startButton} onPress={() => startCountdown('casual')}>
+              <Text style={styles.startText}>Start battle</Text>
+            </Pressable>
+            <Pressable
+              style={styles.twoPlayerButton}
+              onPress={() => {
+                playClick();
+                setTwoPlayer(true);
+              }}
+            >
+              {/* The mode AND the difficulty picked above both carry into
+                  split screen — the courtyard obstacles are the difficulty,
+                  and they apply just as well to a human opponent. */}
+              <Text
+                style={styles.twoPlayerText}
+                numberOfLines={1}
+                // Naming both the mode and the difficulty makes this the
+                // longest label on the screen. Shrink it rather than
+                // ellipsising it on a small phone — "Color Rush · Med…"
+                // is worse than the same words a point smaller.
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                2 Players · {MODES[mode].name} · {AI_DIFFICULTIES[difficulty].label}
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      )}
+      {phase === 'matching' && (
+        <MatchmakingOverlay
+          opponent={opponent}
+          trophies={trophies}
+          onDone={beginCountdown}
+        />
+      )}
+
+      {phase === 'arm' && (
+        <View pointerEvents="none" style={styles.overlayClear}>
+          <Text style={styles.countdownText}>ARM YOUR DICE!</Text>
+        </View>
+      )}
+      {phase === 'go' && (
+        <View pointerEvents="none" style={styles.overlayClear}>
+          <Text style={[styles.countdownText, styles.battleText]}>BATTLE!</Text>
+        </View>
+      )}
+      {phase === 'won' && (
+        <View style={styles.roundOver}>
+          <Text style={styles.overlayTitle}>Victory!</Text>
+          <Text style={styles.trophyLine}>
+            {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} trophies → {trophies}
+          </Text>
+          <Text style={[styles.coinLine, styles.onGlass]}>
+            +{lastCoins} coins → {wallet.coins}
+          </Text>
+          {upNext && (
+            <View style={styles.trophyNextRow}>
+              <TierIcon tier={upNext} size={22} />
+              <Text
+                style={[styles.trophyNext, styles.onGlass]}
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.5}
+              >
+                Next unlock: {upNextLabel!.name} at {upNext.at} trophies
+              </Text>
+            </View>
+          )}
+          <Text style={[styles.overlayBody, styles.onGlass]}>
+            {MODES[mode].name} victory!{'\n'}
+            You {playerScore} — {opponent.name} {aiScore}.
+          </Text>
+          {difficultyRow}
+          {roundOverButtons}
+        </View>
+      )}
+      {phase === 'tie' && (
+        <View style={styles.roundOver}>
+          <Text style={styles.overlayTitle}>It's a tie!</Text>
+          <Text style={[styles.overlayBody, styles.onGlass]}>
+            {playerScore}–{aiScore} — nobody loses trophies.{'\n'}Settle it in a
+            rematch!
+          </Text>
+          <Text style={[styles.coinLine, styles.onGlass]}>
+            +{lastCoins} coins → {wallet.coins}
+          </Text>
+          {difficultyRow}
+          {roundOverButtons}
+        </View>
+      )}
+      {/*
+        The menu pages. Each is a tab rather than a modal now — the Close
+        buttons stay for the phone's own back gesture habits, and drop you
+        on Battle.
+      */}
+      {/*
+        The menu pages step aside while a preview is open. They are opaque
+        by design — the board used to glow through them — so leaving one up
+        would hide the very thing the preview exists to show.
+      */}
+      {heavyTabUp('store') && (
+        <StoreScreen
+          hidden={menuTab !== 'store' || (preview !== null && !holdShelf)}
+          wallet={wallet}
+          // Coins bought with money land in the same purse as coins won,
+          // so the HUD and the price tags have to be told to look again.
+          onBought={() => setWallet({ ...getWallet() })}
+          onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })}
+          onPreviewArena={(id) => showPreview({ kind: 'arena', id, from: 'store' })}
+        />
+      )}
+      {menuTab === 'leaderboard' && preview === null && (
+        <LeaderboardScreen
+          trophies={trophies}
+          wins={wins}
+          modeWins={modeWins}
+        />
+      )}
+      {/*
+        Friends is a full-screen page over whatever is behind it, not a
+        tab of its own: the bar is five cells on purpose and a sixth
+        would squeeze every label.
+
+        The `menuTab === 'leaderboard'` condition came off on 10 Sep 2026
+        when Friends moved to the corner button. It was correct while the
+        only way in was the Ranks page — it closed Friends when you left
+        that tab — but the corner button is reachable from anywhere, so
+        keeping it meant tapping Friends from the Store did nothing at
+        all. It still draws only once an identity has been read, so the
+        screen never flashes an empty friend code.
+      */}
+      {showFriends && me && (
+        <FriendsScreen
+          me={me}
+          stats={friendStats}
+          challenges={challenges}
+          onAnswer={(id, action) => void answerBattle(id, action)}
+          onChallenge={async (friend, m, d) => {
+            const result = await sendChallenge(me, friend.playerId, m, d);
+            if (!result.ok) return result.error;
+            /*
+              Shown straight away rather than waiting for the next poll.
+              Five seconds of a screen that looks like nothing happened
+              is how somebody taps it again.
+            */
+            setChallenges((c) => ({
+              ...c,
+              outgoing: {
+                id: 'pending',
+                mode: m,
+                difficulty: d,
+                expiresAt: result.expiresAt,
+                who: { playerId: friend.playerId, name: friend.name, trophies: friend.trophies },
+              },
+            }));
+            return null;
+          }}
+          onClose={() => setShowFriends(false)}
+        />
+      )}
+      {heavyTabUp('inventory') && (
+        <InventoryScreen
+          hidden={menuTab !== 'inventory' || (preview !== null && !holdShelf)}
+          trophies={trophies}
+          arenaId={arenaId}
+          skinId={loadout.skinId}
+          onPreview={showPreview}
+        />
+      )}
+      {menuTab === 'cups' && preview === null && (
+        <TournamentScreen
+          coins={wallet.coins}
+          run={run}
+          onEnter={enterTournament}
+          onPlayRound={playCupRound}
+          onAbandon={() => setRun(null)}
+        />
+      )}
+
+      {previewView && (
+        <ItemPreviewBar
+          name={previewView.name}
+          note={previewView.note}
+          action={previewView.action}
+          onAct={commitPreview}
+          onClose={() => {
+            playClick();
+            showPreview(null);
+          }}
+        />
+      )}
+
+      {/*
+        Only on the home screen and the menus. It used to show on the
+        result screen too, where the scoreboard sits centred at y54 and
+        would have run into these pills at y52 — the same collision the
+        game-name bar had. The result screen reports the trophies and
+        coins won in its own text anyway.
+      */}
+      {phase === 'pick' && menuTab !== 'leaderboard' && preview === null && (
+        <StatsHud trophies={trophies} coins={wallet.coins} />
+      )}
+
+      {/*
+        Settings and News, opposite the trophy and coin pills. Only while
+        the menus are up — mid-battle the board wants the whole screen, and
+        a stray tap on a gear during a throw would be its own bug.
+      */}
+      {phase === 'pick' && preview === null && (
+        <TopButtons
+          friendsReady={me !== null}
+          onFriends={() => setShowFriends(true)}
+          onSettings={() => setPopup('settings')}
+          onNews={() => setPopup('news')}
+        />
+      )}
+
+      {/*
+        The bar itself, and ONLY on the home screen.
+
+        It used to be hidden for the battle and the countdown but left up
+        over the victory, defeat and tie screens — so the tabs sat under a
+        result, inviting you into the Store from the middle of a match that
+        had just finished. Those screens carry their own PLAY AGAIN and
+        HOME, which is the way out of them; HOME is where the tabs live.
+      */}
+      {phase === 'pick' && preview === null && (
+        <BottomNav active={tab} onSelect={setTab} />
+      )}
+
+      {rewards.length > 0 && (
+        <RewardPopup
+          reward={rewards[0]}
+          onClose={() => setRewards((queue) => queue.slice(1))}
+        />
+      )}
+
+      {popup === 'howto' && (
+        <Popup
+          title="How to play"
+          onClose={() => {
+            // Seen counts as seen whether they read to the end or shut it
+            // on page one. A tutorial that keeps coming back because you
+            // did not finish it is worse than one you never opened.
+            markTutorialSeen();
+            setPopup(null);
+          }}
+        >
+          <TutorialScreen
+            symbols={colorblind}
+            onClose={() => {
+              markTutorialSeen();
+              setPopup(null);
+            }}
+          />
+        </Popup>
+      )}
+
+      {popup === 'news' && (
+        <Popup title="News" onClose={() => setPopup(null)}>
+          <NewsScreen />
+        </Popup>
+      )}
+
+      {popup === 'settings' && (
+        <Popup title="Settings" onClose={() => setPopup(null)}>
+          {/*
+            Shrinks the panel by the keyboard's height, so there is
+            somewhere to scroll the code box TO. Scrolling alone would not
+            help: with the panel still full height, the box would scroll to
+            a part of the page the keyboard is sitting on top of.
+
+            iOS only. Android resizes the window for the keyboard by itself
+            (Expo's default softwareKeyboardLayoutMode), and stacking this
+            on top of that would count the keyboard twice.
+          */}
+          <KeyboardAvoidingView
+            style={styles.settingsPanel}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            {/*
+              Four sliders make this page taller than any phone, so the
+              middle scrolls while the version line stays pinned below it.
+
+              `bounces` stays ON: the rubber-band when you pull is what
+              tells you the page can move at all, and without it this felt
+              like a dead end.
+
+              The scroll BAR is off. It was briefly on for the same reason,
+              but it draws over the right-hand edge of whatever it passes,
+              and on a page of sliders and toggles that is a bar sitting on
+              top of the controls. The bounce carries the message on its
+              own, and the page no longer runs under the tab bar, so there
+              is nothing hidden for the indicator to hint at.
+            */}
+            <ScrollView
+              ref={settingsScrollRef}
+              style={styles.settingsScroll}
+              contentContainerStyle={styles.settingsScrollContent}
+              bounces
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+            <Text style={styles.settingsSectionTitle}>VOLUME</Text>
+            {(
+              [
+                ['master', 'Everything', true],
+                ['sfx', 'Sound effects', false],
+                ['music', 'Music', false],
+                ['voice', 'Announcer', false],
+              ] as [AudioLevelKey, string, boolean][]
+            ).map(([key, label, emphasis]) => (
+              <VolumeSlider
+                key={key}
+                label={label}
+                emphasis={emphasis}
+                value={audioPrefs[key]}
+                onChange={(value) =>
+                  setAudioPrefs({ ...setAudioVolume(key, value) })
+                }
+              />
+            ))}
+            <View style={styles.settingsDividerLine} />
+            {/*
+              Colourblind mode. The palette does not change — it is already
+              built for colour-vision deficiency — a shape is added on top,
+              so nobody has to make a fine colour judgement in a hurry.
+            */}
+            <Pressable
+              style={styles.toggleRow}
+              onPress={() => {
+                playClick();
+                const next = !colorblind;
+                setColorblind(next);
+                setColorblindMode(next);
+              }}
+            >
+              <View style={styles.toggleText}>
+                {/*
+                  Always the shape, on or off. It used to swap to a blank
+                  white square when the mode was off, which read as a second
+                  empty checkbox next to the real one — and a setting called
+                  "shapes" losing its shape whenever it was off was the one
+                  state where the icon had nothing to say.
+                */}
+                <View style={styles.toggleLabelRow}>
+                  <ShapesIcon size={18} />
+                  <Text style={styles.toggleLabel}>Colorblind mode</Text>
+                </View>
+                <Text style={styles.toggleNote}>
+                  Every colour gets its own shape, on the dice and the
+                  prisoners.
+                </Text>
+              </View>
+              <View style={[styles.toggleBox, colorblind && styles.toggleBoxOn]}>
+                <Text style={styles.toggleTick}>{colorblind ? '✓' : ''}</Text>
+              </View>
+            </Pressable>
+            <View style={styles.settingsDividerLine} />
+            <Text style={styles.settingsStats}>
+              {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×
+              {wins.medium}   Hard ×{wins.hard}
+            </Text>
+            {/*
+              WHERE THE ADS GOT TO — testers only.
+
+              David, 11 Sep 2026: "there's no ads in the game." Every
+              failure in ads.ts is swallowed on purpose, which is right
+              for a player and useless for finding out why, and there is
+              no Mac here to read a device log with. So the state says
+              itself, on the phone, to the people who typed FAMILY.
+
+              Read at render rather than held in state: it is only ever
+              looked at by somebody who has just opened Settings, and a
+              subscription would be machinery for a line of text.
+            */}
+            {unlockAll && <AdStatusLine />}
+            <View style={styles.settingsDividerLine} />
+            <View
+              style={styles.codeRow}
+              onLayout={(e) => {
+                codeRowY.current = e.nativeEvent.layout.y;
+              }}
+            >
+              <TextInput
+                style={styles.codeInput}
+                value={codeInput}
+                onChangeText={setCodeInput}
+                onSubmitEditing={submitCode}
+                onFocus={() => {
+                  codeFocused.current = true;
+                  // Covers the case where the keyboard is already open —
+                  // keyboardDidShow will not fire again for this tap.
+                  revealCodeBox();
+                }}
+                onBlur={() => {
+                  codeFocused.current = false;
+                }}
+                placeholder="Secret code…"
+                placeholderTextColor="rgba(29,26,46,0.45)"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="go"
+              />
+              <Pressable style={styles.codeGo} onPress={submitCode}>
+                <Text style={styles.codeGoText}>OK</Text>
+              </Pressable>
+            </View>
+            {(codeFeedback ?? (unlockAll ? 'Tester mode ON' : null)) && (
+              <Text style={styles.codeStatus}>
+                {codeFeedback ?? 'Tester mode ON'}
+              </Text>
+            )}
+            <View style={styles.settingsDividerLine} />
+            {/*
+              How to play moved here on 10 Sep 2026, out of the corner
+              row, at David's request. It opens by itself on a first
+              launch and most people never want it again, so it was
+              holding a permanent button for a one-off — and Settings is
+              exactly where somebody looks for the thing they want once
+              in a while. First in this group because it is the one a
+              person is most likely to be hunting for.
+            */}
+            <Pressable
+              style={styles.bugReportButton}
+              onPress={() => setPopup('howto')}
+            >
+              <Text style={styles.bugReportButtonText}>How to play</Text>
+            </Pressable>
+            <Pressable
+              style={styles.bugReportButton}
+              onPress={() => setShowBugReport(true)}
+            >
+              <Text style={styles.bugReportButtonText}>Report a bug</Text>
+            </Pressable>
+            {/*
+              The two Creative Commons credits. assets/sounds/CREDITS.md
+              lists these as a condition of the licence, not a courtesy —
+              the music and the crowd are CC-BY 4.0, which requires the
+              names to be somewhere a player can actually reach.
+
+              REACHABLE IS NOT THE SAME AS FINDABLE, learned 7 Sep 2026.
+              These sat at the very bottom of a long scroll as two 11pt
+              faint centred lines, immediately above the 11pt faint centred
+              version stamp — three near-identical whispers in a row, with
+              nothing saying which was which. David, who knew they existed
+              and had been told where to look, could not find them. If the
+              person who commissioned them cannot, a licence auditor
+              certainly cannot.
+
+              So they get a heading and a divider like every other section
+              of this panel, and the same ink as the rest of the text.
+              Nothing was added or moved — they are just no longer
+              disguised as a version number.
+            */}
+            <View style={styles.settingsDividerLine} />
+            <Text style={styles.settingsSectionTitle}>SOUNDS &amp; MUSIC</Text>
+            <Text style={styles.creditLine}>
+              Music by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0
+            </Text>
+            <Text style={styles.creditLine}>
+              Crowd cheering by Gregor Quendel, licensed under CC BY 4.0
+            </Text>
+            <Text style={styles.creditLine}>
+              Dice, fanfare and announcer by Kenney (kenney.nl)
+            </Text>
+            </ScrollView>
+            {/*
+              The version, the last row of the panel. It no longer has to
+              be positioned absolutely to survive: the popup gives Settings
+              a box of its own with a known bottom, rather than a page
+              competing with a tab bar for the same edge.
+            */}
+            <Text style={styles.versionLine}>{GAME_VERSION}</Text>
+          </KeyboardAvoidingView>
+        </Popup>
+      )}
+      <BugReportModal
+        visible={showBugReport}
+        onClose={() => setShowBugReport(false)}
+      />
+      {phase === 'lost' && (
+        <View style={styles.roundOver}>
+          <Text style={styles.overlayTitle}>Defeat!</Text>
+          <Text style={styles.trophyLine}>{lastDelta} trophies → {trophies}</Text>
+          <Text style={[styles.coinLine, styles.onGlass]}>
+            +{lastCoins} coins → {wallet.coins}
+          </Text>
+          <Text style={[styles.overlayBody, styles.onGlass]}>
+            {opponent.name} wins this {MODES[mode].name} battle {aiScore}–{playerScore}.{'\n'}
+            Avenge your prisoners!
+          </Text>
+          {difficultyRow}
+          {roundOverButtons}
+        </View>
+      )}
     </View>
   );
 }
 
+/*
+ * No text shadows anywhere on this screen any more. Everything that
+ * floats over the live board sits on its own solid paper chip instead —
+ * a shadow under white text was the dark theme's way of surviving an
+ * unknown background, and Paper & Ink's way is to bring the paper.
+ */
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1b1430',
+    backgroundColor: '#8ec8f7',
+  },
+  hydrating: {
+    flex: 1,
+    backgroundColor: THEME.ground,
   },
   canvas: {
     flex: 1,
   },
-  hud: {
+  scoreboard: {
     position: 'absolute',
-    top: 64,
+    // Up where the title used to sit, which is above the jail rather than
+    // on top of it.
+    top: 54,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radius,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    gap: 10,
+  },
+  scoreSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  scoreFlashYou: {
+    backgroundColor: 'rgba(28,122,72,0.30)',
+  },
+  scoreFlashAi: {
+    backgroundColor: 'rgba(179,52,26,0.30)',
+  },
+  scoreLabel: {
+    color: THEME.inkSoft,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  scoreNumber: {
+    color: THEME.ink,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  scoreVs: {
+    color: THEME.inkFaint,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  aiMeta: {
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 2,
+  },
+  calloutWrap: {
+    position: 'absolute',
+    top: 150,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+  },
+  calloutText: {
+    color: THEME.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+    backgroundColor: 'rgba(253,246,236,0.94)',
+    overflow: 'hidden',
+    borderRadius: SHAPE.radiusSm,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  audioRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  audioButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: THEME.surface,
+  },
+  audioButtonOff: {
+    backgroundColor: THEME.sunk,
+  },
+  audioText: {
+    color: THEME.ink,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  audioTextOff: {
+    color: THEME.inkFaint,
+  },
+  quitButton: {
+    position: 'absolute',
+    top: 52,
+    left: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quitText: {
+    color: THEME.ink,
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: -2,
+  },
+  twoPlayerButton: {
+    marginTop: 12,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+  },
+  twoPlayerText: {
+    color: THEME.ink,
+    fontSize: 15,
+    fontWeight: '800',
+    // Fixed, so shrinking the font to fit cannot change the button's
+    // height and shift everything below it.
+    lineHeight: 20,
+  },
+  tagline: {
+    color: THEME.inkSoft,
+    fontSize: 14.5,
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  trophyLine: {
+    color: THEME.ink,
+    fontSize: 24,
+    fontWeight: '900',
+    marginTop: 10,
+  },
+  medalLine: {
+    color: THEME.inkSoft,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  /*
+    Coins were computed and stored after every battle and never shown
+    anywhere, while the tutorial promises "You earn coins too". This is
+    trophyNext without its fixed height, which only exists to stop the
+    home-screen column shifting.
+  */
+  coinLine: { color: THEME.inkSoft, fontSize: 13.5, fontWeight: '700', marginTop: 4 },
+  /*
+    The picture and the sentence sit on one line together. Centred,
+    because everything else in this column is, and with the row carrying
+    the top margin so the two cannot drift apart vertically.
+  */
+  trophyNextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    marginTop: 4,
+  },
+  trophyNext: {
+    color: THEME.inkSoft,
+    fontSize: 13.5,
+    fontWeight: '700',
+    lineHeight: 18,
+    // One line at the default text size — arena names differ in length
+    // and this sits above the mode picker, so a wrap would push the
+    // whole column down. minHeight, not height: at a larger system text
+    // size a hard height clipped the line instead of reflowing it, and
+    // a menu that moves is a smaller problem than a menu you cannot
+    // read. The scaling cap is on the Text itself.
+    minHeight: 18,
+    marginTop: 4,
+  },
+  stakesText: {
+    color: THEME.inkSoft,
+    fontSize: 12.5,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  aiDots: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  aiDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  aiDotPending: {
+    opacity: 0.22,
+  },
+  aiRoll: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  aiRollSwatch: {
+    width: 13,
+    height: 13,
+    borderRadius: 3,
+    borderWidth: 1,
+    // These sit on the white scoreboard card now, where a white border
+    // was invisible.
+    borderColor: 'rgba(29,26,46,0.35)',
+  },
+  bottomHud: {
+    position: 'absolute',
+    // Was a hardcoded 34 — right by coincidence, since that happens to be
+    // the iPhone home-indicator inset. On a phone with a home button it
+    // wasted 34pt of board for nothing. Derived now, so it is right on
+    // purpose rather than by accident.
+    // bottom is applied at render — see safeArea.ts, a fold changes it.
     left: 0,
     right: 0,
     alignItems: 'center',
   },
-  title: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: 4,
+  rescueCount: {
+    color: THEME.ink,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginTop: 6,
+    backgroundColor: 'rgba(253,246,236,0.92)',
+    overflow: 'hidden',
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
     minHeight: 30,
+    backgroundColor: 'rgba(253,246,236,0.92)',
+    borderRadius: SHAPE.radiusSm,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
   swatch: {
     width: 24,
@@ -150,21 +3027,471 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginHorizontal: 4,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: 'rgba(29,26,46,0.35)',
   },
   resultText: {
-    color: 'rgba(255,255,255,0.9)',
+    color: THEME.ink,
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
   },
   matchText: {
-    color: '#ffd23d',
+    color: THEME.good,
+    fontWeight: '900',
+  },
+  // A pair landed but nobody got out. Not a celebration and not a
+  // failure to roll either — amber, the same colour the Ranks page uses
+  // for "nothing is broken, but read this".
+  noMatchText: {
+    color: '#7a5200',
     fontWeight: '900',
   },
   hint: {
-    color: 'rgba(255,255,255,0.55)',
+    color: THEME.inkSoft,
     fontSize: 15,
     fontWeight: '500',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // SOLID paper, David's call (24 Aug 2026): the board ghosting through
+    // the wash made the home screen read as transparent. This is the HOME
+    // screen only now — see `roundOver` below, which he asked on 25 Aug to
+    // go back to glass.
+    backgroundColor: THEME.ground,
+    paddingHorizontal: 28,
+  },
+  /**
+   * The screen after a game: paper you can see the board through.
+   *
+   * David, 25 Aug 2026: "make the screen after each game transparent, it
+   * should only be solid on the Home Screen." Which is the right split —
+   * the home screen is a page you are ON, and the result screen is a note
+   * laid over the battle you just played. Hiding the final board behind
+   * solid paper threw away the thing the player wants to look at.
+   *
+   * 0.62 is solved, not picked. The worst case is the SPACE arena, whose
+   * sky is #0a0e2a — nearly black — so text on this wash has far less to
+   * work with there than on the blue or jungle boards:
+   *
+   *     alpha   classic   dusk   jungle   space
+   *      0.50     12.28  10.29    13.00    4.47   <- fails
+   *      0.62     13.05  11.48    13.66    6.36
+   *      0.76     14.01  12.92    14.40    9.23
+   *
+   * 0.55 is the true floor for 4.5:1 on space; 0.62 keeps headroom while
+   * still letting well over a third of the board through. Anything that
+   * makes this MORE transparent has to re-solve that column.
+   */
+  roundOver: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(253,246,236,0.62)',
+    paddingHorizontal: 28,
+  },
+  /**
+   * Text sitting on `roundOver` rather than on solid paper.
+   *
+   * THEME.inkSoft is ink at 70%, so on a translucent wash it composites
+   * twice and the space arena drags it to 3.6:1 — under the bar for body
+   * text, and the smallest line here is 13.5pt. Full ink costs nothing on
+   * a result screen, which has no dense hierarchy to hold apart.
+   */
+  onGlass: {
+    color: THEME.ink,
+  },
+  pickScroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // 100, the same top inset every other menu page uses — the coin and
+    // trophy pills sit at y52-90, and at 64 the title ran under them the
+    // moment the content grew tall enough to overflow. A no-op when it
+    // fits, since justifyContent centres inside flexGrow.
+    paddingTop: 100,
+    // Clear of the bottom bar, or START BATTLE sits behind it.
+    // paddingBottom is applied at render, for the same reason.
+    paddingHorizontal: 4,
+  },
+  startButton: {
+    marginTop: 24,
+    alignSelf: 'stretch',
+    backgroundColor: THEME.accent,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radiusLg,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  startText: {
+    color: THEME.onAccent,
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  /*
+   * Settings is a page of its own now, not a card floating over the game.
+   * It used to be a translucent popup on the home screen; David asked for
+   * it to behave like every other tab, so it is solid and full height and
+   * matches Store, Cups, Items, Ranks and News.
+   */
+  settingsPanel: {
+    // Shrinks to its content up to the popup's own max height, rather
+    // than filling a screen it no longer owns. No flexGrow: there is no
+    // proven space to grow into inside a maxHeight-capped panel.
+    flexShrink: 1,
+    paddingBottom: 0,
+  },
+  settingsScroll: {
+    /*
+      `flexShrink: 1` — deliberately NOT `flex: 1`, and this reverses what
+      was right when Settings was a full page.
+
+      `flex: 1` means flexBasis 0: "start at nothing and grow into space my
+      parent proves it has". A parent with a definite height can prove it.
+      The popup panel is capped with maxHeight and has NO height of its
+      own, so it can never prove anything — and the scroll resolved to
+      exactly zero. Settings opened to a title, a ✕ and a blank hole where
+      every control should be.
+
+      flexShrink with basis auto starts at the content's full height and
+      shrinks to whatever the capped panel allows, which is the behaviour a
+      scrolling area inside a "grow to fit, up to a limit" box needs.
+
+      Verified in the real Yoga engine rather than by eye: iPhone SE gives
+      panel 521 / scroll 452 this way, and panel 69 / scroll 0 with flex:1.
+      tests/popupLayout.test.ts runs that same check.
+    */
+    flexShrink: 1,
+  },
+  settingsScrollContent: {
+    /*
+      Inset to match the popup's own title row, which carries the same 18.
+      The rows had NO horizontal padding, so every slider and button ran
+      edge to edge against the panel's rounded border while the title sat
+      neatly inside it — the settings looked wider than the panel holding
+      them.
+
+      Safe to narrow the sliders: each one measures its own width and its
+      page position on layout, and React Native re-fires that whenever the
+      width changes, so the touch maths follows the new size rather than
+      remembering the old one.
+    */
+    paddingHorizontal: 18,
+    /*
+      Breathing room under the last thing on the page. Without it the final
+      row sits flush against the bottom edge of the scroll area and looks
+      clipped. Padding here rather than a margin on the version line so
+      anything added below it gets the same clearance.
+    */
+    paddingBottom: 26,
+  },
+  // Same header as Store, Cups, Items, Ranks and News — it is one of
+  // them now, so it should not look like a leftover dialog.
+  settingsSectionTitle: {
+    color: THEME.inkFaint,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  settingsDividerLine: {
+    height: 1,
+    backgroundColor: 'rgba(29,26,46,0.15)',
+    marginVertical: 12,
+  },
+  settingsStats: {
+    color: THEME.inkSoft,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  bugReportButton: {
+    marginTop: 4,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    alignItems: 'center',
+  },
+  bugReportButtonText: {
+    color: THEME.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  creditLine: {
+    /*
+      Left-aligned and the same ink as the rest of the panel, which is
+      what separates a credit from the version stamp below it. Centred
+      11pt faint text is exactly what a version number looks like, and
+      that is precisely how these went unnoticed.
+    */
+    marginTop: 8,
+    color: THEME.inkSoft,
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  versionLine: {
+    // The one row outside the scroll, so it needs the inset stated rather
+    // than inherited — otherwise it is the only line in the popup still
+    // running the full panel width. Invisible while the version string is
+    // short and centred; not invisible the first time it is not.
+    paddingHorizontal: 18,
+    marginTop: 10,
+    color: THEME.inkFaint,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textAlign: 'center',
+    // Stated, so the glyph box is never tighter than the descenders in a
+    // version string need.
+    lineHeight: 15,
+  },
+  overlayClear: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overlayTitle: {
+    color: THEME.ink,
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  overlayBody: {
+    color: THEME.inkSoft,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 14,
+    lineHeight: 23,
+  },
+  overlayPrompt: {
+    color: THEME.inkSoft,
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 26,
+  },
+  // ARM YOUR DICE! / BATTLE! flash over the bare board, so each carries
+  // its own paper chip — the same trick as the callout banner.
+  countdownText: {
+    color: THEME.ink,
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textAlign: 'center',
+    backgroundColor: 'rgba(253,246,236,0.94)',
+    overflow: 'hidden',
+    borderRadius: SHAPE.radius,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  battleText: {
+    color: THEME.accent,
+    fontSize: 52,
+  },
+  modeBlock: {
+    alignItems: 'center',
+    marginTop: 16,
+    alignSelf: 'stretch',
+  },
+  modeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    alignSelf: 'stretch',
+  },
+  modeButton: {
+    width: '46%',
+    paddingVertical: 10,
+    borderRadius: SHAPE.radius,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    alignItems: 'center',
+  },
+  /** The icon and the name, side by side, centred in the chip. */
+  modeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  modeText: {
+    color: THEME.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  modeRules: {
+    color: THEME.inkSoft,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    // Two lines at the default text size — see the note at the usage
+    // site. minHeight rather than height so a grandparent's larger text
+    // grows the box instead of being cut off half way down a letter.
+    minHeight: 36,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 10,
+  },
+  difficultyBlock: {
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  difficultyRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  difficultyHint: {
+    color: THEME.inkSoft,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    // Two lines at the default text size — see the note at the usage
+    // site. minHeight for the same reason as modeRules above.
+    minHeight: 36,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  difficultyButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+  },
+  difficultyButtonActive: {
+    backgroundColor: THEME.gold,
+    borderColor: THEME.ink,
+  },
+  difficultyText: {
+    color: THEME.ink,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  difficultyTextActive: {
+    color: THEME.onGold,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
+  },
+  toggleText: {
+    flex: 1,
+  },
+  toggleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  toggleLabel: {
+    color: THEME.ink,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  toggleNote: {
+    color: THEME.inkSoft,
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  toggleBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    backgroundColor: THEME.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleBoxOn: {
+    backgroundColor: THEME.good,
+    borderColor: THEME.ink,
+  },
+  toggleTick: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  codeInput: {
+    flex: 1,
+    color: THEME.ink,
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: SHAPE.radiusSm,
+    backgroundColor: THEME.sunk,
+    borderWidth: SHAPE.line,
+    borderColor: 'rgba(29,26,46,0.35)',
+  },
+  codeGo: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: SHAPE.radiusSm,
+    backgroundColor: THEME.gold,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+  },
+  codeGoText: {
+    color: THEME.onGold,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  endButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 26,
+    alignItems: 'center',
+  },
+  playAgainButton: {
+    paddingHorizontal: 26,
+    paddingVertical: 14,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.accent,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+  },
+  playAgainText: {
+    color: THEME.onAccent,
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  homeButton: {
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+  },
+  homeText: {
+    color: THEME.ink,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  codeStatus: {
+    color: THEME.good,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
