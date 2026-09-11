@@ -89,6 +89,31 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-87-0-friendly-battles',
+    date: '11 September 2026',
+    version: 'v1.87.0',
+    title: 'Battle someone on your friends list',
+    icon: 'people',
+    body:
+      'You can now challenge a friend to a real battle, against them, ' +
+      'live. Open Friends, tap Battle next to their name, pick the mode ' +
+      'and the battlefield, and ask.\n\n' +
+      'It pops up on their screen straight away with Battle! or No ' +
+      'thanks, and it is also waiting at the top of their Friends tab in ' +
+      'case they were mid-roll. Say yes and you are both in the same ' +
+      'battle a moment later \u2014 their prisoners move because their ' +
+      'dice landed, not because a computer decided.\n\n' +
+      'Nothing is won and nothing is lost: no trophies, no coins, no ' +
+      'adverts. Just who won.\n\n' +
+      'It is live only, on purpose. You challenge somebody who is ' +
+      'playing right now, and the challenge runs out after about ' +
+      'forty-five seconds \u2014 a battle you both have to be there for ' +
+      'cannot be arranged in advance.\n\n' +
+      'Color Rush and Ultimate to start with. Skirmish and Color War ' +
+      'share prisoners between the two players, which needs more than a ' +
+      'score passing back and forth to keep both phones honest.',
+  },
+  {
     id: 'v1-86-0-shiny-metals',
     date: '11 September 2026',
     version: 'v1.86.0',

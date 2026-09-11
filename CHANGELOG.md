@@ -1,5 +1,101 @@
 # Changelog
 
+## v1.87.0 — 2026-09-11 · requested by David
+
+"Add the ability to play someone on your friends list in a trophyless
+friendly battle. When you click to initiate the battle it should give you
+the option to choose the game mode and difficulty. The battle request
+should show up on the other player's screen as a short couple second pop
+up on the top of your screen where you can choose to accept or decline
+and you can also see the battle request at the top of the friends tab."
+And then: "you challenge someone who's on right now. It should be live
+only."
+
+### Added — the first real online play in this game
+- **Challenge a friend, and battle them live.** Their prisoners move
+  because their dice landed, not because a timer went off. Both phones
+  send "these are the colours I have freed" about once a second and read
+  the other's.
+- **The picker sits in the friend's row**, not in a dialog: the list can
+  be long and a modal over it loses which friend you were looking at.
+  Mode and battlefield, then Ask them.
+- **A banner slides across the top of whatever you were doing**, with a
+  real countdown on it, and slides away after six seconds. Across the
+  top and not over the middle on purpose — a challenge is an offer, and
+  it has to be possible to ignore one without interrupting a battle
+  already in progress. The same challenge also waits at the top of the
+  Friends tab for as long as it is alive, for somebody who was mid-roll
+  when the banner went past.
+- **Trophyless, as asked** — and no coins, no cup progress, nothing to
+  Game Center, and no step toward the advert every third game. Charging
+  somebody an interstitial for playing with their brother is the wrong
+  thing to monetise, and an ad between two people waiting to play again
+  breaks the one thing this mode is for.
+
+### Live only, which is the design
+A challenge goes to somebody whose phone spoke to the server seconds
+ago, and expires on its own after forty-five. There is no inbox and
+nothing waits. A battle both people have to be present for cannot be
+arranged an hour in advance, and a challenge that arrives while the
+other phone is in a drawer is a disappointment with extra steps.
+
+Presence is honest about what it can know: `last_seen` is stamped by
+every authenticated call, and the friends screen makes one every few
+seconds while it is open, so "on right now" means "spoke to us within
+thirty seconds".
+
+### Color Rush and Ultimate only, and why
+Those two are INDEPENDENT races — each player works through their own set
+of six, so a list of freed colours is the complete truth about the game
+and two phones a second apart still agree about everything.
+
+Skirmish shares ONE jail: both players reach into the same set, so a
+second of lag means both can free the same prisoner. Color War puts both
+sets of prisoners on ONE board, where the opponent's three are figures
+whose positions are part of the round rather than a number. Either could
+be done with the server holding the board; neither can be done by
+exchanging a score. Offering them anyway would mean two children watching
+two different games and disagreeing about who won.
+
+The game says so on screen rather than leaving a gap.
+
+### How it is built, and the one trade
+- **Polling, not push.** The friends API is serverless functions, so
+  nothing can hold a socket, and real push needs a native module, an
+  Apple certificate, a permission prompt this 4+ game does not ask for,
+  and a new binary. A roll takes about a second and a half from throw to
+  settle, so a second of lag on the rival's score is about what watching
+  somebody across a table looks like.
+- **The first phone to say "I finished" wins.** Both run the same rules
+  over their own board, so in an honest game that is whoever got there
+  first; the server's only job is making sure the second claim cannot
+  overwrite the first, which it does with `update … where winner is
+  null`. Verified against the live server with two simultaneous claims:
+  both phones came back agreeing on the same winner.
+- **Leaving is a move, not a disconnection** — back out of a friendly
+  battle and it is handed to the other player rather than leaving them
+  racing a board that has stopped. A phone that simply goes quiet for
+  twenty seconds shows up as `theyDropped`.
+- That is trusting the client, deliberately. A friendly battle is worth
+  nothing by David's own design, so there is nothing to win by cheating
+  except lying to your own family — and arbitrating four game modes
+  server-side for a game with nothing at stake would be a great deal of
+  machinery defending an empty room.
+
+### New, on the server
+`battle_invites` and `battles` tables, `player_profiles.last_seen`, and
+`/api/battles` + `/api/battles/live`. Deployed and smoke-tested end to
+end against production before any of the app was written: challenge a
+stranger (refused), become friends, challenge, see it, accept, both
+sides pulse and see each other's colours, both claim the win at once and
+agree who won.
+
+`hq/src/lib/playerAuth.ts` lifts the device-secret check out of the two
+routes that each had a copy, at the point where the battle routes would
+have made a third. Those two are left alone: they work, they are covered
+by tests that read their source, and rewriting a working authentication
+path to tidy it is a poor trade.
+
 ## v1.86.0 — 2026-09-11 · requested by David
 
 "Make the gold dice shinier." And: "there's no ads in the game."

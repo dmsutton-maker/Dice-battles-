@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { Popup } from './Popup';
+import { playClick } from '../audio/sounds';
 import { Card, PrimaryButton, SecondaryButton } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -26,6 +27,16 @@ import {
 } from '../game/friendCodes';
 import type { Identity } from '../game/playerIdentity';
 import type { PublicProfile } from '../game/friends';
+import type { ChallengeState } from '../game/battlesApi';
+import {
+  canBattleFriend,
+  FRIENDLY_MODES,
+  MODE_NOT_READY,
+  secondsLeft,
+} from '../game/friendlyBattle';
+import { AI_DIFFICULTIES, AiDifficultyId } from '../game/ai';
+import type { ModeId } from '../game/modes';
+import { MODE_ICONS } from '../ui/modeIcons';
 import {
   actOnFriend,
   EMPTY_LIST,
@@ -94,10 +105,29 @@ export function FriendsScreen({
   me,
   stats,
   onClose,
+  challenges,
+  onChallenge,
+  onAnswer,
 }: {
   me: Identity;
   stats: MyStats;
   onClose: () => void;
+  /*
+    Challenges come from the SCREEN ABOVE, not from here.
+
+    The banner has to be able to appear while somebody is rolling dice
+    with this panel shut, so the asking has to happen where the game
+    lives. Two pollers would be two timers asking the same question and
+    two answers that could disagree about whether a challenge is still
+    alive.
+  */
+  challenges: ChallengeState;
+  onChallenge: (
+    friend: PublicProfile,
+    mode: ModeId,
+    difficulty: AiDifficultyId,
+  ) => Promise<string | null>;
+  onAnswer: (inviteId: string, action: 'accept' | 'decline' | 'cancel') => void;
 }) {
   /*
     My own identity, held here rather than read from the prop.
@@ -126,6 +156,25 @@ export function FriendsScreen({
     tapping again — a block can only be lifted from the blocked list,
     and a removed friend has to ask all over again. So both ask first.
   */
+  /*
+    The friend a challenge is being set up for, and what it will be.
+
+    Held here rather than on each row: only one can be open at a time,
+    and the picker replaces the row it belongs to rather than pushing
+    seventy rows around underneath it.
+  */
+  const [challenging, setChallenging] = useState<PublicProfile | null>(null);
+  const [battleMode, setBattleMode] = useState<ModeId>('classic');
+  const [battleDifficulty, setBattleDifficulty] = useState<AiDifficultyId>('easy');
+  const [sending, setSending] = useState(false);
+  const [challengeNote, setChallengeNote] = useState<string | null>(null);
+  /** Redrawn once a second, so the countdowns actually count. */
+  const [tick, setTick] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const [asking, setAsking] = useState<
     { action: 'remove' | 'block' | 'unblock'; playerId: string; name: string } | null
   >(null);
@@ -459,6 +508,64 @@ export function FriendsScreen({
           </Card>
         )}
 
+        {/*
+          CHALLENGES FIRST, above everything.
+
+          David asked for these to appear "at the top of the friends tab
+          with the option to accept or decline" as well as on the banner.
+          The two are the same list seen twice on purpose: the banner is
+          gone in a few seconds and this one stays for as long as the
+          challenge does, so somebody who was mid-roll when it slid past
+          has not lost it.
+        */}
+        {challenges.incoming.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>WANTS A BATTLE</Text>
+            {challenges.incoming.map((c) => (
+              <Card key={c.id} style={styles.rowCard} background={THEME.gold} drop={SHAPE.drop}>
+                <Text style={styles.rowName}>{c.who?.name ?? 'A friend'}</Text>
+                <Text style={styles.note}>
+                  {MODES[c.mode].name} · {AI_DIFFICULTIES[c.difficulty].label} · no trophies ·{' '}
+                  {secondsLeft(c.expiresAt, tick)}s left
+                </Text>
+                <View style={styles.rowActions}>
+                  <SecondaryButton
+                    style={styles.smallButton}
+                    onPress={() => onAnswer(c.id, 'decline')}
+                  >
+                    <Text style={styles.smallSecondaryText}>No thanks</Text>
+                  </SecondaryButton>
+                  <PrimaryButton
+                    style={styles.smallButton}
+                    onPress={() => onAnswer(c.id, 'accept')}
+                  >
+                    <Text style={styles.smallButtonText}>Battle!</Text>
+                  </PrimaryButton>
+                </View>
+              </Card>
+            ))}
+          </>
+        )}
+
+        {challenges.outgoing && (
+          <>
+            <Text style={styles.sectionTitle}>WAITING ON THEM</Text>
+            <Card style={styles.rowCard}>
+              <Text style={styles.note}>
+                Asked {challenges.outgoing.who?.name ?? 'them'} for a{' '}
+                {MODES[challenges.outgoing.mode].name} battle.{' '}
+                {secondsLeft(challenges.outgoing.expiresAt, tick)}s left to answer.
+              </Text>
+              <SecondaryButton
+                style={styles.smallButton}
+                onPress={() => onAnswer(challenges.outgoing!.id, 'cancel')}
+              >
+                <Text style={styles.smallSecondaryText}>Cancel</Text>
+              </SecondaryButton>
+            </Card>
+          </>
+        )}
+
         {/* Your own code, big enough to read out to somebody. */}
         <Card style={styles.meCard}>
           <Text style={styles.meLabel}>YOUR FRIEND CODE</Text>
@@ -584,23 +691,67 @@ export function FriendsScreen({
             </Text>
           </Card>
         ) : (
-          list.friends.map((friend) => (
-            <Card
-              key={friend.playerId}
-              style={styles.friendCard}
-              onPress={() => setShowing(friend)}
-            >
-              <DiceSwatch skin={skinById(friend.favouriteDie)} size={44} />
-              <View style={styles.friendWho}>
-                <Text style={styles.rowName}>{friend.name}</Text>
-                <View style={styles.trophyRow}>
-                  <TrophyIcon size={12} color={THEME.inkFaint} />
-                  <Text style={styles.trophyText}>{friend.trophies}</Text>
+          list.friends.map((friend) =>
+            challenging?.playerId === friend.playerId ? (
+              <BattlePicker
+                key={friend.playerId}
+                friend={friend}
+                mode={battleMode}
+                difficulty={battleDifficulty}
+                sending={sending}
+                note={challengeNote}
+                onMode={setBattleMode}
+                onDifficulty={setBattleDifficulty}
+                onCancel={() => {
+                  setChallenging(null);
+                  setChallengeNote(null);
+                }}
+                onSend={async () => {
+                  setSending(true);
+                  setChallengeNote(null);
+                  const error = await onChallenge(friend, battleMode, battleDifficulty);
+                  setSending(false);
+                  if (error) {
+                    setChallengeNote(error);
+                    return;
+                  }
+                  setChallenging(null);
+                }}
+              />
+            ) : (
+              <Card
+                key={friend.playerId}
+                style={styles.friendCard}
+                onPress={() => setShowing(friend)}
+              >
+                <DiceSwatch skin={skinById(friend.favouriteDie)} size={44} />
+                <View style={styles.friendWho}>
+                  <Text style={styles.rowName}>{friend.name}</Text>
+                  <View style={styles.trophyRow}>
+                    <TrophyIcon size={12} color={THEME.inkFaint} />
+                    <Text style={styles.trophyText}>{friend.trophies}</Text>
+                  </View>
                 </View>
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </Card>
-          ))
+                {/*
+                  Its own button rather than a choice inside their
+                  profile page: challenging somebody is the thing you
+                  came to this list to do, and burying it one tap deeper
+                  is how the Friends tab itself got moved in v1.74.0.
+                */}
+                <Pressable
+                  style={styles.battleButton}
+                  onPress={() => {
+                    playClick();
+                    setChallengeNote(null);
+                    setChallenging(friend);
+                  }}
+                >
+                  <Text style={styles.battleButtonText}>Battle</Text>
+                </Pressable>
+                <Text style={styles.chevron}>›</Text>
+              </Card>
+            ),
+          )
         )}
 
         {/*
@@ -635,6 +786,119 @@ export function FriendsScreen({
       </Popup>
       {overlays}
     </>
+  );
+}
+
+/**
+ * Choosing what a friendly battle will be, in the row the friend was in.
+ *
+ * David asked: "when you click to initiate the battle it should give you
+ * the option to choose the game mode and difficulty."
+ *
+ * IN PLACE, not in a dialog. The list can be long, and a modal over it
+ * loses which friend you were looking at — the picker takes the row's
+ * place so the name stays in front of you the whole time.
+ *
+ * Only the modes that can honestly be played against a real person are
+ * offered, and the ones that cannot say why rather than being silently
+ * absent. See FRIENDLY_MODES in game/friendlyBattle.ts.
+ */
+function BattlePicker({
+  friend,
+  mode,
+  difficulty,
+  sending,
+  note,
+  onMode,
+  onDifficulty,
+  onSend,
+  onCancel,
+}: {
+  friend: PublicProfile;
+  mode: ModeId;
+  difficulty: AiDifficultyId;
+  sending: boolean;
+  note: string | null;
+  onMode: (m: ModeId) => void;
+  onDifficulty: (d: AiDifficultyId) => void;
+  onSend: () => void;
+  onCancel: () => void;
+}) {
+  const missing = MODE_ORDER.filter((m) => !canBattleFriend(m));
+  return (
+    <Card style={styles.pickerCard}>
+      <Text style={styles.rowName}>Battle {friend.name}</Text>
+      <Text style={styles.note}>
+        A friendly battle. No trophies and no coins either way — see who wins.
+      </Text>
+
+      <Text style={styles.sectionTitle}>MODE</Text>
+      <View style={styles.pickerRow}>
+        {FRIENDLY_MODES.map((id) => {
+          const Icon = MODE_ICONS[id];
+          const on = id === mode;
+          return (
+            <Pressable
+              key={id}
+              style={[styles.pickerChip, on && styles.pickerChipOn]}
+              onPress={() => {
+                playClick();
+                onMode(id);
+              }}
+            >
+              <Icon size={20} />
+              <Text style={[styles.pickerChipText, on && styles.pickerChipTextOn]}>
+                {MODES[id].name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {missing.map((id) => (
+        <Text key={id} style={styles.pickerWhy}>
+          {MODES[id].name} is not here yet. {MODE_NOT_READY[id]}
+        </Text>
+      ))}
+
+      <Text style={styles.sectionTitle}>BATTLEFIELD</Text>
+      <View style={styles.pickerRow}>
+        {(Object.keys(AI_DIFFICULTIES) as AiDifficultyId[]).map((id) => {
+          const on = id === difficulty;
+          return (
+            <Pressable
+              key={id}
+              style={[styles.pickerChip, on && styles.pickerChipOn]}
+              onPress={() => {
+                playClick();
+                onDifficulty(id);
+              }}
+            >
+              <Text style={[styles.pickerChipText, on && styles.pickerChipTextOn]}>
+                {AI_DIFFICULTIES[id].label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {note && <Text style={styles.note}>{note}</Text>}
+
+      <View style={styles.rowActions}>
+        <SecondaryButton style={styles.smallButton} onPress={onCancel}>
+          <Text style={styles.smallSecondaryText}>Not now</Text>
+        </SecondaryButton>
+        {/*
+          Guarded by the handler rather than a `disabled` prop: the
+          shared PrimaryButton does not take one, and adding it for this
+          one caller would change a component every screen uses.
+        */}
+        <PrimaryButton style={styles.smallButton} onPress={() => !sending && onSend()}>
+          <Text style={styles.smallButtonText}>
+            {sending ? 'Asking…' : 'Ask them'}
+          </Text>
+        </PrimaryButton>
+      </View>
+    </Card>
   );
 }
 
@@ -787,6 +1051,31 @@ const styles = StyleSheet.create({
   spinner: { marginTop: 16 },
 
   friendCard: { padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  battleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: SHAPE.radius - 6,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    backgroundColor: THEME.gold,
+  },
+  battleButtonText: { color: THEME.ink, fontSize: 13, fontWeight: '800' },
+  pickerCard: { padding: 14, gap: 10, marginBottom: 10 },
+  pickerRow: { flexDirection: 'row', gap: 8 },
+  pickerChip: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 9,
+    borderRadius: SHAPE.radius - 6,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    backgroundColor: THEME.surface,
+  },
+  pickerChipOn: { backgroundColor: THEME.gold },
+  pickerChipText: { color: THEME.inkSoft, fontSize: 12, fontWeight: '800' },
+  pickerChipTextOn: { color: THEME.ink },
+  pickerWhy: { color: THEME.inkFaint, fontSize: 11.5, fontWeight: '600' },
   friendWho: { flex: 1, gap: 3 },
   trophyRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   trophyText: { ...TYPE.small, color: THEME.inkFaint },

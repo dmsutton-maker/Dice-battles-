@@ -120,6 +120,22 @@ import { LeaderboardScreen } from './LeaderboardScreen';
 import { FriendsScreen } from './FriendsScreen';
 import { DICE_SKINS } from '../game/diceSkins';
 import { Identity, loadIdentity } from '../game/playerIdentity';
+import {
+  answerChallenge,
+  fetchChallenges,
+  pulseBattle,
+  sendChallenge,
+  type BattleHandle,
+  type ChallengeState,
+} from '../game/battlesApi';
+import {
+  BATTLE_SYNC_MS,
+  CHALLENGE_POLL_MS,
+  POPUP_MS,
+  secondsLeft,
+  topChallenge,
+} from '../game/friendlyBattle';
+import { ChallengeBanner } from './ChallengeBanner';
 import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
 import { VolumeSlider } from './VolumeSlider';
@@ -355,6 +371,41 @@ export function DiceDemoScreen() {
     waited on that would appear to hang.
   */
   const [me, setMe] = useState<Identity | null>(null);
+  const meRef = useRef<Identity | null>(null);
+  meRef.current = me;
+
+  /*
+    FRIENDLY BATTLES — a live game against somebody on your friends list.
+
+    David, 11 Sep 2026, and then: "you challenge someone who's on right
+    now. It should be live only." So this is never restored from storage
+    and never survives a relaunch: if the app was closed, the battle is
+    over, which is the honest meaning of live.
+  */
+  const [challenges, setChallenges] = useState<ChallengeState>({
+    incoming: [],
+    outgoing: null,
+    battle: null,
+  });
+  const [friendly, setFriendly] = useState<
+    { battleId: string; opponentId: string; opponentName: string } | null
+  >(null);
+  const friendlyRef = useRef<typeof friendly>(null);
+  friendlyRef.current = friendly;
+  /** The challenge the banner is showing, and when to slide it away. */
+  const [banner, setBanner] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  /** Ids already shown, so a banner is not re-shown every poll. */
+  const bannerSeen = useRef(new Set<string>());
+  /*
+    The poll is declared above `startFriendly` and has to call it. A ref
+    rather than reordering three hundred lines of hooks, and rather than
+    putting the poll below — where it would be further from the state it
+    fills in than from the one thing it calls.
+  */
+  const startFriendlyRef = useRef<
+    ((battle: BattleHandle, opponentName: string) => void) | null
+  >(null);
   useEffect(() => {
     let alive = true;
     loadIdentity()
@@ -369,6 +420,67 @@ export function DiceDemoScreen() {
       alive = false;
     };
   }, []);
+  /*
+    ASKING WHETHER ANYBODY WANTS A BATTLE.
+
+    App-wide rather than inside the Friends panel, because the banner has
+    to be able to slide in over whatever the player is doing — that is
+    what David asked for. It stops the moment the phone is in a pocket,
+    and it stops during a friendly battle, where the live sync below is
+    already talking to the same server every second.
+
+    Stopped during an ordinary battle too: somebody mid-round does not
+    want a popup over their dice, and a challenge that expires unseen
+    while they finish is exactly what "live only" means.
+  */
+  useEffect(() => {
+    if (!me || !appActive) return;
+    if (friendly) return;
+    if (phase !== 'pick') return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const ask = async () => {
+      const state = await fetchChallenges(me);
+      if (!alive) return;
+      setChallenges(state);
+      /*
+        The other half of accepting. Whoever SENT the challenge never
+        taps anything — a battle simply appears in their answer here, and
+        they drop into it. That is why the server hands back the room on
+        this call rather than only to the accepter.
+      */
+      if (state.battle) {
+        startFriendlyRef.current?.(
+          state.battle,
+          state.battle.opponentName ?? 'Your friend',
+        );
+        return;
+      }
+      const top = topChallenge(state.incoming);
+      if (top && !bannerSeen.current.has(top.id)) {
+        bannerSeen.current.add(top.id);
+        setBanner(top.id);
+      }
+      timer = setTimeout(ask, CHALLENGE_POLL_MS);
+    };
+    timer = setTimeout(ask, 0);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [me, appActive, friendly, phase]);
+
+  /* The countdown on the banner, and the banner's own short life. */
+  useEffect(() => {
+    if (!banner) return;
+    const tick = setInterval(() => setNow(Date.now()), 500);
+    const gone = setTimeout(() => setBanner(null), POPUP_MS);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(gone);
+    };
+  }, [banner]);
+
   /*
     Settings and News open OVER whatever you were doing rather than
     replacing it, so they are their own bit of state — not a sixth and
@@ -624,6 +736,17 @@ export function DiceDemoScreen() {
 
   const retreatCount = () =>
     unitsRef.current.filter((u) => u.station.kind === 'retreat').length;
+  /**
+   * The colours I have freed, for a friendly battle to send.
+   *
+   * Read off the board rather than kept as a second list, so the number
+   * on the other phone is the number of figures standing in my retreat —
+   * there is no way for the two to drift.
+   */
+  const retreatColorIds = () =>
+    unitsRef.current
+      .filter((u) => u.station.kind === 'retreat')
+      .map((u) => u.colorId as string);
   const wallCount = () =>
     unitsRef.current.filter((u) => u.station.kind === 'wall').length;
   const jailCount = () =>
@@ -748,6 +871,37 @@ export function DiceDemoScreen() {
   const finishRound = useCallback(
     (outcome: 'won' | 'lost' | 'tie') => {
       setPhaseBoth(outcome);
+      /*
+        A FRIENDLY BATTLE PAYS NOTHING, as David asked — "a trophyless
+        friendly battle". No trophies, no coins, no cup progress, and
+        nothing reported to Game Center.
+
+        It also does not count toward the advert every third game.
+        Charging somebody an interstitial for playing with their brother
+        would be the wrong thing to monetise, and an ad landing between
+        two people who are both waiting to play again breaks the one
+        thing this mode is for.
+
+        Done first and with a `return`, so none of the paying paths below
+        can be reached by accident when a fifth one is added.
+      */
+      const playing = friendlyRef.current;
+      if (playing) {
+        const who = meRef.current;
+        if (who) {
+          // Tell the server, and only claim to have WON if we did. A
+          // loss is already known there — it was their claim.
+          void pulseBattle(who, playing.battleId, retreatColorIds(), {
+            claimWin: outcome === 'won',
+            leave: outcome !== 'won',
+          });
+        }
+        setFriendly(null);
+        friendlyRef.current = null;
+        setLastDelta(0);
+        setLastCoins(0);
+        return;
+      }
       // Counted here, at the real end of the game, but NOT shown here —
       // see src/game/ads.ts. An interstitial over the fanfare and the
       // trophy count would bury the reward the player just earned.
@@ -968,7 +1122,7 @@ export function DiceDemoScreen() {
     difficultyRef.current = tournament.difficulty;
   }, []);
 
-  const startCountdown = useCallback((origin: 'cup' | 'casual' | 'again' = 'casual') => {
+  const startCountdown = useCallback((origin: 'cup' | 'casual' | 'again' | 'friendly' = 'casual') => {
     /*
       `origin` is a STRING, not a boolean, and every call site passes it
       explicitly. `onPress={startCountdown}` would hand this the press
@@ -976,7 +1130,7 @@ export function DiceDemoScreen() {
       round if the flag were a boolean. The default is the safe one.
     */
     if (origin === 'cup') cupRoundRef.current = true;
-    else if (origin === 'casual') cupRoundRef.current = false;
+    else if (origin === 'casual' || origin === 'friendly') cupRoundRef.current = false;
     /*
       The battle waits BEHIND the ad, rather than starting under it.
 
@@ -1068,6 +1222,15 @@ export function DiceDemoScreen() {
       resumes on return, which is also the fair thing.
     */
     if (!appActive) return;
+    /*
+      AND NOT WHEN THE OPPONENT IS A PERSON.
+
+      In a friendly battle the rival's prisoners are moved by the live
+      sync, from what their phone reports. Leaving this timer running
+      would have a bot rolling dice into the same state, so the two would
+      fight over `aiFreedRef` and the score would jump about.
+    */
+    if (friendlyRef.current) return;
     const { rollIntervalMs } = AI_DIFFICULTIES[difficulty];
     const id = setInterval(() => {
       // The interval outlives the winning roll by a tick: it is cleared
@@ -1436,6 +1599,110 @@ export function DiceDemoScreen() {
    * The rules live in game/itemPreview.ts; this only looks up the name,
    * the price and whether it is already yours.
    */
+  /*
+    Starting a friendly battle. Both phones run this within a second of
+    each other — whoever accepted, and whoever sent it and then saw a
+    battle appear on the next poll.
+
+    The mode and difficulty come from the SERVER's copy of the challenge,
+    not from whatever this phone had selected, so the two games are the
+    same game.
+  */
+  const startFriendly = useCallback(
+    (battle: BattleHandle, opponentName: string) => {
+      if (friendlyRef.current) return;
+      setBanner(null);
+      setMode(battle.mode);
+      modeRef.current = battle.mode;
+      setDifficulty(battle.difficulty);
+      difficultyRef.current = battle.difficulty;
+      setOpponent({ name: opponentName, short: opponentName.slice(0, 7).toUpperCase(), emoji: '' });
+      setFriendly({
+        battleId: battle.id,
+        opponentId: battle.opponentId ?? '',
+        opponentName,
+      });
+      friendlyRef.current = {
+        battleId: battle.id,
+        opponentId: battle.opponentId ?? '',
+        opponentName,
+      };
+      setTab('play');
+      setShowFriends(false);
+      startCountdown('friendly');
+    },
+    [startCountdown],
+  );
+  startFriendlyRef.current = startFriendly;
+
+  const answerBattle = useCallback(
+    async (inviteId: string, action: 'accept' | 'decline' | 'cancel') => {
+      const who = meRef.current;
+      if (!who) return;
+      setBanner(null);
+      const result = await answerChallenge(who, inviteId, action);
+      if (!result.ok) {
+        showCallout(result.error, 'lookout');
+        return;
+      }
+      if (action === 'accept' && result.battle) {
+        const from = challenges.incoming.find((c) => c.id === inviteId);
+        startFriendly(result.battle, from?.who?.name ?? 'Your friend');
+      } else {
+        setChallenges((c) => ({
+          ...c,
+          incoming: c.incoming.filter((x) => x.id !== inviteId),
+          outgoing: action === 'cancel' ? null : c.outgoing,
+        }));
+      }
+    },
+    [challenges.incoming, showCallout, startFriendly],
+  );
+
+  /*
+    THE LIVE BATTLE, one beat a second.
+
+    This REPLACES the opponent's roll timer rather than running beside
+    it — see the guard on that effect. The rival's prisoners move because
+    a real person's dice landed, not because two seconds went by.
+
+    `aiFreedRef` is the same state the timer used to drive, so everything
+    downstream of it — the scoreboard, the callouts, the dots — carries on
+    working without knowing the difference.
+  */
+  useEffect(() => {
+    if (!friendly || !me) return;
+    if (!appActive) return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const beat = async () => {
+      const pulse = await pulseBattle(me, friendly.battleId, retreatColorIds());
+      if (!alive) return;
+      if (pulse) {
+        const theirs = pulse.theirs as PrisonerColorId[];
+        if (theirs.length !== aiFreedRef.current.length) {
+          aiFreedRef.current = theirs;
+          setAiFreed(theirs);
+        }
+        if (pulse.theyDropped && phaseRef.current === 'battle') {
+          showCallout(`${friendly.opponentName} has gone — you win!`, 'congrats');
+          finishRound('won');
+          return;
+        }
+        if (pulse.winner && pulse.winner !== me.playerId && phaseRef.current === 'battle') {
+          finishRound('lost');
+          return;
+        }
+      }
+      timer = setTimeout(beat, BATTLE_SYNC_MS);
+    };
+    timer = setTimeout(beat, 0);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [friendly, me, appActive, finishRound, showCallout]);
+
   const previewView = (() => {
     if (!preview) return null;
 
@@ -1771,6 +2038,26 @@ export function DiceDemoScreen() {
         />
       )}
 
+      {/*
+        "Marc wants a battle!" — across the top of whatever you were
+        doing, for a few seconds. Rendered before the gesture layer and
+        with its own zIndex so it sits over the board, the menus and the
+        tab bar alike: it is the one thing in this game that interrupts.
+      */}
+      {banner && me && (() => {
+        const c = challenges.incoming.find((x) => x.id === banner);
+        if (!c) return null;
+        return (
+          <ChallengeBanner
+            key={c.id}
+            challenge={c}
+            secondsLeft={secondsLeft(c.expiresAt, now)}
+            onAccept={() => void answerBattle(c.id, 'accept')}
+            onDecline={() => void answerBattle(c.id, 'decline')}
+          />
+        );
+      })()}
+
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
@@ -2093,6 +2380,28 @@ export function DiceDemoScreen() {
         <FriendsScreen
           me={me}
           stats={friendStats}
+          challenges={challenges}
+          onAnswer={(id, action) => void answerBattle(id, action)}
+          onChallenge={async (friend, m, d) => {
+            const result = await sendChallenge(me, friend.playerId, m, d);
+            if (!result.ok) return result.error;
+            /*
+              Shown straight away rather than waiting for the next poll.
+              Five seconds of a screen that looks like nothing happened
+              is how somebody taps it again.
+            */
+            setChallenges((c) => ({
+              ...c,
+              outgoing: {
+                id: 'pending',
+                mode: m,
+                difficulty: d,
+                expiresAt: result.expiresAt,
+                who: { playerId: friend.playerId, name: friend.name, trophies: friend.trophies },
+              },
+            }));
+            return null;
+          }}
           onClose={() => setShowFriends(false)}
         />
       )}

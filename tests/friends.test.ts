@@ -36,6 +36,17 @@ import {
   sameList,
 } from '../src/game/friendsPoll';
 import { EMPTY_LIST, type FriendList } from '../src/game/friendsApi';
+import {
+  canBattleFriend,
+  FRIENDLY_MODES,
+  hasExpired,
+  INVITE_TTL_MS,
+  MODE_NOT_READY,
+  secondsLeft,
+  topChallenge,
+  type Challenge,
+} from '../src/game/friendlyBattle';
+import { MODE_ORDER } from '../src/game/modes';
 import { typedFriendCode } from '../src/game/friendCodes';
 
 /**
@@ -1098,6 +1109,162 @@ suite('friends · the list keeps itself up to date', () => {
       (refresh.match(/refreshing\.current = false/g) ?? []).length,
       (refresh.match(/setLoading\(false\)/g) ?? []).length,
       'refresh has an exit that leaves polling switched off for ever',
+    );
+  });
+});
+
+/**
+ * Battling a friend, live.
+ *
+ * David, 11 Sep 2026: "add the ability to play someone on your friends
+ * list in a trophyless friendly battle... you challenge someone who's on
+ * right now. It should be live only."
+ *
+ * The parts that can be checked without two phones: which modes may
+ * honestly be offered, how a challenge expires, and that the game and
+ * the server agree about both.
+ */
+suite('friends · a friendly battle, live only', () => {
+  const server = readFileSync(
+    join(__dirname, '..', 'hq/src/app/api/battles/route.ts'),
+    'utf8',
+  );
+
+  test('only modes that can be played honestly are offered', () => {
+    /*
+      Not a shortlist of favourites. Color Rush and Ultimate are
+      INDEPENDENT races — each player works through their own six, so
+      "these are the colours I have freed" is the complete truth about
+      the game and two phones a second apart still agree.
+
+      Skirmish shares one jail and Color War puts both sets of prisoners
+      on one board. Offering those by exchanging a score would mean two
+      children watching two different games and disagreeing about who
+      won, which is worse than not offering them.
+    */
+    assert(canBattleFriend('classic'), 'Color Rush should be playable with a friend');
+    assert(canBattleFriend('ultimate'), 'Ultimate should be playable with a friend');
+    assert(!canBattleFriend('skirmish'), 'Skirmish shares a jail and cannot be honest yet');
+    assert(!canBattleFriend('colorwar'), 'Color War shares a board and cannot be honest yet');
+    note(`offered: ${FRIENDLY_MODES.join(', ')}`);
+  });
+
+  test('every mode left out says why', () => {
+    // A gap somebody rediscovers in six months is worse than a sentence.
+    for (const mode of MODE_ORDER) {
+      if (canBattleFriend(mode)) continue;
+      const why = MODE_NOT_READY[mode];
+      assert(
+        typeof why === 'string' && why.length > 30,
+        `${mode} is not offered and gives no reason`,
+      );
+    }
+  });
+
+  test('a challenge counts down and then stops being one', () => {
+    const now = 1_000_000;
+    assertEqual(secondsLeft(now + 10_000, now), 10, 'ten seconds left');
+    assertEqual(secondsLeft(now + 1, now), 1, 'a sliver still rounds up to a second');
+    assertEqual(secondsLeft(now - 5_000, now), 0, 'past its time is zero, never negative');
+    assert(!hasExpired(now + 1, now), 'a challenge with time left is still live');
+    assert(hasExpired(now, now), 'a challenge at its exact expiry is over');
+    assertEqual(secondsLeft(Number.NaN, now), 0, 'nonsense is treated as expired');
+  });
+
+  test('the newest live challenge is the one shown', () => {
+    /*
+      Stacking popups on a five-year-old's screen is not a design, and
+      an older challenge from somebody who has given up looking is the
+      less useful of the two.
+    */
+    const now = 1_000_000;
+    const make = (id: string, expiresAt: number): Challenge => ({
+      id,
+      mode: 'classic',
+      difficulty: 'easy',
+      expiresAt,
+      who: { playerId: id, name: id, trophies: 0 },
+    });
+    const top = topChallenge(
+      [make('old', now + 2_000), make('new', now + 20_000), make('gone', now - 1)],
+      now,
+    );
+    assertEqual(top?.id, 'new', 'the newest live challenge should win');
+    assertEqual(topChallenge([make('gone', now - 1)], now), null, 'all expired means none');
+    assertEqual(topChallenge([], now), null, 'nothing means none');
+  });
+
+  test('the game and the server agree about how long a challenge lives', () => {
+    // Two copies of a number, in two languages, on two machines. If they
+    // drift, one side shows a countdown the other has already ended.
+    const onServer = /INVITE_TTL_MS = ([0-9_]+)/.exec(server);
+    assert(onServer !== null, 'the server no longer has a challenge lifetime');
+    assertEqual(
+      Number(onServer![1].replace(/_/g, '')),
+      INVITE_TTL_MS,
+      'the app and the server disagree about when a challenge expires',
+    );
+  });
+
+  test('the server will not let you challenge a stranger, or somebody who is out', () => {
+    /*
+      Both checked THERE rather than trusted from the app: a challenge is
+      a popup on somebody else's phone, which is exactly what a modified
+      client would aim at people who never asked for it.
+    */
+    assert(
+      /you can only challenge a friend/.test(server),
+      'the server no longer checks that you are friends',
+    );
+    assert(
+      /isOnline\(them\?\.last_seen\)/.test(server),
+      'the server no longer checks that they are actually on',
+    );
+    /*
+      One outgoing challenge at a time. Enforced twice on purpose: a
+      unique index in the database, and this — which REPLACES the old one
+      rather than refusing the new, because being told "you already asked
+      somebody" when you have changed your mind is worse than the thing
+      it prevents.
+    */
+    assert(
+      /\.eq\('from_id', auth\.playerId\)\s*\.eq\('state', 'waiting'\)/.test(server),
+      'nothing stops one player filling another screen with challenges',
+    );
+  });
+
+  test('a friendly battle pays nothing at all', () => {
+    /*
+      "Trophyless", as asked — and while we are there, no coins, no cup
+      progress, nothing to Game Center, and no step toward the advert
+      every third game. Charging somebody an interstitial for playing
+      with their brother is the wrong thing to monetise.
+    */
+    const screen = readFileSync(
+      join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'),
+      'utf8',
+    );
+    const start = screen.indexOf('const playing = friendlyRef.current;');
+    assert(start > 0, 'the friendly-battle branch of finishRound is gone');
+    const branch = screen.slice(start, screen.indexOf('noteGameFinished();', start));
+    assert(/return;/.test(branch), 'the friendly branch falls through into the paying paths');
+    for (const paid of ['applyMatchResult', 'awardCoins', 'noteGameFinished', 'syncGameCenter']) {
+      assert(
+        !new RegExp(`${paid}\\(`).test(branch),
+        `a friendly battle reaches ${paid}, which is not trophyless`,
+      );
+    }
+  });
+
+  test('the bot stands down when the opponent is a person', () => {
+    // Both driving aiFreedRef would make the rival's score jump about.
+    const screen = readFileSync(
+      join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'),
+      'utf8',
+    );
+    assert(
+      /if \(friendlyRef\.current\) return;[\s\S]{0,200}AI_DIFFICULTIES\[difficulty\]/.test(screen),
+      'the opponent timer still runs during a friendly battle',
     );
   });
 });
