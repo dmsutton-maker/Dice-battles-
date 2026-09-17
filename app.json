@@ -5,6 +5,7 @@
     "backgroundColor": "#1d1a2e",
     "version": "1.60.0",
     "orientation": "portrait",
+    "scheme": "dicebattles",
     "icon": "./assets/icon/light.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -21,7 +22,11 @@
       },
       "entitlements": {
         "com.apple.developer.game-center": true
-      }
+      },
+      "associatedDomains": [
+        "applinks:papershipstudio.com",
+        "applinks:www.papershipstudio.com"
+      ]
     },
     "android": {
       "package": "com.dmsutton.dicebattles",

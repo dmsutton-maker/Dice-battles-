@@ -6,6 +6,7 @@ import {
   Dimensions,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   PanResponder,
   Platform,
   Pressable,
@@ -118,6 +119,7 @@ import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
 import { FriendsScreen } from './FriendsScreen';
+import { codeFromLink } from '../game/inviteLink';
 import { DICE_SKINS } from '../game/diceSkins';
 import { Identity, loadIdentity } from '../game/playerIdentity';
 import {
@@ -365,6 +367,16 @@ export function DiceDemoScreen() {
   const [tab, setTab] = useState<Tab>('play');
   const [showFriends, setShowFriends] = useState(false);
   /*
+    A friend code that arrived from a link somebody tapped.
+
+    Caught HERE rather than in the Friends screen, because a link has to
+    work when the Friends screen is not on: the game might be mid-roll,
+    or not running at all — a cold launch from a tapped link is the
+    common case, not the rare one. So this opens Friends and hands the
+    code over, and FriendsScreen does the asking.
+  */
+  const [invite, setInvite] = useState<string | null>(null);
+  /*
     Who this player is, for the Friends page. Read once on mount and
     never awaited by anything that draws: loadIdentity talks to Game
     Center, which shows a system sheet the first time, and a menu that
@@ -373,6 +385,62 @@ export function DiceDemoScreen() {
   const [me, setMe] = useState<Identity | null>(null);
   const meRef = useRef<Identity | null>(null);
   meRef.current = me;
+
+  /*
+    LINKS COMING IN — "papershipstudio.com/add/K7M2-9XPQ", tapped.
+
+    Two ways one arrives and both are handled, because missing either
+    one breaks half the cases:
+
+      · getInitialURL — the game was NOT running. iOS launches it and
+        the URL is waiting when the first screen mounts. This is what a
+        text message to somebody who has the game but had it closed
+        actually does, so it is the common path, not the fallback.
+      · the 'url' event — the game WAS running, in the background. No
+        launch happens and nothing is waiting to be read; the URL is
+        delivered as an event or not at all.
+
+    NONE OF THIS WORKS ON A BINARY BUILT BEFORE THIS CHANGE, and that is
+    fine rather than a problem to solve in JavaScript. A URL only reaches
+    an app because Info.plist claims the scheme and the entitlement
+    claims the domain, and both are baked in by the build. On an older
+    install `getInitialURL` answers null for ever, no event ever fires,
+    and the link opens the web page instead — which is exactly what the
+    web page is for.
+
+    `Linking` is React Native's own module, not an Expo package, so
+    there is no native import here that could throw on a binary without
+    it. That is deliberate: see AGENTS.md on `runtimeVersion`. This
+    whole file still ships over the air.
+  */
+  useEffect(() => {
+    let alive = true;
+    const take = (url: string | null) => {
+      if (!alive || !url) return;
+      const code = codeFromLink(url);
+      if (!code) return;
+      /*
+        Opened, not just queued. A link is somebody asking for the
+        friends screen, and arriving at the dice with an invisible
+        question pending would be a worse surprise than the panel.
+      */
+      setInvite(code);
+      setShowFriends(true);
+    };
+    /*
+      `getInitialURL` can reject on some platforms. A rejection here
+      would be an unhandled promise on the very first frame of a cold
+      launch, so it is caught and dropped: no link is a normal launch.
+    */
+    void Linking.getInitialURL()
+      .then(take)
+      .catch(() => {});
+    const subscription = Linking.addEventListener('url', (event) => take(event.url));
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
 
   /*
     FRIENDLY BATTLES — a live game against somebody on your friends list.
@@ -2393,6 +2461,8 @@ export function DiceDemoScreen() {
         <FriendsScreen
           me={me}
           stats={friendStats}
+          invite={invite}
+          onInviteHandled={() => setInvite(null)}
           challenges={challenges}
           onAnswer={(id, action) => void answerBattle(id, action)}
           onChallenge={async (friend, m, d) => {

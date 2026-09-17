@@ -22,10 +22,28 @@ const nextConfig: NextConfig = {
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'Referrer-Policy', value: 'same-origin' },
     ];
-    return ['/admin/:path*', '/login', '/password'].map((source) => ({
-      source,
-      headers: privatePages,
-    }));
+    return [
+      ...['/admin/:path*', '/login', '/password'].map((source) => ({
+        source,
+        headers: privatePages,
+      })),
+      /*
+        Apple's universal-link file, and the one line that makes it work.
+
+        iOS fetches https://papershipstudio.com/.well-known/apple-app-site-association
+        before it will ever open the app from a link, and it REFUSES
+        anything not served as application/json. The file has no
+        extension — Apple's own requirement, it must not be .json — so
+        nothing downstream can guess the type and it goes out as
+        application/octet-stream by default. iOS then silently declines
+        to associate the domain: no error, no log, links just keep
+        opening Safari.
+      */
+      {
+        source: '/.well-known/apple-app-site-association',
+        headers: [{ key: 'Content-Type', value: 'application/json' }],
+      },
+    ];
   },
 };
 

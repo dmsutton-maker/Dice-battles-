@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +26,7 @@ import {
   normaliseFriendCode,
   typedFriendCode,
 } from '../game/friendCodes';
+import { inviteMessage, inviteUrl } from '../game/inviteLink';
 import type { Identity } from '../game/playerIdentity';
 import type { PublicProfile } from '../game/friends';
 import type { ChallengeState } from '../game/battlesApi';
@@ -108,6 +110,8 @@ export function FriendsScreen({
   challenges,
   onChallenge,
   onAnswer,
+  invite,
+  onInviteHandled,
 }: {
   me: Identity;
   stats: MyStats;
@@ -128,6 +132,19 @@ export function FriendsScreen({
     difficulty: AiDifficultyId,
   ) => Promise<string | null>;
   onAnswer: (inviteId: string, action: 'accept' | 'decline' | 'cancel') => void;
+  /*
+    A friend code that arrived from a LINK somebody tapped, rather than
+    one typed into the box.
+
+    It comes from the screen above because a link can land while the
+    game is on the dice, or while it is not running at all — see
+    DiceDemoScreen, which is where the URL is caught. All this screen
+    does is the part that needs a friends list in front of it: look the
+    code up and ask.
+  */
+  invite?: string | null;
+  /** Said once the question has been asked, so it is not asked twice. */
+  onInviteHandled?: () => void;
 }) {
   /*
     My own identity, held here rather than read from the prop.
@@ -184,6 +201,12 @@ export function FriendsScreen({
     looking at. This one is drawn over whatever page you are on.
   */
   const [actionError, setActionError] = useState<string | null>(null);
+  /*
+    Somebody a link says I should add: the profile once it is looked up,
+    or a plain sentence when there is nothing to ask about.
+  */
+  const [inviting, setInviting] = useState<ProfilePeek | null>(null);
+  const [inviteNote, setInviteNote] = useState<string | null>(null);
   const page: Page = showing ? 'profile' : 'list';
 
   const refresh = useCallback(async () => {
@@ -383,6 +406,123 @@ export function FriendsScreen({
     await refresh();
   };
 
+  /**
+   * Hand my code to somebody, through the sheet the phone already has.
+   *
+   * David, 17 Sep 2026: "like when you go to share a video with someone
+   * and it gives you all those options in a pop up". That is
+   * `Share.share`, which is React Native's own wrapper around
+   * UIActivityViewController — no new dependency, no native module, so
+   * it goes out over the air like any other change.
+   *
+   * THE MESSAGE AND THE URL ARE PASSED SEPARATELY, and that is the
+   * whole trick behind the picture David asked for. iOS hands each one
+   * to the chosen app as its own item, and Messages only draws its rich
+   * card — the logo, the title — for an item that is a URL on its own.
+   * Fold the link into the message string and what sends is a wall of
+   * blue text with no picture in it. The message still ends with the
+   * link as well, for the apps that take only one item.
+   *
+   * NOTHING HERE IS ALLOWED TO THROW. Share.share REJECTS when somebody
+   * swipes the sheet away, which is the most ordinary thing a person
+   * can do with it, and an unhandled rejection in a screen is a red box
+   * over a game.
+   */
+  const shareCode = async () => {
+    playClick();
+    try {
+      await Share.share({
+        message: inviteMessage(who.name, who.friendCode),
+        url: inviteUrl(who.friendCode),
+      });
+    } catch {
+      // Dismissed, or no sheet to show. Either way there is nothing to
+      // tell anybody: they are looking at the code already.
+    }
+  };
+
+  /*
+    A code that came from a tapped link.
+
+    Looked up rather than trusted: the link carries eight characters and
+    nothing else, so the name in the question has to come from the
+    server. Everything that is not a question to ask becomes a plain
+    sentence instead — "that is your own code", "you two are already
+    friends" — because a link that silently does nothing looks broken
+    to the person who tapped it.
+
+    `onInviteHandled` fires in every branch, including the ones that
+    ask nothing. Leaving the code set would re-run this on the next
+    render for ever.
+  */
+  /*
+    The callback held in a ref, and the effect below depending on the
+    ref rather than on the callback.
+
+    `onInviteHandled={() => setInvite(null)}` is a NEW function on every
+    render of the screen above — which re-renders on a one-second timer
+    for the battle countdowns. An effect depending on it would therefore
+    re-run about once a second, meaning a fresh `findByCode` every
+    second for as long as an invite was pending, and a confirmation that
+    reopened itself the moment it was dismissed.
+  */
+  const inviteHandled = useRef(onInviteHandled);
+  inviteHandled.current = onInviteHandled;
+
+  useEffect(() => {
+    if (!invite) return;
+    let alive = true;
+    void (async () => {
+      const clean = normaliseFriendCode(invite);
+      const done = () => {
+        if (alive) inviteHandled.current?.();
+      };
+      if (!clean) {
+        setInviteNote('That invite link was not a friend code.');
+        return done();
+      }
+      if (clean === who.friendCode) {
+        setInviteNote('That link has your own code in it! Send it to somebody else.');
+        return done();
+      }
+      const result = await findByCode(clean);
+      if (!alive) return;
+      if (!result.ok) {
+        setInviteNote(result.error);
+        return done();
+      }
+      if (!result.profile) {
+        setInviteNote('Nobody has that code. Ask them to share it again.');
+        return done();
+      }
+      /*
+        The already-friends check goes AFTER the lookup, and matches on
+        the player id rather than the code, because a friend's profile
+        does not carry a code: /api/friends deliberately leaves
+        friend_code out of what it selects, so that a list of friends is
+        not also a list of codes that would let anyone holding it add
+        them. `f.friendCode` here would be undefined for every row and
+        this branch would never once fire.
+      */
+      const profile = result.profile;
+      const already = list.friends.find((f) => f.playerId === profile.playerId);
+      if (already) {
+        setInviteNote(`You and ${already.name} are already friends.`);
+        return done();
+      }
+      setInviting(profile);
+      done();
+    })();
+    return () => {
+      alive = false;
+    };
+    // `list` is deliberately absent: it changes on every poll, and this
+    // must not re-ask the moment a refresh lands. The friends check is a
+    // courtesy on whatever list is in hand when the link arrives; the
+    // server refuses a duplicate request anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invite, who.friendCode]);
+
   /*
     The question, and the error, drawn over whichever page is showing —
     the list and the profile are two returns below, and a confirmation
@@ -427,6 +567,37 @@ export function FriendsScreen({
           body={actionError}
           dismissLabel="Close"
           onDismiss={() => setActionError(null)}
+        />
+      )}
+      {/*
+        The question a tapped link asks. Drawn beside the others so it
+        appears over the profile page too — a link can land while
+        somebody is reading a friend's card.
+
+        It ASKS. A link that added a friend on its own would mean anyone
+        who could get a URL in front of a child could put themselves on
+        their friends list, and no convenience is worth that.
+      */}
+      {inviting && (
+        <Confirm
+          title={`Add ${inviting.name}?`}
+          body={`${inviting.name} shared their code with you. They will show up on your friends list once they say yes.`}
+          confirmLabel="Yes, ask to be friends"
+          cancelLabel="No thanks"
+          onCancel={() => setInviting(null)}
+          onConfirm={() => {
+            const them = inviting;
+            setInviting(null);
+            void act(them.playerId, 'request');
+          }}
+        />
+      )}
+      {inviteNote && (
+        <Tell
+          title="About that link"
+          body={inviteNote}
+          dismissLabel="Close"
+          onDismiss={() => setInviteNote(null)}
         />
       )}
     </>
@@ -582,6 +753,27 @@ export function FriendsScreen({
             Give this to someone so they can add you. It lives on this
             phone.
           </Text>
+          {/*
+            Reading eight characters down a phone line still works and
+            is still the fallback, but David asked on 17 Sep 2026 for
+            the ordinary way: the share sheet, a written message, and a
+            link that drops whoever taps it into the question.
+          */}
+          {/*
+            The stretch is on a WRAPPER, not on the button.
+
+            `alignSelf: 'stretch'` passed to PrimaryButton does nothing
+            at all: Card puts the style it is handed on its inner face
+            view, while the thing this card's `alignItems: 'center'`
+            actually lays out is the Pressable wrapped around it. The
+            button came out shrink-wrapped with the words touching both
+            edges — seen in tools/duo-preview, not reasoned about.
+          */}
+          <View style={styles.shareRow}>
+            <PrimaryButton style={styles.shareButton} onPress={() => void shareCode()}>
+              <Text style={styles.shareText}>Share my code</Text>
+            </PrimaryButton>
+          </View>
         </Card>
 
         <Text style={styles.sectionTitle}>ADD A FRIEND</Text>
@@ -1009,6 +1201,11 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   meNote: { ...TYPE.small, color: THEME.inkSoft, textAlign: 'center', marginTop: 8 },
+  // Full width of the card, because it is the thing on this card
+  // a thumb is meant to land on.
+  shareRow: { alignSelf: 'stretch', marginTop: 14 },
+  shareButton: { paddingVertical: 12 },
+  shareText: { ...TYPE.cardTitle, color: THEME.onAccent },
 
   sectionTitle: {
     ...TYPE.label,

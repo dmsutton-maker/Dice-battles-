@@ -34,6 +34,17 @@ const SHAPES = {
         deviceScaleFactor: 2,
       });
       page.on('pageerror', (e) => console.log('PAGE THROW:', e.message));
+      /*
+        NOTHING HERE TALKS TO THE LIVE SERVER.
+
+        The Friends screen publishes the player's profile the moment it
+        opens — that is deliberate in the game and wrong in a preview,
+        where the "player" is a made-up identity and the write would
+        leave a junk row on the real board for ever. Blocking the API
+        outright is simpler than trusting each screen to behave, and it
+        also makes every shot here reproducible with no network at all.
+      */
+      await page.route('**/api/**', (route) => route.abort());
       await page.goto(
         'file://' + path.resolve(__dirname, 'index.html') + '?screen=' + screen,
       );

@@ -6,6 +6,7 @@ import { InventoryScreen } from '../../src/demo/InventoryScreen';
 import { StoreScreen } from '../../src/demo/StoreScreen';
 import { LeaderboardScreen } from '../../src/demo/LeaderboardScreen';
 import { NewsScreen } from '../../src/demo/NewsScreen';
+import { FriendsScreen } from '../../src/demo/FriendsScreen';
 import { TierIcon } from '../../src/demo/TierIcon';
 import { TIERS } from '../../src/game/progress';
 import { VolumeSlider } from '../../src/demo/VolumeSlider';
@@ -85,6 +86,43 @@ function Screen() {
       </View>
     );
   }
+  if (which === 'friends') {
+    /*
+      The Friends panel, with a made-up player.
+
+      The list, the requests and the lookups all need the server, which
+      the shooter blocks — so what this shows is the part that draws
+      without one: the code card and its Share button, which is what
+      v1.92.0 added. Everything below it will say it could not load, and
+      that is the honest offline state rather than a failure of the
+      preview.
+    */
+    return (
+      <FriendsScreen
+        me={{
+          playerId: 'local-preview',
+          name: 'Marc',
+          friendCode: 'K7M29XPQ',
+          signedIn: true,
+          recovered: false,
+          secret: 'preview',
+        }}
+        stats={{
+          trophies: 3300,
+          wins: { easy: 20, medium: 14, hard: 8 },
+          modeWins: { classic: 18, ultimate: 9, skirmish: 8, colorwar: 7 },
+          diceOwned: 12,
+          arenasOwned: 5,
+          favouriteDie: 'ivory',
+          favouriteArena: 'castle',
+        }}
+        challenges={{ incoming: [], outgoing: null, battle: null }}
+        onChallenge={async () => undefined}
+        onAnswer={() => {}}
+        onClose={() => {}}
+      />
+    );
+  }
   if (which === 'store') {
     return <StoreScreen wallet={WALLET} onPreview={() => {}} onPreviewArena={() => {}} />;
   }
@@ -103,7 +141,8 @@ function Screen() {
 }
 
 const TAB = which === 'store' ? 'store' : which === 'leaderboard' ? 'leaderboard' : 'inventory';
-const BARE = which === 'news' || which === 'settings' || which === 'unlocks';
+const BARE =
+  which === 'news' || which === 'settings' || which === 'unlocks' || which === 'friends';
 
 createRoot(host).render(
   // Fills the viewport, so useWindowDimensions and the absolute-positioned

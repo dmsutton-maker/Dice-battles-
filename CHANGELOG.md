@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.92.0 — 2026-09-17 · requested by David
+
+"Add a thing in the friends tab that lets you share your friend code with
+someone via a text or something like when you go to share a video."
+
+### Sharing a code
+The Friends tab's own code card now has a **Share my code** button. It
+opens the phone's ordinary share sheet — Messages, WhatsApp, Mail,
+AirDrop, whatever is on the phone — carrying a written message with the
+code in it and a link on `papershipstudio.com/add/<code>`.
+
+The message and the link are passed to the sheet as SEPARATE items, on
+purpose: iOS only draws the rich preview card — the logo, the title —
+for a URL handed over on its own. Folded into the message string it
+sends as a wall of blue text with no picture. The message ends with the
+link as well, for the apps that take only one item.
+
+### The picture in the message
+`hq/src/app/add/[code]/page.tsx` is a new page on the website, and its
+Open Graph tags ARE the picture: an app cannot put an image into
+somebody else's text message, so Messages fetches the link and draws its
+own card from the page's metadata. The card image
+(`hq/public/images/dice-battles-card.png`, 1200×630) is the app icon on
+the studio's cream with the six face colours along the bottom edge. The
+page also looks the code up, so the preview reads "Marc wants to play
+Dice Battles with you" rather than something generic.
+
+### Tapping the link
+`app.json` now registers the `dicebattles://` scheme and claims
+`applinks:papershipstudio.com`, and the site serves
+`/.well-known/apple-app-site-association`. With both in place iOS opens
+the game straight from the message; the game reads the code out of the
+URL, opens Friends and asks "Add Marc?" — it never adds anyone on its
+own. Only hosts that actually serve the invite page are answered, so a
+link from anywhere else is ignored rather than turned into a question.
+
+**This one needs a new BUILD to work end to end.** A URL only reaches an
+app because Info.plist claims the scheme and the entitlement claims the
+domain, and both are baked in by Apple. On the TestFlight build that is
+out today the share sheet, the message and the preview card all work,
+and the link opens the web page — which is what that page is for: it
+shows the code big enough to type in by hand.
+
 ## v1.91.0 — 2026-09-11 · requested by David
 
 "A lot of skins don't have any of the designs on some of their sides."
