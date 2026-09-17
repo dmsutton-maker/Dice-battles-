@@ -5,7 +5,7 @@ one read instead of reconstructing it from conversation history. Keep it
 current — a stale map is worse than none. `AGENTS.md` holds the *rules*;
 this holds the *facts*.
 
-Last updated: 30 August 2026.
+Last updated: 17 September 2026.
 
 ## The two things being built
 
@@ -154,6 +154,27 @@ and the same day the listing was brought up to date:
 
 ## Known-open, as of the last update
 
+- **Invite links need a BUILD before they open the game** (v1.92.0,
+  17 Sep 2026). Sharing a friend code works over the air today: the
+  share sheet, the written message, and the preview card with the
+  game's logo on it. The last step does not, and cannot until Apple
+  bakes it in — `app.json` now carries `scheme: "dicebattles"` and
+  `ios.associatedDomains`, and neither reaches a phone through
+  `eas update`. Until a new build ships, a tapped link opens
+  `papershipstudio.com/add/<code>`, which shows the code big enough to
+  type into the game by hand.
+
+  The website half is already live: the page, its Open Graph tags, the
+  1200×630 card at `hq/public/images/dice-battles-card.png`, and
+  `/.well-known/apple-app-site-association` (served as
+  `application/json` by a rule in `hq/next.config.ts` — Apple refuses
+  any other content type, silently).
+
+  **The build could not be run from the session that made this change**:
+  `eas.json`'s production profile is `credentialsSource: "local"` and
+  neither `~/.dice-battles-credentials/` nor
+  `~/.appstoreconnect/private_keys/` existed in that container. Both
+  live outside the repo on purpose, so a fresh container has neither.
 - **Resend not connected** — ticket replies cannot email anyone yet
 - **The hourly bug-watch routine is unproven** — created, but whether it
   keeps database and email access when it fires automatically is not yet
