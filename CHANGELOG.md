@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.93.0 — 2026-09-17 · requested by David
+
+"Also have the list of your friends load faster."
+
+### What was actually slow
+Opening the Friends tab did three things in a row, and only the last of
+them put anything on screen:
+
+1. ask Game Center for the player's name — a system call that on a cold
+   start can still be showing its own sign-in sheet;
+2. publish this player's profile — a write, a full round trip;
+3. read the friends list — the round trip the player is waiting for.
+
+Steps 1 and 2 have nothing to do with what the screen draws. They were
+in front of it because they were written in that order and it read
+sensibly. The read now goes out at the same moment as the other two, so
+the wait is **one round trip instead of two plus Apple**.
+
+Starting the read early is safe, and not by luck: it is authenticated by
+the player id and the device secret, and neither of the two things that
+can change an identity mid-screen touches either — `refreshName` changes
+the name, `replaceFriendCode` changes the code.
+
+### And it remembers
+The panel is mounted only while it is open, so closing it destroyed the
+list and reopening it started from a spinner — even two seconds later,
+with the answer already known. `src/game/friendsCache.ts` keeps the last
+list for the session, so reopening draws the friends immediately and
+then quietly updates. In memory, not on disk, on purpose: a list from
+last week would be wrong for longer than a blank one is blank.
+
+An empty list counts as an answer. "Nobody yet" appears at once rather
+than after a spinner.
+
+### The part that made this testable
+The sequence moved to `src/game/friendsLoad.ts` with its four steps
+injected, because the fix is an ORDERING and an ordering inside a React
+component is something a test in node can only grep for. The suite now
+holds the publish open and proves the list still arrives.
+`tests/friends.test.ts` had two tests that grepped the old shape; they
+moved too, and now run the logic instead of matching the source.
+
+One more thing found on the way: `refresh` cleared the flag that stops
+the four-second poll from overtaking it, but only on paths that
+returned normally. It is a `finally` now — anything that threw would
+have switched the live-updating list off for good.
+
 ## v1.92.0 — 2026-09-17 · requested by David
 
 "Add a thing in the friends tab that lets you share your friend code with

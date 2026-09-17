@@ -51,6 +51,8 @@ import {
 } from '../game/friendsApi';
 import { refreshName, replaceFriendCode } from '../game/playerIdentity';
 import { nextPollDelay, sameList } from '../game/friendsPoll';
+import { recallFriends, rememberFriends } from '../game/friendsCache';
+import { loadFriends } from '../game/friendsLoad';
 import { useAppActive } from '../game/useAppActive';
 
 /**
@@ -160,8 +162,19 @@ export function FriendsScreen({
   const started = useRef(false);
   /** True while refresh() is in flight, so a poll cannot overtake it. */
   const refreshing = useRef(false);
-  const [list, setList] = useState<FriendList>(EMPTY_LIST);
-  const [loading, setLoading] = useState(true);
+  /*
+    The list this player was last shown, if the tab has been open before
+    in this session — so reopening it draws the friends immediately
+    instead of a spinner. It is re-read either way; this only fills the
+    gap before the answer lands. See friendsCache.ts.
+
+    `loading` is false whenever there is something to show, INCLUDING an
+    empty list: "you have no friends yet" is an answer, and making
+    somebody watch a spinner before repeating it to them is the same
+    wait this is meant to remove.
+  */
+  const [list, setList] = useState<FriendList>(() => recallFriends(me.playerId) ?? EMPTY_LIST);
+  const [loading, setLoading] = useState(() => recallFriends(me.playerId) === null);
   const [problem, setProblem] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [searching, setSearching] = useState(false);
@@ -209,73 +222,68 @@ export function FriendsScreen({
   const [inviteNote, setInviteNote] = useState<string | null>(null);
   const page: Page = showing ? 'profile' : 'list';
 
-  const refresh = useCallback(async () => {
-    refreshing.current = true;
-    setLoading(true);
-    /*
-      Ask Apple for the name again first.
+  /**
+   * Re-read everything.
+   *
+   * `waiting` puts the spinner up first, and only one caller wants it:
+   * the "Try again" button under an error. Opening the screen does not,
+   * because there may be a remembered list to show meanwhile, and
+   * finishing an action does not, because the list is already on screen
+   * and blanking it would be a worse answer than a second of staleness.
+   *
+   * It used to be unconditional, which was invisible while refresh was
+   * also the only way the list ever arrived. With the list now drawn
+   * from the cache the moment the screen opens, an unconditional spinner
+   * would throw away the very thing this change added — and dropping it
+   * entirely would leave "Try again" looking like a dead button.
+   */
+  const refresh = useCallback(
+    async (waiting = false) => {
+      refreshing.current = true;
+      if (waiting) {
+        setProblem(null);
+        setLoading(true);
+      }
 
-      Game Center's sign-in is not instant, so a cold start can settle on
-      the anonymous name and then publish it — which is why every profile
-      on the board was called "New Player" when David looked on 10 Sep
-      2026. Asking here costs nothing once signed in and means the name
-      that goes up is the one Apple has now, not the one it had a second
-      after launch.
-    */
-    let mine = await refreshName();
+      /*
+        The sequence itself lives in friendsLoad.ts, where the suite can
+        run it. What is left here is what only a screen can do: put the
+        list up the instant it arrives, and remember it for the next
+        time the tab is opened.
 
-    /*
-      Publish MY profile before reading anyone else's, every time.
-      Two reasons, and the first is not optional: the friends endpoint
-      only knows players who exist, so without this the very first visit
-      would be answered "no such player" and the screen would show an
-      error to somebody who had done nothing wrong. The second is that
-      it keeps a friend's view of my trophies fresh without needing a
-      separate sync anywhere else in the game.
-    */
-    let push = await pushProfile(mine, stats);
-
-    /*
-      One collision has a cure, so try it rather than reporting it.
-
-      "friend code taken" on a first publish means another row holds this
-      code and this phone cannot prove it owns it. Drawing a new code and
-      publishing again turns a player with no profile at all into a
-      player with a profile and a different code — see replaceFriendCode.
-    */
-    if (!push.ok && isCodeTaken(push.error)) {
-      mine = await replaceFriendCode();
-      push = await pushProfile(mine, stats);
-    }
-
-    /*
-      A FAILED PUBLISH IS THE ERROR, and it used to be thrown away.
-
-      The result of the push was ignored, so when it failed the very next
-      line asked for a friend list belonging to a profile that had never
-      been created — and the player was shown "no such player", which is
-      true, useless, and blames the wrong step. Whatever went wrong up
-      there is the thing worth saying.
-    */
-    setWho(mine);
-
-    if (!push.ok) {
-      setProblem(push.error);
-      setLoading(false);
-      refreshing.current = false;
-      return;
-    }
-
-    const result = await fetchFriends(mine);
-    if (result.ok) {
-      setList(result.list);
-      setProblem(null);
-    } else {
-      setProblem(result.error);
-    }
-    setLoading(false);
-    refreshing.current = false;
-  }, [me, stats]);
+        THE `finally` IS LOAD-BEARING. `refreshing.current` is what stops
+        the four-second poll from overtaking this, and if it were ever
+        left true the poll would stop for good and the list would go back
+        to being frozen until the tab was reopened — the exact bug
+        v1.84.0 fixed. Nothing called here is supposed to throw, but
+        "supposed to" is not a guarantee worth a dead friends list.
+      */
+      try {
+        const { who: mine, problem } = await loadFriends(
+          me,
+          {
+            read: fetchFriends,
+            name: refreshName,
+            publish: (id) => pushProfile(id, stats),
+            reissueCode: replaceFriendCode,
+            codeTaken: isCodeTaken,
+          },
+          (fresh) => {
+            setList(fresh);
+            rememberFriends(me.playerId, fresh);
+            setProblem(null);
+            setLoading(false);
+          },
+        );
+        setWho(mine);
+        setProblem(problem);
+      } finally {
+        setLoading(false);
+        refreshing.current = false;
+      }
+    },
+    [me, stats],
+  );
 
   useEffect(() => {
     void refresh();
@@ -317,6 +325,9 @@ export function FriendsScreen({
       const result = await fetchFriends(who);
       if (result.ok) {
         failures.current = 0;
+        // Remembered on every poll, not only on open: the cache is only
+        // worth having if what it holds is the newest answer seen.
+        rememberFriends(who.playerId, result.list);
         setList((current) => (sameList(current, result.list) ? current : result.list));
       } else {
         /*
@@ -871,7 +882,7 @@ export function FriendsScreen({
           <Card style={styles.rowCard}>
             <Text style={styles.note}>{explain(problem).text}</Text>
             {explain(problem).retryable && (
-              <SecondaryButton style={styles.smallButton} onPress={() => void refresh()}>
+              <SecondaryButton style={styles.smallButton} onPress={() => void refresh(true)}>
                 <Text style={styles.smallSecondaryText}>Try again</Text>
               </SecondaryButton>
             )}

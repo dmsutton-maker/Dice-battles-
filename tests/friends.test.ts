@@ -36,6 +36,7 @@ import {
   sameList,
 } from '../src/game/friendsPoll';
 import { EMPTY_LIST, type FriendList } from '../src/game/friendsApi';
+import { loadFriends } from '../src/game/friendsLoad';
 import {
   canBattleFriend,
   FRIENDLY_MODES,
@@ -905,6 +906,15 @@ suite('friends · the id that must never move', () => {
 });
 
 suite('friends · a failed publish is never silent', () => {
+  /** A believable identity, local to this suite. */
+  const MINE = {
+    playerId: 'local-abc',
+    secret: 'a-very-secret-string',
+    friendCode: 'K7M29XPQ',
+    name: 'Tester',
+    signedIn: true,
+    recovered: false,
+  };
   const screen = readFileSync(
     join(__dirname, '..', 'src/demo/FriendsScreen.tsx'),
     'utf8',
@@ -919,25 +929,69 @@ suite('friends · a failed publish is never silent', () => {
     );
   });
 
-  test('the screen stops at a failed publish instead of asking for a list', () => {
+  /*
+    These two used to grep the screen for the shape of its refresh
+    function. The sequence moved into friendsLoad.ts in v1.93.0 so that
+    it could be RUN, and these moved with it — same two properties, now
+    proved by executing them instead of by matching the source that
+    implements them. See tests/friendsFast.test.ts for the rest.
+  */
+  test('a failed publish is what the player is told about', async () => {
     /*
-      The chain that produced David's message. The push failed, its
-      result was dropped, and the very next line asked for the friend
-      list of a profile that had never been created — so the player was
-      shown "no such player", which blames the wrong step entirely.
+      The chain that produced David's message on 10 Sep 2026. The push
+      failed, its result was dropped, and the next line asked for the
+      friend list of a profile that had never been created — so the
+      player was shown "no such player", which blames the wrong step.
+
+      Both calls fail here, with different words, because that is the
+      real case: "wrong secret" after a reinstall fails the read and the
+      write alike. The publish's wording has to win — it is the one
+      `explain` on the screen turns into a sentence a person can act on.
     */
-    assert(
-      /if \(!push\.ok\) \{\s*setProblem\(push\.error\);/.test(screen),
-      'a failed publish is not shown to the player',
+    const out = await loadFriends(
+      MINE,
+      {
+        read: async () => ({ ok: false, error: 'no such player' }),
+        name: async () => MINE,
+        publish: async () => ({ ok: false, error: 'wrong secret' }),
+        reissueCode: async () => MINE,
+        codeTaken: () => false,
+      },
+      () => assert(false, 'no list should be shown when nothing could be read'),
     );
-    const stop = screen.indexOf('if (!push.ok) {');
-    const fetchAt = screen.indexOf('await fetchFriends(');
-    assert(stop > 0 && fetchAt > stop, 'the friend list is fetched before the push is checked');
+    assertEqual(out.problem, 'wrong secret', 'the read’s error masked the publish’s');
   });
 
-  test('the screen redraws a taken code rather than reporting a dead end', () => {
-    assert(/isCodeTaken\(push\.error\)/.test(screen), 'a taken friend code is not handled');
-    assert(/replaceFriendCode\(\)/.test(screen), 'nothing draws a new code');
+  test('a taken code is redrawn rather than reported as a dead end', async () => {
+    /*
+      "friend code taken" on a first publish means another row holds this
+      code and this phone cannot prove it owns it. Before this, the
+      player was simply told, and left with no profile at all and nothing
+      they could do.
+    */
+    const codes = ['K7M29XPQ', 'NEWCODE1'];
+    let attempt = 0;
+    const out = await loadFriends(
+      { ...MINE, friendCode: codes[0] },
+      {
+        read: async () => ({ ok: true, list: EMPTY_LIST }),
+        name: async () => ({ ...MINE, friendCode: codes[0] }),
+        publish: async () =>
+          ++attempt === 1
+            ? { ok: false, error: 'friend code taken' }
+            : ({ ok: true } as const),
+        reissueCode: async () => ({ ...MINE, friendCode: codes[1] }),
+        codeTaken: (e) => /friend code taken/i.test(e),
+      },
+      () => {},
+    );
+    assertEqual(attempt, 2, 'the publish was not tried again with a new code');
+    assertEqual(out.problem, null, 'a curable collision was reported as a failure');
+    assertEqual(
+      out.who.friendCode,
+      'NEWCODE1',
+      'the screen would still show the code the server refused',
+    );
   });
 
   test('the code on screen is the one that was published', () => {
@@ -1099,16 +1153,30 @@ suite('friends · the list keeps itself up to date', () => {
       /if \(busy\.current \|\| refreshing\.current\) return;/.test(screen),
       'a poll can run while a refresh is in flight',
     );
-    // And the flag has to be cleared on EVERY way out of refresh, or the
-    // polling stops for good the first time a publish fails.
+    /*
+      And the flag has to be cleared on EVERY way out of refresh, or the
+      polling stops for good the first time something goes wrong.
+
+      This used to count `refreshing.current = false` against
+      `setLoading(false)` and call them equal — a proxy that was only
+      ever true while refresh had one early return per exit. It now has
+      no early returns at all and clears the flag in a `finally`, which
+      is the property worth pinning: a throw from anything it calls
+      cannot leave the poll switched off.
+    */
     const refresh = screen.slice(
       screen.indexOf('const refresh = useCallback'),
       screen.indexOf('useEffect(() => {\n    void refresh();'),
     );
-    assertEqual(
-      (refresh.match(/refreshing\.current = false/g) ?? []).length,
-      (refresh.match(/setLoading\(false\)/g) ?? []).length,
-      'refresh has an exit that leaves polling switched off for ever',
+    assert(refresh.length > 0, 'refresh is gone');
+    assert(
+      /\}\s*finally\s*\{[^}]*refreshing\.current = false;/.test(refresh),
+      'refreshing.current is not cleared in a finally — a throw would stop the poll for ever',
+    );
+    const body = refresh.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    assert(
+      !/\breturn\b/.test(body),
+      'an early return in refresh skips the cleanup below it',
     );
   });
 });
