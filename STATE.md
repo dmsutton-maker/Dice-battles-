@@ -170,11 +170,36 @@ and the same day the listing was brought up to date:
   `application/json` by a rule in `hq/next.config.ts` — Apple refuses
   any other content type, silently).
 
-  **The build could not be run from the session that made this change**:
-  `eas.json`'s production profile is `credentialsSource: "local"` and
-  neither `~/.dice-battles-credentials/` nor
-  `~/.appstoreconnect/private_keys/` existed in that container. Both
-  live outside the repo on purpose, so a fresh container has neither.
+  **The build cannot be run from a fresh session, and it is worse than
+  a missing file.** Checked properly on 18 Sep 2026 rather than assumed:
+
+  - `eas.json`'s production profile is `credentialsSource: "local"`, and
+    `credentials.json` is not in a fresh container — nor are
+    `~/.dice-battles-credentials/` or `~/.appstoreconnect/private_keys/`,
+    which live outside the repo on purpose.
+  - Switching that profile to `remote` does NOT help. Tried it:
+    *"Distribution Certificate is not validated for non-interactive
+    builds. Credentials are not set up."* EAS holds no iOS credentials
+    for this project on its servers — every build so far has used local
+    ones.
+  - **And the old credentials would not be enough anyway.** Universal
+    links need the **Associated Domains** capability enabled on the App
+    ID *and* a provisioning profile that carries it (Apple's own
+    requirement — see "Supporting associated domains"). The profile
+    build 9 used predates the entitlement, so restoring the old files
+    and rebuilding would produce a binary whose links silently do
+    nothing. The capability has to be enabled and the profile
+    regenerated, which needs an Apple login.
+
+  So the next build needs a person at an Apple account, once. Letting
+  EAS manage credentials (`credentialsSource: "remote"`, then an
+  interactive `eas build`) is the way to stop a rebuilt container being
+  blocked on this again — at the cost of Expo's servers holding the
+  signing certificate, which is David's call rather than a default to
+  take for him.
+
+  Side note: probing this incremented EAS's stored `buildNumber` from 9
+  to 11 without producing a build. Harmless — it only has to increase.
 - **Resend not connected** — ticket replies cannot email anyone yet
 - **The hourly bug-watch routine is unproven** — created, but whether it
   keeps database and email access when it fires automatically is not yet
