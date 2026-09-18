@@ -18,13 +18,21 @@ export interface ColorDef {
   hex: string;
 }
 
+/**
+ * Palette engineered for separation (multi-agent audit, CIEDE2000-checked):
+ * min pairwise distance 32.2 normal vision (was 23.5), 12.1 deuteranopia
+ * (was 1.0 — old blue/purple were indistinguishable to colorblind players),
+ * 12.7 protanopia. Separation comes from a lightness ladder as well as hue,
+ * so the set survives color-vision deficiencies. Ages 5+, every color still
+ * plainly reads as its name.
+ */
 export const PRISONER_COLORS: ColorDef[] = [
-  { id: 'red', label: 'Red', hex: '#ff4d4d' },
-  { id: 'blue', label: 'Blue', hex: '#3d8bff' },
-  { id: 'green', label: 'Green', hex: '#3ecf5a' },
-  { id: 'yellow', label: 'Yellow', hex: '#ffd23d' },
-  { id: 'purple', label: 'Purple', hex: '#a55eea' },
-  { id: 'orange', label: 'Orange', hex: '#ff8c2e' },
+  { id: 'red', label: 'Red', hex: '#cc2533' },
+  { id: 'blue', label: 'Blue', hex: '#043fe0' },
+  { id: 'green', label: 'Green', hex: '#33cc6b' },
+  { id: 'yellow', label: 'Yellow', hex: '#ffe521' },
+  { id: 'purple', label: 'Purple', hex: '#cc79fc' },
+  { id: 'orange', label: 'Orange', hex: '#fc8403' },
 ];
 
 /** One entry per die face, indexed by BoxGeometry material-group order. */

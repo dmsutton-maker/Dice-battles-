@@ -1,0 +1,12 @@
+# Authorised sellers for Paper Ship Studio's apps.
+#
+# Google finds this file via the developer website on the App Store /
+# Play Store listing, and uses it to confirm that whoever is selling ad
+# space in Dice Battles is actually allowed to. Inventory that cannot be
+# verified this way is worth markedly less, because many buyers only bid
+# on authorised sellers.
+#
+# The publisher id below is public by design — it is compiled into the
+# app binary and readable by anyone who downloads it. It is not a secret,
+# unlike the AdMob account it belongs to.
+google.com, pub-5310885665976703, DIRECT, f08c47fec0942fa0

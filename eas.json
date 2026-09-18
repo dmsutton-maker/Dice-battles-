@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "channel": "main",
+      "autoIncrement": true,
+      "environment": "production",
+      "credentialsSource": "local"
+    },
+    "adhoc": {
+      "channel": "main",
+      "distribution": "internal",
+      "autoIncrement": true,
+      "environment": "production",
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "K3N9FG8NKD",
+        "ascAppId": "6802287913"
+      }
+    }
+  }
+}
