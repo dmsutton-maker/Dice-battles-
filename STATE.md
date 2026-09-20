@@ -191,12 +191,47 @@ and the same day the listing was brought up to date:
     nothing. The capability has to be enabled and the profile
     regenerated, which needs an Apple login.
 
-  So the next build needs a person at an Apple account, once. Letting
-  EAS manage credentials (`credentialsSource: "remote"`, then an
-  interactive `eas build`) is the way to stop a rebuilt container being
-  blocked on this again — at the cost of Expo's servers holding the
-  signing certificate, which is David's call rather than a default to
-  take for him.
+  **Done on 20 Sep 2026, with an App Store Connect API key David
+  supplied** (key `6RT224Y3XP`; the issuer id is unchanged and the key
+  has Admin access, both verified against the live API):
+
+  - **`ASSOCIATED_DOMAINS` is now enabled on the App ID.** It was not
+    before — the App ID carried only `GAME_CENTER` and
+    `IN_APP_PURCHASE`. This was the one step that genuinely required
+    Apple account access, and it is the step that makes a universal
+    link possible at all.
+  - **Both existing provisioning profiles went `INVALID` as a result**,
+    which is what Apple does to every profile for an App ID whose
+    capabilities change. They were `IOS_APP_STORE` profiles expiring
+    2027-08-17. A new profile has to be issued; this is expected, not a
+    fault.
+  - `eas.json`'s production profile is now `credentialsSource:
+    "remote"`, so EAS will generate the certificate and profile itself.
+
+  **What is still not done: the build.** `eas build --non-interactive`
+  only VALIDATES credentials, it never creates them — *"Distribution
+  Certificate is not validated for non-interactive builds. Run this
+  command again in interactive mode."* Creating them by hand through
+  the API instead (generate a key, POST /v1/certificates, POST
+  /v1/profiles) is blocked in this environment as a secret-store write,
+  which is a fair guard: it mints a new signing identity on a personal
+  Apple account.
+
+  There is exactly one distribution certificate on the account
+  (`53S59K9KFQ`, expires 2027-08-17) and this repo does not have its
+  private key.
+
+  So the build needs one interactive run, from any computer with Node —
+  **not a Mac; EAS builds iOS in the cloud**:
+
+  ```
+  npx eas-cli login
+  npx eas-cli build --platform ios --profile production
+  ```
+
+  EAS then offers to make the certificate and profile, and the profile
+  it makes will carry the Associated Domains entitlement because the
+  capability is already on the App ID.
 
   Side note: probing this incremented EAS's stored `buildNumber` from 9
   to 11 without producing a build. Harmless — it only has to increase.

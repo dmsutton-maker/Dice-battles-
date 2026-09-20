@@ -7,7 +7,7 @@
       "channel": "main",
       "autoIncrement": true,
       "environment": "production",
-      "credentialsSource": "local"
+      "credentialsSource": "remote"
     },
     "adhoc": {
       "channel": "main",
