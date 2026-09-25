@@ -15,6 +15,7 @@ import {
 import { createFlagstoneTexture } from './flagstoneTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
+import { Campfire, Crate, Duel, Signpost, EXTRA_SPOTS } from './sceneryProps';
 
 const STONE = '#9a8a72';
 const STONE_DARK = '#7d6e58';
@@ -518,6 +519,29 @@ export function CastleArena({
       </mesh>
 
       <Landscape palette={palette} />
+
+      {/*
+        The surroundings, David 25 Sep 2026: "make the surroundings of
+        all arenas on all the maps more decorative and maybe put like
+        people fighting on some of them."
+
+        The same coordinates the sixteen themed battlefields use, and
+        chosen the same way — outside the tray, clear of every jail and
+        retreat slot, inside the frame on both phone shapes, and out of
+        the JAIL PEN'S SHADOW. That last one is not something the test
+        suite can see: a prop can be perfectly inside the frame and
+        perfectly hidden behind a platform that stands 1.15 high between
+        it and the camera, which is exactly what the first attempt at
+        these did.
+      */}
+      <group key="s0" position={[EXTRA_SPOTS[0][0], 0, EXTRA_SPOTS[0][1]]} scale={1}><Duel color="#c23b3b" /></group>
+      <group key="s1" position={[EXTRA_SPOTS[1][0], 0, EXTRA_SPOTS[1][1]]} scale={0.95}><Duel color="#3f7fd0" /></group>
+      <group key="s2" position={[EXTRA_SPOTS[2][0], 0, EXTRA_SPOTS[2][1]]} scale={0.9}><Campfire /></group>
+      <group key="s3" position={[EXTRA_SPOTS[3][0], 0, EXTRA_SPOTS[3][1]]} scale={0.9}><Crate color="#8a5a34" /></group>
+      <group key="s4" position={[EXTRA_SPOTS[4][0], 0, EXTRA_SPOTS[4][1]]} scale={0.85}><Signpost color="#8a5a34" /></group>
+      <group key="s5" position={[EXTRA_SPOTS[5][0], 0, EXTRA_SPOTS[5][1]]} scale={0.85}><Crate color="#8a5a34" /></group>
+      <group key="s6" position={[EXTRA_SPOTS[6][0], 0, EXTRA_SPOTS[6][1]]} scale={0.85}><Crate color="#8a5a34" /></group>
+      <group key="s7" position={[EXTRA_SPOTS[7][0], 0, EXTRA_SPOTS[7][1]]} scale={0.85}><Signpost color="#8a5a34" /></group>
       <JailPen />
       <RetreatGarden palette={palette} padColors={padColors} />
 

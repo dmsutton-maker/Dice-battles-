@@ -12,6 +12,7 @@ const ARENA_STRUCTURES = [
   ...new Set(Object.values(ARENA_THEMES).map((t) => t.structure)),
 ];
 import { FIGURE_RADIUS, JAIL_SLOTS, RETREAT_SLOTS } from '../src/game/stations';
+import { EXTRA_SPOTS } from '../src/arena/sceneryProps';
 import { fitCamera } from '../src/demo/cameraFit';
 import { assert, assertEqual, note, suite, test } from './harness';
 
@@ -424,6 +425,57 @@ suite('arenas · the scenery is where the camera is pointing', () => {
         `${worstLabel} is off screen on ${label} — it is being rendered for nobody`,
       );
     }
+  });
+
+  test('the four bespoke arenas put their scenery somewhere it can be seen', () => {
+    /*
+      David, 25 Sep 2026: "make the surroundings of all arenas on all the
+      maps more decorative." ALL of them is twenty, not sixteen — the
+      castle, the sunset castle, the jungle and the station are
+      hand-written scenes that cannot reach into themeData, so their
+      extra props share one exported list of spots (EXTRA_SPOTS) rather
+      than repeating eight coordinate pairs across three files where
+      nothing could check them.
+
+      The fifth rule here is the one the suite could not see before.
+      Every other test asks whether a prop is inside the FRAME; none of
+      them asks whether something is standing in front of it. The jail
+      pen's platform is 1.15 high and sits directly between the camera
+      and the middle of the back wall, so a prop behind it is inside the
+      frame and behind a wall. The first attempt put a sword fight
+      exactly there.
+    */
+    const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+    const outerX = innerWidth / 2 + wallThickness;
+    const outerZ = innerDepth / 2 + wallThickness;
+    const penHalf = TUNING.prison.innerWidth / 2 + 0.25;
+    const slots = [...JAIL_SLOTS, ...RETREAT_SLOTS];
+    for (const [x, z] of EXTRA_SPOTS) {
+      assert(
+        Math.abs(x) > outerX || Math.abs(z) > outerZ,
+        `the shared prop spot (${x}, ${z}) is inside the tray`,
+      );
+      for (const slot of slots) {
+        assert(
+          Math.hypot(x - slot.x, z - slot.z) > FIGURE_RADIUS + 0.9,
+          `the shared prop spot (${x}, ${z}) stands on a figure`,
+        );
+      }
+      if (z < -outerZ) {
+        assert(
+          Math.abs(x) > penHalf,
+          `the shared prop spot (${x}, ${z}) is hidden behind the jail pen`,
+        );
+      }
+      for (const [label, aspect] of ASPECTS) {
+        const ndc = project(aspect, x, 0, z);
+        assert(
+          Math.max(Math.abs(ndc.x), Math.abs(ndc.y)) <= 1,
+          `the shared prop spot (${x}, ${z}) is off screen on ${label}`,
+        );
+      }
+    }
+    note(`${EXTRA_SPOTS.length} shared spots, on screen and out of the pen's shadow`);
   });
 
   test('the props are spread around the board, not stacked in one place', () => {

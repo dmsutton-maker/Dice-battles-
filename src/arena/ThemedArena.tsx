@@ -16,6 +16,7 @@ import { cachedTexture } from './textureCache';
 import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
 import { buildRim, RimSpot } from './rim';
 import { ArenaProps } from './arenaProps';
+import { Campfire, Crate, Duel, Signpost } from './sceneryProps';
 
 /**
  * One renderer for all sixteen themed battlefields.
@@ -533,6 +534,10 @@ function Prop({ p }: { p: PropPlacement }) {
       case 'pebbles': return <Pebbles color={p.color} />;
       case 'torch': return <Torch color={p.color} />;
       case 'banner': return <Banner color={p.color} />;
+      case 'duel': return <Duel color={p.color} />;
+      case 'crate': return <Crate color={p.color} />;
+      case 'signpost': return <Signpost color={p.color} />;
+      case 'campfire': return <Campfire color={p.color} />;
     }
   })();
   return (

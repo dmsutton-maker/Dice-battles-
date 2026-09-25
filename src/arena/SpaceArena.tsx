@@ -13,6 +13,7 @@ import {
 import { createFlagstoneTexture } from './flagstoneTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
+import { Crate, Signpost, EXTRA_SPOTS } from './sceneryProps';
 
 /**
  * Space Station arena — the 700🏆 Mystery Arena. A dice deck floating in
@@ -472,6 +473,28 @@ export function SpaceArena({ padColors }: ArenaProps) {
       <SpaceWorld />
       <SpaceJailPen />
       <SpaceRetreat padColors={padColors} />
+
+      {/*
+        The surroundings, David 25 Sep 2026: "make the surroundings of
+        all arenas on all the maps more decorative and maybe put like
+        people fighting on some of them."
+
+        The same coordinates the sixteen themed battlefields use, and
+        chosen the same way — outside the tray, clear of every jail and
+        retreat slot, inside the frame on both phone shapes, and out of
+        the JAIL PEN'S SHADOW. That last one is not something the test
+        suite can see: a prop can be perfectly inside the frame and
+        perfectly hidden behind a platform standing 1.15 high between it
+        and the camera, which is exactly what the first attempt did.
+      */}
+      <group key="s0" position={[EXTRA_SPOTS[0][0], 0, EXTRA_SPOTS[0][1]]} scale={1}><Signpost color="#3d4457" /></group>
+      <group key="s1" position={[EXTRA_SPOTS[1][0], 0, EXTRA_SPOTS[1][1]]} scale={0.95}><Signpost color="#3d4457" /></group>
+      <group key="s2" position={[EXTRA_SPOTS[2][0], 0, EXTRA_SPOTS[2][1]]} scale={0.9}><Crate color="#3d4457" /></group>
+      <group key="s3" position={[EXTRA_SPOTS[3][0], 0, EXTRA_SPOTS[3][1]]} scale={0.9}><Crate color="#3d4457" /></group>
+      <group key="s4" position={[EXTRA_SPOTS[4][0], 0, EXTRA_SPOTS[4][1]]} scale={0.85}><Crate color="#3d4457" /></group>
+      <group key="s5" position={[EXTRA_SPOTS[5][0], 0, EXTRA_SPOTS[5][1]]} scale={0.85}><Crate color="#3d4457" /></group>
+      <group key="s6" position={[EXTRA_SPOTS[6][0], 0, EXTRA_SPOTS[6][1]]} scale={0.85}><Crate color="#4c5170" /></group>
+      <group key="s7" position={[EXTRA_SPOTS[7][0], 0, EXTRA_SPOTS[7][1]]} scale={0.85}><Crate color="#4c5170" /></group>
 
       {/*
         A knee-high hull rim, and above it a containment field.

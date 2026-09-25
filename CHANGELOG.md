@@ -1,5 +1,65 @@
 # Changelog
 
+## v1.99.0 — 2026-09-25 · requested by David
+
+"Make the surroundings of all arenas on all the maps more decorative and
+maybe put like people fighting on some of them."
+
+**Ten more props on every one of the sixteen themed battlefields** — 13
+to 23 on the simpler ones, 17 to 27 on the richer — and eight more on
+each of the four bespoke scenes. Every one is drawn from that arena's own
+palette and kinds, so the snow stays snow and the reef stays reef; three
+new kinds (`crate`, `signpost`, `campfire`) were added because what most
+of them were short of was furniture that reads as somebody LIVING there
+rather than more landscape.
+
+### People fighting, on nine of the twenty
+A new `duel` prop: two figures built exactly like the prisoners — same
+capsule body, same ball head — with their blades crossed. On the six
+themed arenas where a fight belongs (snow, desert, volcano, cavern, cove,
+toybox) and on the castle, the sunset castle and the jungle. Not the
+space station, where a sword fight would read as a costume.
+
+**Crossed blades, because of the camera.** The first version posed them
+the way you would draw a duel side-on — one lunging, one braced behind a
+shield — and rendering it showed why that is wrong: this camera looks
+almost straight down, so a lunge reads as a lean and a raised sword reads
+as a stick. The second version crossed the blades in the UPRIGHT plane
+and came out as a barbell joining two heads, because from overhead two
+blades crossing vertically project onto the same line. Laid nearly flat
+and angled across each other, the X is an X from the one angle anybody
+will ever see it from. Three renders, two of them wrong.
+
+### The jail pen casts a shadow the test suite cannot see
+The first placement put every arena's duel in the open ground behind the
+jail, which is the widest space on the board. Rendering showed a sliver
+of one head over the pen's back wall and nothing else: the pen's platform
+stands 1.15 high directly between the camera and the middle of the back,
+so a prop there is **inside the frame and behind a wall**.
+
+Every existing test asks whether a prop is inside the frame. None of them
+asks whether something is standing in front of it — and a prop that is
+hidden throws nothing, looks like nothing, and reads in the source
+exactly like one that works. That is the same class of bug the whole
+`tools/arena-preview` folder exists because of. The back band now starts
+outside the pen's width, and the rule is written down in the placement
+notes and enforced for the shared spots.
+
+### The bespoke four share one list of places
+`EXTRA_SPOTS` in `src/arena/sceneryProps.tsx`. The castle, the sunset
+castle, the jungle and the station hand-write their scenes and cannot
+reach into `themeData`, so without this their new props would be eight
+coordinate pairs repeated across three files with nothing able to check
+them. One exported list, one test, covering all four — outside the tray,
+clear of every figure, on screen at both phone shapes, and out of the
+pen's shadow.
+
+### Verified
+Typecheck, 840 tests, Metro bundle. Two mutations on the new test — a
+spot moved into the pen's shadow, a spot moved off screen — each caught.
+All twenty arenas rendered and looked at, which is the only thing that
+could have caught any of the three problems above.
+
 ## v1.98.0 — 2026-09-25 · requested by David
 
 "Put a little x over the color when your opponent gets it in game."
