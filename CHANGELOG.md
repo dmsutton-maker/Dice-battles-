@@ -1,5 +1,68 @@
 # Changelog
 
+## v1.99.1 — 2026-09-25 · requested by David
+
+"Make push notifications for when there's a new update."
+
+**Everything but the last step, and the last step needs a build.**
+
+Done and deployed: the `push_tokens` table, `POST /api/push/register`
+(authenticated with the same device secret every other write from the
+app uses), `POST /api/push/announce` (behind the HQ token, one message to
+everybody, with no way to address a single player — nothing needs it and
+an endpoint that could would be an endpoint that could be made to),
+`src/game/push.ts`, and a Settings row that hides itself while the
+module is absent. All four endpoints were exercised against the live
+site.
+
+### Why it is switched off rather than shipped
+`expo-notifications` is native code. Per the rule this game learned the
+hard way on 25 Aug 2026, adding it means raising `runtimeVersion` in the
+same change — and raising `runtimeVersion` is what correctly stops new
+JavaScript reaching binaries that cannot run it.
+
+**No new binary can be made from a session.** `eas build
+--non-interactive` was attempted and stops at "Distribution Certificate
+is not validated for non-interactive builds", which needs a person at a
+terminal. So raising the runtime now would ship a feature nobody can use
+AND freeze every over-the-air update for the family until somebody
+managed a build. Waiting is the cheaper of the two by a long way.
+
+`src/game/pushSdk.ts` is the switch, built in the same shape as
+`adSdk.ts` because it has the same hazard: Metro bundles a `require()`
+with a literal string whether or not it ever runs, the module reaches
+for its native side at module scope, and a try/catch does **not** save
+you — Metro's loader catches the throw first and escalates it to a red
+screen. The five steps to turn it on are written at the top of that
+file, and `tests/push.test.ts` fails if any of them disagree with each
+other: the require, the dependency, the config plugin and
+`runtimeVersion` are one state, and any mixture of them is the crash.
+
+### Decisions worth keeping
+**Permission is asked from Settings, never at launch.** iOS gives an app
+one chance at that prompt, for good, and a prompt on first launch —
+before a child has seen a die roll — is the one most likely to be
+refused forever. The launch path only ever re-registers a token that
+already exists, silently, because iOS rotates them and a token nobody
+re-registered is a phone that quietly stops being told anything.
+
+**Nothing in push.ts may throw, reject or block.** Every exported
+function is wrapped, and a test asserts it: a game that would not start
+because a permission prompt did not answer is a far worse bug than the
+feature is a feature.
+
+**A push token is an address, not an identity** — issued by Expo, useful
+only for routing to one install, stored against the player id only so it
+can be deleted on request, and joined to nothing else.
+
+### Verified
+Typecheck, 846 tests, Metro bundle. Three mutations — the require turned
+on without the package or a runtime bump, a second file reaching the
+module, a catch removed from push.ts — each caught by the test written
+for it. Both endpoints exercised live: bad tokens rejected, unknown
+players rejected, announce refused without the HQ token, over-long
+titles refused, and a dry run against the real table.
+
 ## v1.99.0 — 2026-09-25 · requested by David
 
 "Make the surroundings of all arenas on all the maps more decorative and

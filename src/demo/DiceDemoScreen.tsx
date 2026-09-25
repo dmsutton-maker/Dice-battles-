@@ -153,6 +153,7 @@ import { TopButtons } from './TopButtons';
 import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
+import { askToBeTold, pushState, refreshToken, type PushState } from '../game/push';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
 import { TierIcon } from './TierIcon';
@@ -322,7 +323,20 @@ export function DiceDemoScreen() {
       whatever was last read.
     */
     fetchTournaments().then(setCups);
+
+    /*
+      Where this phone stands on notifications, and a silent
+      re-registration if it has already said yes.
+
+      NEVER PROMPTS — see push.ts. iOS rotates a push token whenever it
+      likes, so a device that registered once and never again quietly
+      stops being told anything; this is the cheap re-register that
+      stops that. On every binary in existence today it resolves to
+      'unavailable' and does nothing at all.
+    */
+    void pushState().then(setPush);
   }, []);
+
 
   const controlsRef = useRef<SceneControls | null>(null);
   const [phase, setPhase] = useState<Phase>('pick');
@@ -508,6 +522,21 @@ export function DiceDemoScreen() {
       alive = false;
     };
   }, []);
+
+  /*
+    Re-register this device's push address once an identity exists.
+
+    Separate from the effect above because it needs `me`, which is read
+    asynchronously — and it must not prompt for anything, so it is safe
+    to fire on every launch. iOS rotates a push token whenever it likes,
+    and a token nobody re-registered is a phone that quietly stops being
+    told anything. Does nothing at all while the notifications module is
+    switched off, which is every binary today.
+  */
+  useEffect(() => {
+    if (!me) return;
+    void refreshToken(me);
+  }, [me]);
   /*
     ASKING WHETHER ANYBODY WANTS A BATTLE.
 
@@ -627,6 +656,13 @@ export function DiceDemoScreen() {
   const [rewards, setRewards] = useState<Reward[]>([]);
 
   const [colorblind, setColorblind] = useState(false);
+  /*
+    Whether this phone has asked to be told about updates. 'unavailable'
+    on every binary today — the notifications module is switched off
+    until a build exists (src/game/pushSdk.ts) — and the Settings row
+    hides itself entirely while it is.
+  */
+  const [push, setPush] = useState<PushState>('unavailable');
   /**
    * The item being tried on, if any. Nothing about the loadout changes
    * while this is set — the board simply shows the previewed item instead
@@ -2725,6 +2761,56 @@ export function DiceDemoScreen() {
                 <Text style={styles.toggleTick}>{colorblind ? '✓' : ''}</Text>
               </View>
             </Pressable>
+            {/*
+              TELL ME WHEN THERE IS A NEW UPDATE.
+
+              David, 25 Sep 2026: "make push notifications for when
+              there's a new update."
+
+              Hidden entirely while `pushState` is 'unavailable', which
+              is every binary in existence today — expo-notifications is
+              native code and the module is switched OFF until a build
+              can be made (see src/game/pushSdk.ts for why, and for the
+              five steps). A row offering something the binary cannot do
+              would be a row that does nothing when tapped.
+
+              It is HERE, in Settings, rather than at launch, and that
+              is the whole reason there is a row at all. iOS gives an app
+              one chance at the permission prompt, for good; asking on
+              first launch, before a child has seen a die roll, is the
+              ask most likely to be refused forever. Somebody who has
+              come to this screen has gone looking.
+            */}
+            {push !== 'unavailable' && (
+              <>
+                <View style={styles.settingsDividerLine} />
+                <Pressable
+                  style={styles.toggleRow}
+                  disabled={push === 'on'}
+                  onPress={() => {
+                    playClick();
+                    if (!me) return;
+                    void askToBeTold(me).then(setPush);
+                  }}
+                >
+                  <View style={styles.toggleText}>
+                    <View style={styles.toggleLabelRow}>
+                      <Text style={styles.toggleLabel}>Tell me about updates</Text>
+                    </View>
+                    <Text style={styles.toggleNote}>
+                      {push === 'on'
+                        ? 'You will get a note when a new version is ready.'
+                        : push === 'off'
+                          ? 'Turned off. You can switch it back on in the phone’s own Settings, under Dice Battles.'
+                          : 'One note when a new version is ready. Nothing else, ever.'}
+                    </Text>
+                  </View>
+                  <View style={[styles.toggleBox, push === 'on' && styles.toggleBoxOn]}>
+                    <Text style={styles.toggleTick}>{push === 'on' ? '✓' : ''}</Text>
+                  </View>
+                </Pressable>
+              </>
+            )}
             <View style={styles.settingsDividerLine} />
             <Text style={styles.settingsStats}>
               {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×

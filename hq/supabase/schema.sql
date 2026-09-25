@@ -780,3 +780,39 @@ create policy tournaments_read on public.tournaments
 -- the other end of a request from a phone, and a token shipped inside
 -- an app is not a token. Nothing here is worth protecting — it is a
 -- list of challenges we want players to see.
+
+-- ---------------------------------------------------------------------
+-- Push tokens — where to send "there's a new update".
+--
+-- David, 25 Sep 2026: "make push notifications for when there's a new
+-- update."
+--
+-- ONE ROW PER DEVICE, keyed by the Expo push token rather than by
+-- player, because the two are not the same thing: a family sharing an
+-- iPad and a phone is one player id on two devices, and a phone that is
+-- wiped and restored is one device with a new token. Keying on the
+-- token means re-registering is an upsert and can never strand a stale
+-- row that we keep shouting at.
+--
+-- The player id is stored alongside only so a token can be dropped when
+-- somebody asks; nothing is ever sent to one player rather than
+-- another. Nothing here is personal — an Expo push token is an opaque
+-- routing address issued by Expo, not an advertising identifier, and it
+-- is deliberately not joined to anything that is.
+create table if not exists public.push_tokens (
+  token       text primary key check (token like 'ExponentPushToken[%'),
+  player_id   text not null,
+  platform    text not null default 'ios' check (platform in ('ios','android')),
+  -- The app version the device last registered from, so a bad release
+  -- can be identified rather than guessed at.
+  version     text not null default '',
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists push_tokens_player_idx on public.push_tokens (player_id);
+
+alter table public.push_tokens enable row level security;
+
+-- No policies: every read and write goes through the HQ API with the
+-- service key, which checks the device secret first. The anon key can do
+-- nothing here at all — the same arrangement player_profiles has.

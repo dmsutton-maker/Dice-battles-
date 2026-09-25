@@ -175,6 +175,38 @@ three of these wrong.
   something already owned pays its shelf price in coins instead, so
   reusing one costs nothing.
 
+## Push notifications — built, and OFF until somebody can build
+
+David asked for them on 25 Sep 2026: "make push notifications for when
+there's a new update." Everything except the last step is done and
+deployed — the `push_tokens` table, `POST /api/push/register` (device
+secret), `POST /api/push/announce` (HQ token, one message to everybody,
+no way to address one player), `src/game/push.ts`, and the Settings row
+that hides itself while the module is absent.
+
+**It is off because `expo-notifications` is native code and a build
+cannot be made from a session.** `eas build --non-interactive` stops at
+"Distribution Certificate is not validated for non-interactive builds",
+which needs a person at a terminal. Turning it on raises
+`runtimeVersion`, and raising `runtimeVersion` with no new binary in
+existence stops EVERY install receiving updates — silently, until
+somebody manages a build. Shipping a feature nobody can use and freezing
+everything else is worse than waiting.
+
+The five steps, all in one change, are written at the top of
+`src/game/pushSdk.ts`. `tests/push.test.ts` fails if any of them
+disagree. After the build, announce an update with:
+
+```sh
+curl -X POST https://dice-battles-hq.vercel.app/api/push/announce \
+  -H "x-hq-token: $HQ_API_TOKEN" -H 'content-type: application/json' \
+  -d '{"title":"Dice Battles","body":"A new update is ready.","dryRun":true}'
+```
+
+`dryRun` reports who would be told without telling them. Drop it to
+send. Title 40 characters, body 140 — a lock screen truncates and
+nobody sees where.
+
 ## Releasing
 
 **Shipping is automatic now.** David asked on 20 Aug 2026 for changes to
