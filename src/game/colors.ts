@@ -38,6 +38,35 @@ export const PRISONER_COLORS: ColorDef[] = [
 /** One entry per die face, indexed by BoxGeometry material-group order. */
 export const DIE_FACE_COLORS: ColorDef[] = PRISONER_COLORS;
 
+/** Ink dark enough to read on a pale colour. The interface's own ink. */
+export const INK_ON_LIGHT = '#1a1628';
+/** Ink light enough to read on a dark one. */
+export const INK_ON_DARK = '#ffffff';
+
+/**
+ * Black ink or white ink, for marking ON one of these colours.
+ *
+ * The palette runs from Yellow at #ffe521 to Blue at #043fe0, so there is
+ * no single ink that reads on all six — a dark mark vanishes on the blue
+ * and a white one vanishes on the yellow. This picks per colour.
+ *
+ * Rec. 601 perceived brightness with the threshold at 140, which is not
+ * an arbitrary number: it is the rule the colourblind-mode face stickers
+ * have used since they were written (src/dice/symbols.ts), tuned against
+ * these exact six. Extracted here so the two cannot drift — a die face
+ * and a mark drawn on the same colour disagreeing about which ink to use
+ * would be the kind of thing nobody notices until Yellow looks broken.
+ */
+export function inkOn(hex: string): string {
+  const parsed = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!parsed) return INK_ON_LIGHT;
+  const n = parseInt(parsed[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return (r * 299 + g * 587 + b * 114) / 1000 > 140 ? INK_ON_LIGHT : INK_ON_DARK;
+}
+
 /**
  * The pale version of a colour — what the retreat platforms are painted.
  *

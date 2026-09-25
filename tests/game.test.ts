@@ -2,10 +2,16 @@ import { AI_DIFFICULTIES, AI_ROSTER, pickOpponent, rollAiDice } from '../src/gam
 import { readFileSync } from 'node:fs';
 import { tierItem, TIERS_WITHOUT_A_PICTURE } from '../src/game/tierItem';
 import { OBSTACLES_BY_DIFFICULTY } from '../src/game/obstacles';
-import { DIE_FACE_COLORS, PRISONER_COLORS, pastelOf } from '../src/game/colors';
+import {
+  DIE_FACE_COLORS,
+  inkOn,
+  PRISONER_COLORS,
+  pastelOf,
+} from '../src/game/colors';
 import {
   laneColors,
   laneOf,
+  opponentColors,
   makeUnits,
   MODE_ORDER,
   MODES,
@@ -51,6 +57,25 @@ function hslOf(hex: string): [number, number, number] {
 const hueOf = (hex: string) => hslOf(hex)[0];
 const saturationOf = (hex: string) => hslOf(hex)[1];
 const lightnessOf = (hex: string) => hslOf(hex)[2];
+
+/** WCAG contrast ratio between two solid colours. */
+function contrast(a: string, b: string): number {
+  const channel = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const lum = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    return (
+      0.2126 * channel((n >> 16) & 255) +
+      0.7152 * channel((n >> 8) & 255) +
+      0.0722 * channel(n & 255)
+    );
+  };
+  const l1 = lum(a) + 0.05;
+  const l2 = lum(b) + 0.05;
+  return l1 > l2 ? l1 / l2 : l2 / l1;
+}
 
 suite('game · colors', () => {
   test('six prisoner colors, one per die face', () => {
@@ -508,6 +533,115 @@ suite('game · color war sides', () => {
       new Set(units.map((u) => u.key)).size,
       units.length,
       'two figures share a key',
+    );
+  });
+});
+
+suite('game · the cross on a colour your opponent took', () => {
+  /*
+    David, 25 Sep 2026: "put a little x over the color when your opponent
+    gets it in game."
+
+    The mark itself is two bars in a View and there is nothing to test
+    about that. WHICH colours wear one is a different question with a
+    different answer in every mode, and the wrong answer puts a cross on
+    a prisoner still sitting in the jail — which tells a player they have
+    lost something they have not.
+  */
+  const fresh = () => makeUnits('skirmish', PRISONER_COLORS, null, null);
+
+  test('Color Rush and Ultimate read the opponent’s own list', () => {
+    const units = fresh();
+    assertEqual(
+      opponentColors('classic', units, ['red', 'blue'])?.join(','),
+      'red,blue',
+      'the opponent’s colours were not reported',
+    );
+    assertEqual(
+      opponentColors('ultimate', units, [])?.length,
+      0,
+      'a fresh board already has colours crossed off',
+    );
+  });
+
+  test('a colour sent back in Ultimate loses its cross again', () => {
+    // The mode's whole trick: an exchange takes one back off the
+    // opponent, and a cross that stayed would say otherwise.
+    const units = fresh();
+    const before = opponentColors('ultimate', units, ['red', 'blue'])!;
+    const after = opponentColors('ultimate', units, ['red'])!;
+    assertEqual(before.length, 2, 'setup');
+    assertEqual(after.join(','), 'red', 'the sent-back colour kept its cross');
+  });
+
+  test('Skirmish reads the battlement, not a second list', () => {
+    /*
+      ONE shared jail, so a colour they took is one taken off you — and
+      the figures on the far wall are what the player can actually see.
+      Counting anything else could cross off a colour still in the jail.
+    */
+    const units = fresh().map((u, i) =>
+      i < 2 ? { ...u, station: { kind: 'wall' as const, index: i } } : u,
+    );
+    const taken = opponentColors('skirmish', units, [])!;
+    assertEqual(
+      taken.join(','),
+      `${PRISONER_COLORS[0].id},${PRISONER_COLORS[1].id}`,
+      'the crosses do not match the figures on the wall',
+    );
+    // A prisoner the PLAYER rescued is not the opponent's.
+    const mine = fresh().map((u, i) =>
+      i < 2 ? { ...u, station: { kind: 'retreat' as const, index: i } } : u,
+    );
+    assertEqual(
+      opponentColors('skirmish', mine, [])!.length,
+      0,
+      'your own rescues were crossed off as the opponent’s',
+    );
+  });
+
+  test('Color War asks for no row at all', () => {
+    // Two colours in play, both already on the scoreboard beside the
+    // scores. Six dots would say nothing.
+    assertEqual(
+      opponentColors('colorwar', fresh(), ['red']),
+      null,
+      'Color War drew a six-colour row',
+    );
+  });
+
+  test('every colour has an ink that can be read on it', () => {
+    /*
+      There is no single ink that works: a dark cross vanishes on the
+      palette's Blue and a white one vanishes on its Yellow. 3:1 is
+      WCAG's floor for a graphic you have to make out, which is exactly
+      what this is.
+    */
+    for (const c of PRISONER_COLORS) {
+      const ratio = contrast(inkOn(c.hex), c.hex);
+      assert(
+        ratio >= 3,
+        `a cross on ${c.label} has contrast ${ratio.toFixed(2)}:1 — too faint to see`,
+      );
+      note(`${c.label}: ${inkOn(c.hex) === '#ffffff' ? 'white' : 'dark'} cross, ${ratio.toFixed(1)}:1`);
+    }
+  });
+
+  test('the die stickers and the cross agree about which ink to use', () => {
+    /*
+      Both ask the same question about the same six colours, and they
+      used to answer it with two copies of the same threshold. One file
+      now owns it — a sticker and a cross disagreeing on Yellow is the
+      kind of thing nobody notices until Yellow looks broken.
+    */
+    const symbols = readFileSync('src/dice/symbols.ts', 'utf8');
+    assert(
+      symbols.includes('inkOn('),
+      'the colourblind stickers keep their own copy of the ink rule',
+    );
+    assert(
+      !/luminance\(face\) > 140/.test(symbols),
+      'the old duplicated threshold is still in symbols.ts',
     );
   });
 });

@@ -164,3 +164,35 @@ export function laneColors(units: PrisonerUnit[], lanes: number): (string | null
   }
   return out;
 }
+
+/**
+ * The colours the opponent has claimed, or null where the question does
+ * not apply — what the scoreboard puts a cross through.
+ *
+ * David, 25 Sep 2026: "put a little x over the color when your opponent
+ * gets it in game." Each mode answers this differently, and the wrong
+ * answer marks a colour that is still sitting in the jail:
+ *
+ * - Color Rush and Ultimate — the opponent races its own abstract set of
+ *   six, so the answer is that list. It can SHRINK in Ultimate, where an
+ *   exchange sends one of theirs back, and the cross has to come off
+ *   again when it does.
+ * - Skirmish — ONE shared jail, so a colour they took is a colour taken
+ *   off you, and the answer is read off the board: the figures paraded
+ *   on the far battlement. Read from the board rather than from a second
+ *   list so the crosses cannot disagree with the figures a player can
+ *   see.
+ * - Color War — null. Only two colours are in play and both are already
+ *   on the scoreboard beside the scores; six dots would say nothing.
+ */
+export function opponentColors(
+  mode: ModeId,
+  units: PrisonerUnit[],
+  aiFreed: ColorDef['id'][],
+): ColorDef['id'][] | null {
+  if (mode === 'classic' || mode === 'ultimate') return aiFreed;
+  if (mode === 'skirmish') {
+    return units.filter((u) => u.station.kind === 'wall').map((u) => u.colorId);
+  }
+  return null;
+}

@@ -89,6 +89,7 @@ import {
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
   laneOf,
+  opponentColors,
   makeUnits,
   MODE_ORDER,
   MODES,
@@ -153,6 +154,7 @@ import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
 import { ShapesIcon } from '../ui/Icon';
+import { OpponentDots } from './OpponentDots';
 import { TierIcon } from './TierIcon';
 import { FirstFrame } from './FirstFrame';
 import {
@@ -1924,6 +1926,9 @@ export function DiceDemoScreen() {
       : mode === 'skirmish'
         ? units.filter((u) => u.station.kind === 'wall').length
         : aiFreed.length;
+  // Which colours wear a cross. Per mode, and in modes.ts because
+  // getting it wrong marks a colour still sitting in the jail.
+  const opponentHas = opponentColors(mode, units, aiFreed);
   const target = mode === 'colorwar' ? 3 : 6;
   const upNext = nextTier(trophies);
   const upNextLabel = upNext ? tierLabel(upNext, trophies) : null;
@@ -2196,20 +2201,25 @@ export function DiceDemoScreen() {
             <Text style={styles.scoreLabel}>{opponent.short}</Text>
           </View>
           <View style={styles.aiMeta}>
-            {(mode === 'classic' || mode === 'ultimate') && (
-              <View style={styles.aiDots}>
-                {PRISONER_COLORS.map((c) => (
-                  <View
-                    key={c.id}
-                    style={[
-                      styles.aiDot,
-                      { backgroundColor: c.hex },
-                      !aiFreed.includes(c.id) && styles.aiDotPending,
-                    ]}
-                  />
-                ))}
-              </View>
-            )}
+            {/*
+              WHAT YOUR OPPONENT HAS, with a cross on each one.
+
+              David, 25 Sep 2026: "put a little x over the color when
+              your opponent gets it in game." It used to say this by
+              fading the dot to 22% opacity — a difference in BRIGHTNESS
+              between two small circles, read from across a room at
+              speed, which is the hardest kind of difference to read and
+              the easiest to mistake for a shadow. A cross is a shape,
+              and a shape survives being small.
+
+              Shown in Skirmish too, which it never was, and that is
+              where it matters most: there is ONE jail in that mode, so
+              a colour your opponent takes is a colour taken off you.
+              Color War has no such row and wants none — there are only
+              two colours in play and both are already on the scoreboard
+              beside the scores.
+            */}
+            {opponentHas !== null && <OpponentDots taken={opponentHas} />}
             {aiLastRoll && (
               <View style={styles.aiRoll}>
                 {aiLastRoll.map((c, i) => (
@@ -3062,18 +3072,6 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '700',
     marginTop: 6,
-  },
-  aiDots: {
-    flexDirection: 'row',
-    gap: 3,
-  },
-  aiDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  aiDotPending: {
-    opacity: 0.22,
   },
   aiRoll: {
     flexDirection: 'row',

@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { View } from 'react-native';
 import { LeaderboardScreen } from '../../src/demo/LeaderboardScreen';
 import { TournamentScreen } from '../../src/demo/TournamentScreen';
+import { OpponentDots } from '../../src/demo/OpponentDots';
+import { Text } from 'react-native';
 import { TOURNAMENTS, TournamentDef } from '../../src/game/tournament';
 
 /**
@@ -58,7 +60,38 @@ const WEEKS: TournamentDef[] = [
   },
 ];
 
-if (params.get('screen') === 'cups') {
+/*
+  ?screen=dots draws the scoreboard's opponent row on its own, through the
+  REAL component. DiceDemoScreen wraps a live 3D canvas and cannot be
+  rendered in a browser, and a copy of its markup here would drift — so
+  the row was pulled into its own file precisely so it could be looked
+  at.
+*/
+if (params.get('screen') === 'dots') {
+  const ALL = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'] as const;
+  createRoot(host).render(
+    <View style={{ width: 393, padding: 24, gap: 18, backgroundColor: '#fdf6ec' }}>
+      {[
+        ['none taken yet', []],
+        ['two taken', ['blue', 'yellow']],
+        ['four taken', ['red', 'blue', 'yellow', 'purple']],
+        ['every colour gone', [...ALL]],
+      ].map(([label, taken]) => (
+        <View key={label as string} style={{ gap: 6 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#6b6580' }}>
+            {label as string}
+          </Text>
+          <OpponentDots taken={taken as never} />
+          {/* Again at scoreboard scale, which is what a player sees. */}
+          <View style={{ transform: [{ scale: 1 }] }}>
+            <OpponentDots taken={taken as never} size={13} />
+          </View>
+        </View>
+      ))}
+    </View>,
+  );
+  (window as any).__ready = true;
+} else if (params.get('screen') === 'cups') {
   createRoot(host).render(
     <View style={{ width: 393, height: 2200 }}>
       <TournamentScreen

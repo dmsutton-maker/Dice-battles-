@@ -1453,3 +1453,52 @@ export function ArenaIcon({ size = 22, color = THEME.ink }: IconProps) {
     </View>
   );
 }
+
+/**
+ * A cross — "your opponent has this one".
+ *
+ * David, 25 Sep 2026: "put a little x over the color when your opponent
+ * gets it in game." It is drawn over the opponent's colour dot on the
+ * scoreboard, which used to say the same thing by fading the dot to 22%
+ * opacity — a difference in BRIGHTNESS between two small circles, from
+ * across a room, at speed, which is the hardest kind of difference to
+ * read and the easiest to mistake for a shadow. A cross is a shape, and
+ * a shape survives being small.
+ *
+ * Two bars rather than a glyph, for the reason the rest of this file
+ * exists: ✕ and ❌ render differently on every platform and version.
+ *
+ * `color` is the INK, and the caller must pass one that reads on the
+ * colour underneath — see `inkOn` in src/game/colors.ts, because a dark
+ * cross on the palette's Blue is invisible and a white one on its Yellow
+ * is too. The bars carry a faint outline in the opposite ink so the mark
+ * still has an edge on the two colours nearest the threshold.
+ */
+export function CrossIcon({
+  size = 12,
+  color = THEME.ink,
+  fill,
+}: IconProps) {
+  const thickness = Math.max(1.5, size * 0.17);
+  const bar = {
+    position: 'absolute' as const,
+    width: size * 0.82,
+    height: thickness,
+    borderRadius: thickness / 2,
+    backgroundColor: color,
+    ...(fill ? { borderWidth: thickness * 0.25, borderColor: fill } : {}),
+  };
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <View style={[bar, { transform: [{ rotate: '45deg' }] }]} />
+      <View style={[bar, { transform: [{ rotate: '-45deg' }] }]} />
+    </View>
+  );
+}

@@ -1,5 +1,57 @@
 # Changelog
 
+## v1.98.0 — 2026-09-25 · requested by David
+
+"Put a little x over the color when your opponent gets it in game."
+
+The scoreboard's opponent row said this by fading a dot to 22% opacity.
+That is a difference in BRIGHTNESS between two small circles, read from
+across a room, at speed, mid-battle — the hardest kind of difference to
+read and the easiest to mistake for a shadow. A cross is a SHAPE, and a
+shape survives being small. Both signals are kept: the untaken dots still
+sit back, so the row reads as "these are gone, these are still out there"
+before you look at any one mark.
+
+The dots went from 10 to 13 points. A cross inside a ten-point circle is
+four points of stroke and reads as a smudge.
+
+### It shows in Skirmish now, which is where it matters most
+The row was drawn in Color Rush and Ultimate only. Skirmish has **one
+shared jail**, so a colour the opponent takes is a colour taken off you —
+the single place in the game where "your opponent got it" is a loss
+rather than a scoreline. Color War still has no such row and wants none:
+two colours are in play and both already sit on the scoreboard beside the
+scores.
+
+`opponentColors` in `src/game/modes.ts` answers it per mode rather than a
+six-line expression inside a three-thousand-line component, because the
+wrong answer puts a cross on a prisoner still sitting in the jail — which
+tells a player they have lost something they have not. Skirmish reads the
+figures on the far battlement rather than a second list, so the crosses
+cannot disagree with what is on the board.
+
+### One ink rule, not two
+There is no single ink that works: a dark cross vanishes on the palette's
+Blue and a white one vanishes on its Yellow. `inkOn` picks per colour, and
+it is the rule the colourblind face stickers have used since they were
+written — extracted out of `src/dice/symbols.ts` so the two cannot drift.
+A sticker and a cross disagreeing about Yellow is the kind of thing nobody
+notices until Yellow looks broken. Measured: 5.4:1 on Red at worst,
+13.9:1 on Yellow at best, against WCAG's 3:1 floor for a graphic.
+
+### The row is its own file, so it can be looked at
+`OpponentDots` was pulled out of `DiceDemoScreen`, which wraps a live 3D
+canvas and cannot be rendered in a browser. `tools/screen-preview` draws
+the real component in all four states rather than a copy of its markup
+that would drift.
+
+### Verified
+Typecheck, 839 tests, Metro bundle, and rendered. Three mutations — the
+Skirmish row reading the player's own rescues, Color War drawing a row it
+should not, and the ink rule pinned to one colour — each caught by the
+test written for it, and the last also broke the existing colourblind
+test, which is the proof that the two now share one rule.
+
 ## v1.97.0 — 2026-09-25 · requested by David
 
 "I only want like one or three cups at a time and they should be much

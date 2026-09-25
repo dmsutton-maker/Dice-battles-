@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { SymbolId } from '../game/colorblind';
+import { inkOn } from '../game/colors';
 
 /**
  * The face stickers for colourblind mode: the palette colour with a shape
@@ -62,21 +63,18 @@ function parseHex(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-/**
- * Perceived brightness (Rec. 601). Used only to pick black or white ink —
- * yellow needs dark, navy needs light.
- */
-function luminance([r, g, b]: [number, number, number]): number {
-  return (r * 299 + g * 587 + b * 114) / 1000;
-}
-
 export function createSymbolTexture(
   symbol: SymbolId,
   faceHex: string,
 ): THREE.DataTexture {
   const face = parseHex(faceHex);
-  const ink: [number, number, number] =
-    luminance(face) > 140 ? [26, 22, 40] : [255, 255, 255];
+  /*
+    The same rule the scoreboard's "taken" cross uses, and it lives in
+    colors.ts so the two cannot drift. A sticker and a mark drawn on the
+    same colour disagreeing about black or white ink is the kind of thing
+    nobody notices until Yellow looks broken.
+  */
+  const ink = parseHex(inkOn(faceHex));
   const mask = MASKS[symbol];
 
   const data = new Uint8Array(SIZE * SIZE * 4);
