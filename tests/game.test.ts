@@ -2,7 +2,7 @@ import { AI_DIFFICULTIES, AI_ROSTER, pickOpponent, rollAiDice } from '../src/gam
 import { readFileSync } from 'node:fs';
 import { tierItem, TIERS_WITHOUT_A_PICTURE } from '../src/game/tierItem';
 import { OBSTACLES_BY_DIFFICULTY } from '../src/game/obstacles';
-import { DIE_FACE_COLORS, PRISONER_COLORS } from '../src/game/colors';
+import { DIE_FACE_COLORS, PRISONER_COLORS, pastelOf } from '../src/game/colors';
 import {
   laneColors,
   laneOf,
@@ -27,6 +27,30 @@ import { assert, assertEqual, note, suite, test } from './harness';
 import { averageOf } from '../src/game/rewards';
 
 /** Rules, progression and palette invariants — pure logic, no physics. */
+
+/** HSL readings, so the pastel tests talk about shade rather than hexes. */
+function hslOf(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h =
+    max === r
+      ? ((g - b) / d + (g < b ? 6 : 0)) / 6
+      : max === g
+        ? ((b - r) / d + 2) / 6
+        : ((r - g) / d + 4) / 6;
+  return [h, s, l];
+}
+const hueOf = (hex: string) => hslOf(hex)[0];
+const saturationOf = (hex: string) => hslOf(hex)[1];
+const lightnessOf = (hex: string) => hslOf(hex)[2];
 
 suite('game · colors', () => {
   test('six prisoner colors, one per die face', () => {
@@ -173,7 +197,7 @@ suite('game · modes', () => {
       for (const u of units) {
         assertEqual(
           pads[laneOf(u)],
-          u.hex,
+          pastelOf(u.hex),
           `${mode}: a ${u.colorId} prisoner walks onto a ${pads[laneOf(u)]} pad`,
         );
       }
@@ -182,6 +206,93 @@ suite('game · modes', () => {
         `${mode}: a pad was left unpainted (${pads.join(',')})`,
       );
     }
+  });
+
+  test('a pad is PALE, not the colour it matches', () => {
+    /*
+      David, 25 Sep 2026: "make the platforms the much lighter more
+      pastel colors from before."
+
+      The pads were the exact palette hexes from 20 Sep, which shouted
+      over the battlefield and competed with the FIGURES standing on
+      them — the same six colours, and the thing you are meant to be
+      looking at. Asserted as a relationship rather than against six
+      pinned strings, so retuning the tint does not mean editing a table
+      of hexes that says nothing about why.
+    */
+    const units = makeUnits('classic', PRISONER_COLORS, null, null);
+    const pads = laneColors(units, RETREAT_SLOTS.length);
+    for (const u of units) {
+      const pad = pads[laneOf(u)]!;
+      assert(pad !== u.hex, `the ${u.colorId} pad is still the full ${u.hex}`);
+      assert(
+        lightnessOf(pad) > lightnessOf(u.hex),
+        `the ${u.colorId} pad (${pad}) is not lighter than the prisoner on it`,
+      );
+      /*
+        The absolute floor is the one that matters, and a DELTA is not a
+        substitute for it: Purple already sits at 73% lightness, so a
+        "much lighter than before" test written as a step would pass for
+        five colours and fail for the one that was nearly there. Every
+        pad has to be pale, wherever it started.
+      */
+      assert(
+        lightnessOf(pad) > 0.8,
+        `the ${u.colorId} pad (${pad}) is not pale enough to read as pastel`,
+      );
+    }
+  });
+
+  test('a pale pad is still recognisably its own colour', () => {
+    /*
+      The half that makes the pads worth having at all. Lifting
+      lightness without keeping the hue would give six pale squares that
+      no longer say which prisoner belongs on them — which is the whole
+      feature, gone, in a change that looked like a paint job.
+    */
+    for (const c of PRISONER_COLORS) {
+      const before = hueOf(c.hex);
+      const after = hueOf(pastelOf(c.hex));
+      const drift = Math.min(Math.abs(after - before), 1 - Math.abs(after - before));
+      assert(drift < 0.01, `${c.label} changed hue when it was lightened`);
+    }
+  });
+
+  test('a colour that starts out muted does not come back grey', () => {
+    /*
+      TESTED WITH A MUTED COLOUR DIRECTLY, and that is the point of the
+      test rather than an accident of how it is written.
+
+      Running the floor over the six colours the game has proves nothing
+      about it: the least saturated of them is Green at 60%, above the
+      floor, so removing the floor entirely leaves all six unchanged and
+      a test written over the palette passes either way. Which is
+      exactly what happened — this test said nothing until it was given
+      something muted to say it about.
+
+      What it protects: this function is handed whatever colour a round
+      is played with, and lifting lightness alone turns a dull one into
+      an off-white smudge.
+    */
+    const muted = '#8a7a6e'; // a dull warm grey-brown, saturation ~12%
+    assert(
+      saturationOf(pastelOf(muted)) > 0.4,
+      `a muted colour came back as a grey smudge (${pastelOf(muted)})`,
+    );
+    // And the six the game actually uses stay lively too.
+    for (const c of PRISONER_COLORS) {
+      assert(
+        saturationOf(pastelOf(c.hex)) > 0.5,
+        `pale ${c.label} (${pastelOf(c.hex)}) came back washed out`,
+      );
+    }
+  });
+
+  test('anything that is not a plain hex is left alone', () => {
+    // A pad that fails to draw is worse than one in the wrong shade.
+    assertEqual(pastelOf('rebeccapurple'), 'rebeccapurple', 'a named colour was mangled');
+    assertEqual(pastelOf('#fff'), '#fff', 'a short hex was mangled');
+    assertEqual(pastelOf(''), '', 'an empty string threw or changed');
   });
 
   test('Color War paints your half of the row your colour', () => {
@@ -196,9 +307,11 @@ suite('game · modes', () => {
       makeUnits('colorwar', PRISONER_COLORS, me, them),
       RETREAT_SLOTS.length,
     );
-    assertEqual(pads.slice(0, 3).join(','), [me.hex, me.hex, me.hex].join(','),
+    const mine = pastelOf(me.hex);
+    const theirs = pastelOf(them.hex);
+    assertEqual(pads.slice(0, 3).join(','), [mine, mine, mine].join(','),
       'the left three pads are not your colour');
-    assertEqual(pads.slice(3).join(','), [them.hex, them.hex, them.hex].join(','),
+    assertEqual(pads.slice(3).join(','), [theirs, theirs, theirs].join(','),
       'the right three pads are not your opponent’s colour');
   });
 });

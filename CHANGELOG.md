@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.96.1 — 2026-09-25 · requested by David
+
+"Make the platforms the much lighter more pastel colors from before."
+
+The retreat platforms went from each arena's own scenery colours to the
+exact palette hexes in v1.95.0, so a freed prisoner walks onto its own
+colour. That part was right; the shade was not. Six fully saturated
+squares at the bottom of the screen shouted over the battlefield they sit
+on — and, worse, competed with the FIGURES standing on them, which are
+the same six colours and are the thing you are meant to be watching.
+
+"From before" is the six pastel beach towels the castle had — pale pink,
+pale blue, pale green, pale gold, lavender, peach. Those were always, by
+eye, soft versions of the same six colours, so this is not a revert: each
+pad keeps the colour it belongs to and is simply painted pale.
+
+`pastelOf` in `src/game/colors.ts` does it, and **keeps hue exactly** —
+only lightness and saturation move, so a pale pad is unmistakably the
+pale version of its prisoner rather than a second colour that happens to
+look nearby. The numbers are measured from those towels, which sat at
+77–92% lightness with saturation near the top: 84% lands in the middle of
+that, and a saturation floor stops the two muted colours (red and green)
+arriving as grey smudges, which is what lifting lightness alone does.
+
+Applied in `laneColors` rather than in each arena. Four places draw that
+row, and a shade applied at three of them is a bug nobody would see until
+they equipped the fourth battlefield.
+
+Separation between pale tints is weaker than between the full colours —
+pale gold and pale peach especially — and that is accepted rather than
+missed. A pad is a hint and never the game signal: a roll is read from
+the dice faces, which are untouched, and the figure on the pad is the
+full colour. Nothing is ever decided by telling two pads apart.
+
+The test that pinned `pad === prisoner.hex` now asserts the relationship
+instead — pale, lighter than the figure on it, same hue, not washed out —
+so retuning the shade does not mean editing a table of hexes that says
+nothing about why. Two of those assertions were wrong first time and
+mutation testing found both: one was written as a step ("much lighter
+than before") and Purple already sits at 73% lightness, so the rule is
+an absolute floor rather than a delta; and the saturation-floor test ran
+over the six palette colours, none of which reach the floor, so deleting
+the floor passed. It is exercised with a muted colour directly now, and
+the comment no longer claims red and green need it — they do not.
+
+Looked at in Chromium on the snow, castle and space battlefields, in
+Color Rush and in Color War.
+
 ## v1.96.0 — 2026-09-25 · requested by David
 
 "Rework the entire cups tab to be online tournaments, against AI for now,

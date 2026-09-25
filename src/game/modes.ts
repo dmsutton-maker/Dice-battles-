@@ -1,4 +1,4 @@
-import { ColorDef } from './colors';
+import { ColorDef, pastelOf } from './colors';
 
 /**
  * The game modes from the original tabletop rules (see the project brief).
@@ -145,12 +145,22 @@ export function laneOf(unit: PrisonerUnit): number {
  * disagree with where the figures are actually sent. A pad with no lane
  * (which should not happen: `makeUnits` always fills all six) comes back
  * as null, and the arena falls back to its own scenery colour.
+ *
+ * PALE, not the palette hex — David, 25 Sep 2026: "make the platforms
+ * the much lighter more pastel colors from before." See `pastelOf` for
+ * what that means and why.
+ *
+ * Done HERE rather than in each arena on purpose. There are four places
+ * that draw this row, and a shade applied at three of them is a bug
+ * nobody would see until they equipped the fourth battlefield. The
+ * figures are painted from `hex` and are untouched, so a full-colour
+ * soldier stands on its own pale square.
  */
 export function laneColors(units: PrisonerUnit[], lanes: number): (string | null)[] {
   const out: (string | null)[] = new Array(lanes).fill(null);
   for (const u of units) {
     const lane = laneOf(u);
-    if (lane >= 0 && lane < lanes) out[lane] = u.hex;
+    if (lane >= 0 && lane < lanes) out[lane] = pastelOf(u.hex);
   }
   return out;
 }
