@@ -27,6 +27,8 @@ createRoot(host).render(
       trophies={trophies}
       wins={{ easy: 20, medium: 14, hard: 8 }}
       modeWins={{ classic: 18, ultimate: 9, skirmish: 8, colorwar: 7 }}
+      played={{ easy: 31, medium: 24, hard: 19 }}
+      modePlayed={{ classic: 30, ultimate: 17, skirmish: 15, colorwar: 12 }}
     />
   </View>,
 );

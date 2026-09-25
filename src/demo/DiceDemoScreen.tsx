@@ -67,6 +67,7 @@ import {
 import { sync as syncGameCenter } from '../game/gameCenter';
 import {
   applyMatchResult,
+  notePlayed,
   parseTrophyCode,
   parseCoinCode,
   setTrophies as writeTrophies,
@@ -87,7 +88,7 @@ import {
 } from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
-  firstFreeIndex,
+  laneOf,
   makeUnits,
   MODE_ORDER,
   MODES,
@@ -260,6 +261,8 @@ export function DiceDemoScreen() {
         setTrophies(progress.trophies);
         setWins(progress.wins);
         setModeWins(progress.modeWins);
+        setPlayed(progress.played);
+        setModePlayed(progress.modePlayed);
         setUnlockAll(!!progress.unlockAll);
         setColorblind(cb);
         /*
@@ -660,6 +663,15 @@ export function DiceDemoScreen() {
     skirmish: 0,
     colorwar: 0,
   });
+  // Battles finished, won or not — the other half of every counter on
+  // the Records page. See Progress.played.
+  const [played, setPlayed] = useState({ easy: 0, medium: 0, hard: 0 });
+  const [modePlayed, setModePlayed] = useState<Record<ModeId, number>>({
+    classic: 0,
+    ultimate: 0,
+    skirmish: 0,
+    colorwar: 0,
+  });
   const [lastDelta, setLastDelta] = useState<number | null>(null);
   const [lastCoins, setLastCoins] = useState(0);
   const [aiFlash, setAiFlash] = useState(false);
@@ -981,6 +993,12 @@ export function DiceDemoScreen() {
       // see src/game/ads.ts. An interstitial over the fanfare and the
       // trophy count would bury the reward the player just earned.
       noteGameFinished();
+      // Beside it on purpose: this is the one line every finished battle
+      // reaches exactly once, ties included — they return early below,
+      // before any trophy is moved.
+      const record = notePlayed(difficultyRef.current, modeRef.current);
+      setPlayed(record.played);
+      setModePlayed(record.modePlayed);
       const coins = awardCoins(outcome, difficultyRef.current);
       setWallet({ ...getWallet() });
       setLastCoins(coins);
@@ -1369,7 +1387,7 @@ export function DiceDemoScreen() {
           (u) => u.colorId === a.id && u.station.kind === 'jail',
         );
         if (!unit) return;
-        moveUnit(unit.key, { kind: 'wall', index: wallCount() });
+        moveUnit(unit.key, { kind: 'wall', index: laneOf(unit) });
         aiPing();
         const pc = retreatCount();
         const ac = wallCount();
@@ -1388,11 +1406,9 @@ export function DiceDemoScreen() {
         (u) => u.colorId === war.ai.id && u.station.kind === 'jail',
       );
       if (!unit) return;
-      // Right three spots of the bottom row: indices 3, 4, 5.
-      moveUnit(unit.key, {
-        kind: 'retreat',
-        index: 3 + warRetreatCount(war.ai.id),
-      });
+      // Its own lane, which in Color War is one of the right three
+      // (makeUnits gives the opponent's three jail cells 3, 4 and 5).
+      moveUnit(unit.key, { kind: 'retreat', index: laneOf(unit) });
       aiPing();
       const ac = warRetreatCount(war.ai.id);
       if (ac >= 3) {
@@ -1470,13 +1486,9 @@ export function DiceDemoScreen() {
           }
           return;
         }
-        // First FREE spot, not the count: in Ultimate an exchange can have
-        // sent a figure back to jail, leaving a hole mid-row — and the
-        // count would then stand this rescue on an occupied slot.
-        moveUnit(jailUnit.key, {
-          kind: 'retreat',
-          index: firstFreeIndex(unitsRef.current, 'retreat'),
-        });
+        // Its own lane — the pad straight down the board from its cell,
+        // painted this colour. See laneOf() for why it is not a count.
+        moveUnit(jailUnit.key, { kind: 'retreat', index: laneOf(jailUnit) });
         celebrate();
         const n = retreatCount();
         const ac = aiFreedRef.current.length;
@@ -1506,10 +1518,7 @@ export function DiceDemoScreen() {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
           return;
         }
-        moveUnit(unit.key, {
-          kind: 'retreat',
-          index: firstFreeIndex(unitsRef.current, 'retreat'),
-        });
+        moveUnit(unit.key, { kind: 'retreat', index: laneOf(unit) });
         celebrate();
         const pc = retreatCount();
         const ac = wallCount();
@@ -1541,11 +1550,9 @@ export function DiceDemoScreen() {
         (u) => u.colorId === war.player.id && u.station.kind === 'jail',
       );
       if (!unit) return;
-      // Left three spots of the bottom row: indices 0, 1, 2.
-      moveUnit(unit.key, {
-        kind: 'retreat',
-        index: warRetreatCount(war.player.id),
-      });
+      // Its own lane, which in Color War is one of the left three
+      // (makeUnits gives your three jail cells 0, 1 and 2).
+      moveUnit(unit.key, { kind: 'retreat', index: laneOf(unit) });
       celebrate();
       const n = warRetreatCount(war.player.id);
       if (n >= 3) {
@@ -2442,6 +2449,8 @@ export function DiceDemoScreen() {
           trophies={trophies}
           wins={wins}
           modeWins={modeWins}
+          played={played}
+          modePlayed={modePlayed}
         />
       )}
       {/*

@@ -3,6 +3,7 @@ import { ThemedArena } from './ThemedArena';
 import { ARENA_THEMES, THEMED_ARENA_META, ThemedArenaId } from './themeData';
 import { JungleArena } from './JungleArena';
 import { SpaceArena } from './SpaceArena';
+import { ArenaProps } from './arenaProps';
 
 /**
  * Arena registry. Every battlefield theme is a drop-in visual component
@@ -60,7 +61,12 @@ export interface ArenaDef {
   /** Canvas / letterbox background. */
   skyColor: string;
   lighting: ArenaLighting;
-  Component: () => React.JSX.Element;
+  /*
+    Scenery takes ONE piece of game state, and only this one: the colours
+    of the round, so the retreat pads can be painted with them. See
+    src/arena/arenaProps.ts for why that exception exists.
+  */
+  Component: (props: ArenaProps) => React.JSX.Element;
 }
 
 /** Registry entries for every themed arena, built from their data. */
@@ -75,7 +81,7 @@ function themedEntries(): Record<ThemedArenaId, ArenaDef> {
       emoji: meta.emoji,
       skyColor: meta.skyColor,
       lighting: theme.lighting ?? DAYLIGHT,
-      Component: () => <ThemedArena theme={theme} id={id} />,
+      Component: (props) => <ThemedArena theme={theme} id={id} {...props} />,
     };
   }
   return out;
@@ -88,7 +94,7 @@ export const ARENAS = {
     emoji: '🏰',
     skyColor: '#8ec8f7',
     lighting: DAYLIGHT,
-    Component: () => <CastleArena />,
+    Component: (props) => <CastleArena {...props} />,
   },
   castleSunset: {
     name: 'Sunset Castle',

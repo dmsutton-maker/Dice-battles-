@@ -2,10 +2,12 @@ import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ThemedArena } from '../../src/arena/ThemedArena';
-import { ARENA_THEMES, ThemedArenaId } from '../../src/arena/themeData';
+import { ARENAS, ArenaId } from '../../src/arena/arenas';
 import { fitCamera } from '../../src/demo/cameraFit';
 import { TUNING } from '../../src/game/tuning';
+import { laneColors, makeUnits, ModeId } from '../../src/game/modes';
+import { PRISONER_COLORS } from '../../src/game/colors';
+import { RETREAT_SLOTS } from '../../src/game/stations';
 
 const W = 393, H = 852;
 
@@ -76,21 +78,50 @@ function Fit({ aspect }: { aspect: number }) {
   return null;
 }
 
-function Scene({ id }: { id: ThemedArenaId }) {
-  const theme = ARENA_THEMES[id];
-  const l = theme.lighting ?? DAYLIGHT;
+/*
+  The retreat pads are painted with the colours of the round being
+  played, so a preview with no round shows the arena's own two-tone row
+  and tells you nothing about the change that put them there.
+
+  ?mode=classic gives the six-colour row; ?mode=colorwar gives the two
+  halves. Built through the real makeUnits and laneColors, so this is
+  the picture the game draws and not an arrangement of it.
+*/
+function padsFor(mode: string | null): (string | null)[] | undefined {
+  if (!mode) return undefined;
+  const units = makeUnits(
+    mode as ModeId,
+    PRISONER_COLORS,
+    PRISONER_COLORS[0],
+    PRISONER_COLORS[3],
+  );
+  return laneColors(units, RETREAT_SLOTS.length);
+}
+
+/*
+  Any battlefield in the registry, not only the sixteen themed ones.
+
+  It went through ThemedArena directly until 20 Sep 2026, so the four
+  bespoke arenas — castle, castleSunset, jungle, space — were the ones
+  that could not be looked at, which is the wrong way round: they are
+  the ones with five hundred lines of their own scenery.
+*/
+function Scene({ id, mode }: { id: ArenaId; mode: string | null }) {
+  const arena = ARENAS[id];
+  const Arena = arena.Component;
+  const l = arena.lighting ?? DAYLIGHT;
   return (
     <>
       <hemisphereLight args={[l.hemisphere.sky, l.hemisphere.ground, l.hemisphere.intensity]} />
       <directionalLight position={l.key.position} intensity={l.key.intensity} color={l.key.color} />
       <directionalLight position={l.fill.position} intensity={l.fill.intensity} color={l.fill.color} />
-      <ThemedArena theme={theme} id={id} />
+      <Arena padColors={padsFor(mode)} />
     </>
   );
 }
 
-const id = (new URLSearchParams(location.search).get('id') ?? 'autumn') as ThemedArenaId;
-const meta = ARENA_THEMES[id];
+const id = (new URLSearchParams(location.search).get('id') ?? 'autumn') as ArenaId;
+const mode = new URLSearchParams(location.search).get('mode');
 document.body.style.margin = '0';
 const host = document.createElement('div');
 host.style.width = `${W}px`; host.style.height = `${H}px`;
@@ -102,7 +133,7 @@ createRoot(host).render(
     onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; }}
   >
     <Fit aspect={W / H} />
-    <Scene id={id} />
+    <Scene id={id} mode={mode} />
   </Canvas>,
 );
 setTimeout(() => { (window as any).__ready = true; }, 1200);

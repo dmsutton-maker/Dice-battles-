@@ -14,6 +14,7 @@ import {
 
 import { createFlagstoneTexture } from './flagstoneTexture';
 import { cachedTexture } from './textureCache';
+import { ArenaProps } from './arenaProps';
 
 const STONE = '#9a8a72';
 const STONE_DARK = '#7d6e58';
@@ -180,8 +181,18 @@ function JailPen() {
  * sun umbrellas, a little pool, and flowering bushes. Slot positions must
  * stay in sync with the free slots in src/game/Prisoners.tsx.
  */
-function RetreatGarden({ palette }: { palette: Palette }) {
+function RetreatGarden({ palette, padColors }: { palette: Palette } & ArenaProps) {
   const towelXs = RETREAT_XS;
+  /*
+    The pastels are the fallback now, not the look.
+
+    Each towel has always been its own colour — they were simply six
+    pretty ones in no particular order. David asked on 20 Sep 2026 for
+    the platforms to be the colours actually in play, so the towel takes
+    the colour of the prisoner whose lane it is, and a soldier walks out
+    of the cell above onto a towel that matches. These six are what is
+    laid out when no round is being played.
+  */
   const towelColors = ['#ffe08a', '#9be0ff', '#ffc4d6', '#c9f0b8', '#e8d5ff', '#ffd7b0'];
   return (
     <group>
@@ -189,7 +200,10 @@ function RetreatGarden({ palette }: { palette: Palette }) {
       {towelXs.map((x, i) => (
         <mesh key={`towel-${i}`} position={[x, 0.015, RETREAT_Z]}>
           <boxGeometry args={[0.6, 0.03, 0.95]} />
-          <meshStandardMaterial color={towelColors[i]} roughness={0.9} />
+          <meshStandardMaterial
+            color={padColors?.[i] ?? towelColors[i]}
+            roughness={0.9}
+          />
         </mesh>
       ))}
 
@@ -439,7 +453,10 @@ function Landscape({ palette }: { palette: Palette }) {
  * mountains, clouds) so it reads as a playset diorama in a world rather
  * than a box floating in space.
  */
-export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
+export function CastleArena({
+  variant = 'day',
+  padColors,
+}: { variant?: CastleVariant } & ArenaProps) {
   const palette: Palette = VARIANTS[variant];
   const dusk = duskOnly(palette);
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
@@ -502,7 +519,7 @@ export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
 
       <Landscape palette={palette} />
       <JailPen />
-      <RetreatGarden palette={palette} />
+      <RetreatGarden palette={palette} padColors={padColors} />
 
       {/* Walls */}
       <mesh
@@ -556,6 +573,6 @@ export function CastleArena({ variant = 'day' }: { variant?: CastleVariant }) {
 
 
 /** Sunset variant used by the arena registry (trophy unlock). */
-export function SunsetCastleArena() {
-  return <CastleArena variant="sunset" />;
+export function SunsetCastleArena(props: ArenaProps) {
+  return <CastleArena variant="sunset" {...props} />;
 }

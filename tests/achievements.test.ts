@@ -50,6 +50,8 @@ function emptyProgress(over: Partial<Progress> = {}): Progress {
     trophies: 0,
     wins: { easy: 0, medium: 0, hard: 0 },
     modeWins: { classic: 0, ultimate: 0, skirmish: 0, colorwar: 0 },
+    played: { easy: 0, medium: 0, hard: 0 },
+    modePlayed: { classic: 0, ultimate: 0, skirmish: 0, colorwar: 0 },
     ...over,
   };
 }

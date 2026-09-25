@@ -1,20 +1,35 @@
 # Looking at the arenas
 
-Renders any themed battlefield in a real browser, through the real
-`ThemedArena` component and the real `fitCamera`, at iPhone dimensions,
-and writes a PNG.
+Renders any battlefield in the registry in a real browser, through its
+real component and the real `fitCamera`, at iPhone dimensions, and
+writes a PNG. That means the four bespoke arenas — `castle`,
+`castleSunset`, `jungle`, `space` — as well as the sixteen themed ones.
 
 ```sh
 # CHROME_PATH=/path/to/chrome  # only if Playwright's own Chromium is not wanted
 npm i --no-save --legacy-peer-deps react-dom@19.1.0 playwright@1.49.0
-npx esbuild tools/arena-preview/entry.tsx --bundle \
+npx esbuild tools/arena-preview/entry.tsx --bundle --jsx=automatic \
   --outfile=tools/arena-preview/bundle.js --loader:.tsx=tsx \
+  --loader:.png=dataurl \
   --define:process.env.NODE_ENV='"production"'
 node tools/arena-preview/shoot.js autumn volcano city   # → /tmp/arena-<id>.png
+MODE=classic node tools/arena-preview/shoot.js space   # ← paint the retreat pads
+MODE=colorwar node tools/arena-preview/shoot.js snow   # ← two colours, not six
 TOP=1 node tools/arena-preview/shoot.js volcano        # straight down
 node tools/arena-preview/audit.js                      # measure all sixteen
 npm uninstall --no-save react-dom playwright           # ← REQUIRED, see below
 ```
+
+`--jsx=automatic` is not optional. The game is built by Babel with the
+automatic JSX runtime, so several files use JSX without importing React
+— `src/arena/arenas.tsx` among them — and esbuild's classic default
+emits `React.createElement` against a name that is not there. The page
+renders blank and says only "React is not defined".
+
+`MODE` matters for anything to do with the retreat row. The pads are
+painted with the colours of the round being played (David, 20 Sep
+2026), and with no `MODE` there is no round, so the arena falls back to
+its own scenery colours and the pads tell you nothing.
 
 ## Take the two packages back out when you are done
 

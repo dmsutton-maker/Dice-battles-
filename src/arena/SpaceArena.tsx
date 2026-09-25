@@ -12,6 +12,7 @@ import {
 
 import { createFlagstoneTexture } from './flagstoneTexture';
 import { cachedTexture } from './textureCache';
+import { ArenaProps } from './arenaProps';
 
 /**
  * Space Station arena — the 700🏆 Mystery Arena. A dice deck floating in
@@ -194,9 +195,19 @@ function SpaceJailPen() {
  * RetreatGarden (synced with src/game/Prisoners.tsx), themed as a shuttle
  * bay — glowing landing pads, beacon masts, a cryo-pool, and crate stacks.
  */
-function SpaceRetreat() {
+function SpaceRetreat({ padColors }: ArenaProps) {
   const padXs = RETREAT_XS;
-  const padColors = ['#3ff2ff', '#7fff9e', '#ffd93f', '#ff9e5f', '#c98aff', '#ff5fd0'];
+  /*
+    Each bay lights up in its lane's colour — David, 20 Sep 2026, so a
+    rescued soldier lands on the pad that matches it. The station's own
+    neon is the fallback for when no round is being played.
+
+    The light is a PANEL rather than the little ring it used to be: a
+    ring of radius 0.26 sat entirely underneath the figure standing on
+    it, so the one arena where the pads already glowed was the one where
+    you could not see what colour they were.
+  */
+  const neon = ['#3ff2ff', '#7fff9e', '#ffd93f', '#ff9e5f', '#c98aff', '#ff5fd0'];
   return (
     <group>
       {/* Glowing landing pads where freed prisoners celebrate */}
@@ -206,9 +217,14 @@ function SpaceRetreat() {
             <boxGeometry args={[0.62, 0.03, 0.97]} />
             <meshStandardMaterial color={HULL_DARK} roughness={0.5} metalness={0.5} />
           </mesh>
-          <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0.032, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.46, 0.8]} />
+            <meshBasicMaterial color={padColors?.[i] ?? neon[i]} toneMapped={false} />
+          </mesh>
+          {/* The landing reticle, dark on the lit panel. */}
+          <mesh position={[0, 0.034, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.18, 0.26, 16]} />
-            <meshBasicMaterial color={padColors[i]} toneMapped={false} />
+            <meshBasicMaterial color={HULL_DARK} toneMapped={false} />
           </mesh>
         </group>
       ))}
@@ -340,7 +356,7 @@ function SpaceWorld() {
  * replace the castle battlements; antenna pylons stand at the corners.
  * Collision bodies are unchanged in src/physics/world.ts — all visual.
  */
-export function SpaceArena() {
+export function SpaceArena({ padColors }: ArenaProps) {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
@@ -455,7 +471,7 @@ export function SpaceArena() {
 
       <SpaceWorld />
       <SpaceJailPen />
-      <SpaceRetreat />
+      <SpaceRetreat padColors={padColors} />
 
       {/*
         A knee-high hull rim, and above it a containment field.

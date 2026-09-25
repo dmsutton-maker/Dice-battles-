@@ -1316,7 +1316,13 @@ suite('friends · a friendly battle, live only', () => {
     assert(start > 0, 'the friendly-battle branch of finishRound is gone');
     const branch = screen.slice(start, screen.indexOf('noteGameFinished();', start));
     assert(/return;/.test(branch), 'the friendly branch falls through into the paying paths');
-    for (const paid of ['applyMatchResult', 'awardCoins', 'noteGameFinished', 'syncGameCenter']) {
+    for (const paid of [
+      'applyMatchResult',
+      'awardCoins',
+      'noteGameFinished',
+      'notePlayed',
+      'syncGameCenter',
+    ]) {
       assert(
         !new RegExp(`${paid}\\(`).test(branch),
         `a friendly battle reaches ${paid}, which is not trophyless`,

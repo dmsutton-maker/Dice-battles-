@@ -14,9 +14,13 @@ const IDS = process.argv.slice(2);
   page.on('pageerror', (e) => console.log('PAGE THROW:', e.message));
   for (const id of IDS) {
     const top = process.env.TOP === '1' ? '&top=1' : '';
-    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id + top);
+    // MODE=classic|ultimate|skirmish|colorwar paints the retreat pads
+    // with that round's colours, which is the only way to see them.
+    const mode = process.env.MODE ? '&mode=' + process.env.MODE : '';
+    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id + top + mode);
     await page.waitForFunction('window.__ready === true', { timeout: 20000 }).catch(() => {});
-    await page.screenshot({ path: `/tmp/arena-${id}${top ? '-top' : ''}.png` });
+    const tag = `${top ? '-top' : ''}${process.env.MODE ? '-' + process.env.MODE : ''}`;
+    await page.screenshot({ path: `/tmp/arena-${id}${tag}.png` });
     console.log('shot', id);
   }
   await browser.close();

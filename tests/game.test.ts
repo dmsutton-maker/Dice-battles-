@@ -3,7 +3,14 @@ import { readFileSync } from 'node:fs';
 import { tierItem, TIERS_WITHOUT_A_PICTURE } from '../src/game/tierItem';
 import { OBSTACLES_BY_DIFFICULTY } from '../src/game/obstacles';
 import { DIE_FACE_COLORS, PRISONER_COLORS } from '../src/game/colors';
-import { firstFreeIndex, makeUnits, MODE_ORDER, MODES, ModeId } from '../src/game/modes';
+import {
+  laneColors,
+  laneOf,
+  makeUnits,
+  MODE_ORDER,
+  MODES,
+  ModeId,
+} from '../src/game/modes';
 import {
   TIERS,
   TROPHY_STAKES,
@@ -115,23 +122,84 @@ suite('game · modes', () => {
     assertEqual(theirs, 3, 'opponent fighters');
   });
 
-  test('the next figure stands in the first hole, not on the count', () => {
-    const units = makeUnits('classic', PRISONER_COLORS, null, null);
-    const at = (i: number, kind: 'jail' | 'retreat') => ({
-      ...units[i],
-      station: { kind, index: kind === 'retreat' ? i : units[i].jailIndex },
-    });
+  test('every figure has a lane of its own, in every mode', () => {
+    /*
+      The property that replaced hole-filling, and the reason AJ's bug
+      (24 Aug 2026, "the soldiers sometimes in ultimate go to the same
+      spot") cannot come back: a figure is only ever sent to its own
+      lane, and no two figures share one. Placing by count or by first
+      free slot both needed the rest of the board to be right; this
+      needs nothing at all.
+    */
+    for (const mode of MODE_ORDER) {
+      const units = makeUnits(
+        mode,
+        PRISONER_COLORS,
+        PRISONER_COLORS[0],
+        PRISONER_COLORS[1],
+      );
+      const lanes = units.map(laneOf);
+      assertEqual(
+        new Set(lanes).size,
+        units.length,
+        `${mode}: two figures are sent to the same spot (${lanes.join(',')})`,
+      );
+      assert(
+        lanes.every((l) => l >= 0 && l < RETREAT_SLOTS.length),
+        `${mode}: a figure has no pad to stand on (${lanes.join(',')})`,
+      );
+    }
+  });
 
-    // Nobody out yet: the row starts at 0.
-    assertEqual(firstFreeIndex(units, 'retreat'), 0, 'empty row');
+  test('the pad a figure lands on is painted its own colour', () => {
+    /*
+      DAVID, 20 Sep 2026: "make each prisoner when you free them go to
+      the platform of their respective color."
 
-    // 0 and 2 are taken, 1 went back to jail — the hole comes first.
-    const holed = [at(0, 'retreat'), at(1, 'jail'), at(2, 'retreat'), ...units.slice(3)];
-    assertEqual(firstFreeIndex(holed, 'retreat'), 1, 'should fill the hole');
+      Two separate pieces of code have to agree for that to be true —
+      the board, which sends a figure to laneOf(unit), and the arena,
+      which paints pad i with laneColors()[i]. Asserted together here
+      because either one alone is fine and the pair is what a player
+      sees.
+    */
+    for (const mode of MODE_ORDER) {
+      const units = makeUnits(
+        mode,
+        PRISONER_COLORS,
+        PRISONER_COLORS[0],
+        PRISONER_COLORS[1],
+      );
+      const pads = laneColors(units, RETREAT_SLOTS.length);
+      for (const u of units) {
+        assertEqual(
+          pads[laneOf(u)],
+          u.hex,
+          `${mode}: a ${u.colorId} prisoner walks onto a ${pads[laneOf(u)]} pad`,
+        );
+      }
+      assert(
+        pads.every((c) => c !== null),
+        `${mode}: a pad was left unpainted (${pads.join(',')})`,
+      );
+    }
+  });
 
-    // A solid row appends, exactly as the old count did.
-    const solid = [at(0, 'retreat'), at(1, 'retreat'), at(2, 'retreat'), ...units.slice(3)];
-    assertEqual(firstFreeIndex(solid, 'retreat'), 3, 'solid row should append');
+  test('Color War paints your half of the row your colour', () => {
+    /*
+      "Make the platforms in color war match the colors of whatever the
+      colors being used are." Only two colours are in play and they are
+      redrawn every round, so the row is your three on the left and your
+      opponent's three on the right — not six.
+    */
+    const [me, them] = [PRISONER_COLORS[2], PRISONER_COLORS[4]];
+    const pads = laneColors(
+      makeUnits('colorwar', PRISONER_COLORS, me, them),
+      RETREAT_SLOTS.length,
+    );
+    assertEqual(pads.slice(0, 3).join(','), [me.hex, me.hex, me.hex].join(','),
+      'the left three pads are not your colour');
+    assertEqual(pads.slice(3).join(','), [them.hex, them.hex, them.hex].join(','),
+      'the right three pads are not your opponent’s colour');
   });
 });
 

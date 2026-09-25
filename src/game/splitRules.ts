@@ -1,5 +1,5 @@
 import { PrisonerColorId } from './colors';
-import { firstFreeIndex, ModeId, PrisonerUnit } from './modes';
+import { laneOf, ModeId, PrisonerUnit } from './modes';
 
 /**
  * What a colour match DOES in two-player split screen, for every mode.
@@ -107,19 +107,10 @@ export function applySplitMatch(
     );
     if (!alsoTheirs) return nothing;
 
-    const nextMine = moveUnit(
-      mine,
-      inJail.key,
-      'retreat',
-      firstFreeIndex(mine, 'retreat'),
-    );
-    // On their board it moves to the wall: gone, and visibly taken.
-    const nextTheirs = moveUnit(
-      theirs,
-      alsoTheirs.key,
-      'wall',
-      theirs.filter((u) => u.station.kind === 'wall').length,
-    );
+    const nextMine = moveUnit(mine, inJail.key, 'retreat', laneOf(inJail));
+    // On their board it moves to the wall: gone, and visibly taken — in
+    // its own lane there too, so the three rows read across.
+    const nextTheirs = moveUnit(theirs, alsoTheirs.key, 'wall', laneOf(alsoTheirs));
     const boardsNext = rebuild(nextMine, nextTheirs);
 
     // Nobody wins on a count — the round ends when the shared jail is
@@ -135,16 +126,11 @@ export function applySplitMatch(
     return { boards: boardsNext, winner, effect: 'stolen' };
   }
 
-  // The SCORE is the count; the SLOT is the first free one. They differ in
-  // Ultimate, where an exchange leaves a hole mid-row — placing by count
-  // there stood two figures on the same spot.
+  // The SCORE is the count; the SLOT is the prisoner's own lane. They are
+  // different questions — in Ultimate an exchange leaves a hole mid-row,
+  // so the two disagree from the first send-back onward.
   const rescued = countAt(mine, 'retreat');
-  const next = moveUnit(
-    mine,
-    inJail.key,
-    'retreat',
-    firstFreeIndex(mine, 'retreat'),
-  );
+  const next = moveUnit(mine, inJail.key, 'retreat', laneOf(inJail));
   const winner: Zone | null = rescued + 1 >= targetFor(mode) ? zone : null;
   return { boards: rebuild(next, theirs), winner, effect: 'rescued' };
 }

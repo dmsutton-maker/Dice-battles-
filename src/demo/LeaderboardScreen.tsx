@@ -7,6 +7,8 @@ import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { getWallet } from '../game/currency';
 import { CoinLabel } from './GoldCoin';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
+import { ARENA_ORDER, isArenaUnlocked, isSkinUnlocked } from '../game/loadout';
+import { DICE_SKINS } from '../game/diceSkins';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
 import { Tier } from '../game/progress';
 import { TierIcon } from './TierIcon';
@@ -36,6 +38,9 @@ interface LeaderboardScreenProps {
   trophies: number;
   wins: Record<AiDifficultyId, number>;
   modeWins: Record<ModeId, number>;
+  /** Battles finished, won or not — see Progress.played. */
+  played: Record<AiDifficultyId, number>;
+  modePlayed: Record<ModeId, number>;
 }
 
 const DIFFICULTIES: { id: AiDifficultyId; label: string }[] = [
@@ -44,15 +49,70 @@ const DIFFICULTIES: { id: AiDifficultyId; label: string }[] = [
   { id: 'hard', label: 'Hard' },
 ];
 
+/**
+ * A number with a line under it, and under that the battles it came out
+ * of.
+ *
+ * David, 20 Sep 2026: "add counters in the ranks tab for total games
+ * played and games played for each mode and difficulty." Written into
+ * the cards that were already there rather than as a second grid of
+ * seven more — the interesting number is not "31 played", it is "12 of
+ * 31", and putting the pair on one card is what makes that readable
+ * without any arithmetic.
+ */
+function StatCard({
+  value,
+  label,
+  icon,
+  outOf,
+}: {
+  value: number;
+  label: string;
+  icon?: React.ReactNode;
+  outOf?: string;
+}) {
+  return (
+    <View style={styles.statCard}>
+      <Text style={styles.statValue}>{value}</Text>
+      {icon ? (
+        <View style={styles.statLabelRow}>
+          {icon}
+          <Text style={styles.statLabel}>{label}</Text>
+        </View>
+      ) : (
+        <Text style={styles.statLabel}>{label}</Text>
+      )}
+      {outOf ? <Text style={styles.statSub}>{outOf}</Text> : null}
+    </View>
+  );
+}
+
 export function LeaderboardScreen({
   trophies,
   wins,
   modeWins,
+  played,
+  modePlayed,
 }: LeaderboardScreenProps) {
   const wallet = getWallet();
   const totalWins = DIFFICULTIES.reduce((sum, d) => sum + wins[d.id], 0);
+  const totalPlayed = DIFFICULTIES.reduce((sum, d) => sum + played[d.id], 0);
   const gameCenterReady = gameCenterAvailable();
   const posting = mayPost();
+
+  /*
+    THE CUPBOARD, not the receipt.
+
+    "Bought" used to sit in the corner of this row, counting the length
+    of wallet.owned — which is the things PAID FOR with coins and nothing
+    else. It therefore read 0 for a player who had climbed six rungs of
+    the ladder and owned six battlefields, and it went up when you spent
+    money rather than when you played. David asked for it gone on 20 Sep
+    2026 and for these two instead: everything you have, however you came
+    by it.
+  */
+  const boards = ARENA_ORDER.filter((id) => isArenaUnlocked(id, trophies)).length;
+  const dice = DICE_SKINS.filter((s) => isSkinUnlocked(s.id, trophies)).length;
 
   // Your league is the highest rung of the ladder you have reached.
   const reached = TIERS.filter((t) => trophies >= t.at);
@@ -98,49 +158,55 @@ export function LeaderboardScreen({
 
         <Text style={styles.sectionTitle}>YOUR RECORD</Text>
         <View style={styles.statRow}>
-          {DIFFICULTIES.map((d) => (
-            <View key={d.id} style={styles.statCard}>
-              <Text style={styles.statValue}>{wins[d.id]}</Text>
-              <Text style={styles.statLabel}>
-                {d.label} {wins[d.id] === 1 ? 'win' : 'wins'}
-              </Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.statRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{trophies}</Text>
-            {/* The golden trophy beside the word, the way Coins wears its
-                coin two cards over. */}
-            <View style={styles.statLabelRow}>
-              <TrophyIcon size={12} />
-              <Text style={styles.statLabel}>Trophies</Text>
-            </View>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{totalWins}</Text>
-            <Text style={styles.statLabel}>Battles won</Text>
-          </View>
+          <StatCard
+            value={trophies}
+            label="Trophies"
+            /* The golden trophy beside the word, the way Coins wears its
+               coin two cards over. */
+            icon={<TrophyIcon size={12} />}
+          />
+          <StatCard value={totalWins} label="Battles won" />
+          <StatCard value={totalPlayed} label="Battles played" />
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{wallet.coins}</Text>
             <CoinLabel size={12} style={styles.statLabel}>
               Coins
             </CoinLabel>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{wallet.owned.length}</Text>
-            <Text style={styles.statLabel}>Bought</Text>
-          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>WINS BY DIFFICULTY</Text>
+        <View style={styles.statRow}>
+          {DIFFICULTIES.map((d) => (
+            <StatCard
+              key={d.id}
+              value={wins[d.id]}
+              label={`${d.label} ${wins[d.id] === 1 ? 'win' : 'wins'}`}
+              outOf={`of ${played[d.id]} played`}
+            />
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>WINS BY MODE</Text>
         <View style={styles.statRow}>
           {MODE_ORDER.map((id) => (
-            <View key={id} style={styles.statCard}>
-              <Text style={styles.statValue}>{modeWins[id] ?? 0}</Text>
-              <Text style={styles.statLabel}>{MODES[id].name}</Text>
-            </View>
+            <StatCard
+              key={id}
+              value={modeWins[id] ?? 0}
+              label={MODES[id].name}
+              outOf={`of ${modePlayed[id] ?? 0} played`}
+            />
           ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>YOUR CUPBOARD</Text>
+        <View style={styles.statRow}>
+          <StatCard
+            value={boards}
+            label="Battlefields"
+            outOf={`of ${ARENA_ORDER.length}`}
+          />
+          <StatCard value={dice} label="Dice" outOf={`of ${DICE_SKINS.length}`} />
         </View>
 
         <Text style={styles.sectionTitle}>THE LADDER</Text>
@@ -364,6 +430,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  // The "of 31 played" line. Quieter and smaller than the label above
+  // it, so the card still reads as one number at a glance.
+  statSub: {
+    color: THEME.inkFaint,
+    fontSize: 9.5,
+    fontWeight: '700',
+    textAlign: 'center',
+    opacity: 0.75,
   },
 
   rung: {

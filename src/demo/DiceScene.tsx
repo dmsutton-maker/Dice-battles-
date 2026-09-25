@@ -20,8 +20,9 @@ import {
 import { DieMesh } from '../dice/DieMesh';
 import { PatternId } from '../dice/patterns';
 import { ColorDef } from '../game/colors';
-import { PrisonerUnit } from '../game/modes';
+import { laneColors, PrisonerUnit } from '../game/modes';
 import { Prisoners } from '../game/Prisoners';
+import { RETREAT_SLOTS } from '../game/stations';
 import { TUNING } from '../game/tuning';
 import { addTrayBodies, createPhysicsWorld } from '../physics/world';
 import { cameraBase } from './cameraFit';
@@ -98,6 +99,16 @@ export function DiceScene({
   throwsEnabled = true,
 }: DiceSceneProps) {
   const ArenaComponent = ARENAS[arenaId].Component;
+  /*
+    The colour of each retreat pad, handed to the scenery.
+
+    Built from the prisoners rather than from the mode, so the pads
+    cannot disagree with where the figures are actually sent — one list,
+    read by the arena that paints the row and by the board that walks
+    soldiers onto it. See laneColors() and David's request of 20 Sep
+    2026.
+  */
+  const padColors = useMemo(() => laneColors(units, RETREAT_SLOTS.length), [units]);
   // How this battlefield dresses its hazards. See obstacleLooks.ts.
   const look = obstacleLook(arenaId);
   const lighting = ARENAS[arenaId].lighting;
@@ -460,7 +471,7 @@ export function DiceScene({
         color={lighting.fill.color}
       />
 
-      <ArenaComponent />
+      <ArenaComponent padColors={padColors} />
       {showTreasure && <TreasureChest />}
       <Prisoners units={units} symbols={dieSymbols} />
 

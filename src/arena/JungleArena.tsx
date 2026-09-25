@@ -12,6 +12,7 @@ import {
 
 import { createJungleFloorTexture } from './jungleFloorTexture';
 import { cachedTexture } from './textureCache';
+import { ArenaProps } from './arenaProps';
 import { palisadeLogs } from './palisade';
 
 /**
@@ -208,8 +209,10 @@ function JungleJailPen() {
  * RetreatGarden (kept in sync with src/game/Prisoners.tsx), themed as a
  * jungle explorer camp — leaf mats, tiki parasols, a lagoon pool, ferns.
  */
-function JungleRetreat() {
+function JungleRetreat({ padColors }: ArenaProps) {
   const towelXs = RETREAT_XS;
+  // A mat per lane, dyed the colour of the prisoner who lands on it —
+  // see ArenaProps. The woven greens are the empty-camp fallback.
   const matColors = ['#c9e07a', '#8fd6a8', '#e0d07a', '#a8d67f', '#7fceb0', '#d6c96b'];
   return (
     <group>
@@ -217,7 +220,10 @@ function JungleRetreat() {
       {towelXs.map((x, i) => (
         <mesh key={`mat-${i}`} position={[x, 0.015, RETREAT_Z]}>
           <boxGeometry args={[0.6, 0.03, 0.95]} />
-          <meshStandardMaterial color={matColors[i]} roughness={0.95} />
+          <meshStandardMaterial
+            color={padColors?.[i] ?? matColors[i]}
+            roughness={0.95}
+          />
         </mesh>
       ))}
 
@@ -379,7 +385,7 @@ function JungleWorld() {
  * the corner towers were. Collision bodies are unchanged in
  * src/physics/world.ts — this is all visual.
  */
-export function JungleArena() {
+export function JungleArena({ padColors }: ArenaProps) {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
@@ -513,7 +519,7 @@ export function JungleArena() {
 
       <JungleWorld />
       <JungleJailPen />
-      <JungleRetreat />
+      <JungleRetreat padColors={padColors} />
 
       {/*
         A low earth bank the logs are driven into, only knee-high, so what

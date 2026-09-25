@@ -1,5 +1,74 @@
 # Changelog
 
+## v1.95.0 — 2026-09-25 · requested by David
+
+Four things in one message: freed prisoners should walk to the platform
+of their own colour in Color War and Ultimate; the Color War platforms
+should be whichever two colours the round drew; Skirmish should get the
+same treatment; and the Records tab should count games PLAYED as well as
+won, plus battlefields and dice, with "Bought" gone.
+
+### Every prisoner now keeps one lane, and the pad under it is its colour
+Cell 0 of the jail, pad 0 of the retreat and slot 0 of the battlement are
+one lane running straight down the board, and a freed prisoner never
+leaves its own. Paint the pad with the lane's colour and a rescue lands
+on its own colour in every mode, with nothing having to know which mode
+is being played:
+
+- **Color Rush, Ultimate, Skirmish** — six colours, six lanes, one each.
+- **Color War** — your three fill lanes 0–2 and your opponent's 3–5, so
+  the left half of the row is your colour and the right half theirs,
+  whichever two the round drew.
+
+Colour Rush was not named in the request and is included anyway: it is
+the same code path, the same six-colour board and the same six pads as
+Ultimate, and it is the mode a five-year-old plays first.
+
+This **replaces `firstFreeIndex`**, which handed out the lowest free
+slot. That existed for AJ's bug report of 24 Aug 2026 — "the soldiers
+sometimes in ultimate go to the same spot" — and a fixed lane cannot
+collide either, for a stronger reason: `makeUnits` gives every figure its
+own `jailIndex`, so no two figures have the same slot to be sent to.
+Hole-filling was tidy; lanes are tidy AND meaningful. `tests/game.test.ts`
+asserts the distinctness directly rather than by replaying an exchange.
+
+The colours reach the scenery as one new prop, `padColors` — the single
+piece of game state an arena is told (`src/arena/arenaProps.ts`), built
+from the prisoners on the board rather than from the mode, so the row
+that is painted cannot disagree with the row figures are sent to. Every
+arena keeps its own material as the surround: a themed rim in the sixteen
+themed battlefields, a dyed towel in the castle, a woven mat in the
+jungle, a lit landing panel in the space station. The station's pads were
+already the only ones that glowed and were also the only ones you could
+not read — the light was a ring of radius 0.26 sitting entirely under the
+figure standing on it, so it is a panel now.
+
+All four were looked at before shipping, in Chromium, through the real
+components: `tools/arena-preview` grew a `MODE=` switch and now renders
+the four bespoke arenas as well as the sixteen themed ones.
+
+### Records counts what you played, not just what you won
+"Total games played and games played for each mode and difficulty", and
+the three columns reconcile: the difficulties and the modes each add up
+to the same total, so a finger down either column is right. A TIE is a
+game played — it is the one outcome that never reaches
+`applyMatchResult`, because a draw moves no trophies, so the count is
+taken beside the ad counter where every finished battle passes exactly
+once. A friendly battle against a friend still pays nothing and counts
+nothing.
+
+Saves written before today know their wins and nothing about their
+losses, so an old save starts at the floor it can prove — the battles it
+won. That undercounts forgotten defeats, which is the honest way round;
+the alternative is inventing losses that never happened.
+
+**"Bought" is gone**, replaced by battlefields and dice. It counted the
+length of `wallet.owned`, which is the things paid for with COINS and
+nothing else — so it read 0 for a player who had climbed six rungs of
+the ladder and owned six battlefields, and it went up when you spent
+money rather than when you played. The two that replace it count
+everything you have, however you came by it.
+
 ## v1.94.0 — 2026-09-25 · requested by David
 
 Two things: "add another part to the explanation to the how to play at

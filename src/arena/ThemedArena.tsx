@@ -15,6 +15,7 @@ import { createGroundSurface, createTraySurface } from './groundTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
 import { buildRim, RimSpot } from './rim';
+import { ArenaProps } from './arenaProps';
 
 /**
  * One renderer for all sixteen themed battlefields.
@@ -940,16 +941,43 @@ function ThemedJailPen({
 }
 
 /** The retreat row on the player's side, at the shared coordinates. */
-function ThemedRetreat({ theme }: { theme: ArenaTheme }) {
+function ThemedRetreat({
+  theme,
+  padColors,
+}: { theme: ArenaTheme } & ArenaProps) {
   const r = theme.retreat;
   return (
     <group>
-      {RETREAT_XS.map((x, i) => (
-        <mesh key={`pad-${i}`} position={[x, 0.015, RETREAT_Z]}>
-          <boxGeometry args={[0.62, 0.03, 0.62]} />
-          <meshStandardMaterial color={i % 2 === 0 ? r.padA : r.padB} roughness={0.9} />
-        </mesh>
-      ))}
+      {/*
+        Two meshes per pad, not one, and the reason is the sixteen themes.
+
+        The pad TOP is the lane's prisoner colour — that is the whole
+        point of it: your red soldier walks out to the red square. But
+        sixteen battlefields painting the same six squares would rub out
+        most of what tells snow from sand from deck plating down here. So
+        the theme's own stone keeps the row, as a slightly wider base the
+        colour sits on, and shows as a rim around every pad.
+
+        Falls back to the theme's two-tone row when no round is being
+        played (see ArenaProps), which is also what makes this safe to
+        render before the units exist.
+      */}
+      {RETREAT_XS.map((x, i) => {
+        const themed = i % 2 === 0 ? r.padA : r.padB;
+        const lane = padColors?.[i] ?? null;
+        return (
+          <group key={`pad-${i}`} position={[x, 0, RETREAT_Z]}>
+            <mesh position={[0, 0.014, 0]}>
+              <boxGeometry args={[0.78, 0.028, 0.78]} />
+              <meshStandardMaterial color={themed} roughness={0.9} />
+            </mesh>
+            <mesh position={[0, 0.015, 0]}>
+              <boxGeometry args={[0.62, 0.03, 0.62]} />
+              <meshStandardMaterial color={lane ?? themed} roughness={0.9} />
+            </mesh>
+          </group>
+        );
+      })}
       {RETREAT_POST_XS.map((x, i) => (
         <group key={`post-${i}`} position={[x, 0, RETREAT_POST_Z]}>
           <mesh position={[0, 0.7, 0]}>
@@ -1893,7 +1921,11 @@ function ThemedCorners({
 
 /* ── the arena itself ─────────────────────────────────────────────── */
 
-export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
+export function ThemedArena({
+  theme,
+  id,
+  padColors,
+}: { theme: ArenaTheme; id: string } & ArenaProps) {
   /*
     The tray floor, painted for THIS battlefield.
 
@@ -2002,7 +2034,7 @@ export function ThemedArena({ theme, id }: { theme: ArenaTheme; id: string }) {
         bars={theme.jail.bars}
         structure={theme.structure}
       />
-      <ThemedRetreat theme={theme} />
+      <ThemedRetreat theme={theme} padColors={padColors} />
 
       {/* Standing scenery. */}
       {theme.props.map((p, i) => (

@@ -78,9 +78,13 @@ suite('splitRules · ultimate', () => {
   /**
    * AJ's bug report, 24 Aug 2026: "The soldiers sometimes in ultimate go
    * to the same spot." An exchange leaves a hole in the retreat row, and
-   * placing the next rescue at index = count stood it on an occupied slot.
+   * placing the next rescue at index = count stood it on an occupied
+   * slot. Every figure now keeps one lane for the whole round, so the
+   * exchange below empties a lane and refills the SAME one — split
+   * screen has to follow the same rule as the single-player board, or
+   * the pads on one of them would be painted the wrong colours.
    */
-  test('a rescue after an exchange fills the hole, never an occupied spot', () => {
+  test('a rescue goes to its own lane, before and after an exchange', () => {
     const [c0, c1, c2, c3] = PRISONER_COLORS.map((c) => c.id);
     let boards = fresh('ultimate');
     boards = applySplitMatch('ultimate', boards, 0, c0).boards;
@@ -92,15 +96,27 @@ suite('splitRules · ultimate', () => {
     boards = applySplitMatch('ultimate', boards, 0, c3).boards;
     const landed = boards.a.find((u) => u.colorId === c3)!;
     assertEqual(landed.station.kind, 'retreat', 'the rescue did not land');
-    assertEqual(landed.station.index, 1, 'should have filled the hole at 1');
+    assertEqual(landed.station.index, 3, 'the fourth colour left its own lane');
 
+    // And the hole the exchange left is still a hole — it belongs to c1,
+    // who is back in jail, and nobody else may stand in it.
     const spots = boards.a
       .filter((u) => u.station.kind === 'retreat')
-      .map((u) => u.station.index);
+      .map((u) => u.station.index)
+      .sort();
+    assertEqual(spots.join(','), '0,2,3', `the row is wrong: ${spots.join(',')}`);
     assertEqual(
       new Set(spots).size,
       spots.length,
       `two soldiers share a spot: ${spots.join(',')}`,
+    );
+
+    // Freeing c1 again puts it back in lane 1, not on the end.
+    boards = applySplitMatch('ultimate', boards, 0, c1).boards;
+    assertEqual(
+      boards.a.find((u) => u.colorId === c1)!.station.index,
+      1,
+      'a re-rescued prisoner did not go home to its own pad',
     );
   });
 });

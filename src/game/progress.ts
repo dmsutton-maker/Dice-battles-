@@ -15,6 +15,27 @@ export interface Progress {
   /** Lifetime wins per game mode, shown in Your Records. */
   modeWins: Record<ModeId, number>;
   /**
+   * Lifetime battles FINISHED per difficulty and per mode — won, lost or
+   * tied.
+   *
+   * David, 20 Sep 2026: "add counters in the ranks tab for total games
+   * played and games played for each mode and difficulty."
+   *
+   * Counted for the same battles the wins are: the ones played against
+   * the computer. A friendly battle against somebody on your friends
+   * list pays nothing and counts nothing (see finishRound), which also
+   * keeps the screen able to add up — the three difficulties and the
+   * four modes each total the same number of battles, and a child
+   * checking that with a finger down the column is right.
+   *
+   * A TIE IS A GAME PLAYED. It is the one outcome that never reaches
+   * applyMatchResult — a draw moves no trophies — so these are recorded
+   * by `notePlayed` instead, beside the ad counter, where every finished
+   * battle passes.
+   */
+  played: Record<AiDifficultyId, number>;
+  modePlayed: Record<ModeId, number>;
+  /**
    * Family tester mode: every unlock available regardless of trophies, so
    * playtesters can try all arenas/modes immediately. Toggled by the secret
    * code in Settings; trophies still count normally underneath.
@@ -352,10 +373,37 @@ let current: Progress = {
   trophies: 0,
   wins: { ...EMPTY_WINS },
   modeWins: { ...EMPTY_MODE_WINS },
+  played: { ...EMPTY_WINS },
+  modePlayed: { ...EMPTY_MODE_WINS },
 };
 
 export function getProgress(): Progress {
   return current;
+}
+
+/**
+ * Seed a battles-played count from the wins it must already contain.
+ *
+ * Counting started on 20 Sep 2026. Every save written before that knows
+ * how many battles were WON and has no idea how many were played, and a
+ * player who has won forty easy battles must not be shown "40 won, 0
+ * played" — the screen would read as broken, and it would be.
+ *
+ * So an old save starts at its own win count. That is a FLOOR, not a
+ * guess: those battles were certainly played. It undercounts the losses
+ * nobody recorded, which is the honest way round — the alternative is
+ * inventing a number of defeats that never happened.
+ */
+function seedPlayed<K extends string>(
+  played: Record<K, number> | undefined,
+  wins: Record<K, number>,
+): Record<K, number> {
+  const out = { ...wins };
+  for (const key of Object.keys(out) as K[]) {
+    const stored = played?.[key];
+    out[key] = Math.max(out[key], Number.isFinite(stored) ? (stored as number) : 0);
+  }
+  return out;
 }
 
 export async function loadProgress(): Promise<Progress> {
@@ -363,13 +411,17 @@ export async function loadProgress(): Promise<Progress> {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const wins = { ...EMPTY_WINS, ...(parsed.wins ?? {}) };
+      // Saves written before per-mode counting existed have no modeWins;
+      // they start at zero rather than breaking the read.
+      const modeWins = { ...EMPTY_MODE_WINS, ...(parsed.modeWins ?? {}) };
       current = {
         ...current,
         ...parsed,
-        wins: { ...EMPTY_WINS, ...(parsed.wins ?? {}) },
-        // Saves written before per-mode counting existed have no modeWins;
-        // they start at zero rather than breaking the read.
-        modeWins: { ...EMPTY_MODE_WINS, ...(parsed.modeWins ?? {}) },
+        wins,
+        modeWins,
+        played: seedPlayed(parsed.played, wins),
+        modePlayed: seedPlayed(parsed.modePlayed, modeWins),
       };
     }
   } catch {
@@ -389,8 +441,28 @@ export function resetProgressForTests(progress: Partial<Progress> = {}): void {
     trophies: 0,
     wins: { ...EMPTY_WINS },
     modeWins: { ...EMPTY_MODE_WINS },
+    played: { ...EMPTY_WINS },
+    modePlayed: { ...EMPTY_MODE_WINS },
     ...progress,
   };
+}
+
+/**
+ * One battle finished, whoever won.
+ *
+ * Separate from `applyMatchResult` because a TIE reaches this and not
+ * that: a draw moves no trophies and no wins, and it is still a game
+ * played. Called from finishRound beside `noteGameFinished`, which is
+ * the one place every paid battle passes through exactly once.
+ */
+export function notePlayed(difficulty: AiDifficultyId, mode: ModeId): Progress {
+  current = {
+    ...current,
+    played: { ...current.played, [difficulty]: current.played[difficulty] + 1 },
+    modePlayed: { ...current.modePlayed, [mode]: current.modePlayed[mode] + 1 },
+  };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  return current;
 }
 
 export function isUnlocked(id: UnlockId, trophies: number): boolean {

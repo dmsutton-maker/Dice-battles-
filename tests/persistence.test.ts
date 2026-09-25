@@ -13,6 +13,7 @@ import {
   getProgress,
   isUnlocked,
   loadProgress,
+  notePlayed,
   parseCoinCode,
   parseTrophyCode,
   resetProgressForTests,
@@ -293,6 +294,75 @@ suite('progress · what a battle does to the record', () => {
     applyMatchResult(false, 'medium', 'skirmish', LOW);
     assertEqual(getProgress().wins.medium, 1, 'a loss counted as a win');
     assertEqual(getProgress().modeWins.skirmish, 1, 'a loss counted as a mode win');
+  });
+
+  test('a battle is counted as played whoever won it', () => {
+    /*
+      David, 20 Sep 2026: "add counters in the ranks tab for total games
+      played and games played for each mode and difficulty."
+
+      Kept out of applyMatchResult deliberately — a TIE never reaches
+      that function (a draw moves no trophies) and is still a game
+      played. Skirmish is the mode that can draw, so it is the one worth
+      spelling out.
+    */
+    resetProgressForTests();
+    notePlayed('medium', 'skirmish');
+    notePlayed('medium', 'skirmish');
+    notePlayed('hard', 'colorwar');
+    const p = getProgress();
+    assertEqual(p.played.medium, 2, 'two medium battles were not both counted');
+    assertEqual(p.played.hard, 1, 'the hard battle was not counted');
+    assertEqual(p.played.easy, 0, 'a battle counted against the wrong difficulty');
+    assertEqual(p.modePlayed.skirmish, 2, 'two Skirmish battles were not both counted');
+    assertEqual(p.modePlayed.colorwar, 1, 'the Color War battle was not counted');
+    assertEqual(p.modePlayed.classic, 0, 'a battle counted against the wrong mode');
+
+    // The two breakdowns are the same battles seen twice, which is what
+    // lets the Records page be added up down either column.
+    const byDifficulty = p.played.easy + p.played.medium + p.played.hard;
+    const byMode = MODE_ORDER.reduce((n, m) => n + p.modePlayed[m], 0);
+    assertEqual(byDifficulty, byMode, 'the two columns disagree about how many battles were played');
+  });
+
+  test('a save from before counting started never shows fewer played than won', async () => {
+    /*
+      The migration, and the reason it is not just zeroes. Counting
+      started on 20 Sep 2026; every save older than that knows its wins
+      and nothing about its losses. "40 won, 0 played" is not a missing
+      number, it is a wrong one — so an old save starts at the floor it
+      can prove: the battles it won.
+    */
+    store.clear();
+    store.set(
+      'dice-battles:progress',
+      JSON.stringify({
+        trophies: 300,
+        wins: { easy: 12, medium: 7, hard: 3 },
+        modeWins: { classic: 15, ultimate: 4, skirmish: 2, colorwar: 1 },
+      }),
+    );
+    const loaded = await loadProgress();
+    assertEqual(loaded.played.easy, 12, 'twelve easy wins came back as fewer battles played');
+    assertEqual(loaded.played.hard, 3, 'the hard count was not seeded');
+    assertEqual(loaded.modePlayed.classic, 15, 'the Color Rush count was not seeded');
+    assertEqual(loaded.modePlayed.colorwar, 1, 'the Color War count was not seeded');
+
+    // And a save that already HAS a count keeps it, rather than being
+    // dragged back down to the wins.
+    store.set(
+      'dice-battles:progress',
+      JSON.stringify({
+        trophies: 300,
+        wins: { easy: 12, medium: 7, hard: 3 },
+        modeWins: { classic: 15, ultimate: 4, skirmish: 2, colorwar: 1 },
+        played: { easy: 40, medium: 20, hard: 9 },
+        modePlayed: { classic: 44, ultimate: 12, skirmish: 8, colorwar: 5 },
+      }),
+    );
+    const again = await loadProgress();
+    assertEqual(again.played.easy, 40, 'a real count was overwritten by the win count');
+    assertEqual(again.modePlayed.classic, 44, 'a real mode count was overwritten');
   });
 
   test('the smallest win always beats the biggest loss', () => {

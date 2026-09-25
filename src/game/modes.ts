@@ -104,22 +104,53 @@ export function makeUnits(
 }
 
 /**
- * The lowest free slot index at a station kind — where the next arriving
- * figure should stand.
+ * EVERY PRISONER KEEPS ONE LANE FOR THE WHOLE ROUND, and that lane is
+ * `jailIndex`.
  *
- * Placement used to use the COUNT of figures already at the station, which
- * is the next free slot only while nobody ever leaves. Ultimate breaks that
- * assumption: a prisoner exchange sends a rescued figure BACK to jail,
- * leaving a hole in the retreat row — and the count then points at a slot
- * that is still occupied, standing two soldiers on the same spot (AJ's bug
- * report, 24 Aug 2026). Filling the first hole instead keeps the row tidy
- * and cannot collide.
+ * David, 20 Sep 2026: "in color war and ultimate make each prisoner when
+ * you free them to go to the platform of their respective color" — and,
+ * in the same breath, that the platforms should BE those colours.
+ *
+ * The two halves are one idea. Cell 0 of the jail, pad 0 of the retreat
+ * and slot 0 of the battlement are all the same lane, running straight
+ * down the board from the far wall to the player's side; both rows are
+ * laid out left to right in index order, so a figure freed from the
+ * leftmost cell walks straight down to the leftmost pad. Give the pad the
+ * lane's colour (see `laneColors`) and a rescue lands on its own colour
+ * in every mode, with nothing having to know which mode is being played:
+ *
+ * - Color Rush, Ultimate, Skirmish — six colours, six lanes, one each.
+ * - Color War — your three fill lanes 0–2 and your opponent's 3–5
+ *   (see `makeUnits`), so the left half of the row is your colour and the
+ *   right half theirs, whichever two colours the round drew.
+ *
+ * THIS REPLACES `firstFreeIndex`, which handed out the lowest free slot.
+ * That existed for AJ's bug report of 24 Aug 2026 — "the soldiers
+ * sometimes in ultimate go to the same spot" — because placing by COUNT
+ * put a rescue on an occupied pad once an exchange had left a hole in the
+ * row. A fixed lane cannot collide either, and cannot for a stronger
+ * reason: `makeUnits` gives every figure its own `jailIndex`, so no two
+ * figures have the same slot to be sent to. Hole-filling was tidy;
+ * lanes are tidy AND meaningful.
  */
-export function firstFreeIndex(units: PrisonerUnit[], kind: Station['kind']): number {
-  const taken = new Set(
-    units.filter((u) => u.station.kind === kind).map((u) => u.station.index),
-  );
-  let i = 0;
-  while (taken.has(i)) i++;
-  return i;
+export function laneOf(unit: PrisonerUnit): number {
+  return unit.jailIndex;
+}
+
+/**
+ * The colour of each lane, left to right — what the arenas paint the
+ * retreat pads with.
+ *
+ * Read off the units rather than from the mode, so the pads cannot
+ * disagree with where the figures are actually sent. A pad with no lane
+ * (which should not happen: `makeUnits` always fills all six) comes back
+ * as null, and the arena falls back to its own scenery colour.
+ */
+export function laneColors(units: PrisonerUnit[], lanes: number): (string | null)[] {
+  const out: (string | null)[] = new Array(lanes).fill(null);
+  for (const u of units) {
+    const lane = laneOf(u);
+    if (lane >= 0 && lane < lanes) out[lane] = u.hex;
+  }
+  return out;
 }
