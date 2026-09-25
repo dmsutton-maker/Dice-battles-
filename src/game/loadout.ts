@@ -6,6 +6,7 @@ import {
   DiceSkin,
   DICE_SKINS,
   LADDER_SKINS,
+  PRIZE_SKINS,
   skinById,
   STORE_SKINS,
 } from './diceSkins';
@@ -109,6 +110,9 @@ function trophyCost(skin: DiceSkin): number {
 export const INVENTORY_SKIN_ORDER: DiceSkin[] = [
   ...LADDER_SKINS.slice().sort((a, b) => trophyCost(a) - trophyCost(b)),
   ...STORE_SKINS,
+  // Tournament prizes last: the rarest things in the cupboard, and the
+  // only ones whose locked card is not an invitation to spend anything.
+  ...PRIZE_SKINS,
 ];
 
 const STORAGE_KEY = 'dice-battles:loadout';
@@ -178,6 +182,15 @@ export function isArenaUnlocked(arenaId: ArenaId, trophies: number): boolean {
  */
 export function isSkinUnlocked(skinId: string, trophies: number): boolean {
   const skin = skinById(skinId);
+  /*
+    A tournament prize is checked FIRST and against `owns`, the same
+    shelf a bought skin lands on — winning one and buying one both end
+    with an id in the wallet, so there is one route out as well as one
+    store. Tester mode opens it like everything else; the Collector
+    achievement deliberately does not count it while that is on (see
+    setsOwned).
+  */
+  if (skin.prize) return hasUnlockAll() || owns(skin.id);
   if (skin.price !== undefined) return hasUnlockAll() || owns(skin.id);
   if (skin.unlock === null || skin.unlock === undefined) return true;
   return isUnlocked(skin.unlock, trophies);

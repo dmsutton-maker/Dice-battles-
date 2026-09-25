@@ -1,5 +1,93 @@
 # Changelog
 
+## v1.96.0 — 2026-09-25 · requested by David
+
+"Rework the entire cups tab to be online tournaments, against AI for now,
+with unique rewards like some extra gold, trophies, and even a dice or
+arena. You should have to achieve a certain amount of wins in a row in
+the specific game mode and difficulty of the tournament."
+
+### The bracket is gone
+A cup used to be a knockout: pay 50 or 150 coins, play four rounds
+against the same opponent roster, and lose once and both the run and the
+fee are gone. Three things were wrong with it. It charged coins for the
+chance to lose them, which is a casino's idea of a reward and a poor one
+for a five-year-old. It paid only coins, so winning one changed nothing
+you could look at. And "cup" meant a list baked into the binary, so a new
+one needed an App Store release.
+
+A cup is now a standing challenge: **N wins in a row, in one mode at one
+difficulty**. Free, because there is nothing to enter. A loss resets the
+streak and costs nothing else. **A draw leaves the run where it is** —
+Skirmish is the one mode that can end level, often enough that "four in a
+row" would otherwise mean something much harsher there than in the other
+three, for a reason nobody chose.
+
+Nothing is entered, so nothing can be entered by accident. Every finished
+battle is offered to every cup and each decides for itself whether a
+battle in that mode at that difficulty counts. That deleted `cupRoundRef`
+— the flag that existed because a casual game started from the home
+screen could once knock you out of a 150-coin run you had paid for — and
+the four places it had to be cleared.
+
+`scoreBattle` in `src/game/tournament.ts` holds that loop rather than
+`finishRound`, for the reason `friendsLoad.ts` exists: the interesting
+property is that a battle reaches ALL of them, and a grep through a React
+component cannot check that.
+
+### Online, and exactly how much
+The list is fetched from `dice-battles-hq.vercel.app/api/tournaments`, a
+new public read-only endpoint over a new `tournaments` table. So a cup can
+be added, retuned or retired for every installed copy of the game with no
+release and no over-the-air update — a row sharing an id with a bundled
+one replaces it. Fetched cups can carry `opens` and `closes` dates, which
+makes a cup a real event with a deadline rather than a menu item. One is
+running now (Autumn Rush, to 31 October).
+
+The **four bundled cups deliberately have no dates**, and a test enforces
+it: a date baked into the binary would expire on a phone that never gets
+another update and leave the tab permanently empty with nobody able to
+fix it. They are the floor; the server is the ceiling.
+
+The opponents are the game's own rivals — David's "against AI for now" —
+and the screen says so in as many words. No invented players, no invented
+ranking.
+
+### Unique rewards
+Every cup pays coins **and trophies**, through a new `awardTrophies` that
+is deliberately not `setTrophies`: that one is the cheat code and flags
+the save as `cheated`, and a player shut out of Game Center for winning a
+tournament would be punished for playing the game properly.
+
+Two carry an item. Skirmish Sprint gives **Treasure Beach**, an 1100-coin
+battlefield off the Store shelf. Ultimate Gauntlet gives the **Champion
+dice** — deep royal violet under the same polished finish gold, silver,
+copper and ruby share, and the only thing in the game money cannot reach.
+It needed a third route through the wardrobe (`prize`), because "no price
+and no unlock" already means free-to-everyone — that is how Ivory works —
+so a prize die without the flag would arrive in every cupboard on install
+and count toward the Collector achievement for nothing.
+
+Already own the item? You get its shelf price in coins instead. A prize
+that evaporates because you bought the battlefield last week is worse
+than no item prize, and a second copy is not a prize either.
+
+### One per mode
+The old three cups were three difficulties of the same game, so two of
+the four modes had nothing to play for at all. There is now one for each:
+Courtyard Streak (3 × Color Rush, Easy), Color War Duel (4 × Color War,
+Medium), Skirmish Sprint (4 × Skirmish, Medium), Ultimate Gauntlet
+(5 × Ultimate, Hard).
+
+### Verified
+Typecheck, 816 tests, Metro bundle. Eight mutations — the mode gate
+removed, a draw breaking the streak, the prize paying twice, the item
+handed over rather than its price, `awardTrophies` flagging the save, the
+`prize` flag dropped, closed cups kept in the list, and validation waved
+through — each caught by the test written for it. The screen was looked
+at in Chromium in all four card states (won, running, dated, not yet
+open), which is how the deadline got moved off the title row.
+
 ## v1.95.0 — 2026-09-25 · requested by David
 
 Four things in one message: freed prisoners should walk to the platform

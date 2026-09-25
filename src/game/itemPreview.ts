@@ -47,7 +47,18 @@ export type PreviewAction =
   | { kind: 'unaffordable'; price: number; short: number }
   /** For sale, but not from here — you are in the Inventory. */
   | { kind: 'in-store'; price: number }
-  | { kind: 'locked'; needTrophies: number; short: number };
+  | { kind: 'locked'; needTrophies: number; short: number }
+  /**
+   * Won in a cup, and available no other way.
+   *
+   * A FOURTH dead end, and it had to be its own one. A prize item has no
+   * price and no trophy tier, so it fell through to `locked` with a need
+   * of zero and the button read "0 more trophies to go" — which is not
+   * merely unhelpful, it says the item is already earned. "Keep saving",
+   * "keep playing" and "go and win it" are three different pieces of
+   * advice and a child acting on the wrong one gets nowhere.
+   */
+  | { kind: 'prize' };
 
 export interface PreviewState {
   trophies: number;
@@ -67,6 +78,8 @@ export interface PreviewState {
   canBuy: boolean;
   /** Trophy cost, for ladder items only. */
   needTrophies?: number;
+  /** Only ever won in a tournament — no price, no tier, no shelf. */
+  prize?: boolean;
 }
 
 /**
@@ -93,6 +106,10 @@ export function previewAction(state: PreviewState): PreviewAction {
         };
   }
 
+  // Before the trophy fallback, which would otherwise answer "0 more
+  // trophies to go" for something trophies cannot buy at all.
+  if (state.prize) return { kind: 'prize' };
+
   const need = state.needTrophies ?? 0;
   return { kind: 'locked', needTrophies: need, short: Math.max(0, need - state.trophies) };
 }
@@ -112,6 +129,8 @@ export function actionLabel(action: PreviewAction): string {
       return `In the Store for ${action.price}`;
     case 'locked':
       return `${action.short} more trophies to go`;
+    case 'prize':
+      return 'Win it in a cup';
   }
 }
 

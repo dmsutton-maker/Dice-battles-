@@ -151,6 +151,24 @@ export function buyWithCoins(itemId: string, price: number): PurchaseResult {
 }
 
 /**
+ * Put an item in the cupboard without charging for it — a tournament
+ * prize.
+ *
+ * The same shelf a purchase lands on, deliberately. `owned` has never
+ * meant "paid for", whatever its neighbours in this file do: it is the
+ * list the Inventory and every unlock check read, so a won item and a
+ * bought one have to arrive in the same place or half the game would not
+ * see it. Idempotent, because a prize is paid once and a retry must not
+ * leave two entries behind.
+ */
+export function grantItem(itemId: string): boolean {
+  if (!itemId || owns(itemId)) return false;
+  current = { ...current, owned: [...current.owned, itemId] };
+  persist();
+  return true;
+}
+
+/**
  * Forget everything bought with coins, so the Store can be walked through
  * again from nothing. The RESET code in Settings.
  *

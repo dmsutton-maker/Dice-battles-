@@ -84,7 +84,7 @@ import {
   TIERS,
   tierLabel,
   TROPHY_STAKES,
-  setRun as saveRun,
+  setTournamentState,
 } from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
@@ -109,11 +109,9 @@ import {
   awardCoins,
   buyWithCoins,
   getWallet,
-  grantCoins,
   setCoins as writeCoins,
   clearPurchases,
   loadWallet,
-  spendCoins,
 } from '../game/currency';
 import { DEFAULT_SKIN_ID, skinById } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
@@ -167,13 +165,14 @@ import {
 } from '../game/itemPreview';
 import { TournamentScreen } from './TournamentScreen';
 import {
-  RunState,
   TournamentDef,
-  advanceRun,
-  startRun,
-  tournamentById,
+  TournamentState,
+  fetchTournaments,
+  scoreBattle,
+  todayStamp,
+  TOURNAMENTS,
 } from '../game/tournament';
-import { rollReward } from '../game/rewards';
+import { payPrize } from '../game/prizes';
 import { Reward, RewardPopup } from './RewardPopup';
 import {
   loadColorblindMode,
@@ -266,18 +265,15 @@ export function DiceDemoScreen() {
         setUnlockAll(!!progress.unlockAll);
         setColorblind(cb);
         /*
-          Pick the cup run back up. Only ever an unfinished one is
-          stored, and it is checked against the cup list on the way in
-          so a save written before a cup was renamed or removed cannot
-          strand the Cups tab on a run that no longer exists.
+          Every cup streak, exactly as saved.
+
+          Deliberately NOT filtered against the tournament list the way
+          the old bracket run was. A tournament can be retired from the
+          server and brought back, and a player whose streak was tidied
+          away in between would be handed a prize they had already won.
+          A state for a tournament nobody can see costs one unread row.
         */
-        if (progress.run && tournamentById(progress.run.tournamentId)) {
-          setRunState({
-            tournamentId: progress.run.tournamentId,
-            wins: progress.run.wins,
-            finished: null,
-          });
-        }
+        setCupStates(progress.tournaments ?? {});
         // First launch opens the tutorial on its own. Never again after
         // that — it stays behind the ❓ for whoever picks the phone up in
         // six months and has no idea what any of this is.
@@ -305,6 +301,25 @@ export function DiceDemoScreen() {
       player sees.
     */
     initPurchases().finally(() => initAds());
+
+    /*
+      THE CUP LIST, FETCHED AT LAUNCH rather than when the Cups tab is
+      opened.
+
+      Tempting to do it the way the News tab does — fetch on the screen
+      that shows it — and wrong here, because finishRound scores every
+      battle against this list. A cup that only existed once you had
+      looked at it would quietly not count the three wins you had
+      already played, and you would open the tab to find yourself at
+      nought with no explanation. The battles have to count from the
+      moment the game starts, so the list has to be here from the moment
+      the game starts.
+
+      Outside the chain above, and it cannot fail: fetchTournaments
+      never rejects and falls back to the four bundled cups plus
+      whatever was last read.
+    */
+    fetchTournaments().then(setCups);
   }, []);
 
   const controlsRef = useRef<SceneControls | null>(null);
@@ -561,20 +576,14 @@ export function DiceDemoScreen() {
   const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | null>(null);
   // The cup being played, if any. A round started from a cup reports back
   // to it when it finishes.
-  const [run, setRunState] = useState<RunState | null>(null);
+  /*
+    Every tournament this player has touched, and the list of tournaments
+    itself — which is fetched, so it starts as the four bundled ones and
+    is replaced when the server answers. See src/game/tournament.ts.
+  */
+  const [cupStates, setCupStates] = useState<Record<string, TournamentState>>({});
+  const [cups, setCups] = useState<TournamentDef[]>(TOURNAMENTS);
 
-  /**
-   * Change the cup run, on screen and on disk together.
-   *
-   * A run used to live only in React state, so force-quitting mid-run
-   * lost the run and the 50 or 150 coins paid to enter it. Everything
-   * else a player owns survives being killed; something they paid for
-   * has to as well.
-   */
-  const setRun = useCallback((next: RunState | null) => {
-    setRunState(next);
-    saveRun(next ? { tournamentId: next.tournamentId, wins: next.wins } : null);
-  }, []);
   const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
   const [unlockAll, setUnlockAll] = useState(false);
@@ -683,20 +692,20 @@ export function DiceDemoScreen() {
   const arenaIdRef = useRef<ArenaId>('castle');
   const modeRef = useRef<ModeId>('classic');
   const opponentRef = useRef<AiOpponent | null>(null);
-  const runRef = useRef<RunState | null>(null);
-  /**
-   * Is the battle now being played a CUP round?
-   *
-   * A run used to be enough on its own: any battle finished while one was
-   * open reported into the bracket. So a casual game started from the
-   * home screen — on Easy, for fun — could knock you out of a 150-coin
-   * Grand Championship you had paid for and were three rounds into.
-   *
-   * Only the Cups tab sets this. Play again keeps whatever the last
-   * round was, so "one more" after a cup round continues the cup and
-   * after a casual round stays casual.
-   */
-  const cupRoundRef = useRef(false);
+  /*
+    The tournaments, for finishRound to score a battle against.
+
+    There is no longer any "am I in a cup?" flag, and that is the point.
+    A cup used to be something you ENTERED, so a casual game started
+    from the home screen could knock you out of one you had paid for —
+    which needed a second flag to prevent, which then had to be cleared
+    in four places. Now every finished battle is simply offered to every
+    tournament, and each one decides for itself whether a battle in that
+    mode at that difficulty counts. Nothing can be entered, so nothing
+    can be entered by accident.
+  */
+  const cupsRef = useRef<TournamentDef[]>(TOURNAMENTS);
+  const cupStatesRef = useRef<Record<string, TournamentState>>({});
   const unitsRef = useRef<PrisonerUnit[]>([]);
   const warRef = useRef<{ player: ColorDef; ai: ColorDef } | null>(null);
   const aiFreedRef = useRef<PrisonerColorId[]>([]);
@@ -934,8 +943,6 @@ export function DiceDemoScreen() {
   }, [showCallout]);
 
   const quitToMenu = useCallback(() => {
-    // An abandoned cup round is simply replayed, not lost.
-    cupRoundRef.current = false;
     countdownTimers.current.forEach(clearTimeout);
     stopAnnouncer();
     resetRace();
@@ -1003,48 +1010,73 @@ export function DiceDemoScreen() {
       setWallet({ ...getWallet() });
       setLastCoins(coins);
 
-      // A cup round reports back to the bracket. A tie does not advance
-      // you and does not knock you out — you play the round again.
-      if (runRef.current && cupRoundRef.current && outcome !== 'tie') {
-        const cup = tournamentById(runRef.current.tournamentId);
-        if (cup) {
-          const next = advanceRun(runRef.current, cup, outcome === 'won');
-          /*
-            A finished run is cleared, not kept. Held on to, the Cups tab
-            went on saying "YOU ARE IN THE …" and offering "Play the
-            Final" after the player had already been knocked out — and
-            the champion popup below reads from `next` and `cup`, which
-            are locals, so clearing loses nothing.
-          */
-          setRun(next.finished ? null : next);
-          cupRoundRef.current = false;
-          if (next.finished === 'knocked-out') {
-            setRewards((queue) => [
-              ...queue,
-              {
-                emoji: cup.emoji,
-                name: `Out of the ${cup.name}`,
-                kicker: 'CUP OVER',
-                note: 'Lose once and the run is over. Enter again from Cups whenever you like.',
-              },
-            ]);
-          }
-          if (next.finished === 'champion') {
-            const prize = rollReward(cup.prize);
-            grantCoins(prize);
-            setWallet({ ...getWallet() });
-            setRewards((queue) => [
-              ...queue,
-              {
-                emoji: cup.emoji,
-                name: `${cup.name} champion!`,
-                kicker: 'CUP WON',
-                note: `You beat the whole bracket. ${prize} coins are yours.`,
-              },
-            ]);
-          }
-        }
+      /*
+        EVERY TOURNAMENT IS OFFERED THIS BATTLE, and each decides for
+        itself whether it counts — `advance` compares the battle's mode
+        and difficulty against its own and returns the state unchanged if
+        they do not match.
+
+        Offering it to all of them rather than to "the one you entered"
+        is the whole shape of the rework. It means a Hard Ultimate win
+        counts toward the Ultimate Gauntlet whether you started it from
+        the Cups tab or from Play, and it means two tournaments asking
+        for the same mode and difficulty both move at once. It also means
+        there is nothing to enter, nothing to abandon, and no way to
+        damage a run you did not know you were in — a loss only ever
+        resets a streak, and a streak costs nothing to rebuild.
+
+        Deliberately inside the paid path, below the friendly-battle
+        return: a trophyless battle against your brother pays no coins,
+        no trophies and no cup progress either.
+      */
+      const scored = scoreBattle(cupsRef.current, cupStatesRef.current, {
+        mode: modeRef.current,
+        difficulty: difficultyRef.current,
+        outcome,
+      });
+      for (const [id, state] of Object.entries(scored.changed)) {
+        setTournamentState(id, state);
       }
+      if (Object.keys(scored.changed).length > 0) {
+        setCupStates((prev) => ({ ...prev, ...scored.changed }));
+      }
+      for (const cup of scored.won) {
+        /*
+          The prize, paid on the spot. `payPrize` does the granting —
+          coins, trophies, and the die or battlefield if there is one —
+          and hands back what it actually gave, which is not always what
+          the card promised: an item already in the cupboard is paid as
+          its shelf price in coins instead.
+        */
+        const paid = payPrize(cup.prize);
+        setWallet({ ...getWallet() });
+        setTrophies(getProgress().trophies);
+        const won = paid.item
+          ? `${paid.coins} coins, ${paid.trophies} trophies and the ${paid.item.name}.`
+          : paid.insteadOf
+            ? `${paid.coins} coins and ${paid.trophies} trophies — you already had the ${paid.insteadOf.name}, so its price came in coins instead.`
+            : `${paid.coins} coins and ${paid.trophies} trophies.`;
+        setRewards((queue) => [
+          ...queue,
+          {
+            emoji: paid.item?.emoji ?? '🏆',
+            name: `${cup.name} won!`,
+            kicker: 'CUP WON',
+            note: `${cup.target} in a row. ${won}`,
+          },
+          // A tier crossed by the trophies just paid unlocks here rather
+          // than on the next ordinary win, which would be a reward
+          // arriving with no explanation attached to it.
+          ...paid.unlocked.map((tier) => ({
+            emoji: tier.emoji,
+            name: tier.name,
+            kicker: 'NEW REWARD UNLOCKED',
+            note: 'Put it on in the Inventory whenever you like.',
+          })),
+        ]);
+        playFanfare();
+      }
+
       if (outcome === 'tie') {
         showCallout("It's a tie!", 'tie');
         setLastDelta(0);
@@ -1105,9 +1137,10 @@ export function DiceDemoScreen() {
    * Which menu page is showing. A battle always takes the screen back —
    * being three rounds into a cup with the Store open would be nonsense.
    */
-  // finishRound runs from a callback created once, so the run is read
-  // through a ref rather than a captured value.
-  runRef.current = run;
+  // finishRound runs from a callback created once, so the cups are read
+  // through refs rather than captured values.
+  cupsRef.current = cups;
+  cupStatesRef.current = cupStates;
 
   /*
     Memoised, because FriendsScreen refreshes whenever it changes.
@@ -1204,26 +1237,30 @@ export function DiceDemoScreen() {
     if (popup !== 'settings') setCodeFeedback(null);
   }, [popup]);
 
-  /** Pay the entry fee and open a bracket. */
-  const enterTournament = useCallback((tournament: TournamentDef) => {
-    if (tournament.entry > 0) {
-      if (!spendCoins(tournament.entry)) return;
-      setWallet({ ...getWallet() });
-    }
-    setRun(startRun(tournament));
-    setDifficulty(tournament.difficulty);
-    difficultyRef.current = tournament.difficulty;
+  /**
+   * Set the board up the way a cup wants it and go and play.
+   *
+   * A convenience, NOT a gate: this pins the mode and the difficulty and
+   * moves to the Play tab, and a battle played that way would count
+   * toward the cup whether it started here or not. Nothing is entered
+   * and nothing is spent — there is no state to get into, which is why
+   * there is no way out of one either.
+   */
+  const playCup = useCallback((cup: TournamentDef) => {
+    setMode(cup.mode);
+    modeRef.current = cup.mode;
+    setDifficulty(cup.difficulty);
+    difficultyRef.current = cup.difficulty;
+    setTab('play');
   }, []);
 
-  const startCountdown = useCallback((origin: 'cup' | 'casual' | 'again' | 'friendly' = 'casual') => {
-    /*
-      `origin` is a STRING, not a boolean, and every call site passes it
-      explicitly. `onPress={startCountdown}` would hand this the press
-      event — truthy, and enough to make a casual game count as a cup
-      round if the flag were a boolean. The default is the safe one.
-    */
-    if (origin === 'cup') cupRoundRef.current = true;
-    else if (origin === 'casual' || origin === 'friendly') cupRoundRef.current = false;
+  /*
+    `origin` no longer decides anything and is kept only because the
+    call sites read better for saying which kind of battle they are
+    starting. It used to arm the cup flag — see cupsRef for why there is
+    no longer a flag to arm.
+  */
+  const startCountdown = useCallback((_origin: 'casual' | 'again' | 'friendly' = 'casual') => {
     /*
       The battle waits BEHIND the ad, rather than starting under it.
 
@@ -1257,23 +1294,6 @@ export function DiceDemoScreen() {
       setPhaseBoth('matching');
     });
   }, [resetRace, setPhaseBoth]);
-
-  /** Start the next bracket round: same flow as a normal battle. */
-  const playCupRound = useCallback(() => {
-    setTab('play');
-    /*
-      Re-pin the cup's difficulty. It is set once on entering, but the
-      chips on the Play tab and on every result screen stayed live, so a
-      Grand Championship advertised as Hard could be played through on
-      Easy.
-    */
-    const cup = runRef.current ? tournamentById(runRef.current.tournamentId) : undefined;
-    if (cup) {
-      setDifficulty(cup.difficulty);
-      difficultyRef.current = cup.difficulty;
-    }
-    startCountdown('cup');
-  }, [startCountdown]);
 
   const beginCountdown = useCallback(() => {
     setPhaseBoth('arm');
@@ -1832,6 +1852,7 @@ export function DiceDemoScreen() {
         equipped: loadout.skinId === skin.id,
         price: skin.price,
         needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
+        prize: skin.prize,
         canBuy: preview.from === 'store',
       }),
     };
@@ -2508,11 +2529,10 @@ export function DiceDemoScreen() {
       )}
       {menuTab === 'cups' && preview === null && (
         <TournamentScreen
-          coins={wallet.coins}
-          run={run}
-          onEnter={enterTournament}
-          onPlayRound={playCupRound}
-          onAbandon={() => setRun(null)}
+          tournaments={cups}
+          states={cupStates}
+          today={todayStamp()}
+          onPlay={playCup}
         />
       )}
 

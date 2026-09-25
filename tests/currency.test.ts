@@ -10,7 +10,12 @@ import {
   resetWalletForTests,
   setCoins,
 } from '../src/game/currency';
-import { DICE_SKINS, LADDER_SKINS, STORE_SKINS } from '../src/game/diceSkins';
+import {
+  DICE_SKINS,
+  LADDER_SKINS,
+  PRIZE_SKINS,
+  STORE_SKINS,
+} from '../src/game/diceSkins';
 import { COIN_CODE_MAX, TIERS, UnlockId } from '../src/game/progress';
 
 const priceInTrophies = (id: UnlockId): number =>
@@ -386,17 +391,41 @@ suite('currency · the "500 COIN" code', () => {
  * showing a locked item is that the player can see what comes next.
  */
 suite('inventory · everything is listed cheapest first', () => {
-  test('the dice run up in price, trophies first then coins', () => {
-    const ladder = INVENTORY_SKIN_ORDER.filter((s) => s.price === undefined);
+  test('the dice run up in price, trophies first then coins then prizes', () => {
+    /*
+      THREE groups since 25 Sep 2026, not two: the trophy ladder, then
+      the Store shelf, then the dice that can only be won in a cup. The
+      prizes go last because they are the only cards in the cupboard
+      whose locked state is not an invitation to spend anything — there
+      is no price to work toward, so there is nothing to put them in
+      price order beside.
+    */
+    const ladder = INVENTORY_SKIN_ORDER.filter((s) => s.price === undefined && !s.prize);
     const shop = INVENTORY_SKIN_ORDER.filter((s) => s.price !== undefined);
+    const prizes = INVENTORY_SKIN_ORDER.filter((s) => s.prize);
 
-    // The two groups must not interleave, or "then you can buy these" stops
+    // The groups must not interleave, or "then you can buy these" stops
     // being true halfway down.
     assertEqual(
-      INVENTORY_SKIN_ORDER.slice(0, ladder.length).every((s) => s.price === undefined),
+      INVENTORY_SKIN_ORDER.slice(0, ladder.length).every(
+        (s) => s.price === undefined && !s.prize,
+      ),
       true,
       'every trophy die comes before every coin die',
     );
+    assertEqual(
+      INVENTORY_SKIN_ORDER.slice(ladder.length, ladder.length + shop.length).every(
+        (s) => s.price !== undefined,
+      ),
+      true,
+      'a prize die is mixed in among the ones for sale',
+    );
+    assertEqual(
+      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length).every((s) => s.prize),
+      true,
+      'the prize dice are not last',
+    );
+    assertEqual(prizes.length, PRIZE_SKINS.length, 'a prize die fell off the list');
 
     const trophyCost = (id: UnlockId | null | undefined) =>
       TIERS.find((t) => t.id === id)?.at ?? 0;
@@ -425,9 +454,9 @@ suite('inventory · everything is listed cheapest first', () => {
       'no duplicates',
     );
     assertEqual(
-      LADDER_SKINS.length + STORE_SKINS.length,
+      LADDER_SKINS.length + STORE_SKINS.length + PRIZE_SKINS.length,
       DICE_SKINS.length,
-      'every die is either earned or bought, never neither',
+      'every die is either earned, bought or won — never none of the three',
     );
   });
 

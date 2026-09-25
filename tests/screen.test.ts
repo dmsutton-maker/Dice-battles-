@@ -1396,16 +1396,26 @@ suite('release · the version number is real', () => {
     );
   });
 
-  test('the four one-tap actions that cost something ask first', () => {
+  test('the one-tap actions that cost something ask first', () => {
+    /*
+      THE CUPS TAB USED TO BE TWO OF THESE, and is none of them now.
+
+      Entering a cup spent 50 or 150 coins with no refund, and giving up
+      a run threw that fee away, so both were routed through a
+      confirmation. The rework of 25 Sep 2026 deleted the fees, the
+      entering and the giving up together — a tournament is a standing
+      challenge with nothing to buy and nothing to lose but a streak —
+      so there is nothing left on that screen to ask about. Asserted the
+      other way round, because a fee quietly reappearing without a
+      question in front of it is the thing this test is for.
+    */
     const cups = readFileSync(join(root, 'src/demo/TournamentScreen.tsx'), 'utf8');
-    assert(
-      cups.includes('<Confirm') && cups.includes("kind: 'enter'"),
-      'entering a cup still spends the entry fee on the first tap',
-    );
-    assert(
-      cups.includes("kind: 'abandon'"),
-      'giving up a run still throws the entry fee away with no question',
-    );
+    for (const gone of ['entry', 'spendCoins', 'canEnter']) {
+      assert(
+        !cups.includes(gone),
+        `the Cups tab is charging players again (${gone}) with no confirmation in front of it`,
+      );
+    }
     const friends = readFileSync(join(root, 'src/demo/FriendsScreen.tsx'), 'utf8');
     for (const action of ['remove', 'block', 'unblock']) {
       assert(

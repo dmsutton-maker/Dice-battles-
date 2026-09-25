@@ -291,6 +291,14 @@ export function TrophyIcon({
 /**
  * A knockout BRACKET — the Cups tab.
  *
+ * THE BRACKETS THEMSELVES ARE GONE, as of 25 Sep 2026: a cup is a run of
+ * wins in a row now, not a fixture tree. The drawing stays anyway, and
+ * deliberately, because every word below is still true. Cups was a
+ * trophy and then a medal, David rejected both for looking like the
+ * trophy count, and a cup at 21pt is still a compact gold-and-ink
+ * lozenge whatever the tab does. What the icon has to do is not be
+ * mistaken for a trophy, and this is the shape that manages it.
+ *
  * Cups was a trophy, then a medal, and David said both times that it
  * still looked the same as the trophy count. He was right both times:
  * rendering the two at their real 21pt showed a compact gold-and-ink

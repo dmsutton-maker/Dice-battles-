@@ -708,3 +708,75 @@ create index if not exists friendships_player_idx on public.friendships (player_
 -- do nothing at all here.
 alter table public.player_profiles enable row level security;
 alter table public.friendships     enable row level security;
+
+-- ---------------------------------------------------------------------
+-- Tournaments — the cups the game shows in its Cups tab.
+--
+-- David, 25 Sep 2026: "Rework the entire cups tab to be online
+-- tournaments." This table is the "online" half. The game ships with
+-- four permanent cups baked in, which is what makes the tab work on a
+-- plane; everything here is layered on top of those at runtime, and a
+-- row sharing an id with a bundled one REPLACES it. So a target that
+-- turned out too hard or a prize that turned out too thin can be
+-- retuned for every installed copy of the game without shipping
+-- anything at all.
+--
+-- The dated ones are the point of it: `opens` and `closes` make a cup a
+-- real event with a deadline rather than a permanent menu item. Both
+-- are plain dates, both ends included, read in the PHONE's time zone —
+-- a cup closing on the 30th closes at the end of the 30th wherever the
+-- player is.
+--
+-- The game validates every row again on arrival (isTournamentDef in
+-- src/game/tournament.ts) and silently drops anything malformed, so the
+-- checks here are the first of two nets rather than the only one.
+create table if not exists public.tournaments (
+  -- The id the game merges on. Match a bundled cup's id to retune it.
+  slug        text primary key check (char_length(trim(slug)) > 0),
+  name        text not null check (char_length(trim(name)) > 0),
+  blurb       text not null default '',
+  mode        text not null check (mode in ('classic','ultimate','skirmish','colorwar')),
+  difficulty  text not null check (difficulty in ('easy','medium','hard')),
+  -- Wins in a row. One is not a streak and fifty is not a game.
+  target      integer not null check (target between 2 and 20),
+  coins_min   integer not null default 0 check (coins_min >= 0),
+  coins_max   integer not null default 0 check (coins_max >= 0),
+  trophies    integer not null default 0 check (trophies >= 0),
+  -- A die or a battlefield, by the id its own module knows it by:
+  -- a DiceSkin id ('champion') or an ArenaId ('beach'). Null for none.
+  -- Deliberately NOT a foreign key to anything: the list of dice and
+  -- battlefields lives in the game, not in this database, and a prize
+  -- naming something this version has never heard of is already
+  -- handled — the game drops the item and pays the coins and trophies.
+  item_kind   text check (item_kind in ('dice','arena')),
+  item_id     text,
+  opens       date,
+  closes      date,
+  published   boolean not null default false,
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now(),
+  constraint coins_band_ordered check (coins_max >= coins_min),
+  -- Both halves of an item prize or neither: a kind with no id promises
+  -- a die the game cannot look up, and an id with no kind cannot be
+  -- looked up at all.
+  constraint item_both_or_neither check (
+    (item_kind is null and item_id is null) or
+    (item_kind is not null and char_length(trim(coalesce(item_id, ''))) > 0)
+  ),
+  constraint window_ordered check (opens is null or closes is null or closes >= opens)
+);
+
+create index if not exists tournaments_published_idx
+  on public.tournaments (published, sort_order);
+
+alter table public.tournaments enable row level security;
+
+drop policy if exists tournaments_read on public.tournaments;
+create policy tournaments_read on public.tournaments
+  for select using (public.is_member());
+
+-- The game reads these through /api/tournaments with the service key,
+-- the same way it reads the news feed: there is no signed-in person on
+-- the other end of a request from a phone, and a token shipped inside
+-- an app is not a token. Nothing here is worth protecting — it is a
+-- list of challenges we want players to see.

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AiDifficultyId } from './ai';
 import { ModeId } from './modes';
+import type { TournamentState } from './tournament';
 import { RewardRange, rollReward } from './rewards';
 
 /**
@@ -60,18 +61,21 @@ export interface Progress {
    */
   cheated?: boolean;
   /**
-   * The cup run in progress, if there is one.
+   * Where this player stands in every tournament they have played, by
+   * tournament id.
    *
-   * A run used to live only in React state, so killing the app in the
-   * middle of one lost the run AND the 50 or 150 coins paid to enter it
-   * — with nothing on screen to say so. Everything else a player owns
-   * survives being force-quit; a run they paid for has to as well.
+   * This replaced `run`, the single cup bracket in progress, on 25 Sep
+   * 2026. A bracket was one thing at a time and was thrown away the
+   * moment it ended; a tournament streak is per-tournament, survives
+   * being finished, and keeps a best run worth looking at afterwards.
    *
-   * Stored as { tournamentId, wins } rather than the whole RunState: a
-   * FINISHED run is cleared on the spot, so a saved one is by
-   * definition still going.
+   * Keyed by id and never pruned, on purpose. Tournaments arrive over
+   * the network and can be retired, and a retired one coming back to
+   * find its old streak still here is right — whereas a player who
+   * cleared a tournament and then had the prize handed to them again,
+   * because the row was tidied away, would be a real bug.
    */
-  run?: { tournamentId: string; wins: number } | null;
+  tournaments?: Record<string, TournamentState>;
 }
 
 /**
@@ -323,6 +327,33 @@ export function setTrophies(trophies: number): MatchResult {
   };
 }
 
+/**
+ * Add trophies that were EARNED — today, only a tournament prize.
+ *
+ * Deliberately not `setTrophies`, which is the cheat code and flags the
+ * save as `cheated` so it stops posting to the shared board. These
+ * trophies were won by winning battles, so flagging them would shut a
+ * player out of Game Center for playing the game properly. That is the
+ * entire difference between the two functions and it is the one thing
+ * worth getting right in this file.
+ *
+ * Reports the tiers crossed, exactly as applyMatchResult does, so a
+ * prize that carries you past a rung unlocks it there and then rather
+ * than on the next ordinary win.
+ */
+export function awardTrophies(amount: number): MatchResult {
+  const before = current.trophies;
+  const add = Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
+  const after = before + add;
+  current = { ...current, trophies: after };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  return {
+    trophies: after,
+    delta: after - before,
+    newUnlocks: TIERS.filter((t) => t.at > before && t.at <= after),
+  };
+}
+
 export function setUnlockAll(on: boolean): Progress {
   current = { ...current, unlockAll: on };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
@@ -341,16 +372,25 @@ export function markCheated(): void {
 }
 
 /**
- * Remember (or forget) the cup run in progress.
+ * Remember where a player stands in one tournament.
  *
- * Called on entering a cup, after each bracket round, and when a run
- * ends or is given up. Writes are fire-and-forget like every other
- * write here — a storage failure must never stop a battle.
+ * Written after every finished battle that touches one, so a streak
+ * survives the app being force-quit mid-run — which is the whole reason
+ * the old bracket was persisted too. Writes are fire-and-forget like
+ * every other write here: a storage failure must never stop a battle.
  */
-export function setRun(run: { tournamentId: string; wins: number } | null): Progress {
-  current = { ...current, run };
+export function setTournamentState(id: string, state: TournamentState): Progress {
+  current = {
+    ...current,
+    tournaments: { ...(current.tournaments ?? {}), [id]: state },
+  };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
   return current;
+}
+
+/** Everything known about this player's tournaments. Never undefined. */
+export function tournamentStates(): Record<string, TournamentState> {
+  return current.tournaments ?? {};
 }
 
 export function hasCheated(): boolean {

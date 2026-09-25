@@ -10,7 +10,9 @@ const path = require('path');
   });
   const page = await browser.newPage({ viewport: { width: 393, height: 1400 } });
   page.on('pageerror', (e) => console.log('PAGE THROW:', e.message));
-  await page.goto('file://' + path.resolve(__dirname, 'index.html'));
+  // SCREEN=cups draws the Cups tab instead of Records — see entry.tsx.
+  const which = process.env.SCREEN ? '?screen=' + process.env.SCREEN : '';
+  await page.goto('file://' + path.resolve(__dirname, 'index.html') + which);
   await page.waitForFunction('window.__ready === true', { timeout: 15000 }).catch(() => {});
   await page.screenshot({ path: process.argv[2] || '/tmp/screen.png', fullPage: true });
   console.log('shot');

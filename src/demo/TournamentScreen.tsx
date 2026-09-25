@@ -1,54 +1,57 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AI_DIFFICULTIES } from '../game/ai';
 import { playClick } from '../audio/sounds';
+import { MODES } from '../game/modes';
+import { MODE_ICONS } from '../ui/modeIcons';
 import { rangeLabel } from '../game/rewards';
+import { resolveItem } from '../game/prizes';
 import {
-  RunState,
-  TOURNAMENTS,
   TournamentDef,
-  canEnter,
-  playersLeft,
-  roundName,
-  roundsToWin,
-  tournamentById,
+  TournamentState,
+  closingLabel,
+  isComing,
+  liveTournaments,
+  stateOf,
 } from '../game/tournament';
 import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { PrimaryButton } from '../ui/Card';
-import { Confirm } from '../ui/Confirm';
+import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
 
 /**
- * The Cups tab: pick a bracket, then play it one round at a time.
+ * The Cups tab: the tournaments running right now.
  *
- * Two states in one screen — the list of cups, and the run in progress —
- * because a run is only ever one bracket deep and a second screen for
- * "you are three rounds in" would be a screen you look at once.
+ * STILL CALLED CUPS, and that is a decision rather than an oversight.
+ * David asked on 25 Sep 2026 to "rework the entire cups tab to be online
+ * tournaments", and the obvious move — retitling the page Tournaments —
+ * would leave the bottom bar saying Cups and the page saying something
+ * else, which is the exact split the Ranks/Records rename existed to
+ * close. "Tournaments" cannot go in the bar either: it is five cells
+ * wide and the longest label in it today is six characters. A cup IS a
+ * tournament in plain English, and the prize at the end of one is
+ * literally a cup, so one short word does for both.
+ *
+ * ONE STATE, not two. The old screen had a list and a run-in-progress
+ * view, because entering a cup put you inside it. Nothing is entered any
+ * more: a tournament is a standing challenge and your progress in it is
+ * a row of pips on its own card, so every tournament is visible at once
+ * and you can be part-way through more than one.
  */
 export function TournamentScreen({
-  coins,
-  run,
-  onEnter,
-  onPlayRound,
-  onAbandon,
+  tournaments,
+  states,
+  today,
+  onPlay,
 }: {
-  coins: number;
-  run: RunState | null;
-  onEnter: (tournament: TournamentDef) => void;
-  onPlayRound: () => void;
-  onAbandon: () => void;
+  tournaments: TournamentDef[];
+  states: Record<string, TournamentState>;
+  /** YYYY-MM-DD, passed in so the screen has no clock of its own to test. */
+  today: string;
+  onPlay: (tournament: TournamentDef) => void;
 }) {
-  const active = run ? tournamentById(run.tournamentId) : undefined;
-
-  /**
-   * Which question is on screen, if any. Entering costs coins and there
-   * is no refund; giving up throws the entry fee away. Both used to
-   * happen on the first tap that landed on them.
-   */
-  const [asking, setAsking] = useState<
-    { kind: 'enter'; cup: TournamentDef } | { kind: 'abandon' } | null
-  >(null);
+  const showing = liveTournaments(tournaments, today);
 
   return (
     <View style={[styles.overlay, useMenuPageArea()]}>
@@ -60,157 +63,161 @@ export function TournamentScreen({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {run && active && !run.finished ? (
-          <View style={styles.runCard}>
-            <Text style={styles.runEyebrow}>YOU ARE IN THE</Text>
-            <Text style={styles.runName}>
-              {active.emoji} {active.name}
-            </Text>
+        <Text style={styles.note}>
+          A cup is a run of wins in one way of playing. Win them in a row and
+          the prize is yours — coins, trophies, and sometimes something for
+          the cupboard. Lose one and you start the run again; a draw leaves
+          it where it is.
+        </Text>
+        {/*
+          Said plainly, because the alternative is letting a child believe
+          they beat five strangers. David's own words were "against AI for
+          now", and the game has a standing rule against inventing other
+          players (see AGENTS.md).
+        */}
+        <Text style={styles.noteQuiet}>
+          Cups come from the Dice Battles website, so new ones turn up here
+          without updating the game. You play them against the game&rsquo;s own
+          rivals.
+        </Text>
 
-            <View style={styles.pipRow}>
-              {Array.from({ length: roundsToWin(active.size) }, (_v, i) => (
-                <View
-                  key={i}
-                  style={[styles.pip, i < run.wins && styles.pipWon]}
-                >
-                  <Text style={styles.pipText}>{i < run.wins ? '✓' : ''}</Text>
-                </View>
-              ))}
-            </View>
-
-            <Text style={styles.runRound}>
-              {roundName(active.size, run.wins)} ·{' '}
-              {playersLeft(active.size, run.wins)} left in
+        {showing.length === 0 && (
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>
+              No cups are running just now. Have a look again in a day or two.
             </Text>
-            <Text style={styles.runNote}>
-              Win it and you take {rangeLabel(active.prize)} coins. Lose and
-              the run is over — there is no second chance in a cup.
-            </Text>
-
-            <PrimaryButton
-              style={styles.playButton}
-              onPress={() => {
-                playClick();
-                onPlayRound();
-              }}
-            >
-              <Text style={styles.playText}>
-                Play the {roundName(active.size, run.wins)}
-              </Text>
-            </PrimaryButton>
-            <Pressable
-              style={styles.quietButton}
-              onPress={() => {
-                playClick();
-                setAsking({ kind: 'abandon' });
-              }}
-            >
-              <Text style={styles.quietText}>Give up this run</Text>
-            </Pressable>
           </View>
-        ) : (
-          <>
-            <Text style={styles.note}>
-              A cup is a knockout: beat every opponent in the bracket and the
-              prize is yours. Lose once and you are out.
-            </Text>
-
-            {TOURNAMENTS.map((t) => {
-              const affordable = canEnter(t, coins);
-              return (
-                <Pressable
-                  key={t.id}
-                  disabled={!affordable}
-                  style={[styles.card, !affordable && styles.cardLocked]}
-                  onPress={() => {
-                    playClick();
-                    setAsking({ kind: 'enter', cup: t });
-                  }}
-                >
-                  <Text style={styles.cardEmoji}>{t.emoji}</Text>
-                  <View style={styles.cardText}>
-                    <Text style={styles.cardTitle}>{t.name}</Text>
-                    <Text style={styles.cardMeta}>
-                      {t.size} players · {AI_DIFFICULTIES[t.difficulty].label} ·{' '}
-                      {roundsToWin(t.size)} rounds
-                    </Text>
-                    <View style={styles.prizeRow}>
-                      <GoldCoin size={13} />
-                      <Text style={styles.cardPrize}>
-                        {rangeLabel(t.prize)} to the champion
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.entry}>
-                    {t.entry === 0 ? (
-                      <Text style={styles.entryLabel}>FREE</Text>
-                    ) : (
-                      <View style={styles.prizeRow}>
-                        <GoldCoin size={13} />
-                        <Text style={styles.entryLabel}>{t.entry}</Text>
-                      </View>
-                    )}
-                    {!affordable && (
-                      <Text style={styles.entryShort}>
-                        {t.entry - coins} short
-                      </Text>
-                    )}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </>
         )}
+
+        {showing.map((t) => (
+          <TournamentCard
+            key={t.id}
+            tournament={t}
+            state={stateOf(states, t.id)}
+            today={today}
+            onPlay={onPlay}
+          />
+        ))}
       </ScrollView>
+    </View>
+  );
+}
 
-      {asking?.kind === 'enter' && (
-        <Confirm
-          title={`Enter the ${asking.cup.name}?`}
-          body={
-            asking.cup.entry > 0
-              ? `It costs ${asking.cup.entry} coins to enter, and the entry fee is not given back. Lose one round and the run is over.`
-              : 'This one is free to enter. Lose one round and the run is over.'
-          }
-          confirmLabel={
-            asking.cup.entry > 0
-              ? `Yes, pay ${asking.cup.entry} and enter`
-              : 'Yes, enter'
-          }
-          onCancel={() => {
-            playClick();
-            setAsking(null);
-          }}
-          onConfirm={() => {
-            playClick();
-            setAsking(null);
-            onEnter(asking.cup);
-          }}
-        />
-      )}
+function TournamentCard({
+  tournament: t,
+  state,
+  today,
+  onPlay,
+}: {
+  tournament: TournamentDef;
+  state: TournamentState;
+  today: string;
+  onPlay: (tournament: TournamentDef) => void;
+}) {
+  const Icon = MODE_ICONS[t.mode];
+  const coming = isComing(t, today);
+  const closing = closingLabel(t, today);
+  const item = t.prize.item ? resolveItem(t.prize.item) : null;
 
-      {asking?.kind === 'abandon' && (
-        <Confirm
-          title="Give up this run?"
-          body={
-            active && active.entry > 0
-              ? `The run ends here and the ${active.entry} coins you paid to enter are gone. You can enter again whenever you like.`
-              : 'The run ends here. You can enter again whenever you like.'
-          }
-          confirmLabel="Yes, give up the run"
-          cancelLabel="No, keep playing"
-          onCancel={() => {
-            playClick();
-            setAsking(null);
-          }}
-          onConfirm={() => {
-            playClick();
-            setAsking(null);
-            onAbandon();
-          }}
-        />
+  return (
+    <View style={[styles.card, state.won && styles.cardWon]}>
+      <View style={styles.cardHead}>
+        <View style={styles.iconWell}>
+          <Icon size={24} color={THEME.ink} />
+        </View>
+        <View style={styles.cardText}>
+          <Text style={styles.cardTitle}>{t.name}</Text>
+          <Text style={styles.cardMeta}>
+            {t.target} in a row · {MODES[t.mode].name} ·{' '}
+            {AI_DIFFICULTIES[t.difficulty].label}
+          </Text>
+        </View>
+        {state.won && <Text style={styles.wonFlag}>WON</Text>}
+      </View>
+
+      <Text style={styles.blurb}>{t.blurb}</Text>
+
+      {/*
+        The prize, spelled out rather than summed into one number. Three
+        different kinds of thing are being given away and only one of
+        them is coins — a line reading "900" would hide the die entirely,
+        which is the part actually worth playing for.
+      */}
+      <View style={styles.prizeRow}>
+        <View style={styles.prizeChip}>
+          <GoldCoin size={13} />
+          <Text style={styles.prizeText}>{rangeLabel(t.prize.coins)}</Text>
+        </View>
+        <View style={styles.prizeChip}>
+          <TrophyIcon size={13} />
+          <Text style={styles.prizeText}>{t.prize.trophies}</Text>
+        </View>
+        {item && (
+          <View style={[styles.prizeChip, styles.prizeChipItem]}>
+            <Text style={styles.prizeEmoji}>{item.emoji}</Text>
+            <Text style={styles.prizeText}>{item.name}</Text>
+          </View>
+        )}
+      </View>
+
+      {coming ? (
+        <Text style={styles.comingText}>Opens {prettyDate(t.opens!)}</Text>
+      ) : (
+        <>
+          <View style={styles.pipRow}>
+            {Array.from({ length: t.target }, (_v, i) => (
+              <View
+                key={i}
+                style={[styles.pip, i < state.streak && styles.pipWon]}
+              />
+            ))}
+            <Text style={styles.pipCount}>
+              {state.streak} of {t.target}
+            </Text>
+            {/*
+              The deadline belongs on THIS row, not up beside the name.
+              Alongside the title it stole enough width to wrap "3 in a
+              row · Color Rush · Medium" onto two lines, so a dated cup
+              read as untidier than a permanent one for no reason. Here
+              it sits with the other thing that changes while you play.
+            */}
+            {closing && <Text style={styles.closing}>{closing}</Text>}
+          </View>
+
+          {state.won ? (
+            <Text style={styles.wonNote}>
+              Already yours. Best run here: {state.best}.
+            </Text>
+          ) : state.best > state.streak ? (
+            <Text style={styles.bestNote}>Your best run here: {state.best}.</Text>
+          ) : null}
+
+          <PrimaryButton
+            style={styles.playButton}
+            onPress={() => {
+              playClick();
+              onPlay(t);
+            }}
+          >
+            <Text style={styles.playText}>
+              Play {MODES[t.mode].name} on {AI_DIFFICULTIES[t.difficulty].label}
+            </Text>
+          </PrimaryButton>
+        </>
       )}
     </View>
   );
+}
+
+/** "2026-10-01" → "1 Oct". Built by hand so it reads the same everywhere. */
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+export function prettyDate(stamp: string): string {
+  const [y, m, d] = stamp.split('-').map((n) => Number(n));
+  if (!y || !m || !d || m < 1 || m > 12) return stamp;
+  return `${d} ${MONTHS[m - 1]}`;
 }
 
 const styles = StyleSheet.create({
@@ -223,125 +230,155 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
   header: { paddingHorizontal: 22, marginBottom: 10 },
-  title: {
-    color: THEME.ink,
-    ...TYPE.title,
-  },
-  scroll: {
-    paddingHorizontal: 22,
-    paddingBottom: 24,
-  },
+  title: { color: THEME.ink, ...TYPE.title },
+  scroll: { paddingHorizontal: 22, paddingBottom: 24 },
   note: {
     color: THEME.inkSoft,
     fontSize: 13.5,
     fontWeight: '600',
-    marginBottom: 16,
     lineHeight: 19,
   },
+  noteQuiet: {
+    color: THEME.inkFaint,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  empty: {
+    backgroundColor: THEME.tile,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    borderRadius: SHAPE.radius,
+    padding: 16,
+  },
+  emptyText: {
+    color: THEME.inkSoft,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+  },
+
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
     backgroundColor: THEME.surface,
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
     borderRadius: SHAPE.radius,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 14,
   },
-  /*
-   * Sunk, not faded: opacity dragged every line under the contrast floor,
-   * and "40 short" is exactly the line the card exists to say.
-   */
-  cardLocked: {
-    backgroundColor: THEME.sunk,
-    borderColor: 'rgba(29,26,46,0.35)',
+  // A cup already won keeps its ink line and takes the gold wash the
+  // league card and the current rung use, so "yours" looks the same
+  // wherever the game says it.
+  cardWon: { backgroundColor: 'rgba(255,210,31,0.30)' },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconWell: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: THEME.tile,
+    borderWidth: SHAPE.line,
+    borderColor: 'rgba(29,26,46,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardEmoji: { fontSize: 34 },
   cardText: { flex: 1 },
   cardTitle: { color: THEME.ink, ...TYPE.cardTitle },
   cardMeta: {
     color: THEME.inkSoft,
     fontSize: 12.5,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  cardPrize: {
-    color: THEME.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  entry: { alignItems: 'flex-end' },
-  prizeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
-  entryLabel: { color: THEME.ink, fontSize: 15, fontWeight: '900' },
-  entryShort: {
-    color: THEME.inkFaint,
-    fontSize: 11,
     fontWeight: '700',
     marginTop: 2,
   },
-  // The hero card: the run you are in, on a gold wash under the ink line.
-  runCard: {
-    backgroundColor: 'rgba(255,210,31,0.30)',
-    borderWidth: SHAPE.line,
-    borderColor: THEME.ink,
-    borderRadius: SHAPE.radiusLg,
-    padding: 20,
-    alignItems: 'center',
-  },
-  runEyebrow: {
-    color: THEME.inkSoft,
-    ...TYPE.label,
-    letterSpacing: 1.4,
-  },
-  runName: {
+  wonFlag: {
     color: THEME.ink,
-    fontSize: 23,
+    fontSize: 11,
     fontWeight: '900',
-    marginTop: 6,
-    textAlign: 'center',
+    letterSpacing: 1.2,
   },
-  pipRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  closing: {
+    color: THEME.inkFaint,
+    fontSize: 11.5,
+    fontWeight: '800',
+    marginLeft: 'auto',
+  },
+  blurb: {
+    color: THEME.inkSoft,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginTop: 10,
+  },
+
+  prizeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  prizeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: THEME.tile,
+    borderWidth: SHAPE.line,
+    borderColor: 'rgba(29,26,46,0.25)',
+    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  // The item is the prize worth playing for, so it wears the ink line
+  // the coins and trophies do not.
+  prizeChipItem: { borderColor: THEME.ink, backgroundColor: THEME.surface },
+  prizeEmoji: { fontSize: 13 },
+  prizeText: { color: THEME.ink, fontSize: 12.5, fontWeight: '800' },
+
+  pipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 7,
+    marginTop: 14,
+  },
   pip: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: SHAPE.line,
     borderColor: 'rgba(29,26,46,0.35)',
-    backgroundColor: THEME.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: THEME.tile,
   },
   pipWon: { backgroundColor: THEME.good, borderColor: THEME.ink },
-  pipText: { color: '#ffffff', fontSize: 16, fontWeight: '900' },
-  runRound: {
+  pipCount: {
+    color: THEME.inkSoft,
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 4,
+  },
+  bestNote: {
+    color: THEME.inkFaint,
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  wonNote: {
     color: THEME.ink,
-    fontSize: 16,
+    fontSize: 12.5,
+    fontWeight: '700',
+    marginTop: 10,
+  },
+  comingText: {
+    color: THEME.inkSoft,
+    fontSize: 13,
     fontWeight: '800',
     marginTop: 14,
   },
-  runNote: {
-    color: THEME.inkSoft,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 19,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  playButton: {
-    alignSelf: 'stretch',
-    marginTop: 18,
-  },
+  playButton: { alignSelf: 'stretch', marginTop: 14 },
   playText: {
     color: THEME.onAccent,
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '900',
-    letterSpacing: 0.4,
-  },
-  quietButton: { paddingVertical: 12, marginTop: 4 },
-  quietText: {
-    color: THEME.inkSoft,
-    fontSize: 13,
-    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

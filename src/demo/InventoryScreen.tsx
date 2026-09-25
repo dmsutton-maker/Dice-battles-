@@ -137,6 +137,13 @@ export function InventoryScreen({
                   >
                     {skin.price}
                   </CoinLabel>
+                ) : skin.prize ? (
+                  /*
+                    A cup prize has no price and no tier. Without this it
+                    fell through to the trophy tag below and read "🏆 0",
+                    which says the die is already earned.
+                  */
+                  <Text style={styles.priceTag}>Win it in a cup</Text>
                 ) : (
                   <View style={styles.priceTagRow}>
                     <TrophyIcon size={11} color={THEME.inkFaint} />

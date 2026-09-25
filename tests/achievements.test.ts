@@ -9,7 +9,7 @@ import {
   mayPost,
   setsOwned,
 } from '../src/game/achievements';
-import { DICE_SKINS } from '../src/game/diceSkins';
+import { DICE_SKINS, LADDER_SKINS } from '../src/game/diceSkins';
 import { MODE_ORDER } from '../src/game/modes';
 import {
   hasCheated,
@@ -158,9 +158,14 @@ suite('collector counting', () => {
   });
 
   test('climbing the ladder earns the ladder dice without buying them', () => {
+    /*
+      LADDER_SKINS, not "everything without a price". A tournament prize
+      die has no price either, and counting it here would have the top of
+      the ladder hand over a die that trophies cannot reach — which is
+      exactly the bug the `prize` flag exists to prevent.
+    */
     resetWalletForTests();
-    const ladder = DICE_SKINS.filter((s) => s.price === undefined).length;
-    assertEqual(setsOwned(99_999), ladder, 'every ladder die at the top');
+    assertEqual(setsOwned(99_999), LADDER_SKINS.length, 'every ladder die at the top');
   });
 
   test('bought dice count', () => {

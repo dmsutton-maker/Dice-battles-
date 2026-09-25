@@ -25,10 +25,22 @@ export interface DiceSkin {
    * How this skin is obtained — exactly one of:
    *  - `unlock`: earned by climbing the trophy ladder.
    *  - `price`: bought in the Store with coins.
-   * A skin with neither is free from the start.
+   *  - `prize`: won in a tournament, and available no other way.
+   * A skin with none of the three is free from the start.
    */
   unlock?: UnlockId | null;
   price?: number;
+  /**
+   * Won in a tournament. Not on the Store shelf, not on the ladder, and
+   * not free.
+   *
+   * The flag has to EXIST rather than being inferred from "no price and
+   * no unlock", because that combination already means the opposite —
+   * it is how Ivory says it is free to everyone. A prize die without
+   * this flag would be handed to every player on install, which is the
+   * one thing it must never be.
+   */
+  prize?: true;
 }
 
 export const DICE_SKINS: DiceSkin[] = [
@@ -283,6 +295,32 @@ export const DICE_SKINS: DiceSkin[] = [
   { id: 'circuit', name: 'Circuit Board', emoji: '🔌', body: '#143a2a', pattern: 'circuit', ink: '#57d0c9', price: 1205 },
   { id: 'rainbow', name: 'Rainbow', emoji: '🌈', body: '#f2f7fc', pattern: 'rainbow', ink: '#2a4a8a', price: 1280 },
   { id: 'galaxy', name: 'Galaxy', emoji: '🌌', body: '#1d1440', pattern: 'galaxy', ink: '#8a3d8f', price: 1400 },
+
+  /*
+    WON, NEVER BOUGHT.
+
+    David, 25 Sep 2026, asked tournaments for "unique rewards ... even a
+    dice or arena". A die already on the shelf is a discount; this one is
+    the only thing in the game that money cannot reach, and the Ultimate
+    Gauntlet — five Hard wins in a row — is the only way it exists on a
+    phone.
+
+    Deep royal violet under `sheen`, the polished finish gold, silver,
+    copper and ruby share, so it reads as the fifth and last of that set
+    rather than as a stranger. It is the darkest shell in the game, which
+    is what keeps it clear of all six face colours: the palette's deepest
+    face is Blue at #043fe0, and this sits well away from it in hue as
+    well as lightness.
+  */
+  {
+    id: 'champion',
+    name: 'Champion',
+    emoji: '🏆',
+    body: '#3d2a6e',
+    pattern: 'sheen',
+    ink: '#f4ecff',
+    prize: true,
+  },
 ];
 
 /**
@@ -293,8 +331,20 @@ export const DICE_SKINS: DiceSkin[] = [
 export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined).sort(
   (a, b) => a.price! - b.price!,
 );
-/** Skins earned by climbing the trophy ladder. */
-export const LADDER_SKINS = DICE_SKINS.filter((s) => s.price === undefined);
+/**
+ * Skins earned by climbing the trophy ladder.
+ *
+ * Prize skins are excluded explicitly. They also have no price, so
+ * "everything without a price" — which this used to be — swept them onto
+ * the ladder and made the game promise them at a trophy count that does
+ * not exist.
+ */
+export const LADDER_SKINS = DICE_SKINS.filter(
+  (s) => s.price === undefined && !s.prize,
+);
+
+/** Skins that can only be won in a tournament. */
+export const PRIZE_SKINS = DICE_SKINS.filter((s) => s.prize);
 
 export const DEFAULT_SKIN_ID = 'ivory';
 

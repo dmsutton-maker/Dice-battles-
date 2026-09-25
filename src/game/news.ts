@@ -89,6 +89,30 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-96-0-cups-are-tournaments',
+    date: '25 September 2026',
+    version: 'v1.96.0',
+    title: 'Cups are tournaments now, and one of them has a dice in it',
+    icon: 'cups',
+    body:
+      'The Cups tab has been rebuilt. A cup used to be a knockout ' +
+      'bracket you paid coins to enter and lost the moment you lost a ' +
+      'round. Now it is a run of wins in one way of playing — three ' +
+      'Color Rush on Easy, five Ultimate on Hard — and it costs ' +
+      'nothing to try. Win them in a row and the prize is yours: coins, ' +
+      'trophies, and on two of them something for the cupboard. Lose ' +
+      'one and you simply start the run again. A draw leaves it where ' +
+      'it is.\n\n' +
+      'There is a new dice, Champion, and the only way to get it is to ' +
+      'win five Ultimate battles in a row on Hard. It is not in the ' +
+      'Store and it is not on the ladder. Winning it is the only way ' +
+      'it exists.\n\n' +
+      'Cups now come from the Dice Battles website rather than from ' +
+      'inside the game, so new ones can turn up without you updating ' +
+      'anything — some of them with a closing date. There is one ' +
+      'running already. You play them against the game\u2019s own rivals.',
+  },
+  {
     id: 'v1-94-0-records-and-the-way-back',
     date: '25 September 2026',
     version: 'v1.94.0',
