@@ -89,6 +89,24 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-94-0-records-and-the-way-back',
+    date: '25 September 2026',
+    version: 'v1.94.0',
+    title: 'How to play has a way back, and Ranks is now Records',
+    icon: 'help',
+    body:
+      'How to play opens itself once, the very first time, and then never ' +
+      'again — which left anyone who wanted the rules a second time ' +
+      'with no idea they were still there. It now ends by saying where ' +
+      'to find it: the gear at the top of the home screen, under How to ' +
+      'play.\n\n' +
+      'The tab at the bottom right that said Ranks now says Records, and ' +
+      'so does the page it opens. Ranks was never quite what that page ' +
+      'holds — your record, your wins by mode, what the next trophies ' +
+      'unlock — and Boards, the other candidate, is already the word ' +
+      'this game uses for the thing you roll dice onto.',
+  },
+  {
     id: 'v1-91-0-blank-sides-really-gone',
     date: '11 September 2026',
     version: 'v1.91.0',

@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.94.0 — 2026-09-25 · requested by David
+
+Two things: "add another part to the explanation to the how to play at
+the end of it that if you want to see the rules again it'll be in
+settings", and "change the ranks name to boards or something else".
+
+### How to play now says where to find it again
+A seventh page, "Come back any time", pointing at the gear on the home
+screen and How to play inside it. The tutorial opens itself once and
+then never again — correct, and exactly why the page is needed: the
+moment it closes, somebody who wants the rules back has no reason to
+think they still can.
+
+`tests/tutorial.test.ts` now checks that last page against the real
+button rather than against a copy of the words, because the page turns a
+fact into a PROMISE: move the button and the page becomes directions to
+somewhere it is not, which is worse than the silence it replaced.
+
+### Ranks is now Records
+**Not Boards**, and that is the one word it could not be: *the board*
+already means the battlefield everywhere in this game — including in the
+bottom bar's own source comment, four lines above the label. A tab
+called Boards sitting next to a tab called Battle would be two names for
+two different things that sound like the same thing.
+
+Records is what the page holds. Its first section is literally headed
+YOUR RECORD, and the ladder and world rankings sit under that without
+promising a league table the game does not have. The tab and the page
+heading changed together — `tests/layout.test.ts` compares the two and
+fails if only one moves.
+
+### Also
+- A news post, so the tab quietly changing its name is not a surprise.
+- `TutorialScreen` takes an optional `startPage`, always 0 in the game.
+  It exists so `tools/duo-preview` can photograph a page six taps in,
+  which a screenshot cannot reach on its own — and both new screens were
+  looked at before this shipped.
+
 ## v1.93.0 — 2026-09-17 · requested by David
 
 "Also have the list of your friends load faster."

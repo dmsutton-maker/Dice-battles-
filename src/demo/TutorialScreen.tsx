@@ -9,6 +9,7 @@ import { MODES, MODE_ORDER } from '../game/modes';
 import { TUTORIAL_PAGES, TutorialArt } from '../game/tutorial';
 import { playClick } from '../audio/sounds';
 import { GoldCoin } from './GoldCoin';
+import { GearIcon } from '../ui/Icon';
 import { ThrowDemo } from './ThrowDemo';
 import { SHAPE, THEME } from '../ui/theme';
 
@@ -28,12 +29,19 @@ import { SHAPE, THEME } from '../ui/theme';
 export function TutorialScreen({
   symbols,
   onClose,
+  startPage = 0,
 }: {
   /** Colourblind mode: stamp each colour with its shape. */
   symbols: boolean;
   onClose: () => void;
+  /**
+   * Which page to open on. Always 0 in the game — this exists so
+   * tools/duo-preview can photograph a page that is six taps in, which
+   * a screenshot cannot reach on its own.
+   */
+  startPage?: number;
 }) {
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(startPage);
   const current = TUTORIAL_PAGES[page];
   const last = page === TUTORIAL_PAGES.length - 1;
 
@@ -168,6 +176,17 @@ function Art({ art, symbols }: { art: TutorialArt; symbols: boolean }) {
       <View style={styles.artRow}>
         <Text style={styles.bigEmoji}>🏆</Text>
         <GoldCoin size={34} />
+      </View>
+    );
+  }
+
+  if (art.kind === 'settings') {
+    // The real gear, at the size the page is pointing at — not an emoji
+    // cog, which is a different shape on every phone and would send
+    // somebody looking for a button that does not look like that.
+    return (
+      <View style={styles.artRow}>
+        <GearIcon size={44} />
       </View>
     );
   }

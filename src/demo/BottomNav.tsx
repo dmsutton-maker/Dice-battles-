@@ -41,7 +41,21 @@ const TABS: { id: Tab; label: string; Icon: IconFn }[] = [
   { id: 'inventory', label: 'Inventory', Icon: CrateIcon },
   { id: 'play', label: 'Battle', Icon: DieIcon },
   { id: 'cups', label: 'Cups', Icon: BracketIcon },
-  { id: 'leaderboard', label: 'Ranks', Icon: RanksIcon },
+  /*
+    "Records", not "Ranks" and not "Boards" — David, 25 Sep 2026.
+
+    He asked for "boards or something else". Boards is the one word it
+    cannot be: THE BOARD already means the battlefield everywhere in this
+    game, including four lines up in this file. A tab called Boards next
+    to a tab called Battle would be two names for two different things
+    that sound like the same thing.
+
+    Records is what the page actually holds — its first section is
+    literally headed YOUR RECORD — and it covers the ladder and the world
+    rankings underneath without promising a league table the game does
+    not have.
+  */
+  { id: 'leaderboard', label: 'Records', Icon: RanksIcon },
 ];
 
 export function BottomNav({

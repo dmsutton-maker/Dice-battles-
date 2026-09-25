@@ -123,6 +123,30 @@ suite('tutorial · it opens once and stays reachable', () => {
       /<Text style=\{styles\.bugReportButtonText\}>How to play<\/Text>/.test(screen),
       'the how-to-play button is not in the Settings panel',
     );
+
+    /*
+      AND THE LAST PAGE HAS TO SAY THE SAME THING — David, 25 Sep 2026.
+
+      He asked for the tutorial to end by telling people the rules are
+      still in Settings. That turns a fact into a PROMISE made to a
+      player, so it can now go wrong in a new way: move the button and
+      the closing page becomes a direction to somewhere it is not, which
+      is worse than the silence it replaced.
+
+      Checked against the real button above rather than against a copy
+      of the words here, so the two cannot drift apart.
+    */
+    const last = TUTORIAL_PAGES[TUTORIAL_PAGES.length - 1];
+    const words = [last.title, ...last.lines].join(' ');
+    assert(
+      /how to play/i.test(words),
+      `the tutorial never says where to find it again: "${words}"`,
+    );
+    assert(
+      /gear|settings/i.test(words),
+      `the last page does not name the gear or Settings: "${words}"`,
+    );
+    note(`it signs off with: "${last.lines[last.lines.length - 1]}"`);
     const top = readFileSync('src/demo/TopButtons.tsx', 'utf8');
     assert(
       !top.includes('onHowToPlay'),

@@ -27,7 +27,9 @@ export type TutorialArt =
   /** The four modes, by emoji. */
   | { kind: 'modes' }
   /** A trophy and a coin. */
-  | { kind: 'rewards' };
+  | { kind: 'rewards' }
+  /** The gear button, for the page that says where to find this again. */
+  | { kind: 'settings' };
 
 export interface TutorialPage {
   title: string;
@@ -89,6 +91,28 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
       'Trophies unlock new battlefields and dice as you climb.',
     ],
     art: { kind: 'rewards' },
+  },
+  {
+    /*
+      WHERE TO FIND THIS AGAIN — David, 25 Sep 2026.
+
+      The tutorial opens itself once and then never again, which is the
+      right behaviour and also the reason this page has to exist: the
+      moment it closes, a player who wants the rules back has no idea
+      they still can. Saying so on the way out costs one screen and
+      saves a person hunting for a button they never knew was there.
+
+      It names the GEAR rather than the word "Settings" alone, because
+      the person most likely to need this is the one who cannot read the
+      label under it.
+    */
+    title: 'Come back any time',
+    lines: [
+      'That is the lot. Go and free some prisoners.',
+      'Want to read this again? Tap the gear at the top of the home screen.',
+      'It is in there under How to play, whenever you like.',
+    ],
+    art: { kind: 'settings' },
   },
 ];
 

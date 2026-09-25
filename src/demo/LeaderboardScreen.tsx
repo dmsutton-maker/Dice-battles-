@@ -64,7 +64,7 @@ export function LeaderboardScreen({
   return (
     <View style={[styles.overlay, useMenuPageArea()]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Ranks</Text>
+        <Text style={styles.title}>Records</Text>
       </View>
 
       <ScrollView

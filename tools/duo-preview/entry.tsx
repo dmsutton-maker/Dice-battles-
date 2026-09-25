@@ -7,6 +7,8 @@ import { StoreScreen } from '../../src/demo/StoreScreen';
 import { LeaderboardScreen } from '../../src/demo/LeaderboardScreen';
 import { NewsScreen } from '../../src/demo/NewsScreen';
 import { FriendsScreen } from '../../src/demo/FriendsScreen';
+import { TutorialScreen } from '../../src/demo/TutorialScreen';
+import { TUTORIAL_PAGES } from '../../src/game/tutorial';
 import { TierIcon } from '../../src/demo/TierIcon';
 import { TIERS } from '../../src/game/progress';
 import { VolumeSlider } from '../../src/demo/VolumeSlider';
@@ -86,6 +88,21 @@ function Screen() {
       </View>
     );
   }
+  if (which.startsWith('tutorial')) {
+    /*
+      One How to play page, chosen by ?screen=tutorial:N.
+
+      The tutorial is paged, and the shooter cannot tap Next — so the
+      page to look at is picked here instead. Defaults to the LAST one,
+      which is the page v1.94.0 added.
+    */
+    const n = Number(which.split(':')[1] ?? TUTORIAL_PAGES.length - 1);
+    return (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <TutorialScreen symbols={false} startPage={n} onClose={() => {}} />
+      </View>
+    );
+  }
   if (which === 'friends') {
     /*
       The Friends panel, with a made-up player.
@@ -142,7 +159,11 @@ function Screen() {
 
 const TAB = which === 'store' ? 'store' : which === 'leaderboard' ? 'leaderboard' : 'inventory';
 const BARE =
-  which === 'news' || which === 'settings' || which === 'unlocks' || which === 'friends';
+  which === 'news' ||
+  which === 'settings' ||
+  which === 'unlocks' ||
+  which === 'friends' ||
+  which.startsWith('tutorial');
 
 createRoot(host).render(
   // Fills the viewport, so useWindowDimensions and the absolute-positioned

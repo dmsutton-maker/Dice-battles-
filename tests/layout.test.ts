@@ -172,7 +172,9 @@ suite('layout · the tab bar clears the home indicator', () => {
       said "Inventory", and a hint elsewhere called it "your bag"; the
       tab said "Ranks" and its page said "Leaderboard". For someone who
       cannot read yet — or would rather not squint — the label you tap
-      has to be the heading you land on. He picked Inventory and Ranks.
+      has to be the heading you land on. He picked Inventory and Ranks;
+      Ranks became Records on 25 Sep 2026, both halves together, which is
+      the thing this test exists to insist on.
 
       Checked against the screens themselves rather than a list here, so
       renaming one half and forgetting the other fails.
