@@ -1,8 +1,25 @@
 import { registerRootComponent } from 'expo';
+import type { ComponentType } from 'react';
+import { installCrashGuard, reportFatal } from './src/debug/crashGuard';
 
-import App from './App';
+/**
+ * The very first thing that runs.
+ *
+ * The crash guard is installed BEFORE the app is loaded, and the app is
+ * loaded with `require` inside a try/catch rather than a top-level
+ * import, so that a failure while a module is being set up is caught
+ * too. A static import would run before this file's own code and take
+ * the process down before anything could report it.
+ */
+installCrashGuard();
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+let Root: ComponentType;
+try {
+  Root = require('./App').default;
+} catch (error) {
+  reportFatal(error);
+  // The app could not even be loaded; show the reason on its own.
+  Root = require('./src/debug/CrashScreen').CrashRoot;
+}
+
+registerRootComponent(Root);
