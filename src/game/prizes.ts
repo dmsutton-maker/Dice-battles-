@@ -31,7 +31,7 @@ export interface ResolvedItem {
    * What it is worth in coins, if it is something the Store sells.
    *
    * Used for one thing: paying out when the winner already owns it. Zero
-   * for anything with no shelf price, which today is the Champion die —
+   * for anything with no shelf price, which today is the Amethyst die —
    * it cannot be bought at all, so there is no price to pay instead, and
    * there is also no way to already own it except by having won this.
    */
@@ -95,7 +95,7 @@ export interface PaidPrize {
  * silently evaporates because you bought the battlefield last week is
  * worse than no item prize at all, and a second copy of something is not
  * a prize either. The one case where that pays nothing extra is an item
- * with no shelf price — which today means the Champion die, and the only
+ * with no shelf price — which today means the Amethyst die, and the only
  * way to already own that is to have won this same tournament, which
  * cannot happen twice.
  */

@@ -22,13 +22,21 @@ import {
   isTournamentDef,
   liveTournaments,
   mergeTournaments,
+  MAX_ROTATING,
+  MAX_SHOWN,
   scoreBattle,
   stateOf,
   todayStamp,
   tournamentById,
 } from '../src/game/tournament';
 import { payPrize, resolveItem } from '../src/game/prizes';
-import { getWallet, grantItem, owns, resetWalletForTests } from '../src/game/currency';
+import {
+  getWallet,
+  grantItem,
+  loadWallet,
+  owns,
+  resetWalletForTests,
+} from '../src/game/currency';
 import { DICE_SKINS, LADDER_SKINS, PRIZE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
 import { isSkinUnlocked } from '../src/game/loadout';
 import { setsOwned } from '../src/game/achievements';
@@ -39,6 +47,7 @@ import {
   previewAction,
 } from '../src/game/itemPreview';
 import { averageOf } from '../src/game/rewards';
+import { COIN_REWARDS } from '../src/game/currency';
 
 /**
  * Cups, reworked into tournaments.
@@ -70,21 +79,29 @@ const CUP: TournamentDef = {
   prize: { coins: { min: 10, max: 10 }, trophies: 5 },
 };
 
-suite('cups · the four that ship with the game', () => {
-  test('there is one for every way to play', () => {
+suite('cups · the one that ships with the game', () => {
+  test('there is exactly one, and it is the standing challenge', () => {
     /*
-      The old three cups were three difficulties of the same game, so two
-      of the four modes had nothing at all to play for. Every mode now
-      has a reason to be opened.
+      David, 25 Sep 2026: "I only want like one or three cups at a time."
+      One bundled plus up to two from the board is what makes that true,
+      and a second bundled cup would make the quiet weeks show two before
+      the board has said anything.
     */
-    const modes = TOURNAMENTS.map((t) => t.mode);
-    assertEqual(
-      new Set(modes).size,
-      MODE_ORDER.length,
-      `the bundled cups only cover ${new Set(modes).size} of the ${MODE_ORDER.length} modes`,
-    );
-    assertEqual(new Set(TOURNAMENTS.map((t) => t.id)).size, TOURNAMENTS.length,
-      'two bundled cups share an id');
+    assertEqual(TOURNAMENTS.length, 1, 'the game ships with more than one cup');
+    assert(TOURNAMENTS[0].standing === true, 'the bundled cup is not marked standing');
+  });
+
+  test('it is genuinely hard', () => {
+    /*
+      "They should be much harder." It shipped as four, Easy to Hard,
+      and the Easy three-in-a-row was close to free — so the tab read as
+      a list of chores rather than something worth chasing. What is left
+      is the hardest thing in the game.
+    */
+    const t = TOURNAMENTS[0];
+    assertEqual(t.difficulty, 'hard', 'the standing challenge is not on Hard');
+    assert(t.target >= 6, `${t.target} in a row is not "much harder"`);
+    note(`${t.name}: ${t.target} in a row, ${t.mode} on ${t.difficulty}`);
   });
 
   test('none of them has a closing day', () => {
@@ -103,19 +120,19 @@ suite('cups · the four that ship with the game', () => {
     }
   });
 
-  test('asking more pays more', () => {
-    const order = ['easy', 'medium', 'hard'];
-    const effort = (t: TournamentDef) =>
-      order.indexOf(t.difficulty) * 10 + t.target;
-    const worth = (t: TournamentDef) =>
-      averageOf(t.prize.coins) + t.prize.trophies * 10;
-    const sorted = [...TOURNAMENTS].sort((a, b) => effort(a) - effort(b));
-    for (let i = 1; i < sorted.length; i++) {
-      assert(
-        worth(sorted[i]) > worth(sorted[i - 1]),
-        `${sorted[i].name} is harder than ${sorted[i - 1].name} and pays no better`,
-      );
-    }
+  test('what it pays is worth the run it asks for', () => {
+    /*
+      No longer a comparison between cups — there is only one. The floor
+      instead: six Hard wins in a row is, at even odds, something like a
+      hundred battles. A payout smaller than a couple of ordinary Hard
+      wins would make the whole thing a waste of an evening.
+    */
+    const t = TOURNAMENTS[0];
+    assert(
+      averageOf(t.prize.coins) > averageOf(COIN_REWARDS.hard.win) * t.target,
+      `${t.name} pays less than simply winning ${t.target} Hard battles`,
+    );
+    assert(t.prize.trophies >= 50, `${t.name} pays only ${t.prize.trophies} trophies`);
   });
 
   test('every prize is something this game actually has', () => {
@@ -135,14 +152,24 @@ suite('cups · the four that ship with the game', () => {
     }
   });
 
-  test('a die and a battlefield are both given away', () => {
-    // "even a dice or arena" — both kinds, so neither route is untested
-    // on a real player's phone.
-    const kinds = new Set(
-      TOURNAMENTS.filter((t) => t.prize.item).map((t) => t.prize.item!.kind),
+  test('the prize die lives on it, so it is always winnable', () => {
+    /*
+      The other half of "don't make a new dice or arena every time": ONE
+      die that can only be won, parked on the one cup that never closes.
+
+      If it lived on a rotating cup it would be winnable for a fortnight
+      and then not, and a player part-way through a run would watch it
+      leave. Here it is always on the screen — which is also why
+      liveTournaments can never crowd the standing cup out.
+    */
+    const item = TOURNAMENTS[0].prize.item;
+    assert(item !== undefined, 'the standing challenge gives nothing to keep');
+    assertEqual(item!.kind, 'dice', 'the standing prize is not a die');
+    const resolved = resolveItem(item!)!;
+    assert(
+      DICE_SKINS.find((d) => d.id === item!.id)?.prize === true,
+      `${resolved.name} is not a win-only die`,
     );
-    assert(kinds.has('dice'), 'no cup gives away a die');
-    assert(kinds.has('arena'), 'no cup gives away a battlefield');
   });
 });
 
@@ -353,14 +380,128 @@ suite('cups · the days one runs', () => {
 
   test('the list drops what is over and shows the easiest first', () => {
     const hard: TournamentDef = { ...CUP, id: 'hard', difficulty: 'hard' };
-    const medium: TournamentDef = { ...CUP, id: 'medium', difficulty: 'medium' };
     const gone: TournamentDef = { ...CUP, id: 'gone', closes: '2026-01-01' };
     const soon: TournamentDef = { ...CUP, id: 'soon', opens: '2026-12-01' };
-    const shown = liveTournaments([hard, gone, soon, medium, CUP], '2026-09-25');
+    const shown = liveTournaments([hard, gone, soon, CUP], '2026-09-25');
     assertEqual(
       shown.map((t) => t.id).join(','),
-      'test-cup,medium,hard,soon',
+      'test-cup,hard,soon',
       'the list is in the wrong order or kept a finished cup',
+    );
+  });
+});
+
+suite('cups · one to three, never nine', () => {
+  /*
+    David, 25 Sep 2026: "I only want like one or three cups at a time."
+
+    Enforced in liveTournaments rather than left to whoever fills the
+    table in, because the table is filled in weekly, from a browser,
+    months from now, by somebody who will not remember the rule — and
+    the failure is a Cups tab with nine cards on it, which nobody would
+    call a bug and everybody would stop reading.
+  */
+  const rotating = (n: number): TournamentDef[] =>
+    Array.from({ length: n }, (_v, i) => ({
+      ...CUP,
+      id: `week-${i}`,
+      target: 3 + i,
+      closes: '2026-12-31',
+    }));
+  const standing: TournamentDef = { ...CUP, id: 'standing', standing: true };
+
+  test('a board stuffed with cups still shows three', () => {
+    const shown = liveTournaments([...rotating(9), standing], '2026-09-25');
+    assertEqual(shown.length, MAX_SHOWN, `${shown.length} cards on the screen`);
+  });
+
+  test('at most two of them are the week’s', () => {
+    const shown = liveTournaments([...rotating(9), standing], '2026-09-25');
+    assertEqual(
+      shown.filter((t) => !t.standing).length,
+      MAX_ROTATING,
+      'more than two rotating cups got through',
+    );
+  });
+
+  test('the standing challenge is never crowded off the screen', () => {
+    /*
+      THE ONE THAT WOULD BITE. Trimming the end of a merged list is the
+      obvious way to cap it, and it would drop the standing cup exactly
+      when the board is busiest — taking the prize die off every phone
+      for a fortnight, silently, with nothing to say it had happened.
+      Capping the ROTATING ones instead is why that cannot occur.
+    */
+    const shown = liveTournaments([...rotating(9), standing], '2026-09-25');
+    assert(
+      shown.some((t) => t.id === 'standing'),
+      'a busy week pushed the always-on cup off the tab',
+    );
+  });
+
+  test('a quiet week still leaves one to play', () => {
+    const shown = liveTournaments([standing], '2026-09-25');
+    assertEqual(shown.length, 1, 'the tab emptied when the board had nothing');
+    assertEqual(shown[0].id, 'standing', 'the wrong cup survived');
+  });
+
+  test('the week’s cups come before the one that is always there', () => {
+    // They have deadlines and they are what is new, so they go where
+    // the eye lands. The standing one is not going anywhere.
+    const shown = liveTournaments([standing, ...rotating(1)], '2026-09-25');
+    assertEqual(
+      shown.map((t) => t.id).join(','),
+      'week-0,standing',
+      'the always-on cup was listed above the one with a deadline',
+    );
+  });
+
+  test('the board decides WHICH run; the screen decides what order', () => {
+    /*
+      Two different questions, and sorting before slicing answers the
+      wrong one. Which cups run is an editorial decision made weekly on
+      the board, and the API hands them over in that order — so taking
+      the two EASIEST would quietly overrule it, putting on whichever
+      pair happened to be gentlest rather than the pair at the top of
+      the list.
+    */
+    const wanted: TournamentDef[] = [
+      { ...CUP, id: 'first-choice', difficulty: 'hard', target: 6 },
+      { ...CUP, id: 'second-choice', difficulty: 'medium', target: 5 },
+      { ...CUP, id: 'not-chosen', difficulty: 'easy', target: 2 },
+    ];
+    const shown = liveTournaments([...wanted, standing], '2026-09-25');
+    assert(
+      !shown.some((t) => t.id === 'not-chosen'),
+      'an easier cup further down the board pushed out one the board put first',
+    );
+    // The two that survived are then arranged easiest first.
+    assertEqual(
+      shown.map((t) => t.id).join(','),
+      'second-choice,first-choice,standing',
+      'the survivors are not shown easiest first',
+    );
+  });
+
+  test('a cup that has not opened yields its place to one you can play', () => {
+    const soon: TournamentDef = { ...CUP, id: 'soon', opens: '2026-12-01' };
+    const shown = liveTournaments([soon, ...rotating(2), standing], '2026-09-25');
+    assertEqual(shown.length, MAX_SHOWN, 'too many cards');
+    assert(
+      !shown.some((t) => t.id === 'soon'),
+      'a card you cannot play pushed out one you can',
+    );
+  });
+
+  test('the game’s own cup obeys the cap alongside a full board', () => {
+    // Not a synthetic standing cup — the real one, merged the way the
+    // game merges it.
+    const merged = mergeTournaments(TOURNAMENTS, rotating(5));
+    const shown = liveTournaments(merged, '2026-09-25');
+    assertEqual(shown.length, MAX_SHOWN, `${shown.length} cards on the screen`);
+    assert(
+      shown.some((t) => t.id === TOURNAMENTS[0].id),
+      'the bundled cup lost its place',
     );
   });
 
@@ -489,10 +630,10 @@ suite('cups · the prize is actually handed over', () => {
     const paid = payPrize({
       coins: { min: 0, max: 0 },
       trophies: 0,
-      item: { kind: 'dice', id: 'champion' },
+      item: { kind: 'dice', id: 'amethyst' },
     });
     assert(paid.item !== null, 'nothing was handed over');
-    assert(owns('champion'), 'the die was promised and never given');
+    assert(owns('amethyst'), 'the die was promised and never given');
   });
 
   test('the battlefield is put in the cupboard under its own key', () => {
@@ -546,22 +687,22 @@ suite('cups · the prize is actually handed over', () => {
   });
 });
 
-suite('cups · the Champion die is won and nothing else', () => {
+suite('cups · the Amethyst die is won and nothing else', () => {
   test('it is not free, not on the shelf and not on the ladder', () => {
     resetProgressForTests();
     resetWalletForTests({ coins: 999_999, owned: [] });
-    const champion = DICE_SKINS.find((s) => s.id === 'champion')!;
-    assert(champion.prize === true, 'the Champion die is not marked as a prize');
+    const champion = DICE_SKINS.find((s) => s.id === 'amethyst')!;
+    assert(champion.prize === true, 'the Amethyst die is not marked as a prize');
     assert(
-      !STORE_SKINS.some((s) => s.id === 'champion'),
-      'the Champion die is on the Store shelf',
+      !STORE_SKINS.some((s) => s.id === 'amethyst'),
+      'the Amethyst die is on the Store shelf',
     );
     assert(
-      !LADDER_SKINS.some((s) => s.id === 'champion'),
-      'the Champion die is on the trophy ladder',
+      !LADDER_SKINS.some((s) => s.id === 'amethyst'),
+      'the Amethyst die is on the trophy ladder',
     );
     assert(
-      !isSkinUnlocked('champion', 999_999),
+      !isSkinUnlocked('amethyst', 999_999),
       'every trophy in the game unlocked a die that is only ever won',
     );
   });
@@ -569,13 +710,13 @@ suite('cups · the Champion die is won and nothing else', () => {
   test('winning it is the way in', () => {
     resetProgressForTests();
     resetWalletForTests({ coins: 0, owned: [] });
-    assert(!isSkinUnlocked('champion', 0), 'it started out owned');
+    assert(!isSkinUnlocked('amethyst', 0), 'it started out owned');
     payPrize({
       coins: { min: 0, max: 0 },
       trophies: 0,
-      item: { kind: 'dice', id: 'champion' },
+      item: { kind: 'dice', id: 'amethyst' },
     });
-    assert(isSkinUnlocked('champion', 0), 'winning it did not make it usable');
+    assert(isSkinUnlocked('amethyst', 0), 'winning it did not make it usable');
   });
 
   test('it is not handed to every player on install', () => {
@@ -631,6 +772,49 @@ suite('cups · the Champion die is won and nothing else', () => {
     assertEqual(action.kind, 'equip', 'a die you have won cannot be put on');
   });
 
+  test('a die won before it was renamed is still owned', async () => {
+    /*
+      It shipped as "Champion" and was renamed hours later, because
+      David asked for a different name. An id in `owned` is how the game
+      knows a thing is yours, so a rename without a migration takes the
+      die back off anybody who had already won it — and the only way to
+      win it is six Hard wins in a row, which is the last thing to make
+      somebody do twice.
+
+      Almost certainly nobody had one. "Almost certainly" is why the
+      migration is eight lines rather than an argument, and why this
+      test exists rather than a note saying it probably does not matter.
+    */
+    store.clear();
+    store.set(
+      'dice-battles:wallet',
+      JSON.stringify({ coins: 40, owned: ['champion', 'arena:beach'] }),
+    );
+    resetWalletForTests({ coins: 0, owned: [] });
+    const loaded = await loadWallet();
+    assert(loaded.owned.includes('amethyst'), 'the renamed die was taken away');
+    assert(!loaded.owned.includes('champion'), 'the old id was left behind as well');
+    assert(loaded.owned.includes('arena:beach'), 'an unrelated item was lost');
+    assertEqual(loaded.coins, 40, 'the coins were lost');
+  });
+
+  test('a save holding both names ends up with one die, not two', async () => {
+    // The Collector achievement counts entries in `owned`, so a
+    // duplicate would quietly hand out a free set.
+    store.clear();
+    store.set(
+      'dice-battles:wallet',
+      JSON.stringify({ coins: 0, owned: ['champion', 'amethyst'] }),
+    );
+    resetWalletForTests({ coins: 0, owned: [] });
+    const loaded = await loadWallet();
+    assertEqual(
+      loaded.owned.filter((id) => id === 'amethyst').length,
+      1,
+      'the die is in the cupboard twice',
+    );
+  });
+
   test('there is at least one prize die to be had', () => {
     assert(PRIZE_SKINS.length > 0, 'nothing is won any more');
   });
@@ -660,7 +844,7 @@ suite('cups · a streak survives the app being killed', () => {
   test('a cup already won stays won', async () => {
     /*
       The expensive failure. A `won` flag that did not survive being
-      force-quit would pay the Champion die out a second time, and a
+      force-quit would pay the Amethyst die out a second time, and a
       unique prize that turns up twice is not unique.
     */
     store.clear();

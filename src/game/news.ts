@@ -89,28 +89,33 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
-    id: 'v1-96-0-cups-are-tournaments',
+    id: 'v1-97-0-cups-are-tournaments',
     date: '25 September 2026',
-    version: 'v1.96.0',
-    title: 'Cups are tournaments now, and one of them has a dice in it',
+    version: 'v1.97.0',
+    title: 'Cups are hard now, and they change every week or two',
     icon: 'cups',
     body:
       'The Cups tab has been rebuilt. A cup used to be a knockout ' +
       'bracket you paid coins to enter and lost the moment you lost a ' +
-      'round. Now it is a run of wins in one way of playing — three ' +
-      'Color Rush on Easy, five Ultimate on Hard — and it costs ' +
-      'nothing to try. Win them in a row and the prize is yours: coins, ' +
-      'trophies, and on two of them something for the cupboard. Lose ' +
-      'one and you simply start the run again. A draw leaves it where ' +
-      'it is.\n\n' +
-      'There is a new dice, Champion, and the only way to get it is to ' +
-      'win five Ultimate battles in a row on Hard. It is not in the ' +
-      'Store and it is not on the ladder. Winning it is the only way ' +
-      'it exists.\n\n' +
-      'Cups now come from the Dice Battles website rather than from ' +
-      'inside the game, so new ones can turn up without you updating ' +
-      'anything — some of them with a closing date. There is one ' +
-      'running already. You play them against the game\u2019s own rivals.',
+      'round. Now it is a run of wins in one way of playing — five ' +
+      'Skirmish on Hard, six Color War on Medium — and it costs ' +
+      'nothing at all to try. Win them in a row and the prize is ' +
+      'yours: coins and trophies, and now and then something for the ' +
+      'cupboard. Lose one and you simply start the run again. A draw ' +
+      'leaves it where it is.\n\n' +
+      'They are meant to be hard, and there are never more than three ' +
+      'of them. One or two turn up every week or so and then go away ' +
+      'again, so a cup with a few days left on it is worth a look ' +
+      'before it does.\n\n' +
+      'The Gauntlet is the one that never closes: six Ultimate wins in ' +
+      'a row on Hard, the hardest thing in the game. It is the only ' +
+      'way to get the Amethyst dice, which is not in the Store and is ' +
+      'not on the trophy ladder. Winning it is the only way it ' +
+      'exists.\n\n' +
+      'The week\u2019s cups come from the Dice Battles website rather ' +
+      'than from inside the game, so new ones turn up without you ' +
+      'updating anything. You play them all against the game\u2019s ' +
+      'own rivals.',
   },
   {
     id: 'v1-94-0-records-and-the-way-back',

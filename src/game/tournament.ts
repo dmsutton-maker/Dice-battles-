@@ -72,6 +72,21 @@ export interface TournamentPrize {
   coins: RewardRange;
   /** Trophies, flat — a prize you can plan for should not be a gamble. */
   trophies: number;
+  /**
+   * A die or a battlefield, and MOST CUPS SHOULD NOT HAVE ONE.
+   *
+   * David, 25 Sep 2026: "don't make a new dice or arena every time." A
+   * cup changes every week or two, and a game that invents a die for
+   * each of them would have two hundred dice in a year, each worth
+   * nothing because the next one is a week away. Coins and trophies are
+   * what a weekly cup pays.
+   *
+   * When an item IS right, it is one that already exists: the standing
+   * Gauntlet's Amethyst die, or something off the Store shelf handed
+   * over for winning rather than for paying. Winning an item a player
+   * already owns pays its shelf price in coins instead, so reusing one
+   * costs nothing (see prizes.ts).
+   */
   item?: PrizeItem;
 }
 
@@ -87,74 +102,71 @@ export interface TournamentDef {
   prize: TournamentPrize;
   /**
    * The days it runs, as YYYY-MM-DD, both ends included. Absent means
-   * always — which is what every bundled tournament is.
+   * always — which is what the bundled standing challenge is.
    */
   opens?: string;
   closes?: string;
+  /**
+   * The one that never rotates.
+   *
+   * Set only on the cup bundled with the game. It is shown LAST and is
+   * never crowded off the screen by the week's cups (see
+   * `liveTournaments`), so there is always something to play and the
+   * prize die is always winnable.
+   *
+   * Never sent by the server — the API does not emit this field — so a
+   * fetched cup is by definition one of the rotating ones.
+   */
+  standing?: true;
 }
 
 /**
- * The four that ship with the game: one per mode, climbing in difficulty
- * and in what they ask of you.
+ * THE ONE THAT IS ALWAYS THERE.
  *
- * ONE PER MODE on purpose. The old cups were three difficulties of the
- * same game, so two of the four modes had nothing to play for at all.
- * Every mode now has a reason to be opened, and a family that has found
- * the one they like has something to chase inside it.
+ * David, 25 Sep 2026: "I only want like one or three cups at a time and
+ * they should be much harder and they're gonna change every week or two
+ * so don't make a new dice or arena every time."
  *
- * The two items are deliberately different kinds, because David asked for
- * "even a dice or arena" and they are not the same prize. Treasure Beach
- * is a 1100-coin battlefield off the Store shelf — a real thing with a
- * real price, handed over for winning rather than for paying. Champion is
- * a die that is not on the shelf at all and never will be: winning the
- * hardest tournament is the only way it exists on a phone.
+ * So the shape is: **one standing challenge, plus up to two running on
+ * the board.** One to three, exactly as asked, and `liveTournaments`
+ * enforces it rather than trusting whoever fills the table in.
+ *
+ * It shipped as four — one per mode, Easy to Hard — which was two
+ * mistakes at once. Four is more than anybody looks at, and the Easy
+ * three-in-a-row was close to free, so the tab read as a list of
+ * chores rather than something worth chasing. Both are gone. What is
+ * left is the hardest thing in the game, on Hard, and it is the only
+ * cup that never expires.
+ *
+ * WHY A BUNDLED ONE AT ALL, when the rotation is the point: this is
+ * what the tab shows on a plane, on a fresh install before anything has
+ * been fetched, and in the gap between one week's cups and the next. It
+ * deliberately has no dates — a closing day baked into a binary would
+ * expire on a phone that never gets another update and leave the tab
+ * permanently empty, with nobody able to fix it.
+ *
+ * AND IT IS WHERE THE PRIZE DIE LIVES, which is the other half of
+ * David's instruction. "Don't make a new dice or arena every time" means
+ * the weekly cups pay coins and trophies; the one die that can only be
+ * won sits on the standing challenge, so it is always winnable and is
+ * only ever won once. See the note above TOURNAMENTS' type for the rule
+ * in full.
  */
 export const TOURNAMENTS: TournamentDef[] = [
   {
-    id: 'courtyard-streak',
-    name: 'Courtyard Streak',
-    blurb: 'Three Color Rush wins in a row, on Easy. The one to start with.',
-    mode: 'classic',
-    difficulty: 'easy',
-    target: 3,
-    prize: { coins: { min: 120, max: 200 }, trophies: 10 },
-  },
-  {
-    id: 'colorwar-duel',
-    name: 'Color War Duel',
-    blurb: 'Four Color War wins in a row, on Medium. One colour each, no mistakes.',
-    mode: 'colorwar',
-    difficulty: 'medium',
-    target: 4,
-    prize: { coins: { min: 280, max: 420 }, trophies: 25 },
-  },
-  {
-    id: 'skirmish-sprint',
-    name: 'Skirmish Sprint',
+    id: 'the-gauntlet',
+    name: 'The Gauntlet',
     blurb:
-      'Four Skirmish wins in a row, on Medium. Win the beach while you are at it.',
-    mode: 'skirmish',
-    difficulty: 'medium',
-    target: 4,
-    prize: {
-      coins: { min: 300, max: 450 },
-      trophies: 30,
-      item: { kind: 'arena', id: 'beach' },
-    },
-  },
-  {
-    id: 'ultimate-gauntlet',
-    name: 'Ultimate Gauntlet',
-    blurb:
-      'Five Ultimate wins in a row, on Hard. The hardest thing in the game, and the only way to get the Champion dice.',
+      'Six Ultimate wins in a row, on Hard. The hardest thing in the game, it never closes, and it is the only way to get the Amethyst dice.',
     mode: 'ultimate',
     difficulty: 'hard',
-    target: 5,
+    target: 6,
     prize: {
-      coins: { min: 600, max: 900 },
-      trophies: 60,
-      item: { kind: 'dice', id: 'champion' },
+      coins: { min: 1000, max: 1400 },
+      trophies: 90,
+      item: { kind: 'dice', id: 'amethyst' },
     },
+    standing: true,
   },
 ];
 
@@ -318,30 +330,73 @@ export function closingLabel(def: TournamentDef, today: string): string | null {
   return `${left} days left`;
 }
 
+const DIFFICULTY_ORDER: AiDifficultyId[] = ['easy', 'medium', 'hard'];
+
+/** One standing challenge plus at most two of the week's. */
+export const MAX_ROTATING = 2;
+export const MAX_SHOWN = 3;
+
 /**
  * The tournaments to show, in the order to show them.
  *
- * Ones still running first, easiest first inside that, then the ones that
- * have not opened yet. Anything already finished is dropped: a closed
- * tournament is a card that can only disappoint.
+ * David, 25 Sep 2026: "I only want like one or three cups at a time."
+ * ENFORCED HERE rather than left to whoever fills the table in, because
+ * the table is filled in weekly, from a browser, months from now, by
+ * somebody who will not remember this rule — and the failure is a Cups
+ * tab with nine cards on it, which nobody would call a bug and everybody
+ * would stop reading.
+ *
+ * The order, and why:
+ *
+ *   1. THE WEEK'S CUPS, at most two, easiest first. They have deadlines
+ *      and they are what is new, so they go where the eye lands.
+ *   2. THE STANDING CHALLENGE, always, and never crowded out. It is the
+ *      one that is there when nothing else is — offline, on a fresh
+ *      install, and in the gap between one week and the next — and it
+ *      carries the prize die, which must not become unwinnable because
+ *      a busy week pushed it off the screen. Capping the rotating ones
+ *      at two rather than trimming the end of a merged list is the
+ *      whole reason this cannot happen.
+ *   3. WHAT IS COMING, if there is room. A card you cannot play is
+ *      worth less than one you can, so it yields.
+ *
+ * Anything already finished is dropped: a closed tournament is a card
+ * that can only disappoint.
  */
-const DIFFICULTY_ORDER: AiDifficultyId[] = ['easy', 'medium', 'hard'];
-
 export function liveTournaments(
   all: TournamentDef[],
   today: string,
 ): TournamentDef[] {
-  const open = all.filter((t) => isOpen(t, today));
-  const coming = all
-    .filter((t) => isComing(t, today))
-    .sort((a, b) => (a.opens ?? '').localeCompare(b.opens ?? ''));
-  open.sort((a, b) => {
+  const byEffort = (a: TournamentDef, b: TournamentDef) => {
     const byDifficulty =
       DIFFICULTY_ORDER.indexOf(a.difficulty) - DIFFICULTY_ORDER.indexOf(b.difficulty);
     if (byDifficulty !== 0) return byDifficulty;
     return a.target - b.target;
-  });
-  return [...open, ...coming];
+  };
+
+  const open = all.filter((t) => isOpen(t, today));
+  /*
+    CHOSEN BY THE BOARD'S ORDER, SHOWN BY DIFFICULTY — two different
+    questions, and sorting before slicing answered the wrong one.
+
+    Which cups run is an editorial decision David makes weekly; the API
+    hands them over in his `sort_order`, and taking the two EASIEST
+    would silently overrule him — putting on whichever pair he happened
+    to make gentlest rather than the pair at the top of his list. So the
+    cut is made in the order they arrive. Only then are the survivors
+    arranged easiest first, which is a kindness to the reader and costs
+    nothing.
+  */
+  const rotating = open
+    .filter((t) => !t.standing)
+    .slice(0, MAX_ROTATING)
+    .sort(byEffort);
+  const standing = open.filter((t) => t.standing).sort(byEffort);
+  const coming = all
+    .filter((t) => isComing(t, today))
+    .sort((a, b) => (a.opens ?? '').localeCompare(b.opens ?? ''));
+
+  return [...rotating, ...standing, ...coming].slice(0, MAX_SHOWN);
 }
 
 export function tournamentById(

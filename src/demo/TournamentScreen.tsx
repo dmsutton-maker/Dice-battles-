@@ -64,10 +64,10 @@ export function TournamentScreen({
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.note}>
-          A cup is a run of wins in one way of playing. Win them in a row and
-          the prize is yours — coins, trophies, and sometimes something for
-          the cupboard. Lose one and you start the run again; a draw leaves
-          it where it is.
+          A cup is a run of wins in one way of playing, and they are meant to
+          be hard. Win them in a row and the prize is yours — coins, trophies,
+          and sometimes something for the cupboard. Lose one and you start the
+          run again; a draw leaves it where it is.
         </Text>
         {/*
           Said plainly, because the alternative is letting a child believe
@@ -76,9 +76,10 @@ export function TournamentScreen({
           players (see AGENTS.md).
         */}
         <Text style={styles.noteQuiet}>
-          Cups come from the Dice Battles website, so new ones turn up here
-          without updating the game. You play them against the game&rsquo;s own
-          rivals.
+          A new cup or two turns up every week or so, and they come from the
+          Dice Battles website — so you never have to update the game to get
+          them. The Gauntlet at the bottom is always here. You play them all
+          against the game&rsquo;s own rivals.
         </Text>
 
         {showing.length === 0 && (
@@ -181,7 +182,18 @@ function TournamentCard({
               read as untidier than a permanent one for no reason. Here
               it sits with the other thing that changes while you play.
             */}
-            {closing && <Text style={styles.closing}>{closing}</Text>}
+            {/*
+              The one that never closes says so, in the place the others
+              put their deadline. Silence there would read as an
+              oversight next to three cards counting down, and "always
+              here" is the reason to bother with a six-in-a-row run that
+              might take a fortnight.
+            */}
+            {closing ? (
+              <Text style={styles.closing}>{closing}</Text>
+            ) : t.standing ? (
+              <Text style={styles.closing}>Always on</Text>
+            ) : null}
           </View>
 
           {state.won ? (

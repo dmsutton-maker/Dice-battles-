@@ -301,21 +301,26 @@ export const DICE_SKINS: DiceSkin[] = [
 
     David, 25 Sep 2026, asked tournaments for "unique rewards ... even a
     dice or arena". A die already on the shelf is a discount; this one is
-    the only thing in the game that money cannot reach, and the Ultimate
-    Gauntlet — five Hard wins in a row — is the only way it exists on a
-    phone.
+    the only thing in the game that money cannot reach, and The Gauntlet
+    — six Hard wins in a row — is the only way it exists on a phone.
 
-    Deep royal violet under `sheen`, the polished finish gold, silver,
-    copper and ruby share, so it reads as the fifth and last of that set
-    rather than as a stranger. It is the darkest shell in the game, which
-    is what keeps it clear of all six face colours: the palette's deepest
-    face is Blue at #043fe0, and this sits well away from it in hue as
-    well as lightness.
+    NOT "CHAMPION", which is what it shipped as for an hour. David, the
+    same day: "don't name it champion dice." He was right, and the reason
+    is sitting four lines up: `sheen` is the polished finish shared by
+    Gold, Silver, Copper and Ruby, and every one of those is named for
+    what it is MADE of. Champion named the achievement instead, so the
+    fifth member of a set of materials was the one that did not say what
+    it was. Amethyst is deep violet polished stone, which is exactly what
+    this is, and it finishes the set.
+
+    It is the darkest shell in the game, which is what keeps it clear of
+    all six face colours: the palette's deepest face is Blue at #043fe0,
+    and this sits well away from it in hue as well as lightness.
   */
   {
-    id: 'champion',
-    name: 'Champion',
-    emoji: '🏆',
+    id: 'amethyst',
+    name: 'Amethyst',
+    emoji: '🔮',
     body: '#3d2a6e',
     pattern: 'sheen',
     ink: '#f4ecff',

@@ -1,5 +1,83 @@
 # Changelog
 
+## v1.97.0 — 2026-09-25 · requested by David
+
+"I only want like one or three cups at a time and they should be much
+harder and they're gonna change every week or two so don't make a new
+dice or arena every time and don't name it champion dice."
+
+Four instructions, all correcting v1.96.0, which shipped a few hours
+earlier and got all four wrong.
+
+### One to three, never more
+The game bundled four cups and the board added more on top, so a busy
+week put five or six cards in the tab. It now bundles **one** — The
+Gauntlet, the standing challenge — and the board may add **two**. One to
+three, exactly as asked.
+
+`liveTournaments` enforces the cap rather than trusting whoever fills the
+table in, because the table is filled in weekly, from a browser, months
+from now, by somebody who will not remember the rule — and the failure is
+a Cups tab with nine cards, which nobody would call a bug and everybody
+would stop reading.
+
+The cap is applied to the **rotating** cups rather than by trimming a
+merged list, and that detail is the whole safety of it: trimming the end
+is the obvious way to cap a list and it would drop the standing cup
+exactly when the board is busiest, taking the prize die off every phone
+for a fortnight with nothing to say it had happened.
+
+Which two cups run is decided by the **order they arrive** — the board's
+own `sort_order` — and only then are the survivors arranged easiest
+first. Sorting before slicing answered the wrong question: it would have
+put on whichever pair happened to be gentlest rather than the pair at the
+top of the list. Rendering the tab is what caught it.
+
+### Much harder
+The Easy three-in-a-row is gone, along with the two Medium fours. What
+ships is six Ultimate wins in a row on Hard. The week's cups on the board
+are five Skirmish on Hard and six Color War on Medium, both to 8 October.
+
+A word of caution written into `AGENTS.md`: a streak compounds. At
+roughly even odds, five in a row takes about sixty battles to hit and
+eight takes five hundred, so raising the target is not a linear dial. It
+is one number in one row on the board and can be changed any day without
+a release.
+
+### Don't make a new dice or arena every time
+Written into `AGENTS.md` as a standing rule and into the `TournamentPrize`
+type where somebody adding a cup will read it. A weekly cup pays coins and
+trophies. There is exactly **one** win-only die and it lives on the
+standing challenge — so it is always winnable, only ever won once, and
+does not vanish when the week turns over. When an item prize is right, it
+is one that already exists; winning something already owned pays its
+shelf price in coins instead, so reusing one costs nothing.
+
+That is also why the bundled Skirmish cup no longer gives away Treasure
+Beach: handing out a battlefield was the thing not to repeat.
+
+### Not "Champion"
+The die is **Amethyst**. The reason the old name jarred is four lines
+above it in the source: `sheen` is the polished finish shared by Gold,
+Silver, Copper and Ruby, and every one of those is named for what it is
+made of. Champion named the achievement, so the fifth member of a set of
+materials was the one that did not say what it was. Deep violet polished
+stone is exactly what this is.
+
+The id changed too, with a migration in `loadWallet` mapping `champion` →
+`amethyst`. An id in `owned` is how the game knows a thing is yours, so a
+rename without it takes the die off anybody who had already won it — and
+the only way to win it is six Hard wins in a row, which is the last thing
+to make somebody do twice. Almost certainly nobody had one; "almost
+certainly" is why it is eight lines rather than an argument. The
+migration also de-duplicates, since the Collector achievement counts
+entries and a save holding both names would have been handed a free set.
+
+### Verified
+Typecheck, 833 tests, Metro bundle. Six mutations, each caught by the
+test written for it — including the two that had no test until they were
+run: dropping the wallet migration, and dropping its de-duplication.
+
 ## v1.96.1 — 2026-09-25 · requested by David
 
 "Make the platforms the much lighter more pastel colors from before."

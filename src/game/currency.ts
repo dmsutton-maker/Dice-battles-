@@ -49,6 +49,21 @@ export function getWallet(): Wallet {
   return current;
 }
 
+/**
+ * Items that have been renamed, old id to new.
+ *
+ * `champion` became `amethyst` on 25 Sep 2026, hours after it shipped,
+ * because David asked for the name to change. An id in `owned` is how
+ * the game knows a thing is yours, so a rename without this line takes
+ * the die back off anybody who had already won it — and the only way to
+ * win it is six Hard wins in a row, which is the last thing to make
+ * somebody do twice.
+ *
+ * Almost certainly nobody has one. "Almost certainly" is the reason
+ * this is eight lines rather than an argument.
+ */
+const RENAMED: Record<string, string> = { champion: 'amethyst' };
+
 export async function loadWallet(): Promise<Wallet> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -57,7 +72,13 @@ export async function loadWallet(): Promise<Wallet> {
       current = {
         coins: Number.isFinite(parsed.coins) ? Math.max(0, Math.floor(parsed.coins)) : 0,
         owned: Array.isArray(parsed.owned)
-          ? parsed.owned.filter((id: unknown) => typeof id === 'string')
+          ? Array.from(
+              new Set(
+                parsed.owned
+                  .filter((id: unknown): id is string => typeof id === 'string')
+                  .map((id: string) => RENAMED[id] ?? id),
+              ),
+            )
           : [],
       };
     }

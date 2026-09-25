@@ -84,7 +84,7 @@ export function achievementReports(state: AchievementState): AchievementReport[]
 export function setsOwned(trophies: number): number {
   return DICE_SKINS.filter((skin) => {
     // Won, not free. Checked before the "no price, no unlock" line
-    // below, which would otherwise hand the Champion die to everyone on
+    // below, which would otherwise hand the Amethyst die to everyone on
     // install — that combination is how Ivory says it is free.
     if (skin.prize) return owns(skin.id);
     if (skin.price !== undefined) return owns(skin.id);

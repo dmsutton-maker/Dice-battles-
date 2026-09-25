@@ -31,48 +31,57 @@ const trophies = Number(params.get('trophies') ?? 3300);
   three of the four things on that card that a permanent cup never
   shows.
 */
-const DATED: TournamentDef = {
-  id: 'autumn-rush-2026',
-  name: 'Autumn Rush',
-  blurb:
-    'Three Color Rush wins in a row on Medium, before the month is out. Win it and the Sunny Farm is yours.',
-  mode: 'classic',
-  difficulty: 'medium',
-  target: 3,
-  prize: {
-    coins: { min: 200, max: 320 },
-    trophies: 20,
-    item: { kind: 'arena', id: 'farm' },
+const WEEKS: TournamentDef[] = [
+  {
+    id: 'skirmish-siege-w40',
+    name: 'Skirmish Siege',
+    blurb:
+      'Five Skirmish wins in a row, on Hard. A draw will not break the run — but it will not help either.',
+    mode: 'skirmish',
+    difficulty: 'hard',
+    target: 5,
+    prize: { coins: { min: 700, max: 1000 }, trophies: 55 },
+    opens: '2026-09-25',
+    closes: '2026-10-08',
   },
-  opens: '2026-09-25',
-  closes: '2026-10-31',
-};
+  {
+    id: 'colorwar-standoff-w40',
+    name: 'Color War Standoff',
+    blurb:
+      'Six Color War wins in a row, on Medium. One colour each, six times, no slips.',
+    mode: 'colorwar',
+    difficulty: 'medium',
+    target: 6,
+    prize: { coins: { min: 800, max: 1100 }, trophies: 60 },
+    opens: '2026-09-25',
+    closes: '2026-10-08',
+  },
+];
 
 if (params.get('screen') === 'cups') {
   createRoot(host).render(
     <View style={{ width: 393, height: 2200 }}>
       <TournamentScreen
+        /*
+          The real bundled cup plus the two really on the board, which
+          is the most the tab can ever show. A fourth is deliberately
+          included so the one-to-three cap is visible in the picture
+          rather than only in the tests.
+        */
         tournaments={[
           ...TOURNAMENTS,
-          DATED,
-          // Not open yet: the fourth state a card has, and the only one
-          // with no pips and no button.
+          ...WEEKS,
           {
-            ...DATED,
-            id: 'winter-cup',
-            name: 'Winter Cup',
-            blurb: 'Six Skirmish wins in a row on Hard. Back at Christmas.',
-            mode: 'skirmish',
-            difficulty: 'hard',
-            target: 6,
-            opens: '2026-12-01',
-            closes: '2026-12-26',
+            ...WEEKS[0],
+            id: 'one-too-many',
+            name: 'One Too Many',
+            blurb: 'Should never reach the screen — the tab holds three.',
+            target: 4,
           },
         ]}
         states={{
-          'courtyard-streak': { streak: 3, best: 3, won: true },
-          'colorwar-duel': { streak: 2, best: 3, won: false },
-          'ultimate-gauntlet': { streak: 0, best: 4, won: false },
+          'skirmish-siege-w40': { streak: 2, best: 3, won: false },
+          'the-gauntlet': { streak: 0, best: 4, won: false },
         }}
         today="2026-09-28"
         onPlay={() => {}}
