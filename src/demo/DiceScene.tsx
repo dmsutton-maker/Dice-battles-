@@ -18,6 +18,7 @@ import {
   shouldCallRoll,
 } from '../dice/settle';
 import { DieMesh } from '../dice/DieMesh';
+import { DiceFire, DieSample } from '../dice/diceFire';
 import { PatternId } from '../dice/patterns';
 import { ColorDef } from '../game/colors';
 import { laneColors, PrisonerUnit } from '../game/modes';
@@ -63,6 +64,12 @@ interface DiceSceneProps {
   diePattern?: PatternId;
   diePatternInk?: string;
   dieSymbols?: boolean;
+  /**
+   * Something the equipped skin does beyond its paint — at present only
+   * the Fire dice. See src/dice/diceFire.ts. Looks only: nothing here
+   * reaches the physics or the settle rule.
+   */
+  dieEffect?: 'fire';
   /** Trophy unlock that adds the courtyard treasure. */
   showTreasure: boolean;
   /**
@@ -95,6 +102,7 @@ export function DiceScene({
   diePattern = 'plain',
   diePatternInk,
   dieSymbols = false,
+  dieEffect,
   showTreasure,
   throwsEnabled = true,
 }: DiceSceneProps) {
@@ -133,6 +141,31 @@ export function DiceScene({
   );
 
   const dieMeshRefs = useRef<(THREE.Group | null)[]>([]);
+
+  /*
+    The Fire dice's flames, built only while that skin is on the table
+    (or in its Store preview), and thrown away the moment it is not.
+    Read through a ref inside the throw and the frame loop, so swapping
+    skins never re-creates the throw controls.
+  */
+  const fire = useMemo(
+    () => (dieEffect === 'fire' ? new DiceFire(DIE_START_POSITIONS.length) : null),
+    [dieEffect],
+  );
+  useEffect(() => () => fire?.dispose(), [fire]);
+  const fireRef = useRef<DiceFire | null>(fire);
+  fireRef.current = fire;
+  // Where each die is, handed to the fire every frame. Built once and
+  // written in place: nothing in the frame loop allocates.
+  const fireSamples = useMemo<DieSample[]>(
+    () =>
+      DIE_START_POSITIONS.map(([x, y, z]) => ({
+        x, y, z, vx: 0, vy: 0, vz: 0,
+        quaternion: new THREE.Quaternion(),
+        moving: false,
+      })),
+    [],
+  );
   const shadowRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   // Settle tracking (mutable, not state — updated every frame).
@@ -235,6 +268,7 @@ export function DiceScene({
       throwStartedAt.current = Date.now();
       sankThisRoll.current = [false, false];
       diceBodies.forEach((body) => throwDie(body, { flick }));
+      fireRef.current?.relight(fireSamples);
       playThrow();
       onThrow();
     };
@@ -265,7 +299,7 @@ export function DiceScene({
       controlsRef.current = null;
       launchRef.current = null;
     };
-  }, [controlsRef, diceBodies, onThrow]);
+  }, [controlsRef, diceBodies, fireSamples, onThrow]);
 
   // Cancel any pending queued throw on unmount (round change, arena swap).
   useEffect(
@@ -319,6 +353,7 @@ export function DiceScene({
       if (!sinking && !sankThisRoll.current[i] && inMoatZone && body.position.y < 0.12) {
         sinkUntil.current[i] = now + 900;
         splashT.current = 0; // kick off the splash ring
+        fireRef.current?.douse(i, body.position.x, body.position.z);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
         onMoatSink?.();
       }
@@ -342,7 +377,10 @@ export function DiceScene({
       if (sinking) {
         // Slow the fall so the die lingers visibly under the water.
         body.velocity.y = Math.max(body.velocity.y, -1.6);
-        if (now >= sinkUntil.current[i] || body.position.y < -3) respawn();
+        if (now >= sinkUntil.current[i] || body.position.y < -3) {
+          fireRef.current?.surface(i);
+          respawn();
+        }
       } else if (isOutOfBounds(body)) {
         respawn();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
@@ -350,6 +388,32 @@ export function DiceScene({
 
       if (dieSpeed(body) > TUNING.settle.speedThreshold) stillNow = false;
     });
+
+    if (fire) {
+      diceBodies.forEach((body, i) => {
+        const sample = fireSamples[i];
+        sample.x = body.position.x;
+        sample.y = body.position.y;
+        sample.z = body.position.z;
+        sample.vx = body.velocity.x;
+        sample.vy = body.velocity.y;
+        sample.vz = body.velocity.z;
+        sample.quaternion.set(
+          body.quaternion.x,
+          body.quaternion.y,
+          body.quaternion.z,
+          body.quaternion.w,
+        );
+        sample.moving = dieSpeed(body) > TUNING.settle.speedThreshold;
+      });
+      // A sprite's size in world units, turned into pixels at one unit
+      // from the camera.
+      const camera = state.camera as THREE.PerspectiveCamera;
+      const pointScale =
+        (state.size.height * state.viewport.dpr) /
+        (2 * Math.tan(((camera.fov ?? 45) * Math.PI) / 360));
+      fire.update(Math.min(delta, 0.05), state.clock.elapsedTime, fireSamples, pointScale);
+    }
 
     // Splash ring animation over the moat.
     if (splashRef.current && splashT.current < 1) {
@@ -573,6 +637,8 @@ export function DiceScene({
           }}
         />
       ))}
+
+      {fire && <primitive object={fire.group} />}
 
       {/* Blob shadows */}
       {DIE_START_POSITIONS.map((_pos, i) => (

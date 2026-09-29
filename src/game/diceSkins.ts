@@ -41,6 +41,12 @@ export interface DiceSkin {
    * one thing it must never be.
    */
   prize?: true;
+  /**
+   * Something the skin does beyond its paint, drawn by the scene rather
+   * than the shell texture. Only 'fire' exists — see src/dice/diceFire.ts.
+   * Looks only: an effect never reaches the physics or the settle rule.
+   */
+  effect?: 'fire';
 }
 
 export const DICE_SKINS: DiceSkin[] = [
@@ -295,6 +301,37 @@ export const DICE_SKINS: DiceSkin[] = [
   { id: 'circuit', name: 'Circuit Board', emoji: '🔌', body: '#143a2a', pattern: 'circuit', ink: '#57d0c9', price: 1205 },
   { id: 'rainbow', name: 'Rainbow', emoji: '🌈', body: '#f2f7fc', pattern: 'rainbow', ink: '#2a4a8a', price: 1280 },
   { id: 'galaxy', name: 'Galaxy', emoji: '🌌', body: '#1d1440', pattern: 'galaxy', ink: '#8a3d8f', price: 1400 },
+
+  /*
+    FIRE — the first die that does something rather than just looking
+    like something.
+
+    David, 29 Sep 2026, after a preview page: "make a pair of dice that
+    are on fire ... and if it lands in the water, then it shows the fire
+    going out and you know smoke coming up." Then: "do an over the air
+    update to add the flaming dice so we could see it in the real game
+    and then the boys could decide how much they want to charge for it."
+
+    THE PRICE IS A PLACEHOLDER until Marc and AJ settle it — it is up
+    for a vote on the HQ board. It sits above Galaxy, the dearest shelf
+    die, because it is the only one that moves. Changing it is this one
+    number and an over-the-air update.
+
+    The shell is charred wood with embers glowing in the cracks, so a
+    die that has been put out still looks like something that burned.
+    The charcoal is what keeps it clear of all six face colours; the
+    glow is kept thin, and away from the middle of each face where the
+    sticker sits.
+  */
+  {
+    id: 'fire',
+    name: 'Fire',
+    emoji: '🔥',
+    body: '#2a201c',
+    pattern: 'embers',
+    price: 1500,
+    effect: 'fire',
+  },
 
   /*
     WON, NEVER BOUGHT.

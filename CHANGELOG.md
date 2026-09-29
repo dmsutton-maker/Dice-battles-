@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.100.0 — 2026-09-29 · requested by David
+
+"Can you make a pair of dice that are on fire where it shows flames
+coming up from the dice while they're doing it. And if it lands in the
+water, then it shows the fire going out and you know smoke coming up."
+Then, after seeing a preview page: "Are you able to do an over the air
+update to add the flaming dice so we could see it in the real game and
+then the boys could decide how much they want to charge for it."
+
+**Fire dice, in the Store.** A charred-wood shell with embers glowing in
+the cracks, and real flames: they trail behind the dice through the air
+and burn in a ring round each die once it stops. On Hard, a die that
+lands in the moat goes out — a splash, a white burst of steam, a dark
+puff and the last sparks — and the pool keeps steaming for a few
+seconds. The doused die comes back out charred and smoking, and the
+next throw lights it again with a whoosh.
+
+Tap it on the Store shelf to see it burning on the battlefield before
+buying, like any other die.
+
+### The price is a placeholder
+**1500 coins**, just above Galaxy, the dearest die on the shelf, because
+it is the only one that moves. Marc and AJ are deciding the real price —
+it is up for a vote on the HQ board — and changing it is one number and
+another over-the-air update.
+
+### It never hides the roll
+The first render in the real arena had a flame sitting on the top
+sticker, and the top sticker is the roll. At rest the flames are now
+born just outside the die's outline and never over its top face, and
+`tests/fire.test.ts` fails if a resting flame is ever found there. The
+flames also started out two-thirds additive, as on the preview page, and
+on the castle's pale floor that washed them out to white; they now
+cover what is behind them rather than lighting it.
+
+### Why this could go out over the air
+It is a particle pool and a small shader — JavaScript and three.js, no
+native module and no new package. The fire has no body in the physics
+world and nothing in the settle rule can see it. It is built only while
+the Fire dice are on the table or in their preview, so every other die
+costs exactly what it did.
+
 ## v1.99.1 — 2026-09-25 · requested by David
 
 "Make push notifications for when there's a new update."

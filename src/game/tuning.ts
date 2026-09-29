@@ -192,4 +192,51 @@ export const TUNING = {
     /** Min ms between collision haptic ticks / click accents. */
     collisionCooldownMs: 130,
   },
+
+  /**
+   * The Fire dice (src/dice/diceFire.ts): flames while they roll, and a
+   * burst of steam when one goes under in the moat.
+   *
+   * David, 29 Sep 2026, after a preview page: "make a pair of dice that
+   * are on fire ... and if it lands in the water, then it shows the fire
+   * going out and smoke coming up."
+   *
+   * Everything here is looks, never rules. The fire has no body in the
+   * physics world and nothing in settle.ts can see it, so no number on
+   * this block can change what a roll counts.
+   */
+  fire: {
+    /** Particle budget for flames and sparks, both dice together. */
+    hotParticles: 700,
+    /** Particle budget for smoke, steam and splash droplets. */
+    softParticles: 520,
+    /** Flames born per second per die at full heat, while tumbling. */
+    flameRateMoving: 110,
+    /** ...and once the die is still. A resting fire is a lower one. */
+    flameRateStill: 90,
+    /** Heat a still die burns at, where 1 is a die in flight. */
+    stillHeat: 0.85,
+    /** Seconds a flame lives, before the heat scales it. */
+    flameLife: [0.4, 0.8] as const,
+    /** Flame sprite size in world units at birth and at death. */
+    flameSize: [0.66, 0.14] as const,
+    /**
+     * Upward pull on a flame, world units per second squared.
+     *
+     * Low. At 5.5 a flame had climbed two whole units — two dice
+     * heights — before it died, so the fire rose off the die as a column
+     * of faint dots and the die itself looked barely lit.
+     */
+    flameLift: 2,
+    /** Upward speed a flame is born with, low and high. */
+    flameRise: [0.5, 1.3] as const,
+    /** How much of the die's own speed a new flame carries. Low, so the fire trails. */
+    inherit: 0.12,
+    /** Heat lost per second under water: 1 to out in under half a second. */
+    quenchRate: 2.4,
+    /** Seconds the pool keeps steaming after a die goes in. */
+    steamSeconds: 4,
+    /** Seconds a doused die keeps smoking once it is back on the board. */
+    smoulderSeconds: 5,
+  },
 } as const;

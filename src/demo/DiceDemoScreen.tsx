@@ -2156,6 +2156,7 @@ export function DiceDemoScreen() {
           dieBodyColor={dieBodyColor}
           diePattern={sceneSkin.pattern}
           diePatternInk={sceneSkin.ink}
+          dieEffect={sceneSkin.effect}
           dieSymbols={colorblind}
           showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}

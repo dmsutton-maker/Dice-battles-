@@ -74,7 +74,8 @@ export type PatternId =
   | 'blossom'
   // Lavender, 31 Aug 2026 — the other flat cube whose name promised a
   // plant. Sprigs of the plant itself: green stems, purple bud spikes.
-  | 'lavender';
+  | 'lavender'
+  | 'embers';
 
 const SIZE = 64;
 
@@ -281,7 +282,10 @@ export type ColorPatternId =
   // Fish, 31 Aug 2026: the mask version was mid-blue fish on light-blue
   // water, and at die scale the whole school vanished. A goldfish is
   // ORANGE with a white eye — two hues a blue mask cannot reach.
-  | 'fish';
+  | 'fish'
+  // Embers, 29 Sep 2026, for the Fire dice: black char, a red glow in
+  // the cracks and a hot orange core along them — three colours.
+  | 'embers';
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 const PAINTERS: Record<MaskPatternId, Painter> = {
@@ -1400,6 +1404,32 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       }
     }
     return px;
+  },
+  embers: (x, y) => {
+    /*
+      Charred wood, with embers still alive in the cracks.
+
+      The cracks are the zero line of a smooth noise — ridged noise —
+      so they run in long branching seams rather than dots, the way
+      burnt wood splits. A wide dull red glow sits round each seam and
+      a thin hot orange line runs down the middle of it.
+
+      The glow is THIN on purpose. The Fire dice's shell sits round six
+      face stickers that include red and orange, and a shell awash with
+      either would crowd those two faces; a few bright threads on black
+      cannot.
+    */
+    const warp = fbm(x + 11, y + 5, [16, 8], [1, 0.5]) * 6;
+    const n = fbm(x + warp, y - warp * 0.6, [32, 16], [1, 0.45]);
+    const seam = Math.abs(n);
+    const grain = fbm(x * 0.6, y * 2.4, [16, 8], [1, 0.5]);
+    let px = mixRgb(rgb('#1c1512'), rgb('#3b2c24'), (grain + 1) * 0.5);
+    // Char has a dull sheen across its blocks; the seams are the low ground.
+    px = mixRgb(px, rgb('#4a3a30'), smoothstep(0.25, 0.6, seam) * 0.35);
+    px = mixRgb(px, rgb('#6e1c0c'), smoothstep(0.1, 0.02, seam) * 0.85);
+    px = mixRgb(px, rgb('#e0621c'), smoothstep(0.035, 0.0, seam) * 0.9);
+    // Fine ash speckle, so the char is never a flat fill.
+    return mixRgb(px, rgb('#5e5048'), hashCell(x, y) > 0.965 ? 0.5 : 0);
   },
   slate: (x, y) => {
     // Slate splits along its bedding: flat planes, a stepped edge where
