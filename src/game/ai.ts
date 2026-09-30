@@ -40,18 +40,17 @@ export const AI_DIFFICULTIES: Record<AiDifficultyId, AiDifficulty> = {
 export interface AiOpponent {
   name: string;
   short: string;
-  emoji: string;
 }
 
 export const AI_ROSTER: AiOpponent[] = [
-  { name: 'David', short: 'DAVID', emoji: '🎲' },
-  { name: 'Debra', short: 'DEBRA', emoji: '👑' },
-  { name: 'Lilly', short: 'LILLY', emoji: '🌸' },
-  { name: 'Sophia', short: 'SOPHIA', emoji: '⭐' },
-  { name: 'Marc', short: 'MARC', emoji: '🛡️' },
-  { name: 'AJ', short: 'AJ', emoji: '⚡' },
-  { name: 'Sir Rollsalot', short: 'SIR R.', emoji: '⚔️' },
-  { name: 'Lady Luckabelle', short: 'LADY L.', emoji: '🍀' },
+  { name: 'David', short: 'DAVID' },
+  { name: 'Debra', short: 'DEBRA' },
+  { name: 'Lilly', short: 'LILLY' },
+  { name: 'Sophia', short: 'SOPHIA' },
+  { name: 'Marc', short: 'MARC' },
+  { name: 'AJ', short: 'AJ' },
+  { name: 'Sir Rollsalot', short: 'SIR R.' },
+  { name: 'Lady Luckabelle', short: 'LADY L.' },
 ];
 
 export function pickOpponent(previous?: AiOpponent): AiOpponent {

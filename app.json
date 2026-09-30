@@ -2,7 +2,7 @@
   "expo": {
     "name": "Dice Battles: Color Rush",
     "slug": "dice-battles",
-    "backgroundColor": "#1d1a2e",
+    "backgroundColor": "#fdf6ec",
     "version": "1.60.0",
     "orientation": "portrait",
     "scheme": "dicebattles",
@@ -54,9 +54,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1d1a2e",
-          "image": "./assets/paper-ship-mark.png",
-          "imageWidth": 150
+          "backgroundColor": "#fdf6ec",
+          "image": "./assets/logo/logo.png",
+          "imageWidth": 170
         }
       ],
       [

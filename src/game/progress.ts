@@ -141,7 +141,6 @@ export type UnlockId =
 export interface Tier {
   at: number;
   name: string;
-  emoji: string;
   id: UnlockId;
 }
 
@@ -152,19 +151,19 @@ export interface Tier {
  */
 export const TIERS: Tier[] = [
   // The two you start with, so the ladder shows where you began.
-  { at: 0, name: 'Castle Courtyard', emoji: '🏰', id: 'castle' },
-  { at: 0, name: 'Ivory Dice', emoji: '🎲', id: 'ivory-dice' },
+  { at: 0, name: 'Castle Courtyard', id: 'castle' },
+  { at: 0, name: 'Ivory Dice', id: 'ivory-dice' },
   // Gaps widen the whole way up — 40, 60, 80, 110, 140, 180, 240, 300.
   // The first reward used to cost 100 trophies, several sessions before
   // anything at all happened.
-  { at: 40, name: 'Gold Dice', emoji: '✨', id: 'golden-dice' },
-  { at: 100, name: 'Sunset Castle', emoji: '🌅', id: 'sunset-castle' },
-  { at: 180, name: 'Mint Dice', emoji: '🍃', id: 'mint-dice' },
-  { at: 290, name: 'Jungle Clearing', emoji: '🌴', id: 'jungle' },
-  { at: 430, name: 'Bubblegum Dice', emoji: '🍬', id: 'bubblegum-dice' },
-  { at: 610, name: 'Courtyard Treasure', emoji: '💰', id: 'treasure' },
-  { at: 850, name: 'Space Station', emoji: '🚀', id: 'space' },
-  { at: 1150, name: 'Midnight Dice', emoji: '🌑', id: 'midnight-dice' },
+  { at: 40, name: 'Gold Dice', id: 'golden-dice' },
+  { at: 100, name: 'Sunset Castle', id: 'sunset-castle' },
+  { at: 180, name: 'Mint Dice', id: 'mint-dice' },
+  { at: 290, name: 'Jungle Clearing', id: 'jungle' },
+  { at: 430, name: 'Bubblegum Dice', id: 'bubblegum-dice' },
+  { at: 610, name: 'Courtyard Treasure', id: 'treasure' },
+  { at: 850, name: 'Space Station', id: 'space' },
+  { at: 1150, name: 'Midnight Dice', id: 'midnight-dice' },
   /*
     The long ladder. David asked on 26 Aug 2026 for many more arenas, some
     earned with trophies — these are the trophy half (the other half is
@@ -221,18 +220,18 @@ export const TIERS: Tier[] = [
     The twelve steps from Midnight Dice are now 350, 400, 450, 500, 550,
     650, 700, 850, 950, 1050, 1150 and 1250, which sum to the same 8,850.
   */
-  { at: 1500, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
-  { at: 1900, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
-  { at: 2350, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
-  { at: 2850, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
-  { at: 3400, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
-  { at: 4050, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
-  { at: 4750, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
-  { at: 5600, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
-  { at: 6550, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
-  { at: 7600, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
-  { at: 8750, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
-  { at: 10000, name: 'Moon Base', emoji: '🌕', id: 'moon-arena' },
+  { at: 1500, name: 'Ruby Dice', id: 'ruby-dice' },
+  { at: 1900, name: 'Desert Dunes', id: 'desert-arena' },
+  { at: 2350, name: 'Ocean Dice', id: 'ocean-dice' },
+  { at: 2850, name: 'Autumn Woods', id: 'autumn-arena' },
+  { at: 3400, name: 'Lavender Dice', id: 'lavender-dice' },
+  { at: 4050, name: 'Frozen Lights', id: 'aurora-arena' },
+  { at: 4750, name: 'Slate Dice', id: 'slate-dice' },
+  { at: 5600, name: 'Blossom Dice', id: 'blossom-dice' },
+  { at: 6550, name: 'Crystal Cavern', id: 'cavern-arena' },
+  { at: 7600, name: 'Copper Dice', id: 'copper-dice' },
+  { at: 8750, name: 'Sky Kingdom', id: 'sky-arena' },
+  { at: 10000, name: 'Moon Base', id: 'moon-arena' },
 ];
 
 /**
@@ -240,8 +239,8 @@ export const TIERS: Tier[] = [
  * seeing what Space Station IS is what makes 700 trophies worth chasing;
  * a "❓ Mystery Arena" card gave the player nothing to want.
  */
-export function tierLabel(tier: Tier, _trophies: number): { name: string; emoji: string } {
-  return { name: tier.name, emoji: tier.emoji };
+export function tierLabel(tier: Tier, _trophies: number): { name: string } {
+  return { name: tier.name };
 }
 
 /**

@@ -376,7 +376,9 @@ suite('game · opponents', () => {
       'duplicate opponent names',
     );
     AI_ROSTER.forEach((o) => {
-      assert(o.short.length > 0 && o.emoji.length > 0, `${o.name} is missing a tag`);
+      assert(o.short.length > 0, `${o.name} is missing a tag`);
+      // A rival is their initial on a coloured badge — never an emoji.
+      assert(!('emoji' in o), `${o.name} still carries an emoji`);
     });
     let previous = AI_ROSTER[0];
     for (let i = 0; i < 200; i++) {
@@ -463,7 +465,6 @@ suite('game · progression', () => {
       const earned = tierLabel(tier, tier.at);
       assertEqual(locked.name, tier.name, `${tier.id} hides its name while locked`);
       assertEqual(earned.name, tier.name, `${tier.id} renames itself once earned`);
-      assertEqual(locked.emoji, tier.emoji, `${tier.id} hides its emoji while locked`);
     });
   });
 });
@@ -788,13 +789,12 @@ suite('the ladder', () => {
     assert(/\{TIERS\.map\(/.test(ladder), 'the ladder no longer walks TIERS in order');
   });
 
-  test('no rung falls back to an emoji that has an item to show', () => {
-    // The emoji is the fallback for Courtyard Treasure alone, which adds
-    // gold to a courtyard rather than handing over a thing of its own.
+  test('no rung carries an emoji at all', () => {
+    // Courtyard Treasure, the one rung with no item of its own, is drawn
+    // as the game's coin (TierIcon) — it needs no emoji either.
     for (const id of TIERS_WITHOUT_A_PICTURE) {
-      const tier = TIERS.find((t) => t.id === id);
-      assert(tier !== undefined, `${id} is not on the ladder at all`);
-      assert(!!tier!.emoji, `${id} has neither a picture nor an emoji`);
+      assert(TIERS.some((t) => t.id === id), `${id} is not on the ladder at all`);
     }
+    for (const tier of TIERS) assert(!('emoji' in tier), `${tier.name} still carries an emoji`);
   });
 });

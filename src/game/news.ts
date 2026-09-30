@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { stripEmojiDeep } from './noEmoji';
 
 /**
  * What's new in the game, shown in the News tab.
@@ -1346,7 +1347,8 @@ async function readCache(): Promise<NewsItem[]> {
   try {
     const raw = await AsyncStorage.getItem(CACHE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw);
+    // Saved before the emoji rule, possibly: cleaned on the way out too.
+    const parsed = stripEmojiDeep(JSON.parse(raw));
     return Array.isArray(parsed) ? parsed.filter(isNewsItem) : [];
   } catch {
     return [];
@@ -1370,7 +1372,8 @@ export async function fetchNews(): Promise<NewsItem[]> {
   try {
     const response = await fetch(FEED_URL, { signal: controller.signal });
     if (!response.ok) return fallback;
-    const body = await response.json();
+    // Typed into the HQ board from a browser: no emoji reaches the News tab.
+    const body = stripEmojiDeep(await response.json());
     const posts: unknown = (body as Record<string, unknown>)?.posts;
     if (!Array.isArray(posts)) return fallback;
 

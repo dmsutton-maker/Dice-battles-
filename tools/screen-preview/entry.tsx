@@ -5,6 +5,8 @@ import { LeaderboardScreen } from '../../src/demo/LeaderboardScreen';
 import { TournamentScreen } from '../../src/demo/TournamentScreen';
 import { OpponentDots } from '../../src/demo/OpponentDots';
 import { RewardPopup, Reward } from '../../src/demo/RewardPopup';
+import { BootSplash } from '../../src/demo/BootSplash';
+import { BottomNav } from '../../src/demo/BottomNav';
 import { Text } from 'react-native';
 import { TOURNAMENTS, TournamentDef } from '../../src/game/tournament';
 
@@ -89,6 +91,20 @@ if (params.get('screen') === 'dots') {
           </View>
         </View>
       ))}
+    </View>,
+  );
+  (window as any).__ready = true;
+} else if (params.get('screen') === 'boot') {
+  // ?screen=boot: the startup card over the home tab's bottom bar — the
+  // two places the Paper & Ink logo went on 30 Sep 2026.
+  createRoot(host).render(
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <View style={{ width: 393, height: 852, position: 'relative' }}>
+        <BootSplash onDone={() => {}} />
+      </View>
+      <View style={{ width: 393, height: 852, position: 'relative', backgroundColor: '#fdf6ec' }}>
+        <BottomNav active="play" onSelect={() => {}} />
+      </View>
     </View>,
   );
   (window as any).__ready = true;

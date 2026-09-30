@@ -1867,7 +1867,7 @@ export function DiceDemoScreen() {
       modeRef.current = battle.mode;
       setDifficulty(battle.difficulty);
       difficultyRef.current = battle.difficulty;
-      setOpponent({ name: opponentName, short: opponentName.slice(0, 7).toUpperCase(), emoji: '' });
+      setOpponent({ name: opponentName, short: opponentName.slice(0, 7).toUpperCase() });
       setFriendly({
         battleId: battle.id,
         opponentId: battle.opponentId ?? '',

@@ -277,13 +277,12 @@ suite('currency · items are telling apart-able', () => {
     }
   });
 
-  test('every skin has a distinct emoji for the Inventory tile', () => {
-    const emojis = DICE_SKINS.map((s) => s.emoji);
-    assertEqual(
-      new Set(emojis).size,
-      emojis.length,
-      `two skins share an emoji: ${emojis.join(' ')}`,
-    );
+  test('no skin carries an emoji at all', () => {
+    // David, 30 Sep 2026: "I DONT WANT ANY EMOJIS IN THE GAME!" Every
+    // die is drawn as its own painted shell; the emoji field is gone.
+    for (const skin of DICE_SKINS) {
+      assert(!('emoji' in skin), `${skin.name} still carries an emoji`);
+    }
   });
 });
 

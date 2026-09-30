@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { stripEmojiDeep } from './noEmoji';
 import { AiDifficultyId } from './ai';
 import { ModeId, MODE_ORDER } from './modes';
 import { RewardRange } from './rewards';
@@ -452,7 +453,8 @@ async function readCache(): Promise<TournamentDef[]> {
   try {
     const raw = await AsyncStorage.getItem(CACHE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw);
+    // Saved before the emoji rule, possibly: cleaned on the way out too.
+    const parsed = stripEmojiDeep(JSON.parse(raw));
     return Array.isArray(parsed) ? parsed.filter(isTournamentDef) : [];
   } catch {
     return [];
@@ -477,7 +479,8 @@ export async function fetchTournaments(): Promise<TournamentDef[]> {
   try {
     const response = await fetch(FEED_URL, { signal: controller.signal });
     if (!response.ok) return fallback;
-    const body = await response.json();
+    // Typed into the HQ board from a browser: no emoji reaches the Cups tab.
+    const body = stripEmojiDeep(await response.json());
     const rows: unknown = (body as Record<string, unknown>)?.tournaments;
     if (!Array.isArray(rows)) return fallback;
     const clean = rows.filter(isTournamentDef);

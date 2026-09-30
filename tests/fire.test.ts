@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { DiceFire, DieSample, PARTICLE_KIND } from '../src/dice/diceFire';
 import { DICE_SKINS, STORE_SKINS, skinById } from '../src/game/diceSkins';
-import { patternPixels } from '../src/dice/patterns';
+import { patternPixels, STICKER_FRACTION } from '../src/dice/patterns';
 import { paintFlames } from '../src/dice/preview';
 import { TUNING } from '../src/game/tuning';
 
@@ -221,28 +221,59 @@ suite('fire dice · it fits on a phone', () => {
 });
 
 suite('fire dice · what the shelf and the battle show', () => {
-  test('the Store picture shows fire, not just the charred shell', () => {
+  test('the Store picture is fire, with no black hole in it', () => {
     /*
       David, 30 Sep 2026: "the picture of it when you're looking at it
       just shows a black die with a red line on it, it doesn't show
-      fire." The shell painter only knows the char; the flames on the
-      table are particles. The shelf picture paints them in.
+      fire" — and later the same day, "more fire colors". The shell is
+      now fire itself, and it keeps a dark ring where each colour sticker
+      sits; the card has no sticker, so the card paints its own ember
+      ground under the flames rather than showing that ring as a black
+      disc.
     */
     const skin = skinById('fire');
-    const shell = patternPixels(skin.pattern as never, skin.body, skin.body);
-    const card = shell.slice();
+    const card = patternPixels(skin.pattern as never, skin.body, skin.body);
     paintFlames(card);
-    const flamey = (px: number[]) => {
-      let n = 0;
-      for (let i = 0; i < px.length; i += 3) {
-        // Bright and warm: red well above blue, and not dark.
-        if (px[i] > 200 && px[i] - px[i + 2] > 60) n++;
-      }
-      return n / (px.length / 3);
+    let flame = 0;
+    let black = 0;
+    const n = card.length / 3;
+    for (let i = 0; i < card.length; i += 3) {
+      if (card[i] > 200 && card[i] - card[i + 2] > 60) flame++;
+      if (card[i] + card[i + 1] + card[i + 2] < 120) black++;
+    }
+    note(`${Math.round((flame / n) * 100)}% flame-coloured, ${Math.round((black / n) * 100)}% near-black`);
+    assert(flame / n > 0.35, 'the Store picture of the Fire dice shows too little fire');
+    assert(black / n < 0.03, 'the Store picture has a black hole in it');
+  });
+
+  test('the shell burns in fire colours, and every sticker keeps its dark ring', () => {
+    const skin = skinById('fire');
+    const SIZE = 64;
+    const px = patternPixels(skin.pattern as never, skin.body, skin.body);
+    const at = (x: number, y: number) => {
+      const i = (y * SIZE + x) * 3;
+      return [px[i], px[i + 1], px[i + 2]];
     };
-    note(`${(flamey(shell) * 100).toFixed(0)}% flame-coloured before, ${(flamey(card) * 100).toFixed(0)}% after`);
-    assert(flamey(shell) < 0.1, 'the bare shell is already mostly fire — the test measures nothing');
-    assert(flamey(card) > 0.35, 'the Store picture of the Fire dice shows too little fire');
+    // Fire: most of the lower half is bright and warm.
+    let warm = 0;
+    let total = 0;
+    for (let y = 40; y < SIZE; y++) {
+      for (const x of [2, 6, 10, 54, 58, 61]) {
+        const [r, g, b] = at(x, y);
+        total++;
+        if (r > 190 && r - b > 80) warm++;
+      }
+    }
+    assert(warm / total > 0.6, `only ${Math.round((warm / total) * 100)}% of the fire is fire-coloured`);
+    // The ring: just outside the sticker's edge, all the way round, dark.
+    const r = STICKER_FRACTION * SIZE;
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const x = Math.round(SIZE / 2 + Math.cos(a) * r * 1.06 - 0.5);
+      const y = Math.round(SIZE / 2 + Math.sin(a) * r * 1.06 - 0.5);
+      const [R, G, B] = at(x, y);
+      assert(R + G + B < 200, `the ring round the sticker is not dark at ${Math.round((a * 180) / Math.PI)}°`);
+    }
   });
 
   test('only the Fire dice get flames on their picture', () => {

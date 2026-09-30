@@ -1,8 +1,8 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
 import { useBottomInset } from '../game/safeArea';
-import { BagIcon, BracketIcon, CrateIcon, DieIcon, RanksIcon } from '../ui/Icon';
+import { BagIcon, BracketIcon, CrateIcon, RanksIcon } from '../ui/Icon';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 
 /**
@@ -30,6 +30,28 @@ export type Tab = 'store' | 'inventory' | 'play' | 'cups' | 'leaderboard';
 type IconFn = (props: { size?: number; color?: string }) => React.ReactElement;
 
 /**
+ * The Battle tab carries the game's own logo — the Paper & Ink dice from
+ * the app icon — rather than a generic drawn die. David, 30 Sep 2026:
+ * "the logo at the bottom of the home tab and the logo on startup are
+ * not the paper and ink logo I wanted a long time ago." Same drawing as
+ * the icon on the phone and the startup card (assets/logo/dice.png, cut
+ * from assets/icon/layers).
+ */
+function LogoIcon({ size = 22 }: { size?: number; color?: string }) {
+  // A touch larger than the drawn icons: the logo is two dice side by
+  // side, and at 21pt each die would be too small to read as one.
+  const s = Math.round(size * 1.35);
+  return (
+    <Image
+      source={require('../../assets/logo/dice.png')}
+      style={{ width: s, height: s, marginVertical: -(s - size) / 2 }}
+      resizeMode="contain"
+      accessibilityIgnoresInvertColors
+    />
+  );
+}
+
+/**
  * The icons are DRAWN (src/ui/Icon.tsx), not emoji.
  *
  * 🛒 🎒 ⚔️ 🏆 🏅 was the loudest single reason the game read as one from
@@ -39,7 +61,7 @@ type IconFn = (props: { size?: number; color?: string }) => React.ReactElement;
 const TABS: { id: Tab; label: string; Icon: IconFn }[] = [
   { id: 'store', label: 'Store', Icon: BagIcon },
   { id: 'inventory', label: 'Inventory', Icon: CrateIcon },
-  { id: 'play', label: 'Battle', Icon: DieIcon },
+  { id: 'play', label: 'Battle', Icon: LogoIcon },
   { id: 'cups', label: 'Cups', Icon: BracketIcon },
   /*
     "Records", not "Ranks" and not "Boards" — David, 25 Sep 2026.

@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.105.0 — 2026-09-30 · requested by David
+
+"Make the color of the fire dice more orange. Not just orange, I mean
+more fire colors. The logo at the bottom of the home tab and the logo on
+startup are not the paper and ink logo I wanted a long time ago, so go
+back and get those paper and ink logos and use it. Get rid of the emojis
+when you click on a dice at the top and there's an emoji, but I DONT
+WANT ANY EMOJIS IN THE GAME!"
+
+**No emoji anywhere in the game — not even in its data.** v1.104.0 took
+them off every screen (the one at the top when you tapped a die was the
+preview title, which began with the die's emoji). This goes further: the
+`emoji` field is deleted from every die, battlefield, ladder rung and
+rival, so there is nothing left for any screen to show. And text from
+outside the game has its emoji stripped on the way in
+(`src/game/noEmoji.ts`): Game Center nicknames — which are friends'
+names and the name on a friendly battle's scoreboard, and which Apple
+lets people fill with emoji — and anything typed into the HQ board's
+news or cups, including what an older version saved on the phone.
+`tests/noEmoji.test.ts` now scans the whole game, data included.
+
+**The Paper & Ink logo, on startup and on the Battle tab.** The startup
+card was the one screen still dark from before Paper & Ink, showing a
+plain drawn die and the paper-white ship. It is paper now, with the
+Paper & Ink logo — the app icon David chose, two ink-outlined dice
+showing the same colour over the six-colour bar, cut from the icon's own
+layers (`assets/logo/`) so they are the same drawing — and the studio's
+ink ship. The Battle tab at the bottom of the home screen carries the
+same logo dice instead of the plain die. The phone's own launch colour
+in `app.json` is paper too, so the launch does not flash; **that part
+needs the next build** — until then the phone shows its old dark launch
+screen for a moment before the paper card.
+
+**The Fire dice are fire-coloured.** The shell was charred black with
+thin orange cracks. Every side now burns: flames rising from the bottom
+edge, pale gold at their roots through amber and orange to red at the
+tips, over a glowing ember-red ground with sparks. Each colour sticker
+sits in a thin dark ring, because fire is made of exactly the red,
+orange and yellow of three of the faces and a flame running up to the
+orange sticker would hide it. The Store card is a full fire picture.
+
 ## v1.104.0 — 2026-09-30 · requested by David
 
 "Get rid of any emojis and use the proper icons for each item."

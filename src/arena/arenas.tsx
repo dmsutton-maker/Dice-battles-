@@ -57,7 +57,6 @@ export interface ArenaDef {
   name: string;
   /** One-word name for the arena picker chip. */
   short: string;
-  emoji: string;
   /** Canvas / letterbox background. */
   skyColor: string;
   lighting: ArenaLighting;
@@ -78,7 +77,6 @@ function themedEntries(): Record<ThemedArenaId, ArenaDef> {
     out[id] = {
       name: meta.name,
       short: meta.short,
-      emoji: meta.emoji,
       skyColor: meta.skyColor,
       lighting: theme.lighting ?? DAYLIGHT,
       Component: (props) => <ThemedArena theme={theme} id={id} {...props} />,
@@ -91,7 +89,6 @@ export const ARENAS = {
   castle: {
     name: 'Castle Courtyard',
     short: 'Castle',
-    emoji: '🏰',
     skyColor: '#8ec8f7',
     lighting: DAYLIGHT,
     Component: (props) => <CastleArena {...props} />,
@@ -99,7 +96,6 @@ export const ARENAS = {
   castleSunset: {
     name: 'Sunset Castle',
     short: 'Sunset',
-    emoji: '🌅',
     // Warm dusk. The real sky is the gradient dome the arena draws; this
     // flat colour is the letterbox behind it AND the swatch in the arena
     // picker, and a swatch that went deep purple would stop reading as
@@ -111,7 +107,6 @@ export const ARENAS = {
   jungle: {
     name: 'Jungle Clearing',
     short: 'Jungle',
-    emoji: '🌴',
     skyColor: '#a8d8b8',
     lighting: DAYLIGHT,
     Component: JungleArena,
@@ -119,7 +114,6 @@ export const ARENAS = {
   space: {
     name: 'Space Station',
     short: 'Space',
-    emoji: '🚀',
     skyColor: '#0a0e2a',
     lighting: DAYLIGHT,
     Component: SpaceArena,

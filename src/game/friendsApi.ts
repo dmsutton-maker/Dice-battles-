@@ -1,4 +1,5 @@
 import type { FriendAction, PublicProfile } from './friends';
+import { stripEmojiDeep } from './noEmoji';
 import type { Identity } from './playerIdentity';
 
 /**
@@ -47,7 +48,8 @@ async function call<T>(
       signal: controller?.signal,
       headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     });
-    const body = (await response.json()) as Record<string, unknown>;
+    // Names are Game Center nicknames, which may carry emoji. None reach a screen.
+    const body = stripEmojiDeep((await response.json()) as Record<string, unknown>);
     if (!response.ok) {
       const message = typeof body?.error === 'string' ? body.error : 'that did not work';
       return { ok: false, error: message };

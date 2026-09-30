@@ -1053,7 +1053,6 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 export interface ThemedArenaMeta {
   name: string;
   short: string;
-  emoji: string;
   skyColor: string;
   tier?: string;
   price?: number;
@@ -1063,24 +1062,24 @@ export interface ThemedArenaMeta {
 
 export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   // Trophy ladder, in climbing order. Tier thresholds live in progress.ts.
-  desert: { name: 'Desert Dunes', short: 'Desert', emoji: '🌵', skyColor: '#ffe8b0', tier: 'desert-arena' },
-  autumn: { name: 'Autumn Woods', short: 'Autumn', emoji: '🍂', skyColor: '#d8e2ea', tier: 'autumn-arena' },
-  aurora: { name: 'Frozen Lights', short: 'Aurora', emoji: '🌌', skyColor: '#16394a', tier: 'aurora-arena' },
-  cavern: { name: 'Crystal Cavern', short: 'Cavern', emoji: '💎', skyColor: '#3a2552', tier: 'cavern-arena' },
-  sky: { name: 'Sky Kingdom', short: 'Sky', emoji: '🌈', skyColor: '#7fc4f0', tier: 'sky-arena' },
-  moon: { name: 'Moon Base', short: 'Moon', emoji: '🌕', skyColor: '#0a0c16', tier: 'moon-arena' },
+  desert: { name: 'Desert Dunes', short: 'Desert', skyColor: '#ffe8b0', tier: 'desert-arena' },
+  autumn: { name: 'Autumn Woods', short: 'Autumn', skyColor: '#d8e2ea', tier: 'autumn-arena' },
+  aurora: { name: 'Frozen Lights', short: 'Aurora', skyColor: '#16394a', tier: 'aurora-arena' },
+  cavern: { name: 'Crystal Cavern', short: 'Cavern', skyColor: '#3a2552', tier: 'cavern-arena' },
+  sky: { name: 'Sky Kingdom', short: 'Sky', skyColor: '#7fc4f0', tier: 'sky-arena' },
+  moon: { name: 'Moon Base', short: 'Moon', skyColor: '#0a0c16', tier: 'moon-arena' },
 
   // Won on the season pass only — moved off the ladder on 30 Sep 2026.
-  snow: { name: 'Snowy Hollow', short: 'Snow', emoji: '⛄', skyColor: '#b6dbf2', pass: true },
-  volcano: { name: 'Volcano Rim', short: 'Volcano', emoji: '🌋', skyColor: '#5c2430', pass: true },
+  snow: { name: 'Snowy Hollow', short: 'Snow', skyColor: '#b6dbf2', pass: true },
+  volcano: { name: 'Volcano Rim', short: 'Volcano', skyColor: '#5c2430', pass: true },
 
   // Bought in the Store, cheapest first.
-  farm: { name: 'Sunny Farm', short: 'Farm', emoji: '🚜', skyColor: '#bfe0f5', price: 900 },
-  beach: { name: 'Treasure Beach', short: 'Beach', emoji: '🏖️', skyColor: '#8fd8f0', price: 1100 },
-  candy: { name: 'Candy Meadow', short: 'Candy', emoji: '🍭', skyColor: '#ffabd6', price: 1350 },
-  glade: { name: 'Glow Glade', short: 'Glade', emoji: '🍄', skyColor: '#1d4450', price: 1650 },
-  cove: { name: 'Pirate Cove', short: 'Cove', emoji: '🏴‍☠️', skyColor: '#a8c9d8', price: 2000 },
-  reef: { name: 'Coral Reef', short: 'Reef', emoji: '🐠', skyColor: '#0e4e5c', price: 2400 },
-  city: { name: 'Rooftop City', short: 'City', emoji: '🌃', skyColor: '#2e3352', price: 2850 },
-  toybox: { name: 'Toy Room', short: 'Toys', emoji: '🧸', skyColor: '#f2e2c4', price: 3350 },
+  farm: { name: 'Sunny Farm', short: 'Farm', skyColor: '#bfe0f5', price: 900 },
+  beach: { name: 'Treasure Beach', short: 'Beach', skyColor: '#8fd8f0', price: 1100 },
+  candy: { name: 'Candy Meadow', short: 'Candy', skyColor: '#ffabd6', price: 1350 },
+  glade: { name: 'Glow Glade', short: 'Glade', skyColor: '#1d4450', price: 1650 },
+  cove: { name: 'Pirate Cove', short: 'Cove', skyColor: '#a8c9d8', price: 2000 },
+  reef: { name: 'Coral Reef', short: 'Reef', skyColor: '#0e4e5c', price: 2400 },
+  city: { name: 'Rooftop City', short: 'City', skyColor: '#2e3352', price: 2850 },
+  toybox: { name: 'Toy Room', short: 'Toys', skyColor: '#f2e2c4', price: 3350 },
 };

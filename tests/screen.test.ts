@@ -125,7 +125,7 @@ suite('screen · arenas', () => {
       const arena = ARENAS[id];
       assert(arena.name.length > 0, `${id} has no name`);
       assert(arena.short.length > 0, `${id} has no short name for the picker`);
-      assert(arena.emoji.length > 0, `${id} has no emoji`);
+      assert(!('emoji' in arena), `${id} still carries an emoji`);
       assert(/^#[0-9a-f]{6}$/i.test(arena.skyColor), `${id} has a bad sky color`);
       assert(typeof arena.Component === 'function', `${id} has no component`);
     }
@@ -1258,7 +1258,7 @@ suite('screen · the menu does not jump', () => {
 
     const fontSize = 13.5; // trophyNext's fontSize, read from the style block above.
     const nextUnlockWidths = TIERS.map((t) =>
-      estimateTextWidth(`Next unlock: ${t.emoji} ${t.name} at ${t.at} trophies`, fontSize),
+      estimateTextWidth(`Next unlock: ${t.name} at ${t.at} trophies`, fontSize),
     );
     const widestShipped = Math.max(...nextUnlockWidths);
 
@@ -1670,23 +1670,24 @@ suite('screen · the launch does not flash', () => {
 
   test('the native splash is the same colour as the card that follows it', () => {
     /*
-      BootSplash paints THEME.ink. Whatever the native splash is, it has
-      to be that too, or the very first thing anyone sees when they open
-      the game is a colour nobody chose.
+      BootSplash paints THEME.ground — paper, since 30 Sep 2026, when the
+      card took the Paper & Ink logo (it was ink before). Whatever the
+      native splash is, it has to be that too, or the very first thing
+      anyone sees when they open the game is a colour nobody chose.
     */
     assert(
-      /backgroundColor: THEME\.ink/.test(boot),
-      'the title card no longer paints THEME.ink — the splash below needs to follow it',
+      /backgroundColor: THEME\.ground/.test(boot),
+      'the title card no longer paints THEME.ground — the splash below needs to follow it',
     );
     const bg = String(splashConfig().backgroundColor ?? '').toLowerCase();
     assertEqual(
       bg,
-      THEME.ink.toLowerCase(),
+      THEME.ground.toLowerCase(),
       'the native splash and the title card are different colours, so the app flashes on launch',
     );
   });
 
-  test('the root view behind everything is the same ink again', () => {
+  test('the root view behind everything is the same paper again', () => {
     /*
       app.json's own `backgroundColor` is the colour the OS paints behind
       the app — visible for an instant on launch and behind any bounce at
@@ -1698,8 +1699,8 @@ suite('screen · the launch does not flash', () => {
     const root = String(app.backgroundColor ?? '').toLowerCase();
     assertEqual(
       root,
-      THEME.ink.toLowerCase(),
-      'app.json backgroundColor is not THEME.ink, so launch shows a third colour',
+      THEME.ground.toLowerCase(),
+      'app.json backgroundColor is not THEME.ground, so launch shows a third colour',
     );
   });
 

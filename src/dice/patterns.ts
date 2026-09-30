@@ -284,8 +284,8 @@ export type ColorPatternId =
   // water, and at die scale the whole school vanished. A goldfish is
   // ORANGE with a white eye — two hues a blue mask cannot reach.
   | 'fish'
-  // Embers, 29 Sep 2026, for the Fire dice: black char, a red glow in
-  // the cracks and a hot orange core along them — three colours.
+  // Embers, 29 Sep 2026, for the Fire dice — flames on every side since
+  // 30 Sep: gold, amber, orange and red over a dark ember ground.
   | 'embers'
   // Ice, 30 Sep 2026, for the Ice dice: facets of pale blue, deeper
   // blue in the cracks, white where they catch the light.
@@ -1411,29 +1411,55 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   },
   embers: (x, y) => {
     /*
-      Charred wood, with embers still alive in the cracks.
+      FIRE, on every side of the die.
 
-      The cracks are the zero line of a smooth noise — ridged noise —
-      so they run in long branching seams rather than dots, the way
-      burnt wood splits. A wide dull red glow sits round each seam and
-      a thin hot orange line runs down the middle of it.
+      David, 30 Sep 2026: "Make the color of the fire dice more orange.
+      Not just orange, I mean more fire colors." It was charred wood with
+      thin orange cracks — a die that had BEEN on fire. Now each side is
+      burning: tongues of flame rising from the bottom edge, pale gold at
+      their roots, then amber, orange and red toward the tips, over a deep
+      ember ground with sparks glowing in it.
 
-      The glow is THIN on purpose. The Fire dice's shell sits round six
-      face stickers that include red and orange, and a shell awash with
-      either would crowd those two faces; a few bright threads on black
-      cannot.
+      THE STICKER KEEPS A DARK RING. Fire is made of exactly the colours
+      of three of the six faces — red, orange and yellow — and a flame
+      running right up to the orange sticker would swallow it, which is
+      the one thing no shell may do. So a band of charcoal circles the
+      middle of every side, and the colour sticker sits on black whatever
+      burns around it. Every colour named below is also at least 15 ΔLab
+      from every face colour (screen.test.ts checks the ones written here).
     */
-    const warp = fbm(x + 11, y + 5, [16, 8], [1, 0.5]) * 6;
-    const n = fbm(x + warp, y - warp * 0.6, [32, 16], [1, 0.45]);
-    const seam = Math.abs(n);
-    const grain = fbm(x * 0.6, y * 2.4, [16, 8], [1, 0.5]);
-    let px = mixRgb(rgb('#1c1512'), rgb('#3b2c24'), (grain + 1) * 0.5);
-    // Char has a dull sheen across its blocks; the seams are the low ground.
-    px = mixRgb(px, rgb('#4a3a30'), smoothstep(0.25, 0.6, seam) * 0.35);
-    px = mixRgb(px, rgb('#6e1c0c'), smoothstep(0.1, 0.02, seam) * 0.85);
-    px = mixRgb(px, rgb('#e0621c'), smoothstep(0.035, 0.0, seam) * 0.9);
-    // Fine ash speckle, so the char is never a flat fill.
-    return mixRgb(px, rgb('#5e5048'), hashCell(x, y) > 0.965 ? 0.5 : 0);
+    const u = (x + 0.5) / SIZE;
+    const v = 1 - (y + 0.5) / SIZE; // 0 at the bottom edge of the side
+    // Tongues of flame: a wavy ridge of heights along the bottom edge.
+    const sway = Math.sin(v * 9 + u * 4) * 0.035;
+    const tongues =
+      0.66 +
+      0.24 * Math.abs(Math.sin((u + sway) * Math.PI * 3.1)) +
+      0.1 * Math.sin((u + sway) * Math.PI * 7.3 + 1.1) +
+      fbm(x, y * 0.6, [16, 8], [1, 0.5]) * 0.08;
+    const t = v / Math.max(0.2, tongues); // 0 at the root, 1 at the tip
+    // Glowing embers, not soot: deep red, brightening where it is hottest.
+    const ember = mixRgb(rgb('#5a1407'), rgb('#9e2a0a'), smoothstep(-0.3, 0.7, fbm(x + 7, y + 3, [32, 16], [1, 0.5])));
+    let px: [number, number, number];
+    if (t < 1) {
+      px = mixRgb(rgb('#fff0b0'), rgb('#ffc75a'), smoothstep(0.0, 0.3, t));
+      px = mixRgb(px, rgb('#ffa42e'), smoothstep(0.25, 0.5, t));
+      px = mixRgb(px, rgb('#ff6a14'), smoothstep(0.45, 0.72, t));
+      px = mixRgb(px, rgb('#c43d0c'), smoothstep(0.7, 0.95, t));
+      // A soft edge into the dark above, rather than a cut-out.
+      px = mixRgb(px, ember, smoothstep(0.9, 1, t));
+    } else {
+      px = ember;
+      // Sparks drifting up out of the fire.
+      if (hashCell(x, y) > 0.985) px = mixRgb(px, rgb('#ffa42e'), 0.85);
+      else if (hashCell(x + 3, y) > 0.975) px = mixRgb(px, rgb('#c43d0c'), 0.7);
+    }
+    // The dark ring round the sticker, feathered at its outer edge.
+    const r = STICKER_FRACTION * SIZE;
+    const d = Math.hypot(x + 0.5 - SIZE / 2, y + 0.5 - SIZE / 2);
+    // Thin: just enough black for the sticker's edge to read, and the
+    // fire right up to it everywhere else.
+    return mixRgb(px, rgb('#2a201c'), smoothstep(r * 1.3, r * 1.14, d));
   },
   ice: (x, y) => {
     /*
@@ -2516,6 +2542,9 @@ const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
   'lavender',
   'satin',
   'waffle',
+  // The Fire dice, 30 Sep 2026: flames rise from the bottom of EVERY
+  // side, and the dark ring round each sticker has to be centred on it.
+  'embers',
 ]);
 
 /**

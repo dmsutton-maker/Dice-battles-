@@ -185,6 +185,16 @@ export function paintFlames(rgb: number[]): void {
       const u = (x + 0.5) / SIZE;
       const v = 1 - (y + 0.5) / SIZE;
       const i = (y * SIZE + x) * 3;
+      /*
+        A glowing ember ground first, over the whole card. Since 30 Sep
+        2026 the shell keeps a dark ring round each colour sticker, and
+        the card shows no sticker — so without this the ring was a black
+        disc in the middle of the picture.
+      */
+      const glowUp = 0.35 + 0.65 * (1 - v);
+      rgb[i] = Math.round(90 + 68 * glowUp);
+      rgb[i + 1] = Math.round(20 + 22 * glowUp);
+      rgb[i + 2] = Math.round(7 + 3 * glowUp);
       // A warm glow on the char just above the flames.
       const outer = flameHeight(u, v, 1);
       const glow = Math.max(0, 1 - (v - outer) / 0.18);

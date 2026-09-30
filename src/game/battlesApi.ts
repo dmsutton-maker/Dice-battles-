@@ -1,4 +1,5 @@
 import type { Identity } from './playerIdentity';
+import { stripEmojiDeep } from './noEmoji';
 import type { ModeId } from './modes';
 import type { AiDifficultyId } from './ai';
 import type { Challenge } from './friendlyBattle';
@@ -36,7 +37,8 @@ async function call<T>(
       signal: controller?.signal,
       headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     });
-    const body = (await response.json()) as Record<string, unknown>;
+    // The opponent's name is a Game Center nickname — no emoji reaches a screen.
+    const body = stripEmojiDeep((await response.json()) as Record<string, unknown>);
     if (!response.ok) {
       const message = typeof body?.error === 'string' ? body.error : 'that did not work';
       return { ok: false, error: message };

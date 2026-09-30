@@ -27,7 +27,6 @@ export interface ResolvedItem {
   id: string;
   /** What to call it on screen. */
   name: string;
-  emoji: string;
   /** The id the wallet files it under — the one route in for both kinds. */
   walletKey: string;
   /**
@@ -59,7 +58,6 @@ export function resolveItem(item: PrizeItem): ResolvedItem | null {
       kind: 'dice',
       id: skin.id,
       name: `${skin.name} Dice`,
-      emoji: skin.emoji,
       walletKey: skin.id,
       // A season-pass die has no shelf price, and somebody who bought one
       // on the day it was sold still has to be paid SOMETHING at its level.
@@ -73,7 +71,6 @@ export function resolveItem(item: PrizeItem): ResolvedItem | null {
     kind: 'arena',
     id,
     name: ARENAS[id].name,
-    emoji: ARENAS[id].emoji,
     walletKey: arenaKey(id),
     coins: meta?.price ?? (meta?.pass ? SEASON_ITEM_WORTH : 0),
   };
@@ -92,7 +89,7 @@ export interface PaidPrize {
    */
   insteadOf: ResolvedItem | null;
   /** Trophy tiers crossed by the trophies just awarded. */
-  unlocked: { id: string; name: string; emoji: string }[];
+  unlocked: { id: string; name: string }[];
 }
 
 /**
@@ -140,7 +137,6 @@ export function payPrize(
     unlocked: climbed.newUnlocks.map((t) => ({
       id: t.id,
       name: t.name,
-      emoji: t.emoji,
     })),
   };
 }

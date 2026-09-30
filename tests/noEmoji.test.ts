@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { assertEqual, note, suite, test } from './harness';
+import { assert, assertEqual, note, suite, test } from './harness';
+import { hasEmoji, stripEmoji, stripEmojiDeep } from '../src/game/noEmoji';
 
 /**
  * No emoji on any screen.
@@ -12,9 +13,9 @@ import { assertEqual, note, suite, test } from './harness';
  * rest of the game catching up, and this suite is what keeps it caught
  * up.
  *
- * The dice, battlefields and ladder rungs still CARRY an `emoji` field
- * in their data. Nothing draws it; the rule is about what reaches a
- * screen.
+ * Since the same day there is no emoji in the game's DATA either, and
+ * text from outside the game — Game Center nicknames, the HQ board's
+ * news and cups — has its emoji stripped on the way in (noEmoji.ts).
  */
 
 // Pictographic ranges. The plain ✓ tick and ✕ close mark are ordinary
@@ -24,7 +25,11 @@ const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{26FF}\u{2B00}-\u{2BFF}\u{1F1E6}-\
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    return statSync(path).isDirectory() ? files(path) : path.endsWith('.tsx') ? [path] : [];
+    return statSync(path).isDirectory()
+      ? files(path)
+      : /\.tsx?$/.test(path)
+        ? [path]
+        : [];
   });
 }
 
@@ -35,10 +40,10 @@ const live = (path: string) =>
     .replace(/\/\/[^\n]*/g, '');
 
 suite('no emoji on any screen', () => {
-  // The folders that draw screens. src/arena and src/game hold data —
-  // the arena list carries an `emoji` field the same way the dice do —
-  // and draw no text of their own.
-  const screens = ['src/demo', 'src/ui', 'src/debug'].flatMap(files);
+  // ALL of the game, data included. Until 30 Sep 2026 the dice, arenas,
+  // ladder rungs and rivals carried an `emoji` field that no screen drew;
+  // David: "I DONT WANT ANY EMOJIS IN THE GAME!" — so the data went too.
+  const screens = files('src');
 
   test('no screen has an emoji written into it', () => {
     const found: string[] = [];
@@ -67,5 +72,42 @@ suite('no emoji on any screen', () => {
   test('the reward popup is given a picture, not an emoji', () => {
     const popup = live('src/demo/RewardPopup.tsx');
     assertEqual(/emoji/.test(popup), false, 'the reward popup still knows about emoji');
+  });
+});
+
+suite('no emoji arrives from outside the game', () => {
+  test('a nickname keeps its letters and loses its emoji', () => {
+    assertEqual(stripEmoji('AJ 🏆'), 'AJ', 'the emoji survived');
+    assertEqual(stripEmoji('Marc 👨‍👩‍👧 the Great'), 'Marc the Great', 'a joined family emoji survived');
+    assertEqual(stripEmoji('🇬🇧 Flag'), 'Flag', 'a flag survived');
+    assertEqual(stripEmoji('Plain name'), 'Plain name', 'an ordinary name was changed');
+    assert(!hasEmoji(stripEmoji('❤️ 🔥 ⭐ 🎲')), 'something pictographic got through');
+  });
+
+  test('a news post keeps its paragraphs', () => {
+    assertEqual(
+      stripEmoji('New dice! 🎉\n\nGo and see.'),
+      'New dice!\n\nGo and see.',
+      'the paragraph break was lost with the emoji',
+    );
+  });
+
+  test('every string inside an answer is cleaned', () => {
+    const cleaned = stripEmojiDeep({ friends: [{ name: 'Sam 😎', trophies: 3 }], note: '🚀 go' });
+    assertEqual(cleaned.friends[0].name, 'Sam', 'a nested name kept its emoji');
+    assertEqual(cleaned.friends[0].trophies, 3, 'a number was changed');
+    assertEqual(cleaned.note, 'go', 'a top-level string kept its emoji');
+  });
+
+  test('every answer from the network passes through the filter', () => {
+    for (const file of ['friendsApi', 'battlesApi', 'news', 'tournament']) {
+      const code = live(`src/game/${file}.ts`);
+      assert(
+        /stripEmojiDeep\(\s*\(?await response\.json\(\)/.test(code),
+        `${file}.ts reads the network without stripping emoji`,
+      );
+    }
+    const id = live('src/game/playerIdentity.ts');
+    assert((id.match(/stripEmoji\(apple/g) ?? []).length >= 2, 'the Game Center name is not stripped');
   });
 });

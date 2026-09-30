@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { initSounds, playStartup } from '../audio/sounds';
 import { loadAudioSettings } from '../audio/settings';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { DieIcon } from '../ui/Icon';
 import { THEME } from '../ui/theme';
 
 /** How long the title card is held before the game appears. */
@@ -50,14 +49,21 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
   return (
     <View style={styles.screen}>
       {/*
-        Drawn, not 🎲 — the same die the tab bar draws, at title size.
-        Filled paper-white on the ink card, so it reads as a solid die
-        carrying the game's own six colours rather than an outline that
-        would half-vanish against the dark.
+        THE PAPER & INK LOGO. David, 30 Sep 2026: "the logo at the bottom
+        of the home tab and the logo on startup are not the paper and ink
+        logo I wanted a long time ago, so go back and get those paper and
+        ink logos and use it." It is the app icon he chose — two
+        ink-outlined dice showing the same colour, the Perfect Match, over
+        the six-colour bar — cut from its own layers in assets/icon/layers
+        rather than redrawn, so the icon on the phone and the card that
+        opens the game are the same drawing.
       */}
-      <View style={styles.dice}>
-        <DieIcon size={72} color={THEME.onInk} fill={THEME.onInk} />
-      </View>
+      <Image
+        source={require('../../assets/logo/logo.png')}
+        style={styles.logo}
+        resizeMode="contain"
+        accessibilityLabel="Dice Battles: Color Rush"
+      />
       <Text style={styles.title}>DICE BATTLES</Text>
       <Text style={styles.subtitle}>COLOR RUSH</Text>
       <View style={styles.rule} />
@@ -66,12 +72,12 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
       <View style={styles.studio}>
         <Text style={styles.studioLabel}>a game by</Text>
         {/*
-          The reversed variant of the mark (logo-assets/2e-icon-reversed):
-          this card is near-black, and the standard one has a near-black
-          hull that would vanish into it.
+          The studio's FULL mark — ink hull, cyan main sail — the variant
+          made for a light ground. The card used to be ink-dark and carried
+          the reversed, paper-white ship; on paper it is the ink one.
         */}
         <Image
-          source={require('../../assets/paper-ship-mark.png')}
+          source={require('../../assets/logo/ship.png')}
           style={styles.mark}
           resizeMode="contain"
         />
@@ -94,26 +100,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     /*
-     * INK, deliberately, in a light-mode game: the title card is the one
-     * brand moment, and the bundled ship mark is the reversed variant —
-     * a paper-white hull that needs a dark ground or it vanishes. The
-     * interface proper starts on paper the moment this card leaves.
+     * PAPER, like the rest of the game. It was ink until 30 Sep 2026 —
+     * the one screen left over from before Paper & Ink, carrying the
+     * reversed ship. The native splash in app.json is paper too, so the
+     * launch does not flash from one to the other.
      */
-    backgroundColor: THEME.ink,
+    backgroundColor: THEME.ground,
     paddingHorizontal: 32,
   },
-  dice: {
-    marginBottom: 14,
+  logo: {
+    width: 176,
+    height: 170,
+    marginBottom: 10,
   },
   title: {
-    color: THEME.gold,
+    color: THEME.ink,
     fontSize: 40,
     fontWeight: '900',
     letterSpacing: 1.5,
     textAlign: 'center',
   },
   subtitle: {
-    color: THEME.onInk,
+    color: THEME.accent,
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 4.5,
@@ -124,11 +132,11 @@ const styles = StyleSheet.create({
     width: 74,
     height: 4,
     borderRadius: 2,
-    backgroundColor: THEME.gold,
+    backgroundColor: THEME.ink,
     marginTop: 16,
   },
   tagline: {
-    color: 'rgba(253,246,236,0.88)',
+    color: THEME.inkSoft,
     fontSize: 16,
     fontWeight: '700',
     marginTop: 16,
@@ -145,14 +153,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   studioLabel: {
-    color: 'rgba(253,246,236,0.55)',
+    color: THEME.inkFaint,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   studioName: {
-    color: THEME.onInk,
+    color: THEME.ink,
     fontSize: 19,
     fontWeight: '800',
     marginTop: 6,

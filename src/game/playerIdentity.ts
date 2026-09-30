@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { stripEmoji } from './noEmoji';
 import { localPlayer } from './gameCenter';
 import { makeFriendCode } from './friendCodes';
 import { vaultGet, vaultSet } from './deviceVault';
@@ -224,7 +225,9 @@ export async function loadIdentity(): Promise<Identity> {
   */
   const localId = knownId ?? makeLocalId();
   const playerId = localId;
-  const name = apple?.name || storedName || ANONYMOUS_NAME;
+  // Apple lets a nickname carry emoji; the game shows none (noEmoji.ts).
+  const name =
+    stripEmoji(apple?.name ?? '') || stripEmoji(storedName ?? '') || ANONYMOUS_NAME;
 
   // The code belongs to the DEVICE and is kept across sign-in: a code
   // that changed when you signed into Game Center would break every
@@ -293,7 +296,7 @@ export async function loadIdentity(): Promise<Identity> {
 export async function refreshName(): Promise<Identity> {
   const me = cached ?? (await loadIdentity());
   const apple = await localPlayer();
-  const name = apple?.name?.trim();
+  const name = stripEmoji(apple?.name ?? '').trim();
   if (!name || (name === me.name && me.signedIn)) return me;
   cached = { ...me, name, signedIn: true };
   return cached;
