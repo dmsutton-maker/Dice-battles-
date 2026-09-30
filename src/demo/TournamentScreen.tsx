@@ -19,6 +19,9 @@ import { PrimaryButton } from '../ui/Card';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
+import { SeasonPassCard } from './SeasonPassCard';
+import type { PreviewTarget } from '../game/itemPreview';
+import type { SeasonState } from '../game/seasonPass';
 
 /**
  * The Cups tab: the tournaments running right now.
@@ -44,9 +47,14 @@ export function TournamentScreen({
   states,
   today,
   onPlay,
+  season,
+  onPreview,
 }: {
   tournaments: TournamentDef[];
   states: Record<string, TournamentState>;
+  /** The season pass, drawn above the cups. See SeasonPassCard. */
+  season: SeasonState | undefined;
+  onPreview: (target: PreviewTarget) => void;
   /** YYYY-MM-DD, passed in so the screen has no clock of its own to test. */
   today: string;
   onPlay: (tournament: TournamentDef) => void;
@@ -63,6 +71,7 @@ export function TournamentScreen({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        <SeasonPassCard state={season} onPreview={onPreview} />
         <Text style={styles.note}>
           A cup is a run of wins in one way of playing, and they are meant to
           be hard. Win them in a row and the prize is yours — coins, trophies,

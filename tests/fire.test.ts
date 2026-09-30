@@ -48,13 +48,18 @@ function flames(fire: DiceFire): [number, number, number][] {
 }
 
 suite('fire dice · the skin', () => {
-  test('it is on the Store shelf, with a price and its fire', () => {
+  test('it is won on the season pass, not sold', () => {
+    /*
+      On the Store shelf for a day at a placeholder price, then moved to
+      the season pass on 30 Sep 2026 — David: "make this season pass have
+      the fire and ice dice as the way to obtain them."
+    */
     const fire = skinById('fire');
     assertEqual(fire.id, 'fire', 'the Fire dice exist');
     assertEqual(fire.effect, 'fire', 'the skin is the one that burns');
-    assert(typeof fire.price === 'number' && fire.price > 0, 'it can be bought');
-    assert(STORE_SKINS.some((s) => s.id === 'fire'), 'it is on the shelf');
-    note(`placeholder price ${fire.price} — the boys are voting on it`);
+    assertEqual(fire.price, undefined, 'the Fire dice are still for sale');
+    assert(!STORE_SKINS.some((s) => s.id === 'fire'), 'the Fire dice are still on the shelf');
+    assert(fire.pass === true, 'the Fire dice are not a season pass die');
   });
 
   test('only the Fire and Ice dice have an effect', () => {

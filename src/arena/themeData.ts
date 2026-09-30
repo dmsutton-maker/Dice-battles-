@@ -1057,18 +1057,22 @@ export interface ThemedArenaMeta {
   skyColor: string;
   tier?: string;
   price?: number;
+  /** Won on the season pass, and available no other way (seasonPass.ts). */
+  pass?: true;
 }
 
 export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   // Trophy ladder, in climbing order. Tier thresholds live in progress.ts.
-  snow: { name: 'Snowy Hollow', short: 'Snow', emoji: '⛄', skyColor: '#b6dbf2', tier: 'snow-arena' },
   desert: { name: 'Desert Dunes', short: 'Desert', emoji: '🌵', skyColor: '#ffe8b0', tier: 'desert-arena' },
   autumn: { name: 'Autumn Woods', short: 'Autumn', emoji: '🍂', skyColor: '#d8e2ea', tier: 'autumn-arena' },
   aurora: { name: 'Frozen Lights', short: 'Aurora', emoji: '🌌', skyColor: '#16394a', tier: 'aurora-arena' },
-  volcano: { name: 'Volcano Rim', short: 'Volcano', emoji: '🌋', skyColor: '#5c2430', tier: 'volcano-arena' },
   cavern: { name: 'Crystal Cavern', short: 'Cavern', emoji: '💎', skyColor: '#3a2552', tier: 'cavern-arena' },
   sky: { name: 'Sky Kingdom', short: 'Sky', emoji: '🌈', skyColor: '#7fc4f0', tier: 'sky-arena' },
   moon: { name: 'Moon Base', short: 'Moon', emoji: '🌕', skyColor: '#0a0c16', tier: 'moon-arena' },
+
+  // Won on the season pass only — moved off the ladder on 30 Sep 2026.
+  snow: { name: 'Snowy Hollow', short: 'Snow', emoji: '⛄', skyColor: '#b6dbf2', pass: true },
+  volcano: { name: 'Volcano Rim', short: 'Volcano', emoji: '🌋', skyColor: '#5c2430', pass: true },
 
   // Bought in the Store, cheapest first.
   farm: { name: 'Sunny Farm', short: 'Farm', emoji: '🚜', skyColor: '#bfe0f5', price: 900 },

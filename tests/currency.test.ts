@@ -13,9 +13,11 @@ import {
 import {
   DICE_SKINS,
   LADDER_SKINS,
+  PASS_SKINS,
   PRIZE_SKINS,
   STORE_SKINS,
 } from '../src/game/diceSkins';
+import { seasonLevelOf } from '../src/game/seasonPass';
 import { COIN_CODE_MAX, TIERS, UnlockId } from '../src/game/progress';
 
 const priceInTrophies = (id: UnlockId): number =>
@@ -26,6 +28,7 @@ import {
   INVENTORY_SKIN_ORDER,
   isSkinUnlocked,
   ARENA_PRICES,
+  PASS_ARENAS,
 } from '../src/game/loadout';
 import { setUnlockAll } from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
@@ -393,22 +396,24 @@ suite('currency · the "500 COIN" code', () => {
 suite('inventory · everything is listed cheapest first', () => {
   test('the dice run up in price, trophies first then coins then prizes', () => {
     /*
-      THREE groups since 25 Sep 2026, not two: the trophy ladder, then
-      the Store shelf, then the dice that can only be won in a cup. The
-      prizes go last because they are the only cards in the cupboard
-      whose locked state is not an invitation to spend anything — there
-      is no price to work toward, so there is nothing to put them in
-      price order beside.
+      FOUR groups since 30 Sep 2026: the trophy ladder, then the Store
+      shelf, then the dice that can only be won in a cup, then the season
+      pass's dice in the order the pass hands them over. The prizes and
+      the pass go last because neither locked card is an invitation to
+      spend anything — there is no price to put them in order beside.
     */
-    const ladder = INVENTORY_SKIN_ORDER.filter((s) => s.price === undefined && !s.prize);
+    const ladder = INVENTORY_SKIN_ORDER.filter(
+      (s) => s.price === undefined && !s.prize && !s.pass,
+    );
     const shop = INVENTORY_SKIN_ORDER.filter((s) => s.price !== undefined);
     const prizes = INVENTORY_SKIN_ORDER.filter((s) => s.prize);
+    const pass = INVENTORY_SKIN_ORDER.filter((s) => s.pass);
 
     // The groups must not interleave, or "then you can buy these" stops
     // being true halfway down.
     assertEqual(
       INVENTORY_SKIN_ORDER.slice(0, ladder.length).every(
-        (s) => s.price === undefined && !s.prize,
+        (s) => s.price === undefined && !s.prize && !s.pass,
       ),
       true,
       'every trophy die comes before every coin die',
@@ -421,11 +426,23 @@ suite('inventory · everything is listed cheapest first', () => {
       'a prize die is mixed in among the ones for sale',
     );
     assertEqual(
-      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length).every((s) => s.prize),
+      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length, ladder.length + shop.length + prizes.length).every((s) => s.prize),
       true,
-      'the prize dice are not last',
+      'the prize dice are not after the shop',
+    );
+    assertEqual(
+      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length + prizes.length).every((s) => s.pass),
+      true,
+      'the season pass dice are not last',
     );
     assertEqual(prizes.length, PRIZE_SKINS.length, 'a prize die fell off the list');
+    assertEqual(pass.length, PASS_SKINS.length, 'a season pass die fell off the list');
+    for (let i = 1; i < pass.length; i++) {
+      assert(
+        (seasonLevelOf('dice', pass[i].id) ?? 0) > (seasonLevelOf('dice', pass[i - 1].id) ?? 0),
+        `${pass[i].name} is out of season-pass order`,
+      );
+    }
 
     const trophyCost = (id: UnlockId | null | undefined) =>
       TIERS.find((t) => t.id === id)?.at ?? 0;
@@ -454,9 +471,9 @@ suite('inventory · everything is listed cheapest first', () => {
       'no duplicates',
     );
     assertEqual(
-      LADDER_SKINS.length + STORE_SKINS.length + PRIZE_SKINS.length,
+      LADDER_SKINS.length + STORE_SKINS.length + PRIZE_SKINS.length + PASS_SKINS.length,
       DICE_SKINS.length,
-      'every die is either earned, bought or won — never none of the three',
+      'every die is earned, bought, won in a cup or won on the pass — never none of them',
     );
   });
 
@@ -472,11 +489,14 @@ suite('inventory · everything is listed cheapest first', () => {
       TIERS.find((t) => t.id === ARENA_UNLOCKS[id])?.at;
     const ladder = ARENA_ORDER.filter((id) => tier(id) !== undefined);
     const store = ARENA_ORDER.filter((id) => ARENA_PRICES[id] !== undefined);
+    // The season pass's battlefields go last, as its dice do.
+    const pass = ARENA_ORDER.filter((id) => seasonLevelOf('arena', id) !== null);
     assertEqual(
       ARENA_ORDER.join(','),
-      [...ladder, ...store].join(','),
-      'the ladder and the shop are interleaved',
+      [...ladder, ...store, ...pass].join(','),
+      'the ladder, the shop and the season pass are interleaved',
     );
+    assertEqual(pass.join(','), PASS_ARENAS.join(','), 'a season pass battlefield is missing');
     for (let i = 1; i < ladder.length; i++) {
       assert(
         tier(ladder[i])! >= tier(ladder[i - 1])!,

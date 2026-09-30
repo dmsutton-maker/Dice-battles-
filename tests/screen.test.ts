@@ -18,6 +18,7 @@ import {
 } from '../src/game/loadout';
 import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
+import { seasonLevelOf } from '../src/game/seasonPass';
 import { GAME_VERSION } from '../src/game/version';
 import {
   CORNER_TOWERS,
@@ -135,15 +136,20 @@ suite('screen · arenas', () => {
       An arena with no route can never be played; an arena with two routes
       would sell what the ladder was about to award. Since 26 Aug 2026
       battlefields follow the rule dice skins always had: a trophy tier on
-      the ladder, or a coin price in the Store — exactly one each.
+      the ladder, or a coin price in the Store — exactly one each. Since
+      30 Sep 2026 there is a third route, the season pass, and the rule
+      is the same: exactly one.
     */
     const tierIds = new Set<UnlockId>(TIERS.map((t) => t.id));
     for (const id of Object.keys(ARENAS) as ArenaId[]) {
       const unlock = ARENA_UNLOCKS[id];
       const price = ARENA_PRICES[id];
-      assert(
-        (unlock !== undefined) !== (price !== undefined),
-        `arena ${id} must have exactly one of a tier or a price`,
+      const pass = seasonLevelOf('arena', id);
+      const routes = [unlock !== undefined, price !== undefined, pass !== null].filter(Boolean).length;
+      assertEqual(
+        routes,
+        1,
+        `arena ${id} must have exactly one of a tier, a price or a season pass level`,
       );
       if (unlock !== undefined) {
         assert(tierIds.has(unlock), `arena ${id} maps to unknown unlock '${unlock}'`);

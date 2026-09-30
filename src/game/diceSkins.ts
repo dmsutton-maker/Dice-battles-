@@ -42,6 +42,12 @@ export interface DiceSkin {
    */
   prize?: true;
   /**
+   * Won on the season pass (src/game/seasonPass.ts), and available no
+   * other way. Its own flag for the same reason `prize` has one: "no
+   * price and no unlock" already means FREE, which is Ivory.
+   */
+  pass?: true;
+  /**
    * Something the skin does beyond its paint, drawn by the scene rather
    * than the shell texture: 'fire' and 'ice' — see src/dice/dieEffect.ts.
    * Looks only: an effect never reaches the physics or the settle rule.
@@ -312,10 +318,9 @@ export const DICE_SKINS: DiceSkin[] = [
     update to add the flaming dice so we could see it in the real game
     and then the boys could decide how much they want to charge for it."
 
-    THE PRICE IS A PLACEHOLDER until Marc and AJ settle it — it is up
-    for a vote on the HQ board. It sits above Galaxy, the dearest shelf
-    die, because it is the only one that moves. Changing it is this one
-    number and an over-the-air update.
+    NOT SOLD. It was on the Store shelf for a day at a placeholder
+    price while the boys voted on one; then David made it a season pass
+    reward instead (30 Sep 2026), which is the only way to get it now.
 
     The shell is charred wood with embers glowing in the cracks, so a
     die that has been put out still looks like something that burned.
@@ -329,7 +334,9 @@ export const DICE_SKINS: DiceSkin[] = [
     emoji: '🔥',
     body: '#2a201c',
     pattern: 'embers',
-    price: 1500,
+    // On sale for a day at a placeholder 1500, then moved to the season
+    // pass (level 20) on 30 Sep 2026. Anybody who bought it keeps it.
+    pass: true,
     effect: 'fire',
   },
   /*
@@ -345,7 +352,7 @@ export const DICE_SKINS: DiceSkin[] = [
     die caught in it. Looks only: the die still sinks and is fished out
     on the usual clock, so the ice never makes the moat safe.
 
-    THE PRICE IS A PLACEHOLDER, like Fire's, until the boys vote.
+    Season pass only, like Fire — see seasonPass.ts.
 
     Not to be confused with Frost (300 coins), which is snowflakes
     PAINTED on a white shell. This one is the die made of ice.
@@ -356,9 +363,8 @@ export const DICE_SKINS: DiceSkin[] = [
     emoji: '🧊',
     body: '#b4dcee',
     pattern: 'ice',
-    // Not 1500: no two things on a shelf may cost the same (the suite
-    // holds that), and this is a stand-in until the vote anyway.
-    price: 1550,
+    // Season pass, level 6. Was on sale for a day at a placeholder 1550.
+    pass: true,
     effect: 'ice',
   },
 
@@ -411,8 +417,11 @@ export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined).sort(
  * not exist.
  */
 export const LADDER_SKINS = DICE_SKINS.filter(
-  (s) => s.price === undefined && !s.prize,
+  (s) => s.price === undefined && !s.prize && !s.pass,
 );
+
+/** Skins that can only be won on the season pass. */
+export const PASS_SKINS = DICE_SKINS.filter((s) => s.pass);
 
 /** Skins that can only be won in a tournament. */
 export const PRIZE_SKINS = DICE_SKINS.filter((s) => s.prize);

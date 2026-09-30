@@ -58,7 +58,15 @@ export type PreviewAction =
    * "keep playing" and "go and win it" are three different pieces of
    * advice and a child acting on the wrong one gets nowhere.
    */
-  | { kind: 'prize' };
+  | { kind: 'prize' }
+  /**
+   * Won on the season pass at this level, and available no other way.
+   * A FIFTH dead end, for the same reason `prize` is its own: "keep
+   * saving" and "keep playing for trophies" would both send a child the
+   * wrong way. The advice here is simply "keep playing" — every battle
+   * fills the pass.
+   */
+  | { kind: 'pass'; level: number };
 
 export interface PreviewState {
   trophies: number;
@@ -80,6 +88,8 @@ export interface PreviewState {
   needTrophies?: number;
   /** Only ever won in a tournament — no price, no tier, no shelf. */
   prize?: boolean;
+  /** The season pass level this is won at, for season items only. */
+  passLevel?: number | null;
 }
 
 /**
@@ -109,6 +119,7 @@ export function previewAction(state: PreviewState): PreviewAction {
   // Before the trophy fallback, which would otherwise answer "0 more
   // trophies to go" for something trophies cannot buy at all.
   if (state.prize) return { kind: 'prize' };
+  if (state.passLevel) return { kind: 'pass', level: state.passLevel };
 
   const need = state.needTrophies ?? 0;
   return { kind: 'locked', needTrophies: need, short: Math.max(0, need - state.trophies) };
@@ -131,6 +142,8 @@ export function actionLabel(action: PreviewAction): string {
       return `${action.short} more trophies to go`;
     case 'prize':
       return 'Win it in a cup';
+    case 'pass':
+      return `Season pass level ${action.level}`;
   }
 }
 

@@ -3,6 +3,7 @@ import { AiDifficultyId } from './ai';
 import { ModeId } from './modes';
 import type { TournamentState } from './tournament';
 import { RewardRange, rollReward } from './rewards';
+import type { SeasonState } from './seasonPass';
 
 /**
  * Trophy progression, Clash Royale style: win trophies on victory, lose
@@ -76,6 +77,22 @@ export interface Progress {
    * because the row was tidied away, would be a real bug.
    */
   tournaments?: Record<string, TournamentState>;
+  /**
+   * Where this player stands in the current season pass
+   * (src/game/seasonPass.ts). Absent until the first battle after the
+   * pass arrived on 30 Sep 2026; a state from an older season is
+   * replaced, not added to.
+   */
+  season?: SeasonState;
+  /**
+   * Snowy Hollow and Volcano Rim moved from the trophy ladder to the
+   * season pass on 30 Sep 2026, and anybody who had already climbed
+   * past either one KEEPS it. That hand-over happens exactly once, the
+   * first time this version loads a save, and this records that it has
+   * — otherwise a player who crossed 1,475 trophies next month would be
+   * handed Snowy Hollow by the old ladder through the back door.
+   */
+  passArenasKept?: true;
 }
 
 /**
@@ -108,7 +125,6 @@ export type UnlockId =
   | 'midnight-dice'
   // The long ladder, added 26 Aug 2026 — eight themed battlefields and
   // six dice, still alternating so there is always something close.
-  | 'snow-arena'
   | 'ruby-dice'
   | 'desert-arena'
   | 'ocean-dice'
@@ -116,7 +132,6 @@ export type UnlockId =
   | 'lavender-dice'
   | 'aurora-arena'
   | 'slate-dice'
-  | 'volcano-arena'
   | 'blossom-dice'
   | 'cavern-arena'
   | 'copper-dice'
@@ -170,10 +185,10 @@ export const TIERS: Tier[] = [
     true only of gaps that all grow by the same fifty — fourteen of those,
     each wider than the 300 below, come to at least 9,450 and overshoot.
 
-    Four twenty-fives at the bottom of the run buy the difference: 325,
-    375, 425, 475 and then ten clean fifties, 500 through 950, summing to
-    exactly 8,850. It is why Snowy Hollow and Desert Dunes sit on 1,475
-    and 2,275 rather than round hundreds.
+    Until 30 Sep 2026 that was four twenty-fives at the bottom of the
+    run — 325, 375, 425, 475 — and then ten clean fifties, 500 through
+    950, summing to exactly 8,850. Two rungs then left for the season
+    pass and the run was respaced; see the note beside Ruby Dice below.
 
     Midnight Dice stays on 1,150, and that is not for tidiness. Its Game
     Center achievement id is `…trophies1150`, the number is IN the id, and
@@ -186,19 +201,37 @@ export const TIERS: Tier[] = [
     a weekend — the long game for Marc and AJ. FAMILY mode still opens
     everything for testing.
   */
-  { at: 1475, name: 'Snowy Hollow', emoji: '⛄', id: 'snow-arena' },
-  { at: 1850, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
-  { at: 2275, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
-  { at: 2750, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
-  { at: 3250, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
-  { at: 3800, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
-  { at: 4400, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
-  { at: 5050, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
-  { at: 5750, name: 'Volcano Rim', emoji: '🌋', id: 'volcano-arena' },
-  { at: 6500, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
-  { at: 7300, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
-  { at: 8150, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
-  { at: 9050, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
+  /*
+    Snowy Hollow sat here, at 1475, and Volcano Rim at 5750, until 30
+    Sep 2026, when David moved both to the season pass: "make the
+    volcano rim and snowy hollow arenas unlocked through the season pass
+    only." Anybody already past either rung keeps it — see
+    `passArenasKept` and keepPassArenas() in loadout.ts, which read those
+    two numbers from FORMER_LADDER there rather than from here.
+
+    THE RUNGS ABOVE WERE RESPACED to close the two holes, under three
+    rules that all had to hold at once:
+
+      - The summit stays 10,000 exactly (Marc, 27 Aug 2026, above).
+      - Every step is bigger than the one below it.
+      - NOTHING MOVES UP. An item that moved up would lock itself again
+        for anybody sitting between its old and new number, so every
+        rung either stayed put or came DOWN — things only arrive sooner.
+
+    The twelve steps from Midnight Dice are now 350, 400, 450, 500, 550,
+    650, 700, 850, 950, 1050, 1150 and 1250, which sum to the same 8,850.
+  */
+  { at: 1500, name: 'Ruby Dice', emoji: '🍒', id: 'ruby-dice' },
+  { at: 1900, name: 'Desert Dunes', emoji: '🌵', id: 'desert-arena' },
+  { at: 2350, name: 'Ocean Dice', emoji: '🌊', id: 'ocean-dice' },
+  { at: 2850, name: 'Autumn Woods', emoji: '🍂', id: 'autumn-arena' },
+  { at: 3400, name: 'Lavender Dice', emoji: '💐', id: 'lavender-dice' },
+  { at: 4050, name: 'Frozen Lights', emoji: '🌌', id: 'aurora-arena' },
+  { at: 4750, name: 'Slate Dice', emoji: '🗿', id: 'slate-dice' },
+  { at: 5600, name: 'Blossom Dice', emoji: '🌸', id: 'blossom-dice' },
+  { at: 6550, name: 'Crystal Cavern', emoji: '💎', id: 'cavern-arena' },
+  { at: 7600, name: 'Copper Dice', emoji: '🥉', id: 'copper-dice' },
+  { at: 8750, name: 'Sky Kingdom', emoji: '🌈', id: 'sky-arena' },
   { at: 10000, name: 'Moon Base', emoji: '🌕', id: 'moon-arena' },
 ];
 
@@ -386,6 +419,20 @@ export function setTournamentState(id: string, state: TournamentState): Progress
   };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
   return current;
+}
+
+/** Remember where this player stands in the season pass. */
+export function setSeasonState(state: SeasonState): Progress {
+  current = { ...current, season: state };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  return current;
+}
+
+/** Record that the two former ladder arenas have been handed over. */
+export function markPassArenasKept(): void {
+  if (current.passArenasKept) return;
+  current = { ...current, passArenasKept: true };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
 }
 
 /** Everything known about this player's tournaments. Never undefined. */

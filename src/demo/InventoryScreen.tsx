@@ -1,3 +1,4 @@
+import { seasonLevelOf } from '../game/seasonPass';
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
@@ -144,6 +145,11 @@ export function InventoryScreen({
                     which says the die is already earned.
                   */
                   <Text style={styles.priceTag}>Win it in a cup</Text>
+                ) : skin.pass ? (
+                  // Season pass only — same reason as the cup prize above.
+                  <Text style={styles.priceTag}>
+                    Pass level {seasonLevelOf('dice', skin.id)}
+                  </Text>
                 ) : (
                   <View style={styles.priceTagRow}>
                     <TrophyIcon size={11} color={THEME.inkFaint} />
@@ -214,6 +220,10 @@ export function InventoryScreen({
                   >
                     {ARENA_PRICES[id]}
                   </CoinLabel>
+                ) : seasonLevelOf('arena', id) !== null ? (
+                  <Text style={styles.priceTag}>
+                    Pass level {seasonLevelOf('arena', id)}
+                  </Text>
                 ) : (
                   <View style={styles.priceTagRow}>
                     <TrophyIcon size={11} color={THEME.inkFaint} />

@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.102.0 — 2026-09-30 · requested by David
+
+"Add a season pass with levels and exp you earn are counted towards the
+season pass. Make the rewards be small amounts of coins or trophies that
+slowly increase in amounts the higher level you go. Make this season pass
+have the fire and ice dice as the way to obtain them and also make the
+volcano rim and snowy hollow arenas unlocked through the season pass
+only."
+
+**The season pass — Season 1, Fire & Ice.** Every finished battle against
+the computer earns experience: Easy 40 / 25 / 15 for a win, a draw or a
+loss, Medium 60 / 35 / 20, Hard 90 / 50 / 30. Friendly battles earn none,
+the same as they earn no coins. Thirty levels, each needing a little more
+than the last (120 XP for level 1, rising 15 a level; about 10,000 in
+all, around 170 Medium wins). Every level pays: odd levels coins, 20
+rising to 160; even levels trophies, 4 rising to 17. Paid on the spot,
+with a popup, through the same `payPrize` a cup prize uses.
+
+**Four levels are the only way to get four things:** the Ice dice at 6,
+Snowy Hollow at 12, the Fire dice at 20 and Volcano Rim at 30. The Fire
+and Ice dice are off the Store shelf; Snowy Hollow and Volcano Rim are off
+the trophy ladder.
+
+- **Nobody loses anything.** Anybody who had already climbed past Snowy
+  Hollow (1,475) or Volcano Rim (5,750) keeps them — handed over once, on
+  the first launch of this version, with a popup saying so, and never
+  again, so the old ladder is not left open through the back door.
+  Anybody who bought the Fire or Ice dice in the day they were on sale
+  keeps them, and their level pays 1,000 coins instead.
+- **The ladder was respaced** to close the two holes, keeping its three
+  rules: the top is still exactly 10,000 (Marc's request of 27 Aug), every
+  step is bigger than the one below it, and **no rung moved up** — every
+  reward above Midnight Dice now comes the same or sooner. Steps from
+  Midnight Dice: 350, 400, 450, 500, 550, 650, 700, 850, 950, 1050, 1150,
+  1250. No Game Center achievement is affected; the highest trophy
+  achievement is 1,150, which did not move.
+
+**Where it is:** a card at the top of the Cups tab — level, a bar to the
+next one, and the whole track of thirty rewards; tap the die or the
+battlefield on one to preview it. The result screen now says "+60 XP ·
+season level 8" under the coins. In the Inventory, the four show "Pass
+level N"; their preview button says "Season pass level N".
+
+**It is free.** The paid season pass parked in `products.ts` is still
+parked — selling one needs StoreKit and a new build.
+
+The two price votes on the HQ board for the Fire and Ice dice no longer
+decide anything, since neither is sold now.
+
+`tests/seasonPass.test.ts` adds nineteen checks, each of the important
+ones mutation-tested, including that the old ladder cannot hand out the
+two battlefields after the one-time hand-over, and that no rung moved up.
+
 ## v1.101.1 — 2026-09-30 · found by the test suite
 
 **A resting Fire die's flame could drift over the colour on top.** Every

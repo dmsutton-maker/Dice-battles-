@@ -86,7 +86,7 @@ export function setsOwned(trophies: number): number {
     // Won, not free. Checked before the "no price, no unlock" line
     // below, which would otherwise hand the Amethyst die to everyone on
     // install — that combination is how Ivory says it is free.
-    if (skin.prize) return owns(skin.id);
+    if (skin.prize || skin.pass) return owns(skin.id);
     if (skin.price !== undefined) return owns(skin.id);
     if (skin.unlock === null || skin.unlock === undefined) return true;
     const tier = TIERS.find((t) => t.id === skin.unlock);

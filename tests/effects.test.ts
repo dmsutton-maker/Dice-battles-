@@ -98,12 +98,13 @@ suite('fire dice · charring the ground', () => {
 });
 
 suite('ice dice · the skin', () => {
-  test('it is on the Store shelf, with a price and its ice', () => {
+  test('it is won on the season pass, not sold', () => {
     const ice = skinById('ice');
     assertEqual(ice.id, 'ice', 'the Ice dice exist');
     assertEqual(ice.effect, 'ice', 'the skin is the one that freezes');
-    assert(STORE_SKINS.some((s) => s.id === 'ice'), 'it is on the shelf');
-    note(`placeholder price ${ice.price}`);
+    assertEqual(ice.price, undefined, 'the Ice dice are still for sale');
+    assert(!STORE_SKINS.some((s) => s.id === 'ice'), 'the Ice dice are still on the shelf');
+    assert(ice.pass === true, 'the Ice dice are not a season pass die');
   });
 
   test('the Store picture shows ice, not just the shell', () => {

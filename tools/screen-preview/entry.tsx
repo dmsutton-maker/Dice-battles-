@@ -118,6 +118,10 @@ if (params.get('screen') === 'dots') {
         }}
         today="2026-09-28"
         onPlay={() => {}}
+        // Part-way up the season pass, past the Ice dice at level 6, so
+        // reached, next and still-to-come tiles all show at once.
+        season={{ season: 'season-1', xp: 1460, paid: 7 }}
+        onPreview={() => {}}
       />
     </View>,
   );

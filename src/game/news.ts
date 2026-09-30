@@ -89,6 +89,29 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-102-0-season-pass',
+    date: '30 September 2026',
+    version: 'v1.102.0',
+    title: 'The season pass: Fire & Ice',
+    icon: 'cups',
+    body:
+      'Every battle you finish now earns experience — a win more than a ' +
+      'loss, and Hard more than Easy — and experience climbs the season ' +
+      'pass, at the top of the Cups tab. There are thirty levels, and every ' +
+      'one pays something: a few coins or a few trophies, a little more ' +
+      'the higher you go.\n\n' +
+      'Four levels are special. The Ice dice at level 6, Snowy Hollow at ' +
+      'level 12, the Fire dice at level 20, and Volcano Rim at level 30. ' +
+      'The season pass is the only way to get them now. If you already ' +
+      'had Snowy Hollow or Volcano Rim, you keep them — and if you already ' +
+      'had the Fire or Ice dice, their level pays you coins instead.\n\n' +
+      'The pass is free. Every level is earned by playing. Tap a die or a ' +
+      'battlefield on the pass to look at it before you get there.\n\n' +
+      'To make room, the trophy ladder above Midnight Dice has been ' +
+      'respaced. Nothing got harder to earn: every reward on it now comes ' +
+      'the same or sooner, and the top is still 10,000.',
+  },
+  {
     id: 'v1-101-0-fire-and-ice-dice',
     date: '30 September 2026',
     version: 'v1.101.0',

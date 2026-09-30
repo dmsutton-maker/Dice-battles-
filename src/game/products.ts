@@ -202,9 +202,11 @@ export const PRODUCTS: Product[] = [
     usd: 2.99,
     available: false,
     blockedBy:
-      'There is no XP or levels system in the game — that is what a ' +
-      'season pass is made of, and it does not exist. Building it is a ' +
-      'piece of game design, not a purchase.',
+      'A FREE season pass exists since 30 Sep 2026 (src/game/seasonPass.ts): ' +
+      'experience from every battle, thirty levels, the Fire and Ice dice ' +
+      'and two battlefields. Selling one would mean a second, paid track ' +
+      'on top of it — which needs StoreKit, a new build, and David deciding ' +
+      'what a child would be paying for that playing does not already give.',
   },
 ];
 

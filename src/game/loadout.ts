@@ -6,12 +6,21 @@ import {
   DiceSkin,
   DICE_SKINS,
   LADDER_SKINS,
+  PASS_SKINS,
   PRIZE_SKINS,
   skinById,
   STORE_SKINS,
 } from './diceSkins';
-import { owns } from './currency';
-import { hasUnlockAll, isUnlocked, TIERS, UnlockId } from './progress';
+import { grantItem, owns } from './currency';
+import {
+  getProgress,
+  hasUnlockAll,
+  isUnlocked,
+  markPassArenasKept,
+  TIERS,
+  UnlockId,
+} from './progress';
+import { seasonLevelOf } from './seasonPass';
 
 /**
  * What the player has EQUIPPED, as opposed to what they have earned
@@ -54,6 +63,50 @@ export const ARENA_PRICES: Partial<Record<ArenaId, number>> = Object.fromEntries
 );
 
 /**
+ * Battlefields won on the season pass, in the order the pass hands them
+ * over. Neither on the ladder nor on the shelf.
+ */
+export const PASS_ARENAS: ArenaId[] = (Object.keys(THEMED_ARENA_META) as ThemedArenaId[])
+  .filter((id) => THEMED_ARENA_META[id].pass)
+  .sort((a, b) => (seasonLevelOf('arena', a) ?? 0) - (seasonLevelOf('arena', b) ?? 0));
+
+/**
+ * Where the two season-pass battlefields used to sit on the trophy
+ * ladder, before 30 Sep 2026. Read once, by keepPassArenas, and never
+ * again: see Progress.passArenasKept.
+ */
+export const FORMER_LADDER: Partial<Record<ArenaId, number>> = {
+  snow: 1475,
+  volcano: 5750,
+};
+
+/**
+ * Anybody who had already earned Snowy Hollow or Volcano Rim on the
+ * trophy ladder keeps it, now that the season pass is the only way in.
+ *
+ * Runs ONCE per save — the first launch of the version that moved them
+ * — and records that it has. Running it every launch would leave the old
+ * ladder open through the back door: somebody crossing 1,475 trophies
+ * next month would be handed Snowy Hollow without the pass.
+ *
+ * Needs both the progress and the wallet loaded. Returns the ids handed
+ * over, for the tests.
+ */
+export function keepPassArenas(): ArenaId[] {
+  const progress = getProgress();
+  if (progress.passArenasKept) return [];
+  const kept: ArenaId[] = [];
+  for (const [id, at] of Object.entries(FORMER_LADDER) as [ArenaId, number][]) {
+    if (progress.trophies >= at && !owns(arenaKey(id))) {
+      grantItem(arenaKey(id));
+      kept.push(id);
+    }
+  }
+  markPassArenasKept();
+  return kept;
+}
+
+/**
  * The wallet key an arena purchase is stored under.
  *
  * Prefixed, because wallet.owned is one flat list shared with dice skins
@@ -80,7 +133,8 @@ export const ARENA_ORDER: ArenaId[] = (() => {
   const store = all
     .filter((id) => ARENA_PRICES[id] !== undefined)
     .sort((a, b) => ARENA_PRICES[a]! - ARENA_PRICES[b]!);
-  return [...ladder, ...store];
+  // The season's battlefields last, like the season's dice.
+  return [...ladder, ...store, ...PASS_ARENAS];
 })();
 
 /** The battlefields on the Store shelf, cheapest first. */
@@ -113,6 +167,10 @@ export const INVENTORY_SKIN_ORDER: DiceSkin[] = [
   // Tournament prizes last: the rarest things in the cupboard, and the
   // only ones whose locked card is not an invitation to spend anything.
   ...PRIZE_SKINS,
+  // The season pass's dice, in the order the pass hands them over.
+  ...PASS_SKINS.slice().sort(
+    (a, b) => (seasonLevelOf('dice', a.id) ?? 0) - (seasonLevelOf('dice', b.id) ?? 0),
+  ),
 ];
 
 const STORAGE_KEY = 'dice-battles:loadout';
@@ -190,7 +248,7 @@ export function isSkinUnlocked(skinId: string, trophies: number): boolean {
     achievement deliberately does not count it while that is on (see
     setsOwned).
   */
-  if (skin.prize) return hasUnlockAll() || owns(skin.id);
+  if (skin.prize || skin.pass) return hasUnlockAll() || owns(skin.id);
   if (skin.price !== undefined) return hasUnlockAll() || owns(skin.id);
   if (skin.unlock === null || skin.unlock === undefined) return true;
   return isUnlocked(skin.unlock, trophies);

@@ -7,6 +7,7 @@ import { awardTrophies } from './progress';
 import { grantCoins } from './currency';
 import { rollReward } from './rewards';
 import { PrizeItem, TournamentPrize } from './tournament';
+import { SEASON_ITEM_WORTH } from './seasonPass';
 
 /**
  * Turning a tournament prize into things a player actually has.
@@ -57,7 +58,9 @@ export function resolveItem(item: PrizeItem): ResolvedItem | null {
       name: `${skin.name} Dice`,
       emoji: skin.emoji,
       walletKey: skin.id,
-      coins: skin.price ?? 0,
+      // A season-pass die has no shelf price, and somebody who bought one
+      // on the day it was sold still has to be paid SOMETHING at its level.
+      coins: skin.price ?? (skin.pass ? SEASON_ITEM_WORTH : 0),
     };
   }
   if (!(item.id in ARENAS)) return null;
@@ -68,7 +71,7 @@ export function resolveItem(item: PrizeItem): ResolvedItem | null {
     name: ARENAS[id].name,
     emoji: ARENAS[id].emoji,
     walletKey: arenaKey(id),
-    coins: meta?.price ?? 0,
+    coins: meta?.price ?? (meta?.pass ? SEASON_ITEM_WORTH : 0),
   };
 }
 

@@ -27,6 +27,7 @@ import {
   equipSkin,
   ARENA_ORDER,
   isArenaUnlocked,
+  keepPassArenas,
   isSkinUnlocked,
   getLoadout,
   loadLoadout,
@@ -85,6 +86,7 @@ import {
   tierLabel,
   TROPHY_STAKES,
   setTournamentState,
+  setSeasonState,
 } from '../game/progress';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
@@ -176,6 +178,15 @@ import {
   TOURNAMENTS,
 } from '../game/tournament';
 import { payPrize } from '../game/prizes';
+import {
+  addXp,
+  asPrize,
+  battleXp,
+  levelFor,
+  rewardFor,
+  seasonLevelOf,
+  SeasonState,
+} from '../game/seasonPass';
 import { Reward, RewardPopup } from './RewardPopup';
 import {
   loadColorblindMode,
@@ -277,6 +288,27 @@ export function DiceDemoScreen() {
           A state for a tournament nobody can see costs one unread row.
         */
         setCupStates(progress.tournaments ?? {});
+        setSeason(progress.season);
+        /*
+          Snowy Hollow and Volcano Rim left the trophy ladder for the
+          season pass. Whoever had already earned one keeps it — handed
+          over here, once, now that the save and the wallet are both in.
+        */
+        const kept = keepPassArenas();
+        if (kept.length > 0) {
+          setWallet({ ...getWallet() });
+          setRewards((queue) => [
+            ...queue,
+            ...kept.map((id) => ({
+              emoji: ARENAS[id].emoji,
+              name: ARENAS[id].name,
+              kicker: 'STILL YOURS',
+              note:
+                'This battlefield is a season pass reward now. You had already ' +
+                'earned it, so it stays in your Inventory.',
+            })),
+          ]);
+        }
         // First launch opens the tutorial on its own. Never again after
         // that — it stays behind the ❓ for whoever picks the phone up in
         // six months and has no idea what any of this is.
@@ -721,6 +753,12 @@ export function DiceDemoScreen() {
   });
   const [lastDelta, setLastDelta] = useState<number | null>(null);
   const [lastCoins, setLastCoins] = useState(0);
+  /**
+   * The season pass (src/game/seasonPass.ts): where this player stands,
+   * and the experience the last battle earned, for the result screen.
+   */
+  const [season, setSeason] = useState<SeasonState | undefined>(undefined);
+  const [lastXp, setLastXp] = useState(0);
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
 
@@ -1032,6 +1070,7 @@ export function DiceDemoScreen() {
         friendlyRef.current = null;
         setLastDelta(0);
         setLastCoins(0);
+        setLastXp(0);
         return;
       }
       // Counted here, at the real end of the game, but NOT shown here —
@@ -1113,6 +1152,49 @@ export function DiceDemoScreen() {
           })),
         ]);
         playFanfare();
+      }
+
+      /*
+        THE SEASON PASS. Every finished battle against the computer earns
+        experience — a loss too, a win more, Hard most — and each level
+        reached is paid on the spot through `payPrize`, the same road a
+        cup prize takes. Inside the paid path, below the friendly-battle
+        return, for the same reason the coins are: a friendly battle
+        against your brother fills nobody's pass.
+      */
+      const xp = battleXp(outcome, difficultyRef.current);
+      const climbed = addXp(getProgress().season, xp);
+      setSeasonState(climbed.state);
+      setSeason(climbed.state);
+      setLastXp(xp);
+      for (const level of climbed.reached) {
+        const reward = rewardFor(level);
+        const paid = payPrize(asPrize(reward));
+        setWallet({ ...getWallet() });
+        setTrophies(getProgress().trophies);
+        const what = paid.item
+          ? `The ${paid.item.name} — yours to keep.`
+          : paid.insteadOf
+            ? `You already had the ${paid.insteadOf.name}, so it came as ${paid.coins} coins instead.`
+            : paid.coins > 0
+              ? `${paid.coins} coins.`
+              : `${paid.trophies} trophies.`;
+        setRewards((queue) => [
+          ...queue,
+          {
+            emoji: paid.item?.emoji ?? (paid.coins > 0 ? '🪙' : '🏆'),
+            name: `Season level ${level}!`,
+            kicker: 'SEASON PASS',
+            note: `${what} See the whole pass in the Cups tab.`,
+          },
+          ...paid.unlocked.map((tier) => ({
+            emoji: tier.emoji,
+            name: tier.name,
+            kicker: 'NEW REWARD UNLOCKED',
+            note: 'Put it on in the Inventory whenever you like.',
+          })),
+        ]);
+        if (paid.item) playFanfare();
       }
 
       if (outcome === 'tie') {
@@ -1877,6 +1959,7 @@ export function DiceDemoScreen() {
           equipped: arenaId === preview.id,
           needTrophies: need,
           price,
+          passLevel: seasonLevelOf('arena', preview.id),
           // Coins are spent in the Store and nowhere else, exactly as for
           // dice — the Inventory shows the price but points at the shop.
           canBuy: preview.from === 'store',
@@ -1900,6 +1983,7 @@ export function DiceDemoScreen() {
         price: skin.price,
         needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
         prize: skin.prize,
+        passLevel: skin.pass ? seasonLevelOf('dice', skin.id) : null,
         canBuy: preview.from === 'store',
       }),
     };
@@ -2466,6 +2550,11 @@ export function DiceDemoScreen() {
           <Text style={[styles.coinLine, styles.onGlass]}>
             +{lastCoins} coins → {wallet.coins}
           </Text>
+          {lastXp > 0 && (
+            <Text style={[styles.coinLine, styles.onGlass]}>
+              +{lastXp} XP · season level {levelFor(season?.xp ?? 0)}
+            </Text>
+          )}
           {upNext && (
             <View style={styles.trophyNextRow}>
               <TierIcon tier={upNext} size={22} />
@@ -2496,6 +2585,11 @@ export function DiceDemoScreen() {
           <Text style={[styles.coinLine, styles.onGlass]}>
             +{lastCoins} coins → {wallet.coins}
           </Text>
+          {lastXp > 0 && (
+            <Text style={[styles.coinLine, styles.onGlass]}>
+              +{lastXp} XP · season level {levelFor(season?.xp ?? 0)}
+            </Text>
+          )}
           {difficultyRow}
           {roundOverButtons}
         </View>
@@ -2589,6 +2683,8 @@ export function DiceDemoScreen() {
           states={cupStates}
           today={todayStamp()}
           onPlay={playCup}
+          season={season}
+          onPreview={showPreview}
         />
       )}
 
@@ -2951,6 +3047,11 @@ export function DiceDemoScreen() {
           <Text style={[styles.coinLine, styles.onGlass]}>
             +{lastCoins} coins → {wallet.coins}
           </Text>
+          {lastXp > 0 && (
+            <Text style={[styles.coinLine, styles.onGlass]}>
+              +{lastXp} XP · season level {levelFor(season?.xp ?? 0)}
+            </Text>
+          )}
           <Text style={[styles.overlayBody, styles.onGlass]}>
             {opponent.name} wins this {MODES[mode].name} battle {aiScore}–{playerScore}.{'\n'}
             Avenge your prisoners!
