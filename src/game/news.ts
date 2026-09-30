@@ -89,6 +89,28 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-101-0-fire-and-ice-dice',
+    date: '30 September 2026',
+    version: 'v1.101.0',
+    title: 'Fire dice and Ice dice',
+    icon: 'dice',
+    body:
+      'Two new dice in the Store, and they are the first ones that do ' +
+      'something rather than just look like something.\n\n' +
+      'The Fire dice burn. Flames trail behind them through the air, ' +
+      'and wherever they land they scorch the ground black for a few ' +
+      'seconds. Throw one into the moat on Hard and the fire goes out ' +
+      'with a splash and a cloud of steam — the next throw lights it ' +
+      'again.\n\n' +
+      'The Ice dice are made of ice. Cold mist spills off them and the ' +
+      'ground frosts over wherever they touch down. Throw one into the ' +
+      'moat and the whole pond freezes, with the die stuck half out of ' +
+      'the ice.\n\n' +
+      'Tap either one in the Store to watch it on the battlefield ' +
+      'before you buy. They only change how things look: the moat ' +
+      'still catches a die exactly as it always has, frozen or not.',
+  },
+  {
     id: 'v1-97-0-cups-are-tournaments',
     date: '25 September 2026',
     version: 'v1.97.0',

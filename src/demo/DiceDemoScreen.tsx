@@ -1708,13 +1708,14 @@ export function DiceDemoScreen() {
   */
   const sceneToken = `${sceneArenaId}|${sceneSkin.id}`;
   /*
-    The Fire dice burn between rolls as well as during them, and a board
-    at `frameloop: 'never'` is a photograph — the flames stop in mid-air.
-    So a battle with that skin on the table keeps drawing while the dice
-    are still. It costs battery, and only for the player who chose the
-    one die whose whole point is that it moves.
+    The Fire and Ice dice move between rolls as well as during them —
+    flames, mist, marks fading off the ground — and a board at
+    `frameloop: 'never'` is a photograph: the flames stop in mid-air. So
+    a battle with one of those skins on the table keeps drawing while the
+    dice are still. It costs battery, and only for the player who chose a
+    die whose whole point is that it moves.
   */
-  const burning = sceneSkin.effect === 'fire';
+  const burning = sceneSkin.effect !== undefined;
   const [drawnToken, setDrawnToken] = useState('');
   const stale = preview !== null && drawnToken !== sceneToken;
 

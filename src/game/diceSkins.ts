@@ -43,10 +43,10 @@ export interface DiceSkin {
   prize?: true;
   /**
    * Something the skin does beyond its paint, drawn by the scene rather
-   * than the shell texture. Only 'fire' exists — see src/dice/diceFire.ts.
+   * than the shell texture: 'fire' and 'ice' — see src/dice/dieEffect.ts.
    * Looks only: an effect never reaches the physics or the settle rule.
    */
-  effect?: 'fire';
+  effect?: 'fire' | 'ice';
 }
 
 export const DICE_SKINS: DiceSkin[] = [
@@ -331,6 +331,35 @@ export const DICE_SKINS: DiceSkin[] = [
     pattern: 'embers',
     price: 1500,
     effect: 'fire',
+  },
+  /*
+    ICE — the Fire dice's opposite number.
+
+    David, 30 Sep 2026: "can we do the same concept with ice like dice
+    made of ice and when it touches the ground, it freezes the ground
+    around it a little bit and maybe freezes the pond and you see it like
+    half sticking out of the pond frozen."
+
+    Clear pale ice with cracks and trapped bubbles, cold mist off it,
+    frost where it lands, and on Hard a moat that freezes over with the
+    die caught in it. Looks only: the die still sinks and is fished out
+    on the usual clock, so the ice never makes the moat safe.
+
+    THE PRICE IS A PLACEHOLDER, like Fire's, until the boys vote.
+
+    Not to be confused with Frost (300 coins), which is snowflakes
+    PAINTED on a white shell. This one is the die made of ice.
+  */
+  {
+    id: 'ice',
+    name: 'Ice',
+    emoji: '🧊',
+    body: '#b4dcee',
+    pattern: 'ice',
+    // Not 1500: no two things on a shelf may cost the same (the suite
+    // holds that), and this is a stand-in until the vote anyway.
+    price: 1550,
+    effect: 'ice',
   },
 
   /*

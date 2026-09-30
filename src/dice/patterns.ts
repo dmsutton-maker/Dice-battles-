@@ -75,7 +75,8 @@ export type PatternId =
   // Lavender, 31 Aug 2026 — the other flat cube whose name promised a
   // plant. Sprigs of the plant itself: green stems, purple bud spikes.
   | 'lavender'
-  | 'embers';
+  | 'embers'
+  | 'ice';
 
 const SIZE = 64;
 
@@ -285,7 +286,10 @@ export type ColorPatternId =
   | 'fish'
   // Embers, 29 Sep 2026, for the Fire dice: black char, a red glow in
   // the cracks and a hot orange core along them — three colours.
-  | 'embers';
+  | 'embers'
+  // Ice, 30 Sep 2026, for the Ice dice: facets of pale blue, deeper
+  // blue in the cracks, white where they catch the light.
+  | 'ice';
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 const PAINTERS: Record<MaskPatternId, Painter> = {
@@ -1430,6 +1434,57 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     px = mixRgb(px, rgb('#e0621c'), smoothstep(0.035, 0.0, seam) * 0.9);
     // Fine ash speckle, so the char is never a flat fill.
     return mixRgb(px, rgb('#5e5048'), hashCell(x, y) > 0.965 ? 0.5 : 0);
+  },
+  ice: (x, y) => {
+    /*
+      A block of clear ice: facets where it has fractured, each a
+      slightly different pale blue; thin white cracks along the facet
+      edges with a deeper blue shadow beside them; bubbles trapped in
+      it; and a frosted bloom where the surface has iced over.
+
+      Kept pale on purpose, like the shell: the Blue face sticker is a
+      deep royal blue, and a shell anywhere near it would crowd that
+      face. (No hex here — screen.test.ts reads every colour written in
+      this section and checks it against the faces.)
+    */
+    const cell = 16;
+    const gx = Math.floor(x / cell);
+    const gy = Math.floor(y / cell);
+    // Nearest and second-nearest jittered cell centre: their difference
+    // is the distance to a facet edge.
+    let d1 = 1e9;
+    let d2 = 1e9;
+    let owner = 0;
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        const cx = (gx + ox) * cell + hashCell(gx + ox, gy + oy) * cell;
+        const cy = (gy + oy) * cell + hashCell(gx + ox + 31, gy + oy + 17) * cell;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < d1) {
+          d2 = d1;
+          d1 = d;
+          owner = hashCell(gx + ox + 5, gy + oy + 9);
+        } else if (d < d2) d2 = d;
+      }
+    }
+    const edge = d2 - d1;
+    let px = mixRgb(rgb('#a6d4ea'), rgb('#d2eef9'), owner * 0.8 + fbm(x, y, [32, 16], [1, 0.5]) * 0.2);
+    // Depth: a darker blue shadow either side of a crack...
+    px = mixRgb(px, rgb('#7fb9d6'), smoothstep(3.2, 1.2, edge) * 0.55);
+    // ...and the crack itself catching the light.
+    px = mixRgb(px, rgb('#f6fdff'), smoothstep(1.1, 0.2, edge) * 0.9);
+    // Frosted bloom on the surface.
+    const frost = fbm(x + 40, y + 13, [16, 8], [1, 0.6]);
+    px = mixRgb(px, rgb('#eef8fd'), smoothstep(0.2, 0.7, frost) * 0.45);
+    // Bubbles: small bright rings with a dark heart.
+    const h = hashCell(Math.floor(x / 5), Math.floor(y / 5));
+    if (h > 0.93) {
+      const bx = Math.floor(x / 5) * 5 + 2.5;
+      const by = Math.floor(y / 5) * 5 + 2.5;
+      const r = Math.hypot(x - bx, y - by);
+      if (r < 1.8) px = mixRgb(px, rgb(r < 0.9 ? '#8cc3dc' : '#ffffff'), 0.7);
+    }
+    return px;
   },
   slate: (x, y) => {
     // Slate splits along its bedding: flat planes, a stepped edge where

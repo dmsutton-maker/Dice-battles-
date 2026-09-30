@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.101.0 — 2026-09-30 · requested by David
+
+"Can the fire when it's rolling show signs of charring the ground around
+it after it hits the ground and then you could just remove the char
+after a few seconds and then also can we do the same concept with ice
+like dice made of ice and when it touches the ground, it freezes the
+ground around it a little bit and maybe freezes the pond and you see it
+like half sticking out of the pond frozen."
+
+**The Fire dice scorch the ground.** Wherever a burning die comes down
+it leaves a black scorch mark, with sparks and a puff of smoke off the
+impact, and another under where it stops. The marks fade away on their
+own after about four seconds. A die that has been put out in the moat
+leaves none, and no mark is ever left floating on the water.
+
+**New: the Ice dice.** A die made of ice — pale cracked facets with
+bubbles frozen in them — that breathes cold mist which spills down its
+sides, sparkles, and frosts the ground wherever it lands. On Hard, a die
+that goes into the moat freezes the pond: the ice races out across the
+water from where it went in, with a crack of cold and chips of ice, and
+the die is caught half sticking out of it. The pond stays frozen for a
+few seconds after the die is fished out, then thaws. The Store card has
+icicles and frost painted on, like the Fire dice's flames.
+
+**Looks only.** The frozen pond is a picture over the water: the die
+underneath still sinks and is fished out on exactly the same clock as
+any other die, so the ice never makes the moat safe. Only the die's
+picture is held in the ice. The mist and the flames are never born over
+the face on top, which is the roll.
+
+**The price is a placeholder** — 1550 coins, just above Fire, until the
+boys vote on it.
+
+### Behind the scenes
+The fire's particle pool moved into its own file so the fire and the ice
+share one set of rules (`src/dice/particles.ts`), with the marks in
+`groundMarks.ts` and the ice in `diceIce.ts`. `tests/effects.test.ts`
+adds thirteen checks, each mutation-tested, including one that fails if
+the ice ever reaches for the physics or changes the sinking clock.
+
 ## v1.100.1 — 2026-09-30 · requested by David
 
 "I see it in the store now, but the picture of it when you're looking at

@@ -57,9 +57,9 @@ suite('fire dice · the skin', () => {
     note(`placeholder price ${fire.price} — the boys are voting on it`);
   });
 
-  test('no other skin catches fire', () => {
-    const burning = DICE_SKINS.filter((s) => s.effect !== undefined).map((s) => s.id);
-    assertEqual(burning.join(','), 'fire', 'only the Fire dice have an effect');
+  test('only the Fire and Ice dice have an effect', () => {
+    const moving = DICE_SKINS.filter((s) => s.effect !== undefined).map((s) => `${s.id}:${s.effect}`);
+    assertEqual(moving.sort().join(','), 'fire:fire,ice:ice', 'an unexpected skin has an effect');
   });
 
   test('the scene builds the fire only for a skin that asks for it', () => {
@@ -67,8 +67,8 @@ suite('fire dice · the skin', () => {
     // skin — every die anybody has equipped today — must pay nothing.
     const scene = readFileSync('src/demo/DiceScene.tsx', 'utf8');
     assert(
-      /dieEffect === 'fire' \? new DiceFire/.test(scene),
-      'DiceScene builds the fire unconditionally',
+      /dieEffect !== undefined\s*\?\s*createDieEffect\(/.test(scene),
+      'DiceScene builds an effect for every skin',
     );
     const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
     assert(
@@ -153,14 +153,32 @@ suite('fire dice · it never hides the roll', () => {
     assertEqual(over.length, 0, `${over.length} of ${all} flames are over the top face`);
   });
 
-  test('the fire is looks only: it touches neither physics nor the settle rule', () => {
-    const source = readFileSync('src/dice/diceFire.ts', 'utf8');
-    const imports = [...source.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
-    assertEqual(
-      imports.sort().join(', '),
-      '../game/tuning, three',
-      'diceFire.ts reaches for something other than three.js and the tuning numbers',
-    );
+  test('the effects are looks only: they touch neither physics nor the settle rule', () => {
+    /*
+      Every file an effect is built from, and everything each of them
+      imports. None may reach cannon, the dice bodies or the settle rule —
+      a skin that could change a roll would be a skin you could buy to win.
+    */
+    const allowed = new Set([
+      'three',
+      '../game/tuning',
+      '../game/obstacles',
+      './dieEffect',
+      './groundMarks',
+      './particles',
+      './diceFire',
+      './diceIce',
+    ]);
+    for (const file of ['diceFire', 'diceIce', 'dieEffect', 'groundMarks', 'particles']) {
+      const source = readFileSync(`src/dice/${file}.ts`, 'utf8');
+      const imports = [...source.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
+      const stray = imports.filter((m) => !allowed.has(m));
+      assertEqual(stray.join(', '), '', `${file}.ts reaches outside the effect's own files`);
+    }
+    // obstacles.ts is only read for where the moat IS; it must stay a
+    // plain table of numbers with no physics in it.
+    const obstacles = readFileSync('src/game/obstacles.ts', 'utf8');
+    assert(!/cannon/.test(obstacles), 'obstacles.ts now pulls in the physics engine');
   });
 
   test('nothing native, so it can ship over the air', () => {
@@ -191,9 +209,9 @@ suite('fire dice · it fits on a phone', () => {
 
   test('the scene wires the moat to the fire at the moments that matter', () => {
     const scene = readFileSync('src/demo/DiceScene.tsx', 'utf8');
-    assert(/splashT\.current = 0;[^]*?fireRef\.current\?\.douse\(i/.test(scene), 'a sink does not douse');
-    assert(/fireRef\.current\?\.surface\(i\);\s*respawn\(\);/.test(scene), 'being fished out does not leave it out');
-    assert(/throwDie\(body, \{ flick \}\)\);\s*fireRef\.current\?\.relight/.test(scene), 'a throw does not relight');
+    assert(/splashT\.current = 0;[^]*?fireRef\.current\?\.sank\(i/.test(scene), 'a sink does not douse');
+    assert(/fireRef\.current\?\.fishedOut\(i\);\s*respawn\(\);/.test(scene), 'being fished out does not leave it out');
+    assert(/throwDie\(body, \{ flick \}\)\);\s*fireRef\.current\?\.thrown/.test(scene), 'a throw does not relight');
   });
 });
 
@@ -240,6 +258,6 @@ suite('fire dice · what the shelf and the battle show', () => {
     const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
     const expr = screen.slice(screen.indexOf('frameloop={'), screen.indexOf('camera={{ position'));
     assert(/phase === 'battle' && \([^)]*burning/.test(expr), 'the flames freeze between rolls');
-    assert(/const burning = sceneSkin\.effect === 'fire';/.test(screen), 'burning is not tied to the Fire dice');
+    assert(/const burning = sceneSkin\.effect !== undefined;/.test(screen), 'the board is not kept moving for a skin with an effect');
   });
 });

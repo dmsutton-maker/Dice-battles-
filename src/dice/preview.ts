@@ -127,6 +127,7 @@ export function shellPreviewUri(skin: DiceSkin): string | null {
     skin.ink ?? skin.body,
   );
   if (skin.effect === 'fire') paintFlames(rgb);
+  if (skin.effect === 'ice') paintIce(rgb);
   const uri = encodePng(rgb, SIZE, SIZE);
   cache.set(skin.id, uri);
   return uri;
@@ -203,6 +204,67 @@ export function paintFlames(rgb: number[]): void {
       if (v <= inner) {
         const t = v / inner;
         mixInto(rgb, i, HOT, 0.9 * Math.min(1, (1 - t) / 0.2));
+      }
+    }
+  }
+}
+
+/*
+  Ice on the shelf picture of the Ice dice — the same reason as the
+  flames above: the shell painter draws the ice the die is made of, and
+  the cold coming off it is drawn by the scene. So the card gets
+  icicles hanging from the top edge, frost creeping in from the sides,
+  and a few sparkles. Deterministic, like the flames.
+*/
+const ICICLES: readonly (readonly [number, number, number])[] = [
+  // centre across the picture, length as a share of it, half-width
+  [0.08, 0.3, 0.06],
+  [0.22, 0.5, 0.07],
+  [0.37, 0.28, 0.05],
+  [0.52, 0.62, 0.08],
+  [0.68, 0.36, 0.06],
+  [0.82, 0.48, 0.07],
+  [0.95, 0.24, 0.05],
+];
+const SPARKLES: readonly (readonly [number, number])[] = [
+  [0.3, 0.72],
+  [0.74, 0.8],
+  [0.6, 0.34],
+];
+const WHITE = [248, 253, 255];
+const PALE = [214, 238, 250];
+const DEEP = [120, 180, 214];
+
+export function paintIce(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const u = (x + 0.5) / SIZE;
+      const v = (y + 0.5) / SIZE; // 0 at the top
+      const i = (y * SIZE + x) * 3;
+      // A band of frost along the top edge that the icicles hang from.
+      const band = 0.12 + Math.sin(u * 23) * 0.015;
+      if (v < band) mixInto(rgb, i, WHITE, 0.9 * Math.min(1, (band - v) / 0.03 + 0.4));
+      // Icicles: tapering spikes, with a shaded side and a lit edge.
+      for (const [c, len, w] of ICICLES) {
+        const reach = band + len * 0.75;
+        if (v >= reach || v < band - 0.02) continue;
+        const t = (v - band) / (reach - band); // 0 at the root, 1 at the tip
+        const half = w * (1 - Math.max(0, t));
+        const d = (u - c) / Math.max(half, 0.004);
+        if (Math.abs(d) >= 1) continue;
+        const color = d < -0.3 ? WHITE : d > 0.45 ? DEEP : PALE;
+        mixInto(rgb, i, color, 0.92 * Math.min(1, (1 - Math.abs(d)) / 0.3));
+      }
+      // Frost creeping in from the left, right and bottom edges.
+      const fromEdge = Math.min(u, 1 - u, 1 - v);
+      const creep = 0.07 + Math.abs(Math.sin(v * 31 + u * 7)) * 0.05;
+      if (fromEdge < creep) mixInto(rgb, i, WHITE, 0.75 * (1 - fromEdge / creep));
+      // Sparkles: a four-pointed glint.
+      for (const [sx, sy] of SPARKLES) {
+        const dx = Math.abs(u - sx) * SIZE;
+        const dy = Math.abs(v - sy) * SIZE;
+        const arm = (dx < 0.7 && dy < 4) || (dy < 0.7 && dx < 4);
+        if (arm) mixInto(rgb, i, WHITE, 1 - Math.max(dx, dy) / 5);
       }
     }
   }

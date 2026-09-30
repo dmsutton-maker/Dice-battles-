@@ -18,7 +18,7 @@ import {
   shouldCallRoll,
 } from '../dice/settle';
 import { DieMesh } from '../dice/DieMesh';
-import { DiceFire, DieSample } from '../dice/diceFire';
+import { createDieEffect, DieEffect, DieEffectId, DieSample } from '../dice/dieEffect';
 import { PatternId } from '../dice/patterns';
 import { ColorDef } from '../game/colors';
 import { laneColors, PrisonerUnit } from '../game/modes';
@@ -65,11 +65,11 @@ interface DiceSceneProps {
   diePatternInk?: string;
   dieSymbols?: boolean;
   /**
-   * Something the equipped skin does beyond its paint — at present only
-   * the Fire dice. See src/dice/diceFire.ts. Looks only: nothing here
-   * reaches the physics or the settle rule.
+   * Something the equipped skin does beyond its paint — the Fire and Ice
+   * dice. See src/dice/dieEffect.ts. Looks only: nothing here reaches
+   * the physics or the settle rule.
    */
-  dieEffect?: 'fire';
+  dieEffect?: DieEffectId;
   /** Trophy unlock that adds the courtyard treasure. */
   showTreasure: boolean;
   /**
@@ -143,17 +143,23 @@ export function DiceScene({
   const dieMeshRefs = useRef<(THREE.Group | null)[]>([]);
 
   /*
-    The Fire dice's flames, built only while that skin is on the table
-    (or in its Store preview), and thrown away the moment it is not.
-    Read through a ref inside the throw and the frame loop, so swapping
-    skins never re-creates the throw controls.
+    The Fire or Ice dice's effect, built only while that skin is on the
+    table (or in its Store preview), and thrown away the moment it is
+    not. Read through a ref inside the throw and the frame loop, so
+    swapping skins never re-creates the throw controls. The layout is
+    fixed for the life of this scene (it is remounted when it changes),
+    so the effect is told where the moat is once.
   */
-  const fire = useMemo(
-    () => (dieEffect === 'fire' ? new DiceFire(DIE_START_POSITIONS.length) : null),
+  const fire = useMemo<DieEffect | null>(
+    () =>
+      dieEffect !== undefined
+        ? createDieEffect(dieEffect, DIE_START_POSITIONS.length, obstacles.moat)
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dieEffect],
   );
   useEffect(() => () => fire?.dispose(), [fire]);
-  const fireRef = useRef<DiceFire | null>(fire);
+  const fireRef = useRef<DieEffect | null>(fire);
   fireRef.current = fire;
   // Where each die is, handed to the fire every frame. Built once and
   // written in place: nothing in the frame loop allocates.
@@ -268,7 +274,7 @@ export function DiceScene({
       throwStartedAt.current = Date.now();
       sankThisRoll.current = [false, false];
       diceBodies.forEach((body) => throwDie(body, { flick }));
-      fireRef.current?.relight(fireSamples);
+      fireRef.current?.thrown(fireSamples);
       playThrow();
       onThrow();
     };
@@ -320,7 +326,15 @@ export function DiceScene({
     let stillNow = true;
     diceBodies.forEach((body, i) => {
       const mesh = dieMeshRefs.current[i];
-      if (mesh) {
+      /*
+        Frozen into the pond (the Ice dice): the PICTURE stays where it
+        was caught, stuck half out of the ice, while the body sinks and
+        is fished out on the usual clock. Only the mesh is held.
+      */
+      const held = sinkUntil.current[i] > 0 ? fireRef.current?.heldAt(i) ?? null : null;
+      if (mesh && held !== null) {
+        mesh.position.y = held;
+      } else if (mesh) {
         mesh.position.set(body.position.x, body.position.y, body.position.z);
         mesh.quaternion.set(
           body.quaternion.x,
@@ -353,7 +367,7 @@ export function DiceScene({
       if (!sinking && !sankThisRoll.current[i] && inMoatZone && body.position.y < 0.12) {
         sinkUntil.current[i] = now + 900;
         splashT.current = 0; // kick off the splash ring
-        fireRef.current?.douse(i, body.position.x, body.position.z);
+        fireRef.current?.sank(i, body.position.x, body.position.z);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
         onMoatSink?.();
       }
@@ -378,7 +392,7 @@ export function DiceScene({
         // Slow the fall so the die lingers visibly under the water.
         body.velocity.y = Math.max(body.velocity.y, -1.6);
         if (now >= sinkUntil.current[i] || body.position.y < -3) {
-          fireRef.current?.surface(i);
+          fireRef.current?.fishedOut(i);
           respawn();
         }
       } else if (isOutOfBounds(body)) {

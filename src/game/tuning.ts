@@ -238,5 +238,55 @@ export const TUNING = {
     steamSeconds: 4,
     /** Seconds a doused die keeps smoking once it is back on the board. */
     smoulderSeconds: 5,
+    /** Scorch mark left where a burning die lands, as a width in world units. */
+    scorchSize: 1.5,
+  },
+
+  /**
+   * Scorch and frost left on the ground by the Fire and Ice dice
+   * (src/dice/groundMarks.ts). David, 30 Sep 2026: "remove the char
+   * after a few seconds".
+   */
+  marks: {
+    /** How many can be on the ground at once; the oldest is reused. */
+    capacity: 14,
+    /** Seconds a mark stays at full strength... */
+    holdSeconds: 2.5,
+    /** ...and then takes to fade away. */
+    fadeSeconds: 1.8,
+  },
+
+  /**
+   * The Ice dice (src/dice/diceIce.ts): cold mist while they roll, frost
+   * where they land, and a moat that freezes over with the die stuck
+   * half out of it.
+   *
+   * David, 30 Sep 2026: "dice made of ice and when it touches the ground,
+   * it freezes the ground around it a little bit and maybe freezes the
+   * pond and you see it like half sticking out of the pond frozen."
+   *
+   * Looks only, like the fire. A die that freezes the pond still sinks
+   * and is fished out on the same clock as any other die.
+   */
+  ice: {
+    hotParticles: 360,
+    softParticles: 520,
+    /** Cold mist per second per die, tumbling and at rest. */
+    mistRateMoving: 45,
+    mistRateStill: 22,
+    /** Sparkles per second per die. */
+    glintRate: 7,
+    /** Frost patch left where a die lands, as a width in world units. */
+    frostSize: 1.35,
+    /**
+     * How far below the ice the centre of a frozen-in die sits. Zero is
+     * exactly half in, half out; a little under reads as sunk in.
+     */
+    heldDepth: 0.06,
+    /** Seconds the freeze takes to spread across the pond. */
+    freezeSeconds: 0.35,
+    /** Seconds the pond stays frozen, and then takes to thaw. */
+    frozenSeconds: 5,
+    thawSeconds: 1.5,
   },
 } as const;
