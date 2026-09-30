@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.101.1 — 2026-09-30 · found by the test suite
+
+**A resting Fire die's flame could drift over the colour on top.** Every
+flame born at rest got the same small random sideways push as a flame in
+flight, and that push was bigger than the outward lean that keeps
+resting flames off the top face — so on an unlucky run, one flame in
+forty-five drifted back in over the colour that IS the roll. The suite
+caught it after v1.101.0 had shipped. Resting flames now lean outward
+with no random push; across three hundred simulated runs the nearest one
+came no closer than 0.47 from the die's centre, against a limit of 0.41.
+The Ice dice's mist had the same pattern with a thinner margin and got
+the same fix.
+
 ## v1.101.0 — 2026-09-30 · requested by David
 
 "Can the fire when it's rolling show signs of charring the ground around

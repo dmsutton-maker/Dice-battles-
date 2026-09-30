@@ -308,14 +308,21 @@ export class DiceFire implements DieEffect {
         s.set(d.x + Math.cos(a) * r, d.y + rand(-0.6, 0.4) * HALF, d.z + Math.sin(a) * r);
       }
       if (b.underwater && s.y < WATER_Y + 0.02) continue;
-      // Still flames lean a little outward, away from the top face.
-      const out = d.moving ? 0 : 0.35;
+      /*
+        Still flames lean outward, away from the top face, and get NO
+        random sideways push. They used to get the same ±0.25 jitter as
+        a flame in flight, which is bigger than the lean — so now and
+        then one drifted back in over the face on top. Found by the
+        suite, one flame in forty-five, on an unlucky run.
+      */
+      const out = d.moving ? 0 : 0.45;
+      const jitter = d.moving ? 0.25 : 0;
       this.hot.spawn(
         Kind.Flame,
         s.x, s.y, s.z,
-        d.vx * F.inherit + rand(-0.25, 0.25) + (s.x - d.x) * out,
+        d.vx * F.inherit + rand(-jitter, jitter) + (s.x - d.x) * out,
         d.vy * F.inherit * 0.6 + rand(F.flameRise[0], F.flameRise[1]),
-        d.vz * F.inherit + rand(-0.25, 0.25) + (s.z - d.z) * out,
+        d.vz * F.inherit + rand(-jitter, jitter) + (s.z - d.z) * out,
         rand(F.flameLife[0], F.flameLife[1]) * hotter,
         rand(F.flameSize[0], F.flameSize[0] + 0.3) * hotter,
         F.flameSize[1], F.flameLift, 2.2,

@@ -262,13 +262,17 @@ export class DiceIce implements DieEffect {
         const r = HALF * rand(1.05, 1.25);
         s.set(d.x + Math.cos(a) * r, d.y + rand(0, 0.6) * HALF, d.z + Math.sin(a) * r);
       }
+      // At rest: outward only, no random sideways push — the same lesson
+      // as the fire's, where a push bigger than the lean now and then
+      // carried a flame back in over the top face.
       const out = d.moving ? 0 : 0.5;
+      const jitter = d.moving ? 0.15 : 0;
       this.soft.spawn(
         Kind.Mist,
         s.x, s.y, s.z,
-        d.vx * 0.08 + rand(-0.15, 0.15) + (s.x - d.x) * out,
+        d.vx * 0.08 + rand(-jitter, jitter) + (s.x - d.x) * out,
         d.vy * 0.05 - rand(0.05, 0.3),
-        d.vz * 0.08 + rand(-0.15, 0.15) + (s.z - d.z) * out,
+        d.vz * 0.08 + rand(-jitter, jitter) + (s.z - d.z) * out,
         rand(0.9, 1.5), 0.3, 0.95, -0.35, 1.5,
       );
     }
