@@ -126,7 +126,84 @@ export function shellPreviewUri(skin: DiceSkin): string | null {
     // A colour painter ignores this; a mask painter cannot do without it.
     skin.ink ?? skin.body,
   );
+  if (skin.effect === 'fire') paintFlames(rgb);
   const uri = encodePng(rgb, SIZE, SIZE);
   cache.set(skin.id, uri);
   return uri;
+}
+
+/*
+  Flames on the shelf picture of the Fire dice.
+
+  David, 30 Sep 2026, on the Store card: "the picture of it when you're
+  looking at it just shows a black die with a red line on it, it doesn't
+  show fire. Can it show fire in the image?" He was right to expect it:
+  the fire is the whole of what this die is, and the shell painter only
+  knows the charred wood underneath, because the flames on the table are
+  particles drawn by the scene, not paint.
+
+  So the picture gets flames painted over the shell: four tongues rising
+  from the bottom edge, white-yellow at the root, orange, then red at the
+  tips, with a hotter core inside. Deterministic, like every painter —
+  the card must be the same picture every time it is drawn.
+
+  The 3D shell is untouched. This is the shelf's picture of the effect,
+  and the effect itself is in src/dice/diceFire.ts.
+*/
+const TONGUES: readonly (readonly [number, number, number])[] = [
+  // centre across the picture, height as a share of it, half-width
+  [0.14, 0.62, 0.16],
+  [0.4, 0.86, 0.19],
+  [0.64, 0.7, 0.16],
+  [0.88, 0.78, 0.15],
+];
+
+function flameHeight(u: number, v: number, scale: number): number {
+  // A little sideways sway that grows toward the tips, so the tongues
+  // lick rather than standing up like teeth.
+  const sway = u + Math.sin(v * 13 + u * 5) * 0.035 * v;
+  let h = 0.2 * scale;
+  for (const [c, height, w] of TONGUES) {
+    const d = (sway - c) / w;
+    if (Math.abs(d) < 1) h = Math.max(h, height * scale * Math.pow(1 - d * d, 1.6));
+  }
+  return h;
+}
+
+function mixInto(rgb: number[], i: number, color: readonly number[], a: number): void {
+  for (let k = 0; k < 3; k++) rgb[i + k] = Math.round(rgb[i + k] + (color[k] - rgb[i + k]) * a);
+}
+
+const HOT = [255, 244, 176];
+const ORANGE = [255, 150, 38];
+const RED = [214, 58, 22];
+
+export function paintFlames(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const u = (x + 0.5) / SIZE;
+      const v = 1 - (y + 0.5) / SIZE;
+      const i = (y * SIZE + x) * 3;
+      // A warm glow on the char just above the flames.
+      const outer = flameHeight(u, v, 1);
+      const glow = Math.max(0, 1 - (v - outer) / 0.18);
+      if (v > outer && glow > 0) mixInto(rgb, i, RED, glow * glow * 0.35);
+      if (v <= outer) {
+        const t = v / outer;
+        // Soft edge rather than a cut-out.
+        const edge = Math.min(1, (1 - t) / 0.12);
+        const color =
+          t < 0.45
+            ? ORANGE
+            : ORANGE.map((c, k) => Math.round(c + (RED[k] - c) * ((t - 0.45) / 0.55)));
+        mixInto(rgb, i, color, 0.95 * edge);
+      }
+      // The hot core: a smaller flame of the same shape, white-yellow.
+      const inner = flameHeight(u, v, 0.48);
+      if (v <= inner) {
+        const t = v / inner;
+        mixInto(rgb, i, HOT, 0.9 * Math.min(1, (1 - t) / 0.2));
+      }
+    }
+  }
 }

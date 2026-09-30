@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { DiceFire, DieSample, PARTICLE_KIND } from '../src/dice/diceFire';
 import { DICE_SKINS, STORE_SKINS, skinById } from '../src/game/diceSkins';
+import { patternPixels } from '../src/dice/patterns';
+import { paintFlames } from '../src/dice/preview';
 import { TUNING } from '../src/game/tuning';
 
 /**
@@ -192,5 +194,52 @@ suite('fire dice · it fits on a phone', () => {
     assert(/splashT\.current = 0;[^]*?fireRef\.current\?\.douse\(i/.test(scene), 'a sink does not douse');
     assert(/fireRef\.current\?\.surface\(i\);\s*respawn\(\);/.test(scene), 'being fished out does not leave it out');
     assert(/throwDie\(body, \{ flick \}\)\);\s*fireRef\.current\?\.relight/.test(scene), 'a throw does not relight');
+  });
+});
+
+suite('fire dice · what the shelf and the battle show', () => {
+  test('the Store picture shows fire, not just the charred shell', () => {
+    /*
+      David, 30 Sep 2026: "the picture of it when you're looking at it
+      just shows a black die with a red line on it, it doesn't show
+      fire." The shell painter only knows the char; the flames on the
+      table are particles. The shelf picture paints them in.
+    */
+    const skin = skinById('fire');
+    const shell = patternPixels(skin.pattern as never, skin.body, skin.body);
+    const card = shell.slice();
+    paintFlames(card);
+    const flamey = (px: number[]) => {
+      let n = 0;
+      for (let i = 0; i < px.length; i += 3) {
+        // Bright and warm: red well above blue, and not dark.
+        if (px[i] > 200 && px[i] - px[i + 2] > 60) n++;
+      }
+      return n / (px.length / 3);
+    };
+    note(`${(flamey(shell) * 100).toFixed(0)}% flame-coloured before, ${(flamey(card) * 100).toFixed(0)}% after`);
+    assert(flamey(shell) < 0.1, 'the bare shell is already mostly fire — the test measures nothing');
+    assert(flamey(card) > 0.35, 'the Store picture of the Fire dice shows too little fire');
+  });
+
+  test('only the Fire dice get flames on their picture', () => {
+    const source = readFileSync('src/dice/preview.ts', 'utf8');
+    assert(
+      /if \(skin\.effect === 'fire'\) paintFlames\(rgb\);/.test(source),
+      'the flames are painted on every card, or on none',
+    );
+  });
+
+  test('a battle with the Fire dice keeps drawing between rolls', () => {
+    /*
+      Between rolls the board stops drawing to save battery, and a board
+      that is not drawing is a photograph: the flames would hang frozen
+      in mid-air. The skin whose whole point is that it moves keeps the
+      board moving.
+    */
+    const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    const expr = screen.slice(screen.indexOf('frameloop={'), screen.indexOf('camera={{ position'));
+    assert(/phase === 'battle' && \([^)]*burning/.test(expr), 'the flames freeze between rolls');
+    assert(/const burning = sceneSkin\.effect === 'fire';/.test(screen), 'burning is not tied to the Fire dice');
   });
 });

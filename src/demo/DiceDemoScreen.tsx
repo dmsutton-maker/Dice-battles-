@@ -1707,6 +1707,14 @@ export function DiceDemoScreen() {
     has confirmed really was drawn; the gap between them is covered.
   */
   const sceneToken = `${sceneArenaId}|${sceneSkin.id}`;
+  /*
+    The Fire dice burn between rolls as well as during them, and a board
+    at `frameloop: 'never'` is a photograph — the flames stop in mid-air.
+    So a battle with that skin on the table keeps drawing while the dice
+    are still. It costs battery, and only for the player who chose the
+    one die whose whole point is that it moves.
+  */
+  const burning = sceneSkin.effect === 'fire';
   const [drawnToken, setDrawnToken] = useState('');
   const stale = preview !== null && drawnToken !== sceneToken;
 
@@ -2126,7 +2134,7 @@ export function DiceDemoScreen() {
             phase === 'matching' ||
             phase === 'arm' ||
             phase === 'go' ||
-            (phase === 'battle' && (rolling || boardBusy)))
+            (phase === 'battle' && (rolling || boardBusy || burning)))
             ? 'always'
             : 'never'
         }

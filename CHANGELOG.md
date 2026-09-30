@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.100.1 — 2026-09-30 · requested by David
+
+"I see it in the store now, but the picture of it when you're looking at
+it just shows a black die with a red line on it — it doesn't show fire.
+Can it show fire in the image?"
+
+**The Fire dice's Store picture now shows fire.** The shelf picture is
+painted by the same code as the die's shell, and the shell is charred
+wood — the flames on the table are drawn by the 3D scene, so the card
+never had them. It now has four tongues of flame painted up from the
+bottom, white-yellow at the root through orange to red at the tips.
+Only the Fire dice's card changes.
+
+**The flames no longer freeze between rolls.** Found while fixing the
+card: to save battery, the battlefield stops redrawing whenever the dice
+are still during a battle, which would have left the Fire dice's flames
+hanging in mid-air between every throw. A battle with the Fire dice on
+the table now keeps drawing. It costs a little battery, only for whoever
+has them equipped.
+
 ## v1.100.0 — 2026-09-29 · requested by David
 
 "Can you make a pair of dice that are on fire where it shows flames
