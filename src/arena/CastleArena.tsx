@@ -1,3 +1,4 @@
+import { troughOf, WaterSurface } from './water';
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { createSkyGradient } from './skyGradient';
@@ -231,10 +232,14 @@ function RetreatGarden({ palette, padColors }: { palette: Palette } & ArenaProps
           <cylinderGeometry args={[1.05, 1.1, 0.18, 20]} />
           <meshStandardMaterial color="#bcae94" roughness={0.9} />
         </mesh>
-        <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.92, 20]} />
-          <meshStandardMaterial color={palette.water} roughness={0.2} />
-        </mesh>
+        {/* Moving water, like every pond in the game — see water.tsx. */}
+        <WaterSurface
+          look={{ shallow: palette.water, deep: troughOf(palette.water), foam: '#f2fbff', opacity: 1 }}
+          shape="round"
+          size={[1.84, 1.84]}
+          flow={[0.05, 0.03]}
+          position={[0, 0.19, 0]}
+        />
       </group>
 
       {/* Flowering bushes */}
@@ -373,10 +378,13 @@ function Landscape({ palette }: { palette: Palette }) {
       </mesh>
 
       {/* Pond */}
-      <mesh position={[-6.6, -0.05, 2.6]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[2.1, 24]} />
-        <meshStandardMaterial color={palette.water} roughness={0.25} />
-      </mesh>
+      <WaterSurface
+        look={{ shallow: palette.water, deep: troughOf(palette.water), foam: '#f2fbff', opacity: 1 }}
+        shape="round"
+        size={[4.2, 4.2]}
+        flow={[0.08, 0.04]}
+        position={[-6.6, -0.05, 2.6]}
+      />
 
       {/* Trees. At dusk they read as near-silhouettes: leaves this far
           from the low sun keep almost none of their daytime green. */}

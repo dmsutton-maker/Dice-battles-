@@ -9,6 +9,8 @@ import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { obstacleLook } from '../arena/obstacleLooks';
 import { TreasureChest } from '../arena/TreasureChest';
+import { troughOf, WaterSurface } from '../arena/water';
+import { WaterClock } from '../arena/waterClock';
 import { createDieBody, throwDie } from '../dice/die';
 import {
   dieSpeed,
@@ -73,6 +75,11 @@ interface DiceSceneProps {
   /** Trophy unlock that adds the courtyard treasure. */
   showTreasure: boolean;
   /**
+   * The board is otherwise asleep and only the water wants drawing — see
+   * WaterClock. Passed down from the frameloop rule in DiceDemoScreen.
+   */
+  waterIdle?: boolean;
+  /**
    * Whether throws are currently allowed (true during a live round). A tap
    * queued mid-roll is discarded rather than fired if the round ended while
    * the dice were still tumbling.
@@ -105,6 +112,7 @@ export function DiceScene({
   dieEffect,
   showTreasure,
   throwsEnabled = true,
+  waterIdle = false,
 }: DiceSceneProps) {
   const ArenaComponent = ARENAS[arenaId].Component;
   /*
@@ -523,6 +531,7 @@ export function DiceScene({
   return (
     <>
       <CameraRig />
+      <WaterClock idle={waterIdle} />
       {/*
         Lighting belongs to the ARENA, not to the scene. It used to be
         these three fixed lights for every arena, which is why Sunset
@@ -575,22 +584,63 @@ export function DiceScene({
             <planeGeometry args={[MOAT.size + 0.3, MOAT.size + 0.3]} />
             <meshBasicMaterial color={look.pit.depths} />
           </mesh>
-          {/* The surface: water in three of the four arenas, and on the
-              station a near-transparent look down into the drop. */}
-          <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[MOAT.size + 0.25, MOAT.size + 0.25]} />
-            <meshStandardMaterial
-              color={look.pit.surface}
-              roughness={look.pit.surfaceRoughness}
-              transparent
-              opacity={look.pit.surfaceOpacity}
+          {look.pit.water ? (
+            /*
+              REAL WATER, MOVING. David, 30 Sep 2026: "I don't like that
+              diamond instead I wanna see the water moving in all the
+              ponds flowing maybe some little waves in there." Waves, a
+              slow current, light on the crests and foam lapping at the
+              square edge — see src/arena/water.tsx.
+
+              Nearly solid now. It used to be 62% see-through, and all
+              that ever showed through it was the floor tiles: a sinking
+              die goes under the floor, not under the water, so the
+              see-through part was only a tile grid under the pond.
+            */
+            <WaterSurface
+              look={{
+                shallow: look.pit.surface,
+                deep: troughOf(look.pit.surface),
+                foam: look.pit.edge,
+                opacity: 0.94,
+              }}
+              shape="square"
+              size={[MOAT.size + 0.1, MOAT.size + 0.1]}
+              flow={[0.14, 0.08]}
+              position={[0, 0.03, 0]}
             />
-          </mesh>
-          {/* The edge — foam on water, a lit warning strip on the hatch */}
-          <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[MOAT.size / 2 - 0.06, MOAT.size / 2 + 0.06, 4, 1]} />
-            <meshBasicMaterial color={look.pit.edge} transparent opacity={0.85} />
-          </mesh>
+          ) : (
+            <>
+              {/* Not water — lava, sand, a hatch: a flat surface. */}
+              <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[MOAT.size + 0.25, MOAT.size + 0.25]} />
+                <meshStandardMaterial
+                  color={look.pit.surface}
+                  roughness={look.pit.surfaceRoughness}
+                  transparent
+                  opacity={look.pit.surfaceOpacity}
+                />
+              </mesh>
+              {/*
+                The edge, as a SQUARE. It was a ringGeometry with four
+                segments, which draws a diamond at 45 degrees to the
+                square hole — the "diamond" David asked to be rid of.
+              */}
+              {(
+                [
+                  [0, -MOAT.size / 2, MOAT.size + 0.12, 0.12],
+                  [0, MOAT.size / 2, MOAT.size + 0.12, 0.12],
+                  [-MOAT.size / 2, 0, 0.12, MOAT.size - 0.12],
+                  [MOAT.size / 2, 0, 0.12, MOAT.size - 0.12],
+                ] as const
+              ).map(([x, z, w, d], i) => (
+                <mesh key={`edge-${i}`} position={[x, 0.045, z]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <planeGeometry args={[w, d]} />
+                  <meshBasicMaterial color={look.pit.edge} transparent opacity={0.85} />
+                </mesh>
+              ))}
+            </>
+          )}
           {/* Splash ring (animated on sink) */}
           <mesh
             ref={(m) => {

@@ -89,6 +89,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-103-0-moving-water',
+    date: '30 September 2026',
+    version: 'v1.103.0',
+    title: 'Real water, and one or two cups',
+    icon: 'arena',
+    body:
+      'The ponds move now. On every battlefield with water — the castle, ' +
+      'the jungle, the beach and the rest — the water ripples and drifts, ' +
+      'light shimmers across it, and foam laps at the edge. The river in ' +
+      'the jungle actually flows.\n\n' +
+      'The Cups tab shows one or two cups at a time, and every one of them ' +
+      'changes every week or so; there is no cup that stays for good any ' +
+      'more. If you won the Amethyst dice, they are still yours.',
+  },
+  {
     id: 'v1-102-0-season-pass',
     date: '30 September 2026',
     version: 'v1.102.0',

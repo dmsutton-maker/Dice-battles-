@@ -154,10 +154,12 @@ here that cannot be rolled back in seconds, so an unverified claim of
 Settled with David on 25 Sep 2026, after the first version got all
 three of these wrong.
 
-- **One to three on screen, never more.** The game bundles ONE standing
-  challenge — The Gauntlet, which never closes — and the board may add up
-  to two running cups on top. `liveTournaments` enforces the cap rather
-  than trusting whoever fills the table in.
+- **One or two on screen, never more, and none always on.** Changed by
+  David on 30 Sep 2026: "I only want one or two cups and there shouldn't
+  be any always on cups." Nothing is bundled any more (The Gauntlet is
+  gone); every cup comes from the board, and `liveTournaments` shows at
+  most two and drops any cup that is `standing` or has no closing date.
+  A week with nothing on the board shows no cups — that is correct.
 - **They change every week or two**, from the `tournaments` table on the
   HQ site. That is the whole point of them being online: a new cup, a
   retuned target or a retired one needs no release and no OTA update.
@@ -169,8 +171,9 @@ three of these wrong.
   day.
 - **Do NOT invent a new dice or battlefield for each cup.** David's words:
   "don't make a new dice or arena every time." A weekly cup pays coins and
-  trophies. There is exactly one win-only die, Amethyst, and it lives on
-  the standing challenge so it is always winnable and only ever won once.
+  trophies. There is exactly one win-only die, Amethyst. It was The
+  Gauntlet's prize; now it can only be won when a board cup offers it
+  (`item_kind = 'dice'`, `item_id = 'amethyst'`).
   When an item prize is right, use one that already exists — winning
   something already owned pays its shelf price in coins instead, so
   reusing one costs nothing.

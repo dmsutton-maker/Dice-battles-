@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import { splitPlacement } from './placement';
 import { SHAPE, THEME } from './theme';
 
 /**
@@ -39,6 +40,10 @@ export function Card({
   drop?: number;
   onPress?: () => void;
 }) {
+  // With a drop, placement belongs to the wrapper; without one there is
+  // no wrapper and the face is placed directly, as it always was.
+  const { placement, face: faceStyle } =
+    drop > 0 ? splitPlacement(style) : { placement: null, face: style };
   const face = (
     <View
       style={[
@@ -48,7 +53,7 @@ export function Card({
           borderWidth: SHAPE.line,
           borderRadius: radius,
         },
-        style,
+        faceStyle,
       ]}
     >
       {children}
@@ -77,7 +82,7 @@ export function Card({
    * and it costs nothing — no animation, no state, no re-render.
    */
   const stacked = (isPressed: boolean) => (
-    <View>
+    <View style={onPress ? undefined : placement}>
       {!isPressed && (
         <View
           pointerEvents="none"
@@ -102,7 +107,7 @@ export function Card({
   if (!onPress) return stacked(false);
 
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable onPress={onPress} accessibilityRole="button" style={placement}>
       {({ pressed }) => stacked(pressed)}
     </Pressable>
   );

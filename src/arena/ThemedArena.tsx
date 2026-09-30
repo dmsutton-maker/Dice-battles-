@@ -1,3 +1,4 @@
+import { troughOf, WaterSurface } from './water';
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
@@ -997,10 +998,21 @@ function ThemedRetreat({
           <cylinderGeometry args={[RETREAT_POOL_RADIUS + 0.18, RETREAT_POOL_RADIUS + 0.24, 0.18, 16]} />
           <meshStandardMaterial color={theme.wall.cap} roughness={0.9} />
         </mesh>
-        <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[RETREAT_POOL_RADIUS, 16]} />
-          <meshStandardMaterial color={r.pool} roughness={0.2} />
-        </mesh>
+        {theme.look.pit.water ? (
+          // A water world's pool moves like its moat does.
+          <WaterSurface
+            look={{ shallow: r.pool, deep: troughOf(r.pool), foam: '#f2fbff', opacity: 1 }}
+            shape="round"
+            size={[RETREAT_POOL_RADIUS * 2, RETREAT_POOL_RADIUS * 2]}
+            flow={[0.05, 0.03]}
+            position={[0, 0.19, 0]}
+          />
+        ) : (
+          <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[RETREAT_POOL_RADIUS, 16]} />
+            <meshStandardMaterial color={r.pool} roughness={0.2} />
+          </mesh>
+        )}
       </group>
       {RETREAT_PROPS.map(([x, z], i) => (
         <mesh key={`crate-${i}`} position={[x, 0.26, z]} rotation={[0, i * 0.5, 0]}>

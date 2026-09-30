@@ -1798,6 +1798,17 @@ export function DiceDemoScreen() {
     die whose whole point is that it moves.
   */
   const burning = sceneSkin.effect !== undefined;
+  /*
+    WATER KEEPS MOVING between rolls. David, 30 Sep 2026: "I wanna see
+    the water moving in all the ponds." A board that has stopped drawing
+    freezes it mid-wave, so a battle on a battlefield with water keeps
+    drawing while the dice are still — at twenty frames a second on
+    demand (see WaterClock) rather than the full sixty, because water is
+    slow and the battery is not free. Menus and result screens still
+    stop the board entirely.
+  */
+  const waterIdle =
+    appActive && phase === 'battle' && !!obstacleLook(sceneArenaId).pit.water;
   const [drawnToken, setDrawnToken] = useState('');
   const stale = preview !== null && drawnToken !== sceneToken;
 
@@ -2221,7 +2232,9 @@ export function DiceDemoScreen() {
             phase === 'go' ||
             (phase === 'battle' && (rolling || boardBusy || burning)))
             ? 'always'
-            : 'never'
+            : waterIdle
+              ? 'demand'
+              : 'never'
         }
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
@@ -2259,6 +2272,7 @@ export function DiceDemoScreen() {
           units={units}
           shakeSignal={shakeSignal}
           throwsEnabled={phase === 'battle'}
+          waterIdle={waterIdle}
         />
         <FirstFrame token={sceneToken} onDrawn={setDrawnToken} />
       </Canvas>

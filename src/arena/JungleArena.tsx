@@ -1,3 +1,4 @@
+import { troughOf, WaterSurface } from './water';
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
@@ -248,10 +249,13 @@ function JungleRetreat({ padColors }: ArenaProps) {
           <cylinderGeometry args={[1.05, 1.1, 0.18, 20]} />
           <meshStandardMaterial color={MOSS_STONE_DARK} roughness={0.9} />
         </mesh>
-        <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.92, 20]} />
-          <meshStandardMaterial color="#3fb8a0" roughness={0.2} />
-        </mesh>
+        <WaterSurface
+          look={{ shallow: '#3fb8a0', deep: troughOf('#3fb8a0'), foam: '#e6fbf2', opacity: 1 }}
+          shape="round"
+          size={[1.84, 1.84]}
+          flow={[0.05, 0.03]}
+          position={[0, 0.19, 0]}
+        />
       </group>
 
       {/* Ferns and a jungle flower */}
@@ -302,14 +306,25 @@ function JungleWorld() {
       </mesh>
 
       {/* Winding river */}
-      <mesh position={[-6.6, -0.05, 2.6]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[2.1, 24]} />
-        <meshStandardMaterial color="#3fa8c9" roughness={0.25} />
-      </mesh>
-      <mesh position={[-8.4, -0.055, -1.2]} rotation={[-Math.PI / 2, 0, 0.5]}>
-        <planeGeometry args={[1.6, 5.5]} />
-        <meshStandardMaterial color="#3fa8c9" roughness={0.25} />
-      </mesh>
+      {/*
+        The river actually flows now: the pool it widens into turns
+        slowly, and the channel runs fast along its length.
+      */}
+      <WaterSurface
+        look={{ shallow: '#3fa8c9', deep: troughOf('#3fa8c9'), foam: '#e6f7ff', opacity: 1 }}
+        shape="round"
+        size={[4.2, 4.2]}
+        flow={[0.1, 0.05]}
+        position={[-6.6, -0.05, 2.6]}
+      />
+      <WaterSurface
+        look={{ shallow: '#3fa8c9', deep: troughOf('#3fa8c9'), foam: '#e6f7ff', opacity: 1 }}
+        shape="square"
+        size={[1.6, 5.5]}
+        flow={[0, 0.55]}
+        position={[-8.4, -0.055, -1.2]}
+        rotationZ={0.5}
+      />
 
       {/* Palms */}
       {PALMS.map((palm, i) => (

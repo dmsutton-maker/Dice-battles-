@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.103.0 — 2026-09-30 · requested by David
+
+"Fix the button on the cups screen to make it look full and not
+partially black. I only want one or two cups and there shouldn't be any
+always on cups. On old board that have the water trap I don't like that
+diamond instead I wanna see the water moving in all the ponds flowing
+maybe some little waves in there something to show that it's real
+water."
+
+**The Cups button is solid.** Its spacing was applied to the orange face
+instead of the button as a whole, and the black drop shadow is drawn
+from the top of the whole button, so a black band showed above the face
+and another below it. Fixed in the shared card (`src/ui/placement.ts`),
+so every button with spacing is fixed at once — including a few cards on
+the Friends screen that had the same band, and the Friends screen's
+side-by-side buttons, which now share their row evenly as their styles
+always asked.
+
+**One or two cups, none always on.** The Gauntlet — the cup built into
+the game with no end date — is gone. Every cup comes from the HQ board,
+at most two are shown, and any cup marked always-on or with no closing
+date is left off. A week with nothing on the board shows no cups and
+says so. The Amethyst die was The Gauntlet's prize: whoever won it keeps
+it, and it can be won again only when a board cup offers it.
+
+**Moving water, and no diamond.** The moat's foam edge was a ring drawn
+with four sides — a diamond at 45 degrees to the square hole. On the
+water moats (castle, sunset castle, jungle, and the beach, cove, reef
+and glade) the surface is now moving water: slow swells of lighter and
+deeper colour, rippling light that wobbles and drifts with the current,
+and foam lapping at the square edge. The castle's pond and pool, the
+jungle's lagoon, pool and river (which now runs along its length), and
+the pools in the water worlds move the same way. Pits that are not
+water — lava, sand, the hatch — keep their own surface with a proper
+square edge. The moat water is nearly solid now: all that ever showed
+through the old see-through surface was the floor tiles.
+
+**Battery.** A battle on a board with water keeps drawing while the dice
+are still, so the water does not freeze mid-wave — at twenty frames a
+second (`WATER_IDLE_FRAME_MS`), not sixty. Menus and result screens
+still stop the board entirely.
+
 ## v1.102.0 — 2026-09-30 · requested by David
 
 "Add a season pass with levels and exp you earn are counted towards the

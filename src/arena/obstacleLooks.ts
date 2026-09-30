@@ -48,6 +48,13 @@ export interface ObstacleLook {
     /** The ring right at the edge — foam, or a lit warning strip. */
     edge: string;
     /**
+     * Real water: drawn as moving water with waves and lapping foam
+     * (src/arena/water.tsx) rather than a flat surface. David, 30 Sep
+     * 2026: "I wanna see the water moving in all the ponds." Left off for
+     * the pits that are not water at all — lava, sand, a hatch.
+     */
+    water?: true;
+    /**
      * The border around it. `stone` is the castle's cut kerb; `bank` is a
      * soft earth lip; `hull` is a raised metal coaming. Null draws no
      * border at all, which is what makes a lake read as a lake rather than
@@ -69,6 +76,7 @@ export interface ObstacleLook {
 const CASTLE_DAY: ObstacleLook = {
   mound: { color: '#7fae66', roughness: 0.85, metalness: 0 },
   pit: {
+    water: true,
     depths: '#0a2c4a',
     surface: '#2f9be2',
     surfaceOpacity: 0.62,
@@ -92,6 +100,7 @@ export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
   castleSunset: {
     mound: { color: '#5c8455', roughness: 0.88, metalness: 0 },
     pit: {
+      water: true,
       depths: '#161036',
       surface: '#5c6fc4',
       surfaceOpacity: 0.66,
@@ -109,6 +118,7 @@ export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
   jungle: {
     mound: { color: '#5f7d3f', roughness: 0.95, metalness: 0 },
     pit: {
+      water: true,
       depths: '#08251c',
       surface: '#2f8f74',
       surfaceOpacity: 0.7,

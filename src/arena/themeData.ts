@@ -666,7 +666,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     ],
     look: look(
       { color: '#e6d090', roughness: 1, metalness: 0 },
-      { depths: '#0a4a52', surface: '#3fc9c2', surfaceOpacity: 0.65, surfaceRoughness: 0.1,
+      { water: true, depths: '#0a4a52', surface: '#3fc9c2', surfaceOpacity: 0.65, surfaceRoughness: 0.1,
         edge: '#fff3d0', border: null },
       'rock pool', 'sandcastle mound', 'Splash! A die fell in the rock pool!',
     ),
@@ -777,7 +777,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     ],
     look: look(
       { color: '#4a8562', roughness: 0.9, metalness: 0 },
-      { depths: '#0a2418', surface: '#2f8f7a', surfaceOpacity: 0.7, surfaceRoughness: 0.15,
+      { water: true, depths: '#0a2418', surface: '#2f8f7a', surfaceOpacity: 0.7, surfaceRoughness: 0.15,
         edge: '#4fd0c9', border: { kind: 'bank', color: '#33684a' } },
       'glowing pool', 'mossy mound', 'Ploop! A die fell in the glowing pool!',
     ),
@@ -822,7 +822,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     ],
     look: look(
       { color: '#b89e68', roughness: 1, metalness: 0 },
-      { depths: '#0a2c40', surface: '#2a7a9e', surfaceOpacity: 0.7, surfaceRoughness: 0.12,
+      { water: true, depths: '#0a2c40', surface: '#2a7a9e', surfaceOpacity: 0.7, surfaceRoughness: 0.12,
         edge: '#d9e8ee', border: { kind: 'bank', color: '#93714a' } },
       'tide pool', 'kelp mound', 'Splash! A die fell in the tide pool!',
     ),
@@ -915,7 +915,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     ],
     look: look(
       { color: '#1f7080', roughness: 0.8, metalness: 0 },
-      { depths: '#041e24', surface: '#0d4550', surfaceOpacity: 0.6, surfaceRoughness: 0.3,
+      { water: true, depths: '#041e24', surface: '#0d4550', surfaceOpacity: 0.6, surfaceRoughness: 0.3,
         edge: '#3fbccc', border: { kind: 'stone', color: '#125460' } },
       'deep trench', 'coral head', 'Blub! A die sank into the trench!',
     ),

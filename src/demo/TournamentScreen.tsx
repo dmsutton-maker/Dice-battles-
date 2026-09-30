@@ -85,16 +85,17 @@ export function TournamentScreen({
           players (see AGENTS.md).
         */}
         <Text style={styles.noteQuiet}>
-          A new cup or two turns up every week or so, and they come from the
-          Dice Battles website — so you never have to update the game to get
-          them. The Gauntlet at the bottom is always here. You play them all
-          against the game&rsquo;s own rivals.
+          One or two cups run at a time, and they change every week or so.
+          They come from the Dice Battles website — so you never have to
+          update the game to get them. You play them all against the
+          game&rsquo;s own rivals.
         </Text>
 
         {showing.length === 0 && (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
-              No cups are running just now. Have a look again in a day or two.
+              No cups are running just now — a new one turns up every week or
+              so. The season pass above keeps counting every battle meanwhile.
             </Text>
           </View>
         )}
@@ -191,18 +192,7 @@ function TournamentCard({
               read as untidier than a permanent one for no reason. Here
               it sits with the other thing that changes while you play.
             */}
-            {/*
-              The one that never closes says so, in the place the others
-              put their deadline. Silence there would read as an
-              oversight next to three cards counting down, and "always
-              here" is the reason to bother with a six-in-a-row run that
-              might take a fortnight.
-            */}
-            {closing ? (
-              <Text style={styles.closing}>{closing}</Text>
-            ) : t.standing ? (
-              <Text style={styles.closing}>Always on</Text>
-            ) : null}
+            {closing ? <Text style={styles.closing}>{closing}</Text> : null}
           </View>
 
           {state.won ? (

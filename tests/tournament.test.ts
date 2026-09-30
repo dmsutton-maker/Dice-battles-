@@ -79,97 +79,31 @@ const CUP: TournamentDef = {
   prize: { coins: { min: 10, max: 10 }, trophies: 5 },
 };
 
-suite('cups · the one that ships with the game', () => {
-  test('there is exactly one, and it is the standing challenge', () => {
+suite('cups · none ship with the game', () => {
+  test('there is no always-on cup', () => {
     /*
-      David, 25 Sep 2026: "I only want like one or three cups at a time."
-      One bundled plus up to two from the board is what makes that true,
-      and a second bundled cup would make the quiet weeks show two before
-      the board has said anything.
+      David, 30 Sep 2026: "there shouldn't be any always on cups." Until
+      then the game carried one, The Gauntlet, with no end date. Every
+      cup now comes from the board, with dates.
     */
-    assertEqual(TOURNAMENTS.length, 1, 'the game ships with more than one cup');
-    assert(TOURNAMENTS[0].standing === true, 'the bundled cup is not marked standing');
+    assertEqual(TOURNAMENTS.length, 0, 'the game still ships with a cup of its own');
   });
 
-  test('it is genuinely hard', () => {
+  test('the Amethyst die stays won-only, and nobody is handed it', () => {
     /*
-      "They should be much harder." It shipped as four, Easy to Hard,
-      and the Easy three-in-a-row was close to free — so the tab read as
-      a list of chores rather than something worth chasing. What is left
-      is the hardest thing in the game.
+      It was The Gauntlet's prize. With The Gauntlet gone it can only be
+      won when a cup on the board offers it — and it must NOT fall
+      through to "no price, no tier", which is how Ivory says it is free
+      to everyone on install.
     */
-    const t = TOURNAMENTS[0];
-    assertEqual(t.difficulty, 'hard', 'the standing challenge is not on Hard');
-    assert(t.target >= 6, `${t.target} in a row is not "much harder"`);
-    note(`${t.name}: ${t.target} in a row, ${t.mode} on ${t.difficulty}`);
-  });
-
-  test('none of them has a closing day', () => {
-    /*
-      THE ONE THING A BUNDLED CUP MUST NOT HAVE.
-
-      A tournament past its closing day is dropped from the list. A
-      bundled one carries a date baked into the binary, so a phone that
-      never gets another update would reach that date and find the Cups
-      tab permanently empty, with no way for anyone to fix it. Dates
-      belong to the fetched ones, which can be replaced.
-    */
-    for (const t of TOURNAMENTS) {
-      assert(!t.closes, `${t.name} ships with a closing day and will expire offline`);
-      assert(!t.opens, `${t.name} ships unopened and may never open`);
-    }
-  });
-
-  test('what it pays is worth the run it asks for', () => {
-    /*
-      No longer a comparison between cups — there is only one. The floor
-      instead: six Hard wins in a row is, at even odds, something like a
-      hundred battles. A payout smaller than a couple of ordinary Hard
-      wins would make the whole thing a waste of an evening.
-    */
-    const t = TOURNAMENTS[0];
-    assert(
-      averageOf(t.prize.coins) > averageOf(COIN_REWARDS.hard.win) * t.target,
-      `${t.name} pays less than simply winning ${t.target} Hard battles`,
-    );
-    assert(t.prize.trophies >= 50, `${t.name} pays only ${t.prize.trophies} trophies`);
-  });
-
-  test('every prize is something this game actually has', () => {
-    /*
-      A prize naming a die or battlefield that does not exist would be
-      promised on the card and skipped at the moment of winning, which is
-      the worst possible time to find out.
-    */
-    for (const t of TOURNAMENTS) {
-      if (!t.prize.item) continue;
-      const resolved = resolveItem(t.prize.item);
-      assert(
-        resolved !== null,
-        `${t.name} promises a ${t.prize.item.kind} called "${t.prize.item.id}" that does not exist`,
-      );
-      note(`${t.name} → ${resolved!.name}`);
-    }
-  });
-
-  test('the prize die lives on it, so it is always winnable', () => {
-    /*
-      The other half of "don't make a new dice or arena every time": ONE
-      die that can only be won, parked on the one cup that never closes.
-
-      If it lived on a rotating cup it would be winnable for a fortnight
-      and then not, and a player part-way through a run would watch it
-      leave. Here it is always on the screen — which is also why
-      liveTournaments can never crowd the standing cup out.
-    */
-    const item = TOURNAMENTS[0].prize.item;
-    assert(item !== undefined, 'the standing challenge gives nothing to keep');
-    assertEqual(item!.kind, 'dice', 'the standing prize is not a die');
-    const resolved = resolveItem(item!)!;
-    assert(
-      DICE_SKINS.find((d) => d.id === item!.id)?.prize === true,
-      `${resolved.name} is not a win-only die`,
-    );
+    const amethyst = DICE_SKINS.find((d) => d.id === 'amethyst')!;
+    assert(amethyst.prize === true, 'the Amethyst die is no longer a cup prize');
+    assertEqual(amethyst.price, undefined, 'the Amethyst die is for sale');
+    resetWalletForTests({ coins: 0, owned: [] });
+    assert(!isSkinUnlocked('amethyst', 99999), 'the Amethyst die is free to everyone');
+    // Whoever won it keeps it.
+    resetWalletForTests({ coins: 0, owned: ['amethyst'] });
+    assert(isSkinUnlocked('amethyst', 0), 'an Amethyst die already won was taken away');
   });
 });
 
@@ -379,21 +313,28 @@ suite('cups · the days one runs', () => {
   });
 
   test('the list drops what is over and shows the easiest first', () => {
-    const hard: TournamentDef = { ...CUP, id: 'hard', difficulty: 'hard' };
+    const week: TournamentDef = { ...CUP, closes: '2026-10-08' };
+    const hard: TournamentDef = { ...week, id: 'hard', difficulty: 'hard' };
     const gone: TournamentDef = { ...CUP, id: 'gone', closes: '2026-01-01' };
-    const soon: TournamentDef = { ...CUP, id: 'soon', opens: '2026-12-01' };
-    const shown = liveTournaments([hard, gone, soon, CUP], '2026-09-25');
+    const soon: TournamentDef = { ...CUP, id: 'soon', opens: '2026-12-01', closes: '2026-12-14' };
     assertEqual(
-      shown.map((t) => t.id).join(','),
-      'test-cup,hard,soon',
+      liveTournaments([hard, gone, week], '2026-09-25').map((t) => t.id).join(','),
+      'test-cup,hard',
       'the list is in the wrong order or kept a finished cup',
+    );
+    assertEqual(
+      liveTournaments([gone, soon, hard], '2026-09-25').map((t) => t.id).join(','),
+      'hard,soon',
+      'a cup still to come was not shown in the room left',
     );
   });
 });
 
-suite('cups · one to three, never nine', () => {
+suite('cups · one or two, never nine, never always on', () => {
   /*
-    David, 25 Sep 2026: "I only want like one or three cups at a time."
+    David, 30 Sep 2026: "I only want one or two cups and there shouldn't
+    be any always on cups." (On 25 Sep it was "one or three", with an
+    always-on cup at the bottom; this replaces it.)
 
     Enforced in liveTournaments rather than left to whoever fills the
     table in, because the table is filled in weekly, from a browser,
@@ -408,52 +349,31 @@ suite('cups · one to three, never nine', () => {
       target: 3 + i,
       closes: '2026-12-31',
     }));
-  const standing: TournamentDef = { ...CUP, id: 'standing', standing: true };
 
-  test('a board stuffed with cups still shows three', () => {
-    const shown = liveTournaments([...rotating(9), standing], '2026-09-25');
-    assertEqual(shown.length, MAX_SHOWN, `${shown.length} cards on the screen`);
+  test('a board stuffed with cups still shows two', () => {
+    assertEqual(MAX_SHOWN, 2, 'the cap is not two');
+    const shown = liveTournaments(rotating(9), '2026-09-25');
+    assertEqual(shown.length, 2, `${shown.length} cards on the screen`);
   });
 
-  test('at most two of them are the week’s', () => {
-    const shown = liveTournaments([...rotating(9), standing], '2026-09-25');
-    assertEqual(
-      shown.filter((t) => !t.standing).length,
-      MAX_ROTATING,
-      'more than two rotating cups got through',
-    );
-  });
-
-  test('the standing challenge is never crowded off the screen', () => {
-    /*
-      THE ONE THAT WOULD BITE. Trimming the end of a merged list is the
-      obvious way to cap it, and it would drop the standing cup exactly
-      when the board is busiest — taking the prize die off every phone
-      for a fortnight, silently, with nothing to say it had happened.
-      Capping the ROTATING ones instead is why that cannot occur.
-    */
-    const shown = liveTournaments([...rotating(9), standing], '2026-09-25');
-    assert(
-      shown.some((t) => t.id === 'standing'),
-      'a busy week pushed the always-on cup off the tab',
-    );
-  });
-
-  test('a quiet week still leaves one to play', () => {
-    const shown = liveTournaments([standing], '2026-09-25');
-    assertEqual(shown.length, 1, 'the tab emptied when the board had nothing');
-    assertEqual(shown[0].id, 'standing', 'the wrong cup survived');
-  });
-
-  test('the week’s cups come before the one that is always there', () => {
-    // They have deadlines and they are what is new, so they go where
-    // the eye lands. The standing one is not going anywhere.
+  test('a cup marked always-on is never shown', () => {
+    // Dated, so it is the `standing` mark itself that keeps it off —
+    // not the missing end date, which has its own test below.
+    const standing: TournamentDef = { ...CUP, id: 'standing', standing: true, closes: '2026-12-31' };
     const shown = liveTournaments([standing, ...rotating(1)], '2026-09-25');
-    assertEqual(
-      shown.map((t) => t.id).join(','),
-      'week-0,standing',
-      'the always-on cup was listed above the one with a deadline',
-    );
+    assertEqual(shown.map((t) => t.id).join(','), 'week-0', 'an always-on cup reached the tab');
+  });
+
+  test('a cup with no end date is never shown either', () => {
+    // No closing day is an always-on cup by another name — a row typed
+    // into the board with the date left blank must not become one.
+    const endless: TournamentDef = { ...CUP, id: 'endless' };
+    const shown = liveTournaments([endless, ...rotating(1)], '2026-09-25');
+    assertEqual(shown.map((t) => t.id).join(','), 'week-0', 'a cup with no end reached the tab');
+  });
+
+  test('a quiet week shows none rather than inventing one', () => {
+    assertEqual(liveTournaments([], '2026-09-25').length, 0, 'a cup appeared from nowhere');
   });
 
   test('the board decides WHICH run; the screen decides what order', () => {
@@ -465,44 +385,29 @@ suite('cups · one to three, never nine', () => {
       pair happened to be gentlest rather than the pair at the top of
       the list.
     */
+    const dated = { closes: '2026-12-31' };
     const wanted: TournamentDef[] = [
-      { ...CUP, id: 'first-choice', difficulty: 'hard', target: 6 },
-      { ...CUP, id: 'second-choice', difficulty: 'medium', target: 5 },
-      { ...CUP, id: 'not-chosen', difficulty: 'easy', target: 2 },
+      { ...CUP, ...dated, id: 'first-choice', difficulty: 'hard', target: 6 },
+      { ...CUP, ...dated, id: 'second-choice', difficulty: 'medium', target: 5 },
+      { ...CUP, ...dated, id: 'not-chosen', difficulty: 'easy', target: 2 },
     ];
-    const shown = liveTournaments([...wanted, standing], '2026-09-25');
+    const shown = liveTournaments(wanted, '2026-09-25');
     assert(
       !shown.some((t) => t.id === 'not-chosen'),
       'an easier cup further down the board pushed out one the board put first',
     );
-    // The two that survived are then arranged easiest first.
     assertEqual(
       shown.map((t) => t.id).join(','),
-      'second-choice,first-choice,standing',
+      'second-choice,first-choice',
       'the survivors are not shown easiest first',
     );
   });
 
   test('a cup that has not opened yields its place to one you can play', () => {
-    const soon: TournamentDef = { ...CUP, id: 'soon', opens: '2026-12-01' };
-    const shown = liveTournaments([soon, ...rotating(2), standing], '2026-09-25');
+    const soon: TournamentDef = { ...CUP, id: 'soon', opens: '2026-12-01', closes: '2026-12-14' };
+    const shown = liveTournaments([soon, ...rotating(2)], '2026-09-25');
     assertEqual(shown.length, MAX_SHOWN, 'too many cards');
-    assert(
-      !shown.some((t) => t.id === 'soon'),
-      'a card you cannot play pushed out one you can',
-    );
-  });
-
-  test('the game’s own cup obeys the cap alongside a full board', () => {
-    // Not a synthetic standing cup — the real one, merged the way the
-    // game merges it.
-    const merged = mergeTournaments(TOURNAMENTS, rotating(5));
-    const shown = liveTournaments(merged, '2026-09-25');
-    assertEqual(shown.length, MAX_SHOWN, `${shown.length} cards on the screen`);
-    assert(
-      shown.some((t) => t.id === TOURNAMENTS[0].id),
-      'the bundled cup lost its place',
-    );
+    assert(!shown.some((t) => t.id === 'soon'), 'a card you cannot play pushed out one you can');
   });
 
   test('today is read in the phone’s own time zone', () => {
@@ -570,28 +475,23 @@ suite('cups · what arrives from the server', () => {
     }
   });
 
-  test('the server can retune a cup the game already ships with', () => {
+  test('the server can retune a cup the phone already has', () => {
     /*
-      The useful half of merging by id: a target that turned out too hard
-      or a prize that turned out too thin can be fixed for every
-      installed copy without shipping anything.
+      The useful half of merging by id: a cup cached on the phone from
+      an earlier fetch is replaced by the server's version, never shown
+      twice. Nothing is bundled any more, so the list merged into is the
+      one the phone last saw.
     */
-    const retuned = { ...TOURNAMENTS[0], target: 2 };
-    const merged = mergeTournaments(TOURNAMENTS, [retuned]);
-    assertEqual(merged.length, TOURNAMENTS.length, 'the override added a second copy');
-    assertEqual(
-      tournamentById(TOURNAMENTS[0].id, merged)!.target,
-      2,
-      'the server’s version did not win',
-    );
+    const cached: TournamentDef[] = [{ ...CUP, closes: '2026-12-31' }];
+    const retuned = { ...cached[0], target: 2 };
+    const merged = mergeTournaments(cached, [retuned]);
+    assertEqual(merged.length, 1, 'the override added a second copy');
+    assertEqual(tournamentById(CUP.id, merged)!.target, 2, 'the server’s version did not win');
   });
 
-  test('a server with nothing to say leaves the bundled four', () => {
-    assertEqual(
-      mergeTournaments(TOURNAMENTS, []).length,
-      TOURNAMENTS.length,
-      'an empty feed emptied the tab',
-    );
+  test('a server with nothing to say leaves what the phone had', () => {
+    const cached: TournamentDef[] = [{ ...CUP, closes: '2026-12-31' }];
+    assertEqual(mergeTournaments(cached, []).length, 1, 'an empty feed emptied the list');
   });
 });
 
