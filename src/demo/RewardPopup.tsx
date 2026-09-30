@@ -1,10 +1,16 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SHAPE, THEME } from '../ui/theme';
+import { ItemIcon, ItemPicture } from './ItemIcon';
 
 export interface Reward {
-  /** The big picture at the top — the item's own emoji. */
-  emoji: string;
+  /**
+   * The big picture at the top: the thing itself, drawn — the painted
+   * die, the battlefield, or the game's coin or trophy. It was the item's
+   * emoji until 30 Sep 2026 (David: "get rid of any emojis and use the
+   * proper icons for each item").
+   */
+  picture: ItemPicture;
   /** What was won or bought. */
   name: string;
   /** UNLOCKED / PURCHASED — why the popup is here. */
@@ -37,7 +43,7 @@ export function RewardPopup({
         <View style={styles.card}>
         <Text style={styles.kicker}>{reward.kicker}</Text>
         <View style={styles.burst}>
-          <Text style={styles.emoji}>{reward.emoji}</Text>
+          <ItemIcon picture={reward.picture} size={64} />
         </View>
         <Text style={styles.name}>{reward.name}</Text>
         <Text style={styles.note}>{reward.note}</Text>
@@ -101,9 +107,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,210,31,0.30)',
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
-  },
-  emoji: {
-    fontSize: 52,
   },
   name: {
     color: THEME.ink,

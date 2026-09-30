@@ -8,7 +8,7 @@ const path = require('path');
     ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
     args: ['--no-sandbox'],
   });
-  const page = await browser.newPage({ viewport: { width: 393, height: 1400 } });
+  const page = await browser.newPage({ viewport: { width: Number(process.env.W || 393), height: 1400 } });
   page.on('pageerror', (e) => console.log('PAGE THROW:', e.message));
   // SCREEN=cups draws the Cups tab instead of Records — see entry.tsx.
   const which = process.env.SCREEN ? '?screen=' + process.env.SCREEN : '';

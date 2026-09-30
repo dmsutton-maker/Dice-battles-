@@ -19,6 +19,7 @@ import { PrimaryButton } from '../ui/Card';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
+import { ItemIcon, pictureOfItem } from './ItemIcon';
 import { SeasonPassCard } from './SeasonPassCard';
 import type { PreviewTarget } from '../game/itemPreview';
 import type { SeasonState } from '../game/seasonPass';
@@ -165,7 +166,7 @@ function TournamentCard({
         </View>
         {item && (
           <View style={[styles.prizeChip, styles.prizeChipItem]}>
-            <Text style={styles.prizeEmoji}>{item.emoji}</Text>
+            <ItemIcon picture={pictureOfItem(item)} size={16} />
             <Text style={styles.prizeText}>{item.name}</Text>
           </View>
         )}
@@ -342,7 +343,6 @@ const styles = StyleSheet.create({
   // The item is the prize worth playing for, so it wears the ink line
   // the coins and trophies do not.
   prizeChipItem: { borderColor: THEME.ink, backgroundColor: THEME.surface },
-  prizeEmoji: { fontSize: 13 },
   prizeText: { color: THEME.ink, fontSize: 12.5, fontWeight: '800' },
 
   pipRow: {

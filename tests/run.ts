@@ -25,6 +25,7 @@ async function main(): Promise<void> {
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');
+  await import('./noEmoji.test');
   await import('./itemPreview.test');
   await import('./previewGesture.test');
   await import('./itemPreviewContrast.test');

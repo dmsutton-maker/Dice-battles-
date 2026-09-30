@@ -23,6 +23,8 @@ import { SEASON_ITEM_WORTH } from './seasonPass';
 
 export interface ResolvedItem {
   kind: 'dice' | 'arena';
+  /** The DiceSkin id or ArenaId — what its picture is drawn from. */
+  id: string;
   /** What to call it on screen. */
   name: string;
   emoji: string;
@@ -55,6 +57,7 @@ export function resolveItem(item: PrizeItem): ResolvedItem | null {
     if (!skin) return null;
     return {
       kind: 'dice',
+      id: skin.id,
       name: `${skin.name} Dice`,
       emoji: skin.emoji,
       walletKey: skin.id,
@@ -68,6 +71,7 @@ export function resolveItem(item: PrizeItem): ResolvedItem | null {
   const meta = THEMED_ARENA_META[id as ThemedArenaId];
   return {
     kind: 'arena',
+    id,
     name: ARENAS[id].name,
     emoji: ARENAS[id].emoji,
     walletKey: arenaKey(id),

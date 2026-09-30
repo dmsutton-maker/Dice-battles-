@@ -13,6 +13,7 @@ import {
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
+import { ItemIcon, pictureOfItem } from './ItemIcon';
 
 /**
  * The season pass, at the top of the Cups tab.
@@ -110,7 +111,7 @@ export function SeasonPassCard({
               <Text style={styles.tileLevel}>{n}</Text>
               <View style={styles.tileIcon}>
                 {item ? (
-                  <Text style={styles.tileEmoji}>{item.emoji}</Text>
+                  <ItemIcon picture={pictureOfItem(item)} size={28} />
                 ) : reward.coins > 0 ? (
                   <GoldCoin size={20} />
                 ) : (
@@ -191,7 +192,6 @@ const styles = StyleSheet.create({
   tileReached: { opacity: 0.55 },
   tileLevel: { color: THEME.inkSoft, ...TYPE.label },
   tileIcon: { height: 30, alignItems: 'center', justifyContent: 'center' },
-  tileEmoji: { fontSize: 24 },
   tileAmount: { color: THEME.ink, ...TYPE.small, textAlign: 'center' },
   tick: {
     position: 'absolute',

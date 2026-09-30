@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { LeaderboardScreen } from '../../src/demo/LeaderboardScreen';
 import { TournamentScreen } from '../../src/demo/TournamentScreen';
 import { OpponentDots } from '../../src/demo/OpponentDots';
+import { RewardPopup, Reward } from '../../src/demo/RewardPopup';
 import { Text } from 'react-native';
 import { TOURNAMENTS, TournamentDef } from '../../src/game/tournament';
 
@@ -86,6 +87,30 @@ if (params.get('screen') === 'dots') {
           <View style={{ transform: [{ scale: 1 }] }}>
             <OpponentDots taken={taken as never} size={13} />
           </View>
+        </View>
+      ))}
+    </View>,
+  );
+  (window as any).__ready = true;
+} else if (params.get('screen') === 'rewards') {
+  /*
+    ?screen=rewards draws the reward popup once for every kind of
+    picture it can show — a die, a battlefield, a ladder rung, coins and
+    a trophy — side by side. Added 30 Sep 2026 when the popup stopped
+    showing emoji and started drawing the item itself.
+  */
+  const rewards: Reward[] = [
+    { picture: { kind: 'die', id: 'fire' }, name: 'Season level 20!', kicker: 'SEASON PASS', note: 'The Fire Dice — yours to keep.' },
+    { picture: { kind: 'arena', id: 'snow' }, name: 'Snowy Hollow', kicker: 'STILL YOURS', note: 'Still in your Inventory.' },
+    { picture: { kind: 'tier', id: 'ruby-dice' }, name: 'Ruby Dice', kicker: 'NEW REWARD UNLOCKED', note: 'Put it on in the Inventory.' },
+    { picture: { kind: 'coins' }, name: 'Season level 3!', kicker: 'SEASON PASS', note: '30 coins.' },
+    { picture: { kind: 'trophy' }, name: 'Skirmish Siege won!', kicker: 'CUP WON', note: '5 in a row.' },
+  ];
+  createRoot(host).render(
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 393 * 3 }}>
+      {rewards.map((r, i) => (
+        <View key={i} style={{ width: 393, height: 560, position: 'relative' }}>
+          <RewardPopup reward={r} onClose={() => {}} />
         </View>
       ))}
     </View>,

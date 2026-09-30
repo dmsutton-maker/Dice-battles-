@@ -188,6 +188,7 @@ import {
   SeasonState,
 } from '../game/seasonPass';
 import { Reward, RewardPopup } from './RewardPopup';
+import { pictureOfItem } from './ItemIcon';
 import {
   loadColorblindMode,
   setColorblindMode,
@@ -300,7 +301,7 @@ export function DiceDemoScreen() {
           setRewards((queue) => [
             ...queue,
             ...kept.map((id) => ({
-              emoji: ARENAS[id].emoji,
+              picture: { kind: 'arena' as const, id },
               name: ARENAS[id].name,
               kicker: 'STILL YOURS',
               note:
@@ -986,7 +987,7 @@ export function DiceDemoScreen() {
         setRewards((queue) => [
           ...queue,
           ...result.newUnlocks.map((tier) => ({
-            emoji: tier.emoji,
+            picture: { kind: 'tier' as const, id: tier.id },
             name: tier.name,
             kicker: 'NEW REWARD UNLOCKED',
             note: 'Put it on in the Inventory whenever you like.',
@@ -1136,7 +1137,7 @@ export function DiceDemoScreen() {
         setRewards((queue) => [
           ...queue,
           {
-            emoji: paid.item?.emoji ?? '🏆',
+            picture: paid.item ? pictureOfItem(paid.item) : { kind: 'trophy' as const },
             name: `${cup.name} won!`,
             kicker: 'CUP WON',
             note: `${cup.target} in a row. ${won}`,
@@ -1145,7 +1146,7 @@ export function DiceDemoScreen() {
           // than on the next ordinary win, which would be a reward
           // arriving with no explanation attached to it.
           ...paid.unlocked.map((tier) => ({
-            emoji: tier.emoji,
+            picture: { kind: 'tier' as const, id: tier.id },
             name: tier.name,
             kicker: 'NEW REWARD UNLOCKED',
             note: 'Put it on in the Inventory whenever you like.',
@@ -1182,13 +1183,15 @@ export function DiceDemoScreen() {
         setRewards((queue) => [
           ...queue,
           {
-            emoji: paid.item?.emoji ?? (paid.coins > 0 ? '🪙' : '🏆'),
+            picture: paid.item
+              ? pictureOfItem(paid.item)
+              : { kind: paid.coins > 0 ? ('coins' as const) : ('trophy' as const) },
             name: `Season level ${level}!`,
             kicker: 'SEASON PASS',
             note: `${what} See the whole pass in the Cups tab.`,
           },
           ...paid.unlocked.map((tier) => ({
-            emoji: tier.emoji,
+            picture: { kind: 'tier' as const, id: tier.id },
             name: tier.name,
             kicker: 'NEW REWARD UNLOCKED',
             note: 'Put it on in the Inventory whenever you like.',
@@ -1212,7 +1215,7 @@ export function DiceDemoScreen() {
         setRewards((queue) => [
           ...queue,
           ...result.newUnlocks.map((tier) => ({
-            emoji: tier.emoji,
+            picture: { kind: 'tier' as const, id: tier.id },
             name: tier.name,
             kicker: 'NEW REWARD UNLOCKED',
             note: 'Put it on in the Inventory whenever you like.',
@@ -1233,7 +1236,7 @@ export function DiceDemoScreen() {
           const unlock = result.newUnlocks[result.newUnlocks.length - 1];
           flashTimers.current.push(
             setTimeout(
-              () => showCallout(`UNLOCKED: ${unlock.emoji} ${unlock.name}!`, 'congrats'),
+              () => showCallout(`UNLOCKED: ${unlock.name}!`, 'congrats'),
               1900,
             ),
           );
@@ -1980,7 +1983,7 @@ export function DiceDemoScreen() {
 
     const skin = skinById(preview.id);
     return {
-      name: `${skin.emoji} ${skin.name} dice`,
+      name: `${skin.name} dice`,
       note: 'The shell is all that changes — the six face colours never do.',
       action: previewAction({
         trophies,
@@ -2019,13 +2022,13 @@ export function DiceDemoScreen() {
         preview.kind === 'arena'
           ? {
               key: arenaKey(preview.id),
-              emoji: ARENAS[preview.id].emoji,
+              picture: { kind: 'arena' as const, id: preview.id },
               name: ARENAS[preview.id].name,
               note: 'Tap it again to battle there.',
             }
           : {
               key: preview.id,
-              emoji: skinById(preview.id).emoji,
+              picture: { kind: 'die' as const, id: preview.id },
               name: `${skinById(preview.id).name} dice`,
               note: 'Tap it again to put it on.',
             };
@@ -2035,7 +2038,7 @@ export function DiceDemoScreen() {
       showPreview(null);
       setRewards((queue) => [
         ...queue,
-        { emoji: bought.emoji, name: bought.name, kicker: 'PURCHASED', note: bought.note },
+        { picture: bought.picture, name: bought.name, kicker: 'PURCHASED', note: bought.note },
       ]);
       playFanfare();
       return;

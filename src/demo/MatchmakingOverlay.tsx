@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SHAPE, THEME } from '../ui/theme';
 import { AI_ROSTER, AiOpponent } from '../game/ai';
+import { PRISONER_COLORS, inkOn } from '../game/colors';
 import {
   MATCH_TOTAL_MS,
   SCAN_TICK_MS,
@@ -127,7 +128,7 @@ export function MatchmakingOverlay({
       </Text>
 
       <View style={[styles.card, !scanning && styles.cardFound]}>
-        <Text style={styles.emoji}>{shown.emoji}</Text>
+        <RivalBadge name={shown.name} />
         <Text style={[styles.name, !scanning && styles.nameFound]}>
           {shown.name}
         </Text>
@@ -153,6 +154,27 @@ export function MatchmakingOverlay({
           ]}
         />
       </View>
+    </View>
+  );
+}
+
+/**
+ * A rival's badge: their initial on a disc in one of the game's colours.
+ *
+ * It was an emoji per rival — a crown, a clover, a shield — until David
+ * asked on 30 Sep 2026 for every emoji to go. An initial is what a name
+ * badge is, it cannot render differently on another phone, and the
+ * colour comes from the name so a rival always wears the same one.
+ */
+function RivalBadge({ name }: { name: string }) {
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const hex = PRISONER_COLORS[hash % PRISONER_COLORS.length].hex;
+  return (
+    <View style={[styles.badge, { backgroundColor: hex }]}>
+      <Text style={[styles.badgeLetter, { color: inkOn(hex) }]}>
+        {name.trim().charAt(0).toUpperCase() || '?'}
+      </Text>
     </View>
   );
 }
@@ -188,8 +210,18 @@ const styles = StyleSheet.create({
   cardFound: {
     backgroundColor: THEME.gold,
   },
-  emoji: {
-    fontSize: 54,
+  badge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeLetter: {
+    fontSize: 30,
+    fontWeight: '900',
   },
   name: {
     color: THEME.ink,

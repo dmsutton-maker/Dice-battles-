@@ -98,7 +98,7 @@ export function BugReportModal({ visible, onClose }: BugReportModalProps) {
           */}
           <Pressable onPress={() => {}}>
             <Card style={styles.panel} radius={SHAPE.radiusLg}>
-          <Text style={styles.title}>🐞 Report a Bug</Text>
+          <Text style={styles.title}>Report a Bug</Text>
           <Text style={styles.subtitle}>
             What happened? Your device and game version are attached
             automatically — you don&apos;t need to type those.

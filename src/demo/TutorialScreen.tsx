@@ -9,7 +9,7 @@ import { MODES, MODE_ORDER } from '../game/modes';
 import { TUTORIAL_PAGES, TutorialArt } from '../game/tutorial';
 import { playClick } from '../audio/sounds';
 import { GoldCoin } from './GoldCoin';
-import { GearIcon } from '../ui/Icon';
+import { GearIcon, TrophyIcon } from '../ui/Icon';
 import { ThrowDemo } from './ThrowDemo';
 import { SHAPE, THEME } from '../ui/theme';
 
@@ -147,7 +147,8 @@ function Art({ art, symbols }: { art: TutorialArt; symbols: boolean }) {
       <View style={styles.artRow}>
         <Swatch hex={a.hex} symbol={sym(a.id)} size={52} />
         <Swatch hex={b.hex} symbol={sym(b.id)} size={52} />
-        <Text style={styles.verdict}>{art.kind === 'match' ? '🔓 free!' : '🔒 nope'}</Text>
+        {/* Words, not a padlock emoji: no emoji anywhere in the game. */}
+        <Text style={styles.verdict}>{art.kind === 'match' ? 'Free!' : 'Nope'}</Text>
       </View>
     );
   }
@@ -174,7 +175,7 @@ function Art({ art, symbols }: { art: TutorialArt; symbols: boolean }) {
   if (art.kind === 'rewards') {
     return (
       <View style={styles.artRow}>
-        <Text style={styles.bigEmoji}>🏆</Text>
+        <TrophyIcon size={36} />
         <GoldCoin size={34} />
       </View>
     );
@@ -220,7 +221,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(0,0,0,0.22)',
   },
-  bigEmoji: { fontSize: 30 },
   verdict: { color: THEME.ink, fontSize: 15, fontWeight: '900', marginLeft: 4 },
 
   title: {

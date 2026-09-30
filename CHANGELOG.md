@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.104.0 — 2026-09-30 · requested by David
+
+"Get rid of any emojis and use the proper icons for each item."
+
+**No emoji on any screen.** Everything the game hands over is now drawn
+as itself, through one new component (`src/demo/ItemIcon.tsx`): a die is
+its painted shell, a battlefield is its picture, a ladder rung is the
+item it gives, and a payout is the game's own drawn coin or trophy.
+
+- **The reward popup** — every one of them: unlocks, purchases, cup
+  prizes, season pass levels, and the "still yours" note for Snowy
+  Hollow and Volcano Rim. It showed the item's emoji.
+- **The season pass** tiles for the Ice and Fire dice, Snowy Hollow and
+  Volcano Rim, and the item chip on a cup's prize row.
+- **The opponent card** while matching: each rival had an emoji (a
+  crown, a clover, a shield). Now it is their initial on a disc in one of
+  the game's colours, always the same colour for the same rival.
+- **The words:** "UNLOCKED: 🍒 Ruby Dice!" is "UNLOCKED: Ruby Dice!", the
+  preview title no longer starts with an emoji, the bug report title
+  lost its ladybird, and the tutorial's padlocks and trophy are the
+  words "Free!" and "Nope" and the drawn trophy.
+
+The plain ✓ tick and ✕ close mark stay — they are text drawn in the
+game's ink, not colour emoji. The dice, battlefields and ladder rungs
+still carry an `emoji` field in their data; nothing on screen draws it,
+and `tests/noEmoji.test.ts` fails if a screen ever does again.
+
 ## v1.103.0 — 2026-09-30 · requested by David
 
 "Fix the button on the cups screen to make it look full and not
