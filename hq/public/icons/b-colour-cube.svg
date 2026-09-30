@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="One large die with three differently coloured faces">
+  <title>Colour Cube</title>
+  <defs>
+    <linearGradient id="b-bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#40317d"/>
+      <stop offset="1" stop-color="#130e26"/>
+    </linearGradient>
+    <radialGradient id="b-glow" cx="0.5" cy="0.44" r="0.6">
+      <stop offset="0" stop-color="#ffe521" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#ffe521" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="b-top" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#fff35c"/>
+      <stop offset="1" stop-color="#ffe521"/>
+    </linearGradient>
+    <linearGradient id="b-left" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#e03242"/>
+      <stop offset="1" stop-color="#a8172a"/>
+    </linearGradient>
+    <linearGradient id="b-right" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#1f56ef"/>
+      <stop offset="1" stop-color="#032ea8"/>
+    </linearGradient>
+    <filter id="b-drop" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="30" stdDeviation="30" flood-color="#05030f" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#b-bg)"/>
+  <rect width="1024" height="1024" fill="url(#b-glow)"/>
+
+  <!-- An isometric die: three faces visible at once, each a different
+       colour, which is the whole idea of the game in one picture. -->
+  <g filter="url(#b-drop)">
+    <!-- top -->
+    <path d="M512 196 L800 340 L512 484 L224 340 Z" fill="url(#b-top)"/>
+    <!-- left -->
+    <path d="M224 340 L512 484 L512 812 L224 668 Z" fill="url(#b-left)"/>
+    <!-- right -->
+    <path d="M800 340 L512 484 L512 812 L800 668 Z" fill="url(#b-right)"/>
+
+    <!-- Ivory shell edges, so the faces read as one solid object. -->
+    <path d="M512 196 L800 340 L512 484 L224 340 Z" fill="none" stroke="#fffdf7" stroke-width="22" stroke-linejoin="round"/>
+    <path d="M224 340 L512 484 L512 812 L224 668 Z" fill="none" stroke="#fffdf7" stroke-width="22" stroke-linejoin="round"/>
+    <path d="M800 340 L512 484 L512 812 L800 668 Z" fill="none" stroke="#fffdf7" stroke-width="22" stroke-linejoin="round"/>
+
+    <!-- A soft sheen across the top face. -->
+    <path d="M512 196 L800 340 L512 484 L224 340 Z" fill="#ffffff" opacity="0.18"/>
+  </g>
+</svg>
