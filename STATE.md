@@ -134,7 +134,9 @@ and the same day the listing was brought up to date:
     Contents to be confirmed — proposed: an exclusive golden die plus a
     pile of coins.
   - **Coin packs** — Pouch $0.99, Chest $4.99, Vault $9.99.
-  - **Dice Club** — $4.99/month subscription, the everything tier: no
+  - **Dice Club** — REMOVED 5 Oct 2026. David: "take Dice Club out for
+    now, I don't think we can keep up with that yet" (a monthly charge
+    is a promise of new content every month). Was: $4.99/month subscription, the everything tier: no
     ads while subscribed, Season Pass included, daily coin bonus, and a
     members-only die that changes monthly.
   - **Season Pass** — $2.99 per season, implemented as an XP reward

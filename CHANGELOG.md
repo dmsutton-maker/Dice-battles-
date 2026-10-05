@@ -8,8 +8,14 @@ build that carries them. This is the change that needs that build.
 ### Added
 - **Purchases are on.** No more adverts ($3.99), and the coin pouch,
   chest and vault ($0.99 / $4.99 / $9.99). The four products the family
-  chose on 31 Aug; the other five stay parked for the reasons written in
+  chose on 31 Aug; four more stay parked for the reasons written in
   `products.ts`.
+
+### Removed
+- **Dice Club**, the $4.99-a-month subscription. David: "take Dice Club
+  out for now, I don't think we can keep up with that yet." A monthly
+  charge is a promise of something new every month. It was never on
+  sale, and is now out of the catalogue rather than parked.
 - **Ask to Buy.** When a child taps Buy on a phone in a Family Sharing
   group, a grown-up is asked first. The Store now says so ("Asked a
   grown-up") instead of "that did not go through", and the purchase

@@ -180,21 +180,6 @@ export const PRODUCTS: Product[] = [
       'and an exclusive one has to be built before it can be sold.',
   },
   {
-    id: 'dice_club_monthly',
-    kind: 'subscription',
-    name: 'Dice Club',
-    blurb: 'No adverts, a daily coin bonus, and the season pass included.',
-    usd: 4.99,
-    grants: [REMOVE_ADS],
-    available: false,
-    blockedBy:
-      'Apple only allows a repeating charge where the player keeps ' +
-      'getting something new for it, and rejects subscriptions whose ' +
-      'ongoing value is thin. Charging every month is a promise to ship ' +
-      'new content every month, for as long as anybody subscribes. That ' +
-      'is a commitment for David to make deliberately, not a switch.',
-  },
-  {
     id: 'season_pass',
     kind: 'season',
     name: 'Season pass',
