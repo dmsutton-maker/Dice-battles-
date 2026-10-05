@@ -7,6 +7,8 @@ import { OpponentDots } from '../../src/demo/OpponentDots';
 import { RewardPopup, Reward } from '../../src/demo/RewardPopup';
 import { BootSplash } from '../../src/demo/BootSplash';
 import { BottomNav } from '../../src/demo/BottomNav';
+import { MoneyShelf } from '../../src/demo/MoneyShelf';
+import { initPurchases } from '../../src/game/purchases';
 import { Text } from 'react-native';
 import { TOURNAMENTS, TournamentDef } from '../../src/game/tournament';
 
@@ -94,6 +96,24 @@ if (params.get('screen') === 'dots') {
     </View>,
   );
   (window as any).__ready = true;
+} else if (params.get('screen') === 'shop') {
+  /*
+    ?screen=shop: the money shelf with purchases switched on and real
+    prices showing — the review screenshot App Store Connect asks for
+    with every in-app purchase. Added 5 Oct 2026. The bundle has to
+    alias `expo-iap` to a stub that reports prices; the shelf itself
+    is the real one.
+  */
+  initPurchases()
+    .then(() => new Promise((resolve) => setTimeout(resolve, 300)))
+    .then(() => {
+      createRoot(host).render(
+        <View style={{ width: 393, paddingHorizontal: 16, paddingVertical: 24, backgroundColor: '#fdf6ec' }}>
+          <MoneyShelf />
+        </View>,
+      );
+      setTimeout(() => ((window as any).__ready = true), 1500);
+    });
 } else if (params.get('screen') === 'boot') {
   // ?screen=boot: the startup card over the home tab's bottom bar — the
   // two places the Paper & Ink logo went on 30 Sep 2026.
