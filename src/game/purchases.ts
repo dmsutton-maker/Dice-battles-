@@ -35,12 +35,16 @@ import { PRODUCTS, Product, REMOVE_ADS, productById, sellable } from './products
 const STORAGE_KEY = 'dice-battles:entitlements';
 /** When this phone first opened the game — the starter window's clock. */
 const INSTALLED_KEY = 'dice-battles:installed-at';
+/** Store transactions already handed over, so a replay never pays twice. */
+const HANDLED_KEY = 'dice-battles:handled-transactions';
 
 /** Long enough for a slow shop request, short enough not to feel broken. */
 const TIMEOUT_MS = 12_000;
 
 /** Everything bought with money on this device, by entitlement id. */
 let owned = new Set<string>();
+/** Transaction ids already handed over. Not entitlements — bookkeeping. */
+let handled = new Set<string>();
 let installedAt: number | null = null;
 let ready = false;
 
@@ -96,6 +100,13 @@ export async function initPurchases(): Promise<void> {
   } catch {
     owned = new Set();
   }
+  try {
+    const raw = await AsyncStorage.getItem(HANDLED_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    handled = new Set(Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : []);
+  } catch {
+    handled = new Set();
+  }
 
   /*
     The install time is written the FIRST time the game runs and never
@@ -123,6 +134,9 @@ export async function initPurchases(): Promise<void> {
     const connect = mod.initConnection as (() => Promise<unknown>) | undefined;
     if (connect) await withTimeout(connect(), null);
     ready = true;
+    // Before anything else: a purchase interrupted last time is replayed
+    // the moment the connection opens, and must find someone listening.
+    listen(mod);
     void refreshPrices();
   } catch {
     ready = false;
@@ -134,12 +148,12 @@ async function refreshPrices(): Promise<void> {
   const mod = moduleOrNull();
   if (!mod || !ready) return;
   try {
-    const fetchProducts = mod.getProducts as
-      | ((ids: string[]) => Promise<{ id: string; displayPrice?: string }[]>)
+    const fetchProducts = mod.fetchProducts as
+      | ((request: { skus: string[]; type: 'in-app' }) => Promise<{ id: string; displayPrice?: string }[] | null>)
       | undefined;
     if (!fetchProducts) return;
     const ids = PRODUCTS.filter((p) => p.available).map((p) => p.id);
-    const found = await withTimeout(fetchProducts(ids), []);
+    const found = (await withTimeout(fetchProducts({ skus: ids, type: 'in-app' }), [])) ?? [];
     const next = new Map<string, string>();
     for (const item of found) {
       if (item?.id && typeof item.displayPrice === 'string') {
@@ -177,6 +191,14 @@ export function adsRemoved(): boolean {
   return owned.has(REMOVE_ADS);
 }
 
+async function persistHandled(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(HANDLED_KEY, JSON.stringify([...handled].slice(-200)));
+  } catch {
+    // Worst case a replayed transaction is handed over twice.
+  }
+}
+
 async function persist(): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...owned]));
@@ -202,7 +224,123 @@ async function grant(product: Product): Promise<void> {
 
 export type BuyResult =
   | { ok: true; product: Product }
-  | { ok: false; reason: 'unavailable' | 'cancelled' | 'failed'; message: string };
+  | {
+      ok: false;
+      reason: 'unavailable' | 'cancelled' | 'failed' | 'pending';
+      message: string;
+    };
+
+/**
+ * The shape of a purchase as the library reports it. Only what is read
+ * here; `id` is the TRANSACTION id, not the product's.
+ */
+interface StorePurchase {
+  id?: string;
+  productId?: string;
+  purchaseState?: 'pending' | 'purchased' | 'unknown';
+}
+
+/**
+ * The one purchase sheet that may be open, and how to answer it.
+ *
+ * The library does not answer a purchase through the call that opened
+ * the sheet. The outcome arrives on a listener — and so do purchases
+ * nobody is waiting for: a parent approving an Ask to Buy an hour later,
+ * or a purchase that was interrupted and is replayed on the next launch.
+ * Those are paid for, so they are handed over all the same.
+ */
+let waiting: { productId: string; settle: (result: BuyResult) => void } | null = null;
+let listening = false;
+
+function answer(result: BuyResult): void {
+  const open = waiting;
+  waiting = null;
+  open?.settle(result);
+}
+
+const NOT_CHARGED = 'That did not go through. You have not been charged.';
+
+/** Listen once, for the life of the app. Safe to call again. */
+function listen(mod: Record<string, unknown>): void {
+  if (listening) return;
+  const onPurchase = mod.purchaseUpdatedListener as
+    | ((fn: (purchase: StorePurchase) => void) => unknown)
+    | undefined;
+  const onError = mod.purchaseErrorListener as
+    | ((fn: (error: { code?: string; message?: string; productId?: string | null }) => void) => unknown)
+    | undefined;
+  if (!onPurchase || !onError) return;
+  try {
+    onPurchase((purchase) => {
+      void settle(mod, purchase);
+    });
+    onError((error) => {
+      if (!waiting) return;
+      if (error?.productId && error.productId !== waiting.productId) return;
+      const cancelled =
+        error?.code === 'user-cancelled' || /cancel/i.test(String(error?.message ?? ''));
+      answer(
+        cancelled
+          ? { ok: false, reason: 'cancelled', message: '' }
+          : { ok: false, reason: 'failed', message: NOT_CHARGED },
+      );
+    });
+    listening = true;
+  } catch {
+    listening = false;
+  }
+}
+
+/**
+ * A purchase the store has reported: hand it over ONCE, then finish it.
+ *
+ * Finishing matters as much as granting. An unfinished transaction is
+ * replayed on every launch on iPhone, and on Android one left unfinished
+ * for three days is refunded by Google. Coins are finished as
+ * consumables so the same pack can be bought again.
+ */
+async function settle(mod: Record<string, unknown>, purchase: StorePurchase): Promise<void> {
+  try {
+    const product = purchase?.productId ? productById(purchase.productId) : undefined;
+    if (!product) return;
+
+    if (purchase.purchaseState === 'pending') {
+      // Ask to Buy: a grown-up has to say yes first. Nothing is charged
+      // until they do, and when they do it arrives here again.
+      if (waiting?.productId === product.id) {
+        answer({
+          ok: false,
+          reason: 'pending',
+          message: 'A grown-up has been asked. It will arrive by itself once they say yes.',
+        });
+      }
+      return;
+    }
+
+    const key = purchase.id ?? '';
+    if (!key || !handled.has(key)) {
+      await grant(product);
+      if (key) {
+        handled.add(key);
+        await persistHandled();
+      }
+    }
+
+    const finish = mod.finishTransaction as
+      | ((args: { purchase: StorePurchase; isConsumable: boolean }) => Promise<unknown>)
+      | undefined;
+    if (finish) {
+      await withTimeout(finish({ purchase, isConsumable: product.kind === 'consumable' }), null);
+    }
+
+    if (waiting?.productId === product.id) answer({ ok: true, product });
+  } catch {
+    if (waiting) answer({ ok: false, reason: 'failed', message: NOT_CHARGED });
+  }
+}
+
+/** Long enough for a slow Face ID and a parent's thumb; not for ever. */
+const SHEET_TIMEOUT_MS = 10 * 60_000;
 
 /**
  * Buy something.
@@ -217,45 +355,50 @@ export async function buy(productId: string): Promise<BuyResult> {
   }
 
   const mod = moduleOrNull();
-  if (!mod || !ready) {
+  const request = mod?.requestPurchase as ((args: unknown) => Promise<unknown>) | undefined;
+  if (!mod || !ready || !listening || !request) {
     return {
       ok: false,
       reason: 'unavailable',
       message: 'Buying is not available on this phone yet.',
     };
   }
+  if (waiting) {
+    return { ok: false, reason: 'failed', message: 'Finish the other purchase first.' };
+  }
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const outcome = new Promise<BuyResult>((resolve) => {
+    waiting = { productId: product.id, settle: resolve };
+    timer = setTimeout(
+      () =>
+        answer({
+          ok: false,
+          reason: 'failed',
+          message: 'That took too long. If you were charged, it will arrive by itself.',
+        }),
+      SHEET_TIMEOUT_MS,
+    );
+  });
 
   try {
-    const request = mod.requestPurchase as
-      | ((args: { sku: string }) => Promise<unknown>)
-      | undefined;
-    if (!request) {
-      return {
-        ok: false,
-        reason: 'unavailable',
-        message: 'Buying is not available on this phone yet.',
-      };
-    }
-
-    const outcome = await request({ sku: product.id });
-    if (!outcome) {
-      // A cancelled sheet resolves with nothing. Say nothing back.
-      return { ok: false, reason: 'cancelled', message: '' };
-    }
-
-    await grant(product);
-    return { ok: true, product };
+    await request({
+      request: { apple: { sku: product.id }, google: { skus: [product.id] } },
+      type: 'in-app',
+    });
   } catch (error) {
     const message = String((error as { message?: string })?.message ?? '');
-    if (/cancel/i.test(message)) {
-      return { ok: false, reason: 'cancelled', message: '' };
-    }
-    return {
-      ok: false,
-      reason: 'failed',
-      message: 'That did not go through. You have not been charged.',
-    };
+    const code = String((error as { code?: string })?.code ?? '');
+    answer(
+      code === 'user-cancelled' || /cancel/i.test(message)
+        ? { ok: false, reason: 'cancelled', message: '' }
+        : { ok: false, reason: 'failed', message: NOT_CHARGED },
+    );
   }
+
+  const result = await outcome;
+  if (timer) clearTimeout(timer);
+  return result;
 }
 
 /**
@@ -271,15 +414,19 @@ export async function restore(): Promise<{ restored: number; ok: boolean }> {
   if (!mod || !ready) return { restored: 0, ok: false };
 
   try {
+    const sync = mod.restorePurchases as (() => Promise<unknown>) | undefined;
+    if (sync) await withTimeout(sync(), null);
+
     const fetchOwned = mod.getAvailablePurchases as
-      | (() => Promise<{ id?: string; productId?: string }[]>)
+      | (() => Promise<StorePurchase[]>)
       | undefined;
     if (!fetchOwned) return { restored: 0, ok: false };
 
     const purchases = await withTimeout(fetchOwned(), []);
     let restored = 0;
     for (const purchase of purchases) {
-      const id = purchase?.id ?? purchase?.productId;
+      // productId, not id: id is the transaction.
+      const id = purchase?.productId;
       const product = id ? productById(id) : undefined;
       // Consumables are never restored — they were spent when granted.
       if (!product || product.kind === 'consumable') continue;
@@ -305,4 +452,7 @@ export function resetPurchasesForTest(state?: {
   installedAt = state?.installedAt === undefined ? null : state.installedAt;
   ready = state?.ready ?? false;
   priceById = new Map();
+  handled = new Set();
+  waiting = null;
+  listening = false;
 }

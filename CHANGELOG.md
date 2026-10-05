@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.106.0 — 2026-10-05 · requested by David
+
+David, 5 Oct 2026: "we do want to launch with [purchases]", and the
+build that carries them. This is the change that needs that build.
+
+### Added
+- **Purchases are on.** No more adverts ($3.99), and the coin pouch,
+  chest and vault ($0.99 / $4.99 / $9.99). The four products the family
+  chose on 31 Aug; the other five stay parked for the reasons written in
+  `products.ts`.
+- **Ask to Buy.** When a child taps Buy on a phone in a Family Sharing
+  group, a grown-up is asked first. The Store now says so ("Asked a
+  grown-up") instead of "that did not go through", and the purchase
+  arrives by itself once they say yes.
+- **Push notifications are on**, for "a new update is ready" messages.
+  They are asked for from Settings, never at launch.
+
+### Fixed (before anyone could hit it)
+- The purchase code was written against an older version of the
+  purchase library. In the current one a purchase is answered on a
+  listener, not by the call that opens the sheet, and every transaction
+  has to be FINISHED — otherwise iPhone replays it on every launch and
+  Google refunds it after three days. Both are handled now, and a
+  replayed purchase can never pay out twice.
+
+### Native — this needs the new build
+- `runtimeVersion` is raised to **3.0.0**, in the same change as the two
+  new native modules (`expo-iap`, `expo-notifications`). Build 9 and
+  earlier stay on v1.105.0 until the new build is installed. That is the
+  pin working, not a fault.
+
 ## v1.105.0 — 2026-09-30 · requested by David
 
 "Make the color of the fire dice more orange. Not just orange, I mean

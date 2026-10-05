@@ -15,14 +15,13 @@
  *   - A `try`/`catch` around the require does NOT save you. Metro's
  *     loader catches the throw first and escalates it to a red screen.
  *
- * ── CURRENT STATE: OFF ────────────────────────────────────────────────
+ * ── CURRENT STATE: ON (5 Oct 2026, runtimeVersion 3.0.0) ──────────────
  *
- * The require is commented out and `expo-notifications` is NOT in
- * package.json, so nothing about notifications is in the bundle and
- * `runtimeVersion` correctly stays where it is. Every over-the-air
- * update still reaches every install.
+ * Switched on in the same change as purchases, because both need the
+ * same new binary and David asked for that build on 5 Oct 2026. The
+ * notes below are why it waited.
  *
- * WHY IT IS OFF. David asked for this on 25 Sep 2026 and everything
+ * WHY IT WAS OFF. David asked for this on 25 Sep 2026 and everything
  * around it is finished and deployed: the `push_tokens` table, the
  * register endpoint, the announce endpoint, and `src/game/push.ts`
  * below. The one remaining step needs a NEW BINARY, and a build cannot
@@ -63,10 +62,8 @@
  * read in one glance is the point.
  */
 export function loadPushSdk(): unknown | null {
-  // PUSH OFF. To turn it on, uncomment the next line AND do the other
-  // four steps above, in the same change.
-  //
+  // PUSH ON (runtimeVersion 3.0.0). Turning it off again is the five
+  // steps above in reverse, in one change.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  // return require('expo-notifications');
-  return null;
+  return require('expo-notifications');
 }

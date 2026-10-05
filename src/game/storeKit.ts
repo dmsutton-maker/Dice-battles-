@@ -14,12 +14,16 @@
  *     loader catches the throw first and escalates it to a fatal. That
  *     is what crashed David's phone on 25 Aug 2026. See AGENTS.md.
  *
- * ── CURRENT STATE: OFF ────────────────────────────────────────────────
+ * ── CURRENT STATE: ON (5 Oct 2026, runtimeVersion 3.0.0) ──────────────
  *
- * The require is absent, so `expo-iap` is not in the bundle at all, and
- * this JavaScript is safe to send to every existing install. The whole
- * purchase system above it degrades to one honest state — "not available
- * on this phone yet" — rather than to a crash.
+ * David, 5 Oct 2026: "we do want to launch with [purchases]". The
+ * require is live, so `expo-iap` is in every bundle, and only binaries
+ * built at runtime 3.0.0 or later receive it. Older installs correctly
+ * stay on the last update made for runtime 2.0.0 until they update from
+ * the App Store.
+ *
+ * While it was off, the whole purchase system degraded to one honest
+ * state — "not available on this phone yet" — rather than to a crash.
  *
  * Provable rather than argued:
  *
@@ -52,10 +56,8 @@
  * read in one glance is the point.
  */
 export function loadStoreKit(): unknown | null {
-  // PURCHASES OFF. To turn them on, install expo-iap, uncomment the next
-  // line, RAISE runtimeVersion in app.json, and build — one change.
-  //
+  // PURCHASES ON (runtimeVersion 3.0.0). To turn them off, comment the
+  // next line out and return null — and see the header before you do.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  // return require('expo-iap');
-  return null;
+  return require('expo-iap');
 }

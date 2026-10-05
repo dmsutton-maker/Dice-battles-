@@ -189,10 +189,14 @@ suite('fire dice · it never hides the roll', () => {
   test('nothing native, so it can ship over the air', () => {
     // A particle pool and a shader are JavaScript. A new package would
     // not be, and see AGENTS.md for what that costs.
-    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-    assert(!('expo-notifications' in (pkg.dependencies ?? {})), 'push crept in alongside the fire');
+    // (This also once checked that push had not crept in alongside the
+    // fire. Push went in on purpose with the 3.0.0 build, 5 Oct 2026.)
     const source = readFileSync('src/dice/diceFire.ts', 'utf8');
     assert(!/require\(/.test(source), 'diceFire.ts requires a module at runtime');
+    const imports = [...source.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
+    for (const from of imports) {
+      assert(from === 'three' || from.startsWith('.'), `diceFire.ts imports ${from}`);
+    }
   });
 });
 

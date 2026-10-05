@@ -46,7 +46,7 @@
       }
     },
     "owner": "dmsutton",
-    "runtimeVersion": "2.0.0",
+    "runtimeVersion": "3.0.0",
     "updates": {
       "url": "https://u.expo.dev/f5fb40f0-cb76-4fce-8094-1be129db1576"
     },
@@ -75,7 +75,9 @@
           "delayAppMeasurementInit": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-iap",
+      "expo-notifications"
     ]
   }
 }

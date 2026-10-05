@@ -69,6 +69,11 @@ export function MoneyShelf({ onBought }: { onBought?: () => void }) {
     }
     // A cancelled sheet is not a failure and says nothing at all.
     if (result.reason === 'cancelled') return;
+    // Ask to Buy: not a failure, just not yet.
+    if (result.reason === 'pending') {
+      setTold({ title: 'Asked a grown-up', body: result.message });
+      return;
+    }
     setTold({ title: 'That did not go through', body: result.message });
   };
 
