@@ -5,7 +5,7 @@ one read instead of reconstructing it from conversation history. Keep it
 current — a stale map is worse than none. `AGENTS.md` holds the *rules*;
 this holds the *facts*.
 
-Last updated: 17 September 2026.
+Last updated: 9 October 2026.
 
 ## The two things being built
 
@@ -153,6 +153,20 @@ and the same day the listing was brought up to date:
     can ship and iterate over the air).
   - The submission itself still sits behind the full-test-on-Fable gate
     in AGENTS.md.
+
+## iOS builds can run from a session again (9 Oct 2026)
+
+Build 16 (1.60.0, runtime 3.0.0 — purchases and push on) was built from
+a session. EAS now holds the iOS credentials itself: a new distribution
+certificate (serial B252B6FD…, expires 9 Oct 2027) and an App Store
+provisioning profile (2AC398XUY6) carrying Game Center, In-App Purchase,
+Associated Domains and Push Notifications. So
+`eas build --platform ios --profile production --non-interactive` works
+from any session with EXPO_TOKEN set — no Apple login, no Node on
+David's side. The older certificate 53S59K9KFQ was left untouched.
+
+Still missing: an APNs push key on EAS. Pushes cannot be delivered until
+one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
