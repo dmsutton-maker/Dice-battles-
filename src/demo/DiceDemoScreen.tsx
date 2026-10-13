@@ -228,7 +228,7 @@ function AdStatusLine() {
   const status = adStatus();
   const WHY: Record<ReturnType<typeof adStatus>['stage'], string> = {
     'not-started': 'not started yet',
-    'bought-out': 'switched off — adverts bought away',
+    'bought-out': 'switched off — ads bought away',
     'no-sdk': 'not in this build — needs a new build from Apple',
     'no-consent': 'consent not granted, so no ad may be asked for',
     'init-failed': 'the ad service would not start (often no connection)',
@@ -241,7 +241,7 @@ function AdStatusLine() {
       {status.gamesFinished} games played · next ad in {status.untilNext} ·{' '}
       {status.loaded ? 'one waiting' : 'none waiting'}
       {'\n'}
-      {status.unit === 'test' ? 'test adverts (tester mode)' : 'real adverts'}
+      {status.unit === 'test' ? 'test ads (tester mode)' : 'real ads'}
     </Text>
   );
 }
@@ -332,11 +332,11 @@ export function DiceDemoScreen() {
       neither can fail in a way the player sees — see src/game/ads.ts.
     */
     /*
-      Entitlements BEFORE adverts, and both outside the chain above.
+      Entitlements BEFORE ads, and both outside the chain above.
 
       initPurchases reads what this phone has already bought, which is
       what initAds then checks before starting the SDK at all — so
-      somebody who paid to remove adverts never even loads one. Neither
+      somebody who paid to remove ads never even loads one. Neither
       may hold up the first frame, and neither can fail in a way the
       player sees.
     */
@@ -1078,7 +1078,7 @@ export function DiceDemoScreen() {
       in hand.
 
       Deliberately NOT the waiting kind. The menu appears immediately
-      either way, and this player is already looking at it — an advert
+      either way, and this player is already looking at it — an ad
       that turned up six seconds later, over the menu, would be worse
       than none. A due ad that cannot be shown now is kept owed, and the
       next Start battle pays it.
@@ -1094,7 +1094,7 @@ export function DiceDemoScreen() {
         friendly battle". No trophies, no coins, no cup progress, and
         nothing reported to Game Center.
 
-        It also does not count toward the advert every third game.
+        It also does not count toward the ad every third game.
         Charging somebody an interstitial for playing with their brother
         would be the wrong thing to monetise, and an ad landing between
         two people who are both waiting to play again breaks the one
@@ -1449,7 +1449,7 @@ export function DiceDemoScreen() {
 
       THIS is the one that waits, since 11 Sep 2026 — David: "make sure
       the ad happens when you press play again or start battle". It will
-      start the SDK and fetch an advert rather than skipping, for up to
+      start the SDK and fetch an ad rather than skipping, for up to
       six seconds, because a pause before a battle starts is a pause
       before a game rather than an interruption of one.
     */

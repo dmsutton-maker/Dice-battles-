@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.108.1 — 2026-10-13 · requested by David
+
+### Changed
+- **"Adverts" is "ads" everywhere a player reads it.** David: "Change
+  adverts to ads." The Store ("No more ads"), the family tester ads
+  line, every News post, and the privacy page on the website.
+  "Advertising" as a heading stays — it is a different word.
+
 ## v1.108.0 — 2026-10-13 · requested by David
 
 ### Added

@@ -278,12 +278,12 @@ export const NEWS: NewsItem[] = [
     id: 'v1-88-0-ads-actually-show',
     date: '11 September 2026',
     version: 'v1.88.0',
-    title: 'The adverts actually turn up now',
+    title: 'The ads actually turn up now',
     icon: 'fix',
     body:
-      'There is meant to be one advert after every third finished game, ' +
+      'There is meant to be one ad after every third finished game, ' +
       'and for a lot of people there were none at all.\n\n' +
-      'An advert has to be fetched over the internet before it can be ' +
+      'An ad has to be fetched over the internet before it can be ' +
       'shown, and the game was only ever asking for one quietly in the ' +
       'background. If it had not arrived by the time your third game ' +
       'ended \u2014 which, just after opening the app, it usually had ' +
@@ -292,7 +292,7 @@ export const NEWS: NewsItem[] = [
       'Now it waits a few seconds for one when you press Start battle or ' +
       'Play again, and if it still cannot get one it keeps owing you it ' +
       'rather than forgetting. Going back to the menu never waits: an ' +
-      'advert appearing six seconds after you got there would be worse ' +
+      'ad appearing six seconds after you got there would be worse ' +
       'than none.',
   },
   {
@@ -311,7 +311,7 @@ export const NEWS: NewsItem[] = [
       'battle a moment later \u2014 their prisoners move because their ' +
       'dice landed, not because a computer decided.\n\n' +
       'Nothing is won and nothing is lost: no trophies, no coins, no ' +
-      'adverts. Just who won.\n\n' +
+      'ads. Just who won.\n\n' +
       'It is live only, on purpose. You challenge somebody who is ' +
       'playing right now, and the challenge runs out after about ' +
       'forty-five seconds \u2014 a battle you both have to be there for ' +
@@ -598,27 +598,27 @@ export const NEWS: NewsItem[] = [
     title: 'A shop that takes real money — soon',
     icon: 'shop',
     body:
-      'Groundwork for buying things: switching the adverts off for good, ' +
+      'Groundwork for buying things: switching the ads off for good, ' +
       'and coins for anyone who would rather not grind for the last ' +
       'battlefield. It is not switched on yet — that needs a new version ' +
       'of the game from the App Store.\n\n' +
       'One promise that will not change: nothing you can buy will ever ' +
       'change how the dice land. Everything for sale is something to ' +
-      'look at, or an advert switched off. The moment money buys wins, ' +
+      'look at, or an ad switched off. The moment money buys wins, ' +
       'the game stops being fair, and fair is the whole point of it.',
   },
   {
     id: 'v1-67-0-adverts',
     date: '7 September 2026',
     version: 'v1.67.0',
-    title: 'One advert every third game',
+    title: 'One ad every third game',
     icon: 'shop',
     body:
-      'The game is free, and from this update one full-screen advert ' +
+      'The game is free, and from this update one full-screen ad ' +
       'appears after every third finished game. That is the whole of it: ' +
       'never during a battle, never a banner across the board, never a ' +
       'video you have to sit through.\n\n' +
-      'Every advert is marked for a family audience, so nothing is ' +
+      'Every ad is marked for a family audience, so nothing is ' +
       'chosen based on who is holding the phone and nothing follows you ' +
       'anywhere. It waits until you leave the results, so it can never ' +
       'cover a trophy or an unlock you have just won — and the next ' +

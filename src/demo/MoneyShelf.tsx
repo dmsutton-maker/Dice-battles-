@@ -130,7 +130,7 @@ export function MoneyShelf({
     <View style={styles.shelf}>
       <Text style={styles.fairness}>
         Nothing here changes how the dice land. Every one of these is
-        something to look at, or an advert switched off.
+        something to look at, or an ad switched off.
       </Text>
 
       {state.products.map((product) => {

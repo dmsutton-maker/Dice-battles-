@@ -84,9 +84,9 @@ export const PRODUCTS: Product[] = [
   {
     id: 'remove_ads',
     kind: 'once',
-    name: 'No more adverts',
+    name: 'No more ads',
     blurb:
-      'Switches off the advert between games, for good, on every phone ' +
+      'Switches off the ad between games, for good, on every phone ' +
       'signed in to your Apple account.',
     usd: 3.99,
     grants: [REMOVE_ADS],
