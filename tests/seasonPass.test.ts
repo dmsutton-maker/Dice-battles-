@@ -4,6 +4,9 @@ import { assert, assertEqual, note, suite, test } from './harness';
 import {
   addXp,
   asPrize,
+  claimGold,
+  GOLD_PASS,
+  goldRewardFor,
   BATTLE_XP,
   battleXp,
   LEVELS,
@@ -13,6 +16,8 @@ import {
   SEASON,
   SEASON_ITEM_WORTH,
   SEASON_ITEMS,
+  SeasonReward,
+  seasonTrackOf,
   xpForLevel,
   xpToReach,
 } from '../src/game/seasonPass';
@@ -29,6 +34,7 @@ import {
   keepPassArenas,
 } from '../src/game/loadout';
 import { AI_DIFFICULTIES } from '../src/game/ai';
+import { PRODUCTS } from '../src/game/products';
 
 /**
  * The season pass.
@@ -40,6 +46,10 @@ import { AI_DIFFICULTIES } from '../src/game/ai';
  * obtain them and also make the volcano rim and snowy hollow arenas
  * unlocked through the season pass only."
  */
+
+/** What a level pays on the row a season item sits on. */
+const rewardOn = (level: number, track: 'free' | 'gold'): SeasonReward =>
+  track === 'gold' ? goldRewardFor(level) : rewardFor(level);
 
 const DIFFICULTIES = Object.keys(AI_DIFFICULTIES) as (keyof typeof AI_DIFFICULTIES)[];
 
@@ -112,7 +122,9 @@ suite('season pass · rewards', () => {
     assertEqual(items.join(','), 'arena:snow,arena:volcano,dice:fire,dice:ice', 'the wrong things are on the pass');
     for (const { level, item } of SEASON_ITEMS) {
       assert(level >= 1 && level <= LEVELS, `${item.id} is on a level that does not exist`);
-      assertEqual(rewardFor(level).item?.id, item.id, `level ${level} does not pay the ${item.id}`);
+    }
+    for (const { level, item, track } of SEASON_ITEMS) {
+      assertEqual(rewardOn(level, track).item?.id, item.id, `level ${level} does not pay the ${item.id} on the ${track} row`);
     }
     assertEqual(new Set(SEASON_ITEMS.map((s) => s.level)).size, SEASON_ITEMS.length, 'two items on one level');
   });
@@ -150,8 +162,8 @@ suite('season pass · rewards', () => {
     // The Fire and Ice dice were on sale for a day before the pass.
     resetWalletForTests({ coins: 0, owned: ['fire'] });
     resetProgressForTests({ trophies: 0 });
-    const level = SEASON_ITEMS.find((s) => s.item.id === 'fire')!.level;
-    const paid = payPrize(asPrize(rewardFor(level)));
+    const fire = SEASON_ITEMS.find((s) => s.item.id === 'fire')!;
+    const paid = payPrize(asPrize(rewardOn(fire.level, fire.track)));
     assertEqual(paid.item, null, 'a second Fire die was handed over');
     assertEqual(paid.coins, SEASON_ITEM_WORTH, 'owning it already paid nothing at its level');
     assertEqual(getWallet().coins, SEASON_ITEM_WORTH, 'the coins never reached the wallet');
@@ -160,11 +172,84 @@ suite('season pass · rewards', () => {
   test('a new item goes into the cupboard', () => {
     resetWalletForTests({ coins: 0, owned: [] });
     resetProgressForTests({ trophies: 0 });
-    const level = SEASON_ITEMS.find((s) => s.item.id === 'snow')!.level;
-    const paid = payPrize(asPrize(rewardFor(level)));
+    const snow = SEASON_ITEMS.find((s) => s.item.id === 'snow')!;
+    const paid = payPrize(asPrize(rewardOn(snow.level, snow.track)));
     assert(paid.item !== null, 'nothing was handed over');
     assert(owns(arenaKey('snow')), 'Snowy Hollow is not in the cupboard');
     assert(isArenaUnlocked('snow', 0), 'Snowy Hollow cannot be used after winning it');
+  });
+});
+
+suite('season pass · the Gold Pass', () => {
+  /*
+    David, 13 Oct 2026: "Make a paid season pass bought with real money
+    in the shop. Make most of the good rewards only in the paid version
+    and the people who have the paid version have the paid and unpaid
+    rewards."
+  */
+  test('most of the good rewards are on the Gold row', () => {
+    const gold = SEASON_ITEMS.filter((s) => s.track === 'gold');
+    const free = SEASON_ITEMS.filter((s) => s.track === 'free');
+    note(`gold: ${gold.map((s) => s.item.id).join(', ')}; free: ${free.map((s) => s.item.id).join(', ')}`);
+    assert(gold.length > free.length, 'the Gold row does not hold most of the good rewards');
+    // Somebody who never pays must still have one thing worth climbing to.
+    assert(free.length >= 1, 'the free row has nothing special on it at all');
+    assertEqual(seasonTrackOf('dice', 'fire'), 'gold', 'the Fire Dice are not on the Gold row');
+  });
+
+  test('the free row still pays something at every level', () => {
+    for (let n = 1; n <= LEVELS; n++) {
+      const r = rewardFor(n);
+      assert(r.item !== undefined || r.coins > 0 || r.trophies > 0, `free level ${n} pays nothing`);
+    }
+  });
+
+  test('money never buys trophies', () => {
+    // Trophies are rank. The Gold row pays coins and cosmetics only.
+    for (let n = 1; n <= LEVELS; n++) {
+      assertEqual(goldRewardFor(n).trophies, 0, `Gold level ${n} pays trophies`);
+      const r = goldRewardFor(n);
+      assert(r.item !== undefined || r.coins > 0, `Gold level ${n} pays nothing`);
+    }
+  });
+
+  test('buying it part-way pays every Gold level already reached, once', () => {
+    let state = addXp(undefined, xpToReach(15)).state;
+    const first = claimGold(state);
+    assertEqual(first.reached.join(','), Array.from({ length: 15 }, (_, i) => i + 1).join(','), 'Gold levels 1-15 were not paid on buying');
+    state = first.state;
+    assertEqual(claimGold(state).reached.length, 0, 'a Gold level was paid twice');
+    // Climbing on keeps paying the Gold row level by level.
+    state = addXp(state, xpForLevel(16)).state;
+    assertEqual(claimGold(state).reached.join(','), '16', 'level 16 was not paid on the Gold row');
+  });
+
+  test('the free row is untouched by buying Gold', () => {
+    const climbed = addXp(undefined, xpToReach(10));
+    const gold = claimGold(climbed.state);
+    assertEqual(gold.state.paid, climbed.state.paid, 'claiming Gold moved the free row');
+    assertEqual(addXp(gold.state, 0).reached.length, 0, 'claiming Gold re-opened free levels');
+  });
+
+  test('a save from before the Gold Pass reads as nothing paid', () => {
+    const old = { season: SEASON.id, xp: xpToReach(4), paid: 4 };
+    assertEqual(claimGold(old).reached.join(','), '1,2,3,4', 'an old save was treated as already paid');
+  });
+
+  test('it is on sale, keeps for ever, and grants nothing but itself', () => {
+    const product = PRODUCTS.find((p) => p.id === GOLD_PASS.productId);
+    assert(product !== undefined, 'the Gold Pass is not in the catalogue');
+    assert(product!.available, 'the Gold Pass is not on sale');
+    assert(product!.kind !== 'consumable', 'the Gold Pass would be lost on a new phone');
+    assertEqual((product!.grants ?? []).length, 0, 'the Gold Pass hands over something besides itself');
+    assertEqual(GOLD_PASS.entitlement, product!.id, 'owning the pass is not what unlocks the Gold row');
+  });
+
+  test('the game pays the Gold row after battles, purchases and launch', () => {
+    const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
+    assert(/hasEntitlement\(GOLD_PASS\.entitlement\)/.test(screen), 'the Gold row is paid without checking the pass is owned');
+    assertEqual((screen.match(/claimGoldLevels\(\)/g) ?? []).length >= 3, true, 'the Gold row is not claimed after battles, purchases and launch');
+    assert(/kicker: 'GOLD PASS'/.test(screen), 'a Gold level reached is never announced');
   });
 });
 

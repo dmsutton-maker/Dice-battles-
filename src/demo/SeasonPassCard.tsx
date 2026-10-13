@@ -4,12 +4,15 @@ import { playClick } from '../audio/sounds';
 import type { PreviewTarget } from '../game/itemPreview';
 import { resolveItem } from '../game/prizes';
 import {
+  goldRewardFor,
   LEVELS,
   progressIn,
   rewardFor,
   SEASON,
+  SeasonReward,
   SeasonState,
 } from '../game/seasonPass';
+import { SecondaryButton } from '../ui/Card';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
@@ -31,15 +34,28 @@ import { ItemIcon, pictureOfItem } from './ItemIcon';
  * the Fire dice sitting at level 20 and count how far away it is. A
  * level with a die or a battlefield on it opens that item's preview, so
  * you can stand on Volcano Rim long before you reach it.
+ *
+ * TWO ROWS since 13 Oct 2026: the free row on top, the Gold Pass row
+ * underneath. The Gold row is drawn for everybody, locked or not, for
+ * the same reason every level is — you should be able to see what it
+ * holds before deciding whether it is worth asking for.
  */
 
 const TILE = 66;
 
+type Level = { n: number; reward: SeasonReward; item: ReturnType<typeof resolveItem> };
+
 export function SeasonPassCard({
   state,
+  gold,
+  onGetGold,
   onPreview,
 }: {
   state: SeasonState | undefined;
+  /** Does this phone own the Gold Pass? */
+  gold: boolean;
+  /** Take the player to the Store, where the Gold Pass is sold. */
+  onGetGold: () => void;
   onPreview: (target: PreviewTarget) => void;
 }) {
   const xp = state && state.season === SEASON.id ? state.xp : 0;
@@ -47,16 +63,69 @@ export function SeasonPassCard({
   const done = level >= LEVELS;
   const fill = done ? 1 : need > 0 ? into / need : 0;
 
-  const levels = useMemo(
-    () =>
+  const rows = useMemo(() => {
+    const row = (pay: (n: number) => SeasonReward): Level[] =>
       Array.from({ length: LEVELS }, (_, i) => {
         const n = i + 1;
-        const reward = rewardFor(n);
-        const item = reward.item ? resolveItem(reward.item) : null;
-        return { n, reward, item };
-      }),
-    [],
-  );
+        const reward = pay(n);
+        return { n, reward, item: reward.item ? resolveItem(reward.item) : null };
+      });
+    return { free: row(rewardFor), gold: row(goldRewardFor) };
+  }, []);
+
+  const tile = (l: Level, track: 'free' | 'gold') => {
+    const locked = track === 'gold' && !gold;
+    const reached = l.n <= level && !locked;
+    const next = l.n === level + 1;
+    const body = (
+      <View
+        style={[
+          styles.tile,
+          track === 'gold' && styles.tileGold,
+          l.item && styles.tileItem,
+          next && styles.tileNext,
+          reached && styles.tileReached,
+          locked && styles.tileLocked,
+        ]}
+      >
+        <Text style={styles.tileLevel}>{l.n}</Text>
+        <View style={styles.tileIcon}>
+          {l.item ? (
+            <ItemIcon picture={pictureOfItem(l.item)} size={28} />
+          ) : l.reward.coins > 0 ? (
+            <GoldCoin size={20} />
+          ) : (
+            <TrophyIcon size={20} color={THEME.ink} />
+          )}
+        </View>
+        <Text style={styles.tileAmount} numberOfLines={2} maxFontSizeMultiplier={1.3}>
+          {l.item
+            ? l.item.name.replace(/ Dice$/, '')
+            : l.reward.coins > 0
+              ? l.reward.coins
+              : l.reward.trophies}
+        </Text>
+        {reached && <Text style={styles.tick}>✓</Text>}
+      </View>
+    );
+    if (!l.item || !l.reward.item) return body;
+    const target: PreviewTarget =
+      l.reward.item.kind === 'dice'
+        ? { kind: 'die', id: l.reward.item.id, from: 'inventory' }
+        : { kind: 'arena', id: l.reward.item.id as never, from: 'inventory' };
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${track === 'gold' ? 'Gold Pass level' : 'Level'} ${l.n}: ${l.item.name}. Tap to see it.`}
+        onPress={() => {
+          playClick();
+          onPreview(target);
+        }}
+      >
+        {body}
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.card}>
@@ -89,6 +158,24 @@ export function SeasonPassCard({
         Every battle earns XP — a win more than a loss, Hard most of all.
       </Text>
 
+      {gold ? (
+        <Text style={styles.goldOwned}>
+          You have the Gold Pass — both rows are yours.
+        </Text>
+      ) : (
+        <View style={styles.goldAsk}>
+          <Text style={styles.goldWhy}>
+            The bottom row is the Gold Pass: Snowy Hollow, the Fire Dice,
+            Volcano Rim and coins at every level. Levels you have already
+            reached pay out straight away.
+          </Text>
+          <SecondaryButton onPress={onGetGold} style={styles.goldButton}>
+            <Text style={styles.goldButtonText}>Get the Gold Pass</Text>
+          </SecondaryButton>
+        </View>
+      )}
+
+      <Text style={styles.key}>Top row: free for everyone · Bottom row: Gold Pass</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -96,53 +183,12 @@ export function SeasonPassCard({
         // Open on the level you are working towards, not on level 1.
         contentOffset={{ x: Math.max(0, (level - 1) * (TILE + 8)), y: 0 }}
       >
-        {levels.map(({ n, reward, item }) => {
-          const reached = n <= level;
-          const next = n === level + 1;
-          const tile = (
-            <View
-              style={[
-                styles.tile,
-                item && styles.tileItem,
-                next && styles.tileNext,
-                reached && styles.tileReached,
-              ]}
-            >
-              <Text style={styles.tileLevel}>{n}</Text>
-              <View style={styles.tileIcon}>
-                {item ? (
-                  <ItemIcon picture={pictureOfItem(item)} size={28} />
-                ) : reward.coins > 0 ? (
-                  <GoldCoin size={20} />
-                ) : (
-                  <TrophyIcon size={20} color={THEME.ink} />
-                )}
-              </View>
-              <Text style={styles.tileAmount} numberOfLines={2} maxFontSizeMultiplier={1.3}>
-                {item ? item.name.replace(/ Dice$/, '') : reward.coins > 0 ? reward.coins : reward.trophies}
-              </Text>
-              {reached && <Text style={styles.tick}>✓</Text>}
-            </View>
-          );
-          if (!item || !reward.item) return <View key={n}>{tile}</View>;
-          const target: PreviewTarget =
-            reward.item.kind === 'dice'
-              ? { kind: 'die', id: reward.item.id, from: 'inventory' }
-              : { kind: 'arena', id: reward.item.id as never, from: 'inventory' };
-          return (
-            <Pressable
-              key={n}
-              accessibilityRole="button"
-              accessibilityLabel={`Level ${n}: ${item.name}. Tap to see it.`}
-              onPress={() => {
-                playClick();
-                onPreview(target);
-              }}
-            >
-              {tile}
-            </Pressable>
-          );
-        })}
+        {rows.free.map((free, i) => (
+          <View key={free.n} style={styles.column}>
+            {tile(free, 'free')}
+            {tile(rows.gold[i], 'gold')}
+          </View>
+        ))}
       </ScrollView>
     </View>
   );
@@ -173,7 +219,13 @@ const styles = StyleSheet.create({
   railFill: { height: '100%', backgroundColor: THEME.gold },
   railText: { color: THEME.ink, ...TYPE.small, marginTop: 6 },
   how: { color: THEME.inkFaint, fontSize: 12, fontWeight: '600', lineHeight: 17, marginTop: 4 },
-  track: { gap: 8, paddingTop: 14, paddingRight: 4 },
+  track: { gap: 8, paddingTop: 8, paddingRight: 4 },
+  key: { color: THEME.inkFaint, fontSize: 12, fontWeight: '700', marginTop: 14 },
+  goldOwned: { color: THEME.ink, ...TYPE.small, fontWeight: '800', marginTop: 10 },
+  goldAsk: { marginTop: 12, gap: 10 },
+  goldWhy: { color: THEME.inkSoft, ...TYPE.small },
+  goldButton: { alignSelf: 'stretch', paddingVertical: 12, backgroundColor: THEME.gold },
+  goldButtonText: { color: THEME.ink, ...TYPE.body, fontWeight: '900' },
   tile: {
     width: TILE,
     minHeight: 88,
@@ -190,6 +242,11 @@ const styles = StyleSheet.create({
   // The one you are working towards.
   tileNext: { borderColor: THEME.accent, borderWidth: 2.5 },
   tileReached: { opacity: 0.55 },
+  // The Gold row: tinted so the two rows read apart at a glance.
+  tileGold: { backgroundColor: 'rgba(255,210,31,0.16)', borderColor: 'rgba(160,120,0,0.45)' },
+  // Not yours yet: still readable, so you can see what it holds.
+  tileLocked: { opacity: 0.5 },
+  column: { gap: 6 },
   tileLevel: { color: THEME.inkSoft, ...TYPE.label },
   tileIcon: { height: 30, alignItems: 'center', justifyContent: 'center' },
   tileAmount: { color: THEME.ink, ...TYPE.small, textAlign: 'center' },

@@ -101,7 +101,7 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
-import { initPurchases } from '../game/purchases';
+import { hasEntitlement, initPurchases } from '../game/purchases';
 import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
 import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -182,10 +182,14 @@ import {
   addXp,
   asPrize,
   battleXp,
+  claimGold,
+  GOLD_PASS,
+  goldRewardFor,
   levelFor,
   rewardFor,
   seasonLevelOf,
   SeasonState,
+  seasonTrackOf,
 } from '../game/seasonPass';
 import { Reward, RewardPopup } from './RewardPopup';
 import { pictureOfItem } from './ItemIcon';
@@ -336,7 +340,11 @@ export function DiceDemoScreen() {
       may hold up the first frame, and neither can fail in a way the
       player sees.
     */
-    initPurchases().finally(() => initAds());
+    initPurchases()
+      // Anything bought on another phone, or approved by a parent while
+      // the game was closed, pays its Gold levels the moment it is known.
+      .then(() => claimGoldLevels())
+      .finally(() => initAds());
 
     /*
       THE CUP LIST, FETCHED AT LAUNCH rather than when the Cups tab is
@@ -760,6 +768,45 @@ export function DiceDemoScreen() {
    */
   const [season, setSeason] = useState<SeasonState | undefined>(undefined);
   const [lastXp, setLastXp] = useState(0);
+  /** Whether this phone owns this season's Gold Pass (seasonPass.ts). */
+  const [goldOwned, setGoldOwned] = useState(false);
+
+  /**
+   * Pay the Gold row of the season pass up to the level reached.
+   *
+   * Called after every battle, when anything is bought or put back in the
+   * Store, and once purchases have loaded at launch. Does nothing for a
+   * player without the Gold Pass, and `claimGold` remembers what it has
+   * paid, so calling it again is always safe.
+   */
+  const claimGoldLevels = () => {
+    const owned = hasEntitlement(GOLD_PASS.entitlement);
+    setGoldOwned(owned);
+    if (!owned) return;
+    const claimed = claimGold(getProgress().season);
+    if (claimed.reached.length === 0) return;
+    setSeasonState(claimed.state);
+    setSeason(claimed.state);
+    for (const level of claimed.reached) {
+      const paid = payPrize(asPrize(goldRewardFor(level)));
+      const what = paid.item
+        ? `The ${paid.item.name} — yours to keep.`
+        : paid.insteadOf
+          ? `You already had the ${paid.insteadOf.name}, so it came as ${paid.coins} coins instead.`
+          : `${paid.coins} coins.`;
+      setRewards((queue) => [
+        ...queue,
+        {
+          picture: paid.item ? pictureOfItem(paid.item) : { kind: 'coins' as const },
+          name: `Gold level ${level}!`,
+          kicker: 'GOLD PASS',
+          note: `${what} See the whole pass in the Cups tab.`,
+        },
+      ]);
+      if (paid.item) playFanfare();
+    }
+    setWallet({ ...getWallet() });
+  };
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
 
@@ -1199,6 +1246,8 @@ export function DiceDemoScreen() {
         ]);
         if (paid.item) playFanfare();
       }
+      // A Gold Pass holder is paid the Gold row for the same levels.
+      claimGoldLevels();
 
       if (outcome === 'tie') {
         showCallout("It's a tie!", 'tie');
@@ -1974,6 +2023,7 @@ export function DiceDemoScreen() {
           needTrophies: need,
           price,
           passLevel: seasonLevelOf('arena', preview.id),
+          passGold: seasonTrackOf('arena', preview.id) === 'gold',
           // Coins are spent in the Store and nowhere else, exactly as for
           // dice — the Inventory shows the price but points at the shop.
           canBuy: preview.from === 'store',
@@ -1998,6 +2048,7 @@ export function DiceDemoScreen() {
         needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
         prize: skin.prize,
         passLevel: skin.pass ? seasonLevelOf('dice', skin.id) : null,
+        passGold: seasonTrackOf('dice', skin.id) === 'gold',
         canBuy: preview.from === 'store',
       }),
     };
@@ -2627,7 +2678,12 @@ export function DiceDemoScreen() {
           wallet={wallet}
           // Coins bought with money land in the same purse as coins won,
           // so the HUD and the price tags have to be told to look again.
-          onBought={() => setWallet({ ...getWallet() })}
+          onBought={() => {
+            setWallet({ ...getWallet() });
+            // Buying the Gold Pass (or putting it back) pays every Gold
+            // level already reached, straight away.
+            claimGoldLevels();
+          }}
           onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })}
           onPreviewArena={(id) => showPreview({ kind: 'arena', id, from: 'store' })}
         />
@@ -2701,6 +2757,11 @@ export function DiceDemoScreen() {
           today={todayStamp()}
           onPlay={playCup}
           season={season}
+          gold={goldOwned}
+          onGetGold={() => {
+            playClick();
+            setTab('store');
+          }}
           onPreview={showPreview}
         />
       )}

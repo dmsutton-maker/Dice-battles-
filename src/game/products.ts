@@ -149,7 +149,7 @@ export const PRODUCTS: Product[] = [
   },
 
   /*
-    ── The three that are not ready, and why ───────────────────────────
+    ── The two that are not ready, and why ─────────────────────────────
 
     Left in the file deliberately. The family chose all of these, and a
     product quietly missing from the list would read as somebody having
@@ -179,19 +179,27 @@ export const PRODUCTS: Product[] = [
       'Same as the dice: all 16 themed battlefields are earnable today, ' +
       'and an exclusive one has to be built before it can be sold.',
   },
+  /*
+    The Gold Pass. David, 13 Oct 2026: "Make a paid season pass bought
+    with real money in the shop ... we'll figure that more out later."
+    The price is the family's 31 Aug choice and is a placeholder until
+    then. One product per season — see GOLD_PASS in seasonPass.ts.
+
+    The id was `season_pass` while it was parked; it was never created in
+    App Store Connect, so it was still free to change. From here on it is
+    permanent like every other id in this file.
+  */
   {
-    id: 'season_pass',
+    id: 'season_pass_1',
     kind: 'season',
-    name: 'Season pass',
-    blurb: 'A season of levels to climb, with something at every one.',
+    name: 'Gold Pass — Season 1',
+    blurb:
+      'A second row of rewards on the season pass: Snowy Hollow, the Fire ' +
+      'Dice, Volcano Rim and coins at every level. Levels you have already ' +
+      'reached pay out straight away.',
     usd: 2.99,
-    available: false,
-    blockedBy:
-      'A FREE season pass exists since 30 Sep 2026 (src/game/seasonPass.ts): ' +
-      'experience from every battle, thirty levels, the Fire and Ice dice ' +
-      'and two battlefields. Selling one would mean a second, paid track ' +
-      'on top of it — which needs StoreKit, a new build, and David deciding ' +
-      'what a child would be paying for that playing does not already give.',
+    // Grants nothing but itself — see GOLD_PASS in seasonPass.ts.
+    available: true,
   },
 ];
 

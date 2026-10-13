@@ -12,10 +12,10 @@ import type { PrizeItem, TournamentPrize } from './tournament';
  * obtain them and also make the volcano rim and snowy hollow arenas
  * unlocked through the season pass only."
  *
- * FREE. There is a PAID season pass parked in products.ts, and this is
- * not it: buying anything needs StoreKit, which is native code and a new
- * build (AGENTS.md), and nobody asked for this to cost money. Every level
- * is earned by playing.
+ * TWO ROWS. Everybody climbs the free row by playing. The Gold Pass
+ * (13 Oct 2026, GOLD_PASS below) is bought in the Store for real money
+ * and adds a second row on the same levels; its holder is paid both.
+ * Nothing on either row changes how the dice land.
  *
  * THE RULES ONLY. What a level pays and how much experience a battle is
  * worth are decided here, where the tests can read them without a
@@ -89,19 +89,53 @@ export function progressIn(xp: number): { level: number; into: number; need: num
   return { level, into: xp - xpToReach(level), need: xpForLevel(level + 1) };
 }
 
+/** Which side of the pass a reward sits on. */
+export type Track = 'free' | 'gold';
+
+/**
+ * The paid half of the pass: the Gold Pass.
+ *
+ * David, 13 Oct 2026: "Make a paid season pass bought with real money in
+ * the shop. Make most of the good rewards only in the paid version and
+ * the people who have the paid version have the paid and unpaid
+ * rewards." So there are two rows of rewards on the same thirty levels:
+ * everybody climbs the free row, and a Gold Pass holder is paid BOTH
+ * rows at every level.
+ *
+ * One product per season, because a pass is bought for a season and a
+ * product id is forever (see products.ts): season 2 will be
+ * `season_pass_2`, and buying season 1's never unlocks season 2's.
+ */
+export const GOLD_PASS = {
+  productId: `season_pass_${SEASON.number}`,
+  /*
+    Owning the pass IS the entitlement: purchases.ts remembers every
+    one-off product by its own id. The product grants nothing else, so
+    the fairness test in tests/purchases.test.ts has nothing new to
+    trust — the Gold row only ever pays coins and cosmetics.
+  */
+  entitlement: `season_pass_${SEASON.number}`,
+} as const;
+
 /**
  * The four things the pass is the ONLY way to get.
  *
- * Spaced so each one is a real milestone and the last one is the end of
- * the season: the Ice dice come first because they are what makes a
- * child want the pass, and Volcano Rim is the summit.
+ * Three of the four are on the Gold row, as David asked: "most of the
+ * good rewards only in the paid version". The Ice Dice stay on the free
+ * row so that somebody who never pays still has something special to
+ * climb towards, and it sits two-thirds of the way up so it is earned.
  */
-export const SEASON_ITEMS: readonly { level: number; item: PrizeItem }[] = [
-  { level: 6, item: { kind: 'dice', id: 'ice' } },
-  { level: 12, item: { kind: 'arena', id: 'snow' } },
-  { level: 20, item: { kind: 'dice', id: 'fire' } },
-  { level: 30, item: { kind: 'arena', id: 'volcano' } },
+export const SEASON_ITEMS: readonly { level: number; item: PrizeItem; track: Track }[] = [
+  { level: 6, item: { kind: 'arena', id: 'snow' }, track: 'gold' },
+  { level: 12, item: { kind: 'dice', id: 'fire' }, track: 'gold' },
+  { level: 20, item: { kind: 'dice', id: 'ice' }, track: 'free' },
+  { level: 30, item: { kind: 'arena', id: 'volcano' }, track: 'gold' },
 ];
+
+/** Which row a season item is on, or null if it is not on the pass. */
+export function seasonTrackOf(kind: 'dice' | 'arena', id: string): Track | null {
+  return SEASON_ITEMS.find((s) => s.item.kind === kind && s.item.id === id)?.track ?? null;
+}
 
 /** The level a season item is won at, or null if it is not on the pass. */
 export function seasonLevelOf(kind: 'dice' | 'arena', id: string): number | null {
@@ -126,7 +160,7 @@ export interface SeasonReward {
 }
 
 /**
- * What a level pays.
+ * What a level pays on the FREE row.
  *
  * Small amounts that grow slowly, as asked: odd levels pay coins (20 at
  * level 1, rising by 5 a level to 160 at level 29), even levels pay
@@ -135,10 +169,28 @@ export interface SeasonReward {
  * the reward.
  */
 export function rewardFor(level: number): SeasonReward {
-  const special = SEASON_ITEMS.find((s) => s.level === level);
+  const special = SEASON_ITEMS.find((s) => s.level === level && s.track === 'free');
   if (special) return { coins: 0, trophies: 0, item: special.item };
   if (level % 2 === 1) return { coins: 20 + 5 * (level - 1), trophies: 0 };
   return { coins: 0, trophies: 3 + level / 2 };
+}
+
+/**
+ * What a level pays on the GOLD row, on top of the free row.
+ *
+ * Coins at every level that has no item (20 at level 1, rising by 5 a
+ * level), and the three Gold items. NEVER trophies: trophies are rank,
+ * and rank on the ladder is something you win, not something money
+ * buys. Coins only buy cosmetics, which is the line products.ts draws
+ * for everything sold.
+ *
+ * About 2,500 coins over the whole season plus three things nobody else
+ * can get — a tunable first guess, to be settled with the family.
+ */
+export function goldRewardFor(level: number): SeasonReward {
+  const special = SEASON_ITEMS.find((s) => s.level === level && s.track === 'gold');
+  if (special) return { coins: 0, trophies: 0, item: special.item };
+  return { coins: 20 + 5 * (level - 1), trophies: 0 };
 }
 
 /** A level's reward in the shape `payPrize` takes. */
@@ -154,12 +206,17 @@ export function asPrize(reward: SeasonReward): TournamentPrize {
 export interface SeasonState {
   season: string;
   xp: number;
-  /** The highest level already paid out. */
+  /** The highest level already paid out on the free row. */
   paid: number;
+  /**
+   * The highest level already paid out on the Gold row. Absent on saves
+   * from before the Gold Pass existed, which is the same as 0.
+   */
+  goldPaid?: number;
 }
 
 export function freshSeason(): SeasonState {
-  return { season: SEASON.id, xp: 0, paid: 0 };
+  return { season: SEASON.id, xp: 0, paid: 0, goldPaid: 0 };
 }
 
 /**
@@ -182,4 +239,22 @@ export function addXp(
   for (let n = base.paid + 1; n <= level; n++) reached.push(n);
   next.paid = Math.max(base.paid, level);
   return { state: next, reached };
+}
+
+/**
+ * Pay the Gold row up to wherever the player has climbed.
+ *
+ * Called only for a Gold Pass holder: after every battle, the moment the
+ * pass is bought, and at launch. Buying it at level 15 pays levels 1 to
+ * 15 of the Gold row at once — the pass is for the season, not for the
+ * levels still to come — and `goldPaid` makes sure no Gold level is ever
+ * paid twice, the same promise `paid` makes for the free row.
+ */
+export function claimGold(state: SeasonState | undefined): { state: SeasonState; reached: number[] } {
+  const base = state && state.season === SEASON.id ? state : freshSeason();
+  const level = levelFor(base.xp);
+  const already = base.goldPaid ?? 0;
+  const reached: number[] = [];
+  for (let n = already + 1; n <= level; n++) reached.push(n);
+  return { state: { ...base, goldPaid: Math.max(already, level) }, reached };
 }

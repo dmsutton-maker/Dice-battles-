@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.107.0 — 2026-10-13 · requested by David
+
+David, 13 Oct 2026: "Make a paid season pass bought with real money in
+the shop (we'll figure that more out later). Make most of the good
+rewards only in the paid version and the people who have the paid
+version have the paid and unpaid rewards."
+
+### Added
+- **The Gold Pass**, $2.99 in the Store for Season 1 (a placeholder
+  price until the family settles it). It adds a second row of rewards
+  under the season pass, on the same thirty levels. A Gold Pass holder
+  is paid both rows.
+- **The Gold row**: Snowy Hollow (level 6), the Fire Dice (level 12),
+  Volcano Rim (level 30), and coins at every other level — about 2,500
+  over the season. Never trophies: those are rank, and rank is won, not
+  bought.
+- **The free row keeps the Ice Dice** (now at level 20) so somebody who
+  never pays still has something special to climb to, plus its coins and
+  trophies at every level.
+- **Buying part-way pays at once.** Buy the Gold Pass at level 15 and
+  Gold levels 1 to 15 are paid on the spot. Every Gold level is paid
+  exactly once, after battles, after buying or putting it back, and at
+  launch.
+- The Cups tab shows both rows, the Gold row dimmed until it is yours,
+  with a button that goes straight to the Store.
+
+### Notes
+- Anybody who already earned the Ice Dice or Snowy Hollow on the free
+  row keeps them. If the Gold row later reaches something they own, it
+  pays its value in coins instead, as before.
+- One product per season (`season_pass_1`), because a product id is
+  forever. Season 2 will be a new product.
+- Needs creating in App Store Connect as a Non-Consumable before it can
+  be bought. JavaScript only — no new build.
+
 ## v1.106.0 — 2026-10-05 · requested by David
 
 David, 5 Oct 2026: "we do want to launch with [purchases]", and the

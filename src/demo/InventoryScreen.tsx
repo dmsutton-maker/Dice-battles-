@@ -1,4 +1,4 @@
-import { seasonLevelOf } from '../game/seasonPass';
+import { seasonLevelOf, seasonTrackOf } from '../game/seasonPass';
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
@@ -148,7 +148,8 @@ export function InventoryScreen({
                 ) : skin.pass ? (
                   // Season pass only — same reason as the cup prize above.
                   <Text style={styles.priceTag}>
-                    Pass level {seasonLevelOf('dice', skin.id)}
+                    {seasonTrackOf('dice', skin.id) === 'gold' ? 'Gold Pass' : 'Pass'} level{' '}
+                    {seasonLevelOf('dice', skin.id)}
                   </Text>
                 ) : (
                   <View style={styles.priceTagRow}>
@@ -222,7 +223,8 @@ export function InventoryScreen({
                   </CoinLabel>
                 ) : seasonLevelOf('arena', id) !== null ? (
                   <Text style={styles.priceTag}>
-                    Pass level {seasonLevelOf('arena', id)}
+                    {seasonTrackOf('arena', id) === 'gold' ? 'Gold Pass' : 'Pass'} level{' '}
+                    {seasonLevelOf('arena', id)}
                   </Text>
                 ) : (
                   <View style={styles.priceTagRow}>

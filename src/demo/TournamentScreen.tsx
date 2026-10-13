@@ -49,12 +49,18 @@ export function TournamentScreen({
   today,
   onPlay,
   season,
+  gold,
+  onGetGold,
   onPreview,
 }: {
   tournaments: TournamentDef[];
   states: Record<string, TournamentState>;
   /** The season pass, drawn above the cups. See SeasonPassCard. */
   season: SeasonState | undefined;
+  /** Does this phone own the Gold Pass? */
+  gold: boolean;
+  /** Take the player to the Store, where the Gold Pass is sold. */
+  onGetGold: () => void;
   onPreview: (target: PreviewTarget) => void;
   /** YYYY-MM-DD, passed in so the screen has no clock of its own to test. */
   today: string;
@@ -72,7 +78,7 @@ export function TournamentScreen({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <SeasonPassCard state={season} onPreview={onPreview} />
+        <SeasonPassCard state={season} gold={gold} onGetGold={onGetGold} onPreview={onPreview} />
         <Text style={styles.note}>
           A cup is a run of wins in one way of playing, and they are meant to
           be hard. Win them in a row and the prize is yours — coins, trophies,

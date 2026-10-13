@@ -90,6 +90,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-107-0-gold-pass',
+    date: '13 October 2026',
+    version: 'v1.107.0',
+    title: 'The Gold Pass',
+    icon: 'cups',
+    body:
+      'The season pass has a second row now: the Gold Pass, in the Store. ' +
+      'Everybody still climbs the top row for free, and it still pays ' +
+      'something at every level, with the Ice dice waiting at level 20.\n\n' +
+      'The Gold row sits underneath, on the same levels. It holds Snowy ' +
+      'Hollow, the Fire dice and Volcano Rim, and coins at every other ' +
+      'level. If you get the Gold Pass part-way through the season, every ' +
+      'Gold level you have already reached pays out straight away. Nothing ' +
+      'on either row changes how the dice land.',
+  },
+  {
     id: 'v1-103-0-moving-water',
     date: '30 September 2026',
     version: 'v1.103.0',

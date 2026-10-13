@@ -66,7 +66,7 @@ export type PreviewAction =
    * wrong way. The advice here is simply "keep playing" — every battle
    * fills the pass.
    */
-  | { kind: 'pass'; level: number };
+  | { kind: 'pass'; level: number; gold?: boolean };
 
 export interface PreviewState {
   trophies: number;
@@ -90,6 +90,8 @@ export interface PreviewState {
   prize?: boolean;
   /** The season pass level this is won at, for season items only. */
   passLevel?: number | null;
+  /** On the Gold Pass row rather than the free one (seasonPass.ts). */
+  passGold?: boolean;
 }
 
 /**
@@ -119,7 +121,7 @@ export function previewAction(state: PreviewState): PreviewAction {
   // Before the trophy fallback, which would otherwise answer "0 more
   // trophies to go" for something trophies cannot buy at all.
   if (state.prize) return { kind: 'prize' };
-  if (state.passLevel) return { kind: 'pass', level: state.passLevel };
+  if (state.passLevel) return { kind: 'pass', level: state.passLevel, gold: state.passGold === true };
 
   const need = state.needTrophies ?? 0;
   return { kind: 'locked', needTrophies: need, short: Math.max(0, need - state.trophies) };
@@ -143,7 +145,7 @@ export function actionLabel(action: PreviewAction): string {
     case 'prize':
       return 'Win it in a cup';
     case 'pass':
-      return `Season pass level ${action.level}`;
+      return action.gold ? `Gold Pass level ${action.level}` : `Season pass level ${action.level}`;
   }
 }
 
