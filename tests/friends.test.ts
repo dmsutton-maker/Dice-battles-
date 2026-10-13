@@ -1342,3 +1342,15 @@ suite('friends · a friendly battle, live only', () => {
     );
   });
 });
+
+suite('friends · battle from a profile', () => {
+  test('a friend\'s profile page has a Battle button', () => {
+    // David, 13 Oct 2026: "Add a battle button when you're on a specific
+    // friend's profile."
+    const screen = readFileSync('src/demo/FriendsScreen.tsx', 'utf8');
+    const profile = screen.slice(screen.indexOf("if (page === 'profile' && showing)"), screen.indexOf('A POPUP, not a page'));
+    assert(/Battle \{showing\.name\}/.test(profile), 'the profile page has no Battle button');
+    assert(/pickerFor\(showing\)/.test(profile), 'the profile Battle button does not open the battle picker');
+    assert(/pickerFor\(friend\)/.test(screen), 'the list no longer uses the same picker');
+  });
+});

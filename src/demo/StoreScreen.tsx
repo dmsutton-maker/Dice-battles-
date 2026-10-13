@@ -43,6 +43,8 @@ interface StoreScreenProps {
   wallet: Wallet;
   /** Called after a real-money purchase, so the screen above can refresh. */
   onBought?: () => void;
+  /** Family tester mode: also show the products not on sale yet. */
+  familyPreview?: boolean;
   /** Opens the die on the real battlefield, where it is bought. */
   onPreview: (skinId: string) => void;
   /** Opens the battlefield itself, standing in it — bought there too. */
@@ -52,6 +54,7 @@ interface StoreScreenProps {
 export function StoreScreen({
   wallet,
   onBought,
+  familyPreview = false,
   onPreview,
   onPreviewArena,
   hidden = false,
@@ -192,7 +195,7 @@ export function StoreScreen({
         </View>
 
         <Text style={styles.sectionTitle}>WITH REAL MONEY</Text>
-        <MoneyShelf onBought={onBought} />
+        <MoneyShelf onBought={onBought} familyPreview={familyPreview} />
       </ScrollView>
 
       {/*

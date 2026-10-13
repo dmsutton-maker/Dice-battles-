@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 import { playClick } from '../audio/sounds';
-import type { Product } from '../game/products';
+import { PRODUCTS, type Product } from '../game/products';
 import {
   buy,
   hasEntitlement,
@@ -33,7 +33,14 @@ import {
  * switch in storeKit.ts is thrown — this says so in one quiet line
  * rather than showing buttons that cannot work.
  */
-export function MoneyShelf({ onBought }: { onBought?: () => void }) {
+export function MoneyShelf({
+  onBought,
+  familyPreview = false,
+}: {
+  onBought?: () => void;
+  /** Family tester mode: also show what is not on sale yet. */
+  familyPreview?: boolean;
+}) {
   const [state, setState] = useState(() => storeState());
   const [asking, setAsking] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
@@ -101,8 +108,11 @@ export function MoneyShelf({ onBought }: { onBought?: () => void }) {
     );
   };
 
+  const comingLater = familyPreview ? <ComingLater /> : null;
+
   if (!state.available) {
     return (
+      <>
       <Card style={styles.notYet} drop={0} background={THEME.sunk}>
         <Text style={styles.notYetTitle}>Not on this phone yet</Text>
         <Text style={styles.notYetBody}>
@@ -111,6 +121,8 @@ export function MoneyShelf({ onBought }: { onBought?: () => void }) {
           which is how most of it is meant to be got anyway.
         </Text>
       </Card>
+      {comingLater}
+      </>
     );
   }
 
@@ -179,6 +191,8 @@ export function MoneyShelf({ onBought }: { onBought?: () => void }) {
         )}
       </Pressable>
 
+      {comingLater}
+
       {asking && (
         <Confirm
           title={`Buy ${asking.name}?`}
@@ -214,7 +228,66 @@ export function MoneyShelf({ onBought }: { onBought?: () => void }) {
   );
 }
 
+/**
+ * The products the family chose that are not on sale yet, drawn the way
+ * they would look — FAMILY TESTER MODE ONLY.
+ *
+ * David, 13 Oct 2026: "A couple months ago we went over everything we
+ * want people to be able to buy with real money, so go back to that and
+ * add them into the store just so I can see what they look like."
+ *
+ * Only for the family, and never buyable: each of these is parked in
+ * products.ts for a real reason (artwork that does not exist yet), and a
+ * Buy button that cannot work in front of a stranger — or in front of
+ * App Review — is worse than no button. The price sits where the button
+ * would, greyed, with the reason underneath. Nothing here can reach
+ * `buy()`.
+ */
+function ComingLater() {
+  const parked = PRODUCTS.filter((p) => !p.available);
+  if (parked.length === 0) return null;
+  return (
+    <View style={styles.later}>
+      <Text style={styles.laterTitle}>COMING LATER</Text>
+      <Text style={styles.laterNote}>
+        Only the family sees this part, in tester mode. These are not on
+        sale yet — this is how they would look.
+      </Text>
+      {parked.map((product) => (
+        <Card key={product.id} style={styles.row} drop={0} background={THEME.sunk}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowName}>{product.name}</Text>
+            <Text style={styles.rowBlurb}>{product.blurb}</Text>
+            {product.blockedBy && (
+              <Text style={styles.laterWhy} numberOfLines={3}>
+                Waiting on: {product.blockedBy}
+              </Text>
+            )}
+          </View>
+          <View style={styles.laterPrice}>
+            <Text style={styles.laterPriceText}>${product.usd.toFixed(2)}</Text>
+          </View>
+        </Card>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  later: { marginTop: 22, gap: 10 },
+  laterTitle: { ...TYPE.label, color: THEME.accent, letterSpacing: 0.8 },
+  laterNote: { ...TYPE.small, color: THEME.inkSoft },
+  laterWhy: { ...TYPE.small, color: THEME.inkFaint, fontStyle: 'italic', marginTop: 4 },
+  laterPrice: {
+    borderWidth: SHAPE.line,
+    borderColor: THEME.inkFaint,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: 76,
+    alignItems: 'center',
+  },
+  laterPriceText: { ...TYPE.body, color: THEME.inkFaint, fontWeight: '900' },
   shelf: { gap: 10 },
   fairness: {
     ...TYPE.small,

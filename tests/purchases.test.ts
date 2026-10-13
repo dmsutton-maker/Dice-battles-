@@ -407,3 +407,31 @@ suite('purchases · Apple’s own requirements', () => {
     );
   });
 });
+
+suite('purchases · the family preview of what is coming', () => {
+  /*
+    David, 13 Oct 2026: "add them into the store just so I can see what
+    they look like." Shown in family tester mode only, and never buyable.
+  */
+  const shelf = source('src/demo/MoneyShelf.tsx');
+  const later = shelf.slice(shelf.indexOf('function ComingLater'), shelf.indexOf('const styles'));
+
+  test('it is only drawn in family tester mode', () => {
+    assert(/familyPreview \? <ComingLater \/> : null/.test(shelf), 'the preview is drawn for everybody');
+    assert(/familyPreview=\{unlockAll\}/.test(source('src/demo/DiceDemoScreen.tsx')), 'the Store is not told about tester mode');
+  });
+
+  test('nothing in it can be bought', () => {
+    assert(later.length > 100, 'the preview section was not found');
+    assert(!/buy\(|setAsking|onPress|Pressable/.test(later), 'a parked product in the preview can be pressed');
+    assert(/!p\.available/.test(later), 'the preview shows something other than parked products');
+  });
+
+  test('it shows every parked product, and Dice Club stays gone', () => {
+    const parked = PRODUCTS.filter((p) => !p.available).map((p) => p.id);
+    note(`family preview: ${parked.join(', ')}`);
+    assert(parked.includes('starter_pack'), 'the starter pack is missing from the preview');
+    // David, 5 Oct 2026: "take Dice Club out for now".
+    assert(!PRODUCTS.some((p) => /club/.test(p.id)), 'Dice Club is back in the catalogue');
+  });
+});

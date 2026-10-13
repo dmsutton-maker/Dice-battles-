@@ -109,7 +109,7 @@ if (params.get('screen') === 'dots') {
     .then(() => {
       createRoot(host).render(
         <View style={{ width: 393, paddingHorizontal: 16, paddingVertical: 24, backgroundColor: '#fdf6ec' }}>
-          <MoneyShelf />
+          <MoneyShelf familyPreview={params.get('family') === '1'} />
         </View>,
       );
       setTimeout(() => ((window as any).__ready = true), 1500);

@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.108.0 — 2026-10-13 · requested by David
+
+### Added
+- **A Battle button on a friend's profile.** David: "Add a battle button
+  when you're on a specific friend's profile." It sits right under their
+  name and opens the same mode-and-difficulty picker as the Battle button
+  on their row in the list, so a battle sent from either place is the
+  same battle. The row's button stays too.
+- **The products still to come, in the Store — family only.** David: "go
+  back to [what we want people to buy] and add them into the store just
+  so I can see what they look like." In family tester mode (the FAMILY
+  code) the Store now shows a COMING LATER section under the real shelf:
+  the starter pack, money-only dice sets and money-only battlefields,
+  drawn as they would look, with their prices greyed and what each is
+  waiting on. None of them can be pressed or bought, and nobody outside
+  tester mode sees them — a Buy button that cannot work is worse than no
+  button, and App Review rejects them.
+
+### Not included
+- **Dice Club** stays out, as David asked on 5 Oct ("take Dice Club out
+  for now").
+
 ## v1.107.0 — 2026-10-13 · requested by David
 
 David, 13 Oct 2026: "Make a paid season pass bought with real money in

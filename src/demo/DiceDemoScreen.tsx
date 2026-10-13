@@ -2676,6 +2676,7 @@ export function DiceDemoScreen() {
         <StoreScreen
           hidden={menuTab !== 'store' || (preview !== null && !holdShelf)}
           wallet={wallet}
+          familyPreview={unlockAll}
           // Coins bought with money land in the same purse as coins won,
           // so the HUD and the price tags have to be told to look again.
           onBought={() => {

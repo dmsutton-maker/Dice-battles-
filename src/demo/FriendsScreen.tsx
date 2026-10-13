@@ -614,6 +614,39 @@ export function FriendsScreen({
     </>
   );
 
+  /**
+   * The mode-and-difficulty picker for one friend. Drawn in their row on
+   * the list, and on their profile page — the same picker in both places,
+   * so a battle sent from either is the same battle.
+   */
+  const pickerFor = (friend: PublicProfile) => (
+    <BattlePicker
+      key={friend.playerId}
+      friend={friend}
+      mode={battleMode}
+      difficulty={battleDifficulty}
+      sending={sending}
+      note={challengeNote}
+      onMode={setBattleMode}
+      onDifficulty={setBattleDifficulty}
+      onCancel={() => {
+        setChallenging(null);
+        setChallengeNote(null);
+      }}
+      onSend={async () => {
+        setSending(true);
+        setChallengeNote(null);
+        const error = await onChallenge(friend, battleMode, battleDifficulty);
+        setSending(false);
+        if (error) {
+          setChallengeNote(error);
+          return;
+        }
+        setChallenging(null);
+      }}
+    />
+  );
+
   if (page === 'profile' && showing) {
     return (
       <>
@@ -625,7 +658,27 @@ export function FriendsScreen({
         <Popup title={showing.name} onClose={onClose}>
           <ProfileView
             profile={showing}
-            onBack={() => setShowing(null)}
+            battle={
+              challenging?.playerId === showing.playerId ? (
+                pickerFor(showing)
+              ) : (
+                <PrimaryButton
+                  style={styles.profileBattle}
+                  onPress={() => {
+                    playClick();
+                    setChallengeNote(null);
+                    setChallenging(showing);
+                  }}
+                >
+                  <Text style={styles.profileBattleText}>Battle {showing.name}</Text>
+                </PrimaryButton>
+              )
+            }
+            onBack={() => {
+              // Leaving the page closes a picker that was open on it.
+              setChallenging(null);
+              setShowing(null);
+            }}
             onRemove={() =>
               setAsking({ action: 'remove', playerId: showing.playerId, name: showing.name })
             }
@@ -896,31 +949,7 @@ export function FriendsScreen({
         ) : (
           list.friends.map((friend) =>
             challenging?.playerId === friend.playerId ? (
-              <BattlePicker
-                key={friend.playerId}
-                friend={friend}
-                mode={battleMode}
-                difficulty={battleDifficulty}
-                sending={sending}
-                note={challengeNote}
-                onMode={setBattleMode}
-                onDifficulty={setBattleDifficulty}
-                onCancel={() => {
-                  setChallenging(null);
-                  setChallengeNote(null);
-                }}
-                onSend={async () => {
-                  setSending(true);
-                  setChallengeNote(null);
-                  const error = await onChallenge(friend, battleMode, battleDifficulty);
-                  setSending(false);
-                  if (error) {
-                    setChallengeNote(error);
-                    return;
-                  }
-                  setChallenging(null);
-                }}
-              />
+              pickerFor(friend)
             ) : (
               <Card
                 key={friend.playerId}
@@ -936,8 +965,8 @@ export function FriendsScreen({
                   </View>
                 </View>
                 {/*
-                  Its own button rather than a choice inside their
-                  profile page: challenging somebody is the thing you
+                  On the row as well as on their profile page (David,
+                  13 Oct 2026): challenging somebody is the thing you
                   came to this list to do, and burying it one tap deeper
                   is how the Friends tab itself got moved in v1.74.0.
                 */}
@@ -1108,11 +1137,19 @@ function BattlePicker({
 /** One friend, in full. Only ever reached for somebody who IS a friend. */
 function ProfileView({
   profile,
+  battle,
   onBack,
   onRemove,
   onBlock,
 }: {
   profile: PublicProfile;
+  /**
+   * The Battle button, or the picker once it is pressed. David, 13 Oct
+   * 2026: "Add a battle button when you're on a specific friend's
+   * profile." Straight under their name, because it is the one thing
+   * on this page you would come here to do.
+   */
+  battle: React.ReactNode;
   onBack: () => void;
   onRemove: () => void;
   onBlock: () => void;
@@ -1142,6 +1179,8 @@ function ProfileView({
             <Text style={styles.profileTrophies}>{profile.trophies}</Text>
           </View>
         </Card>
+
+        {battle}
 
         <Text style={styles.sectionTitle}>BATTLES WON</Text>
         <Card style={styles.statCard}>
@@ -1192,6 +1231,8 @@ function Stat({ label, value, text }: { label: string; value?: number; text?: st
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18, paddingBottom: 40 },
+  profileBattle: { marginTop: 4, marginBottom: 8 },
+  profileBattleText: { ...TYPE.cardTitle, color: THEME.onAccent },
   title: { ...TYPE.title, color: THEME.ink, marginBottom: 14 },
 
   recoveredCard: { padding: 14, marginBottom: 10 },
