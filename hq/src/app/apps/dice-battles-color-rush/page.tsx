@@ -152,6 +152,46 @@ export default async function DiceBattlesAppPage() {
           </div>
         </section>
 
+        {/*
+          The trailer (David, 13 Oct 2026: "make a video to showcase the
+          game on the website ... with big action sequences"). Rendered
+          from the game itself by tools/trailer.
+
+          SELF-HOSTED on purpose. A YouTube or Vimeo embed would load a
+          third party's scripts and cookies on every visit, and this site
+          loads nothing from anybody else — which is the only reason it
+          needs no cookie banner. tests/website.test.ts keeps it that way.
+
+          muted + playsInline is what lets an iPhone or iPad play it in
+          the page by itself; without both, iOS Safari refuses to
+          autoplay and shows a frozen first frame.
+        */}
+        <section
+          className="psg-wrap"
+          style={{ padding: '32px 56px 0', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
+        >
+          <video
+            src="/videos/dice-battles-trailer.mp4"
+            poster="/videos/dice-battles-trailer.jpg"
+            autoPlay
+            muted
+            loop
+            playsInline
+            controls
+            preload="metadata"
+            aria-label="Dice Battles: Color Rush trailer — dice raining onto the castle, Fire dice blazing across Volcano Rim, Ice dice freezing a pond, and a storm of dice at sunset"
+            style={{
+              display: 'block',
+              width: '100%',
+              maxWidth: 960,
+              aspectRatio: '16 / 9',
+              borderRadius: 20,
+              background: '#1d1a2e',
+              boxShadow: '0 12px 30px rgba(0,0,0,0.14)',
+            }}
+          />
+        </section>
+
         <section
           className="psg-wrap"
           style={{ padding: '36px 56px 0', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
