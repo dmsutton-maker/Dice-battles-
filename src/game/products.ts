@@ -44,6 +44,13 @@ export interface Product {
   /** One plain sentence, written for whoever is holding the phone. */
   blurb: string;
   /**
+   * The whole story, shown when the card is tapped (David, 14 Oct 2026:
+   * "add the ability to click on any of the real money purchases to see
+   * the full description of it"). What you get, how long it lasts, and
+   * what happens on a new phone — the questions a parent asks.
+   */
+  details: string;
+  /**
    * What we intend to charge, in US dollars.
    *
    * The PHONE is the authority, never this number: StoreKit returns the
@@ -85,6 +92,8 @@ export const PRODUCTS: Product[] = [
     id: 'remove_ads',
     kind: 'once',
     name: 'No more ads',
+    details:
+      "Switches off the full-screen ad that shows after every third finished game. For good.\n\nIt counts for every iPhone and iPad signed in to the same Apple account. On a new phone, tap \"Bought before? Put it back\" at the bottom of this shelf and it comes straight back, free.\n\nNo coins, dice or battlefields come with it, and it never changes how the dice land.",
     blurb:
       'Switches off the ad between games, for good, on every phone ' +
       'signed in to your Apple account.',
@@ -108,6 +117,8 @@ export const PRODUCTS: Product[] = [
     id: 'coins_pouch',
     kind: 'consumable',
     name: 'Pouch of coins',
+    details:
+      "500 coins, in your purse straight away.\n\nCoins buy dice sets and battlefields in the Store, the same ones you can win by playing. A hard-won battle pays about 70.\n\nCoins are spent when you use them, so they do not come back on a new phone.",
     blurb: '500 coins — about seven hard-won battles.',
     usd: 0.99,
     coins: 500,
@@ -117,6 +128,8 @@ export const PRODUCTS: Product[] = [
     id: 'coins_chest',
     kind: 'consumable',
     name: 'Chest of coins',
+    details:
+      "3,000 coins, in your purse straight away. That is six pouches for the price of five.\n\nCoins buy dice sets and battlefields in the Store, the same ones you can win by playing.\n\nCoins are spent when you use them, so they do not come back on a new phone.",
     blurb: '3,000 coins. Six times the pouch, five times the price.',
     usd: 4.99,
     coins: 3000,
@@ -126,6 +139,8 @@ export const PRODUCTS: Product[] = [
     id: 'coins_vault',
     kind: 'consumable',
     name: 'Vault of coins',
+    details:
+      "7,000 coins, in your purse straight away. The best value of the three: enough for the most expensive battlefield twice over.\n\nCoins buy dice sets and battlefields in the Store, the same ones you can win by playing.\n\nCoins are spent when you use them, so they do not come back on a new phone.",
     blurb: '7,000 coins — enough for the most expensive battlefield, twice.',
     usd: 9.99,
     coins: 7000,
@@ -136,6 +151,8 @@ export const PRODUCTS: Product[] = [
     id: 'starter_pack',
     kind: 'once',
     name: 'Starter pack',
+    details:
+      "1,500 coins and the Supporter die, a dice set nobody can earn any other way.\n\nOnly offered in your first two days with the game.",
     blurb: '1,500 coins and the Supporter die. Only in your first two days.',
     usd: 4.99,
     coins: 1500,
@@ -159,6 +176,8 @@ export const PRODUCTS: Product[] = [
     id: 'premium_dice_pack',
     kind: 'once',
     name: 'Money-only dice sets',
+    details:
+      "Dice sets that cannot be earned with coins, drawn especially to be sold. Every dice set in the game today can still be won by playing.",
     blurb: 'Dice sets that cannot be earned with coins.',
     usd: 1.99,
     available: false,
@@ -172,6 +191,8 @@ export const PRODUCTS: Product[] = [
     id: 'premium_arena_pack',
     kind: 'once',
     name: 'Money-only battlefields',
+    details:
+      "Battlefields that cannot be earned with coins, built especially to be sold. Every battlefield in the game today can still be won by playing.",
     blurb: 'Battlefields that cannot be earned with coins.',
     usd: 2.99,
     available: false,
@@ -193,6 +214,8 @@ export const PRODUCTS: Product[] = [
     id: 'season_pass_1',
     kind: 'season',
     name: 'Gold Pass — Season 1',
+    details:
+      "A second row of rewards on this season's pass, on the same thirty levels you climb by playing:\n\n  Level 6: Snowy Hollow (battlefield)\n  Level 12: the Fire Dice\n  Level 30: Volcano Rim (battlefield)\n  Every other level: coins, about 2,500 in all\n\nYou keep the free row too, so you get both. Levels you have already reached pay out the moment you buy it.\n\nIt is for Season 1 only. It never pays trophies, and it never changes how the dice land.",
     blurb:
       'A second row of rewards on the season pass: Snowy Hollow, the Fire ' +
       'Dice, Volcano Rim and coins at every level. Levels you have already ' +

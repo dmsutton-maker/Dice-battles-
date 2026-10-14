@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
@@ -45,6 +45,8 @@ export function MoneyShelf({
   const [asking, setAsking] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
   const [told, setTold] = useState<{ title: string; body: string } | null>(null);
+  /** The product whose full description is open, if any. */
+  const [viewing, setViewing] = useState<Product | null>(null);
 
   const refresh = useCallback(() => setState(storeState()), []);
 
@@ -108,7 +110,38 @@ export function MoneyShelf({
     );
   };
 
-  const comingLater = familyPreview ? <ComingLater /> : null;
+  const comingLater = familyPreview ? <ComingLater onView={setViewing} /> : null;
+
+  /*
+    The full description, opened by tapping a card. On sale and not yet
+    owned, it offers to buy — which goes through the same "are you sure"
+    question as the price button, so there is still exactly one place a
+    purchase is asked about. Owned, or not on sale, it only describes.
+  */
+  const detail = viewing && (
+    <OnTop onClose={() => setViewing(null)}>
+    <ProductDetail
+      product={viewing}
+      price={state.priceOf(viewing.id)}
+      canBuy={
+        viewing.available &&
+        state.available &&
+        !(viewing.kind !== 'consumable' && hasEntitlement(viewing.id))
+      }
+      owned={viewing.kind !== 'consumable' && hasEntitlement(viewing.id)}
+      onBuy={() => {
+        const product = viewing;
+        playClick();
+        setViewing(null);
+        setAsking(product);
+      }}
+      onClose={() => {
+        playClick();
+        setViewing(null);
+      }}
+    />
+    </OnTop>
+  );
 
   if (!state.available) {
     return (
@@ -122,6 +155,7 @@ export function MoneyShelf({
         </Text>
       </Card>
       {comingLater}
+      {detail}
       </>
     );
   }
@@ -137,10 +171,18 @@ export function MoneyShelf({
         const bought = product.kind !== 'consumable' && hasEntitlement(product.id);
         const price = state.priceOf(product.id);
         return (
-          <Card key={product.id} style={styles.row}>
+          <Card
+            key={product.id}
+            style={styles.row}
+            onPress={() => {
+              playClick();
+              setViewing(product);
+            }}
+          >
             <View style={styles.rowText}>
               <Text style={styles.rowName}>{product.name}</Text>
               <Text style={styles.rowBlurb}>{product.blurb}</Text>
+              <Text style={styles.more}>Tap for the full story</Text>
               {product.starterOnly && (
                 <Text style={styles.starter}>
                   Only in your first two days with the game
@@ -193,7 +235,10 @@ export function MoneyShelf({
 
       {comingLater}
 
+      {detail}
+
       {asking && (
+        <OnTop onClose={() => setAsking(null)}>
         <Confirm
           title={`Buy ${asking.name}?`}
           body={
@@ -215,15 +260,87 @@ export function MoneyShelf({
             void purchase(product);
           }}
         />
+        </OnTop>
       )}
 
       {told && (
+        <OnTop onClose={() => setTold(null)}>
         <Tell
           title={told.title}
           body={told.body}
           onDismiss={() => setTold(null)}
         />
+        </OnTop>
       )}
+    </View>
+  );
+}
+
+/**
+ * Draw over the WHOLE screen, not over the shelf.
+ *
+ * The shelf sits at the bottom of the Store's long scrolling page, and a
+ * popup drawn inside it is centred on the shelf — which, scrolled to the
+ * Gold Pass, put the middle of it below the bottom of the phone. A
+ * transparent Modal is drawn above everything, the way the bug-report
+ * form is.
+ */
+function OnTop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+      {children}
+    </Modal>
+  );
+}
+
+/**
+ * One product, in full: everything it gives, how long it lasts, and what
+ * happens on a new phone. Same card-on-the-table look as Confirm and Tell.
+ */
+function ProductDetail({
+  product,
+  price,
+  canBuy,
+  owned,
+  onBuy,
+  onClose,
+}: {
+  product: Product;
+  price: string | null;
+  canBuy: boolean;
+  owned: boolean;
+  onBuy: () => void;
+  onClose: () => void;
+}) {
+  const shown = price ?? `$${product.usd.toFixed(2)}`;
+  return (
+    <View style={styles.detailBackdrop}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
+      <Card style={styles.detailPanel} radius={SHAPE.radiusLg}>
+        <ScrollView style={styles.detailText} contentContainerStyle={styles.detailScroll}>
+          <Text style={styles.detailTitle}>{product.name}</Text>
+          <Text style={styles.detailPrice}>
+            {owned ? 'Yours already' : product.available ? shown : `${shown} · not on sale yet`}
+          </Text>
+          <Text style={styles.detailBody}>{product.details}</Text>
+          {!product.available && product.blockedBy && (
+            <Text style={styles.laterWhy}>Waiting on: {product.blockedBy}</Text>
+          )}
+        </ScrollView>
+        {canBuy && (
+          <Pressable
+            style={[styles.buy, styles.detailBuy]}
+            accessibilityRole="button"
+            accessibilityLabel={`Buy ${product.name} for ${shown}`}
+            onPress={onBuy}
+          >
+            <Text style={styles.buyText}>Buy for {shown}</Text>
+          </Pressable>
+        )}
+        <Pressable style={styles.detailClose} accessibilityRole="button" onPress={onClose}>
+          <Text style={styles.restoreText}>Close</Text>
+        </Pressable>
+      </Card>
     </View>
   );
 }
@@ -243,7 +360,7 @@ export function MoneyShelf({
  * would, greyed, with the reason underneath. Nothing here can reach
  * `buy()`.
  */
-function ComingLater() {
+function ComingLater({ onView }: { onView: (product: Product) => void }) {
   const parked = PRODUCTS.filter((p) => !p.available);
   if (parked.length === 0) return null;
   return (
@@ -254,7 +371,16 @@ function ComingLater() {
         sale yet — this is how they would look.
       </Text>
       {parked.map((product) => (
-        <Card key={product.id} style={styles.row} drop={0} background={THEME.sunk}>
+        <Card
+          key={product.id}
+          style={styles.row}
+          drop={0}
+          background={THEME.sunk}
+          onPress={() => {
+            playClick();
+            onView(product);
+          }}
+        >
           <View style={styles.rowText}>
             <Text style={styles.rowName}>{product.name}</Text>
             <Text style={styles.rowBlurb}>{product.blurb}</Text>
@@ -274,6 +400,25 @@ function ComingLater() {
 }
 
 const styles = StyleSheet.create({
+  more: { ...TYPE.small, color: THEME.accent, marginTop: 4 },
+  detailBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 90,
+    backgroundColor: 'rgba(29, 26, 46, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 22,
+  },
+  detailPanel: { width: '100%', maxWidth: 420, padding: 20 },
+  // The limit goes on the words, not the card: limiting the card cut its
+  // hard shadow loose from it and clipped the last line.
+  detailText: { maxHeight: 440 },
+  detailScroll: { gap: 10, paddingBottom: 6 },
+  detailTitle: { ...TYPE.title, color: THEME.ink },
+  detailPrice: { ...TYPE.cardTitle, color: THEME.accent },
+  detailBody: { ...TYPE.body, color: THEME.ink, lineHeight: 21 },
+  detailBuy: { alignSelf: 'stretch', marginTop: 14, minHeight: MIN_TAP },
+  detailClose: { alignSelf: 'center', marginTop: 10, minHeight: MIN_TAP, justifyContent: 'center', paddingHorizontal: 20 },
   later: { marginTop: 22, gap: 10 },
   laterTitle: { ...TYPE.label, color: THEME.accent, letterSpacing: 0.8 },
   laterNote: { ...TYPE.small, color: THEME.inkSoft },

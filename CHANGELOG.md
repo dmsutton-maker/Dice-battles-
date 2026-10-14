@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.109.0 — 2026-10-14 · requested by David
+
+### Added
+- **Tap anything in the money shelf for the whole story.** David: "Add
+  the ability to click on any of the real money purchases to see the
+  full description of it." Each card says "Tap for the full story" and
+  opens a description: what you get, how long it lasts, what happens on
+  a new phone. The Gold Pass lists every Gold reward level by level. On
+  sale and not yet owned, it offers "Buy for $X", which still goes
+  through the usual "are you sure?" first. The family-only COMING LATER
+  cards open too, but can never be bought.
+
+### Changed
+- **Every button that battles a friend is yellow.** David: "Make the
+  battle button against your friends yellow." The profile's "Battle
+  [name]", the picker's "Ask them" and the "Battle!" that accepts a
+  challenge now match the yellow Battle button on each friend's row,
+  with dark text so it reads.
+
+### Fixed (before anyone saw it)
+- The Store's popups (the description, "Buy this?", "Thank you") are
+  drawn over the whole screen. Drawn inside the shelf, they centred on
+  the shelf, which is far down a long page — opened from the Gold Pass,
+  the middle of the popup could be below the bottom of the phone.
+
 ## v1.108.1 — 2026-10-13 · requested by David
 
 ### Changed

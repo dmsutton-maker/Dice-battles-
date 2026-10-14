@@ -662,7 +662,7 @@ export function FriendsScreen({
               challenging?.playerId === showing.playerId ? (
                 pickerFor(showing)
               ) : (
-                <PrimaryButton
+                <BattleButton
                   style={styles.profileBattle}
                   onPress={() => {
                     playClick();
@@ -671,7 +671,7 @@ export function FriendsScreen({
                   }}
                 >
                   <Text style={styles.profileBattleText}>Battle {showing.name}</Text>
-                </PrimaryButton>
+                </BattleButton>
               )
             }
             onBack={() => {
@@ -770,12 +770,12 @@ export function FriendsScreen({
                   >
                     <Text style={styles.smallSecondaryText}>No thanks</Text>
                   </SecondaryButton>
-                  <PrimaryButton
+                  <BattleButton
                     style={styles.smallButton}
                     onPress={() => onAnswer(c.id, 'accept')}
                   >
-                    <Text style={styles.smallButtonText}>Battle!</Text>
-                  </PrimaryButton>
+                    <Text style={styles.battleBigText}>Battle!</Text>
+                  </BattleButton>
                 </View>
               </Card>
             ))}
@@ -1124,12 +1124,41 @@ function BattlePicker({
           shared PrimaryButton does not take one, and adding it for this
           one caller would change a component every screen uses.
         */}
-        <PrimaryButton style={styles.smallButton} onPress={() => !sending && onSend()}>
-          <Text style={styles.smallButtonText}>
+        <BattleButton style={styles.smallButton} onPress={() => !sending && onSend()}>
+          <Text style={styles.battleBigText}>
             {sending ? 'Asking…' : 'Ask them'}
           </Text>
-        </PrimaryButton>
+        </BattleButton>
       </View>
+    </Card>
+  );
+}
+
+/**
+ * Every button that battles a friend is YELLOW (David, 14 Oct 2026: "make
+ * the battle button against your friends yellow") — the row's Battle,
+ * the profile's Battle and the picker's Ask them — so battling a friend
+ * looks the same wherever you start it. Ink text, because white on this
+ * yellow would barely read.
+ */
+function BattleButton({
+  children,
+  onPress,
+  style,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  style?: object;
+}) {
+  return (
+    <Card
+      onPress={onPress}
+      background={THEME.gold}
+      radius={SHAPE.radiusLg}
+      drop={6}
+      style={[{ paddingVertical: 16, alignItems: 'center' }, style]}
+    >
+      {children}
     </Card>
   );
 }
@@ -1232,7 +1261,8 @@ function Stat({ label, value, text }: { label: string; value?: number; text?: st
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18, paddingBottom: 40 },
   profileBattle: { marginTop: 4, marginBottom: 8 },
-  profileBattleText: { ...TYPE.cardTitle, color: THEME.onAccent },
+  profileBattleText: { ...TYPE.cardTitle, color: THEME.ink, fontWeight: '900' },
+  battleBigText: { ...TYPE.body, color: THEME.ink, fontWeight: '900' },
   title: { ...TYPE.title, color: THEME.ink, marginBottom: 14 },
 
   recoveredCard: { padding: 14, marginBottom: 10 },

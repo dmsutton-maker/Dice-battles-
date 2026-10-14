@@ -417,13 +417,15 @@ suite('purchases · the family preview of what is coming', () => {
   const later = shelf.slice(shelf.indexOf('function ComingLater'), shelf.indexOf('const styles'));
 
   test('it is only drawn in family tester mode', () => {
-    assert(/familyPreview \? <ComingLater \/> : null/.test(shelf), 'the preview is drawn for everybody');
+    assert(/familyPreview \? <ComingLater[^>]*\/> : null/.test(shelf), 'the preview is drawn for everybody');
     assert(/familyPreview=\{unlockAll\}/.test(source('src/demo/DiceDemoScreen.tsx')), 'the Store is not told about tester mode');
   });
 
   test('nothing in it can be bought', () => {
     assert(later.length > 100, 'the preview section was not found');
-    assert(!/buy\(|setAsking|onPress|Pressable/.test(later), 'a parked product in the preview can be pressed');
+    // Tapping one opens its description (14 Oct 2026) — but nothing in
+    // the preview can start a purchase.
+    assert(!/buy\(|setAsking/.test(later), 'a parked product in the preview can be bought');
     assert(/!p\.available/.test(later), 'the preview shows something other than parked products');
   });
 
@@ -433,5 +435,25 @@ suite('purchases · the family preview of what is coming', () => {
     assert(parked.includes('starter_pack'), 'the starter pack is missing from the preview');
     // David, 5 Oct 2026: "take Dice Club out for now".
     assert(!PRODUCTS.some((p) => /club/.test(p.id)), 'Dice Club is back in the catalogue');
+  });
+});
+
+suite('purchases · tap any of them for the whole story', () => {
+  // David, 14 Oct 2026: "add the ability to click on any of the real
+  // money purchases to see the full description of it."
+  const shelf = source('src/demo/MoneyShelf.tsx');
+
+  test('every product has a full description, longer than its one line', () => {
+    for (const p of PRODUCTS) {
+      assert(p.details.length > p.blurb.length, `${p.id} has no more to say than its blurb`);
+    }
+  });
+
+  test('the card opens it, and only a product on sale offers to buy', () => {
+    assert(/setViewing\(product\)/.test(shelf), 'tapping a card does not open its description');
+    assert(/viewing\.available &&/.test(shelf), 'the description offers to buy something not on sale');
+    // Buying from the description still asks "are you sure" first.
+    const detail = shelf.slice(shelf.indexOf('const detail ='), shelf.indexOf('onClose={() => {', shelf.indexOf('const detail =')));
+    assert(/setAsking\(product\)/.test(detail), 'buying from the description skips the question');
   });
 });
