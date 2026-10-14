@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+  <style>
+    body { margin: 0; font-family: Nunito, "Helvetica Neue", system-ui, sans-serif; }
+    a { color: #d2451e; } a:hover { color: #1d1a2e; }
+    .dsp { font-family: Fredoka, Nunito, system-ui, sans-serif; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #fdf6ec; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 58px 20px 0;">
+
+    <div style="display: flex; gap: 9px;">
+      <div style="display: flex; align-items: center; gap: 7px; background: #ffffff; border: 2px solid #1d1a2e; border-radius: 14px; padding: 8px 12px; box-shadow: 0 3px 0 #1d1a2e;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d2451e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/><path d="M9 20h6"/><path d="M12 14v6"/></svg>
+        <span style="color: #1d1a2e; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums;">128</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; background: #ffffff; border: 2px solid #1d1a2e; border-radius: 14px; padding: 8px 12px; box-shadow: 0 3px 0 #1d1a2e;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffd21f" stroke-width="2.4"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>
+        <span style="color: #1d1a2e; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums;">420</span>
+      </div>
+    </div>
+
+    <div style="width: 42px; height: 42px; border-radius: 13px; background: #ffffff; border: 2px solid #1d1a2e; box-shadow: 0 3px 0 #1d1a2e; display: grid; place-items: center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d1a2e" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.4"/><path d="M12 2.6v3M12 18.4v3M21.4 12h-3M5.6 12h-3M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1M18.6 18.6l-2.1-2.1M7.5 7.5 5.4 5.4"/></svg>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 22px;">
+
+    <div class="dsp" style="color: #1d1a2e; font-size: 44px; font-weight: 700; letter-spacing: -1px; line-height: 0.98; text-align: center;">Dice Battles</div>
+    <div style="background: #d2451e; color: #ffffff; border: 2px solid #1d1a2e; border-radius: 999px; padding: 5px 15px; font-size: 12px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; margin-top: 12px;">Color Rush</div>
+
+    <div style="display: flex; gap: 9px; margin-top: 28px;">
+      <div style="width: 34px; height: 34px; border-radius: 11px; background: #cc2533; border: 2px solid #1d1a2e; box-shadow: 0 3px 0 #1d1a2e;"></div>
+      <div style="width: 34px; height: 34px; border-radius: 11px; background: #fc8403; border: 2px solid #1d1a2e; box-shadow: 0 3px 0 #1d1a2e;"></div>
+      <div style="width: 34px; height: 34px; border-radius: 11px; background: #ffd21f; border: 2px solid #1d1a2e; box-shadow: 0 3px 0 #1d1a2e;"></div>
+      <div style="width: 34px; height: 34px; border-radius: 11px; background: #33cc6b; border: 2px solid #1d1a2e; box-shadow: 0 3px 0 #1d1a2e;"></div>
+      <div style="width: 34px; height: 34px; border-radius: 11px; background: #3f6bff; border: 2px solid #1d1a2e; box-shadow: 0 3px 0 #1d1a2e;"></div>
+      <div style="width: 34px; height: 34px; border-radius: 11px; background: #b866f0; border: 2px solid #1d1a2e; box-shadow: 0 3px 0 #1d1a2e;"></div>
+    </div>
+
+    <div style="align-self: stretch; margin-top: 32px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <div style="background: #ffd21f; border: 2px solid #1d1a2e; border-radius: 18px; padding: 14px; box-shadow: 0 4px 0 #1d1a2e;">
+        <div class="dsp" style="color: #1d1a2e; font-size: 17px; font-weight: 700;">Rush</div>
+        <div style="color: rgba(29,26,46,0.66); font-size: 11.5px; font-weight: 700; margin-top: 2px;">Free all six</div>
+      </div>
+      <div style="background: #ffffff; border: 2px solid #1d1a2e; border-radius: 18px; padding: 14px; box-shadow: 0 4px 0 #1d1a2e;">
+        <div class="dsp" style="color: #1d1a2e; font-size: 17px; font-weight: 700;">Ultimate</div>
+        <div style="color: rgba(29,26,46,0.6); font-size: 11.5px; font-weight: 700; margin-top: 2px;">Sends them back</div>
+      </div>
+      <div style="background: #ffffff; border: 2px solid #1d1a2e; border-radius: 18px; padding: 14px; box-shadow: 0 4px 0 #1d1a2e;">
+        <div class="dsp" style="color: #1d1a2e; font-size: 17px; font-weight: 700;">Skirmish</div>
+        <div style="color: rgba(29,26,46,0.6); font-size: 11.5px; font-weight: 700; margin-top: 2px;">One shared jail</div>
+      </div>
+      <div style="background: #ffffff; border: 2px solid #1d1a2e; border-radius: 18px; padding: 14px; box-shadow: 0 4px 0 #1d1a2e;">
+        <div class="dsp" style="color: #1d1a2e; font-size: 17px; font-weight: 700;">Color War</div>
+        <div style="color: rgba(29,26,46,0.6); font-size: 11.5px; font-weight: 700; margin-top: 2px;">One colour each</div>
+      </div>
+    </div>
+
+    <div style="align-self: stretch; display: flex; align-items: center; gap: 10px; margin-top: 18px;">
+      <span style="color: rgba(29,26,46,0.6); font-size: 12.5px; font-weight: 800;">Rival</span>
+      <div style="flex-grow: 1; display: flex; background: #efe4d4; border-radius: 14px; padding: 3px;">
+        <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 13px 0; color: rgba(29,26,46,0.6); font-size: 12.5px; font-weight: 800;">Easy</div>
+        <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 13px 0; border-radius: 11px; background: #1d1a2e; color: #fdf6ec; font-size: 12.5px; font-weight: 800;">Medium</div>
+        <div style="flex-grow: 1; flex-basis: 0; text-align: center; padding: 13px 0; color: rgba(29,26,46,0.6); font-size: 12.5px; font-weight: 800;">Hard</div>
+      </div>
+    </div>
+
+    <div style="align-self: stretch; margin-top: 22px; background: #d2451e; border: 2px solid #1d1a2e; border-radius: 20px; padding: 18px; text-align: center; box-shadow: 0 6px 0 #1d1a2e;">
+      <span class="dsp" style="color: #ffffff; font-size: 21px; font-weight: 700;">Start battle</span>
+    </div>
+  </div>
+
+  <div style="display: flex; background: #ffffff; border-top: 2px solid #1d1a2e; padding: 12px 0 30px;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="rgba(29,26,46,0.42)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 7V5.5a3 3 0 0 1 6 0V7"/></svg>
+      <span style="color: rgba(29,26,46,0.42); font-size: 10px; font-weight: 800;">Store</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="rgba(29,26,46,0.42)" stroke-width="2.1" stroke-linejoin="round"><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/><path d="M4 8.5 12 13l8-4.5M12 13v7"/></svg>
+      <span style="color: rgba(29,26,46,0.42); font-size: 10px; font-weight: 800;">Items</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0;">
+      <div style="width: 42px; height: 27px; border-radius: 10px; background: #ffd21f; border: 2px solid #1d1a2e; display: grid; place-items: center;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1d1a2e" stroke-width="2.2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><circle cx="8.6" cy="8.6" r="1.5" fill="#1d1a2e" stroke="none"/><circle cx="15.4" cy="15.4" r="1.5" fill="#1d1a2e" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="#1d1a2e" stroke="none"/></svg>
+      </div>
+      <span style="color: #1d1a2e; font-size: 10px; font-weight: 800;">Battle</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="rgba(29,26,46,0.42)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/><path d="M9 20h6"/><path d="M12 14v6"/></svg>
+      <span style="color: rgba(29,26,46,0.42); font-size: 10px; font-weight: 800;">Cups</span>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="rgba(29,26,46,0.42)" stroke-width="2.1" stroke-linecap="round"><path d="M5 20V11"/><path d="M12 20V4"/><path d="M19 20v-6"/></svg>
+      <span style="color: rgba(29,26,46,0.42); font-size: 10px; font-weight: 800;">Ranks</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
