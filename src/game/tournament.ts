@@ -365,6 +365,25 @@ export function liveTournaments(
   return [...rotating, ...coming].slice(0, MAX_SHOWN);
 }
 
+/**
+ * The cups a battle may move: the ones the Cups tab shows as RUNNING.
+ *
+ * finishRound used to score against every cup the phone had fetched or
+ * cached. The feed carries every published row, so a cup that had closed
+ * (the tab said "No cups are running") still paid out, a cup that had not
+ * opened yet built a streak early, and a third cup beyond the two shown
+ * paid too. A prize the player was never shown is a bug, not a bonus.
+ *
+ * It is `liveTournaments` — the one definition of what is on the tab —
+ * minus the "coming" cards, which are on the tab but cannot be played yet.
+ */
+export function scorableTournaments(
+  all: TournamentDef[],
+  today: string,
+): TournamentDef[] {
+  return liveTournaments(all, today).filter((t) => !isComing(t, today));
+}
+
 export function tournamentById(
   id: string,
   all: TournamentDef[] = TOURNAMENTS,

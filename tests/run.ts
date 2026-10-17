@@ -54,6 +54,7 @@ async function main(): Promise<void> {
   await import('./foldable.test');
   await import('./matchSearch.test');
   await import('./warmup.test');
+  await import('./auditFixes.test');
   process.exit(await runAll());
 }
 

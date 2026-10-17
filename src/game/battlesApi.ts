@@ -68,6 +68,30 @@ export interface ChallengeState {
 
 const EMPTY: ChallengeState = { incoming: [], outgoing: null, battle: null };
 
+/**
+ * Is this the challenge state the screen already has?
+ *
+ * The home screen asks every few seconds, and nearly every answer is the
+ * same as the last one. Handing React an identical-looking NEW object
+ * re-renders the whole game screen and its 3D scene, so the poll only
+ * sets state when this says something moved. Compared by what the player
+ * can see or act on: which challenges exist, who from, what they ask for,
+ * when they run out, and whether a battle is waiting.
+ */
+export function sameChallenges(a: ChallengeState, b: ChallengeState): boolean {
+  const one = (c: Challenge) =>
+    [c.id, c.mode, c.difficulty, c.expiresAt, c.who?.playerId ?? null, c.who?.name ?? null, c.who?.trophies ?? null];
+  const key = (s: ChallengeState) =>
+    JSON.stringify([
+      s.incoming.map(one),
+      s.outgoing ? one(s.outgoing) : null,
+      s.battle
+        ? [s.battle.id, s.battle.mode, s.battle.difficulty, s.battle.opponentId ?? null, s.battle.opponentName ?? null]
+        : null,
+    ]);
+  return key(a) === key(b);
+}
+
 type RawChallenge = {
   id: string;
   mode: ModeId;

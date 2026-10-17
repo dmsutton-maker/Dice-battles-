@@ -24,6 +24,7 @@ import {
   mergeTournaments,
   MAX_ROTATING,
   MAX_SHOWN,
+  scorableTournaments,
   scoreBattle,
   stateOf,
   todayStamp,
@@ -771,5 +772,54 @@ suite('cups · a streak survives the app being killed', () => {
       0,
       'an old save came back part-way through a cup it never played',
     );
+  });
+});
+
+suite('cups · only a cup the player can see running pays', () => {
+  /*
+    The audit's G-BUG-1: finishRound scored against every cup the phone
+    had fetched, so a closed cup (the tab said "No cups are running") still
+    paid five Hard wins in a row, and a cup that had not opened yet built a
+    streak early. The scoring list is now the Cups tab's own list, minus
+    its "coming" cards.
+  */
+  const TODAY = '2026-10-17';
+  const cup = (id: string, extra: Partial<TournamentDef>): TournamentDef => ({
+    ...CUP,
+    id,
+    closes: '2026-12-31',
+    ...extra,
+  });
+  const ids = (list: TournamentDef[]) => list.map((t) => t.id).join(',');
+
+  test('a closed cup is not scored', () => {
+    const closed = cup('closed', { closes: '2026-10-08' });
+    assertEqual(ids(scorableTournaments([closed], TODAY)), '', 'a closed cup would still pay');
+  });
+
+  test('a cup that has not opened yet is not scored', () => {
+    const later = cup('later', { opens: '2026-11-01' });
+    assertEqual(ids(scorableTournaments([later], TODAY)), '', 'a streak would build before the cup opens');
+  });
+
+  test('a third cup beyond the two shown is not scored', () => {
+    const three = [cup('a', {}), cup('b', {}), cup('c', {})];
+    assertEqual(ids(scorableTournaments(three, TODAY)), 'a,b', 'a cup the tab does not show was scored');
+  });
+
+  test('an always-on cup is not scored', () => {
+    const standing = cup('standing', { standing: true });
+    const endless: TournamentDef = { ...CUP, id: 'endless' };
+    assertEqual(ids(scorableTournaments([standing, endless], TODAY)), '', 'an always-on cup was scored');
+  });
+
+  test('an open cup that is shown is scored, and moves its streak', () => {
+    const open = cup('open', { opens: '2026-10-01' });
+    const closed = cup('closed', { closes: '2026-10-08' });
+    const later = cup('later', { opens: '2026-11-01' });
+    const scoring = scorableTournaments([closed, later, open], TODAY);
+    assertEqual(ids(scoring), 'open', 'the one open cup was not the only one scored');
+    const scored = scoreBattle(scoring, {}, EASY_RUSH);
+    assertEqual(Object.keys(scored.changed).join(','), 'open', 'the wrong cups moved');
   });
 });
