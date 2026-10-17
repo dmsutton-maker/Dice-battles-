@@ -39,9 +39,6 @@ export function StatsHud({
   );
 }
 
-/** Height the HUD occupies, so screens underneath can pad clear of it. */
-export const STATS_HUD_HEIGHT = 40;
-
 const styles = StyleSheet.create({
   row: {
     position: 'absolute',

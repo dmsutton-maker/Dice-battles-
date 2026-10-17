@@ -129,6 +129,3 @@ export const ARENAS = {
 } satisfies Record<string, ArenaDef>;
 
 export type ArenaId = keyof typeof ARENAS;
-
-/** Fallback arena when nothing is picked. */
-export const CURRENT_ARENA: ArenaId = 'castle';

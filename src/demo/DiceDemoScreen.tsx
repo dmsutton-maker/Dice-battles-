@@ -33,6 +33,7 @@ import {
   loadLoadout,
   ARENA_PRICES,
   arenaKey,
+  coinShopItemIds,
 } from '../game/loadout';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
@@ -1009,7 +1010,7 @@ export function DiceDemoScreen() {
       );
       playFanfare();
     } else if (code === RESET_CODE) {
-      const removed = clearPurchases();
+      const removed = clearPurchases(coinShopItemIds());
       setWallet({ ...getWallet() });
       // A wiped skin may still be the equipped one. activeDieBody already
       // falls back, but the Inventory would show "equipped" on a card it

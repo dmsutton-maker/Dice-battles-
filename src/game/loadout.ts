@@ -142,6 +142,15 @@ export const STORE_ARENAS: ArenaId[] = ARENA_ORDER.filter(
   (id) => ARENA_PRICES[id] !== undefined,
 );
 
+/**
+ * Every wallet id the Store sells for coins: the dice on the shelf and the
+ * battlefields on it. The only things a RESET may take back. Season, cup
+ * and trophy items are not in here, so they survive it.
+ */
+export function coinShopItemIds(): string[] {
+  return [...STORE_SKINS.map((s) => s.id), ...STORE_ARENAS.map((id) => arenaKey(id))];
+}
+
 /** What a ladder skin costs in trophies. Store skins cost none. */
 function trophyCost(skin: DiceSkin): number {
   return TIERS.find((t) => t.id === skin.unlock)?.at ?? 0;

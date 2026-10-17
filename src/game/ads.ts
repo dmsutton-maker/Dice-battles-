@@ -93,6 +93,7 @@ interface LoadedInterstitial {
   load(): void;
   show(): Promise<void>;
   addAdEventListener(type: string, listener: (arg?: unknown) => void): () => void;
+  removeAllListeners(): void;
 }
 
 /**
@@ -367,10 +368,23 @@ function preload(): void {
     ad.addAdEventListener(mod.AdEventType.ERROR, () => {
       // No fill, no network, a bad unit id — drop it and try again after
       // the next game rather than holding a dead object forever.
+      // Clear our listeners first, so our closures are released. The
+      // library's shared emitter keeps its own subscription regardless.
+      try {
+        ad.removeAllListeners();
+      } catch {
+        // Nothing here may throw.
+      }
       loaded = false;
       interstitial = null;
     });
     ad.addAdEventListener(mod.AdEventType.CLOSED, () => {
+      // Clear our listeners before the object is dropped; see ERROR above.
+      try {
+        ad.removeAllListeners();
+      } catch {
+        // Nothing here may throw.
+      }
       loaded = false;
       interstitial = null;
       // Wake whoever is waiting behind the ad BEFORE fetching the next

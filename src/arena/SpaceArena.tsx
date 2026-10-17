@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
 import {
@@ -58,6 +58,9 @@ function Starfield() {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     return geo;
   }, []);
+  // Passed as a prop rather than declared as JSX, so R3F does not free it
+  // on unmount. Built per mount, so free it per unmount.
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   const material = useMemo(
     () =>

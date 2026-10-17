@@ -79,10 +79,12 @@ let fanfareVoice: Voice | null = null;
 let clickPool: Voice[] = [];
 let equipVoice: Voice | null = null;
 let startupVoice: Voice | null = null;
-let musicPlayers: AudioPlayer[] = [];
+/** The one track playing now. Created when music starts, released when it stops. */
 let musicPlayer: AudioPlayer | null = null;
 /** Whether the game WANTS music — separate from whether it is audible. */
 let musicWanted = false;
+/** Set once initSounds has built the sound effects; music needs it. */
+let musicAvailable = false;
 let throwIndex = 0;
 let clackIndex = 0;
 let clickIndex = 0;
@@ -116,16 +118,12 @@ export function initSounds(): void {
     );
     equipVoice = voice(equipSource, MIX.equip);
     startupVoice = voice(startupSource, MIX.startup);
-    musicPlayers = musicSources.map((source) => {
-      const player = createAudioPlayer(source);
-      player.loop = true;
-      player.volume = volumeOf('music', MIX.music);
-      return player;
-    });
-
     // The music loop is already playing when a slider moves, so it has to
     // follow the slider live; one-shot sounds take their level at play time.
+    // The music tracks themselves are loaded only when one is started, see
+    // startMusic: building all four here cost memory and launch time.
     subscribeAudioSettings(syncMusic);
+    musicAvailable = true;
   } catch {
     // Sounds are garnish — never let audio failures break the game.
     throwPool = [];
@@ -135,7 +133,7 @@ export function initSounds(): void {
     clickPool = [];
     equipVoice = null;
     startupVoice = null;
-    musicPlayers = [];
+    musicAvailable = false;
     musicPlayer = null;
   }
 }
@@ -223,12 +221,15 @@ function syncMusic(): void {
  * still selects a track, so raising it mid-battle starts the music at once.
  */
 export function startMusic(): void {
-  if (musicPlayers.length === 0) return;
+  if (!musicAvailable) return;
   musicWanted = true;
   if (!musicPlayer) {
-    musicPlayer = musicPlayers[Math.floor(Math.random() * musicPlayers.length)];
     try {
-      musicPlayer.seekTo(0).catch(() => {});
+      const source = musicSources[Math.floor(Math.random() * musicSources.length)];
+      const player = createAudioPlayer(source);
+      player.loop = true;
+      player.volume = volumeOf('music', MIX.music);
+      musicPlayer = player;
     } catch {
       // ignore — see initSounds
     }
@@ -236,15 +237,20 @@ export function startMusic(): void {
   syncMusic();
 }
 
-/** Stop the music; the next start draws a fresh track. */
+/**
+ * Stop the music and let go of its track; the next start draws a fresh one
+ * and loads it then. Keeping a paused player around would hold the track in
+ * memory for nothing.
+ */
 export function stopMusic(): void {
   musicWanted = false;
-  if (!musicPlayer) return;
+  const player = musicPlayer;
+  if (!player) return;
+  musicPlayer = null;
   try {
-    musicPlayer.pause();
-    musicPlayer.seekTo(0).catch(() => {});
+    player.pause();
+    player.remove();
   } catch {
     // ignore
   }
-  musicPlayer = null;
 }
