@@ -83,11 +83,12 @@ export default async function AutomationPage() {
         .select('*')
         .order('created_at', { ascending: false })
         .limit(30),
-      // The bug-report sender rows are a rate-limit counter, not news.
+      // The bug-report and contact-form sender rows are rate-limit
+      // counters, not news.
       supabase
         .from('activity')
         .select('*')
-        .neq('action', 'bug-report-sender')
+        .not('action', 'in', '(bug-report-sender,contact-sender)')
         .order('created_at', { ascending: false })
         .limit(20),
     ]);
