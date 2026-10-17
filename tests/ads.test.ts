@@ -290,7 +290,7 @@ suite('ads · an ad can never cost a player anything', () => {
     ] as const) {
       const start = screen.indexOf(marker);
       assert(start > 0, `${name} is gone`);
-      const body = screen.slice(start, start + 2200);
+      const body = screen.slice(start, start + 4500);
       assert(
         /showAdIfDue\(\{ wait: (true|false) \}\)/.test(body),
         `leaving via ${name} never shows a due ad`,
@@ -342,12 +342,19 @@ suite('ads · an ad can never cost a player anything', () => {
       battle already going and the rival ahead.
     */
     const start = screen.indexOf('const startCountdown');
-    const body = screen.slice(start, start + 2200);
+    const body = screen.slice(start, start + 4500);
+    /*
+      The wait is now one branch of a ternary (a live friendly battle
+      skips the ad), so the call is no longer literally `void
+      showAdIfDue(...).then(`; what matters is unchanged: the battle is
+      started inside the `.then` of the waiting call.
+    */
+    const wait = /showAdIfDue\(\{ wait: true \}\)/.exec(body);
     assert(
-      body.includes('void showAdIfDue({ wait: true }).then('),
+      wait !== null && body.includes('void adFirst.then('),
       'startCountdown no longer waits for the ad before starting the battle',
     );
-    const after = body.slice(body.indexOf('void showAdIfDue({ wait: true }).then('));
+    const after = body.slice(body.indexOf('void adFirst.then('));
     assert(
       after.includes("setPhaseBoth('matching')"),
       'the countdown starts outside the ad wait, so it runs under the ad',
@@ -406,7 +413,7 @@ suite('ads · an ad can never cost a player anything', () => {
       both and failed on correct code.
     */
     const body = source.slice(
-      source.indexOf('export async function showAdIfDue'),
+      source.indexOf('export function showAdIfDue'),
       source.indexOf('/** Total finished games on this device'),
     );
     assert(body.length > 0, 'showAdIfDue is gone');

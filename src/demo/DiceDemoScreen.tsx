@@ -128,6 +128,7 @@ import {
   answerChallenge,
   fetchChallenges,
   pulseBattle,
+  sameChallenges,
   sendChallenge,
   type BattleHandle,
   type ChallengeState,
@@ -173,6 +174,7 @@ import {
   TournamentDef,
   TournamentState,
   fetchTournaments,
+  scorableTournaments,
   scoreBattle,
   todayStamp,
   TOURNAMENTS,
@@ -394,6 +396,12 @@ export function DiceDemoScreen() {
   */
   const equippedRef = useRef(loadout.skinId);
   equippedRef.current = loadout.skinId;
+  /*
+    Whether the background painting of every die has reached its last
+    stage, and so may be restarted when the player is back on the menu.
+    See shouldWarmFaces.
+  */
+  const facesWarmableRef = useRef(false);
 
   /*
     Paint the dice pictures in the background, so the Items and Store
@@ -430,9 +438,10 @@ export function DiceDemoScreen() {
             open at all: nobody can open a preview before the shelf it is
             opened from exists.
           */
+          facesWarmableRef.current = true;
           warmAllDieFaces(
             (run) => setTimeout(run, 0),
-            () => activeRef.current,
+            shouldWarmFaces,
           );
         },
       );
@@ -600,7 +609,12 @@ export function DiceDemoScreen() {
     const ask = async () => {
       const state = await fetchChallenges(me);
       if (!alive) return;
-      setChallenges(state);
+      /*
+        Only when something changed. fetchChallenges builds a new object
+        every time, and replacing state with an identical one re-renders
+        this whole screen and its 3D scene every five seconds for nothing.
+      */
+      setChallenges((current) => (sameChallenges(current, state) ? current : state));
       /*
         The other half of accepting. Whoever SENT the challenge never
         taps anything — a battle simply appears in their answer here, and
@@ -836,6 +850,17 @@ export function DiceDemoScreen() {
   const countdownTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  /*
+    A battle start that is waiting on an ad, and which start it is.
+
+    startCountdown can wait up to six seconds for an owed ad to load, with
+    nothing on screen. `startPendingRef` makes a second tap in that gap do
+    nothing; `startEpochRef` lets quitToMenu (or a friendly battle taking
+    over) cancel the pending start so it does not begin a battle the
+    player has already left.
+  */
+  const startPendingRef = useRef(false);
+  const startEpochRef = useRef(0);
   const lastSplash = useRef(0);
 
   // Whether the start screen's content is taller than the screen itself.
@@ -861,6 +886,27 @@ export function DiceDemoScreen() {
       setPreview(null);
     }
   }, []);
+
+  /*
+    The 336 die-face pictures are painted ONLY while the player is on the
+    menu with nothing open over it. They used to carry on through a
+    battle, because the only stop condition was "is the app in the
+    foreground": a player who tapped Play within the first ten or twenty
+    seconds had chunks of up to ~0.8 s of painting land on the same
+    thread as the dice physics, which stuttered the throws and slowed the
+    clock. warmAllDieFaces already resets itself when it is stopped, so
+    pausing here and starting it again on the way back to the menu loses
+    nothing.
+  */
+  const shouldWarmFaces = () =>
+    activeRef.current && phaseRef.current === 'pick' && previewRef.current === null;
+
+  useEffect(() => {
+    // Not until the earlier stages have finished and handed over to it.
+    if (!facesWarmableRef.current) return;
+    if (!appActive || phase !== 'pick' || preview !== null) return;
+    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
+  }, [appActive, phase, preview]);
 
   useEffect(() => {
     return () => {
@@ -1068,6 +1114,35 @@ export function DiceDemoScreen() {
 
   const quitToMenu = useCallback(() => {
     countdownTimers.current.forEach(clearTimeout);
+    /*
+      Callout timers too, not only the countdown. They were cleared only
+      on unmount, so the list grew for the whole session, and the
+      "UNLOCKED" callout set just before leaving still fired on the menu.
+    */
+    flashTimers.current.forEach(clearTimeout);
+    flashTimers.current = [];
+    // A start still waiting on an ad must not begin a battle after this.
+    startEpochRef.current += 1;
+    startPendingRef.current = false;
+    /*
+      LEAVING A FRIENDLY BATTLE ENDS IT. This used to clear neither
+      `friendly` nor its ref, so the live sync kept pulsing from the menu
+      (the friend never saw you leave), challenge polling stayed off, and
+      the next ordinary battle ran with no AI rolls and paid nothing —
+      all because it still believed it was in a friendly. Same wording to
+      the server as finishRound's loss path; fire-and-forget, since the
+      menu must not wait on a network. Read before resetRace empties the
+      board, and harmless a second time because the ref is cleared.
+    */
+    const leaving = friendlyRef.current;
+    if (leaving) {
+      const who = meRef.current;
+      if (who) {
+        void pulseBattle(who, leaving.battleId, retreatColorIds(), { leave: true });
+      }
+      setFriendly(null);
+      friendlyRef.current = null;
+    }
     stopAnnouncer();
     resetRace();
     setCallout(null);
@@ -1154,7 +1229,14 @@ export function DiceDemoScreen() {
         return: a trophyless battle against your brother pays no coins,
         no trophies and no cup progress either.
       */
-      const scored = scoreBattle(cupsRef.current, cupStatesRef.current, {
+      /*
+        Scored against the cups the Cups tab shows as RUNNING, not
+        everything the phone fetched. The feed carries closed cups, cups
+        that open next week and cups beyond the two on the tab, and a
+        battle used to move all of them and pay prizes for cups the
+        player was told were not running.
+      */
+      const scored = scoreBattle(scorableTournaments(cupsRef.current, todayStamp()), cupStatesRef.current, {
         mode: modeRef.current,
         difficulty: difficultyRef.current,
         outcome,
@@ -1432,7 +1514,26 @@ export function DiceDemoScreen() {
     starting. It used to arm the cup flag — see cupsRef for why there is
     no longer a flag to arm.
   */
-  const startCountdown = useCallback((_origin: 'casual' | 'again' | 'friendly' = 'casual') => {
+  const startCountdown = useCallback((origin: 'casual' | 'again' | 'friendly' = 'casual') => {
+    /*
+      ONE START AT A TIME. While an owed ad loads, nothing is on screen
+      for up to six seconds, and a second tap on Play used to start the
+      battle itself; then the first wait ended, reset the race and showed
+      the ad over a round in progress. A friendly battle is the exception:
+      it is real and happening now, so it cancels a pending start (the
+      epoch moves on and that start gives up) rather than being ignored.
+    */
+    if (origin === 'friendly') {
+      startEpochRef.current += 1;
+    } else if (startPendingRef.current) {
+      return;
+    }
+    startPendingRef.current = true;
+    const epoch = startEpochRef.current;
+    const startedFrom = phaseRef.current;
+    // Timers from the last battle (callouts, flashes) end with it.
+    flashTimers.current.forEach(clearTimeout);
+    flashTimers.current = [];
     /*
       The battle waits BEHIND the ad, rather than starting under it.
 
@@ -1453,7 +1554,21 @@ export function DiceDemoScreen() {
       six seconds, because a pause before a battle starts is a pause
       before a game rather than an interruption of one.
     */
-    void showAdIfDue({ wait: true }).then(() => {
+    /*
+      NOT before a live friendly battle. The other phone starts at once and
+      keeps playing, so an ad here (and the wait for it) meant coming back
+      already behind, and finishRound promises no ad lands between two
+      people playing. The ad stays owed (adDue is untouched) and the next
+      ordinary start pays it.
+    */
+    const adFirst: Promise<unknown> =
+      origin === 'friendly' ? Promise.resolve() : showAdIfDue({ wait: true });
+    void adFirst.then(() => {
+      // Quit, or taken over by a friendly battle, while the ad was loading.
+      if (startEpochRef.current !== epoch) return;
+      startPendingRef.current = false;
+      // The player has left the screen this start came from.
+      if (phaseRef.current !== startedFrom) return;
       const rival = pickOpponent(opponentRef.current ?? undefined);
       opponentRef.current = rival;
       setOpponent(rival);

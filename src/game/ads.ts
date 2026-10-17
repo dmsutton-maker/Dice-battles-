@@ -440,6 +440,9 @@ const AD_LOAD_WAIT_MS = 6000;
 /** Stop two callers showing the same ad twice. */
 let showing = false;
 
+/** The showAdIfDue call that is running now, if any. */
+let inFlight: Promise<boolean> | null = null;
+
 /** Resolve once an ad is in hand, or once the wait is up. */
 async function waitForAd(ms: number): Promise<boolean> {
   const until = Date.now() + ms;
@@ -475,7 +478,31 @@ async function waitForAd(ms: number): Promise<boolean> {
  * Returns true only if one really went up, so a caller can tell "none
  * was due" from "one was due and could not be fetched".
  */
-export async function showAdIfDue(
+export function showAdIfDue(
+  options: { wait?: boolean } = {},
+): Promise<boolean> {
+  /*
+    ONE CALL AT A TIME, and a second caller gets the first one's answer.
+
+    It used to get `false` straight away while the first was still
+    waiting for an ad to load. A caller reads `false` as "no ad, carry
+    on", so a double tap on Play started the battle on the second tap and
+    then showed the ad over it when the first wait ended. Sharing the
+    promise makes the second caller wait for the same thing the first is
+    waiting for. Still bounded: the wait inside is capped, and the catch
+    keeps this file's rule that nothing here may reject.
+  */
+  if (inFlight) return inFlight;
+  const run: Promise<boolean> = showAdIfDueOnce(options)
+    .catch(() => false)
+    .finally(() => {
+      if (inFlight === run) inFlight = null;
+    });
+  inFlight = run;
+  return run;
+}
+
+async function showAdIfDueOnce(
   options: { wait?: boolean } = {},
 ): Promise<boolean> {
   if (!adDue || showing) return false;
@@ -614,6 +641,7 @@ export function resetAdsForTest(): void {
   stage = 'not-started';
   starting = null;
   showing = false;
+  inFlight = null;
   interstitial = null;
   loaded = false;
   gamesFinished = 0;
