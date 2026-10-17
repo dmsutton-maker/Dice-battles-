@@ -48,6 +48,7 @@ async function main(): Promise<void> {
   await import('./crashGuard.test');
   await import('./submission.test');
   await import('./purchases.test');
+  await import('./purchasesRuntime.test');
   await import('./website.test');
   await import('./power.test');
   await import('./reinstall.test');

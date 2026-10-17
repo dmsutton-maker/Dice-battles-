@@ -8,6 +8,7 @@ import { PRODUCTS, type Product } from '../game/products';
 import {
   buy,
   hasEntitlement,
+  onPurchasesChanged,
   restore,
   storeState,
 } from '../game/purchases';
@@ -52,13 +53,19 @@ export function MoneyShelf({
 
   useEffect(() => {
     /*
-      Prices arrive from the phone a moment after launch, so the shelf
-      looks again shortly after it is first drawn. One retry, not a
-      poll: if the shop is unreachable the screen says so instead of
-      quietly trying for ever.
+      The shop answers in its own time: StoreKit connects and prices
+      arrive some while after launch, and this shelf is built early and
+      kept mounted behind the other tabs. So it is TOLD when anything
+      changes (ready, prices, a purchase landing) instead of looking once
+      or twice and trusting the timing — a fixed delay showed "not on
+      this phone yet" for the whole session on a slow connection. Looks
+      once more on subscribing, in case the answer came between the first
+      draw and now. If the shop never answers, nothing fires and the
+      screen keeps saying so rather than polling for ever.
     */
-    const timer = setTimeout(refresh, 1200);
-    return () => clearTimeout(timer);
+    const stop = onPurchasesChanged(refresh);
+    refresh();
+    return stop;
   }, [refresh]);
 
   const purchase = async (product: Product) => {

@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import { ARENAS, ArenaId } from '../arena/arenas';
+import { obstacleLook } from '../arena/obstacleLooks';
+import { FLIGHT_SECONDS } from '../game/flight';
 import { playCue } from '../audio/announcer';
 import { playCheer, playFanfare, playThrow, startMusic, stopMusic } from '../audio/sounds';
 import { ColorDef, PRISONER_COLORS } from '../game/colors';
@@ -133,6 +135,62 @@ function ZoneView({
     if (samples.current.length > 12) samples.current.shift();
   };
 
+  /*
+    When this board needs drawing between the phase changes. The same
+    two things the main screen watches (DiceDemoScreen: `rolling` and
+    `boardBusy`), kept per zone because each player's dice fly on their
+    own clock.
+
+    `rolling` is the dice: set by the scene's throw callback, cleared by
+    its settle callback. `boardBusy` is the prisoners, whose leaps take
+    FLIGHT_SECONDS after a settle changes `units`; like the main
+    screen's it is a TIMER, so the worst case is a second of spare
+    drawing rather than a board frozen mid-leap.
+  */
+  const [rolling, setRolling] = useState(false);
+  const [boardBusy, setBoardBusy] = useState(false);
+  const busyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markBoardBusy = useCallback(() => {
+    setBoardBusy(true);
+    if (busyTimer.current) clearTimeout(busyTimer.current);
+    busyTimer.current = setTimeout(
+      () => setBoardBusy(false),
+      FLIGHT_SECONDS * 1000 + 400,
+    );
+  }, []);
+  useEffect(
+    () => () => {
+      if (busyTimer.current) clearTimeout(busyTimer.current);
+    },
+    [],
+  );
+  // Any change to the prisoners is a leap on this board, whichever zone's
+  // dice caused it (Skirmish shares one jail between both).
+  useEffect(() => {
+    markBoardBusy();
+  }, [units, markBoardBusy]);
+  // A fresh match rebuilds the dice, so a roll left unfinished by the
+  // last one (the loser's dice stop mid-air) must not keep this awake.
+  useEffect(() => {
+    setRolling(false);
+  }, [matchKey]);
+  const handleThrow = useCallback(() => {
+    markBoardBusy();
+    setRolling(true);
+    onThrow();
+  }, [markBoardBusy, onThrow]);
+  const handleSettled = useCallback(
+    (faces: ColorDef[]) => {
+      setRolling(false);
+      // A settle can be followed by a die fished out of the pond.
+      markBoardBusy();
+      onSettled(faces);
+    },
+    [markBoardBusy, onSettled],
+  );
+  const waterIdle =
+    appActive && phase === 'battle' && !!obstacleLook(arenaId).pit.water;
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -175,11 +233,22 @@ function ZoneView({
           costs twice as much. Two phones' worth of GPU, on the one
           screen most likely to be left face-up on a table between two
           people.
+
+          Inside the battle it is the single-player rule too: draw while
+          this board's dice are in the air or a prisoner is mid-leap, and
+          otherwise let it rest — a battle is mostly two people deciding
+          when to flick. Water still ripples between rolls, at the slow
+          'demand' rate (see WaterClock), as it does on the main screen.
         */
         frameloop={
-          appActive && (phase === 'arm' || phase === 'go' || phase === 'battle')
+          appActive &&
+          (phase === 'arm' ||
+            phase === 'go' ||
+            (phase === 'battle' && (rolling || boardBusy)))
             ? 'always'
-            : 'never'
+            : waterIdle
+              ? 'demand'
+              : 'never'
         }
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
         onCreated={({ camera }) => {
@@ -195,8 +264,8 @@ function ZoneView({
           */
           key={matchKey}
           controlsRef={controlsRef}
-          onThrow={onThrow}
-          onSettled={onSettled}
+          onThrow={handleThrow}
+          onSettled={handleSettled}
           units={units}
           shakeSignal={0}
           layout={layout}
@@ -205,6 +274,7 @@ function ZoneView({
           dieSymbols={symbols}
           showTreasure={false}
           throwsEnabled={phase === 'battle'}
+          waterIdle={waterIdle}
         />
       </Canvas>
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
