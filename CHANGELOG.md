@@ -1,5 +1,77 @@
 # Changelog
 
+## v1.110.0 — 2026-10-18 · requested by David
+
+A full audit of the game, the website and the admin. David: "do a deep
+dive investigation to the entire app and also the website and the admin
+back end and look for any issues with coding or memory leaks or
+bloating". Nothing here changes how the game plays.
+
+### Fixed
+- **Closed cups paid prizes.** A battle was scored against every cup the
+  phone had ever fetched, so with the Cups tab saying "No cups are
+  running", five Hard wins in a row still paid a closed cup's coins and
+  trophies, and a cup opening next week built a streak early. Only cups
+  the tab shows as running count now (`scorableTournaments`).
+- **Quitting a friend battle left it half-running.** The friend never saw
+  you leave, challenges stopped arriving, and your next ordinary battle
+  had a rival that never rolled and paid nothing. Leaving now ends it
+  properly and tells the friend's phone.
+- **A double tap on Play could put an ad over a battle.** While an owed
+  ad was loading, the second tap started the battle and the ad then
+  appeared on top of it, or the first tap reset the race. One start at a
+  time now, and a player who quits during the wait is not dropped back
+  into a battle.
+- **No ad right before a live friend battle.** The other phone does not
+  wait; the ad stays owed for the next ordinary start.
+- **RESET could delete season-pass and cup rewards for good.** It emptied
+  everything owned, including Ice, Fire, the season battlefields and
+  Amethyst, none of which can be earned twice. It now clears only things
+  bought with coins in the shop.
+- **A cup prize that is a trophy-ladder die or battlefield stayed
+  locked.** Those pay their coins and trophies only now.
+- **The money shelf could stay on "not on this phone" all session** if
+  the App Store answered late, and purchases approved later (Ask to Buy)
+  did not show up until the next battle. The shelf and the coin count
+  now update the moment anything changes. A phone that cannot reach the
+  App Store says so instead of offering buttons that always fail.
+- The "UNLOCKED" callout could pop up on the menu after quitting.
+
+### Faster, lighter
+- **One copy of three.js instead of two** (Metro now resolves every
+  `three` import to its CommonJS build): about 900 KB less JavaScript,
+  a fifth of the bundle.
+- **Memory no longer climbs battle after battle.** Every die built its
+  own shape and, in colour-blind mode, its own symbol pictures, and none
+  were ever freed: roughly 20-60 MB after a hundred battles. Dice now
+  share one shape and the symbols are cached.
+- The background painting of dice pictures pauses during battles, so
+  throws no longer stutter in the first seconds after launch.
+- The home screen no longer redraws itself every five seconds when no
+  challenge has changed.
+- Two-player only draws while dice are moving, not sixty times a second
+  for the whole battle.
+- Only the music track that plays is loaded, not all four at launch.
+- Finished ads release their listeners; dead code removed.
+
+### Website and admin (deployed separately)
+- A player who has been blocked can no longer send challenge popups to
+  the person who blocked them (it reads as "not playing right now", so
+  the block stays private). Battles left running by two dead phones end
+  on their own. Player ids can no longer be used to peek at strangers'
+  battles.
+- The login page only returns you to pages on this site.
+- Announcing an update no longer deletes every phone's push address when
+  Apple refuses the message for a reason that is ours, not the phone's.
+- A support reply cannot be emailed twice by a double click.
+- Bug-report and contact-form spam limits hold under failure, and the
+  contact form limits by sender, not by the email address typed in.
+- Admin lists are capped, and rate-limit bookkeeping rows are hidden
+  from History.
+- Database rule tightenings (who may approve ideas, votes tied to their
+  question) are written as `hq/supabase/migrations/20261018_audit_fixes.sql`
+  and are NOT applied yet: the session cannot reach the database.
+
 ## v1.109.0 — 2026-10-14 · requested by David
 
 ### Added
