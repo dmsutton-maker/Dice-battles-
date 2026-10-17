@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'expected JSON' }, { status: 400 });
   }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'bad request' }, { status: 400 });
+  }
 
   const auth = await authenticatePlayer(body.playerId, body.secret);
   if ('error' in auth) {
@@ -83,6 +86,9 @@ export async function DELETE(request: NextRequest) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'expected JSON' }, { status: 400 });
+  }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'bad request' }, { status: 400 });
   }
   const auth = await authenticatePlayer(body.playerId, body.secret);
   if ('error' in auth) {

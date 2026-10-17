@@ -20,7 +20,10 @@ import { PasswordField } from '@/components/PasswordField';
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') ?? '/admin';
+  // Only same-site paths. A `next` of https://elsewhere would otherwise be
+  // pushed straight into router.push and the browser would leave the site.
+  const requested = params.get('next') ?? '/admin';
+  const safe = /^\/(?![\/\\])/.test(requested) ? requested : '/admin';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +52,7 @@ function LoginForm() {
       );
       return;
     }
-    router.push(next);
+    router.push(safe);
     router.refresh();
   }
 
@@ -64,7 +67,7 @@ function LoginForm() {
     const { error } = await supabaseBrowser().auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${site}/auth/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: `${site}/auth/callback?next=${encodeURIComponent(safe)}`,
       },
     });
     setBusy(false);

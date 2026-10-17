@@ -143,6 +143,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'not JSON' }, { status: 400 });
   }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'bad request' }, { status: 400 });
+  }
 
   const auth = await authenticate(body.playerId, body.secret);
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 401 });

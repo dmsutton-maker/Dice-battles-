@@ -71,16 +71,23 @@ export default async function AutomationPage() {
 
   const [{ data: ideas }, { data: drafts }, { data: changes }, { data: activity }] =
     await Promise.all([
-      supabase.from('ideas').select('*').eq('kind', 'bug').order('created_at', { ascending: false }),
+      supabase
+        .from('ideas')
+        .select('*')
+        .eq('kind', 'bug')
+        .order('created_at', { ascending: false })
+        .limit(500),
       supabase.from('message_replies').select('id').eq('is_draft', true),
       supabase
         .from('changes')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(30),
+      // The bug-report sender rows are a rate-limit counter, not news.
       supabase
         .from('activity')
         .select('*')
+        .neq('action', 'bug-report-sender')
         .order('created_at', { ascending: false })
         .limit(20),
     ]);

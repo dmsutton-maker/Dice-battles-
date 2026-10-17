@@ -25,6 +25,11 @@ export const dynamic = 'force-dynamic';
 
 /** Expo takes up to a hundred messages per request. */
 const CHUNK = 100;
+/**
+ * Supabase returns at most 1000 rows per request whatever `limit` says,
+ * so the token list is read a page at a time.
+ */
+const PAGE = 1000;
 const EXPO_PUSH = 'https://exp.host/--/api/v2/push/send';
 
 function authorised(request: NextRequest): boolean {
@@ -53,6 +58,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'expected JSON' }, { status: 400 });
   }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'bad request' }, { status: 400 });
+  }
 
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const message = typeof body.body === 'string' ? body.body.trim() : '';
@@ -71,14 +79,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabaseAdmin()
-    .from('push_tokens')
-    .select('token')
-    .limit(2000);
-  if (error) {
-    return NextResponse.json({ error: 'could not read the tokens' }, { status: 500 });
+  const tokens: string[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabaseAdmin()
+      .from('push_tokens')
+      .select('token')
+      .order('token')
+      .range(from, from + PAGE - 1);
+    if (error) {
+      return NextResponse.json({ error: 'could not read the tokens' }, { status: 500 });
+    }
+    const rows = data ?? [];
+    for (const r of rows) tokens.push(r.token as string);
+    if (rows.length < PAGE) break;
   }
-  const tokens = (data ?? []).map((r) => r.token as string);
   if (tokens.length === 0) {
     return NextResponse.json({ sent: 0, dropped: 0, note: 'nobody has registered yet' });
   }
@@ -97,7 +111,12 @@ export async function POST(request: NextRequest) {
   }
 
   let sent = 0;
+  // Only the tokens Expo says are dead (DeviceNotRegistered) are deleted.
   const dropped: string[] = [];
+  // Every other failure is counted by name and leaves the token alone. A
+  // missing APNs credential, for instance, fails EVERY ticket, and that
+  // must not wipe the table.
+  const errors: Record<string, number> = {};
   for (let i = 0; i < tokens.length; i += CHUNK) {
     const batch = tokens.slice(i, i + CHUNK).map((to) => ({
       to,
@@ -112,10 +131,23 @@ export async function POST(request: NextRequest) {
         headers: { 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify(batch),
       });
-      const result = (await response.json()) as { data?: { status: string }[] };
+      const result = (await response.json()) as {
+        data?: { status: string; details?: { error?: string } }[];
+        // Expo refused the whole request, so no ticket exists for any of it.
+        errors?: { code?: string }[];
+      };
+      if (!result.data && result.errors?.length) {
+        const code = result.errors[0].code ?? 'unknown';
+        errors[code] = (errors[code] ?? 0) + batch.length;
+      }
       (result.data ?? []).forEach((r, n) => {
-        if (r.status === 'ok') sent += 1;
-        else dropped.push(batch[n].to);
+        if (r.status === 'ok') {
+          sent += 1;
+          return;
+        }
+        const reason = r.details?.error ?? 'unknown';
+        errors[reason] = (errors[reason] ?? 0) + 1;
+        if (reason === 'DeviceNotRegistered') dropped.push(batch[n].to);
       });
     } catch {
       // A batch that never left is not a batch of dead tokens. Counted
@@ -127,12 +159,13 @@ export async function POST(request: NextRequest) {
   /*
     Tokens Expo refused are gone for good — the app was deleted, or iOS
     rotated the address. Clearing them keeps the table from growing a
-    tail of phones nobody owns any more. Only the ones Expo actually
-    named: a failed request above reaches this list at all.
+    tail of phones nobody owns any more. Only DeviceNotRegistered counts:
+    any other refusal is a problem with US (a credential, a rate limit),
+    not with the phone.
   */
   if (dropped.length > 0) {
     await supabaseAdmin().from('push_tokens').delete().in('token', dropped);
   }
 
-  return NextResponse.json({ sent, dropped: dropped.length });
+  return NextResponse.json({ sent, dropped: dropped.length, errors });
 }

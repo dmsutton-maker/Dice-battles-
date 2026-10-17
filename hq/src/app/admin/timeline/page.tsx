@@ -21,7 +21,12 @@ export default async function TimelinePage() {
 
   const [{ data: phases }, { data: ideas }] = await Promise.all([
     supabase.from('phases').select('*').order('position'),
-    supabase.from('ideas').select('*').order('priority'),
+    // Only the columns this page reads (id, title, status, phase_id).
+    supabase
+      .from('ideas')
+      .select('id, title, status, phase_id')
+      .order('priority')
+      .limit(500),
   ]);
 
   const all = (ideas ?? []) as Idea[];
