@@ -31,7 +31,10 @@ export default async function IdeasPage() {
         .from('ideas')
         .select('*')
         .order('priority', { ascending: true })
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        // A board of a few hundred ideas is the realistic size. The cap
+        // keeps the page from quietly truncating at Supabase's 1000-row default.
+        .limit(500),
       supabase.from('members').select('*'),
       supabase.from('phases').select('*').order('position'),
     ]);

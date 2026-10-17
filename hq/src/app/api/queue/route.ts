@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
       .select('*')
       .in('status', ['approved', 'building'])
       .order('priority', { ascending: true })
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: true })
+      .limit(1000),
     supabase.from('phases').select('*').order('position'),
   ]);
 
@@ -123,6 +124,9 @@ export async function POST(request: NextRequest) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Send JSON.' }, { status: 400 });
+  }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'bad request' }, { status: 400 });
   }
 
   const { id, status, version, note } = body;

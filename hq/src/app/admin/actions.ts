@@ -475,11 +475,46 @@ export async function sendDraftReply(formData: FormData) {
   if (fetchError) throw new Error(fetchError.message);
   if (!original) throw new Error('That message no longer exists.');
 
+  // Claim the draft before anything is sent. Only one request can flip
+  // is_draft from true to false, so a double-click, or a second person on
+  // the same ticket, is refused here instead of emailing the player twice.
+  // The message_id check stops a forged reply_id from touching another ticket.
+  const { data: claimed, error: claimError } = await admin
+    .from('message_replies')
+    .update({ is_draft: false, body })
+    .eq('id', replyId)
+    .eq('message_id', messageId)
+    .eq('is_draft', true)
+    .select('id');
+  if (claimError) throw new Error(claimError.message);
+  if (!claimed || claimed.length === 0) {
+    throw new Error(
+      'That suggested reply has already been sent, or it is no longer on this message. Refresh the page to see what happened.',
+    );
+  }
+
   const { delivered, note } = await deliverReply(
     original.email,
     original.subject,
     body,
   );
+
+  // A real attempt that failed goes back in the box so it can be sent again.
+  // Replies that were only saved (no address, or no email service connected
+  // yet) are not delivery failures, and stay sent as they always did.
+  const emailAttempted = Boolean(original.email) && Boolean(process.env.RESEND_API_KEY);
+  if (!delivered && emailAttempted) {
+    const { error: revertError } = await admin
+      .from('message_replies')
+      .update({ is_draft: true })
+      .eq('id', replyId)
+      .eq('message_id', messageId);
+    throw new Error(
+      revertError
+        ? `The email did not go out, and the reply could not be put back in the box to send again (${revertError.message}). ${note}`
+        : `The email did not go out, so the reply is back in the box to send again. ${note}`,
+    );
+  }
 
   const { error } = await admin
     .from('message_replies')

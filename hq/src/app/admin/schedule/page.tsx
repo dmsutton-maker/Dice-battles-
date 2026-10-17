@@ -23,7 +23,8 @@ export default async function SchedulePage() {
   const { data } = await supabase
     .from('ideas')
     .select('*')
-    .order('scheduled_for', { ascending: true });
+    .order('scheduled_for', { ascending: true })
+    .limit(500);
 
   const all = (data ?? []) as Idea[];
   const now = today();

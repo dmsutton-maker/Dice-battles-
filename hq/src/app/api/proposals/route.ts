@@ -89,6 +89,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Send JSON.' }, { status: 400 });
   }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'bad request' }, { status: 400 });
+  }
 
   const { title, question, detail, options } = body;
   if (!title || !options || options.length < 2) {

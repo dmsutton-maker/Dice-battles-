@@ -21,6 +21,8 @@ export default async function ActivityPage() {
   const { data } = await supabase
     .from('activity')
     .select('*')
+    // Bug-report sender rows are a rate-limit counter, not history.
+    .neq('action', 'bug-report-sender')
     .order('created_at', { ascending: false })
     .limit(200);
 
