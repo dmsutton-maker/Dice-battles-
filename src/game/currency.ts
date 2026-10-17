@@ -191,16 +191,24 @@ export function grantItem(itemId: string): boolean {
 
 /**
  * Forget everything bought with coins, so the Store can be walked through
- * again from nothing. The RESET code in Settings.
+ * again from nothing. The RESET code in DiceDemoScreen.
+ *
+ * Only the ids passed in are let go. Everything else in `owned` (season
+ * pass items, cup prizes, kept arenas) can never be earned a second time,
+ * so it stays. The caller passes the coin-shop list (`coinShopItemIds` in
+ * loadout.ts): that module already imports this one, so importing it back
+ * here would be a cycle.
  *
  * Coins are deliberately NOT refunded: the point is to buy the items a
  * second time and see the shelf work, which a refund would skip past.
  * Returns how many items were let go.
  */
-export function clearPurchases(): number {
-  const removed = current.owned.length;
+export function clearPurchases(coinShopIds: readonly string[]): number {
+  const sold = new Set(coinShopIds);
+  const kept = current.owned.filter((id) => !sold.has(id));
+  const removed = current.owned.length - kept.length;
   if (removed === 0) return 0;
-  current = { ...current, owned: [] };
+  current = { ...current, owned: kept };
   persist();
   return removed;
 }

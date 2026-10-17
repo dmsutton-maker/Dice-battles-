@@ -106,10 +106,6 @@ export async function signIn(): Promise<boolean> {
   return signingIn;
 }
 
-export function isSignedIn(): boolean {
-  return signedIn;
-}
-
 /**
  * Last value Apple ACCEPTED, so an unchanged number is not sent again
  * every battle.

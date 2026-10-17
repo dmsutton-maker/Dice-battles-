@@ -136,18 +136,6 @@ export function snapDieToNearestFace(body: CANNON.Body): void {
   body.angularVelocity.setZero();
 }
 
-/** One material per face, in BoxGeometry group order. Shared per die. */
-export function createDieMaterials(): THREE.MeshStandardMaterial[] {
-  return DIE_FACE_COLORS.map(
-    (color) =>
-      new THREE.MeshStandardMaterial({
-        color: color.hex,
-        roughness: 0.32,
-        metalness: 0.04,
-      }),
-  );
-}
-
 export function createDieBody(
   material: CANNON.Material,
   position: [number, number, number],

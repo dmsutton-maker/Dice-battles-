@@ -213,8 +213,3 @@ export function WaterSurface({
     </mesh>
   );
 }
-
-/** How many water surfaces are live — for the tests. */
-export function liveWaterCount(): number {
-  return LIVE.size;
-}

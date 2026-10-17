@@ -52,7 +52,7 @@ export interface PublicProfile {
  * nobody here has. Everything above is a number the game already knows
  * or a name Apple already moderates.
  */
-export const PROFILE_HAS_NO_FREE_TEXT = true;
+const PROFILE_HAS_NO_FREE_TEXT = true;
 
 /**
  * How two players stand, from the point of view of the person asking.

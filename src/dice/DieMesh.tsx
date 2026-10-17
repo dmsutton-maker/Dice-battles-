@@ -10,6 +10,34 @@ import {
 } from './patterns';
 import { createSymbolTexture } from './symbols';
 import { COLOR_SYMBOLS } from '../game/colorblind';
+import { cachedTexture } from '../arena/textureCache';
+
+/*
+  One body geometry and one sticker geometry, shared by every die and built
+  on first use. The sizes come only from TUNING (a const), so every die
+  would build the same shape anyway. Building one per die per battle leaked
+  about 190 KB: three keeps a GPU buffer and vertex-array object for each
+  geometry it has seen. These are never disposed, because there is only
+  ever one of each.
+*/
+let sharedBodyGeometry: RoundedBoxGeometry | null = null;
+let sharedStickerGeometry: THREE.CircleGeometry | null = null;
+
+function getBodyGeometry(): RoundedBoxGeometry {
+  if (!sharedBodyGeometry) {
+    const size = TUNING.dieSize;
+    sharedBodyGeometry = new RoundedBoxGeometry(size, size, size, 4, size * 0.12);
+  }
+  return sharedBodyGeometry;
+}
+
+function getStickerGeometry(): THREE.CircleGeometry {
+  if (!sharedStickerGeometry) {
+    const size = TUNING.dieSize;
+    sharedStickerGeometry = new THREE.CircleGeometry(size * STICKER_FRACTION, 24);
+  }
+  return sharedStickerGeometry;
+}
 
 /**
  * Visual die: an ivory rounded cube with a colored circular sticker inset on
@@ -46,10 +74,7 @@ export const DieMesh = forwardRef<
   const size = TUNING.dieSize;
   const half = size / 2 + 0.004; // stickers float a hair above the surface
 
-  const bodyGeometry = useMemo(
-    () => new RoundedBoxGeometry(size, size, size, 4, size * 0.12),
-    [size],
-  );
+  const bodyGeometry = getBodyGeometry();
   // Fully unlit body, like the stickers: after repeated on-device reports of
   // one die rendering beige while the other stayed white under identical
   // materials, the dice no longer participate in lighting or tone mapping at
@@ -107,7 +132,11 @@ export const DieMesh = forwardRef<
           ? new THREE.MeshBasicMaterial({
               // The colour is still the colour — the shape is stamped on
               // top of it, so nothing about the palette changes.
-              map: createSymbolTexture(COLOR_SYMBOLS[c.id], c.hex),
+              // Cached: a symbol texture was built and uploaded per die per
+              // battle and never freed.
+              map: cachedTexture(`symbol:${COLOR_SYMBOLS[c.id]}:${c.hex}`, () =>
+                createSymbolTexture(COLOR_SYMBOLS[c.id], c.hex),
+              ),
               toneMapped: false,
             })
           : new THREE.MeshBasicMaterial({ color: c.hex, toneMapped: false }),
@@ -122,10 +151,7 @@ export const DieMesh = forwardRef<
     are messed up because the design is in the center, which doesn't make
     sense because the colors are in the center."
   */
-  const stickerGeometry = useMemo(
-    () => new THREE.CircleGeometry(size * STICKER_FRACTION, 24),
-    [size],
-  );
+  const stickerGeometry = getStickerGeometry();
 
   return (
     <group ref={ref}>

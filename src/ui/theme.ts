@@ -136,7 +136,7 @@ export const SHAPE = {
  * left off and the drop is drawn as a real View underneath instead; see
  * `Card` in src/ui/Card.tsx.
  */
-export const DROP = {
+const DROP = {
   shadowColor: THEME.ink,
   shadowOffset: { width: 0, height: SHAPE.drop },
   shadowOpacity: 1,

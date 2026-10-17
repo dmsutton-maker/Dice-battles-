@@ -39,7 +39,7 @@ import {
   resetWalletForTests,
 } from '../src/game/currency';
 import { DICE_SKINS, LADDER_SKINS, PRIZE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
-import { isSkinUnlocked } from '../src/game/loadout';
+import { ARENA_UNLOCKS, isSkinUnlocked } from '../src/game/loadout';
 import { setsOwned } from '../src/game/achievements';
 import { MODE_ORDER } from '../src/game/modes';
 import {
@@ -821,5 +821,39 @@ suite('cups · only a cup the player can see running pays', () => {
     assertEqual(ids(scoring), 'open', 'the one open cup was not the only one scored');
     const scored = scoreBattle(scoring, {}, EASY_RUSH);
     assertEqual(Object.keys(scored.changed).join(','), 'open', 'the wrong cups moved');
+  });
+});
+
+suite('cups · a prize the ladder would never unlock is not filed', () => {
+  test('a trophy-ladder die resolves to nothing, so only coins and trophies are paid', () => {
+    // The wallet unlocks a die or battlefield only for a store price or a
+    // cup. A ladder item filed there would stay locked and promise
+    // something the player cannot use.
+    const ladder = LADDER_SKINS.filter((s) => s.unlock);
+    assert(ladder.length > 0, 'no trophy-ladder dice to test with');
+    for (const skin of ladder) {
+      assertEqual(
+        resolveItem({ kind: 'dice', id: skin.id }),
+        null,
+        `${skin.name} is a ladder die but was resolved as a prize`,
+      );
+    }
+  });
+
+  test('a trophy-ladder battlefield resolves to nothing', () => {
+    const ladder = Object.keys(ARENA_UNLOCKS);
+    assert(ladder.length > 0, 'no trophy-ladder battlefields to test with');
+    for (const id of ladder) {
+      assertEqual(
+        resolveItem({ kind: 'arena', id }),
+        null,
+        `${id} is a ladder battlefield but was resolved as a prize`,
+      );
+    }
+  });
+
+  test('a store die and the Amethyst die still resolve', () => {
+    assert(resolveItem({ kind: 'dice', id: STORE_SKINS[0].id }) !== null, 'a store die was dropped');
+    assert(resolveItem({ kind: 'dice', id: 'amethyst' }) !== null, 'the Amethyst die was dropped');
   });
 });

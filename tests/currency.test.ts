@@ -29,6 +29,8 @@ import {
   isSkinUnlocked,
   ARENA_PRICES,
   PASS_ARENAS,
+  arenaKey,
+  coinShopItemIds,
 } from '../src/game/loadout';
 import { setUnlockAll } from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
@@ -295,7 +297,7 @@ suite('currency · the RESET code', () => {
     assert(buyWithCoins(skin.id, skin.price!).ok, 'the setup purchase failed');
     const after = getWallet().coins;
 
-    const removed = clearPurchases();
+    const removed = clearPurchases(coinShopItemIds());
     assertEqual(removed, 1, 'wrong number of items cleared');
     assertEqual(getWallet().owned.length, 0, 'something survived the reset');
     assertEqual(getWallet().coins, after, 'the reset refunded coins');
@@ -306,7 +308,7 @@ suite('currency · the RESET code', () => {
     const skin = STORE_SKINS[0];
     buyWithCoins(skin.id, skin.price!);
     assert(owns(skin.id), 'not owned after buying');
-    clearPurchases();
+    clearPurchases(coinShopItemIds());
     assert(!owns(skin.id), 'still owned after the reset');
     // And buying it again is allowed, rather than refused as a duplicate.
     assert(buyWithCoins(skin.id, skin.price!).ok, 'could not re-buy it');
@@ -314,8 +316,32 @@ suite('currency · the RESET code', () => {
 
   test('resetting an untouched wallet is harmless', () => {
     resetWalletForTests({ coins: 120, owned: [] });
-    assertEqual(clearPurchases(), 0, 'claimed to clear something');
+    assertEqual(clearPurchases(coinShopItemIds()), 0, 'claimed to clear something');
     assertEqual(getWallet().coins, 120, 'an empty reset touched the coins');
+  });
+
+  test('a season item, a kept arena and a cup prize survive the reset', () => {
+    // None of these can be earned a second time, so a reset that took them
+    // would be permanent. Amethyst is the cup prize the bug report named.
+    const seasonDice = PASS_SKINS[0].id;
+    const seasonArena = arenaKey(PASS_ARENAS[0]);
+    assert(PASS_ARENAS.length > 0, 'no season arena to test with');
+    assert(!coinShopItemIds().includes(seasonDice), 'a season die is sold for coins');
+    assert(!coinShopItemIds().includes(seasonArena), 'a season arena is sold for coins');
+    assert(!coinShopItemIds().includes('amethyst'), 'amethyst is sold for coins');
+    resetWalletForTests({ coins: 0, owned: [seasonDice, seasonArena, 'amethyst'] });
+    assertEqual(clearPurchases(coinShopItemIds()), 0, 'a reset took an unearnable item');
+    assert(owns(seasonDice), 'the season die was wiped');
+    assert(owns(seasonArena), 'the kept arena was wiped');
+    assert(owns('amethyst'), 'the cup prize was wiped');
+  });
+
+  test('a coin-shop skin is removed while a cup prize beside it stays', () => {
+    const paid = STORE_SKINS[0].id;
+    resetWalletForTests({ coins: 0, owned: [paid, 'amethyst'] });
+    assertEqual(clearPurchases(coinShopItemIds()), 1, 'wrong number cleared');
+    assert(!owns(paid), 'the coin-shop skin survived the reset');
+    assert(owns('amethyst'), 'the cup prize was wiped with it');
   });
 });
 

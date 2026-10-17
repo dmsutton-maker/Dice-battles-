@@ -2,7 +2,7 @@ import { ARENAS, ArenaId } from '../arena/arenas';
 import { THEMED_ARENA_META, ThemedArenaId } from '../arena/themeData';
 import { DICE_SKINS } from './diceSkins';
 import { grantItem, owns } from './currency';
-import { arenaKey } from './loadout';
+import { ARENA_UNLOCKS, arenaKey } from './loadout';
 import { awardTrophies } from './progress';
 import { grantCoins } from './currency';
 import { rollReward } from './rewards';
@@ -49,11 +49,17 @@ export interface ResolvedItem {
  * version, or one removed in this one. An unknown item is dropped and the
  * coins and trophies are still paid — a prize that is partly wrong is
  * better than a tournament that cannot be claimed at all.
+ *
+ * A trophy-ladder die or battlefield is also null. Filing one in the wallet
+ * would never unlock it: the ladder checks trophies for those, not the
+ * wallet, so the popup would promise something the player cannot use. Only
+ * the coins and trophies are paid for them.
  */
 export function resolveItem(item: PrizeItem): ResolvedItem | null {
   if (item.kind === 'dice') {
     const skin = DICE_SKINS.find((s) => s.id === item.id);
     if (!skin) return null;
+    if (skin.unlock) return null;
     return {
       kind: 'dice',
       id: skin.id,
@@ -66,6 +72,7 @@ export function resolveItem(item: PrizeItem): ResolvedItem | null {
   }
   if (!(item.id in ARENAS)) return null;
   const id = item.id as ArenaId;
+  if (ARENA_UNLOCKS[id] !== undefined) return null;
   const meta = THEMED_ARENA_META[id as ThemedArenaId];
   return {
     kind: 'arena',

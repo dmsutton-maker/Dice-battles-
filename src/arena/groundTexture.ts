@@ -1175,31 +1175,6 @@ export function createGroundSurface(
   return t;
 }
 
-/**
- * The primitives a painter is built from, for tools that try new ones.
- *
- * Exported for the same reason `surfacePixels` is: a floor can only be
- * judged by looking at it, and a candidate drawn with a COPY of these
- * helpers is not the candidate that would ship. The Crystal Cavern's
- * geode floor was chosen off idealised SVG artboards and did not survive
- * contact with the real painter — hand-drawn options flatter themselves.
- * A tool that renders through these renders the truth.
- *
- * Not used by the game itself.
- */
-export const SURFACE_TOOLS = {
-  SIZE,
-  rgb,
-  mix,
-  shade,
-  lift,
-  smoothstep,
-  hash,
-  noise,
-  fbm,
-  gridEdge,
-};
-
 /** Test-only: the painters, so a suite can measure what they produce. */
 export function surfacePixels(
   structure: ArenaStructure,
@@ -1222,4 +1197,3 @@ export function surfacePixels(
   return out;
 }
 
-export const SURFACE_SIZE = SIZE;

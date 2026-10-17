@@ -7,6 +7,7 @@ import { Slot, slotFor as sharedSlotFor } from './stations';
 import { TUNING } from './tuning';
 import { COLOR_SYMBOLS } from './colorblind';
 import { createSymbolTexture } from '../dice/symbols';
+import { cachedTexture } from '../arena/textureCache';
 
 interface PrisonersProps {
   /** The full lineup with each figure's current station. */
@@ -43,9 +44,13 @@ export function Prisoners({ units, symbols = false }: PrisonersProps) {
     const byColor = new Map<string, THREE.Texture>();
     for (const unit of units) {
       if (byColor.has(unit.colorId)) continue;
+      // Cached by symbol and colour, so a lineup change reuses the textures
+      // already painted instead of building and uploading new ones.
       byColor.set(
         unit.colorId,
-        createSymbolTexture(COLOR_SYMBOLS[unit.colorId], unit.hex),
+        cachedTexture(`symbol:${COLOR_SYMBOLS[unit.colorId]}:${unit.hex}`, () =>
+          createSymbolTexture(COLOR_SYMBOLS[unit.colorId], unit.hex),
+        ),
       );
     }
     return byColor;
