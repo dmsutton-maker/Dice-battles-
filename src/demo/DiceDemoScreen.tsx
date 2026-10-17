@@ -101,7 +101,7 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
-import { hasEntitlement, initPurchases } from '../game/purchases';
+import { hasEntitlement, initPurchases, onPurchasesChanged } from '../game/purchases';
 import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
 import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -807,6 +807,22 @@ export function DiceDemoScreen() {
     }
     setWallet({ ...getWallet() });
   };
+  /*
+    Purchases that land outside the Store screen — a parent approving an
+    Ask to Buy, a replayed transaction, StoreKit connecting after launch
+    — grant their coins and Gold Pass while nothing here is looking, so
+    the purse and the Gold card would stay stale until the next battle.
+    Tell this screen to look again, the same way the Store's own
+    `onBought` does.
+  */
+  useEffect(
+    () =>
+      onPurchasesChanged(() => {
+        setWallet({ ...getWallet() });
+        claimGoldLevels();
+      }),
+    [],
+  );
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
 

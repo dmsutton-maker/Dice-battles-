@@ -51,6 +51,38 @@ let ready = false;
 /** The real prices the phone reported, by product id. Empty until asked. */
 let priceById = new Map<string, string>();
 
+/** Screens that want to hear when the answer to `storeState()` changes. */
+const listeners = new Set<() => void>();
+
+/**
+ * Be told when what the Store shows, or what the player owns, changes.
+ *
+ * Readiness, prices and purchases all arrive on their own schedule —
+ * StoreKit connects after the screens are drawn, and an Ask to Buy can
+ * be approved an hour after the sheet closed — and a screen that read
+ * `storeState()` once would show the old answer for the whole session.
+ * Returns the function that stops listening; call it on unmount.
+ */
+export function onPurchasesChanged(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notifyChanged(): void {
+  // Copied first so a listener that unsubscribes mid-loop cannot skip
+  // the next one, and each is guarded so one bad screen cannot stop the
+  // rest hearing — or throw into the purchase path that called this.
+  for (const listener of [...listeners]) {
+    try {
+      listener();
+    } catch {
+      // A broken listener is its own problem, never a purchase's.
+    }
+  }
+}
+
 export interface StoreState {
   /**
    * Can this phone buy anything at all?
@@ -68,6 +100,32 @@ export interface StoreState {
 function moduleOrNull(): Record<string, unknown> | null {
   const mod = loadStoreKit();
   return mod && typeof mod === 'object' ? (mod as Record<string, unknown>) : null;
+}
+
+/**
+ * Open the connection, or say plainly that it did not open.
+ *
+ * Unlike `withTimeout` this REJECTS on a failure and on a timeout,
+ * because the caller must tell "connected" from "gave up". Swallowing
+ * the failure left `ready` true on a phone where StoreKit never
+ * connected, and the shelf then offered Buy buttons that could only
+ * ever end in "That did not go through".
+ */
+async function connectOrThrow(connect: () => Promise<unknown>): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const connected = await Promise.race([
+      connect(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('store connection timed out')), TIMEOUT_MS);
+      }),
+    ]);
+    // The library answers false, rather than rejecting, when the store
+    // is not there.
+    if (connected === false) throw new Error('store connection refused');
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /** Never let a shop request hang the screen that is waiting on it. */
@@ -132,14 +190,18 @@ export async function initPurchases(): Promise<void> {
 
   try {
     const connect = mod.initConnection as (() => Promise<unknown>) | undefined;
-    if (connect) await withTimeout(connect(), null);
+    if (connect) await connectOrThrow(connect);
     ready = true;
     // Before anything else: a purchase interrupted last time is replayed
     // the moment the connection opens, and must find someone listening.
     listen(mod);
+    notifyChanged();
     void refreshPrices();
   } catch {
+    // Honest "not available" rather than Buy buttons that cannot work.
+    const changed = ready;
     ready = false;
+    if (changed) notifyChanged();
   }
 }
 
@@ -161,6 +223,7 @@ async function refreshPrices(): Promise<void> {
       }
     }
     priceById = next;
+    notifyChanged();
   } catch {
     // Prices stay unknown; the Store screen says so rather than guessing.
   }
@@ -220,6 +283,8 @@ async function grant(product: Product): Promise<void> {
   // as bought even when it granted nothing but coins.
   if (product.kind !== 'consumable') owned.add(product.id);
   await persist();
+  // After the write, so a screen that reacts by reading finds it all.
+  notifyChanged();
 }
 
 export type BuyResult =
@@ -435,7 +500,10 @@ export async function restore(): Promise<{ restored: number; ok: boolean }> {
       owned.add(product.id);
       restored += 1;
     }
-    if (restored > 0) await persist();
+    if (restored > 0) {
+      await persist();
+      notifyChanged();
+    }
     return { restored, ok: true };
   } catch {
     return { restored: 0, ok: false };
@@ -455,4 +523,5 @@ export function resetPurchasesForTest(state?: {
   handled = new Set();
   waiting = null;
   listening = false;
+  listeners.clear();
 }
