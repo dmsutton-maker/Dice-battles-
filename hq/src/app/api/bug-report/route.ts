@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { senderHash } from '@/lib/sender';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
@@ -65,18 +65,36 @@ export async function POST(request: NextRequest) {
     log of who reported what from where. The hash is stored in the
     activity row so it can be counted, and it identifies nobody.
   */
-  const senderHash = createHash('sha256')
-    .update(request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown')
-    .digest('hex')
-    .slice(0, 16);
+  const hashOfSender = senderHash(request.headers);
   const minuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
 
-  const { count: mine } = await supabase
+  /*
+    A count that FAILED is a refusal, not a zero.
+
+    Both counts used to read `count ?? 0`, so a database that was
+    struggling — or a request that made the count error on purpose —
+    turned both brakes off at exactly the moment they were needed, and
+    every report sailed through to the approved queue.
+
+    TODO: these two counts and the insert below are still separate
+    statements, so a burst of concurrent requests can all read the same
+    count before any of them writes. supabase/migrations/20261018_audit_fixes.sql
+    adds report_bug(), which takes a lock and does count + insert as one
+    step. Switch to it once that migration has been applied; until then
+    this route must keep working against the schema that is live.
+  */
+  const { count: mine, error: mineError } = await supabase
     .from('activity')
     .select('id', { count: 'exact', head: true })
     .eq('action', SENDER_ACTION)
-    .eq('detail', senderHash)
+    .eq('detail', hashOfSender)
     .gte('created_at', minuteAgo);
+  if (mineError) {
+    return NextResponse.json(
+      { error: 'Cannot take a report right now — please try again shortly.' },
+      { status: 503 },
+    );
+  }
   if ((mine ?? 0) >= 5) {
     return NextResponse.json(
       { error: 'That is a lot of reports in one minute — please try again shortly.' },
@@ -84,12 +102,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { count } = await supabase
+  const { count, error: countError } = await supabase
     .from('ideas')
     .select('id', { count: 'exact', head: true })
     .eq('kind', 'bug')
     .gte('created_at', minuteAgo);
-  if ((count ?? 0) >= 100) {
+  if (countError) {
+    return NextResponse.json(
+      { error: 'Cannot take a report right now — please try again shortly.' },
+      { status: 503 },
+    );
+  }
+  // Every report lands as an APPROVED idea, so this backstop is low:
+  // twenty a minute is far more than the family's players send, and far
+  // fewer than a script needs to bury the real ones.
+  if ((count ?? 0) >= 20) {
     return NextResponse.json(
       { error: 'Getting a lot of reports right now — please try again shortly.' },
       { status: 429 },
@@ -140,7 +167,7 @@ export async function POST(request: NextRequest) {
     idea_id: data.id,
     actor: 'the server',
     action: SENDER_ACTION,
-    detail: senderHash,
+    detail: hashOfSender,
   });
 
   return NextResponse.json({ ok: true });

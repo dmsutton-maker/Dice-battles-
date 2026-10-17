@@ -48,20 +48,112 @@ type InviteRow = {
 };
 
 /**
+ * A playing battle that neither phone has spoken for in this long is
+ * dead. The live route stamps `a_seen` / `b_seen` about once a second, so
+ * two minutes of silence from BOTH sides means both phones are gone.
+ */
+const BATTLE_SILENT_MS = 2 * 60_000;
+
+/** Nobody's friendly race lasts this long; a "playing" row older is stuck. */
+const BATTLE_MAX_MS = 30 * 60_000;
+
+/*
+  WHY THERE ARE NO PostgREST "or" FILTER STRINGS ANYWHERE BELOW.
+
+  An "or" filter is a string the server parses, so an id
+  containing a comma or a dot could add clauses of its own — and a
+  player_id is whatever the first claim on it said it was. Every
+  "either side" lookup is therefore two plain `.eq()` queries, merged
+  here, where the value can only ever be a value.
+*/
+
+/**
  * Mark anything past its expiry as expired, before answering.
  *
  * Cheaper and far more reliable than a scheduled job: the rows only
  * matter to somebody who is asking about them, and the person asking is
  * the one who would otherwise see a stale challenge.
+ *
+ * Battles get the same treatment. A battle only ends when a phone says
+ * `leave` or `claimWin`, so if both phones die mid-race it would stay
+ * 'playing' for ever — and the game joins any playing battle it is
+ * handed, so the next time either player opened the menu they would be
+ * dropped into a race nobody is running. Only THIS player's battles are
+ * looked at, for the same reason invites are: the person asking is the
+ * one who would otherwise walk into it.
  */
 async function sweep(playerId: string) {
-  const now = new Date().toISOString();
-  await supabaseAdmin()
-    .from('battle_invites')
-    .update({ state: 'expired', decided_at: now })
-    .eq('state', 'waiting')
-    .lt('expires_at', now)
-    .or(`from_id.eq.${playerId},to_id.eq.${playerId}`);
+  const supabase = supabaseAdmin();
+  const nowMs = Date.now();
+  const now = new Date(nowMs).toISOString();
+
+  for (const side of ['from_id', 'to_id'] as const) {
+    await supabase
+      .from('battle_invites')
+      .update({ state: 'expired', decided_at: now })
+      .eq('state', 'waiting')
+      .lt('expires_at', now)
+      .eq(side, playerId);
+  }
+
+  const stuck: string[] = [];
+  for (const side of ['a_id', 'b_id'] as const) {
+    const { data } = await supabase
+      .from('battles')
+      .select('id, a_seen, b_seen, started_at')
+      .eq('state', 'playing')
+      .eq(side, playerId);
+    for (const b of data ?? []) {
+      const ms = (v: unknown) => (v ? new Date(String(v)).getTime() : NaN);
+      const started = ms(b.started_at);
+      // A phone that has never spoken counts as silent, but only once the
+      // battle itself is old enough to have heard from it.
+      const silent = (seen: unknown) => {
+        const t = ms(seen);
+        return Number.isFinite(t)
+          ? nowMs - t > BATTLE_SILENT_MS
+          : Number.isFinite(started) && nowMs - started > BATTLE_SILENT_MS;
+      };
+      const tooOld = Number.isFinite(started) && nowMs - started > BATTLE_MAX_MS;
+      if (tooOld || (silent(b.a_seen) && silent(b.b_seen))) stuck.push(String(b.id));
+    }
+  }
+  if (stuck.length) {
+    // No winner: nobody finished. The state guard means a battle that
+    // ended in the meantime is not overwritten.
+    await supabase
+      .from('battles')
+      .update({ state: 'over', ended_at: now })
+      .in('id', stuck)
+      .eq('state', 'playing');
+  }
+}
+
+/**
+ * Are these two FRIENDS from both sides?
+ *
+ * A block only rewrites the blocker's own row (see ../friends): the
+ * person who was blocked still has a row reading 'friends'. Reading only
+ * the challenger's row therefore let a blocked player keep sending
+ * challenge popups to the person who had blocked them — the exact thing
+ * a block exists to stop. Both rows must say 'friends'.
+ *
+ * `error` is a read that FAILED, which is not the same as "not friends".
+ */
+async function friendsBothWays(
+  supabase: ReturnType<typeof supabaseAdmin>,
+  me: string,
+  other: string,
+): Promise<{ mine: boolean; theirs: boolean; error: boolean }> {
+  const [a, b] = await Promise.all([
+    supabase.from('friendships').select('state').eq('player_id', me).eq('other_id', other).maybeSingle(),
+    supabase.from('friendships').select('state').eq('player_id', other).eq('other_id', me).maybeSingle(),
+  ]);
+  return {
+    mine: a.data?.state === 'friends',
+    theirs: b.data?.state === 'friends',
+    error: Boolean(a.error || b.error),
+  };
 }
 
 const peek = (p: Record<string, unknown> | undefined) =>
@@ -87,18 +179,42 @@ export async function GET(request: NextRequest) {
   await sweep(auth.playerId);
 
   const supabase = supabaseAdmin();
-  const { data: invites } = await supabase
-    .from('battle_invites')
-    .select('id, from_id, to_id, mode, difficulty, state, expires_at')
-    .eq('state', 'waiting')
-    .or(`from_id.eq.${auth.playerId},to_id.eq.${auth.playerId}`);
+  const [fromMe, toMe, blockedRows] = await Promise.all([
+    supabase
+      .from('battle_invites')
+      .select('id, from_id, to_id, mode, difficulty, state, expires_at')
+      .eq('state', 'waiting')
+      .eq('from_id', auth.playerId),
+    supabase
+      .from('battle_invites')
+      .select('id, from_id, to_id, mode, difficulty, state, expires_at')
+      .eq('state', 'waiting')
+      .eq('to_id', auth.playerId),
+    supabase
+      .from('friendships')
+      .select('other_id')
+      .eq('player_id', auth.playerId)
+      .eq('state', 'blocked'),
+  ]);
+  const invites = [...(fromMe.data ?? []), ...(toMe.data ?? [])];
+
+  /*
+    Anything sent by somebody I have blocked never reaches me. Their
+    challenge may well have been sent BEFORE I blocked them and still be
+    inside its 45 seconds, and the block has to cover that one too.
+  */
+  const blockedIds = new Set((blockedRows.data ?? []).map((r) => String(r.other_id)));
 
   const rows = (invites ?? []) as InviteRow[];
-  const incoming = rows.filter((r) => r.to_id === auth.playerId);
+  const incoming = rows.filter(
+    (r) => r.to_id === auth.playerId && !blockedIds.has(r.from_id),
+  );
   const outgoing = rows.find((r) => r.from_id === auth.playerId) ?? null;
 
   // Names for whoever is involved, so the popup can say who is asking.
-  const ids = [...new Set(rows.flatMap((r) => [r.from_id, r.to_id]))].filter(
+  const ids = [
+    ...new Set([...incoming, ...(outgoing ? [outgoing] : [])].flatMap((r) => [r.from_id, r.to_id])),
+  ].filter(
     (id) => id !== auth.playerId,
   );
   const { data: people } = ids.length
@@ -110,14 +226,23 @@ export async function GET(request: NextRequest) {
   const byId = new Map((people ?? []).map((p) => [p.player_id, p]));
 
   // A battle in progress, if there is one. Either side of it.
-  const { data: live } = await supabase
-    .from('battles')
-    .select('id, a_id, b_id, mode, difficulty, state')
-    .eq('state', 'playing')
-    .or(`a_id.eq.${auth.playerId},b_id.eq.${auth.playerId}`)
-    .order('started_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const liveSides = await Promise.all(
+    (['a_id', 'b_id'] as const).map((side) =>
+      supabase
+        .from('battles')
+        .select('id, a_id, b_id, mode, difficulty, state, started_at')
+        .eq('state', 'playing')
+        .eq(side, auth.playerId)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ),
+  );
+  const live =
+    liveSides
+      .map((r) => r.data)
+      .filter((r): r is NonNullable<typeof r> => Boolean(r))
+      .sort((x, y) => String(y.started_at).localeCompare(String(x.started_at)))[0] ?? null;
 
   /*
     The opponent's NAME, not just their id.
@@ -195,17 +320,17 @@ export async function POST(request: NextRequest) {
     }
 
     /*
-      FRIENDS ONLY. Checked here rather than trusted from the app: a
-      challenge is a popup on somebody else's phone, which is exactly the
-      kind of thing a modified client would aim at strangers.
+      FRIENDS ONLY, from BOTH sides. Checked here rather than trusted
+      from the app: a challenge is a popup on somebody else's phone,
+      which is exactly the kind of thing a modified client would aim at
+      strangers — or at somebody who has blocked them. See
+      friendsBothWays for why one row is not enough.
     */
-    const { data: link } = await supabase
-      .from('friendships')
-      .select('state')
-      .eq('player_id', auth.playerId)
-      .eq('other_id', otherId)
-      .maybeSingle();
-    if (link?.state !== 'friends') {
+    const link = await friendsBothWays(supabase, auth.playerId, otherId);
+    if (link.error) {
+      return NextResponse.json({ error: 'could not send that' }, { status: 500 });
+    }
+    if (!link.mine) {
       return NextResponse.json({ error: 'you can only challenge a friend' }, { status: 403 });
     }
 
@@ -215,7 +340,13 @@ export async function POST(request: NextRequest) {
       .select('last_seen, name')
       .eq('player_id', otherId)
       .maybeSingle();
-    if (!isOnline(them?.last_seen)) {
+    /*
+      A block answers EXACTLY like an absent friend. Saying "you can't
+      challenge them" would tell a blocked child that they have been
+      blocked; "not playing right now" is true, harmless, and the same
+      words they would get at any quiet hour.
+    */
+    if (!link.theirs || !isOnline(them?.last_seen)) {
       return NextResponse.json(
         { error: `${them?.name ?? 'They'} is not playing right now` },
         { status: 409 },
@@ -290,6 +421,23 @@ export async function POST(request: NextRequest) {
     if (!mine) return NextResponse.json({ error: 'you sent that one' }, { status: 403 });
     if (new Date(invite.expires_at).getTime() < Date.now()) {
       return NextResponse.json({ error: 'too late — that challenge expired' }, { status: 409 });
+    }
+    /*
+      Still friends, both ways, at the moment of accepting. A challenge
+      lives for 45 seconds, and either side can block or unfriend in
+      that time; a battle must not start between people who no longer
+      are.
+    */
+    const link = await friendsBothWays(supabase, invite.to_id, invite.from_id);
+    if (link.error) {
+      return NextResponse.json({ error: 'could not start that' }, { status: 500 });
+    }
+    if (!link.mine || !link.theirs) {
+      await supabase
+        .from('battle_invites')
+        .update({ state: 'cancelled', decided_at: now })
+        .eq('id', inviteId);
+      return NextResponse.json({ error: 'that challenge is over' }, { status: 409 });
     }
     /*
       The battle takes the CHALLENGE'S id. So both phones already know

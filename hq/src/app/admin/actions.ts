@@ -201,6 +201,28 @@ export async function castVote(formData: FormData) {
   const proposalId = String(formData.get('proposal_id'));
   const optionId = String(formData.get('option_id'));
 
+  /*
+    Both ids come from hidden inputs, which a member can edit. Nothing in
+    the live database ties a vote's option to its proposal or stops a vote
+    on a settled question (supabase/migrations/20261018_audit_fixes.sql
+    adds both, not yet applied), so it is checked here: the option has to
+    belong to THIS proposal, and the proposal has to still be open.
+    Without it, proposal=A with an option of B's counted as a second vote
+    for B in /api/proposals, which tallies by option.
+  */
+  const [{ data: proposal }, { data: option }] = await Promise.all([
+    supabase.from('proposals').select('status').eq('id', proposalId).maybeSingle(),
+    supabase
+      .from('proposal_options')
+      .select('id')
+      .eq('id', optionId)
+      .eq('proposal_id', proposalId)
+      .maybeSingle(),
+  ]);
+  if (!proposal) throw new Error('That vote does not exist.');
+  if (proposal.status !== 'open') throw new Error('That vote has already been settled.');
+  if (!option) throw new Error('That choice is not part of this vote.');
+
   const { error } = await supabase.from('votes').upsert(
     {
       proposal_id: proposalId,
