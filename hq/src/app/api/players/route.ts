@@ -37,6 +37,21 @@ function sameSecret(supplied: string, storedHash: string): boolean {
 const FRIEND_CODE = /^[0-9A-HJKMNP-TV-Z]{8}$/;
 
 /*
+  What a NEW player_id may look like.
+
+  The id is whatever the first claim says it is, and it is then used as
+  a key and a filter value all over the API. The game only ever makes
+  `local-` plus twenty base36 characters (src/game/playerIdentity.ts),
+  and profiles made before 10 Sep 2026 carry Apple's id, which looks like
+  `A:_0123abcd…`. This accepts both, and anything else of the same
+  alphabet, while refusing the commas, brackets, quotes and spaces that
+  mean something to a query parser. It is checked only at first claim: an
+  existing profile has already proved who it is with its secret, and
+  refusing one over its spelling would lock a real player out.
+*/
+const PLAYER_ID = /^[A-Za-z0-9:_.-]{1,64}$/;
+
+/*
   The counter keys the game actually sends. Anything else is dropped.
 
   `wins` and `mode_wins` used to be waved through as "any object", which
@@ -104,7 +119,10 @@ async function authenticate(body: Record<string, unknown>) {
     with what went wrong.
   */
   if (error) return { error: 'could not reach the database' };
-  if (!data) return { playerId, secret, isNew: true as const };
+  if (!data) {
+    if (!PLAYER_ID.test(playerId)) return { error: 'that playerId is not valid' };
+    return { playerId, secret, isNew: true as const };
+  }
   if (!sameSecret(secret, data.secret_hash)) return { error: 'wrong secret' };
   return { playerId, secret, isNew: false as const };
 }
