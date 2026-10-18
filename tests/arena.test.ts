@@ -334,12 +334,32 @@ suite('arena · switching battlefields does not repaint the world', () => {
     // a new arena added later would silently miss it.
     for (const file of ['CastleArena.tsx', 'JungleArena.tsx', 'SpaceArena.tsx']) {
       const source = readFileSync(join('src', 'arena', file), 'utf8');
-      const builds = [...source.matchAll(/create(FlagstoneTexture|JungleFloorTexture|SkyGradient)\(/g)];
+      // Any painter, called or handed to the cache by name — the bespoke
+      // floors (bespokeFloors.ts, October 2026) are passed as
+      // `cachedTexture('key', createCourtyardFloorTexture)`.
+      const builds = [...source.matchAll(/create\w+(Texture|Gradient)\b/g)];
       assert(builds.length > 0, `${file} builds no texture at all`);
       assert(
         source.includes('cachedTexture('),
         `${file} paints a texture on every mount instead of going through the cache`,
       );
+    }
+    // And the scenery files those arenas are built from: every painter
+    // they name must be reached through the cache, not called bare.
+    for (const file of ['CastleArena.tsx', 'JungleArena.tsx', 'SpaceArena.tsx', 'castleParts.tsx', 'ruinParts.tsx', 'jungleParts.tsx', 'spaceParts.tsx']) {
+      const source = readFileSync(join('src', 'arena', file), 'utf8');
+      for (const m of source.matchAll(/create\w+(Texture|Gradient)\b/g)) {
+        const at = m.index!;
+        const line = source.slice(source.lastIndexOf('\n', at) + 1, source.indexOf('\n', at));
+        // Imports (one line or one name per line) and comments name a
+        // painter without building anything.
+        if (/^\s*(import\b|\/\/|\*|\/\*)/.test(line) || /^\s*create\w+,\s*$/.test(line)) continue;
+        const before = source.slice(Math.max(0, at - 160), at);
+        assert(
+          before.includes('cachedTexture('),
+          `${file} builds ${m[0]} outside the texture cache`,
+        );
+      }
     }
   });
 

@@ -1,25 +1,26 @@
 import { TUNING } from '../game/tuning';
 
 /**
- * The jungle's boundary: a wall of logs laid HORIZONTALLY, log-cabin
- * fashion, with a stout post at each corner.
+ * The jungle's boundary: a fence of BAMBOO poles lashed together, laid
+ * HORIZONTALLY in a stack, with a stout upright pole at each corner.
  *
- * It was eighty-eight logs standing upright, and from a screenshot the
- * reason that never looked right is obvious: the camera looks DOWN at the
- * arena, so an upright post shows you its top and almost nothing else. The
- * boundary read as a ring of sawn tree stumps. Every property being tuned
- * — heights, lean, overlap, timber shades — was on the parts of the log
- * you cannot see from up there.
+ * Horizontal, because of the camera. This was once eighty-eight logs
+ * standing upright, and from a screenshot the reason that never looked
+ * right is obvious: the camera looks DOWN at the arena, so an upright
+ * post shows you its top and almost nothing else, and the boundary read
+ * as a ring of sawn tree stumps. A pole on its side presents its LENGTH —
+ * and on bamboo the length is where everything recognisable is: the
+ * nodes ringing it every hand-span, the lashings binding the stack.
  *
- * Logs on their sides solve it, because what a horizontal log presents to
- * a camera above is its LENGTH. Each run reads as a few long rounded rails
- * stacked into a wall, which is unmistakably built rather than grown, and
- * unmistakably not the castle's battlements.
+ * Bamboo rather than the round logs it replaced (October 2026, the board
+ * redesign — docs/board-redesign.md): thinner poles, more of them, so the
+ * wall reads as a lashed fence of canes and not as a log cabin, which the
+ * Autumn Woods' split-rail fence and the themed log cabins already are.
  *
  * It lives out here rather than inside the component so the shape can be
- * MEASURED. Nothing in this project can render a 3D scene, which is
- * exactly how a boundary can quietly become a heap of sticks with every
- * test still green — as it did.
+ * MEASURED. Nothing in this project can render a 3D scene in a test,
+ * which is exactly how a boundary can quietly become a heap of sticks
+ * with every test still green — as it did.
  */
 
 /** One log lying along a run, or one upright corner post. */
@@ -42,15 +43,16 @@ function jitter(n: number): number {
 }
 
 /**
- * How many courses are stacked, and how thick each log is.
+ * How many poles are stacked, and how thick each one is.
  *
- * Four courses of 0.21 radius covers 1.68 of wall, against a tray wall of
- * 1.4 — so the timber always stands a little proud of the invisible
- * surface the dice actually bounce off. A boundary drawn shorter than that
- * makes a die look like it stopped against nothing.
+ * Seven courses of 0.12 radius cover 1.52 of wall, against a tray wall of
+ * 1.4 — so the cane always stands a little proud of the invisible surface
+ * the dice actually bounce off. A boundary drawn shorter than that makes a
+ * die look like it stopped against nothing.
  */
-const COURSES = 4;
-const LOG_RADIUS = 0.21;
+const COURSES = 7;
+export const POLE_RADIUS = 0.12;
+const LOG_RADIUS = POLE_RADIUS;
 
 export function palisadeLogs(): PalisadeLog[] {
   const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
@@ -94,7 +96,8 @@ export function palisadeLogs(): PalisadeLog[] {
   }
 
   // Corner posts. Stouter than the rails and standing a little above them,
-  // which is what stops the four runs looking like they merely meet.
+  // which is what stops the four runs looking like they merely meet. Giant
+  // bamboo: twice the rails' girth.
   const postHeight = wallHeight * 1.32;
   for (const x of [-(halfW + wallThickness / 2), halfW + wallThickness / 2]) {
     for (const z of [-(halfD + wallThickness / 2), halfD + wallThickness / 2]) {
@@ -102,7 +105,7 @@ export function palisadeLogs(): PalisadeLog[] {
       list.push({
         position: [x, postHeight / 2, z],
         length: postHeight,
-        radius: LOG_RADIUS * 1.55,
+        radius: LOG_RADIUS * 2.1,
         rotation: [0, j * 0.5, 0],
         tone: 0.35 + j * 0.2,
         upright: true,

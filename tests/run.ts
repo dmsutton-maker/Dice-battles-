@@ -41,6 +41,7 @@ async function main(): Promise<void> {
   await import('./appIcon.test');
   await import('./arena.test');
   await import('./arenaShape.test');
+  await import('./bespokeArenas.test');
   await import('./layout.test');
   await import('./popupLayout.test');
   await import('./coinLabelLayout.test');

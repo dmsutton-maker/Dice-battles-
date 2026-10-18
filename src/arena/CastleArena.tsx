@@ -1,10 +1,7 @@
 import { troughOf, WaterSurface } from './water';
 import React, { useMemo } from 'react';
-import * as THREE from 'three';
-import { createSkyGradient } from './skyGradient';
 import { TUNING } from '../game/tuning';
 import {
-  CORNER_TOWERS,
   RETREAT_POOL,
   RETREAT_POST_XS,
   RETREAT_POST_Z,
@@ -13,98 +10,47 @@ import {
   RETREAT_Z,
 } from '../game/stations';
 
-import { createFlagstoneTexture } from './flagstoneTexture';
+import {
+  createCourtyardFloorTexture,
+  createMeadowTexture,
+  createSunsetFloorTexture,
+} from './bespokeFloors';
+import { CastleBackdrop, CourtyardWalls } from './castleParts';
+import { DuskSurroundings, RuinWalls } from './ruinParts';
 import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
 import { Campfire, Crate, Duel, Signpost, EXTRA_SPOTS } from './sceneryProps';
 import { ARENA_JAILS } from './jailKinds';
 import { Jail } from './jails';
 
-const STONE = '#9a8a72';
 const STONE_DARK = '#7d6e58';
 
 /** Palette knobs that differ between the day and sunset variants. */
 const VARIANTS = {
   day: {
-    roof: '#e2574c',
-    meadow: '#6a9a58',
-    hill: '#5c8c4c',
-    water: '#57b0e8',
-    cloud: '#ffffff',
+    water: '#4a8fc0',
     umbrellaA: '#ff7f66',
     umbrellaB: '#5bc8e8',
-    mountain: '#8b93a5',
     path: '#c7ad83',
-    tree: null,
+    dusk: false,
   },
   /*
-   * Dusk, not day-with-orange-bits. The old sunset values were all still
-   * daytime brightness — a mid green meadow, mid green hills — so the only
-   * difference a player could see was the roof going pink. Evening is
-   * DARKER as well as warmer, and the low sun means the parts of the world
-   * facing away from it fall into cool shadow rather than staying lit.
+   * Dusk. Only the retreat's few colours live here now: the walls, the
+   * floor and the world around them are two different PLACES (see
+   * castleParts.tsx and ruinParts.tsx), not one place in two palettes —
+   * which is what the family reported on 20 Aug 2026, "the sunset castle
+   * doesn't really look any different from the regular".
    */
   sunset: {
-    roof: '#8e3f6d',
-    meadow: '#4a5236',
-    hill: '#3b4530',
     water: '#c9743f',
-    cloud: '#ff9f7d',
     umbrellaA: '#d96b3c',
     umbrellaB: '#8b5cc4',
-    mountain: '#544663',
-    path: '#8a7458',
-    tree: '#243a2c',
-    /** Warm glow behind the courtyard windows once the sun is down low. */
-    window: '#ffd47a',
+    path: '#6e5a4c',
+    dusk: true,
   },
 } as const;
 export type CastleVariant = keyof typeof VARIANTS;
 type Palette = (typeof VARIANTS)[CastleVariant];
-
-/** Fields only the sunset palette carries; day falls back to its own look. */
-function duskOnly(palette: Palette): (typeof VARIANTS)['sunset'] | null {
-  return 'window' in palette ? palette : null;
-}
-
-/** Simple toy tree: trunk + cone of leaves. */
-function Tree({
-  position,
-  scale = 1,
-  leaf = '#3e9450',
-}: {
-  position: [number, number, number];
-  scale?: number;
-  leaf?: string;
-}) {
-  return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 0.28, 0]}>
-        <cylinderGeometry args={[0.13, 0.17, 0.56, 8]} />
-        <meshStandardMaterial color="#7a5230" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 1.05, 0]}>
-        <coneGeometry args={[0.72, 1.5, 9]} />
-        <meshStandardMaterial color={leaf} roughness={0.85} />
-      </mesh>
-    </group>
-  );
-}
-
-const TREES: { position: [number, number, number]; scale: number; leaf: string }[] = [
-  { position: [-6.2, -0.1, -3.2], scale: 1.15, leaf: '#3e9450' },
-  { position: [-7.6, -0.1, -6.4], scale: 1.4, leaf: '#347e44' },
-  { position: [6.3, -0.1, -2.6], scale: 1.05, leaf: '#48a457' },
-  { position: [7.2, -0.1, -5.8], scale: 1.3, leaf: '#3e9450' },
-  { position: [-5.6, -0.1, 6.6], scale: 1.2, leaf: '#48a457' },
-  { position: [6.1, -0.1, 7.1], scale: 1.35, leaf: '#347e44' },
-  { position: [8.2, -0.1, 2.1], scale: 1.0, leaf: '#3e9450' },
-  { position: [-8.6, -0.1, 0.6], scale: 1.25, leaf: '#48a457' },
-  { position: [4.9, -0.1, 9.3], scale: 1.1, leaf: '#3e9450' },
-  { position: [-4.6, -0.1, -8.4], scale: 1.2, leaf: '#347e44' },
-  { position: [5.6, -0.1, -8.7], scale: 1.0, leaf: '#48a457' },
-  { position: [-8.9, -0.1, 4.6], scale: 1.15, leaf: '#3e9450' },
-];
 
 /**
  * The freedom retreat on the player's side of the castle — the rescuer's
@@ -198,252 +144,113 @@ function RetreatGarden({ palette, padColors }: { palette: Palette } & ArenaProps
 }
 
 /**
- * The evening sky, and the sun making it.
+ * The world around the day castle: a mown lawn, a gravel apron at the foot
+ * of the walls, and a moat down both long sides.
  *
- * The flat backdrop colour behind the canvas cannot be a sunset: a sunset
- * is a gradient, hot at the horizon and deep overhead, and that band near
- * the ground is the whole readable signal. So the sunset arena draws its
- * own dome and puts the sun in it, low and half-swallowed by the hills,
- * on the same side the key light comes from — a sun in one place lit from
- * another is the sort of thing nobody names but everybody notices.
+ * Everything here is inside the box the camera actually sees — x about
+ * ±3.9, z from -10.5 to 7.8 (see groundTexture.ts for how that was
+ * measured). The hills, mountains, clouds and trees this replaced were
+ * all outside it: they had never once been on screen, and they were
+ * still being drawn. The moat is the opposite — it fills exactly the
+ * strip of ground the camera has either side of the tray, so the default
+ * board reads as a castle in its own water instead of a box on a lawn.
  */
-function SunsetSky() {
-  const gradient = useMemo(
+function DayLandscape({ palette }: { palette: Palette }) {
+  const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
+  const outerX = innerWidth / 2 + wallThickness;
+  const outerZ = innerDepth / 2 + wallThickness;
+  const lawn = useMemo(
     () =>
-      cachedTexture('castle-sunset-sky', () =>
-        createSkyGradient([
-          '#ffd27a', // right at the horizon, where the sun is
-          '#ff8f52',
-          '#e2557f',
-          '#7b3f8f',
-          '#2e2050', // overhead, already night
-        ]),
-      ),
+      cachedTexture('castle-meadow', () => {
+        const t = createMeadowTexture();
+        // 128 texels to 3.2 world units, so the lawn is as sharp as the floor.
+        t.repeat.set(16 / 3.2, 22 / 3.2);
+        return t;
+      }),
     [],
   );
-
+  const moat = { from: -outerZ + 0.35, to: outerZ - 0.55, inner: outerX + 0.23, outer: outerX + 1.13 };
+  const moatLen = moat.to - moat.from;
+  const moatMid = (moat.to + moat.from) / 2;
+  const moatW = moat.outer - moat.inner;
   return (
     <group>
-      {/* Inside-out dome, unlit — a sky is a source of light, not a
-          surface receiving it, so shading it would be wrong. */}
-      <mesh>
-        <sphereGeometry args={[58, 24, 16]} />
-        <meshBasicMaterial map={gradient} side={THREE.BackSide} fog={false} />
+      <mesh position={[0, -0.12, -1]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[16, 22]} />
+        <meshStandardMaterial map={lawn} roughness={1} />
       </mesh>
-
-      {/* The sun: low, and to the left, matching SUNSET_LIGHT's key. */}
-      <group position={[-34, 1.6, -30]}>
-        <mesh>
-          <circleGeometry args={[4.2, 32]} />
-          <meshBasicMaterial color="#fff0c4" />
-        </mesh>
-        {/* Two soft haloes rather than a bloom pass, which would cost a
-            render target on a phone for one arena. */}
-        <mesh position={[0, 0, -0.4]}>
-          <circleGeometry args={[6.6, 32]} />
-          <meshBasicMaterial color="#ffb257" transparent opacity={0.45} />
-        </mesh>
-        <mesh position={[0, 0, -0.8]}>
-          <circleGeometry args={[10.5, 32]} />
-          <meshBasicMaterial color="#ff8a4a" transparent opacity={0.22} />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-/**
- * Lit windows in the corner towers.
- *
- * The single clearest "it is evening" cue there is: somebody indoors has
- * turned a lamp on. Unlit material, so they stay bright while the low sun
- * lets the stone around them fall dark.
- */
-function TowerWindows({ color }: { color: string }) {
-  const { wallHeight } = TUNING.tray;
-  return (
-    <>
-      {[0, 1, 2, 3].map((k) => {
-        const angle = (k * Math.PI) / 2 + Math.PI / 4;
-        return (
-          <mesh
-            key={`win-${k}`}
-            position={[
-              Math.sin(angle) * 0.52,
-              wallHeight * 0.62,
-              Math.cos(angle) * 0.52,
-            ]}
-            rotation={[0, angle, 0]}
-          >
-            <planeGeometry args={[0.2, 0.3]} />
-            <meshBasicMaterial color={color} />
-          </mesh>
-        );
-      })}
-    </>
-  );
-}
-
-/**
- * The toy world around the castle: meadow, path to the gate, pond, trees,
- * rolling hills, distant mountains, and a few clouds. Everything procedural
- * and cheap — unlit clouds, low-poly cones and squashed spheres.
- */
-function Landscape({ palette }: { palette: Palette }) {
-  const dusk = duskOnly(palette);
-  return (
-    <group>
-      {dusk && <SunsetSky />}
-      {/* Meadow */}
-      <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[34, 40]} />
-        <meshStandardMaterial color={palette.meadow} roughness={1} />
+      {/* Gravel apron at the foot of the walls. */}
+      <mesh position={[0, -0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[outerX * 2 + 0.4, outerZ * 2 + 0.4]} />
+        <meshStandardMaterial color="#b9ad95" roughness={1} />
       </mesh>
-
-      {/* Dirt path from the near gate out toward the player */}
-      <mesh position={[0, -0.06, 8.2]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* Path from the near gate out toward the player. */}
+      <mesh position={[0, -0.09, 8.2]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[1.7, 6.4]} />
-        <meshStandardMaterial color="#c7ad83" roughness={1} />
+        <meshStandardMaterial color={palette.path} roughness={1} />
       </mesh>
 
-      {/* Pond */}
-      <WaterSurface
-        look={{ shallow: palette.water, deep: troughOf(palette.water), foam: '#f2fbff', opacity: 1 }}
-        shape="round"
-        size={[4.2, 4.2]}
-        flow={[0.08, 0.04]}
-        position={[-6.6, -0.05, 2.6]}
-      />
-
-      {/* Trees. At dusk they read as near-silhouettes: leaves this far
-          from the low sun keep almost none of their daytime green. */}
-      {TREES.map((tree, i) => (
-        <Tree
-          key={`tree-${i}`}
-          {...tree}
-          leaf={palette.tree ?? tree.leaf}
-        />
-      ))}
-
-      {/* Rolling hills */}
-      {(
-        [
-          [-12, -1.4, -9, 4.5],
-          [12.5, -1.6, -10, 5.2],
-          [0, -2.6, -17, 8.5],
-          [-13, -1.8, 4, 4.8],
-          [13.5, -2, 6, 5],
-        ] as const
-      ).map(([x, y, z, r], i) => (
-        <mesh key={`hill-${i}`} position={[x, y, z]} scale={[1, 0.45, 1]}>
-          <sphereGeometry args={[r, 16, 12]} />
-          <meshStandardMaterial color={palette.hill} roughness={1} />
-        </mesh>
-      ))}
-
-      {/* Distant mountains */}
-      {(
-        [
-          [-9.5, -19, 5, 6.5],
-          [0.5, -23, 7.5, 9],
-          [9.5, -18, 4.6, 5.5],
-        ] as const
-      ).map(([x, z, r, h], i) => (
-        <mesh key={`mountain-${i}`} position={[x, h / 2 - 1.2, z]}>
-          <coneGeometry args={[r, h, 10]} />
-          <meshStandardMaterial color={palette.mountain} roughness={1} />
-        </mesh>
-      ))}
-
-      {/* Clouds — unlit flat white puffs */}
-      {(
-        [
-          [-8, 7.5, -13, 1.6],
-          [7.5, 8.5, -15, 2],
-          [-2.5, 9.5, -19, 2.6],
-          [10, 7, -9, 1.4],
-        ] as const
-      ).map(([x, y, z, s], i) => (
-        <group key={`cloud-${i}`} position={[x, y, z]} scale={[s, s * 0.5, s]}>
-          <mesh>
-            <sphereGeometry args={[1, 12, 8]} />
-            <meshBasicMaterial color={palette.cloud} />
-          </mesh>
-          <mesh position={[1.1, -0.1, 0.2]} scale={0.7}>
-            <sphereGeometry args={[1, 12, 8]} />
-            <meshBasicMaterial color={palette.cloud} />
-          </mesh>
-          <mesh position={[-1.1, -0.15, -0.1]} scale={0.6}>
-            <sphereGeometry args={[1, 12, 8]} />
-            <meshBasicMaterial color={palette.cloud} />
-          </mesh>
+      {/* The moat, both sides: moving water inside a cut-stone kerb. */}
+      {([-1, 1] as const).map((side) => (
+        <group key={`moat-${side}`}>
+          <WaterSurface
+            look={{ shallow: palette.water, deep: troughOf(palette.water, 0.5), foam: '#d4e6ee', opacity: 1 }}
+            shape="square"
+            size={[moatW, moatLen]}
+            flow={[0, 0.06]}
+            position={[side * (moat.inner + moatW / 2), -0.085, moatMid]}
+          />
+          {[moat.inner - 0.04, moat.outer + 0.04].map((x, k) => (
+            <mesh key={k} position={[side * x, -0.04, moatMid]}>
+              <boxGeometry args={[0.1, 0.12, moatLen + 0.18]} />
+              <meshStandardMaterial color="#a8a294" roughness={0.95} />
+            </mesh>
+          ))}
+          {[moat.from - 0.05, moat.to + 0.05].map((z, k) => (
+            <mesh key={`end-${k}`} position={[side * (moat.inner + moatW / 2), -0.04, z]}>
+              <boxGeometry args={[moatW + 0.18, 0.12, 0.1]} />
+              <meshStandardMaterial color="#a8a294" roughness={0.95} />
+            </mesh>
+          ))}
         </group>
       ))}
+
+      <CastleBackdrop />
     </group>
   );
 }
 
 /**
- * The castle-courtyard battlefield. Purely visual — the matching collision
- * bodies live in src/physics/world.ts. Walls carry merlons (the notched
- * battlement teeth) and each corner has a round tower with a toy-like red
- * roof, and the castle sits in a toy landscape (meadow, trees, pond, hills,
- * mountains, clouds) so it reads as a playset diorama in a world rather
- * than a box floating in space.
+ * The castle-courtyard battlefield, and its dusk twin. Purely visual — the
+ * matching collision bodies live in src/physics/world.ts.
+ *
+ * Two places, not one place in two palettes. By day: dressed stone, a
+ * wall-walk behind a regular crenellated parapet, coral-roofed towers with
+ * pennants, flagstones, a lawn and a moat (castleParts.tsx). At sunset:
+ * the same castle centuries on — a broken, ivy-grown ruin of loose blocks,
+ * roofless tower stumps, braziers, cobbles with lantern pools and long
+ * shadows, and the black shapes of fallen towers against the last light
+ * (ruinParts.tsx, ruin.ts). Both stand on the tray walls exactly: the
+ * walls are drawn to `wallHeight` and above, so a die never stops against
+ * nothing.
  */
 export function CastleArena({
   variant = 'day',
   padColors,
 }: { variant?: CastleVariant } & ArenaProps) {
   const palette: Palette = VARIANTS[variant];
-  const dusk = duskOnly(palette);
-  const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
-  const halfW = innerWidth / 2;
-  const halfD = innerDepth / 2;
+  const dusk = palette.dusk;
+  const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
 
+  // One picture of the whole floor each, cached across mounts — see
+  // bespokeFloors.ts for why they are painted whole rather than tiled.
   const floorTexture = useMemo(
     () =>
-      // Cached across mounts, not just within one — see textureCache.ts.
-      cachedTexture('castle-floor', () => {
-        const texture = createFlagstoneTexture();
-        // Keep the stones square on the non-square floor.
-        const floorW = innerWidth + wallThickness * 2;
-        const floorD = innerDepth + wallThickness * 2;
-        texture.repeat.set(1, floorD / floorW);
-        return texture;
-      }),
-    [innerWidth, innerDepth, wallThickness],
+      dusk
+        ? cachedTexture('castle-sunset-floor', createSunsetFloorTexture)
+        : cachedTexture('castle-floor', createCourtyardFloorTexture),
+    [dusk],
   );
-
-  const wallMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: STONE, roughness: 0.9 }),
-    [],
-  );
-  const merlonMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: STONE_DARK, roughness: 0.9 }),
-    [],
-  );
-
-  // Merlon positions along each wall top.
-  const merlons = useMemo(() => {
-    const list: { pos: [number, number, number]; alongX: boolean }[] = [];
-    const y = wallHeight + 0.12;
-    const stepX = 1.1;
-    for (let x = -halfW + 0.4; x <= halfW - 0.3; x += stepX) {
-      list.push({ pos: [x, y, -(halfD + wallThickness / 2)], alongX: true });
-      list.push({ pos: [x, y, halfD + wallThickness / 2], alongX: true });
-    }
-    const stepZ = 1.15;
-    for (let z = -halfD + 0.6; z <= halfD - 0.4; z += stepZ) {
-      list.push({ pos: [-(halfW + wallThickness / 2), y, z], alongX: false });
-      list.push({ pos: [halfW + wallThickness / 2, y, z], alongX: false });
-    }
-    return list;
-  }, [halfW, halfD, wallHeight, wallThickness]);
-
-  // Shared with the station maths so the wall row can be checked against
-  // these without the two drifting apart.
-  const towerPositions: [number, number][] = CORNER_TOWERS.map((t) => [t.x, t.z]);
 
   return (
     <group>
@@ -455,7 +262,7 @@ export function CastleArena({
         <meshStandardMaterial map={floorTexture} roughness={0.95} />
       </mesh>
 
-      <Landscape palette={palette} />
+      {dusk ? <DuskSurroundings /> : <DayLandscape palette={palette} />}
 
       {/*
         The surroundings, David 25 Sep 2026: "make the surroundings of
@@ -470,15 +277,23 @@ export function CastleArena({
         perfectly hidden behind a platform that stands 1.15 high between
         it and the camera, which is exactly what the first attempt at
         these did.
+
+        By day the four side spots are in the moat, so only the back four
+        are dressed. At dusk the two far ones hold the fallen towers
+        (DUSK_SILHOUETTES in ruin.ts) and the four side ones are dressed.
       */}
       <group key="s0" position={[EXTRA_SPOTS[0][0], 0, EXTRA_SPOTS[0][1]]} scale={1}><Duel color="#c23b3b" /></group>
       <group key="s1" position={[EXTRA_SPOTS[1][0], 0, EXTRA_SPOTS[1][1]]} scale={0.95}><Duel color="#3f7fd0" /></group>
-      <group key="s2" position={[EXTRA_SPOTS[2][0], 0, EXTRA_SPOTS[2][1]]} scale={0.9}><Campfire /></group>
-      <group key="s3" position={[EXTRA_SPOTS[3][0], 0, EXTRA_SPOTS[3][1]]} scale={0.9}><Crate color="#8a5a34" /></group>
-      <group key="s4" position={[EXTRA_SPOTS[4][0], 0, EXTRA_SPOTS[4][1]]} scale={0.85}><Signpost color="#8a5a34" /></group>
-      <group key="s5" position={[EXTRA_SPOTS[5][0], 0, EXTRA_SPOTS[5][1]]} scale={0.85}><Crate color="#8a5a34" /></group>
-      <group key="s6" position={[EXTRA_SPOTS[6][0], 0, EXTRA_SPOTS[6][1]]} scale={0.85}><Crate color="#8a5a34" /></group>
-      <group key="s7" position={[EXTRA_SPOTS[7][0], 0, EXTRA_SPOTS[7][1]]} scale={0.85}><Signpost color="#8a5a34" /></group>
+      {!dusk && <group key="s2" position={[EXTRA_SPOTS[2][0], 0, EXTRA_SPOTS[2][1]]} scale={0.9}><Campfire /></group>}
+      {!dusk && <group key="s3" position={[EXTRA_SPOTS[3][0], 0, EXTRA_SPOTS[3][1]]} scale={0.9}><Crate color="#8a5a34" /></group>}
+      {dusk && (
+        <>
+          <group key="s4" position={[EXTRA_SPOTS[4][0], 0, EXTRA_SPOTS[4][1]]} scale={0.85}><Campfire /></group>
+          <group key="s5" position={[EXTRA_SPOTS[5][0], 0, EXTRA_SPOTS[5][1]]} scale={0.85}><Crate color="#6a4a32" /></group>
+          <group key="s6" position={[EXTRA_SPOTS[6][0], 0, EXTRA_SPOTS[6][1]]} scale={0.85}><Crate color="#6a4a32" /></group>
+          <group key="s7" position={[EXTRA_SPOTS[7][0], 0, EXTRA_SPOTS[7][1]]} scale={0.85}><Signpost color="#5a3f2a" /></group>
+        </>
+      )}
       {/*
         The jail is the gatehouse by day and the timber stockade at dusk —
         one per board, see jails.tsx. The platform keeps the colours the
@@ -491,52 +306,7 @@ export function CastleArena({
       )}
       <RetreatGarden palette={palette} padColors={padColors} />
 
-      {/* Walls */}
-      <mesh
-        material={wallMaterial}
-        position={[-(halfW + wallThickness / 2), wallHeight / 2, 0]}
-      >
-        <boxGeometry
-          args={[wallThickness, wallHeight, innerDepth + wallThickness * 2]}
-        />
-      </mesh>
-      <mesh
-        material={wallMaterial}
-        position={[halfW + wallThickness / 2, wallHeight / 2, 0]}
-      >
-        <boxGeometry
-          args={[wallThickness, wallHeight, innerDepth + wallThickness * 2]}
-        />
-      </mesh>
-      <mesh material={wallMaterial} position={[0, wallHeight / 2, -(halfD + wallThickness / 2)]}>
-        <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-      </mesh>
-      <mesh material={wallMaterial} position={[0, wallHeight / 2, halfD + wallThickness / 2]}>
-        <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-      </mesh>
-
-      {/* Battlement merlons */}
-      {merlons.map((m, i) => (
-        <mesh key={`merlon-${i}`} material={merlonMaterial} position={m.pos}>
-          <boxGeometry
-            args={m.alongX ? [0.45, 0.24, wallThickness] : [wallThickness, 0.24, 0.5]}
-          />
-        </mesh>
-      ))}
-
-      {/* Corner towers */}
-      {towerPositions.map(([x, z], i) => (
-        <group key={`tower-${i}`} position={[x, 0, z]}>
-          <mesh material={wallMaterial} position={[0, wallHeight / 2 + 0.2, 0]}>
-            <cylinderGeometry args={[0.5, 0.56, wallHeight + 0.4, 12]} />
-          </mesh>
-          <mesh position={[0, wallHeight + 0.72, 0]}>
-            <coneGeometry args={[0.6, 0.8, 12]} />
-            <meshStandardMaterial color={palette.roof} roughness={0.6} />
-          </mesh>
-          {dusk && <TowerWindows color={dusk.window} />}
-        </group>
-      ))}
+      {dusk ? <RuinWalls /> : <CourtyardWalls />}
     </group>
   );
 }

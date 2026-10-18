@@ -48,8 +48,14 @@ const DAYLIGHT: ArenaLighting = {
  * dropping flatly onto them.
  */
 const SUNSET_LIGHT: ArenaLighting = {
-  hemisphere: { sky: '#ffb27a', ground: '#43304a', intensity: 0.75 },
-  key: { position: [-14, 2.4, -3], intensity: 2.7, color: '#ff9440' },
+  /*
+    The wash is a little stronger and the sun a little weaker than they
+    were: a ruin at dusk is full of shadow by design (ruinParts.tsx), and
+    a die still has to read as clearly in it as at midday. The total is
+    still below DAYLIGHT's, so evening stays darker than noon.
+  */
+  hemisphere: { sky: '#ffb27a', ground: '#43304a', intensity: 0.95 },
+  key: { position: [-14, 2.4, -3], intensity: 2.5, color: '#ff9440' },
   fill: { position: [7, 6, 8], intensity: 0.5, color: '#6f7fd0' },
 };
 
@@ -96,10 +102,11 @@ export const ARENAS = {
   castleSunset: {
     name: 'Sunset Castle',
     short: 'Sunset',
-    // Warm dusk. The real sky is the gradient dome the arena draws; this
-    // flat colour is the letterbox behind it AND the swatch in the arena
-    // picker, and a swatch that went deep purple would stop reading as
-    // "sunset" at thumbnail size.
+    // Warm dusk. The real dusk is the gradient the arena lays on the
+    // ground around the ruin (ruinParts.tsx); this flat colour is the
+    // letterbox behind it AND the swatch in the arena picker, and a
+    // swatch that went deep purple would stop reading as "sunset" at
+    // thumbnail size.
     skyColor: '#ef8557',
     lighting: SUNSET_LIGHT,
     Component: SunsetCastleArena,

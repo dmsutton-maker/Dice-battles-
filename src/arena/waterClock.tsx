@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber/native';
 import { useEffect } from 'react';
 import { LIVE } from './water';
+import { SCENERY_LIFE } from './sceneryClock';
 
 /**
  * Keeps every water surface in the scene moving. One per canvas.
@@ -15,6 +16,9 @@ export function WaterClock({ idle = false }: { idle?: boolean }) {
   useFrame((state) => {
     const t = state.clock.elapsedTime;
     for (const m of LIVE) m.uniforms.uTime.value = t;
+    // The bespoke arenas' flames, flags and beacons ride the same clock
+    // rather than each bringing a frame loop of their own.
+    for (const tick of SCENERY_LIFE) tick(t);
   });
   useEffect(() => {
     if (!idle) return;
