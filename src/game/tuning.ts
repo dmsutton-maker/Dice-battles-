@@ -191,6 +191,12 @@ export const TUNING = {
     collisionMinImpact: 3.0,
     /** Min ms between collision haptic ticks / click accents. */
     collisionCooldownMs: 130,
+    /**
+     * Min impact for the soft tap and squash when a die glances off the
+     * bump (DiceScene). Lower than a full tick: the bump is the thing you
+     * are trying to roll around, so touching it at all is worth a nudge.
+     */
+    moundMinImpact: 1.0,
   },
 
   /**

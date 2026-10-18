@@ -5,11 +5,12 @@ import { AppState } from 'react-native';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { playClack, playThrow } from '../audio/sounds';
-import { MOAT, MOUND, ObstacleLayout } from '../game/obstacles';
+import { MOAT, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { obstacleLook } from '../arena/obstacleLooks';
 import { TreasureChest } from '../arena/TreasureChest';
-import { troughOf, WaterSurface } from '../arena/water';
+import { Mound, Pit } from '../arena/Hazards';
+import { BUMP_SECONDS, bumpSquash, gulpScale } from '../arena/hazardShapes';
 import { WaterClock } from '../arena/waterClock';
 import { createDieBody, throwDie } from '../dice/die';
 import {
@@ -218,6 +219,15 @@ export function DiceScene({
   const sankThisRoll = useRef<boolean[]>([false, false]);
   const splashRef = useRef<THREE.Mesh | null>(null);
   const splashT = useRef(1); // >= 1 means idle
+  /*
+    The traps answer back (docs/board-redesign.md, "haptics and
+    micro-animation"): the pit gives a quick gulp when it swallows a die,
+    timed off the splash above, and the bump squashes a little when a die
+    glances off it. Looks only — the physics bodies never move.
+  */
+  const pitSpringRef = useRef<THREE.Group | null>(null);
+  const moundSpringRef = useRef<THREE.Group | null>(null);
+  const moundT = useRef(BUMP_SECONDS); // >= BUMP_SECONDS means idle
 
   // Camera shake amount, decays every frame.
   const shake = useRef(0);
@@ -256,7 +266,7 @@ export function DiceScene({
   // Collision haptics: light tick on hard impacts, throttled.
   useEffect(() => {
     const lastTick = { t: 0 };
-    const onCollide = (event: { contact: CANNON.ContactEquation }) => {
+    const onCollide = (event: { body: CANNON.Body; contact: CANNON.ContactEquation }) => {
       const impact = event.contact.getImpactVelocityAlongNormal();
       const now = Date.now();
       if (
@@ -266,6 +276,17 @@ export function DiceScene({
         lastTick.t = now;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         playClack();
+      } else if (
+        // A die glancing off the bump: a softer tap than a hard hit, and
+        // the bump's own squash. Shares the cooldown, so a die rolling
+        // over the top does not buzz.
+        event.body.material?.name === 'mound' &&
+        impact > TUNING.haptics.moundMinImpact &&
+        now - lastTick.t > TUNING.haptics.collisionCooldownMs
+      ) {
+        lastTick.t = now;
+        moundT.current = 0;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
       }
     };
     diceBodies.forEach((body) => body.addEventListener('collide', onCollide));
@@ -449,6 +470,18 @@ export function DiceScene({
       splashRef.current.visible = false;
     }
 
+    // The trap springs. Written in place every frame: nothing allocates.
+    if (pitSpringRef.current) {
+      const s = gulpScale(splashT.current * 0.7);
+      pitSpringRef.current.scale.set(s, 1, s);
+    }
+    if (moundSpringRef.current) {
+      if (moundT.current < BUMP_SECONDS) moundT.current += delta;
+      const sy = bumpSquash(moundT.current);
+      const sxz = 1 + (1 - sy) * 0.5;
+      moundSpringRef.current.scale.set(sxz, sy, sxz);
+    }
+
     // Camera shake with decay, offset from the auto-fitted base position.
     if (shake.current > 0.01) {
       state.camera.position.set(
@@ -568,79 +601,19 @@ export function DiceScene({
         Hard is Hard whichever arena you pick. Only the look changes.
       */}
       {obstacles.mound && (
-        <mesh position={[obstacles.mound.x, -MOUND.buried, obstacles.mound.z]}>
-          <sphereGeometry args={[MOUND.radius, 20, 14]} />
-          <meshStandardMaterial
-            color={look.mound.color}
-            roughness={look.mound.roughness}
-            metalness={look.mound.metalness}
-          />
-        </mesh>
+        <Mound
+          look={look}
+          position={[obstacles.mound.x, 0, obstacles.mound.z]}
+          springRef={moundSpringRef}
+        />
       )}
       {obstacles.moat && (
         <group position={[obstacles.moat.x, 0, obstacles.moat.z]}>
-          {/* Dark depths below, so a sinking die silhouettes against it */}
-          <mesh position={[0, -1.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[MOAT.size + 0.3, MOAT.size + 0.3]} />
-            <meshBasicMaterial color={look.pit.depths} />
-          </mesh>
-          {look.pit.water ? (
-            /*
-              REAL WATER, MOVING. David, 30 Sep 2026: "I don't like that
-              diamond instead I wanna see the water moving in all the
-              ponds flowing maybe some little waves in there." Waves, a
-              slow current, light on the crests and foam lapping at the
-              square edge — see src/arena/water.tsx.
-
-              Nearly solid now. It used to be 62% see-through, and all
-              that ever showed through it was the floor tiles: a sinking
-              die goes under the floor, not under the water, so the
-              see-through part was only a tile grid under the pond.
-            */
-            <WaterSurface
-              look={{
-                shallow: look.pit.surface,
-                deep: troughOf(look.pit.surface),
-                foam: look.pit.edge,
-                opacity: 0.94,
-              }}
-              shape="square"
-              size={[MOAT.size + 0.1, MOAT.size + 0.1]}
-              flow={[0.14, 0.08]}
-              position={[0, 0.03, 0]}
-            />
-          ) : (
-            <>
-              {/* Not water — lava, sand, a hatch: a flat surface. */}
-              <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[MOAT.size + 0.25, MOAT.size + 0.25]} />
-                <meshStandardMaterial
-                  color={look.pit.surface}
-                  roughness={look.pit.surfaceRoughness}
-                  transparent
-                  opacity={look.pit.surfaceOpacity}
-                />
-              </mesh>
-              {/*
-                The edge, as a SQUARE. It was a ringGeometry with four
-                segments, which draws a diamond at 45 degrees to the
-                square hole — the "diamond" David asked to be rid of.
-              */}
-              {(
-                [
-                  [0, -MOAT.size / 2, MOAT.size + 0.12, 0.12],
-                  [0, MOAT.size / 2, MOAT.size + 0.12, 0.12],
-                  [-MOAT.size / 2, 0, 0.12, MOAT.size - 0.12],
-                  [MOAT.size / 2, 0, 0.12, MOAT.size - 0.12],
-                ] as const
-              ).map(([x, z, w, d], i) => (
-                <mesh key={`edge-${i}`} position={[x, 0.045, z]} rotation={[-Math.PI / 2, 0, 0]}>
-                  <planeGeometry args={[w, d]} />
-                  <meshBasicMaterial color={look.pit.edge} transparent opacity={0.85} />
-                </mesh>
-              ))}
-            </>
-          )}
+          {/*
+            Each board's own pit: water, lava, a hatch onto the stars
+            (src/arena/Hazards.tsx). Always the same square hole beneath.
+          */}
+          <Pit look={look} springRef={pitSpringRef} />
           {/* Splash ring (animated on sink) */}
           <mesh
             ref={(m) => {
@@ -653,38 +626,6 @@ export function DiceScene({
             <ringGeometry args={[0.42, 0.55, 24]} />
             <meshBasicMaterial color="#ffffff" transparent opacity={0} />
           </mesh>
-          {/*
-            The border. A square of cut kerb round a pool of water is what
-            made the jungle's lake read as a swimming pool, so the shape
-            changes with the arena: sharp stone at the castle, a low soft
-            bank of earth at the lake, a raised coaming round the hatch.
-          */}
-          {look.pit.border !== null &&
-            (
-              [
-                [0, -(MOAT.size / 2 + 0.2), MOAT.size + 0.55, 0.16],
-                [0, MOAT.size / 2 + 0.2, MOAT.size + 0.55, 0.16],
-                [-(MOAT.size / 2 + 0.2), 0, 0.16, MOAT.size + 0.25],
-                [MOAT.size / 2 + 0.2, 0, 0.16, MOAT.size + 0.25],
-              ] as const
-            ).map(([x, z, w, d], i) => {
-              const bank = look.pit.border!.kind === 'bank';
-              const hull = look.pit.border!.kind === 'hull';
-              // An earth bank sits low and wide; a hull coaming stands
-              // proud of the deck; cut stone is what it always was.
-              const height = bank ? 0.07 : hull ? 0.16 : 0.12;
-              const spread = bank ? 1.9 : 1;
-              return (
-                <mesh key={`rim-${i}`} position={[x, height / 2, z]}>
-                  <boxGeometry args={[w * (w < d ? spread : 1), height, d * (d < w ? spread : 1)]} />
-                  <meshStandardMaterial
-                    color={look.pit.border!.color}
-                    roughness={hull ? 0.45 : 0.95}
-                    metalness={hull ? 0.5 : 0}
-                  />
-                </mesh>
-              );
-            })}
         </group>
       )}
 
