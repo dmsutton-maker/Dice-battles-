@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { createWaterMaterial, troughOf } from '../src/arena/water';
 import { OBSTACLE_LOOKS } from '../src/arena/obstacleLooks';
+import { isWaterPit } from '../src/arena/hazardShapes';
 import { splitPlacement } from '../src/ui/placement';
 
 /**
@@ -64,8 +65,9 @@ suite('water · no diamond', () => {
       ringGeometry with four segments draws a DIAMOND, at 45 degrees to
       the square hole it was meant to outline. That was the diamond.
     */
-    const scene = code('src/demo/DiceScene.tsx');
-    assert(!/ringGeometry args=\{\[[^\]]*,\s*4,\s*1\]\}/.test(scene), 'the diamond is back');
+    for (const file of ['src/demo/DiceScene.tsx', 'src/arena/Hazards.tsx']) {
+      assert(!/ringGeometry args=\{\[[^\]]*,\s*4,\s*1\]\}/.test(code(file)), `the diamond is back in ${file}`);
+    }
   });
 });
 
@@ -86,10 +88,28 @@ suite('water · the ponds move', () => {
   });
 
   test('the moat draws water as moving water', () => {
+    /*
+      The pit is drawn by src/arena/Hazards.tsx since the board redesign
+      (18 Oct 2026), where each board's pit got its own look. Same three
+      promises, checked where they now live: the pit asks whether it is
+      water, water is the moving WaterSurface, and the scene's clock
+      drives it.
+    */
     const scene = code('src/demo/DiceScene.tsx');
-    assert(/look\.pit\.water \?/.test(scene), 'the moat does not ask whether it is water');
-    assert(/<WaterSurface[\s\S]*?shape="square"/.test(scene), 'the moat is not drawn as moving water');
+    const pit = code('src/arena/Hazards.tsx');
+    assert(/<Pit look=\{look\}/.test(scene), 'the scene no longer draws the pit');
+    assert(/isWaterPit\(p\.kind\) &&/.test(pit), 'the moat does not ask whether it is water');
+    assert(/<WaterSurface[\s\S]*?shape="square"/.test(pit), 'the moat is not drawn as moving water');
     assert(/<WaterClock idle=\{waterIdle\} \/>/.test(scene), 'nothing moves the water');
+    // Every pit marked as water moves: as a WaterSurface, or (the
+    // whirlpool) as its own shader on the same clock.
+    for (const [id, look] of Object.entries(OBSTACLE_LOOKS)) {
+      if (!look.pit.water) continue;
+      assert(
+        isWaterPit(look.pit.kind) || look.pit.kind === 'whirlpool',
+        `${id}'s ${look.words.pit} is marked water but drawn as something else`,
+      );
+    }
   });
 
   test('every pond, pool and river in the originals moves', () => {

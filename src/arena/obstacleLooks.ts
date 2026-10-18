@@ -28,9 +28,31 @@ function themedLooks(): Record<ThemedArenaId, ObstacleLook> {
  * arena a choice of difficulty. Only the dressing and the words change.
  */
 
+/**
+ * What the bump IS on each board — drawn by src/arena/hazardShapes.ts. One per
+ * board, from the table in docs/board-redesign.md.
+ */
+export type MoundKind =
+  | 'hill' | 'rubble' | 'stump' | 'bulkhead' | 'dune'
+  | 'leafPile' | 'iceBoulder' | 'crystals' | 'cloud' | 'boulder'
+  | 'snowman' | 'smokingRock' | 'haystack' | 'sandcastle' | 'gumdrop'
+  | 'mushroom' | 'treasure' | 'anemone' | 'acUnit' | 'beachBall';
+
+/**
+ * What the pit IS on each board. The physics is the same square hole for
+ * all of them; see src/arena/hazardShapes.ts for how each is dressed round it.
+ */
+export type PitKind =
+  | 'moat' | 'candlePool' | 'lake' | 'hatch' | 'quicksand'
+  | 'puddle' | 'iceHole' | 'chasm' | 'cloudGap' | 'crater'
+  | 'frozenPond' | 'lava' | 'mud' | 'tidePool' | 'chocolate'
+  | 'spring' | 'cargoHatch' | 'whirlpool' | 'skylight' | 'toyBox';
+
 export interface ObstacleLook {
   /** The bump the dice deflect off. */
   mound: {
+    /** What it is drawn as. Never changes its size: see hazardShapes.ts. */
+    kind: MoundKind;
     color: string;
     /** Rougher for earth and rock, smoother for metal. */
     roughness: number;
@@ -38,6 +60,8 @@ export interface ObstacleLook {
   };
   /** The hole in the floor that swallows a die. */
   pit: {
+    /** What it is drawn as. Never changes the hole: see hazardShapes.ts. */
+    kind: PitKind;
     /** The void below, which a sinking die silhouettes against. */
     depths: string;
     /** The surface: water, or something else entirely. */
@@ -52,13 +76,17 @@ export interface ObstacleLook {
      * (src/arena/water.tsx) rather than a flat surface. David, 30 Sep
      * 2026: "I wanna see the water moving in all the ponds." Left off for
      * the pits that are not water at all — lava, sand, a hatch.
+     *
+     * It also keeps the board drawing between rolls (DiceDemoScreen), so
+     * the whirlpool carries it too even though it has its own shader.
      */
     water?: true;
     /**
-     * The border around it. `stone` is the castle's cut kerb; `bank` is a
-     * soft earth lip; `hull` is a raised metal coaming. Null draws no
-     * border at all, which is what makes a lake read as a lake rather than
-     * as a swimming pool.
+     * The border's colour, and roughly what it is: `stone` a cut kerb,
+     * `bank` a soft lip, `hull` a metal coaming. Which pieces are actually
+     * drawn round the hole is decided by the pit's `kind` (hazardShapes.ts);
+     * this carries the board's own colour for them. Null for a pit whose
+     * edge is not a border at all — clouds, damp sand.
      */
     border: { kind: 'stone' | 'bank' | 'hull'; color: string } | null;
   };
@@ -74,8 +102,9 @@ export interface ObstacleLook {
 }
 
 const CASTLE_DAY: ObstacleLook = {
-  mound: { color: '#7fae66', roughness: 0.85, metalness: 0 },
+  mound: { kind: 'hill', color: '#7fae66', roughness: 0.85, metalness: 0 },
   pit: {
+    kind: 'moat',
     water: true,
     depths: '#0a2c4a',
     surface: '#2f9be2',
@@ -97,18 +126,27 @@ export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
 
   // The same castle later in the day. Grass goes blue-green as the light
   // leaves it, and the water picks up the sky rather than staying noon-blue.
+  // The courtyard of a ruin rather than a working castle (docs/board-
+  // redesign.md): the hill is a heap of fallen stones under ivy, and the
+  // moat a still reflecting pool with candles floating on it, catching
+  // the sunset.
   castleSunset: {
-    mound: { color: '#5c8455', roughness: 0.88, metalness: 0 },
+    mound: { kind: 'rubble', color: '#5c8455', roughness: 0.88, metalness: 0 },
     pit: {
+      kind: 'candlePool',
       water: true,
       depths: '#161036',
-      surface: '#5c6fc4',
+      surface: '#7a6cb8',
       surfaceOpacity: 0.66,
       surfaceRoughness: 0.14,
-      edge: '#ffd9b0',
+      edge: '#ffc99a',
       border: { kind: 'stone', color: '#6b5f52' },
     },
-    words: CASTLE_DAY.words,
+    words: {
+      pit: 'reflecting pool',
+      mound: 'rubble heap',
+      sink: 'Splash! A die fell in the reflecting pool!',
+    },
   },
 
   // A lake, not a pool. The giveaway on the old one was the cut-stone kerb
@@ -116,8 +154,9 @@ export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
   // that. Soft earth bank instead, and the water is the green-brown of
   // standing water under a canopy rather than swimming-pool blue.
   jungle: {
-    mound: { color: '#5f7d3f', roughness: 0.95, metalness: 0 },
+    mound: { kind: 'stump', color: '#5f7d3f', roughness: 0.95, metalness: 0 },
     pit: {
+      kind: 'lake',
       water: true,
       depths: '#08251c',
       surface: '#2f8f74',
@@ -128,7 +167,7 @@ export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
     },
     words: {
       pit: 'lake',
-      mound: 'mossy hillock',
+      mound: 'mossy stump',
       sink: 'Splash! A die fell in the lake!',
     },
   },
@@ -138,8 +177,9 @@ export const OBSTACLE_LOOKS: Record<ArenaId, ObstacleLook> = {
   // die does not sink, it falls out of the station. The physics is the
   // identical square hole; only what you see round it changes.
   space: {
-    mound: { color: '#8d94a3', roughness: 0.4, metalness: 0.55 },
+    mound: { kind: 'bulkhead', color: '#8d94a3', roughness: 0.4, metalness: 0.55 },
     pit: {
+      kind: 'hatch',
       depths: '#04050c',
       surface: '#0b1b3a',
       // Barely there: this is a view down into the dark, not a liquid.

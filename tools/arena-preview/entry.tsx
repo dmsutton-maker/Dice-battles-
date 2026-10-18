@@ -9,6 +9,8 @@ import { laneColors, makeUnits, ModeId } from '../../src/game/modes';
 import { PRISONER_COLORS } from '../../src/game/colors';
 import { RETREAT_SLOTS } from '../../src/game/stations';
 import { Prisoners } from '../../src/game/Prisoners';
+import { Mound, Pit } from '../../src/arena/Hazards';
+import { obstacleLook } from '../../src/arena/obstacleLooks';
 
 const W = 393, H = 852;
 
@@ -100,6 +102,28 @@ function padsFor(mode: string | null): (string | null)[] | undefined {
 }
 
 /*
+  ?hazards=1 draws the board's bump and pit, through the same Mound and
+  Pit components the game uses, at two fixed spots on the tray floor
+  (the game rolls fresh spots every battle, which is no good for
+  comparing one render with the next). Nothing animates — there is no
+  water clock here — so lava and beacons show their first frame.
+*/
+const hazards = new URLSearchParams(location.search).get('hazards') === '1';
+const TRAP_SPOTS = { mound: { x: -1.2, z: 1.6 }, pit: { x: 1.1, z: -1.2 } };
+
+function Traps({ id }: { id: ArenaId }) {
+  const look = obstacleLook(id);
+  return (
+    <>
+      <Mound look={look} position={[TRAP_SPOTS.mound.x, 0, TRAP_SPOTS.mound.z]} />
+      <group position={[TRAP_SPOTS.pit.x, 0, TRAP_SPOTS.pit.z]}>
+        <Pit look={look} />
+      </group>
+    </>
+  );
+}
+
+/*
   Any battlefield in the registry, not only the sixteen themed ones.
 
   It went through ThemedArena directly until 20 Sep 2026, so the four
@@ -128,6 +152,7 @@ function Scene({ id, mode }: { id: ArenaId; mode: string | null }) {
       {prisoners && (
         <Prisoners units={makeUnits('classic', PRISONER_COLORS, PRISONER_COLORS[0], PRISONER_COLORS[3])} />
       )}
+      {hazards && <Traps id={id} />}
     </>
   );
 }
