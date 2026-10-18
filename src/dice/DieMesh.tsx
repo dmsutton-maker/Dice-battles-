@@ -8,9 +8,13 @@ import {
   PatternId,
   STICKER_FRACTION,
 } from './patterns';
-import { createSymbolTexture } from './symbols';
 import { COLOR_SYMBOLS } from '../game/colorblind';
-import { cachedTexture } from '../arena/textureCache';
+import {
+  BEVEL_FRACTION,
+  dieShadeTexture,
+  SHADE_INTENSITY,
+  stickerTexture,
+} from './dieShading';
 
 /*
   One body geometry and one sticker geometry, shared by every die and built
@@ -26,7 +30,7 @@ let sharedStickerGeometry: THREE.CircleGeometry | null = null;
 function getBodyGeometry(): RoundedBoxGeometry {
   if (!sharedBodyGeometry) {
     const size = TUNING.dieSize;
-    sharedBodyGeometry = new RoundedBoxGeometry(size, size, size, 4, size * 0.12);
+    sharedBodyGeometry = new RoundedBoxGeometry(size, size, size, 4, size * BEVEL_FRACTION);
   }
   return sharedBodyGeometry;
 }
@@ -79,7 +83,12 @@ export const DieMesh = forwardRef<
   // one die rendering beige while the other stayed white under identical
   // materials, the dice no longer participate in lighting or tone mapping at
   // all. Every pixel is a constant color, so both dice are identical by
-  // construction. Depth comes from the silhouette and the blob shadow.
+  // construction. Depth comes from the silhouette, the blob shadow, and
+  // — since 18 Oct 2026 — light PAINTED into a shade map (dieShading.ts):
+  // darker toward the rounded edges, a glint on the bevel, a shadow round
+  // each sticker. It goes in as a lightMap, which MeshBasicMaterial
+  // multiplies in without consulting a single light, so every die on
+  // every phone still gets exactly the same numbers.
   // The shell colour and pattern are the equipped dice skin
   // (src/game/diceSkins.ts). Skins never touch the sticker colours, which
   // are the game signal.
@@ -98,8 +107,14 @@ export const DieMesh = forwardRef<
       The same mistake was made and fixed in preview.ts a version
       earlier. Fixing it in one of the two places is how it survived.
     */
+    // Shared by every die: it depends only on the shape. Never disposed.
+    const shade = {
+      lightMap: dieShadeTexture(),
+      lightMapIntensity: SHADE_INTENSITY,
+      toneMapped: false,
+    };
     if (pattern === 'plain') {
-      return new THREE.MeshBasicMaterial({ color: bodyColor, toneMapped: false });
+      return new THREE.MeshBasicMaterial({ color: bodyColor, ...shade });
     }
     /*
       SIX materials, not one, since 10 Sep 2026.
@@ -117,7 +132,7 @@ export const DieMesh = forwardRef<
     return createDieFaceTextures(pattern, bodyColor, patternInk ?? bodyColor).map(
       // A colour painter ignores the ink; a mask painter cannot do
       // without one.
-      (map) => new THREE.MeshBasicMaterial({ map, toneMapped: false }),
+      (map) => new THREE.MeshBasicMaterial({ map, ...shade }),
     );
   }, [bodyColor, pattern, patternInk]);
   // Unlit stickers with toneMapped:false — the face color IS the game
@@ -125,21 +140,21 @@ export const DieMesh = forwardRef<
   // must bypass the scene's tone mapping curve. This lets the rest of the
   // scene keep filmic tone mapping (which makes the white bodies pop)
   // without it muting or hue-shifting the sticker colors.
+  //
+  // Textured since 18 Oct 2026: a thin darker rim and a soft highlight arc
+  // at the very edge, so the sticker reads as set into the die. The
+  // middle of the sticker is still the exact hex; only the rim is shaded
+  // (see stickerTexture). Colourblind mode is the same sticker with the
+  // shape stamped on. Both are cached app-wide: twelve textures at most,
+  // shared by every die and never disposed.
   const stickerMaterials = useMemo(
     () =>
-      DIE_FACE_COLORS.map((c) =>
-        symbols
-          ? new THREE.MeshBasicMaterial({
-              // The colour is still the colour — the shape is stamped on
-              // top of it, so nothing about the palette changes.
-              // Cached: a symbol texture was built and uploaded per die per
-              // battle and never freed.
-              map: cachedTexture(`symbol:${COLOR_SYMBOLS[c.id]}:${c.hex}`, () =>
-                createSymbolTexture(COLOR_SYMBOLS[c.id], c.hex),
-              ),
-              toneMapped: false,
-            })
-          : new THREE.MeshBasicMaterial({ color: c.hex, toneMapped: false }),
+      DIE_FACE_COLORS.map(
+        (c) =>
+          new THREE.MeshBasicMaterial({
+            map: stickerTexture(c.hex, symbols ? COLOR_SYMBOLS[c.id] : null),
+            toneMapped: false,
+          }),
       ),
     [symbols],
   );

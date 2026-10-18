@@ -1,6 +1,7 @@
 import { DICE_SKINS } from '../game/diceSkins';
 import { shellPreviewUri } from './preview';
 import { createDieFaceTextures, PatternId } from './patterns';
+import { warmDieShading } from './dieShading';
 import type { DiceSkin } from '../game/diceSkins';
 
 /**
@@ -188,6 +189,12 @@ export function resetWarmForTest(): void {
  * the same job.
  */
 export function warmDieFaces(skin: DiceSkin | undefined): void {
+  // The shade and the stickers every die wears, whatever its skin.
+  try {
+    warmDieShading();
+  } catch {
+    // Built again on demand when the dice mount.
+  }
   if (!skin || skin.pattern === 'plain') return;
   try {
     createDieFaceTextures(

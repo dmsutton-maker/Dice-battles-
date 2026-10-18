@@ -58,6 +58,17 @@ const MASKS: Record<SymbolId, Mask> = {
   },
 };
 
+/**
+ * Is this point inside the shape? Symbol space: -1..1, +y up.
+ *
+ * Exported for the die's inset sticker (src/dice/dieShading.ts), which
+ * paints the same shapes at a finer size rather than keeping a second
+ * copy of them that could drift.
+ */
+export function symbolCovers(symbol: SymbolId, x: number, y: number): boolean {
+  return MASKS[symbol](x, y);
+}
+
 function parseHex(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];

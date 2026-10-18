@@ -5,7 +5,12 @@ import {
   patternPixels,
   PATTERN_SIZE,
   PatternId,
+  shellSampler,
+  SMOOTH_EDGES,
 } from '../src/dice/patterns';
+import { dieShadeTexture, shadeAt, stickerTexture, BEVEL_UV } from '../src/dice/dieShading';
+import { DIE_FACE_COLORS } from '../src/game/colors';
+import { COLOR_SYMBOLS } from '../src/game/colorblind';
 import { DICE_SKINS } from '../src/game/diceSkins';
 import { assert, assertEqual, note, suite, test } from './harness';
 
@@ -607,5 +612,171 @@ suite('textures · a die is one object, not six copies of a picture', () => {
       /cachedTexture\(`die:\$\{pattern\}/.test(src),
       'the die faces are not in the app-wide cache, so they repaint on every roll',
     );
+  });
+});
+
+/**
+ * The light painted into an unlit die (src/dice/dieShading.ts), and the
+ * edge smoothing in patternPixels — 18 Oct 2026.
+ */
+suite('textures · baked shading and inset stickers', () => {
+  const hexRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+  test('the middle of every sticker is the exact palette colour', () => {
+    /*
+      The colour IS the game. The rim may be shaded; the middle may not
+      move by a single step, with or without the colourblind shape.
+    */
+    for (const c of DIE_FACE_COLORS) {
+      const want = hexRgb(c.hex);
+      const tex = stickerTexture(c.hex, null);
+      const data = tex.image.data as Uint8Array;
+      const N = tex.image.width;
+      let checked = 0;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const r = Math.hypot(((x + 0.5) / N) * 2 - 1, ((y + 0.5) / N) * 2 - 1);
+          if (r > 0.66) continue;
+          const i = (y * N + x) * 4;
+          assert(
+            data[i] === want[0] && data[i + 1] === want[1] && data[i + 2] === want[2],
+            `${c.label}'s sticker is not ${c.hex} at its middle`,
+          );
+          checked++;
+        }
+      }
+      assert(checked > N * N * 0.3, 'the middle of the sticker was not measured');
+    }
+  });
+
+  test('the rim is darker than the face, and the same colour family', () => {
+    for (const c of DIE_FACE_COLORS) {
+      const want = hexRgb(c.hex);
+      const tex = stickerTexture(c.hex, null);
+      const data = tex.image.data as Uint8Array;
+      const N = tex.image.width;
+      // Straight out from the centre to the edge, along +x.
+      const i = (Math.floor(N / 2) * N + (N - 2)) * 4;
+      const rim = [data[i], data[i + 1], data[i + 2]];
+      const sum = (v: number[]) => v[0] + v[1] + v[2];
+      assert(sum(rim) < sum(want) * 0.8, `${c.label}'s sticker has no darker rim`);
+      // The brightest channel of the face is still the brightest of the rim.
+      const top = want.indexOf(Math.max(...want));
+      assert(
+        rim[top] === Math.max(...rim),
+        `${c.label}'s rim has changed hue rather than darkened`,
+      );
+    }
+  });
+
+  test('colourblind shapes survive on the inset sticker', () => {
+    // The same bounds as the flat symbol stickers in colorblind.test.ts.
+    for (const c of DIE_FACE_COLORS) {
+      const want = hexRgb(c.hex);
+      const tex = stickerTexture(c.hex, COLOR_SYMBOLS[c.id]);
+      const data = tex.image.data as Uint8Array;
+      const N = tex.image.width;
+      let inked = 0;
+      let inside = 0;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const r = Math.hypot(((x + 0.5) / N) * 2 - 1, ((y + 0.5) / N) * 2 - 1);
+          if (r > 0.66) continue;
+          inside++;
+          const i = (y * N + x) * 4;
+          const differs =
+            Math.abs(data[i] - want[0]) +
+            Math.abs(data[i + 1] - want[1]) +
+            Math.abs(data[i + 2] - want[2]);
+          if (differs > 30) inked++;
+        }
+      }
+      const share = inked / inside;
+      assert(share > 0.08 && share < 0.75, `${c.label}'s shape covers ${(share * 100).toFixed(1)}%`);
+    }
+  });
+
+  test('the sticker and shade textures are built once and shared', () => {
+    assert(stickerTexture('#cc2533', null) === stickerTexture('#cc2533', null), 'sticker rebuilt');
+    assert(dieShadeTexture() === dieShadeTexture(), 'shade map rebuilt');
+    const mesh = readFileSync('src/dice/DieMesh.tsx', 'utf8');
+    assert(/lightMap: dieShadeTexture\(\)/.test(mesh), 'DieMesh no longer shades the body');
+    assert(
+      !/new THREE\.MeshStandardMaterial|new THREE\.MeshLambertMaterial|new THREE\.MeshPhongMaterial/.test(mesh),
+      'DieMesh has gone back to a lit material — see the beige-die note there',
+    );
+  });
+
+  test('the shade darkens toward the edges and meets itself at every crest', () => {
+    const centre = shadeAt(0.5, 0.5);
+    const flatEdge = shadeAt(BEVEL_UV + 0.001, 0.5);
+    const crest = shadeAt(0.0005, 0.5);
+    const corner = shadeAt(0.0005, 0.0005);
+    assert(centre > 0.97 && centre <= 1.001, `the middle of a face is shaded (${centre})`);
+    assert(crest < centre * 0.85, `the edge of a face is barely darker (${crest} vs ${centre})`);
+    assert(corner < crest, 'a corner is no darker than an edge');
+    assert(flatEdge > crest, 'the bevel does not fall away');
+    // Two faces meet at a crest, each with its own copy of this map in its
+    // own orientation; the four edges must agree or the seam shows.
+    for (const t of [0.1, 0.3, 0.5]) {
+      const v = [shadeAt(0, t), shadeAt(1, t), shadeAt(t, 0), shadeAt(t, 1)];
+      assert(Math.max(...v) - Math.min(...v) < 1e-9, 'the four edges of a face disagree');
+    }
+    // Stored without clipping, so the glint is not flattened.
+    const data = dieShadeTexture().image.data as Uint8Array;
+    let max = 0;
+    for (let i = 0; i < data.length; i += 4) max = Math.max(max, data[i]);
+    assert(max < 255, 'the shade map clips at its brightest');
+  });
+
+  test('edge smoothing only ever touches texels on an edge', () => {
+    /*
+      Everywhere else a smoothed painter must give exactly what a single
+      sample gives — the smoothing is for staircases, not a blur.
+    */
+    for (const skin of DICE_SKINS) {
+      if (!SMOOTH_EDGES.has(skin.pattern)) continue;
+      const pattern = skin.pattern as Exclude<PatternId, 'plain'>;
+      const ink = skin.ink ?? skin.body;
+      const px = patternPixels(pattern, skin.body, ink, 1, 1);
+      const sample = shellSampler(pattern, skin.body, ink);
+      let changed = 0;
+      for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+          const c = sample(x + S, y + S).map(Math.round);
+          const i = (y * S + x) * 3;
+          if (c[0] !== px[i] || c[1] !== px[i + 1] || c[2] !== px[i + 2]) changed++;
+        }
+      }
+      assert(changed > 0, `${skin.id} is on SMOOTH_EDGES but has no edge to smooth`);
+      assert(changed < S * S * 0.5, `${skin.id}: smoothing changed ${changed} of ${S * S} texels`);
+    }
+  });
+
+  test('every smoothed painter is a smooth function of position', () => {
+    /*
+      Asked a hair away from a whole texel, a smooth painter gives almost
+      the same colour almost everywhere. One that hashes each whole texel
+      (a sparkle, a speck, a weave) gives a different one most of the time
+      — and averaging those would wash its texture out, not smooth an
+      edge. See SMOOTH_EDGES.
+    */
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (const pattern of SMOOTH_EDGES) {
+      const skin = DICE_SKINS.find((s) => s.pattern === pattern);
+      if (!skin) continue;
+      const sample = shellSampler(pattern as Exclude<PatternId, 'plain'>, skin.body, skin.ink ?? skin.body);
+      let jumps = 0;
+      const N = 1500;
+      for (let k = 0; k < N; k++) {
+        const x = Math.floor(rnd() * 256);
+        const y = Math.floor(rnd() * 192);
+        const a = sample(x, y);
+        const b = sample(x + 0.013, y + 0.007);
+        if (Math.max(...a.map((v, i) => Math.abs(v - b[i]))) > 10) jumps++;
+      }
+      assert(jumps / N < 0.03, `${pattern} jumps at ${((jumps / N) * 100).toFixed(1)}% of nudges`);
+    }
   });
 });
