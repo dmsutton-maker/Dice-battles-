@@ -2566,6 +2566,120 @@ export function isPerFace(pattern: string): boolean {
 /** A sheet coordinate, wrapped back onto its own face. */
 const onFace = (v: number) => ((v % SIZE) + SIZE) % SIZE;
 
+/** One shell colour at a sheet coordinate, unrounded. */
+type Sampler = (sx: number, sy: number) => [number, number, number];
+
+/**
+ * The colour of a pattern at any SHEET coordinate, fractions included.
+ *
+ * patternPixels asks it once per texel; edge texels are asked again at
+ * sub-texel points (see SMOOTH_EDGES). Exported so the suite can check
+ * that every painter on that list really is a smooth function of
+ * position.
+ */
+export function shellSampler(
+  pattern: Exclude<PatternId, 'plain'>,
+  base: string,
+  ink: string,
+): Sampler {
+  const perFace = PER_FACE_MOTIFS.has(pattern);
+  // A motif design is asked for its own face; everything else is asked
+  // for its place on the whole sheet. See PER_FACE_MOTIFS.
+  const wrap = (v: number) => (perFace ? onFace(v) : v);
+
+  // The full-colour patterns paint their own pixels outright.
+  if (COLOR_IDS.has(pattern)) {
+    const paintColor = COLOR_PAINTERS[pattern as ColorPatternId];
+    return (sx, sy) => paintColor(wrap(sx), wrap(sy));
+  }
+
+  const [br, bg, bb] = rgb(base);
+  const [ir, ig, ib] = rgb(ink);
+  const paint = PAINTERS[pattern as MaskPatternId];
+  return (sx, sy) => {
+    const mask = Math.max(-1, Math.min(1, paint(wrap(sx), wrap(sy))));
+    // Positive tints toward the ink, negative darkens the shell itself.
+    const mix = (b: number, i: number) =>
+      mask >= 0 ? b + (i - b) * mask : b * (1 + mask * SHADE_DEPTH);
+    return [mix(br, ir), mix(bg, ig), mix(bb, ib)];
+  };
+}
+
+/**
+ * The painters whose hard edges are smoothed by sampling again INSIDE
+ * the texel, on the texels that sit on an edge.
+ *
+ * 18 Oct 2026, "crisper at the shelf and preview sizes". A painter that
+ * decides in or out per texel — a leopard's rosette, a cow's patch, a
+ * snake's diamond — draws its edges as a raw 64px staircase. On the
+ * table a face is about 190 real pixels across and the Store card 174,
+ * so every texel is magnified about three times and the staircase is
+ * the first thing the eye finds: the spots look knitted. A texel that
+ * straddles an edge now takes the AVERAGE of five points inside it, so
+ * the boundary is partly-in and partly-out, which is what keeps an edge
+ * straight when it is magnified.
+ *
+ * WHY ONLY ON EDGES. Five samples everywhere is five times the warm-up,
+ * which paints 336 of these. A texel that matches its neighbours is
+ * already right, and only the ones that differ sharply are re-asked, so
+ * the cost lands where the staircase is and nowhere else.
+ *
+ * WHY A LIST and not every painter. Some painters are deliberately NOT
+ * functions of a continuous position: denim's weave is `x % 2`, stars
+ * and granite hash each whole texel into a sparkle or a speck. Asked at
+ * x + 0.25 those give a different random texel, and averaging would
+ * wash the speckle out rather than smooth an edge. Painters that already
+ * supersample themselves (fish, blossom, waffle) gain nothing and would
+ * pay nine times over. tests/textures.test.ts checks that everything
+ * here is continuous, so a painter that grows a per-texel hash cannot
+ * stay on the list unnoticed.
+ */
+export const SMOOTH_EDGES: ReadonlySet<string> = new Set([
+  // Animals, where the staircase showed most.
+  'rosettes',
+  'tigerStripes',
+  'patches',
+  'giraffe',
+  'diamonds',
+  'shell',
+  'peacock',
+  'paws',
+  // Balls and food: round shapes and seams.
+  'soccer',
+  'baseball',
+  'tennis',
+  'laces',
+  'bowling',
+  'dimples',
+  'cookie',
+  'candyStripes',
+  'citrus',
+  'chocolate',
+  'strawberry',
+  'honeycomb',
+  'watermelon',
+  'donut',
+  // Materials and the rest.
+  'bubbles',
+  'stars',
+  'frost',
+  'lavender',
+  'tartan',
+]);
+
+/**
+ * How far apart two neighbouring texels must be, in the largest of the
+ * three channels, before they count as an edge. Below this a painter's
+ * own ramp is doing the work already.
+ */
+const EDGE_STEP = 56;
+
+/** Points inside a texel, as offsets from its sample point. */
+const SUBSAMPLES: readonly (readonly [number, number])[] = [
+  [-1 / 3, 1 / 6],
+  [1 / 3, -1 / 6],
+];
+
 /**
  * Raw RGB bytes for a pattern, one triple per pixel.
  *
@@ -2591,55 +2705,67 @@ export function patternPixels(
   cellX = 0,
   cellY = 0,
 ): number[] {
-  const parse = (hex: string) => {
-    const n = parseInt(hex.slice(1), 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  };
-  const [br, bg, bb] = parse(base);
-  const [ir, ig, ib] = parse(ink);
+  const sample = shellSampler(pattern, base, ink);
+  const ox = cellX * SIZE;
+  const oy = cellY * SIZE;
 
-  // The full-colour patterns paint their own pixels outright.
-  if (COLOR_IDS.has(pattern)) {
-    const paintColor = COLOR_PAINTERS[pattern as ColorPatternId];
-    const perFace = PER_FACE_MOTIFS.has(pattern);
-    const out: number[] = [];
+  const px = new Float64Array(SIZE * SIZE * 3);
+  for (let y = 0, i = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++, i += 3) {
+      const c = sample(x + ox, y + oy);
+      px[i] = c[0];
+      px[i + 1] = c[1];
+      px[i + 2] = c[2];
+    }
+  }
+
+  if (SMOOTH_EDGES.has(pattern)) {
+    // Mark both texels of every sharp step, across and down.
+    const edge = new Uint8Array(SIZE * SIZE);
+    const step = (a: number, b: number) =>
+      Math.max(
+        Math.abs(px[a] - px[b]),
+        Math.abs(px[a + 1] - px[b + 1]),
+        Math.abs(px[a + 2] - px[b + 2]),
+      ) > EDGE_STEP;
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
-        // A motif design is asked for its own face; everything else is
-        // asked for its place on the whole sheet. See PER_FACE.
-        const sx = x + cellX * SIZE;
-        const sy = y + cellY * SIZE;
-        out.push(...paintColor(perFace ? onFace(sx) : sx, perFace ? onFace(sy) : sy));
+        const k = y * SIZE + x;
+        if (x + 1 < SIZE && step(k * 3, (k + 1) * 3)) edge[k] = edge[k + 1] = 1;
+        if (y + 1 < SIZE && step(k * 3, (k + SIZE) * 3)) edge[k] = edge[k + SIZE] = 1;
       }
     }
-    return out;
-  }
-
-  const paint = PAINTERS[pattern as MaskPatternId];
-  const perFace = PER_FACE_MOTIFS.has(pattern);
-
-  const out: number[] = [];
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++) {
-      const sx = x + cellX * SIZE;
-      const sy = y + cellY * SIZE;
-      const mask = Math.max(
-        -1,
-        Math.min(1, paint(perFace ? onFace(sx) : sx, perFace ? onFace(sy) : sy)),
-      );
-      // Positive tints toward the ink, negative darkens the shell itself.
-      const mix = (base: number, ink: number) =>
-        mask >= 0 ? base + (ink - base) * mask : base * (1 + mask * SHADE_DEPTH);
-      // Rounded to whole bytes. A Uint8Array used to truncate these for
-      // free; the PNG encoder takes a plain array and a fractional byte
-      // corrupts the stream.
-      out.push(
-        Math.round(mix(br, ir)),
-        Math.round(mix(bg, ig)),
-        Math.round(mix(bb, ib)),
-      );
+    for (let k = 0; k < SIZE * SIZE; k++) {
+      if (!edge[k]) continue;
+      const x = k % SIZE;
+      const y = (k - x) / SIZE;
+      const i = k * 3;
+      let r = px[i];
+      let g = px[i + 1];
+      let b = px[i + 2];
+      for (const [dx, dy] of SUBSAMPLES) {
+        // Kept on this square: a motif painted per face would otherwise
+        // wrap round and borrow a texel from the far side of the face.
+        const c = sample(
+          Math.min(SIZE - 1, Math.max(0, x + dx)) + ox,
+          Math.min(SIZE - 1, Math.max(0, y + dy)) + oy,
+        );
+        r += c[0];
+        g += c[1];
+        b += c[2];
+      }
+      const n = SUBSAMPLES.length + 1;
+      px[i] = r / n;
+      px[i + 1] = g / n;
+      px[i + 2] = b / n;
     }
   }
+
+  // Rounded to whole bytes. A Uint8Array used to truncate these for
+  // free; the PNG encoder takes a plain array and a fractional byte
+  // corrupts the stream.
+  const out = new Array<number>(SIZE * SIZE * 3);
+  for (let i = 0; i < out.length; i++) out[i] = Math.round(px[i]);
   return out;
 }
 
