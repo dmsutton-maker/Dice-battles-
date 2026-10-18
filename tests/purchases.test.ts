@@ -432,7 +432,10 @@ suite('purchases · the family preview of what is coming', () => {
   test('it shows every parked product, and Dice Club stays gone', () => {
     const parked = PRODUCTS.filter((p) => !p.available).map((p) => p.id);
     note(`family preview: ${parked.join(', ')}`);
-    assert(parked.includes('starter_pack'), 'the starter pack is missing from the preview');
+    // David, 18 Oct 2026: "Move the starter pack out of the coming later
+    // and into the full store." It is on sale now, so it must NOT be here.
+    assert(!parked.includes('starter_pack'), 'the starter pack is still parked in the preview');
+    assert(parked.length > 0, 'nothing is parked any more, so the preview has nothing to show');
     // David, 5 Oct 2026: "take Dice Club out for now".
     assert(!PRODUCTS.some((p) => /club/.test(p.id)), 'Dice Club is back in the catalogue');
   });

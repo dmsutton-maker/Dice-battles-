@@ -16,6 +16,8 @@ export type PatternId =
   | 'stripes'
   | 'spots'
   | 'stars'
+  // The Supporter die, 18 Oct 2026: the Paper Ship studio's own mark.
+  | 'paperShips'
   | 'grain'
   | 'bubbles'
   | 'frost'
@@ -387,6 +389,44 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
         const folded = ((a % sector) + sector) % sector;
         const t = Math.abs(folded - half) / half;
         if (r <= (INNER + (1 - INNER) * t) * 0.95) hit++;
+      }
+    }
+    return hit / 9;
+  },
+
+  /**
+   * Paper ships: little folded-paper boats, the Paper Ship studio's own
+   * mark, for the Supporter die (the Starter pack's money-only set, 18 Oct
+   * 2026). A boat is a hull that narrows toward the keel under one tall
+   * triangular sail — the shape a child folds from a sheet of paper. Laid
+   * out like `stars` (staggered rows, a little tilt from a hash of each
+   * cell, 3x3 supersampled) so the edges come out clean at shelf size.
+   */
+  paperShips: (x, y) => {
+    const cell = SIZE / 4;
+    const row = Math.floor(y / cell);
+    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const col = Math.floor((x + offset) / cell);
+    const tilt = (hashCell(col + 29, row + 13) - 0.5) * 0.5;
+    const cos = Math.cos(tilt);
+    const sin = Math.sin(tilt);
+    const scale = 0.94;
+    let hit = 0;
+    for (let sy = 0; sy < 3; sy++) {
+      for (let sx = 0; sx < 3; sx++) {
+        const px = x + (sx - 1) / 3;
+        const py = y + (sy - 1) / 3;
+        const cx0 = ((((px + offset) % cell) + cell) % cell - cell / 2) / (cell / 2);
+        const cy0 = ((((py % cell) + cell) % cell) - cell / 2) / (cell / 2);
+        const u = (cx0 * cos + cy0 * sin) / scale;
+        const v = (-cx0 * sin + cy0 * cos) / scale;
+        // Hull: from v 0.16 (deck, half-width 0.86) down to v 0.62
+        // (keel, half-width 0.44).
+        const hull = v >= 0.16 && v <= 0.62 && Math.abs(u) <= 0.86 - (v - 0.16) * 0.9;
+        // Sail: apex at (0, -0.8), foot at v 0.06 — the thin gap above the
+        // deck is what makes it read as a folded boat rather than a hat.
+        const sail = v >= -0.8 && v < 0.06 && Math.abs(u) <= ((v + 0.8) / 0.86) * 0.46;
+        if (hull || sail) hit++;
       }
     }
     return hit / 9;

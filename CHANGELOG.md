@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.113.0 — 2026-10-18 · requested by David
+
+### Added
+- **The Starter pack is on sale.** David: "Move the starter pack out of
+  the coming later and into the full store." $4.99 for 1,500 coins and
+  the Supporter die, offered in a player's first two days with the game,
+  as the family planned it. Family tester mode always shows it, since
+  every family phone is long past its two days.
+- **The Supporter die**, which is what had kept the pack parked: it did
+  not exist. Deep sea teal with a fleet of little antique-gold paper
+  ships, the studio's own mark, painted by a new `paperShips` pattern.
+  Money-only (`paid: true`), so it is not on the trophy ladder or the
+  coin shelf, and its locked card says "In the Starter pack". It is
+  owned through the purchase record, so Apple's "Put it back" restores
+  it on a new phone and RESET cannot take it; the 1,500 coins are spent
+  like any coins and are not restored.
+- The in-app purchase review screenshot now shows all six products.
+
+### Needs doing in App Store Connect
+- A sixth in-app purchase: `starter_pack`, Non-Consumable, $4.99,
+  display name "Starter pack", description "1,500 coins and the
+  Supporter die." Until it exists the shelf shows its price as a dash
+  and buying it says it did not go through.
+
 ## v1.112.0 — 2026-10-18 · requested by David
 
 ### Changed

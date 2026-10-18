@@ -2188,6 +2188,7 @@ export function DiceDemoScreen() {
         price: skin.price,
         needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
         prize: skin.prize,
+        paid: skin.paid,
         passLevel: skin.pass ? seasonLevelOf('dice', skin.id) : null,
         passGold: seasonTrackOf('dice', skin.id) === 'gold',
         canBuy: preview.from === 'store',

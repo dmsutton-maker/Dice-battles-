@@ -1,4 +1,5 @@
 import { DICE_SKINS } from './diceSkins';
+import { hasEntitlement } from './purchases';
 import { MODE_ORDER } from './modes';
 import { owns } from './currency';
 import { getProgress, hasCheated, Progress, TIERS } from './progress';
@@ -87,6 +88,7 @@ export function setsOwned(trophies: number): number {
     // below, which would otherwise hand the Amethyst die to everyone on
     // install — that combination is how Ivory says it is free.
     if (skin.prize || skin.pass) return owns(skin.id);
+    if (skin.paid) return hasEntitlement(skin.id);
     if (skin.price !== undefined) return owns(skin.id);
     if (skin.unlock === null || skin.unlock === undefined) return true;
     const tier = TIERS.find((t) => t.id === skin.unlock);

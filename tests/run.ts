@@ -59,6 +59,7 @@ async function main(): Promise<void> {
   await import('./warmup.test');
   await import('./auditFixes.test');
   await import('./glide.test');
+  await import('./starterPack.test');
   process.exit(await runAll());
 }
 

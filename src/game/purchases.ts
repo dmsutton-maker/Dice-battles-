@@ -259,10 +259,10 @@ async function refreshPrices(): Promise<void> {
 }
 
 /** What the Store screen needs to draw itself. */
-export function storeState(now: number = Date.now()): StoreState {
+export function storeState(now: number = Date.now(), family = false): StoreState {
   return {
     available: ready,
-    products: sellable(installedAt, now),
+    products: sellable(installedAt, now, family),
     priceOf: (id: string) => priceById.get(id) ?? null,
   };
 }

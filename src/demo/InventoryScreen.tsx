@@ -145,6 +145,9 @@ export function InventoryScreen({
                     which says the die is already earned.
                   */
                   <Text style={styles.priceTag}>Win it in a cup</Text>
+                ) : skin.paid ? (
+                  // Real money only, so not a coin tag and not a trophy tag.
+                  <Text style={styles.priceTag}>Starter pack</Text>
                 ) : skin.pass ? (
                   // Season pass only — same reason as the cup prize above.
                   <Text style={styles.priceTag}>

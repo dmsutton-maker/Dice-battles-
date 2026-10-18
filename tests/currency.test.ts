@@ -14,6 +14,7 @@ import {
   DICE_SKINS,
   LADDER_SKINS,
   PASS_SKINS,
+  PAID_SKINS,
   PRIZE_SKINS,
   STORE_SKINS,
 } from '../src/game/diceSkins';
@@ -426,19 +427,22 @@ suite('inventory · everything is listed cheapest first', () => {
       pass's dice in the order the pass hands them over. The prizes and
       the pass go last because neither locked card is an invitation to
       spend anything — there is no price to put them in order beside.
+      FIVE since 18 Oct 2026: the money-only Supporter die (Starter pack)
+      comes last of all, after the pass.
     */
     const ladder = INVENTORY_SKIN_ORDER.filter(
-      (s) => s.price === undefined && !s.prize && !s.pass,
+      (s) => s.price === undefined && !s.prize && !s.pass && !s.paid,
     );
     const shop = INVENTORY_SKIN_ORDER.filter((s) => s.price !== undefined);
     const prizes = INVENTORY_SKIN_ORDER.filter((s) => s.prize);
     const pass = INVENTORY_SKIN_ORDER.filter((s) => s.pass);
+    const paid = INVENTORY_SKIN_ORDER.filter((s) => s.paid);
 
     // The groups must not interleave, or "then you can buy these" stops
     // being true halfway down.
     assertEqual(
       INVENTORY_SKIN_ORDER.slice(0, ladder.length).every(
-        (s) => s.price === undefined && !s.prize && !s.pass,
+        (s) => s.price === undefined && !s.prize && !s.pass && !s.paid,
       ),
       true,
       'every trophy die comes before every coin die',
@@ -456,10 +460,19 @@ suite('inventory · everything is listed cheapest first', () => {
       'the prize dice are not after the shop',
     );
     assertEqual(
-      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length + prizes.length).every((s) => s.pass),
+      INVENTORY_SKIN_ORDER.slice(
+        ladder.length + shop.length + prizes.length,
+        ladder.length + shop.length + prizes.length + pass.length,
+      ).every((s) => s.pass),
       true,
-      'the season pass dice are not last',
+      'the season pass dice are not after the prizes',
     );
+    assertEqual(
+      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length + prizes.length + pass.length).every((s) => s.paid),
+      true,
+      'the money-only dice are not last',
+    );
+    assertEqual(paid.length, PAID_SKINS.length, 'a money-only die fell off the list');
     assertEqual(prizes.length, PRIZE_SKINS.length, 'a prize die fell off the list');
     assertEqual(pass.length, PASS_SKINS.length, 'a season pass die fell off the list');
     for (let i = 1; i < pass.length; i++) {
@@ -496,9 +509,9 @@ suite('inventory · everything is listed cheapest first', () => {
       'no duplicates',
     );
     assertEqual(
-      LADDER_SKINS.length + STORE_SKINS.length + PRIZE_SKINS.length + PASS_SKINS.length,
+      LADDER_SKINS.length + STORE_SKINS.length + PRIZE_SKINS.length + PASS_SKINS.length + PAID_SKINS.length,
       DICE_SKINS.length,
-      'every die is earned, bought, won in a cup or won on the pass — never none of them',
+      'every die is earned, bought, won in a cup, won on the pass or bought with money — never none of them',
     );
   });
 

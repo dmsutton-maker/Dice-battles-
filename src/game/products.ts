@@ -153,16 +153,21 @@ export const PRODUCTS: Product[] = [
     name: 'Starter pack',
     details:
       "1,500 coins and the Supporter die, a dice set nobody can earn any other way.\n\nOnly offered in your first two days with the game.",
-    blurb: '1,500 coins and the Supporter die. Only in your first two days.',
+    blurb: '1,500 coins and the Supporter die, which you can only get here.',
     usd: 4.99,
     coins: 1500,
     grants: ['supporter'],
     starterOnly: true,
-    available: false,
-    blockedBy:
-      'The Supporter die does not exist yet. It has to be a set nobody ' +
-      'can earn with coins, which means designing one — see the note on ' +
-      'premium sets below.',
+    /*
+      On sale since 18 Oct 2026. David: "Move the starter pack out of the
+      coming later and into the full store." What held it back was the
+      Supporter die, which did not exist; it does now (diceSkins.ts,
+      `paid: true`), owned through the purchase record so Apple's Restore
+      brings it back. The 1,500 coins are spent like any coins and are not
+      restored. Needs its own product in App Store Connect:
+      starter_pack, Non-Consumable, $4.99.
+    */
+    available: true,
   },
 
   /*
@@ -227,10 +232,20 @@ export const PRODUCTS: Product[] = [
 ];
 
 /** The products a player can actually be shown right now. */
-export function sellable(installedAt: number | null, now: number): Product[] {
+export function sellable(
+  installedAt: number | null,
+  now: number,
+  /**
+   * Family tester mode. The family installed the game long before the
+   * Starter pack went on sale, so its two-day window closed months ago
+   * for every one of them — without this they could never see it, let
+   * alone try buying it in the sandbox. Players never have this on.
+   */
+  family = false,
+): Product[] {
   return PRODUCTS.filter((p) => {
     if (!p.available) return false;
-    if (p.starterOnly) return withinStarterWindow(installedAt, now);
+    if (p.starterOnly) return family || withinStarterWindow(installedAt, now);
     return true;
   });
 }

@@ -48,14 +48,18 @@ export function MoneyShelf({
   /** Moves on when the Store has glided to the Gold Pass: light it up. */
   goldGlow?: number;
 }) {
-  const [state, setState] = useState(() => storeState());
+  // Family tester mode sees the Starter pack whatever the install date.
+  const [state, setState] = useState(() => storeState(Date.now(), familyPreview));
   const [asking, setAsking] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
   const [told, setTold] = useState<{ title: string; body: string } | null>(null);
   /** The product whose full description is open, if any. */
   const [viewing, setViewing] = useState<Product | null>(null);
 
-  const refresh = useCallback(() => setState(storeState()), []);
+  const refresh = useCallback(
+    () => setState(storeState(Date.now(), familyPreview)),
+    [familyPreview],
+  );
 
   useEffect(() => {
     /*

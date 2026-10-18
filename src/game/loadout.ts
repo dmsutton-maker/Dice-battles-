@@ -6,12 +6,14 @@ import {
   DiceSkin,
   DICE_SKINS,
   LADDER_SKINS,
+  PAID_SKINS,
   PASS_SKINS,
   PRIZE_SKINS,
   skinById,
   STORE_SKINS,
 } from './diceSkins';
 import { grantItem, owns } from './currency';
+import { hasEntitlement } from './purchases';
 import {
   getProgress,
   hasUnlockAll,
@@ -180,6 +182,8 @@ export const INVENTORY_SKIN_ORDER: DiceSkin[] = [
   ...PASS_SKINS.slice().sort(
     (a, b) => (seasonLevelOf('dice', a.id) ?? 0) - (seasonLevelOf('dice', b.id) ?? 0),
   ),
+  // Bought with real money (the Starter pack's Supporter die).
+  ...PAID_SKINS,
 ];
 
 const STORAGE_KEY = 'dice-battles:loadout';
@@ -258,6 +262,9 @@ export function isSkinUnlocked(skinId: string, trophies: number): boolean {
     setsOwned).
   */
   if (skin.prize || skin.pass) return hasUnlockAll() || owns(skin.id);
+  // Bought with real money: the purchase record is the proof, and it is
+  // the one thing Apple's Restore brings back.
+  if (skin.paid) return hasUnlockAll() || hasEntitlement(skin.id);
   if (skin.price !== undefined) return hasUnlockAll() || owns(skin.id);
   if (skin.unlock === null || skin.unlock === undefined) return true;
   return isUnlocked(skin.unlock, trophies);

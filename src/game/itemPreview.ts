@@ -66,7 +66,13 @@ export type PreviewAction =
    * wrong way. The advice here is simply "keep playing" — every battle
    * fills the pass.
    */
-  | { kind: 'pass'; level: number; gold?: boolean };
+  | { kind: 'pass'; level: number; gold?: boolean }
+  /**
+   * Only in the Starter pack, bought with real money. Its own kind for
+   * the reason the others have one: "keep saving coins" or "keep playing"
+   * would both send a player looking in the wrong place.
+   */
+  | { kind: 'paid' };
 
 export interface PreviewState {
   trophies: number;
@@ -92,6 +98,8 @@ export interface PreviewState {
   passLevel?: number | null;
   /** On the Gold Pass row rather than the free one (seasonPass.ts). */
   passGold?: boolean;
+  /** Only sold for real money (the Supporter die, in the Starter pack). */
+  paid?: boolean;
 }
 
 /**
@@ -121,6 +129,7 @@ export function previewAction(state: PreviewState): PreviewAction {
   // Before the trophy fallback, which would otherwise answer "0 more
   // trophies to go" for something trophies cannot buy at all.
   if (state.prize) return { kind: 'prize' };
+  if (state.paid) return { kind: 'paid' };
   if (state.passLevel) return { kind: 'pass', level: state.passLevel, gold: state.passGold === true };
 
   const need = state.needTrophies ?? 0;
@@ -146,6 +155,8 @@ export function actionLabel(action: PreviewAction): string {
       return 'Win it in a cup';
     case 'pass':
       return action.gold ? `Gold Pass level ${action.level}` : `Season pass level ${action.level}`;
+    case 'paid':
+      return 'In the Starter pack';
   }
 }
 

@@ -47,6 +47,15 @@ export interface DiceSkin {
    */
   pass?: true;
   /**
+   * Bought with real money, and available no other way — the Supporter
+   * die in the Starter pack (src/game/products.ts). Owned through the
+   * purchase record (purchases.ts `hasEntitlement`), which Apple restores
+   * on a new phone, rather than the coin wallet, which RESET clears. Its
+   * own flag for the reason `prize` has one: "no price and no unlock"
+   * means FREE.
+   */
+  paid?: true;
+  /**
    * Something the skin does beyond its paint, drawn by the scene rather
    * than the shell texture: 'fire' and 'ice' — see src/dice/dieEffect.ts.
    * Looks only: an effect never reaches the physics or the settle rule.
@@ -383,6 +392,22 @@ export const DICE_SKINS: DiceSkin[] = [
     ink: '#f4ecff',
     prize: true,
   },
+  /*
+    THE SUPPORTER DIE. Only in the Starter pack, which David moved onto
+    the real-money shelf on 18 Oct 2026. Deep sea teal with a fleet of
+    little antique-gold paper ships — the studio's own mark, on the one
+    die that says you supported it. The gold is muted on purpose:
+    Starry's note above is why — pattern in the palette's bright yellow
+    competed with the yellow face sticker.
+  */
+  {
+    id: 'supporter',
+    name: 'Supporter',
+    body: '#14555c',
+    pattern: 'paperShips',
+    ink: '#d6b25e',
+    paid: true,
+  },
 ];
 
 /**
@@ -402,8 +427,11 @@ export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined).sort(
  * not exist.
  */
 export const LADDER_SKINS = DICE_SKINS.filter(
-  (s) => s.price === undefined && !s.prize && !s.pass,
+  (s) => s.price === undefined && !s.prize && !s.pass && !s.paid,
 );
+
+/** Skins that can only be bought with real money. */
+export const PAID_SKINS = DICE_SKINS.filter((s) => s.paid);
 
 /** Skins that can only be won on the season pass. */
 export const PASS_SKINS = DICE_SKINS.filter((s) => s.pass);
