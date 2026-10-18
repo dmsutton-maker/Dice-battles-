@@ -107,16 +107,23 @@ export interface PropPlacement {
  * the crest along the wall top and the four corner pieces change, which
  * is the same bargain the hazards make — the suite asserts that the wall
  * geometry never reads this field.
+ *
+ * Two of the sixteen were still not their own building, and the board
+ * redesign of 18 Oct 2026 (docs/board-redesign.md) named them: Frozen
+ * Lights wore the Space Station's panelled hull and Sky Kingdom the
+ * castle's merlons. They are 'iceBlocks' and 'cloudBalustrade' now, and
+ * there is no castle among the sixteen at all — the request was
+ * precisely "don't just make different color castles".
  */
 export type ArenaStructure =
-  | 'snowFence'    // snow: timber palings under a cap of snow
-  | 'adobe'        // desert: sun-dried mud brick, stepped corners
-  | 'basalt'       // volcano: hexagonal columns, obsidian spires
-  | 'logPile'      // autumn: stacked cordwood, a stump at each corner
-  | 'station'      // aurora: panelled polar station, antenna masts
-  | 'stalagmite'   // cavern: dripstone teeth, crystal clusters
-  | 'battlement'   // sky: the one real castle, merlons and cone roofs
-  | 'airlock'      // moon: ribbed hull plating, dish antennae
+  | 'snowFence'    // snow: a snowbank with a slatted snow-fence in it
+  | 'adobe'        // desert: round-topped adobe parapet, beam ends through it
+  | 'basalt'       // volcano: clustered basalt columns, a smoking cone per corner
+  | 'logPile'      // autumn: zigzag split-rail fence, stump and pumpkin corners
+  | 'iceBlocks'    // aurora: stacked ice blocks, ice obelisks at the corners
+  | 'stalagmite'   // cavern: rows of dripstone, crystal clusters among them
+  | 'cloudBalustrade' // sky: a gold balustrade standing on cloud
+  | 'airlock'      // moon: a regolith berm with habitat modules, dome corners
   | 'driftwood'    // beach: leaning weathered planks, parasols
   | 'gingerbread'  // candy: piped icing scallops, candy swirls
   | 'mossStone'    // glade: mossy boulders, giant toadstools
@@ -217,7 +224,8 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   /* ── TROPHY LADDER ─────────────────────────────────────────────── */
 
   snow: {
-    // A hollow in the woods, fenced with timber. Not a fortress.
+    // A hollow in the woods: a snowbank round it with a wooden
+    // snow-fence standing in the drift. Not a fortress.
     structure: 'snowFence',
     // The hill and floor.b tones sit a real step bluer than their pale
     // partners — the 31 Aug 2026 skin review found the old pair so
@@ -225,8 +233,14 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     // read as flat plaster rather than snow.
     meadow: '#e7f0f6', hill: '#c8d9e8', mountain: '#b9c9d8', cloud: '#ffffff',
     floor: { a: '#e3edf4', b: '#c2d3e6' },
-    wall: { color: '#b7c6d2', cap: '#8a6a4a' },
-    tower: { body: '#b7c6d2', roof: '#5b87b0' },
+    /*
+      Five roles (docs/board-redesign.md): base the floor pair, surface
+      the packed-snow wall, accent the marker poles' red, glow and shadow
+      in boardKits.tsx (a low winter sun; snow-shadow blue). The cap is
+      the snow-fence's timber, the one dark thing on the rim.
+    */
+    wall: { color: '#d3dfea', cap: '#7d5b3c' },
+    tower: { body: '#d3dfea', roof: '#c4473d' },
     jail: { platform: '#9dafbe', bars: '#4b5866' },
     retreat: { padA: '#f3f8fb', padB: '#d8e6f0', post: '#8a5a34', canopy: '#d95f5f', pool: '#9fd3f0' },
     sky: { sun: { color: '#fff6d8', size: 1.6 }, stars: false, body: null },
@@ -265,12 +279,17 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   desert: {
-    // Sandstone heaped along the rim, cairns at the corners.
+    // An adobe pueblo wall, rounded over by hand, beam ends through it;
+    // a round tower with a domed roof at each corner.
     structure: 'adobe',
-    meadow: '#e8c987', hill: '#dcb968', mountain: '#c4924e', cloud: null,
-    floor: { a: '#e3c384', b: '#d4b06a' },
-    wall: { color: '#c9a05c', cap: '#b08a48' },
-    tower: { body: '#c9a05c', roof: '#a5602f' },
+    // `mountain` is the shaded face of a dune in the ground painter.
+    meadow: '#e8c987', hill: '#dcb968', mountain: '#b98448', cloud: null,
+    floor: { a: '#e6c78c', b: '#d0a865' },
+    // Base the sand, surface sun-baked adobe a step redder than the sand
+    // so the wall does not melt into the floor, accent the terracotta
+    // domes; glow (white sun) and shadow (lee-side brown) in boardKits.
+    wall: { color: '#cf9a62', cap: '#bf8853' },
+    tower: { body: '#cf9a62', roof: '#b0623a' },
     jail: { platform: '#b08a48', bars: '#5e4426' },
     retreat: { padA: '#f0dfb4', padB: '#dfc78e', post: '#8a5a34', canopy: '#d97f38', pool: '#58b7c9' },
     sky: { sun: { color: '#fff1b8', size: 2 }, stars: false, body: null },
@@ -318,10 +337,21 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       rock beside an open lava flow actually looks like.
     */
     structure: 'basalt',
+    /*
+      October 2026: the spec asks for BLACK basalt with glowing seams, and
+      the 26 Aug note above asks for nothing too dark to read. Both hold
+      because the light now comes from the rock itself: the floor and
+      ground are a dark warm grey (a good step brighter than true basalt;
+      the painter darkens the ground outside, so the meadow and hill the
+      shelf picture is drawn from stay as they were),
+      and the lava in their seams is an emissive map that shines under
+      the night rig. Base and surface are the two greys; accent and glow
+      are the lava; shadow is the crust in the cracks (boardKits.tsx).
+    */
     meadow: '#6b4a48', hill: '#573b3d', mountain: '#7d4a48', cloud: '#8a5450',
-    floor: { a: '#7a5a54', b: '#67494a' },
-    wall: { color: '#8a6660', cap: '#6e4e4c' },
-    tower: { body: '#8a6660', roof: '#ff6b2b' },
+    floor: { a: '#5c5254', b: '#474043' },
+    wall: { color: '#5c4b4e', cap: '#433538' },
+    tower: { body: '#5c4b4e', roof: '#ff7a2a' },
     jail: { platform: '#6e4e4c', bars: '#33232a' },
     retreat: { padA: '#94706a', padB: '#7a5a54', post: '#4a3336', canopy: '#ff6b2b', pool: '#ff7a2f' },
     sky: { sun: null, stars: false, body: null },
@@ -360,12 +390,22 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   autumn: {
-    // A split-rail fence round a clearing in the woods.
+    // A zigzag split-rail fence round a clearing in the woods.
     structure: 'logPile',
     meadow: '#c98d4a', hill: '#b3763c', mountain: '#8a6a52', cloud: '#f2ede4',
-    floor: { a: '#c9a678', b: '#b8925e' },
-    wall: { color: '#9a7a52', cap: '#7d6140' },
-    tower: { body: '#9a7a52', roof: '#b3492e' },
+    /*
+      The floor is EARTH now, a forest-floor brown, and the leaves are
+      drawn on it (groundTexture.ts). Base the earth, surface the dark wall
+      the rails stand on, accent the pumpkins; glow (low gold sun) and
+      shadow (leaf shadow brown) in boardKits.tsx. The earth is well below
+      the ivory dice in value and well away from the dice colours in
+      saturation — and a step darker than Pirate Cove's deck, which a
+      lighter earth matched almost exactly in colour (0.11 apart on the
+      suite's histogram, against a floor of 0.1).
+    */
+    floor: { a: '#7f654a', b: '#957756' },
+    wall: { color: '#6e5238', cap: '#8f7558' },
+    tower: { body: '#6e5238', roof: '#d4742e' },
     jail: { platform: '#7d6140', bars: '#3e3020' },
     retreat: { padA: '#e3c89a', padB: '#cfae76', post: '#6e4a28', canopy: '#c9622e', pool: '#7fa8c9' },
     sky: { sun: { color: '#fff3cf', size: 1.4 }, stars: false, body: null },
@@ -405,24 +445,33 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   aurora: {
     /*
-      A polar research station under the lights — panelled walls, a lit
-      strip, masts at the corners. It used to be a castle standing on
+      A frozen lake under the lights, walled in ice. Before October 2026
+      it was a polar station wearing the Space Station's panelling, and
+      before that a castle standing on
       near-black ice, 69% of it below a third brightness and unreadable
       at thumbnail size. The ground is now SNOW, which is what ground
       under an aurora is, and the dark is kept where it belongs: the sky.
       The contrast between pale ground and green curtains is the whole
       picture.
     */
-    structure: 'station',
+    structure: 'iceBlocks',
     // Floor, wall, meadow and hill all used to sit in one narrow value
     // band under the night rig — exactly the fault the glade's own note
     // warns about — so the whole arena read flat and foggy. The outside
     // is pulled DOWN out of that band and the board stays pale, so it
     // reads as a lit clearing in a dark snowfield.
     meadow: '#6e93a0', hill: '#5d818e', mountain: '#4e6f7c', cloud: null,
-    floor: { a: '#b6d4dc', b: '#a2c3cd' },
-    wall: { color: '#8fb2bf', cap: '#7a9daa', metalness: 0.25 },
-    tower: { body: '#8fb2bf', roof: '#57e8a9' },
+    /*
+      October 2026: the board is a frozen LAKE now — cracked pale ice with
+      the lights lying faint across it — walled in stacked ice blocks
+      rather than the Space Station's panelling. Base the ice, surface the
+      block blue (also their inner glow), accent the aurora green; glow
+      and shadow (deep-ice blue) in boardKits.tsx. The ice stays pale:
+      the contrast between a pale board and a dark sky is the picture.
+    */
+    floor: { a: '#cde5ee', b: '#a8cddd' },
+    wall: { color: '#9cc9da', cap: '#d4f1fa' },
+    tower: { body: '#9cc9da', roof: '#5ef0b4' },
     jail: { platform: '#7a9daa', bars: '#2c4450' },
     retreat: { padA: '#c9e2e8', padB: '#aecfd8', post: '#4a6470', canopy: '#57e8a9', pool: '#57c9e8' },
     sky: { sun: null, stars: true, body: { kind: 'aurora', color: '#4fe89a' } },
@@ -473,9 +522,16 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     */
     structure: 'stalagmite',
     meadow: '#4a3d5c', hill: '#3d3350', mountain: '#584a6e', cloud: null,
-    floor: { a: '#5e5075', b: '#4e4263' },
-    wall: { color: '#7a6894', cap: '#63537a' },
-    tower: { body: '#7a6894', roof: '#c98aff' },
+    /*
+      October 2026: dark rock with glowing crystal veins. Marc's cut slabs
+      are still the floor; the crystal moved from their faces into the
+      seams, where it glows. Base the slab rock, surface the cave wall,
+      accent the amethyst; the cap is the paler dripstone the stalagmites
+      are made of. Glow and shadow in boardKits.tsx.
+    */
+    floor: { a: '#5a4e6c', b: '#473d58' },
+    wall: { color: '#6a5d7e', cap: '#8f7fa2' },
+    tower: { body: '#6a5d7e', roof: '#c98aff' },
     jail: { platform: '#63537a', bars: '#2a2138' },
     retreat: { padA: '#6e5f88', padB: '#5e5075', post: '#3d3350', canopy: '#c98aff', pool: '#7fd4e8' },
     sky: { sun: null, stars: false, body: null },
@@ -518,9 +574,13 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   sky: {
-    // A kingdom, so this one really is a castle — and the only ladder
-    // arena that keeps its merlons.
-    structure: 'battlement',
+    /*
+      A palace in the air: a gold balustrade standing on cloud. It was
+      "the one real castle" until October 2026 — merlons and cone roofs —
+      and a castle in different colours is exactly what the redesign
+      request said not to make.
+    */
+    structure: 'cloudBalustrade',
     /*
       Repainted 31 Aug 2026 off a two-lens review that scored the old
       white-on-white 4 and 3. The ground pair is now open SKY — the
@@ -531,9 +591,16 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       a silhouette instead of vanishing into its own floor.
     */
     meadow: '#9fd0f2', hill: '#5b9fd8', mountain: '#8fa9c6', cloud: '#ffffff',
-    floor: { a: '#f4f8fd', b: '#bccfe3' },
-    wall: { color: '#7ea6cf', cap: '#e6eff8' },
-    tower: { body: '#7ea6cf', roof: '#ffd21f' },
+    /*
+      Base the ivory paving, surface the cloud the balustrade stands on
+      (the wall body is the cloud bank's shaded face, a soft blue so the
+      board keeps its edge), accent the gold; glow and shadow (cloud-belly
+      blue) in boardKits.tsx. Gold, not #ffd21f: a near-primary yellow
+      the length of a balustrade is the yellow die's colour.
+    */
+    floor: { a: '#f7f3e8', b: '#cbd8e6' },
+    wall: { color: '#a9c4e0', cap: '#d9b25a' },
+    tower: { body: '#f6f1e2', roof: '#e3b84e' },
     jail: { platform: '#aecbe3', bars: '#5c7d99' },
     retreat: { padA: '#ffffff', padB: '#e3eff8', post: '#c9a05c', canopy: '#ff8ab0', pool: '#8fd0f0' },
     sky: { sun: { color: '#fff6d8', size: 1.8 }, stars: false, body: { kind: 'rainbow', color: '#ff6e6e' } },
@@ -579,12 +646,18 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   moon: {
     // A base. David's own example of the rule: "like how the space
-    // station doesn't look like a castle."
+    // station doesn't look like a castle." Dug in, since October 2026:
+    // the walls are bulldozed regolith with habitat modules on them.
     structure: 'airlock',
     meadow: '#b9bcc4', hill: '#a3a7b0', mountain: '#8a8e99', cloud: null,
-    floor: { a: '#c9ccd4', b: '#b3b7c0' },
-    wall: { color: '#9a9eaa', cap: '#838794', metalness: 0.3 },
-    tower: { body: '#9a9eaa', roof: '#ffd21f' },
+    /*
+      Base the regolith, surface the berm (dust, so no metalness), accent
+      the warm window light; the cap is the modules' white. Glow and
+      shadow (the black of space past the horizon) in boardKits.tsx.
+    */
+    floor: { a: '#c6c9d0', b: '#adb1ba' },
+    wall: { color: '#8f939c', cap: '#e8eaee' },
+    tower: { body: '#e8eaee', roof: '#ffc845' },
     jail: { platform: '#838794', bars: '#3d404a' },
     retreat: { padA: '#d4d7de', padB: '#bcc0c9', post: '#6e7280', canopy: '#ffd21f', pool: '#57c9e8' },
     sky: { sun: null, stars: true, body: { kind: 'earth', color: '#3f7fd0' } },

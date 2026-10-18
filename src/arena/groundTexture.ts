@@ -160,6 +160,126 @@ const gridEdge = (x: number, y: number, cell: number): number => {
   return Math.min(ix, cell - ix, iy, cell - iy);
 };
 
+/*
+  What a painter can say about a texel besides its colour.
+
+  October 2026, the board redesign (docs/board-redesign.md): a floor has
+  to read by its RELIEF as well as its pattern — sled tracks pressed into
+  snow, ripples standing up out of sand, lava glowing in the seams of
+  basalt. Colour alone cannot do the last of those at all under a night
+  rig, and only does the first two from one angle.
+
+  So a painter may also set a height (`h`, 0 to 1, becomes a bump map the
+  real lights rake across) and a glow (`g` with its colour, becomes an
+  emissive map that shines whatever the lighting). Both are filled in the
+  SAME pass as the colour, because a second pass would double the cost of
+  the most expensive thing an arena does when it opens.
+
+  Module-level and mutated rather than returned, on purpose: the painter
+  is called a hundred thousand times per floor, and an object per call is
+  a hundred thousand objects for the collector.
+*/
+const SIDE = { h: 0.5, g: 0, gr: 0, gg: 0, gb: 0 };
+
+/** A glow of strength `g` in colour `c`, for this texel. */
+function glowAt(g: number, c: Rgb): void {
+  if (g <= SIDE.g) return;
+  SIDE.g = g;
+  SIDE.gr = c[0];
+  SIDE.gg = c[1];
+  SIDE.gb = c[2];
+}
+
+/**
+ * The key light, as the painters see it.
+ *
+ * The rig's key sits at (4, 12, 6): off to +x, and toward the player in
+ * +z. Row 0 of a painted picture is the NEAR end of the tray (the plane is
+ * laid with v running away from the camera), so in painter space the
+ * light arrives from +x and from -y. Baked shading that disagreed with the
+ * bump map's real lighting would make every bump read as a dent.
+ */
+const LX = 0.55;
+const LY = -0.835;
+
+/*
+  A jittered Voronoi — the cut slabs of the cavern, the fractures in the
+  frozen lake — with the nine sites around the current cell remembered
+  between calls.
+
+  A picture is painted a row at a time, so consecutive texels nearly
+  always share a cell, and recomputing eighteen hashes for the same nine
+  sites at every texel was most of the cost of those two floors: the
+  cracked ice took 282ms to paint, over the 260ms ceiling a player would
+  see as a stall. The answer is identical either way — same sites, same
+  order, same ties — only the hashing is skipped. `tag` names the caller,
+  so two painters can never be handed each other's sites.
+*/
+const VORO = {
+  gx: Number.NaN,
+  gy: Number.NaN,
+  tag: -1,
+  sx: new Float64Array(9),
+  sy: new Float64Array(9),
+  d1: 0,
+  d2: 0,
+  cx: 0,
+  cy: 0,
+  cq: 0,
+  cr: 0,
+};
+
+function voronoi(
+  x: number,
+  y: number,
+  cell: number,
+  lo: number,
+  span: number,
+  tag: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): void {
+  const gx = Math.floor(x / cell);
+  const gy = Math.floor(y / cell);
+  if (gx !== VORO.gx || gy !== VORO.gy || tag !== VORO.tag) {
+    let k = 0;
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++, k++) {
+        const q = gx + ox;
+        const r = gy + oy;
+        VORO.sx[k] = (q + lo + hash(q + ax, r + ay) * span) * cell;
+        VORO.sy[k] = (r + lo + hash(q + bx, r + by) * span) * cell;
+      }
+    }
+    VORO.gx = gx;
+    VORO.gy = gy;
+    VORO.tag = tag;
+  }
+  let d1 = 1e9;
+  let d2 = 1e9;
+  let best = 0;
+  for (let k = 0; k < 9; k++) {
+    const dx = x - VORO.sx[k];
+    const dy = y - VORO.sy[k];
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < d1) {
+      d2 = d1;
+      d1 = d;
+      best = k;
+    } else if (d < d2) {
+      d2 = d;
+    }
+  }
+  VORO.d1 = d1;
+  VORO.d2 = d2;
+  VORO.cx = VORO.sx[best];
+  VORO.cy = VORO.sy[best];
+  VORO.cq = gx + (best % 3) - 1;
+  VORO.cr = gy + Math.floor(best / 3) - 1;
+}
+
 /** The three colours a surface painter is given. */
 export interface SurfacePaint {
   /** The main tone. */
@@ -197,303 +317,183 @@ type SurfacePainter = (
  */
 const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   /*
-    Snow that reads as SNOW, not plaster. The 31 Aug 2026 skin review
-    scored this floor 5 and 4 for the same fault twice over: the two
-    floor tones sat a whisker apart, so the wind-drift fbm painted
-    nothing, and the only accent on offer was the fence's BROWN cap, so
-    the "ice sparkle" came out as pepper flecks — dark on white, the
-    opposite of a glint. Blue in the shadows is the single strongest
-    cue that white stuff is snow, so the cold tones are the painter's
-    own (the way the aurora snowfield owns its night blue and the
-    cavern owns its gems) and the timber accent stays on the fence.
+    Snowy Hollow: fresh snow with sled tracks in it.
+
+    The drift lobes and the blue in the shadows are from the 31 Aug 2026
+    skin review, which scored the old floor 5 and 4 for reading as
+    plaster: blue shadow is the single strongest cue that white stuff is
+    snow, so the cold tones are the painter's own and the fence's timber
+    stays on the fence.
+
+    What the October 2026 redesign adds is something PRESSED INTO it.
+    Two sled runs curve down the board (one more crosses the ground
+    outside), each a pair of runner grooves with a ploughed lip, the
+    groove wall that faces the key light lit and the other in shade. A
+    white floor nothing has touched was the plaster fault; a floor a sled
+    has crossed is a snowfield. The grooves are a few texels wide and
+    blue-grey, not dark — a die sits on them without being lost in them.
+
+    The swept ice puddle painted at the far end is gone: the pit on this
+    board IS a frozen pond, and two ponds read as one pond and a mistake.
   */
   snowFence: (x, y, p, tray) => {
     const shadow: Rgb = [186, 201, 222]; // #bac9de — snow-shadow blue
     const glint: Rgb = [236, 251, 255]; // ice glint, a breath of cyan
 
     // The tray is the swept, packed board; outside lies deep drift.
-    // Packed snow is brighter and flatter, so the arena reads as a
-    // cleared surface inside a snowfield, not one sheet of white.
-    const depth = tray ? 0.65 : 1;
-    let c = lift(p.a, tray ? 0.35 : 0.15);
+    const depth = tray ? 0.6 : 1;
+    let c = lift(p.a, tray ? 0.3 : 0.15);
 
-    // Wind-scoured lobes, elongated down the board. The directional
-    // fbm was always here; the review's point was that its two tones
-    // were too close for it to show. Wider band, a real second tone.
+    // Wind-scoured lobes, elongated down the board.
     const scour = fbm(x + y * 0.3, y * 2.2, SIZE);
     c = mix(c, p.b, smoothstep(0.3, 0.78, scour) * depth);
 
-    // Broad soft drift shadows at two scales, tinted cold, so the
-    // field undulates instead of sitting flat. The first pass of this
-    // used #cdd8e6 at a third strength and it was invisible on the
-    // render — a shadow nobody can see is the old flat floor again.
+    // Broad soft drift shadows at two scales, tinted cold.
     const big = noise(x / 30 + 7, y / 30 + 3, SIZE / 30);
     const mid = noise(x / 12 + 61, y / 12 + 23, SIZE / 12);
     c = mix(c, shadow, smoothstep(0.35, 0.88, big) * depth * 0.85);
     c = mix(c, mix(p.b, shadow, 0.6), smoothstep(0.5, 0.92, mid) * depth * 0.55);
+    // The hollows are the shadowed parts, so they are the LOW parts.
+    let h = 0.55 - (big - 0.5) * 0.35 + (scour - 0.5) * 0.15;
 
-    if (tray) {
-      // One frozen puddle, swept clear: pale ice with faint cracks, a
-      // landmark the dice visibly skid across. Painted flat sheen, not
-      // a pit — the REAL frozen pond (the sink obstacle) is dark water
-      // under a bank, so the two never read as the same thing. The
-      // bounding box keeps the extra noise off texels nowhere near it.
-      const dx = x - 34;
-      const dy = y - 146;
-      if (Math.abs(dx) < 27 && Math.abs(dy) < 21) {
-        const r = Math.hypot(dx / 17, dy / 12.5);
-        const wob = (noise(x / 9 + 91, y / 9 + 47, SIZE / 9) - 0.5) * 0.55;
-        const pond = smoothstep(1.05 + wob, 0.8 + wob, r);
-        if (pond > 0.02) {
-          let ice: Rgb = mix(
-            [208, 231, 246],
-            [176, 206, 232],
-            noise(x / 7 + 11, y / 7 + 5, SIZE / 7),
-          );
-          const seam = Math.abs(
-            Math.sin((x + fbm(x, y, SIZE) * 7) * 0.55) +
-              Math.sin((y - fbm(x + 37, y + 19, SIZE) * 6) * 0.4),
-          );
-          ice = mix(ice, [140, 176, 208], smoothstep(0.16, 0.02, seam) * 0.55);
-          c = mix(c, ice, pond);
-        }
-        // The lip of swept snow banked around the ice.
-        c = mix(c, [252, 254, 255], smoothstep(1.22 + wob, 1.02 + wob, r) * (1 - pond) * 0.6);
+    // The sled runs. On the ground the curve makes whole waves per tile,
+    // so the track joins itself at the repeat.
+    const runs = tray ? 2 : 1;
+    for (let k = 0; k < runs; k++) {
+      let cx: number;
+      let slope: number;
+      if (!tray) {
+        const a = (y * Math.PI * 2) / SIZE;
+        cx = 40 + 14 * Math.sin(a);
+        slope = ((14 * Math.PI * 2) / SIZE) * Math.cos(a);
+      } else if (k === 0) {
+        cx = 46 + 22 * Math.sin(y * 0.026 + 0.7);
+        slope = 22 * 0.026 * Math.cos(y * 0.026 + 0.7);
+      } else {
+        cx = 70 + 18 * Math.sin(y * 0.019 + 3.4);
+        slope = 18 * 0.019 * Math.cos(y * 0.019 + 3.4);
+      }
+      // Distance across the track, not across the picture: on a bend
+      // the horizontal distance overstates it and the groove fattens.
+      const across = 1 / Math.sqrt(1 + slope * slope);
+      for (let side = -1; side <= 1; side += 2) {
+        const dx = (x - cx - side * 4.5) * across;
+        const d = Math.abs(dx);
+        if (d > 3) continue;
+        const groove = smoothstep(1.4, 0.25, d);
+        const lip = smoothstep(2.9, 1.5, d) * (1 - groove);
+        // The groove wall on the -x side faces the light; the other is
+        // in its own shadow.
+        c = mix(c, mix(p.b, shadow, 0.75), groove * (dx > 0 ? 0.7 : 0.3));
+        c = mix(c, [252, 254, 255], lip * 0.55);
+        h += lip * 0.12 - groove * 0.35;
       }
     }
 
     // Ice sparkle — a glint is LIGHT, always brighter than the field.
-    // Fine grains everywhere...
     if (hash(x, y) > 0.988) c = mix(c, glint, 0.8);
-    // ...and a rarer, fatter glint — a full painter unit square, so it
-    // survives being looked at from arm's length.
+    // ...and a rarer, fatter glint that survives arm's length.
     if (hash(Math.floor(x) + 13, Math.floor(y) + 57) > 0.9965) c = mix(c, [255, 255, 255], 0.9);
+    SIDE.h = h;
     return c;
   },
 
-  // Wind ripples in fine sand, running one way across the dunes.
-  adobe: (x, y, p) => {
-    const ripple = Math.sin((x * 0.9 + y * 0.35) * 0.42 + fbm(x, y, SIZE) * 5);
-    let c = mix(p.a, p.b, (ripple + 1) / 2);
-    c = mix(c, shade(p.a, 0.92), smoothstep(0.55, 0.85, fbm(x * 0.5, y * 0.5, SIZE)) * 0.4);
-    if (hash(x * 3, y * 3) > 0.994) c = mix(c, p.accent, 0.5);
-    return c;
-  },
+  /*
+    Desert Dunes: rippled sand, and the ripples stand UP.
 
-  // Cooled lava: a crust broken into plates with heat still in the cracks.
-  basalt: (x, y, p) => {
-    // Two warps at different scales, or the cracks come out as a regular
-    // diamond lattice rather than as broken rock.
-    const warp = fbm(x, y, SIZE) * 11 + noise(x / 3, y / 3, SIZE / 3) * 6;
-    const warp2 = fbm(x + 37, y + 19, SIZE) * 13;
-    const seam = Math.abs(Math.sin((x + warp) * 0.15) + Math.sin((y - warp2) * 0.12));
-    let c = mix(p.a, p.b, fbm(x * 0.6, y * 0.6, SIZE));
-    c = mix(c, p.accent, smoothstep(0.22, 0.02, seam) * 0.9);
-    return mix(c, shade(c, 0.7), smoothstep(0.5, 0.2, seam) * 0.3);
-  },
+    The old ripple was a sine between the two sand tones — a stripe, the
+    same light on both faces of every ridge, which at the game camera is
+    corduroy rather than sand. Wind ripples are lopsided: a long gentle
+    back and a short steep lee face. Here the steep face turns AWAY from
+    the key light, so each ripple is a broad lit back with a thin shadow
+    behind it — gentle enough for dice to sit on, unmistakably combed by
+    wind. Six waves across and eight down per 128-unit tile, so the ground
+    outside still joins at its repeat.
 
-  // Fallen leaves, each one a small oval lying its own way.
-  // Fallen leaves: proper leaf shapes, in the reds and golds a wood
-  // turns, each with a midrib. David asked for the Autumn Woods floor to
-  // look better — it was small dark dashes, which reads as grit.
-  //
-  // The drift is thinned INSIDE the walls. Painted at ground density the
-  // board became a carpet of red and gold, and a red or orange die
-  // landing on it had to be hunted for — the one thing a floor must not
-  // do. Outside the walls the density is untouched: that is where the
-  // arena's name lives.
-  logPile: (x, y, p, tray) => {
-    const cell = 14;
-    let c = mix(p.a, shade(p.a, 0.92), fbm(x, y, SIZE));
-    // Two passes at different offsets, so leaves overlap the way a
-    // drift of them does instead of sitting one to a cell.
-    for (let pass = 0; pass < (tray ? 1 : 2); pass++) {
-      const ox = pass * 7;
-      const oy = pass * 5;
-      const row = Math.floor((y + oy) / cell);
-      const rowOff = row % 2 === 0 ? 0 : cell / 2;
-      const col = Math.floor((x + ox + rowOff) / cell);
-      const h = hash(col + pass * 31, row + pass * 17);
-      if (h < (tray ? 0.72 : 0.42)) continue;
-      const lx = (((x + ox + rowOff) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 5;
-      const ly = (((y + oy) % cell) + cell) % cell - cell / 2 + (hash(col + 7, row + pass) - 0.5) * 5;
-      const a = h * Math.PI * 2;
-      const ux = lx * Math.cos(a) + ly * Math.sin(a);
-      const uy = -lx * Math.sin(a) + ly * Math.cos(a);
-      // A leaf: an ellipse drawn to a point at both ends.
-      const t = Math.abs(ux) / 5.2;
-      if (t > 1) continue;
-      const width = 2.6 * (1 - t * t);
-      if (Math.abs(uy) > width) continue;
-      const leaf = mix(
-        mix(p.b, p.accent, hash(col + 3, row + 5)),
-        [196, 92, 40],
-        hash(col + 11, row + 2) * 0.8,
-      );
-      c = mix(leaf, shade(leaf, 0.82), Math.abs(uy) / Math.max(width, 0.6) * 0.5);
-      // The midrib.
-      if (Math.abs(uy) < 0.55) c = shade(c, 0.82);
-    }
-    return c;
-  },
-
-  // Snow under the lights, with the lights painted ON it. This was a
-  // riveted metal panel grid, and at the gameplay camera the whole thing
-  // collapsed into one teal wash — "generic metal corridor at dusk", in
-  // an arena called Frozen Lights with not one light in frame. The
-  // aurora itself lives in the sky at z -23, which the camera never
-  // sees, so its reflection is swept across the ground instead: broad
-  // diagonal ribbons of green, cyan and a touch of magenta over pale
-  // snow cut into blocks. The rivets are gone — they were two-texel dots
-  // nobody could find.
-  station: (x, y, p, tray) => {
-    const cold: Rgb = [213, 234, 240]; // #d5eaf0 — snow under a night sky
-    const cell = 32;
-    const edge = gridEdge(x, y, cell);
-    const bx = Math.floor(x / cell);
-    const by = Math.floor(y / cell);
-    // Per-block tone. The old hash * 0.5 + 0.25 band was too narrow to
-    // survive the night rig; this runs the cold-white mix from 0.3 to
-    // 0.75 so neighbouring blocks stay distinct after the lights dim it.
-    // The cold-white lift is a TRAY thing. Outside, pulling the snow up
-    // to near-white swamped the darker meadow the theme now sets, and
-    // the whole arena sat in one value band — board, wall and snow all
-    // the same pale grey-blue, which is why it read foggy.
-    const block = hash(bx, by);
-    let c = mix(
-      mix(p.a, p.b, 0.3 + hash(bx + 7, by + 3) * 0.7),
-      cold,
-      tray ? 0.2 + block * 0.6 : 0.04 + block * 0.22,
-    );
-
-    // Wind-drifted snow — the snowfield's own drift, mixed toward cold
-    // white. Deepest on the ground outside the tray, so the board stays
-    // the flattest, most playable snow in frame.
-    const drift = fbm(x + y * 0.3, y * 2.2, SIZE);
-    c = mix(c, lift(cold, 0.6), smoothstep(0.4, 0.8, drift) * (tray ? 0.4 : 0.3));
-
-    // Joints between the snow blocks — soft blue shadows, not grout —
-    // with drift piled a shade brighter along each lip.
-    const joint = smoothstep(2.4, 0.5, edge);
-    c = mix(c, shade(mix(p.b, cold, 0.3), 0.82), joint * 0.6);
-    c = mix(c, lift(cold, 0.5), smoothstep(6, 2.8, edge) * (1 - joint) * drift * 0.5);
-
-    // The lights, reflected on the snow: three broad ribbons running
-    // diagonally, warped by noise so they waver like curtains. Integer
-    // wave counts per 128-unit tile, so the ground copies still join.
-    const warp = fbm(x + 53, y + 17, SIZE);
-    const TAU = Math.PI * 2;
-    const green = Math.sin(((2 * x + y) / SIZE) * TAU + warp * 2.2);
-    const cyan = Math.sin(((x + 2 * y) / SIZE) * TAU + 2.1 + warp * 2.8);
-    const magenta = Math.sin(((2 * x - y) / SIZE) * TAU + 4.4 + warp * 1.8);
-    /*
-      Each ribbon is a broad graded wash with a brighter core, so it
-      reads as a curtain of light rather than a hard painted stripe —
-      and each is now scaled by where it falls. The drift above already
-      dimmed on the tray; these did not, so the curtains washed over the
-      play floor as strongly as the snow, and the board came out a hazy
-      grey-green smear at almost the same value as everything else. The
-      green wash sat in the same family as the green die, too.
-
-      Quiet under the dice, stronger on the snow around them, which is
-      where this painter's own note says the picture lives.
-    */
-    const lights = tray ? 0.35 : 1.4;
-    c = mix(c, [59, 226, 148], (smoothstep(0.0, 0.85, green) * 0.42 + smoothstep(0.7, 0.98, green) * 0.18) * lights);
-    c = mix(c, [96, 208, 236], (smoothstep(0.05, 0.9, cyan) * 0.32 + smoothstep(0.72, 0.98, cyan) * 0.14) * lights);
-    c = mix(c, [224, 134, 220], smoothstep(0.3, 0.95, magenta) * 0.24 * lights);
-
-    // Ice sparkle.
-    if (hash(x, y) > 0.993) c = lift(c, 0.85);
-    return c;
-  },
-
-  // Wet cave rock, minerals running through it in bands.
-  // Cave rock with crystal breaking through it. David: "make the crystal
-  // cavern look less weird and more like crystals" — it was a scribble
-  // of mineral veining that read as noise, so the rock is calm now and
-  // the crystal is drawn as actual faceted shards catching the light.
-  stalagmite: (x, y, p, tray) => {
-    /*
-      The Crystal Cavern's floor IS the crystal — the inside of a cracked
-      geode, cut faces meeting edge to edge with nothing between them,
-      about a quarter of them gemstone and the rest violet rock.
-
-      Chosen by the family on 28 Aug 2026, twice. First "I like the
-      FloorGeode", then — after seeing it in the game — "actually I don't
-      like the floor", and finally, from a second set, "I want the cut
-      slabs". Same idea both times; the SIZE was the whole argument, and
-      it is settled below where the cell size is set.
-
-      What this replaced was three goes at the other idea entirely:
-      crystal objects scattered on rock. Long tapered blades radiating
-      from a root read as a bird's footprint from above; faceted hexagonal
-      shards read better but still left most of the floor a flat wash.
-      Cutting the whole surface is what makes the floor itself the
-      feature rather than a background for things lying on it.
-    */
-    /*
-      The gems. Hardcoded rather than taken from SurfacePaint, which
-      carries only three colours and none of them bright — the cavern's
-      accent is its wall cap, a muted violet. These are the arena's own
-      crystal colours from themeData.ts, so the floor is cut from the
-      same stone as the props standing around it.
-    */
-    const GEMS: Rgb[] = [
-      [201, 138, 255], [163, 122, 232], [220, 174, 255],
-      [127, 212, 232], [240, 214, 138],
-    ];
+    Outside the walls the dunes themselves are drawn: a broad swell lit on
+    the face that turns to the sun and shaded on the one that turns away,
+    found by asking whether the sand rises or falls a step toward the
+    light. That is what makes the ground a dune field and not a beach.
+  */
+  adobe: (x, y, p, tray) => {
+    const swellAt = (sx: number, sy: number) =>
+      noise(sx / 32, sy / 32, SIZE / 32) * 0.65 + noise(sx / 16 + 5, sy / 16 + 9, SIZE / 16) * 0.35;
+    const swell = swellAt(x, y);
+    let c = mix(p.a, p.b, smoothstep(0.25, 0.8, swell) * (tray ? 0.55 : 0.85));
 
     if (!tray) {
-      /*
-        Outside the tray: damp violet rock with crystal showing THROUGH
-        it here and there, which is what the cavern looked like before
-        the floor became a geode and is what keeps the board readable as
-        a board. The facets belong on the thing you are playing on.
-      */
-      let g = mix(p.a, p.b, smoothstep(0.2, 0.8, fbm(x * 0.6, y * 0.6, SIZE)));
-      g = mix(g, shade(p.a, 0.62), smoothstep(0.5, 0.9, fbm(x * 0.35, y * 0.35, SIZE)) * 0.5);
-      const vein = Math.abs(fbm(x * 0.5 + 17, y * 0.5, SIZE) - 0.5);
-      g = mix(g, lift(p.accent, 0.35), smoothstep(0.07, 0.01, vein) * 0.4);
-      const chunk = hash(Math.floor(x / 19), Math.floor(y / 19));
-      if (chunk > 0.86) {
-        const bx = (((x % 19) + 19) % 19) - 9.5;
-        const by = (((y % 19) + 19) % 19) - 9.5;
-        g = mix(g, lift(p.accent, 0.5), smoothstep(4.5, 1.5, Math.hypot(bx, by)) * 0.55);
-      }
-      return mix(g, shade(g, 0.9), noise(x / 3, y / 3, SIZE / 3) * 0.4);
+      // Falls toward the light: faces it.
+      const facing = (swell - swellAt(x + LX * 3, y + LY * 3)) * 14;
+      c = facing > 0
+        ? mix(c, lift(c, 0.2), Math.min(1, facing))
+        : mix(c, shade(p.b, 0.8), Math.min(0.85, -facing));
     }
 
-    /*
-      Marc, 28 Aug 2026, after seeing the first version in the game:
-      "actually I don't like the floor" — then, from a set rendered
-      through this very painter rather than drawn by hand, "I want the
-      cut slabs."
+    const phase = ((x * 6 - y * 8) / SIZE + fbm(x, y, SIZE) * 0.55) * (tray ? 1.3 : 1);
+    const f = phase - Math.floor(phase);
+    const k = tray ? 0.6 : 1;
+    // 0 to 0.8 is the back, falling toward the light; the rest is the lee.
+    const lee = smoothstep(0.78, 0.83, f) * (1 - smoothstep(0.97, 1, f));
+    c = mix(c, lift(c, 0.1), (1 - lee) * 0.55 * k);
+    c = mix(c, shade(c, 0.8), lee * 0.8 * k);
+    const ridge = f < 0.8 ? 1 - f / 0.8 : (f - 0.8) / 0.2;
 
-      Same idea as before, three times the size. The first pass cut the
-      floor into cells about half a world unit across, and a hundred
-      small facets on a board is gravel, not crystal. At thirty painter
-      units — a unit and a half of world — the board is a handful of big
-      cut planes, which is what the inside of a geode actually looks like
-      and what reads as CUT at the size a player sees it.
+    // A pebble now and then, and a darker grain of mica.
+    if (hash(x * 3, y * 3) > 0.994) c = mix(c, p.accent, 0.5);
+    if (hash(x * 2 + 17, y * 2 + 5) > 0.996) c = shade(c, 0.82);
+    SIDE.h = 0.45 + (swell - 0.5) * 0.5 + ridge * 0.16;
+    return c;
+  },
 
-      Worth recording how that mistake got through: the first set of
-      options were hand-drawn SVG illustrations, and an illustration
-      flatters itself. The cell size that looked like bold faceting in a
-      drawing came out as rubble from the real painter. Every option in
-      the second set was rendered by this function at shipping size, and
-      the difference was obvious at a glance.
+  /*
+    Volcano Rim: black basalt with lava glowing in its seams.
 
-      The facets come from a jittered Voronoi: for each texel, the
-      nearest of nine candidate sites owns it. Voronoi cells are convex
-      polygons that tile without gaps, which is exactly what a cut
-      surface is, so the edges fall out of the distances rather than
-      being drawn — `d2 - d1`, the gap between nearest and
-      second-nearest, is small only along a boundary.
-    */
-    const CELL = 30;
-    const gx = Math.floor(x / CELL);
-    const gy = Math.floor(y / CELL);
+    Basalt cools into COLUMNS, and a floor of column tops seen from above
+    is a field of rough hexagons — the most recognisable rock pattern
+    there is, and the one thing the old floor (warped plates in a plum
+    wash) was not. So the board is hexagonal plates on an offset lattice,
+    jittered just enough not to be a tile, each with a bevel that the key
+    light catches on one side. Some of the seams between them run hot:
+    those carry lava in the colour picture AND in the glow map, so they
+    shine under the night rig the way an open crack actually would, and
+    the renderer breathes their brightness.
+
+    Kept thin and kept to a minority of seams. A floor of orange lines is
+    a floor an orange die disappears into.
+  */
+  basalt: (x, y, p, tray) => {
+    const LAVA: Rgb = [255, 112, 38];
+    const CORE: Rgb = [255, 204, 96];
+    const crust: Rgb = [30, 20, 22];
+    if (!tray) {
+      // Outside: rough rock with lava rivers, the old cooled-crust seams
+      // widened into channels and set glowing.
+      const warp = fbm(x, y, SIZE) * 11 + noise(x / 4, y / 4, SIZE / 4) * 5;
+      const warp2 = fbm(x + 37, y + 19, SIZE) * 13;
+      const seam = Math.abs(
+        Math.sin((x + warp) * ((Math.PI * 2 * 3) / SIZE)) +
+          Math.sin((y - warp2) * ((Math.PI * 2 * 2) / SIZE)),
+      );
+      // Darker than the theme's meadow and hill, and less red: those two
+      // also paint the shelf picture, which wants them warm.
+      let g = shade(mix(mix(p.a, p.b, fbm(x * 0.6, y * 0.6, SIZE)), [70, 64, 66], 0.35), 0.82);
+      g = mix(g, shade(g, 0.72), smoothstep(0.55, 0.2, seam) * 0.45);
+      if (hash(x * 1.7, y * 1.7) > 0.97) g = shade(g, 0.78);
+      // Only some stretches of crack are still open, and those thinly:
+      // the first pass lit every one of them a texel wide and the ground
+      // became a map of orange rivers louder than the board.
+      const open = smoothstep(0.45, 0.62, noise(x / 32 + 9, y / 32 + 4, SIZE / 32));
+      const river = smoothstep(0.09, 0.02, seam) * open;
+      g = mix(g, [96, 34, 22], smoothstep(0.22, 0.06, seam) * 0.5);
+      g = mix(g, mix(LAVA, CORE, smoothstep(0.04, 0.01, seam)), river);
+      glowAt(river * 0.8, mix(LAVA, CORE, smoothstep(0.05, 0.01, seam)));
+      SIDE.h = 0.6 - river * 0.4 - smoothstep(0.5, 0.2, seam) * 0.15;
+      return g;
+    }
+
+    const C = 22;
+    const RH = C * 0.866;
+    const gr = Math.floor(y / RH);
     let d1 = 1e9;
     let d2 = 1e9;
     let cx = 0;
@@ -501,11 +501,13 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     let cq = 0;
     let cr = 0;
     for (let oy = -1; oy <= 1; oy++) {
+      const r = gr + oy;
+      const off = r & 1 ? C / 2 : 0;
+      const gq = Math.floor((x - off) / C);
       for (let ox = -1; ox <= 1; ox++) {
-        const q = gx + ox;
-        const r = gy + oy;
-        const jx = (q + 0.2 + hash(q, r) * 0.6) * CELL;
-        const jy = (r + 0.2 + hash(q + 41, r + 17) * 0.6) * CELL;
+        const q = gq + ox;
+        const jx = (q + 0.5 + (hash(q, r) - 0.5) * 0.32) * C + off;
+        const jy = (r + 0.5 + (hash(q + 41, r + 17) - 0.5) * 0.32) * RH;
         const dx = x - jx;
         const dy = y - jy;
         const d = Math.sqrt(dx * dx + dy * dy);
@@ -521,130 +523,420 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
         }
       }
     }
-
-    const gemmy = hash(cq * 7 + 3, cr * 11 + 5) > 0.72;
-    const base = gemmy
-      // Pushed further into the rock than it used to be. At 0.42 a lit
-      // lilac facet reached about #c38cf7 — the purple die's own colour,
-      // at ten times the size — and a purple die landing on one
-      // disappeared. The gems still read as gems; they just belong to
-      // the cavern now instead of competing with the dice.
-      ? mix(GEMS[Math.floor(hash(cq + 5, cr + 9) * GEMS.length) % GEMS.length], p.b, 0.68)
-      : mix(p.a, p.b, hash(cq + 2, cr + 6) * 0.7);
-
-    /*
-      Each slab is a flat plane at its own angle, so it takes the light
-      differently from the one beside it — the whole reason a field of
-      polygons reads as CUT crystal rather than as camouflage. A face
-      this big also shows its own grain, which a small facet never did.
-    */
-    const tilt = ((x - cx) * 0.7 + (y - cy)) / CELL;
-    // Gain capped at 0.25 (was 0.5) so no facet ends up brighter than
-    // the wall behind it.
-    let c = shade(base, 0.8 + Math.min(0.25, Math.max(0, -tilt) * 0.5));
-    c = mix(c, shade(base, 0.86), noise(x / 4 + cq * 9, y / 4 + cr * 5, SIZE / 4) * 0.35);
-
-    // The seam where two slabs meet, and the bright arris along it.
     const edge = d2 - d1;
-    c = mix(c, shade(base, 0.42), smoothstep(2.6, 0.5, edge) * 0.55);
-    return mix(c, lift(base, 0.6), smoothstep(1.2, 0.1, edge) * 0.7);
+    let c = mix(p.a, p.b, hash(cq + 2, cr + 6));
+    // Vesicles — the gas bubbles frozen into the rock — and its grain.
+    c = mix(c, shade(c, 0.86), noise(x / 2 + cq * 7, y / 2 + cr * 3, SIZE / 2) * 0.5);
+    if (hash(Math.floor(x * 1.4), Math.floor(y * 1.4)) > 0.982) c = shade(c, 0.72);
+    // The bevel: each column top is rounded off at its rim, and the rim
+    // that faces the light catches it.
+    const bevel = 1 - smoothstep(0, 3.4, edge);
+    const toward = ((x - cx) * LX + (y - cy) * LY) / Math.max(1, d1);
+    c = toward > 0 ? mix(c, lift(c, 0.32), bevel * toward) : shade(c, 1 + bevel * toward * 0.38);
+    // The seam itself, and whether it is still hot.
+    const seam = smoothstep(1.5, 0.35, edge);
+    c = mix(c, crust, seam * 0.8);
+    const hot = smoothstep(0.56, 0.7, noise(x / 30 + 13, y / 30 + 5, SIZE / 30));
+    const lava = smoothstep(1.1, 0.2, edge) * hot;
+    const lavaColour = mix(LAVA, CORE, smoothstep(0.6, 0.1, edge));
+    c = mix(c, lavaColour, lava * 0.92);
+    glowAt(lava, lavaColour);
+    SIDE.h = 0.75 - bevel * 0.3 - seam * 0.35;
+    return c;
   },
 
-  // The Sky Kingdom: weathered marble blocks inside the castle, and
-  // nothing but sky and cloud outside it. Two pictures on purpose, like
-  // the Crystal Cavern's — the 31 Aug 2026 review scored the old single
-  // grid 4/10 and 3/10 for the same fault twice: every tile was the same
-  // white square, so the tray read as bathroom tile and the ground as a
-  // swimming pool seen from above. A kingdom that floats does not stand
-  // on pool tile; it stands on clouds.
-  battlement: (x, y, p, tray) => {
+  /*
+    Autumn Woods: a carpet of fallen leaves, reds and ambers.
+
+    The first floor drew small dark dashes (grit); the next drew leaves
+    and then thinned them on the board, because a red die on a red carpet
+    had to be hunted for. Both lessons hold. What the October 2026
+    redesign adds is RELIEF: every leaf casts a soft shadow down and away
+    from the key light, and is folded along its midrib with one half lit
+    and one in shade, so the floor reads as leaves LYING on earth rather
+    than printed onto it. Outside the walls there are maples among the
+    ovals, because a maple is the leaf everybody draws.
+
+    On the board the leaves are plain ovals, muted almost half way toward
+    the earth and covering well under half of it — a red die is still the
+    reddest thing in sight. Outside the walls it is a full carpet.
+  */
+  logPile: (x, y, p, tray) => {
+    const LEAF: Rgb[] = [
+      [192, 78, 40], [214, 138, 46], [168, 56, 40], [226, 170, 70], [150, 92, 46],
+    ];
+    let c = mix(p.a, shade(p.a, 0.84), fbm(x, y, SIZE));
+    let h = 0.4;
+    const cell = 13;
+    const passes = tray ? 2 : 3;
+
+    // One leaf's coverage, 0 to 1, at leaf-local (u, v).
+    const cover = (u: number, v: number, maple: boolean, size: number): number => {
+      if (maple) {
+        const rr = Math.sqrt(u * u + v * v) / size;
+        if (rr > 5) return 0;
+        // Pointed lobes, not round ones: a round-lobed outline is a
+        // flower, and the first render was a meadow of daisies.
+        const f = (Math.atan2(v, u) / (Math.PI * 2)) * 5 + 0.5;
+        const tri = 1 - Math.abs((f - Math.floor(f)) * 2 - 1);
+        const lobe = 4.6 * (0.42 + 0.58 * tri * tri);
+        return smoothstep(0.6, -0.4, rr - lobe);
+      }
+      const t = Math.abs(u) / (5.4 * size);
+      if (t > 1) return 0;
+      return smoothstep(0.6, -0.4, Math.abs(v) - 2.6 * size * (1 - t * t));
+    };
+
+    for (let pass = 0; pass < passes; pass++) {
+      const ox = pass * 7 + 3;
+      const oy = pass * 5 + 1;
+      const row = Math.floor((y + oy) / cell);
+      const rowOff = row & 1 ? cell / 2 : 0;
+      const col = Math.floor((x + ox + rowOff) / cell);
+      const hh = hash(col + pass * 31, row + pass * 17);
+      if (hh < (tray ? 0.55 : 0.18)) continue;
+      const lx = ((((x + ox + rowOff) % cell) + cell) % cell) - cell / 2 + (hh - 0.5) * 4;
+      const ly = ((((y + oy) % cell) + cell) % cell) - cell / 2 + (hash(col + 7, row + pass) - 0.5) * 4;
+      const a = hh * 17.3;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const size = 0.8 + hash(col + 5, row + 3) * 0.4;
+      // Maples only outside: on the board every leaf is a plain oval, the
+      // quietest shape there is under a die.
+      const maple = !tray && hash(col + 23, row + 29) > 0.62;
+      // The shadow is the same leaf, cast away from the light.
+      const qx = lx + LX * 1.9;
+      const qy = ly + LY * 1.9;
+      const shadowCover = cover(qx * ca + qy * sa, -qx * sa + qy * ca, maple, size);
+      c = mix(c, shade(c, 0.6), shadowCover * 0.5);
+      const u = lx * ca + ly * sa;
+      const v = -lx * sa + ly * ca;
+      const m = cover(u, v, maple, size);
+      if (m <= 0) continue;
+      let leaf = LEAF[Math.floor(hash(col + 11, row + 2) * LEAF.length) % LEAF.length];
+      if (tray) leaf = mix(leaf, p.b, 0.45);
+      // Folded along the midrib: the half that tilts toward the light
+      // is lit, the other is in shade.
+      const half = (v > 0 ? 1 : -1) * (sa * LX - ca * LY);
+      leaf = half > 0 ? mix(leaf, lift(leaf, 0.2), half * 0.7) : shade(leaf, 1 + half * 0.22);
+      if (maple ? Math.sqrt(u * u + v * v) < 0.9 : Math.abs(v) < 0.45) leaf = shade(leaf, 0.82);
+      c = mix(c, leaf, m);
+      h = Math.max(h, 0.45 + m * (0.3 + pass * 0.1));
+    }
+    SIDE.h = h;
+    return c;
+  },
+
+  /*
+    Frozen Lights: cracked lake ice with the aurora in it.
+
+    The board is no longer snow cut into blocks — that was a polar
+    STATION's floor, and Frozen Lights is not a station any more. It is a
+    frozen lake: pale ice with clear patches where you can see down into
+    it, a web of white fracture lines (not a full grid of them — some
+    plates have fused, so a noise field decides which seams show), air
+    bubbles, and the green and magenta of the lights overhead lying faint
+    across the surface. The brightest of the green also goes into the
+    glow map, so the reflection keeps shining under the night rig.
+
+    Outside the walls is still the snowfield with the lights swept across
+    it, unchanged in intent: quiet under the dice, stronger around them.
+  */
+  iceBlocks: (x, y, p, tray) => {
+    const cold: Rgb = [213, 234, 240]; // #d5eaf0 — snow under a night sky
+    const TAU = Math.PI * 2;
+    const warp = fbm(x + 53, y + 17, SIZE);
+    const green = Math.sin(((2 * x + y) / SIZE) * TAU + warp * 2.2);
+    const magenta = Math.sin(((2 * x - y) / SIZE) * TAU + 4.4 + warp * 1.8);
+
     if (!tray) {
-      /*
-        The open sky under the castle. One low-frequency field places
-        the cumulus; thresholding it gives soft-edged blobs, brightest
-        at their middles. Sampling the SAME field a few units up the
-        picture finds where the cloud overhead is thicker than here —
-        which is exactly a blob's lower edge — and that edge is shaded
-        with the blue-grey the theme hands in as its accent, so every
-        cloud has a lit top and a shadowed belly instead of being a
-        flat white sticker.
-      */
-      const field =
-        noise(x / 40, y / 40, SIZE / 40) * 0.7 +
-        noise(x / 13 + 37, y / 13 + 11, SIZE / 13) * 0.3;
-      const above =
-        noise(x / 40, (y - 8) / 40, SIZE / 40) * 0.7 +
-        noise(x / 13 + 37, (y - 8) / 13 + 11, SIZE / 13) * 0.3;
-      // Open air between the clouds, deeper blue where they thin out.
+      const cyan = Math.sin(((x + 2 * y) / SIZE) * TAU + 2.1 + warp * 2.8);
+      const cell = 32;
+      const edge = gridEdge(x, y, cell);
+      const bx = Math.floor(x / cell);
+      const by = Math.floor(y / cell);
+      const block = hash(bx, by);
+      let c = mix(mix(p.a, p.b, 0.3 + hash(bx + 7, by + 3) * 0.7), cold, 0.04 + block * 0.22);
+      const drift = fbm(x + y * 0.3, y * 2.2, SIZE);
+      c = mix(c, lift(cold, 0.6), smoothstep(0.4, 0.8, drift) * 0.3);
+      const joint = smoothstep(2.4, 0.5, edge);
+      c = mix(c, shade(mix(p.b, cold, 0.3), 0.82), joint * 0.6);
+      c = mix(c, lift(cold, 0.5), smoothstep(6, 2.8, edge) * (1 - joint) * drift * 0.5);
+      c = mix(c, [59, 226, 148], (smoothstep(0.0, 0.85, green) * 0.42 + smoothstep(0.7, 0.98, green) * 0.18) * 1.4);
+      c = mix(c, [96, 208, 236], (smoothstep(0.05, 0.9, cyan) * 0.32 + smoothstep(0.72, 0.98, cyan) * 0.14) * 1.4);
+      c = mix(c, [224, 134, 220], smoothstep(0.3, 0.95, magenta) * 0.24 * 1.4);
+      glowAt(smoothstep(0.6, 0.98, green) * 0.55, [70, 236, 160]);
+      if (hash(x, y) > 0.993) c = lift(c, 0.85);
+      SIDE.h = 0.6 - joint * 0.3 + drift * 0.2;
+      return c;
+    }
+
+    const deep: Rgb = [64, 122, 164];
+    let c = mix(p.a, p.b, smoothstep(0.3, 0.75, noise(x / 16, y / 16, SIZE / 16)));
+    // Clear patches, where the eye goes down into the ice.
+    const clear = noise(x / 32 + 40, y / 32 + 9, SIZE / 32);
+    c = mix(c, deep, smoothstep(0.5, 0.82, clear) * 0.5);
+    // Frost feathering across the surface.
+    c = mix(c, lift(c, 0.35), smoothstep(0.6, 0.85, noise(x / 3 + 13, y / 9, SIZE / 3)) * 0.25);
+
+    // The fracture web: a jittered Voronoi, of which only some seams show.
+    voronoi(x, y, 34, 0.15, 0.7, 1, 3, 9, 51, 27);
+    // Wobbled by the curtain warp already in hand, so a fracture is not
+    // a ruled line.
+    const edge = VORO.d2 - VORO.d1 + (warp - 0.5) * 0.9;
+    const live = smoothstep(0.22, 0.42, noise(x / 22 + 3, y / 22 + 7, SIZE / 22));
+    const crack = smoothstep(0.95, 0.15, edge) * live;
+    const bruise = smoothstep(2.6, 0.9, edge) * (1 - crack) * live;
+    c = mix(c, shade(mix(c, deep, 0.5), 0.88), bruise * 0.55);
+    c = mix(c, lift(c, 0.9), crack * 0.9);
+
+    // The lights, lying faint on the ice.
+    c = mix(c, [86, 226, 168], smoothstep(0.25, 0.95, green) * 0.1);
+    c = mix(c, [214, 140, 226], smoothstep(0.5, 0.97, magenta) * 0.12);
+    glowAt(smoothstep(0.8, 0.99, green) * 0.22, [70, 236, 160]);
+
+    // Air bubbles caught in the freeze.
+    if (hash(x * 2.3, y * 2.3) > 0.9965) c = lift(c, 0.6);
+    SIDE.h = 0.62 - crack * 0.38 - bruise * 0.1;
+    return c;
+  },
+
+  /*
+    Crystal Cavern: dark rock with glowing crystal veins.
+
+    Marc's cut slabs stay — "I want the cut slabs", 28 Aug 2026, picked
+    from floors rendered through this very painter — at the same thirty
+    painter units. What changed in October 2026 is where the crystal is.
+    It used to be a quarter of the slab FACES, sunk into the rock so a
+    purple die would not vanish on one. Now the faces are dark cave rock
+    and the crystal is in the SEAMS between them: violet and ice-blue
+    veins that glow (they go into the glow map too, so they shine in the
+    dark the way the spec's "glowing crystal veins" means), with a bright
+    arris along each. A die sits on rock; the light runs round it.
+
+    Outside the walls the rock is quieter and the veins rarer — scenery
+    stays quieter than the board.
+  */
+  stalagmite: (x, y, p, tray) => {
+    const VEIN: Rgb[] = [
+      [201, 138, 255], [127, 212, 232], [220, 174, 255],
+    ];
+    if (!tray) {
+      let g = mix(p.a, p.b, smoothstep(0.2, 0.8, fbm(x * 0.6, y * 0.6, SIZE)));
+      g = mix(g, shade(p.a, 0.62), smoothstep(0.5, 0.9, fbm(x * 0.35, y * 0.35, SIZE)) * 0.5);
+      const vein = Math.abs(fbm(x * 0.5 + 17, y * 0.5, SIZE) - 0.5);
+      const veinColour = VEIN[Math.floor(noise(x / 32, y / 32, SIZE / 32) * 2.999)];
+      const lit = smoothstep(0.03, 0.006, vein);
+      g = mix(g, veinColour, lit * 0.3);
+      glowAt(lit * 0.25, veinColour);
+      const chunk = hash(Math.floor(x / 16), Math.floor(y / 16));
+      if (chunk > 0.86) {
+        const bx = (((x % 16) + 16) % 16) - 8;
+        const by = (((y % 16) + 16) % 16) - 8;
+        const geode = smoothstep(4, 1.2, Math.hypot(bx, by));
+        g = mix(g, lift(veinColour, 0.3), geode * 0.5);
+        glowAt(geode * 0.4, veinColour);
+      }
+      SIDE.h = 0.55 - lit * 0.3 + noise(x / 3, y / 3, SIZE / 3) * 0.2;
+      return mix(g, shade(g, 0.9), noise(x / 3, y / 3, SIZE / 3) * 0.4);
+    }
+
+    // Marc's cut slabs: a jittered Voronoi at thirty painter units.
+    const CELL = 30;
+    voronoi(x, y, CELL, 0.2, 0.6, 2, 0, 0, 41, 17);
+    const { d1, d2, cx, cy, cq, cr } = VORO;
+    const base = mix(p.a, p.b, hash(cq + 2, cr + 6) * 0.8);
+    // Each slab a plane at its own angle to the key light.
+    const tilt = ((x - cx) * LX + (y - cy) * LY) / CELL;
+    let c = shade(base, 0.9 + Math.max(-0.12, Math.min(0.14, tilt * 0.35)));
+    c = mix(c, shade(base, 0.8), noise(x / 4 + cq * 9, y / 4 + cr * 5, SIZE / 4) * 0.4);
+    // Mineral speckle, a few grains of it catching the light.
+    if (hash(x * 1.9, y * 1.9) > 0.9975) c = lift(c, 0.4);
+
+    const edge = d2 - d1;
+    const veinColour = VEIN[Math.floor(noise(x / 40 + 3, y / 40 + 11, SIZE / 40) * 2.999)];
+    // Every seam carries crystal; how brightly it burns wanders.
+    const burn = 0.2 + 0.8 * smoothstep(0.35, 0.75, noise(x / 18 + 5, y / 18 + 2, SIZE / 18));
+    const vein = smoothstep(1.5, 0.3, edge);
+    c = mix(c, shade(base, 0.45), smoothstep(3.2, 1.6, edge) * 0.5);
+    c = mix(c, mix(veinColour, [255, 255, 255], smoothstep(0.5, 0.05, edge) * 0.4), vein * (0.35 + burn * 0.45));
+    glowAt(vein * burn * 0.7, veinColour);
+    SIDE.h = 0.7 - smoothstep(3.2, 0.4, edge) * 0.5;
+    return c;
+  },
+
+  /*
+    Sky Kingdom: a cloud floor with gilded paving stones.
+
+    It used to be the castle floor of the one castle in the set — marble
+    tiles under merlons. Sky Kingdom is not a castle any more (it stands
+    behind a gold balustrade on clouds), so the floor is the courtyard of
+    a palace in the air: big pale paving slabs laid in courses, every
+    joint picked out in GOLD with a lit and a shaded side so the gilding
+    reads as inlay rather than as a drawn line, and cloud welling up over
+    the edges from the walls — white puffs with blue-grey undersides, the
+    shaded side being whichever side faces away from the sun. The middle
+    stays clear paving, because that is where the dice land.
+
+    Outside: open sky and cumulus as before, and through the gaps in the
+    cloud the patchwork fields a long way below, hazed blue with height.
+    That haze is what puts the board in the air.
+  */
+  cloudBalustrade: (x, y, p, tray) => {
+    const GOLD: Rgb = [206, 156, 60];
+    const BELLY: Rgb = [172, 192, 220];
+    if (!tray) {
+      const fieldAt = (sx: number, sy: number) =>
+        noise(sx / 32, sy / 32, SIZE / 32) * 0.7 + noise(sx / 16 + 37, sy / 16 + 11, SIZE / 16) * 0.3;
+      const field = fieldAt(x, y);
       let c = mix(p.b, p.a, noise(x / 16 + 7, y / 16 + 3, SIZE / 16) * 0.8);
+      // The ground far below, where the cloud is thinnest: field squares
+      // with hedges between them, hazed most of the way to sky blue.
+      const open = smoothstep(0.44, 0.3, field);
+      if (open > 0) {
+        const FIELDS: Rgb[] = [[118, 168, 92], [168, 182, 96], [98, 146, 84], [196, 176, 110]];
+        const plot = FIELDS[Math.floor(hash(Math.floor(x / 16), Math.floor(y / 16)) * 3.999)];
+        let land = gridEdge(x, y, 16) < 0.9 ? shade(plot, 0.7) : plot;
+        land = mix(land, p.b, 0.55);
+        c = mix(c, land, open * 0.85);
+      }
       const body = smoothstep(0.52, 0.66, field);
       const core = smoothstep(0.64, 0.82, field);
       c = mix(c, lift(p.a, 0.8), body * 0.92);
       c = mix(c, [255, 255, 255], core);
-      return mix(c, p.accent, body * smoothstep(0.005, 0.09, above - field) * 0.7);
+      // The side away from the sun: the cloud thickens toward the light.
+      const away = smoothstep(0.005, 0.08, fieldAt(x + LX * 6, y + LY * 6) - field);
+      c = mix(c, p.accent, body * away * 0.6);
+      SIDE.h = 0.3 + body * 0.5 + core * 0.2;
+      return c;
     }
-    /*
-      The castle floor: marble blocks, cut square and long since walked
-      on. Each block takes its own tone from a genuinely wide band —
-      the old mix(a, b, hash) was invisible because a and b were one
-      value step apart — gets fbm-warped veins of the cap's blue-grey,
-      and a one-unit bevel, lit on the top-left and shaded on the
-      bottom-right, so the grid reads as raised stone rather than as
-      grout lines drawn on a flat slab. An old block now and then has
-      lost a corner.
-    */
-    const cell = 16;
-    const tx = Math.floor(x / cell);
-    const ty = Math.floor(y / cell);
-    const edge = gridEdge(x, y, cell);
-    const h = hash(tx, ty);
-    let c = mix(p.a, p.b, 0.12 + h * 0.88);
-    // Marble veins, wandering with the noise and phase-shifted per
-    // block so they never line up across a joint. Blue-grey drawn from
-    // the DARK floor tone, not the accent — the accent is the cap,
-    // which is nearly white, and veins of white on white are no veins.
-    const vein = Math.abs(Math.sin(x * 0.3 + y * 0.11 + fbm(x, y, SIZE) * 9 + h * 19));
-    c = mix(c, shade(p.b, 0.8), smoothstep(0.2, 0.03, vein) * 0.55);
-    if (edge < 1) return shade(c, 0.66);
-    const lx = ((x % cell) + cell) % cell;
+
+    const cell = 26;
+    const row = Math.floor(y / cell);
+    const off = row & 1 ? cell / 2 : 0;
+    const col = Math.floor((x + off) / cell);
+    const lx = (((x + off) % cell) + cell) % cell;
     const ly = ((y % cell) + cell) % cell;
-    if (lx < 2.2 || ly < 2.2) c = lift(c, 0.3);
-    else if (lx > cell - 2.2 || ly > cell - 2.2) c = shade(c, 0.88);
-    // The chipped corner. Which corner is the block's own business.
-    const chip = hash(tx + 13, ty + 7);
-    if (chip > 0.92) {
-      const cx = Math.floor((chip - 0.92) * 50) % 2 ? cell - lx : lx;
-      const cy = Math.floor((chip - 0.92) * 25) % 2 ? cell - ly : ly;
-      if (cx + cy < 4.4) c = shade(c, 0.7);
+    const edge = Math.min(lx, cell - lx, ly, cell - ly);
+    const hh = hash(col, row);
+    let c = mix(p.a, p.b, 0.08 + hh * 0.62);
+    const vein = Math.abs(Math.sin(x * 0.3 + y * 0.11 + noise(x / 8, y / 8, SIZE / 8) * 9 + hh * 19));
+    c = mix(c, shade(p.b, 0.85), smoothstep(0.18, 0.03, vein) * 0.4);
+    // The slab's bevel: the edges that face +x and -y face the light.
+    if (edge < 2.4 && edge >= 1.1) {
+      const lit = lx > cell - 2.4 || ly < 2.4;
+      c = lit ? lift(c, 0.25) : shade(c, 0.9);
     }
-    return mix(c, shade(c, 0.94), noise(x / 2, y / 2, SIZE / 2));
+    // The gilded joint, lit along one side of it.
+    const joint = smoothstep(1.5, 0.7, edge);
+    const gilt = lx > cell / 2 || ly < cell / 2 ? lift(GOLD, 0.3) : shade(GOLD, 0.82);
+    c = mix(c, gilt, joint);
+
+    // Cloud welling up over the paving from the walls.
+    const fromWall = Math.min(x - 10, 102 - x, y - 10, 194 - y);
+    // The cloud thins out toward the middle, which is clear paving by
+    // design — so past that point the field is not asked at all, which
+    // was a third of this floor's cost.
+    const reach = smoothstep(24, 12, fromWall);
+    const cloudAt = (sx: number, sy: number) =>
+      fbm(sx * 0.8 + 11, sy * 0.8 + 3, SIZE) * reach + smoothstep(13, -2, fromWall) * 0.5;
+    const cl = reach > 0 ? cloudAt(x, y) : 0;
+    const body = smoothstep(0.7, 0.84, cl);
+    if (body > 0) {
+      const core = smoothstep(0.78, 0.98, cl);
+      c = mix(c, lift(p.a, 0.75), body * 0.92);
+      c = mix(c, [255, 255, 255], core * 0.9);
+      const away = smoothstep(0.0, 0.1, cloudAt(x + LX * 5, y + LY * 5) - cl);
+      c = mix(c, BELLY, body * away * 0.55);
+    }
+    SIDE.h = Math.max(0.6 - joint * 0.35, 0.45 + body * 0.55);
+    return c;
   },
 
-  // Regolith trodden into a hexagonal landing pad.
-  // Regolith: grey dust pocked with craters, and the tracks of whatever
-  // has driven over it. David asked for the Moon Base floor to look
-  // better — it was a hexagonal wireframe, which reads as graph paper.
-  airlock: (x, y, p) => {
+  /*
+    Moon Base: grey regolith, bootprints and small craters.
+
+    The craters used to be concentric — a dark bowl in a lit ring — which
+    is how a crater looks lit from directly overhead and from no other
+    angle. Lit from the side, as the key light is, the inner wall nearest
+    the light is in shade and the far one catches it, and the rim does the
+    opposite. That asymmetry is the whole difference between a crater and
+    a grey ring, so every crater is shaded against the light now.
+
+    And a trail of bootprints crosses the board, tread lines and all, from
+    the near end to the far: somebody walked out here. Outside the walls
+    the craters are bigger and a rover has driven past, its two treads
+    printing chevrons in the dust.
+  */
+  airlock: (x, y, p, tray) => {
     let c = mix(p.a, p.b, fbm(x, y, SIZE));
-    c = mix(c, shade(p.a, 0.86), smoothstep(0.45, 0.8, fbm(x * 0.5, y * 0.5, SIZE)) * 0.5);
-    // Craters, three sizes, each a dark bowl inside a lit rim.
+    // Darker maria, where old lava flooded the dust.
+    c = mix(c, shade(p.b, 0.86), smoothstep(0.5, 0.8, fbm(x * 0.4 + 9, y * 0.4, SIZE)) * 0.5);
+    let h = 0.55;
     for (let k = 0; k < 3; k++) {
-      const cell = [37, 23, 13][k];
-      const radius = [9, 5.5, 3][k];
+      const cell = tray ? [37, 23, 13][k] : [64, 32, 16][k];
+      const radius = tray ? [9, 5.5, 3][k] : [13, 7, 3.5][k];
       const row = Math.floor((y + k * 11) / cell);
       const col = Math.floor((x + k * 7) / cell);
-      const h = hash(col + k * 29, row + k * 13);
-      if (h < 0.35) continue;
-      const cx = (((x + k * 7) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 6;
-      const cy = (((y + k * 11) % cell) + cell) % cell - cell / 2 + (hash(col, row + 5) - 0.5) * 6;
-      const r = radius * (0.6 + h * 0.6);
-      const d = Math.hypot(cx, cy) + fbm(x * 2, y * 2, SIZE) * 1.2;
-      if (d > r * 1.2) continue;
-      c = mix(c, shade(p.a, 0.66), smoothstep(r, r * 0.55, d) * 0.8);
-      c = mix(c, lift(p.b, 0.4), smoothstep(r * 0.78, r, d) * smoothstep(r * 1.2, r, d) * 0.9);
+      const hh = hash(col + k * 29, row + k * 13);
+      if (hh < 0.4) continue;
+      const cx = ((((x + k * 7) % cell) + cell) % cell) - cell / 2 + (hh - 0.5) * cell * 0.3;
+      const cy = ((((y + k * 11) % cell) + cell) % cell) - cell / 2 + (hash(col, row + 5) - 0.5) * cell * 0.3;
+      const r = radius * (0.6 + hh * 0.6);
+      const d = Math.hypot(cx, cy) + (noise(x / 2, y / 2, SIZE / 2) - 0.5) * 1.2;
+      if (d > r * 1.35) continue;
+      const toward = (cx * LX + cy * LY) / Math.max(0.5, d);
+      if (d < r) {
+        const wall = smoothstep(r * 0.25, r, d);
+        c = mix(c, shade(c, 0.86), smoothstep(r, r * 0.4, d) * 0.4);
+        c = toward > 0
+          ? mix(c, shade(p.b, 0.62), wall * toward * 0.75)
+          : mix(c, lift(p.a, 0.35), wall * -toward * 0.55);
+        h = Math.min(h, 0.55 - (1 - d / r) * 0.4);
+      } else {
+        const rim = smoothstep(r * 1.35, r, d);
+        c = toward > 0 ? mix(c, lift(p.a, 0.3), rim * toward * 0.6) : mix(c, shade(c, 0.82), rim * -toward * 0.5);
+        h = Math.max(h, 0.55 + rim * 0.2);
+      }
+    }
+
+    if (tray) {
+      // The bootprints: a meandering walk, a print every eleven units,
+      // left and right of the line in turn.
+      const step = Math.floor(y / 11);
+      const yc = step * 11 + 5.5;
+      const px = 56 + 26 * Math.sin(yc * 0.024 + 0.5) + (step & 1 ? 3 : -3);
+      const dx = x - px;
+      const dy = y - yc;
+      if (Math.abs(dx) < 2.6 && Math.abs(dy) < 3.6) {
+        const q = (dx / 1.7) ** 4 + (dy / 2.8) ** 4;
+        const print = smoothstep(1.2, 0.8, q);
+        if (print > 0) {
+          const tread = Math.sin(dy * 3.4) > 0.2 ? 0.86 : 1;
+          c = mix(c, shade(c, 0.74 * tread), print * 0.7);
+          // The wall of the print on the light's side is in its shade.
+          const side = (dx * LX + dy * LY) / 3;
+          c = side < 0 ? mix(c, lift(c, 0.25), print * (1 - print) * 3 * -side) : c;
+          h = Math.min(h, 0.55 - print * 0.25);
+        }
+      }
+    } else {
+      // A rover's tracks: two tread bands, chevrons pressed into them.
+      const a = (y * Math.PI * 2) / SIZE;
+      const tx = 88 + 8 * Math.sin(a);
+      for (let side = -1; side <= 1; side += 2) {
+        const dx = x - tx - side * 5;
+        if (Math.abs(dx) > 2) continue;
+        const band = smoothstep(2, 1.4, Math.abs(dx));
+        const chevron = Math.sin((y + Math.abs(dx) * 1.2) * 1.3) > 0.25;
+        c = mix(c, shade(c, chevron ? 0.72 : 0.86), band * 0.7);
+        h = Math.min(h, 0.55 - band * 0.2);
+      }
     }
     // The dust itself, fine and even.
-    return mix(c, hash(x, y) > 0.5 ? lift(p.b, 0.25) : shade(p.a, 0.9), 0.06);
+    c = mix(c, hash(x, y) > 0.5 ? lift(p.b, 0.25) : shade(p.a, 0.9), 0.06);
+    SIDE.h = h;
+    return c;
   },
 
   driftwood: (x, y, p) => {
@@ -1070,6 +1362,37 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
  * texels each of those units gets, so the picture can be drawn finer
  * without a single painter changing what it draws.
  */
+/**
+ * Which surfaces also paint a height and a glow, and so carry a bump map
+ * and an emissive map beside their colour (see SIDE). Only these; every
+ * other painter is drawn exactly as it was, at exactly its old cost.
+ */
+const EXTRAS: Partial<Record<ArenaStructure, { bump: boolean; glow: boolean }>> = {
+  snowFence: { bump: true, glow: false },
+  adobe: { bump: true, glow: false },
+  basalt: { bump: true, glow: true },
+  logPile: { bump: true, glow: false },
+  iceBlocks: { bump: true, glow: true },
+  stalagmite: { bump: true, glow: true },
+  cloudBalustrade: { bump: true, glow: false },
+  airlock: { bump: true, glow: false },
+};
+
+/** A picture as a texture, filtered the way every surface here is. */
+function surfaceTexture(data: Uint8Array, w: number, h: number, srgb: boolean): THREE.DataTexture {
+  const texture = new THREE.DataTexture(data, w, h);
+  texture.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const byte = (v: number) => (v < 0 ? 0 : v > 255 ? 255 : v);
+
 function build(
   structure: ArenaStructure,
   paint: SurfacePaint,
@@ -1083,25 +1406,74 @@ function build(
   const w = Math.round(wUnits * density);
   const h = Math.round(hUnits * density);
   const data = new Uint8Array(w * h * 4);
+  /*
+    The height and glow are kept at one texel per painter unit — half the
+    colour's resolution on the tray. A bump that soft still rakes, and a
+    glow is SUPPOSED to be soft; at full size the pair would add three
+    quarters of a megabyte to every glowing floor for nothing visible.
+  */
+  const extra = EXTRAS[structure];
+  const step = Math.max(1, Math.round(density));
+  const ew = Math.ceil(w / step);
+  const eh = Math.ceil(h / step);
+  const bump = extra?.bump ? new Uint8Array(ew * eh * 4) : null;
+  const glow = extra?.glow ? new Uint8Array(ew * eh * 4) : null;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
+      SIDE.h = 0.5;
+      SIDE.g = 0;
       const c = painter(x / density, y / density, p, tray);
       const i = (y * w + x) * 4;
-      data[i] = Math.max(0, Math.min(255, c[0]));
-      data[i + 1] = Math.max(0, Math.min(255, c[1]));
-      data[i + 2] = Math.max(0, Math.min(255, c[2]));
+      data[i] = byte(c[0]);
+      data[i + 1] = byte(c[1]);
+      data[i + 2] = byte(c[2]);
       data[i + 3] = 255;
+      if ((bump || glow) && x % step === 0 && y % step === 0) {
+        const j = ((y / step) * ew + x / step) * 4;
+        if (bump) {
+          const v = byte(SIDE.h * 255);
+          bump[j] = v;
+          bump[j + 1] = v;
+          bump[j + 2] = v;
+          bump[j + 3] = 255;
+        }
+        if (glow) {
+          glow[j] = byte(SIDE.gr * SIDE.g);
+          glow[j + 1] = byte(SIDE.gg * SIDE.g);
+          glow[j + 2] = byte(SIDE.gb * SIDE.g);
+          glow[j + 3] = 255;
+        }
+      }
     }
   }
-  const texture = new THREE.DataTexture(data, w, h);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps = true;
-  texture.needsUpdate = true;
+  const texture = surfaceTexture(data, w, h, true);
+  /*
+    Carried on the colour texture rather than returned beside it, so the
+    one cache entry (textureCache.ts) holds all three and they cannot be
+    painted from different colours or evicted separately.
+  */
+  texture.userData.bump = bump ? surfaceTexture(bump, ew, eh, false) : null;
+  texture.userData.glow = glow ? surfaceTexture(glow, ew, eh, true) : null;
   return texture;
+}
+
+/** The relief and glow painted alongside a surface, where it has them. */
+export function surfaceExtras(t: THREE.Texture): {
+  bump: THREE.DataTexture | null;
+  glow: THREE.DataTexture | null;
+} {
+  return { bump: t.userData.bump ?? null, glow: t.userData.glow ?? null };
+}
+
+/** Both of a surface's maps, laid down the way its colour is. */
+function matchExtras(t: THREE.DataTexture): void {
+  for (const m of [t.userData.bump, t.userData.glow] as (THREE.DataTexture | null)[]) {
+    if (!m) continue;
+    m.wrapS = t.wrapS;
+    m.wrapT = t.wrapT;
+    m.repeat.copy(t.repeat);
+    m.anisotropy = t.anisotropy;
+  }
 }
 
 /** The tray floor: what the dice roll on. */
@@ -1154,6 +1526,7 @@ export function createTraySurface(
     promise — three.js clamps it to whatever the device can do.
   */
   t.anisotropy = 8;
+  matchExtras(t);
   return t;
 }
 
@@ -1172,6 +1545,7 @@ export function createGroundSurface(
   */
   const t = build(structure, paint, SIZE, SIZE, 1, false);
   t.repeat.set(repeat, repeat);
+  matchExtras(t);
   return t;
 }
 
