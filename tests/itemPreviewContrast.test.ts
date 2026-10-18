@@ -85,14 +85,17 @@ function styleColor(styleName: string, prop: string): { rgb: RGB; alpha: number 
 }
 
 /**
- * The three distinct floor base colours the arenas actually use (see the
- * createFlagstoneTexture calls in src/arena/*Arena.tsx). Sunset Castle
- * reuses the castle floor under different lighting, so it is not a fourth.
+ * The floor colours of the four hand-built arenas, as they come out on
+ * screen (measured from tools/arena-preview renders, October 2026, after
+ * each got its own painted floor in src/arena/bespokeFloors.ts). Sunset
+ * Castle has its own cobbles now and its own low orange light, so it is a
+ * fourth entry rather than the castle's floor relit — and the darkest.
  */
 const ARENA_FLOORS: Record<string, RGB> = {
-  castle: [208, 184, 144],
-  jungle: [148, 162, 118],
-  space: [118, 124, 138],
+  castle: [166, 160, 147],
+  castleSunset: [140, 74, 43],
+  jungle: [85, 113, 56],
+  space: [98, 110, 128],
 };
 
 suite('preview bar · the dead button reads over the live board behind it', () => {

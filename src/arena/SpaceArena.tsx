@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
 import {
@@ -10,16 +10,20 @@ import {
   RETREAT_Z,
 } from '../game/stations';
 
-import { createFlagstoneTexture } from './flagstoneTexture';
+import { createDeckGlowTexture, createDeckTexture, createFieldTexture } from './bespokeFloors';
+import { DeckApron, HullBulwark, TheDrop, useBlink } from './spaceParts';
 import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
 import { Crate, Signpost, EXTRA_SPOTS } from './sceneryProps';
+import { useSceneryTick } from './sceneryClock';
 
 /**
  * Space Station arena — the 700🏆 Mystery Arena. A dice deck floating in
- * orbit: metal panel floor, glowing energy-field jail, antenna pylons,
- * starfield and a ringed planet. Same footprint as the castle (dimensions
- * from TUNING) so physics and every prisoner slot line up unchanged.
+ * orbit: lit deck plates with hazard striping, a bolted hull bulwark with
+ * a containment field above it, antenna pylons, and past the deck edge a
+ * long drop to a ringed planet and the stars (spaceParts.tsx). Same
+ * footprint as the castle (dimensions from TUNING) so physics and every
+ * prisoner slot line up unchanged.
  *
  * Glowing accents use MeshBasicMaterial (unlit) with toneMapped:false so
  * they read as emissive light sources without a bloom pass.
@@ -34,79 +38,8 @@ const GLOW_CYAN = '#3ff2ff';
  * Knee-high on the dice, which is enough to look like a real edge you
  * could trip over without becoming a wall.
  */
-const RIM_HEIGHT = 0.42;
+const RIM_HEIGHT = 0.55;
 const GLOW_MAGENTA = '#ff5fd0';
-
-/** Starfield: one Points draw call, ~320 stars on a big sphere shell. */
-function Starfield() {
-  const geometry = useMemo(() => {
-    const COUNT = 320;
-    const positions = new Float32Array(COUNT * 3);
-    // Deterministic-ish scatter (seeded by index) on the upper hemisphere of
-    // a big shell so stars surround the deck without dipping below it.
-    for (let i = 0; i < COUNT; i++) {
-      const a = i * 2.399963; // golden-angle spiral = even coverage
-      const t = (i + 0.5) / COUNT;
-      const y = 0.05 + t * 0.95; // keep above the horizon
-      const r = Math.sqrt(1 - y * y);
-      const R = 55 + ((i * 37) % 20);
-      positions[i * 3] = Math.cos(a) * r * R;
-      positions[i * 3 + 1] = y * R * 0.7 - 4;
-      positions[i * 3 + 2] = Math.sin(a) * r * R - 10;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    return geo;
-  }, []);
-  // Passed as a prop rather than declared as JSX, so R3F does not free it
-  // on unmount. Built per mount, so free it per unmount.
-  useEffect(() => () => geometry.dispose(), [geometry]);
-
-  const material = useMemo(
-    () =>
-      new THREE.PointsMaterial({
-        color: '#ffffff',
-        size: 0.28,
-        sizeAttenuation: true,
-        toneMapped: false,
-      }),
-    [],
-  );
-
-  return <points geometry={geometry} material={material} />;
-}
-
-/** Ringed planet hanging in the distance behind the station. */
-function Planet() {
-  return (
-    <group position={[8.5, 7.5, -26]} rotation={[0.4, 0, -0.35]}>
-      <mesh>
-        <sphereGeometry args={[3.4, 20, 16]} />
-        <meshBasicMaterial color="#c98a5c" toneMapped={false} />
-      </mesh>
-      {/* Simple band detail */}
-      <mesh position={[0, 0.7, 0.1]} scale={[1.001, 1, 1.001]}>
-        <sphereGeometry args={[3.4, 20, 4, 0, Math.PI * 2, 1.2, 0.25]} />
-        <meshBasicMaterial color="#a86b42" toneMapped={false} />
-      </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[4.2, 5.6, 40]} />
-        <meshBasicMaterial
-          color="#e8d5a8"
-          toneMapped={false}
-          side={THREE.DoubleSide}
-          transparent
-          opacity={0.8}
-        />
-      </mesh>
-      {/* A small moon */}
-      <mesh position={[-5.5, 2.8, 1]}>
-        <sphereGeometry args={[0.6, 12, 10]} />
-        <meshBasicMaterial color="#b8bcc9" toneMapped={false} />
-      </mesh>
-    </group>
-  );
-}
 
 /**
  * Containment-cell jail pen: same platform and bar coordinates as the
@@ -287,24 +220,14 @@ function SpaceRetreat({ padColors }: ArenaProps) {
   );
 }
 
-/** The orbital surroundings: apron ring, solar wings, stars, planet. */
+/**
+ * The orbital surroundings: the deck apron the tray is set into, the
+ * glowing walkway to the shuttle bay, and the drop past the deck's edge.
+ */
 function SpaceWorld() {
-  const { innerWidth, innerDepth, wallThickness } = TUNING.tray;
-  const apronW = innerWidth + wallThickness * 2 + 9;
-  const apronD = innerDepth + wallThickness * 2 + 10;
-
-  const panel = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#2a4a8a', roughness: 0.35, metalness: 0.5 }),
-    [],
-  );
-
   return (
     <group>
-      {/* Dark hull apron the whole station sits on (replaces the meadow) */}
-      <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[apronW, apronD]} />
-        <meshStandardMaterial color="#353b4d" roughness={0.6} metalness={0.4} />
-      </mesh>
+      <DeckApron />
 
       {/* Glowing walkway strip toward the player (replaces the dirt path) */}
       <mesh position={[0, -0.055, 8.2]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -318,46 +241,15 @@ function SpaceWorld() {
         </mesh>
       ))}
 
-      {/* Solar panel wings off both sides of the deck */}
-      {([-1, 1] as const).map((side) => (
-        <group key={`wing-${side}`} position={[side * (apronW / 2 + 2.6), 0.3, -1]}>
-          <mesh position={[side * -2.1, 0, 0]}>
-            <boxGeometry args={[4.4, 0.12, 0.4]} />
-            <meshStandardMaterial color={HULL} roughness={0.4} metalness={0.6} />
-          </mesh>
-          {[-1.6, 0, 1.6].map((z, i) => (
-            <mesh key={i} material={panel} position={[0, 0, z]} rotation={[0.35, 0, 0]}>
-              <boxGeometry args={[4.6, 0.06, 1.35]} />
-            </mesh>
-          ))}
-        </group>
-      ))}
-
-      {/* Docked shuttle beyond the far wall */}
-      <group position={[-6.8, 0.4, -8.6]} rotation={[0, 0.5, 0]}>
-        <mesh>
-          <capsuleGeometry args={[0.55, 1.6, 6, 12]} />
-          <meshStandardMaterial color="#c9ccd8" roughness={0.4} metalness={0.5} />
-        </mesh>
-        <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1, 1, 0.4]}>
-          <boxGeometry args={[0.1, 2.6, 1.2]} />
-          <meshStandardMaterial color="#8a93a8" roughness={0.4} metalness={0.5} />
-        </mesh>
-        <mesh position={[0, -1.15, 0]}>
-          <coneGeometry args={[0.32, 0.4, 10]} />
-          <meshBasicMaterial color="#ff9e3f" toneMapped={false} />
-        </mesh>
-      </group>
-
-      <Starfield />
-      <Planet />
+      <TheDrop />
     </group>
   );
 }
 
 /**
- * The space-station battlefield. Hull walls with glowing light strips
- * replace the castle battlements; antenna pylons stand at the corners.
+ * The space-station battlefield. A bulwark of hull plates with light in
+ * its seams and a containment field above it replaces the castle
+ * battlements; antenna pylons with blinking beacons stand at the corners.
  * Collision bodies are unchanged in src/physics/world.ts — all visual.
  */
 export function SpaceArena({ padColors }: ArenaProps) {
@@ -365,18 +257,11 @@ export function SpaceArena({ padColors }: ArenaProps) {
   const halfW = innerWidth / 2;
   const halfD = innerDepth / 2;
 
-  const floorTexture = useMemo(
-    () =>
-      cachedTexture('space-floor', () => {
-    // Steel deck panels with dark seams.
-    const texture = createFlagstoneTexture({ r: 118, g: 124, b: 138 }, 0.45);
-    const floorW = innerWidth + wallThickness * 2;
-    const floorD = innerDepth + wallThickness * 2;
-    texture.repeat.set(1, floorD / floorW);
-        return texture;
-      }),
-    [innerWidth, innerDepth, wallThickness],
-  );
+  // Deck plates, and the light the deck gives off — painted together so
+  // each lamp sits in its own slot (bespokeFloors.ts).
+  const floorTexture = useMemo(() => cachedTexture('space-floor', createDeckTexture), []);
+  const floorGlow = useMemo(() => cachedTexture('space-floor-glow', createDeckGlowTexture), []);
+  const fieldAlpha = useMemo(() => cachedTexture('space-field', createFieldTexture), []);
 
   const wallMaterial = useMemo(
     () => new THREE.MeshStandardMaterial({ color: HULL, roughness: 0.45, metalness: 0.5 }),
@@ -396,39 +281,27 @@ export function SpaceArena({ padColors }: ArenaProps) {
       new THREE.MeshBasicMaterial({
         color: GLOW_CYAN,
         transparent: true,
-        opacity: 0.17,
+        // Rising off the hull and fading as it climbs: see createFieldTexture.
+        alphaMap: fieldAlpha,
+        opacity: 0.3,
         side: THREE.DoubleSide,
         depthWrite: false,
         toneMapped: false,
       }),
-    [],
+    [fieldAlpha],
   );
-
-  /** Studs along the rim, evenly spaced, that the field hangs between. */
-  const emitters = useMemo(() => {
-    const list: [number, number, number][] = [];
-    for (let x = -halfW - wallThickness / 2; x <= halfW + wallThickness / 2 + 0.01; x += 0.72) {
-      list.push([x, RIM_HEIGHT, -(halfD + wallThickness / 2)]);
-      list.push([x, RIM_HEIGHT, halfD + wallThickness / 2]);
-    }
-    for (let z = -halfD - wallThickness / 2 + 0.72; z <= halfD + wallThickness / 2 - 0.5; z += 0.78) {
-      list.push([-(halfW + wallThickness / 2), RIM_HEIGHT, z]);
-      list.push([halfW + wallThickness / 2, RIM_HEIGHT, z]);
-    }
-    return list;
-  }, [halfW, halfD, wallThickness]);
 
   // Glowing light strips along every wall top — the station's "battlements".
   const strips = useMemo(() => {
     // On the rim, not at wall height: the wall above the rim is a
     // see-through field now, so a light strip up there would be a glowing
     // line floating in the air.
-    const y = RIM_HEIGHT + 0.04;
+    const y = RIM_HEIGHT + 0.012;
     return [
-      { pos: [0, y, -(halfD + wallThickness / 2)] as const, size: [innerWidth, 0.08, 0.12] as const },
-      { pos: [0, y, halfD + wallThickness / 2] as const, size: [innerWidth, 0.08, 0.12] as const },
-      { pos: [-(halfW + wallThickness / 2), y, 0] as const, size: [0.12, 0.08, innerDepth] as const },
-      { pos: [halfW + wallThickness / 2, y, 0] as const, size: [0.12, 0.08, innerDepth] as const },
+      { pos: [0, y, -(halfD + wallThickness / 2)] as const, size: [innerWidth, 0.03, 0.07] as const },
+      { pos: [0, y, halfD + wallThickness / 2] as const, size: [innerWidth, 0.03, 0.07] as const },
+      { pos: [-(halfW + wallThickness / 2), y, 0] as const, size: [0.07, 0.03, innerDepth] as const },
+      { pos: [halfW + wallThickness / 2, y, 0] as const, size: [0.07, 0.03, innerDepth] as const },
     ];
   }, [halfW, halfD, wallThickness, innerWidth, innerDepth]);
 
@@ -456,6 +329,19 @@ export function SpaceArena({ padColors }: ArenaProps) {
     return list;
   }, [halfW, halfD]);
 
+  // The pylon beacons flash in turn round the deck (spaceParts.useBlink).
+  const beacons = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
+  useBlink(beacons);
+  // The deck's inset lamps breathe, slowly — the station is running.
+  const floorMaterial = useRef<THREE.MeshStandardMaterial>(null);
+  const breathe = useMemo(
+    () => (t: number) => {
+      if (floorMaterial.current) floorMaterial.current.emissiveIntensity = 0.85 + Math.sin(t * 1.4) * 0.2;
+    },
+    [],
+  );
+  useSceneryTick(breathe);
+
   const pylonPositions: [number, number][] = [
     [-(halfW + wallThickness), -(halfD + wallThickness)],
     [halfW + wallThickness, -(halfD + wallThickness)],
@@ -470,7 +356,15 @@ export function SpaceArena({ padColors }: ArenaProps) {
         <planeGeometry
           args={[innerWidth + wallThickness * 2, innerDepth + wallThickness * 2]}
         />
-        <meshStandardMaterial map={floorTexture} roughness={0.6} metalness={0.35} />
+        <meshStandardMaterial
+          ref={floorMaterial}
+          map={floorTexture}
+          emissiveMap={floorGlow}
+          emissive="#ffffff"
+          emissiveIntensity={0.9}
+          roughness={0.6}
+          metalness={0.35}
+        />
       </mesh>
 
       <SpaceWorld />
@@ -512,30 +406,7 @@ export function SpaceArena({ padColors }: ArenaProps) {
         at exactly that height so a die visibly stops where it always did
         rather than appearing to halt in mid-air.
       */}
-      {(
-        [
-          [-(halfW + wallThickness / 2), 0, wallThickness, innerDepth + wallThickness * 2],
-          [halfW + wallThickness / 2, 0, wallThickness, innerDepth + wallThickness * 2],
-          [0, -(halfD + wallThickness / 2), innerWidth + wallThickness * 2, wallThickness],
-          [0, halfD + wallThickness / 2, innerWidth + wallThickness * 2, wallThickness],
-        ] as const
-      ).map(([x, z, w, d], i) => (
-        <mesh key={`rim-${i}`} material={wallMaterial} position={[x, RIM_HEIGHT / 2, z]}>
-          <boxGeometry args={[w, RIM_HEIGHT, d]} />
-        </mesh>
-      ))}
-
-      {/* Emitter studs along the rim, which is what the field hangs off. */}
-      {emitters.map((e, i) => (
-        <group key={`emitter-${i}`} position={e}>
-          <mesh material={wallMaterial} position={[0, 0.09, 0]}>
-            <cylinderGeometry args={[0.07, 0.09, 0.18, 6]} />
-          </mesh>
-          <mesh material={stripMaterial} position={[0, 0.2, 0]}>
-            <sphereGeometry args={[0.055, 8, 6]} />
-          </mesh>
-        </group>
-      ))}
+      <HullBulwark rimHeight={RIM_HEIGHT} />
 
       {/* The containment field: full height, and you can see through it. */}
       {(
@@ -588,6 +459,9 @@ export function SpaceArena({ padColors }: ArenaProps) {
           <mesh position={[0, wallHeight + 1.14, 0]}>
             <sphereGeometry args={[0.11, 10, 8]} />
             <meshBasicMaterial
+              ref={(m) => {
+                beacons.current[i] = m;
+              }}
               color={i % 2 === 0 ? GLOW_CYAN : GLOW_MAGENTA}
               toneMapped={false}
             />

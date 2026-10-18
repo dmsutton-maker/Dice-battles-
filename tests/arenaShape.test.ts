@@ -219,7 +219,28 @@ suite('arenas · no two battlefields are the same building', () => {
      * whole of it.
      */
     for (const file of ARENA_FILES) {
-      const source = readFileSync(join('src/arena', file), 'utf8');
+      const own = readFileSync(join('src/arena', file), 'utf8');
+      /*
+        An arena may draw its walls in a file of its own (the castle's are
+        in castleParts.tsx and ruinParts.tsx since October 2026), so read
+        the arena together with the local scenery modules it imports —
+        code, not comments, since a comment naming the wall height draws
+        nothing.
+      */
+      const locals = [...own.matchAll(/from '\.\/(\w+)'/g)].map((m) => m[1]);
+      const source = [own, ...locals.map((name) => {
+        for (const ext of ['.tsx', '.ts']) {
+          try {
+            return readFileSync(join('src/arena', name + ext), 'utf8');
+          } catch {
+            // try the next extension
+          }
+        }
+        return '';
+      })]
+        .join('\n')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
       assert(
         source.includes('wallHeight'),
         `${file} never references the tray wall height — dice will stop at nothing`,
