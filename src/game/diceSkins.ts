@@ -69,7 +69,10 @@ export const DICE_SKINS: DiceSkin[] = [
   // blank white, and as the default it set the quality bar at nothing.
   // Warm cream now, with the material painted in: faint parallel grain
   // and a soft sheen, kept quiet so the face stickers still dominate.
-  { id: 'ivory', name: 'Ivory', body: '#f3ead9', pattern: 'ivory', ink: '#fffdf4', unlock: 'ivory-dice' },
+  // Whiter since 18 Oct 2026 (David: "make the ivory dice more white"):
+  // #f3ead9 read as cream on the phone. Still a hair warm, so it is ivory
+  // and not the flat #ffffff it started as.
+  { id: 'ivory', name: 'Ivory', body: '#fbf8f2', pattern: 'ivory', ink: '#ffffff', unlock: 'ivory-dice' },
   {
     id: 'gold',
     name: 'Gold',

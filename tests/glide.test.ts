@@ -79,6 +79,10 @@ suite('gold pass · the button and the Store are wired', () => {
     assert(/glidedFor\.current === focusGold/.test(store), 'coming back from a preview replays the glide');
     assert(/isReduceMotionEnabled/.test(store), 'Reduce Motion is ignored');
     assert(/cancelAnimationFrame/.test(store), 'the glide is never cancelled');
+    // A phone takes longer than a browser to lay out seventy cards the
+    // first time; the glide must wait by the clock, not a frame count.
+    assert(/Date\.now\(\) - asked < 3000/.test(store), 'the glide gives up before a phone has laid the Store out');
+    assert(/contentH\.current === 0/.test(store), 'the glide can start before the page height is known');
   });
 
   test('the Gold Pass reports where it is and lights up on arrival', () => {

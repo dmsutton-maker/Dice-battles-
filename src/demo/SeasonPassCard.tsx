@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
 import type { PreviewTarget } from '../game/itemPreview';
 import { resolveItem } from '../game/prizes';
@@ -12,7 +12,9 @@ import {
   SeasonReward,
   SeasonState,
 } from '../game/seasonPass';
-import { SecondaryButton } from '../ui/Card';
+import { owns } from '../game/currency';
+import { rewardInfo } from '../game/rewardInfo';
+import { Card, PrimaryButton, SecondaryButton } from '../ui/Card';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
@@ -62,6 +64,8 @@ export function SeasonPassCard({
   const { level, into, need } = progressIn(xp);
   const done = level >= LEVELS;
   const fill = done ? 1 : need > 0 ? into / need : 0;
+  /** The tile whose description is open, if any. */
+  const [open, setOpen] = useState<{ l: Level; track: 'free' | 'gold' } | null>(null);
 
   const rows = useMemo(() => {
     const row = (pay: (n: number) => SeasonReward): Level[] =>
@@ -108,23 +112,46 @@ export function SeasonPassCard({
         {reached && <Text style={styles.tick}>✓</Text>}
       </View>
     );
-    if (!l.item || !l.reward.item) return body;
-    const target: PreviewTarget =
-      l.reward.item.kind === 'dice'
-        ? { kind: 'die', id: l.reward.item.id, from: 'inventory' }
-        : { kind: 'arena', id: l.reward.item.id as never, from: 'inventory' };
+    /*
+      EVERY tile opens its description now — David, 18 Oct 2026: "On the
+      season pass you should be able to click on rewards and see a
+      description of it." A die or a battlefield is still one tap from
+      standing in it: the description has a "See it" button.
+    */
+    const what = l.item ? l.item.name : l.reward.coins > 0 ? `${l.reward.coins} coins` : `${l.reward.trophies} trophies`;
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${track === 'gold' ? 'Gold Pass level' : 'Level'} ${l.n}: ${l.item.name}. Tap to see it.`}
+        accessibilityLabel={`${track === 'gold' ? 'Gold Pass level' : 'Level'} ${l.n}: ${what}. Tap for details.`}
         onPress={() => {
           playClick();
-          onPreview(target);
+          setOpen({ l, track });
         }}
       >
         {body}
       </Pressable>
     );
+  };
+
+  const info = open
+    ? rewardInfo({
+        level: open.l.n,
+        track: open.track,
+        reward: open.l.reward,
+        itemName: open.l.item?.name,
+        xp,
+        gold,
+        // Only worth saying BEFORE the level pays: once it has, owning
+        // the item is simply what reaching it did.
+        alreadyOwned:
+          !!open.l.item &&
+          owns(open.l.item.walletKey) &&
+          !(open.l.n <= level && (open.track === 'free' || gold)),
+      })
+    : null;
+  const close = () => {
+    playClick();
+    setOpen(null);
   };
 
   return (
@@ -190,6 +217,70 @@ export function SeasonPassCard({
           </View>
         ))}
       </ScrollView>
+
+      {/*
+        The description, over the whole screen like the Store's product
+        cards (a Modal, so it centres on the phone, not on this card).
+      */}
+      {open && info && (
+        <Modal transparent visible animationType="fade" onRequestClose={close}>
+          <View style={styles.detailBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close" />
+            <Card style={styles.detailPanel} radius={SHAPE.radiusLg}>
+              <ScrollView style={styles.detailText} contentContainerStyle={styles.detailScroll}>
+                <View style={styles.detailHead}>
+                  <View style={[styles.detailIcon, open.track === 'gold' && styles.tileGold]}>
+                    {open.l.item ? (
+                      <ItemIcon picture={pictureOfItem(open.l.item)} size={40} />
+                    ) : open.l.reward.coins > 0 ? (
+                      <GoldCoin size={30} />
+                    ) : (
+                      <TrophyIcon size={30} color={THEME.ink} />
+                    )}
+                  </View>
+                  <View style={styles.detailHeadText}>
+                    <Text style={styles.detailTitle}>{info.title}</Text>
+                    <Text style={styles.detailWhere}>{info.where}</Text>
+                  </View>
+                </View>
+                <Text style={styles.detailBody}>{info.body}</Text>
+                <Text style={styles.detailStatus}>{info.status}</Text>
+              </ScrollView>
+              {info.canPreview && open.l.reward.item && (
+                <PrimaryButton
+                  style={styles.detailButton}
+                  onPress={() => {
+                    const item = open.l.reward.item!;
+                    playClick();
+                    setOpen(null);
+                    onPreview(
+                      item.kind === 'dice'
+                        ? { kind: 'die', id: item.id, from: 'inventory' }
+                        : { kind: 'arena', id: item.id as never, from: 'inventory' },
+                    );
+                  }}
+                >
+                  <Text style={styles.detailButtonText}>See it</Text>
+                </PrimaryButton>
+              )}
+              {info.offerGold && (
+                <SecondaryButton
+                  style={[styles.detailButton, styles.goldButton]}
+                  onPress={() => {
+                    setOpen(null);
+                    onGetGold();
+                  }}
+                >
+                  <Text style={styles.goldButtonText}>Get the Gold Pass</Text>
+                </SecondaryButton>
+              )}
+              <Pressable style={styles.detailClose} accessibilityRole="button" onPress={close}>
+                <Text style={styles.detailCloseText}>Close</Text>
+              </Pressable>
+            </Card>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -250,6 +341,37 @@ const styles = StyleSheet.create({
   tileLevel: { color: THEME.inkSoft, ...TYPE.label },
   tileIcon: { height: 30, alignItems: 'center', justifyContent: 'center' },
   tileAmount: { color: THEME.ink, ...TYPE.small, textAlign: 'center' },
+  detailBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(29, 26, 46, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  detailPanel: { width: '100%', maxWidth: 420, padding: 20 },
+  // The limit goes on the words, not the card (see MoneyShelf's detail).
+  detailText: { maxHeight: 440 },
+  detailScroll: { gap: 12, paddingBottom: 4 },
+  detailHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  detailIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    backgroundColor: THEME.tile,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailHeadText: { flex: 1, minWidth: 0, gap: 2 },
+  detailTitle: { ...TYPE.title, color: THEME.ink },
+  detailWhere: { ...TYPE.small, color: THEME.accent, fontWeight: '800' },
+  detailBody: { ...TYPE.body, color: THEME.ink, lineHeight: 21 },
+  detailStatus: { ...TYPE.body, color: THEME.inkSoft, fontWeight: '700', lineHeight: 21 },
+  detailButton: { alignSelf: 'stretch', marginTop: 12, paddingVertical: 12 },
+  detailButtonText: { ...TYPE.cardTitle, color: THEME.onAccent },
+  detailClose: { alignSelf: 'center', marginTop: 8, minHeight: 44, justifyContent: 'center', paddingHorizontal: 20 },
+  detailCloseText: { ...TYPE.body, color: THEME.ink, fontWeight: '800', textDecorationLine: 'underline' },
   tick: {
     position: 'absolute',
     top: 2,

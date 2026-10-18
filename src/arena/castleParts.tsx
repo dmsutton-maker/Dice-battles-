@@ -164,9 +164,21 @@ function Towers({ stone }: { stone: THREE.Material }) {
 
   return (
     <>
-      {CORNER_TOWERS.map((t, i) => (
+      {CORNER_TOWERS.map((t, i) => {
+        /*
+          The two NEAR towers (bottom of the screen) have no roof and no
+          pennant. Seen from almost straight above, a cone roof that close
+          to the camera is a big red disc on a stick — David: "get rid of
+          the umbrellas at the bottom of the arenas where it's
+          unnecessary." An open stone tower top reads as a tower; the
+          roofs stay on the far pair, where they are small and read right.
+        */
+        const near = t.z > 0;
+        return (
         <group key={`tower-${i}`} position={[t.x, 0, t.z]}>
           <mesh material={stone} geometry={body} position={[0, towerH / 2, 0]} />
+          {!near && (
+          <>
           {/* Corbelled ring the roof sits on. */}
           <mesh position={[0, towerH + 0.06, 0]}>
             <cylinderGeometry args={[0.63, 0.55, 0.14, 14]} />
@@ -176,6 +188,8 @@ function Towers({ stone }: { stone: THREE.Material }) {
             <coneGeometry args={[0.68, 0.9, 14]} />
             <meshStandardMaterial color={ROOF} roughness={0.6} />
           </mesh>
+          </>
+          )}
           {/* Arrow slits on the two faces the camera can see. */}
           {[0, 1].map((k) => {
             const a = Math.atan2(-t.x, -t.z) + (k ? 0.55 : -0.55);
@@ -190,7 +204,9 @@ function Towers({ stone }: { stone: THREE.Material }) {
               </mesh>
             );
           })}
-          {/* Pennant. */}
+          {/* Pennant — far towers only. */}
+          {!near && (
+          <>
           <mesh position={[0, towerH + 1.2, 0]}>
             <cylinderGeometry args={[0.018, 0.022, 0.5, 5]} />
             <meshStandardMaterial color="#4a4038" roughness={0.8} />
@@ -207,8 +223,11 @@ function Towers({ stone }: { stone: THREE.Material }) {
               <meshStandardMaterial color={i % 2 ? BANNER : GOLD} roughness={0.8} side={THREE.DoubleSide} />
             </mesh>
           </group>
+          </>
+          )}
         </group>
-      ))}
+        );
+      })}
     </>
   );
 }

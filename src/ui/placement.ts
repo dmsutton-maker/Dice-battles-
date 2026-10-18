@@ -34,6 +34,18 @@ const PLACEMENT_KEYS = [
   'left',
   'right',
   'zIndex',
+  /*
+    Width too, since 18 Oct 2026. A popup panel is `width: '100%',
+    maxWidth: 420` inside a centred backdrop. Left on the face, that
+    100% was a percentage of the wrapper — which has no width of its own
+    — so on a phone the panel grew to its longest line of text and ran
+    off both sides of the screen (David: "shorten the description boxes
+    to not go off the screen to the left and right"). On the wrapper, the
+    wrapper takes the width and the face stretches to fill it.
+  */
+  'width',
+  'maxWidth',
+  'minWidth',
 ] as const;
 
 /** Split a style into where the card sits, and what the card is. */

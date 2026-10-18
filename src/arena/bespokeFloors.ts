@@ -195,17 +195,9 @@ export function courtyardFloorPixels(): Painting {
           const t = 1 - (d - GROUT) / (BEVEL - GROUT);
           shade *= 1 + (nx * lx + nz * lz) * 0.5 * t - 0.08 * t;
         }
-        // A hairline crack across one slab in four.
-        if (hash(id, 9.9) < 0.25 && d >= GROUT) {
-          const a = hash(id, 4.4) * Math.PI;
-          const cx = (x0 + x1) / 2;
-          const cz = (row.z0 + row.z1) / 2;
-          const off = (wx - cx) * Math.sin(a) - (wz - cz) * Math.cos(a);
-          const wob = (noise(wx * 7 + id, wz * 7) - 0.5) * 0.05;
-          const dist = Math.abs(off + wob);
-          if (dist < 0.009) shade *= 0.72;
-          else if (dist < 0.02) shade *= 1.05;
-        }
+        // No cracks. There used to be a hairline crack across one slab in
+        // four; David, 18 Oct 2026: "get rid of the cracks in the bricks in
+        // castle courtyard."
         const grain = 0.965 + hash(x * 1.31, y * 0.77) * 0.07;
         // Contact shade at the foot of the walls, so they stand ON the floor.
         shade *= wallFoot(wx, wz);

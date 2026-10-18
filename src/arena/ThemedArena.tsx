@@ -1072,10 +1072,35 @@ function ThemedCorners({
     <group>
       {CORNER_TOWERS.map(({ x, z }, i) => (
         <group key={`corner-${i}`} position={[x, 0, z]}>
-          {piece(theme.structure)}
+          {/*
+            The NEAR pair (bottom of the screen) is a low capped post in
+            the board's own wall, not the full corner piece. Domes, water
+            tanks, roofs and lollipops that close to an almost-overhead
+            camera are big discs over the pads — they read as umbrellas
+            (David, 18 Oct 2026: "get rid of the umbrellas at the bottom
+            of the arenas where it's unnecessary"). The far pair keeps the
+            board's real corner, small and at the top where it reads.
+          */}
+          {z > 0 ? <NearCornerPost theme={theme} wallMaterial={wallMaterial} /> : piece(theme.structure)}
         </group>
       ))}
     </group>
+  );
+}
+
+/** The near corner: a squared post at wall height with the board's cap. */
+function NearCornerPost({ theme, wallMaterial }: { theme: ArenaTheme; wallMaterial: THREE.Material }) {
+  const side = wallThickness + 0.125;
+  return (
+    <>
+      <mesh material={wallMaterial} position={[0, (wallHeight + 0.125) / 2, 0]}>
+        <boxGeometry args={[side, wallHeight + 0.125, side]} />
+      </mesh>
+      <mesh position={[0, wallHeight + 0.125 + 0.0625, 0]}>
+        <boxGeometry args={[side + 0.125, 0.125, side + 0.125]} />
+        <meshStandardMaterial color={theme.wall.cap} roughness={0.85} />
+      </mesh>
+    </>
   );
 }
 

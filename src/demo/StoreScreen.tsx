@@ -113,13 +113,24 @@ export function StoreScreen({
     if (focusGold === 0 || hidden || glidedFor.current === focusGold) return;
     glidedFor.current = focusGold;
     let cancelled = false;
-    let waited = 0;
+    const asked = Date.now();
     const begin = (reduceMotion: boolean) => {
       if (cancelled) return;
-      // The Store has just been unhidden; give the layout a few frames to
-      // measure the card before deciding where to go.
-      if (gold.current === null || viewportH.current === 0) {
-        if (waited++ < 30) glideFrame.current = requestAnimationFrame(() => begin(reduceMotion));
+      /*
+        The Store has just been unhidden; wait until the layout has
+        measured the card, the screen AND the page before deciding where
+        to go. Up to three seconds, by the clock. It used to give up after
+        thirty frames — half a second — and the first time the Store is
+        shown on a phone, laying out its seventy cards takes longer than
+        that, so the glide quietly never started (David: "it just takes
+        me to the shop but doesn't take me to the place in the shop where
+        you purchase the gold pass"). A browser lays it out in a frame or
+        two, which is why it worked in the preview.
+      */
+      if (gold.current === null || viewportH.current === 0 || contentH.current === 0) {
+        if (Date.now() - asked < 3000) {
+          glideFrame.current = requestAnimationFrame(() => begin(reduceMotion));
+        }
         return;
       }
       const to = glideTarget({

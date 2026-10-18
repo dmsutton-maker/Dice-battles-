@@ -725,7 +725,8 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'rock', x: -3.38, z: -3.4, scale: 0.7, color: '#c2a865' },
       { kind: 'palm', x: -3.5, z: -0.8, scale: 0.55 },
       { kind: 'pebbles', x: -3.4, z: 1.6, scale: 0.95, color: '#d9c08a' },
-      { kind: 'umbrella', x: -3.46, z: 3.5, scale: 0.55, color: '#57c9e8' },
+      // Was a beach umbrella; at the bottom of the screen it sat over the pads.
+      { kind: 'rock', x: -3.46, z: 3.5, scale: 0.6, color: '#c2a865' },
       { kind: 'umbrella', x: 3.44, z: -7.3, scale: 0.58, color: '#ff6e6e' },
       { kind: 'palm', x: 3.42, z: -3.4, scale: 0.6 },
       { kind: 'bush', x: 3.46, z: -0.8, scale: 0.85, color: '#3a8a4a' },
