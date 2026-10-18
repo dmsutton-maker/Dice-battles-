@@ -14,7 +14,9 @@ import {
 } from '../game/stations';
 import { createGroundSurface, createTraySurface } from './groundTexture';
 import { cachedTexture } from './textureCache';
-import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
+import { ArenaStructure, ArenaTheme, PropPlacement, ThemedArenaId } from './themeData';
+import { ARENA_JAILS } from './jailKinds';
+import { Jail } from './jails';
 import { buildRim, RimSpot } from './rim';
 import { ArenaProps } from './arenaProps';
 import { Campfire, Crate, Duel, Signpost } from './sceneryProps';
@@ -551,7 +553,7 @@ function Prop({ p }: { p: PropPlacement }) {
 /* ── shared furniture, themed ─────────────────────────────────────── */
 
 /**
- * What shelters the retreat, and what the jail is caged with.
+ * What shelters the retreat.
  *
  * David, 26 Aug 2026: "not every arena needs to have the same castle
  * toppers on the bottom corners of the screen, make everything about
@@ -565,7 +567,8 @@ function Prop({ p }: { p: PropPlacement }) {
  * the rest of it was built of.
  *
  * The same was true of the jail: nine identical iron bars behind every
- * far wall, in a coral reef and on a rooftop alike.
+ * far wall, in a coral reef and on a rooftop alike. That is jails.tsx's
+ * job now, with one design per board rather than one per structure.
  */
 function RetreatShelter({ theme }: { theme: ArenaTheme }) {
   const r = theme.retreat;
@@ -813,137 +816,6 @@ function RetreatShelter({ theme }: { theme: ArenaTheme }) {
         </>
       );
   }
-}
-
-/**
- * What the jail is caged with. Nine identical iron bars stood behind the
- * far wall of every battlefield, including the ones with no iron in them.
- */
-function jailBarShape(structure: ArenaStructure): {
-  geometry: React.ReactElement;
-  metalness: number;
-  roughness: number;
-} {
-  switch (structure) {
-    case 'snowFence':
-    case 'logPile':
-    case 'picket':
-    case 'driftwood':
-      // Timber stakes, squared off.
-      return { geometry: <boxGeometry args={[0.09, 1.15, 0.09]} />, metalness: 0, roughness: 0.95 };
-    case 'adobe':
-      // Mud pillars, fatter at the foot.
-      return {
-        geometry: <cylinderGeometry args={[0.07, 0.11, 1.15, 6]} />,
-        metalness: 0,
-        roughness: 1,
-      };
-    case 'basalt':
-    case 'stalagmite':
-    case 'coralRim':
-      // Grown, not made: tapering to a point.
-      return { geometry: <coneGeometry args={[0.08, 1.15, 6]} />, metalness: 0, roughness: 0.9 };
-    case 'station':
-    case 'airlock':
-    case 'parapet':
-      // Machined rod.
-      return {
-        geometry: <cylinderGeometry args={[0.035, 0.035, 1.15, 8]} />,
-        metalness: 0.75,
-        roughness: 0.3,
-      };
-    case 'gingerbread':
-      // Candy canes, twisted and fat.
-      return {
-        geometry: <cylinderGeometry args={[0.075, 0.075, 1.15, 6]} />,
-        metalness: 0,
-        roughness: 0.35,
-      };
-    case 'mossStone':
-      // Living saplings.
-      return {
-        geometry: <cylinderGeometry args={[0.05, 0.08, 1.15, 5]} />,
-        metalness: 0,
-        roughness: 1,
-      };
-    case 'shipHull':
-      // Rope, hung between the rails.
-      return {
-        geometry: <cylinderGeometry args={[0.055, 0.055, 1.15, 6]} />,
-        metalness: 0,
-        roughness: 1,
-      };
-    case 'blocks':
-      // A stack of bricks rather than a bar.
-      return { geometry: <boxGeometry args={[0.14, 1.15, 0.14]} />, metalness: 0, roughness: 0.55 };
-    case 'battlement':
-    default:
-      return {
-        geometry: <cylinderGeometry args={[0.045, 0.045, 1.15, 6]} />,
-        metalness: 0.4,
-        roughness: 0.5,
-      };
-  }
-}
-
-/** The jail pen behind the far wall — same geometry as the originals. */
-function ThemedJailPen({
-  platform,
-  bars,
-  structure,
-}: {
-  platform: string;
-  bars: string;
-  structure: ArenaStructure;
-}) {
-  const bar = jailBarShape(structure);
-  const pen = TUNING.prison;
-  const zNear = -(innerDepth / 2 + wallThickness);
-  const zFar = zNear - pen.depth;
-  const zCenter = (zNear + zFar) / 2;
-  const floorY = pen.platformHeight;
-  const barHeight = 1.15;
-  const penW = pen.innerWidth;
-  const penD = pen.depth;
-  const halfPen = penW / 2;
-
-  const sideBars: { x: number; z: number }[] = [];
-  const count = 9;
-  for (let i = 0; i < count; i++) {
-    const x = -halfPen + (i * penW) / (count - 1);
-    sideBars.push({ x, z: zNear });
-  }
-  const endCount = 3;
-  for (let i = 1; i <= endCount; i++) {
-    const z = zNear - (i * penD) / (endCount + 1);
-    sideBars.push({ x: -halfPen, z });
-    sideBars.push({ x: halfPen, z });
-  }
-
-  return (
-    <group>
-      <mesh position={[0, floorY / 2, zCenter]}>
-        <boxGeometry args={[penW + 0.5, floorY, penD + 0.4]} />
-        <meshStandardMaterial color={platform} roughness={0.95} />
-      </mesh>
-      {sideBars.map((b, i) => (
-        <mesh key={`bar-${i}`} position={[b.x, floorY + barHeight / 2, b.z]}>
-          {bar.geometry}
-          <meshStandardMaterial color={bars} roughness={bar.roughness} metalness={bar.metalness} />
-        </mesh>
-      ))}
-      <mesh position={[0, floorY + barHeight, zFar]}>
-        <boxGeometry args={[penW + 0.3, 0.08, 0.08]} />
-        <meshStandardMaterial color={bars} roughness={0.5} metalness={0.4} />
-      </mesh>
-      {([-halfPen, halfPen] as const).map((x, i) => (
-        <mesh key={`rail-${i}`} position={[x, floorY + barHeight, zCenter]}>
-          <boxGeometry args={[0.08, 0.08, penD]} />
-          <meshStandardMaterial color={bars} roughness={0.5} metalness={0.4} />
-        </mesh>
-      ))}
-    </group>
-  );
 }
 
 /** The retreat row on the player's side, at the shared coordinates. */
@@ -2046,10 +1918,15 @@ export function ThemedArena({
         Nothing else belongs back there.
       */}
 
-      <ThemedJailPen
+      {/*
+        The jail is chosen by the arena's id, not its structure: the
+        structure is what the WALLS are made of, and walls get rebuilt.
+        See jailKinds.ts.
+      */}
+      <Jail
+        kind={ARENA_JAILS[id as ThemedArenaId]}
         platform={theme.jail.platform}
         bars={theme.jail.bars}
-        structure={theme.structure}
       />
       <ThemedRetreat theme={theme} padColors={padColors} />
 

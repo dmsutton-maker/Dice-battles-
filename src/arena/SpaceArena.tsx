@@ -14,6 +14,8 @@ import { createFlagstoneTexture } from './flagstoneTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
 import { Crate, Signpost, EXTRA_SPOTS } from './sceneryProps';
+import { ARENA_JAILS } from './jailKinds';
+import { Jail } from './jails';
 
 /**
  * Space Station arena — the 700🏆 Mystery Arena. A dice deck floating in
@@ -104,92 +106,6 @@ function Planet() {
         <sphereGeometry args={[0.6, 12, 10]} />
         <meshBasicMaterial color="#b8bcc9" toneMapped={false} />
       </mesh>
-    </group>
-  );
-}
-
-/**
- * Containment-cell jail pen: same platform and bar coordinates as the
- * castle's JailPen (slots synced with src/game/Prisoners.tsx), themed as a
- * hull platform with glowing energy-field bars.
- */
-function SpaceJailPen() {
-  const { innerDepth, wallThickness } = TUNING.tray;
-  const { innerWidth: penW, depth: penD, platformHeight, barHeight } = TUNING.prison;
-  const zNear = -(innerDepth / 2 + wallThickness);
-  const zFar = zNear - penD;
-  const zCenter = (zNear + zFar) / 2;
-  const halfW = penW / 2;
-  const floorY = platformHeight;
-
-  const bars: [number, number][] = [];
-  const farCount = 10;
-  for (let i = 0; i <= farCount; i++) {
-    bars.push([-halfW + (i * penW) / farCount, zFar]);
-  }
-  const endCount = 3;
-  for (let i = 1; i <= endCount; i++) {
-    const z = zNear - (i * penD) / (endCount + 1);
-    bars.push([-halfW, z]);
-    bars.push([halfW, z]);
-  }
-
-  const glowBar = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: GLOW_CYAN,
-        toneMapped: false,
-        transparent: true,
-        opacity: 0.85,
-      }),
-    [],
-  );
-
-  return (
-    <group>
-      {/* Hull platform */}
-      <mesh position={[0, floorY / 2, zCenter]}>
-        <boxGeometry args={[penW + 0.4, floorY, penD + 0.3]} />
-        <meshStandardMaterial color={HULL_DARK} roughness={0.5} metalness={0.5} />
-      </mesh>
-
-      {/* Energy-field bars */}
-      {bars.map(([x, z], i) => (
-        <mesh key={`bar-${i}`} material={glowBar} position={[x, floorY + barHeight / 2, z]}>
-          <cylinderGeometry args={[0.035, 0.035, barHeight, 6]} />
-        </mesh>
-      ))}
-
-      {/* Emitter rails top and corners */}
-      <mesh position={[0, floorY + barHeight, zFar]}>
-        <boxGeometry args={[penW + 0.2, 0.1, 0.1]} />
-        <meshStandardMaterial color="#3a4052" roughness={0.4} metalness={0.6} />
-      </mesh>
-      {([-halfW, halfW] as const).map((x, i) => (
-        <mesh key={`rail-${i}`} position={[x, floorY + barHeight, zCenter]}>
-          <boxGeometry args={[0.1, 0.1, penD + 0.1]} />
-          <meshStandardMaterial color="#3a4052" roughness={0.4} metalness={0.6} />
-        </mesh>
-      ))}
-
-      {/* Corner emitter posts with warning lights */}
-      {(
-        [
-          [-halfW, zFar],
-          [halfW, zFar],
-        ] as const
-      ).map(([x, z], i) => (
-        <group key={`post-${i}`} position={[x, 0, z]}>
-          <mesh position={[0, (floorY + barHeight + 0.15) / 2, 0]}>
-            <boxGeometry args={[0.24, floorY + barHeight + 0.15, 0.24]} />
-            <meshStandardMaterial color="#3a4052" roughness={0.4} metalness={0.6} />
-          </mesh>
-          <mesh position={[0, floorY + barHeight + 0.26, 0]}>
-            <sphereGeometry args={[0.09, 10, 8]} />
-            <meshBasicMaterial color={GLOW_MAGENTA} toneMapped={false} />
-          </mesh>
-        </group>
-      ))}
     </group>
   );
 }
@@ -474,7 +390,8 @@ export function SpaceArena({ padColors }: ArenaProps) {
       </mesh>
 
       <SpaceWorld />
-      <SpaceJailPen />
+      {/* Force-field cell — one jail per board, see jails.tsx. */}
+      <Jail kind={ARENA_JAILS.space} platform={HULL_DARK} bars={GLOW_CYAN} />
       <SpaceRetreat padColors={padColors} />
 
       {/*
