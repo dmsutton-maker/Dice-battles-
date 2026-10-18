@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.112.0 — 2026-10-18 · requested by David
+
+### Changed
+- **"Get the Gold Pass" on the Cups tab takes you straight to it.**
+  David: "When you click 'get the gold pass' on cups it should take you
+  directly to the bottom of the page on the shop where it shows the gold
+  pass. Make sure to make the scrolling flowing and not just like
+  teleporting." It opened the Store wherever you last left it. Now the
+  Store glides down to the Gold Pass card: eased in and out, 0.55 to
+  1.1 seconds depending on how far it has to go, so you watch the shop
+  go by rather than jump. A gold ring breathes round the card when it
+  lands. A finger on the screen stops the glide; with Reduce Motion on
+  it is the phone's own short scroll instead (`src/demo/glide.ts`).
+
 ## v1.111.0 — 2026-10-18 · requested by David
 
 ### Changed

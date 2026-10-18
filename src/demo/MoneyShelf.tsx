@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
@@ -37,10 +37,16 @@ import {
 export function MoneyShelf({
   onBought,
   familyPreview = false,
+  onGoldLayout,
+  goldGlow = 0,
 }: {
   onBought?: () => void;
   /** Family tester mode: also show what is not on sale yet. */
   familyPreview?: boolean;
+  /** Where the Gold Pass card sits in the shelf, for the Store's glide. */
+  onGoldLayout?: (y: number, height: number) => void;
+  /** Moves on when the Store has glided to the Gold Pass: light it up. */
+  goldGlow?: number;
 }) {
   const [state, setState] = useState(() => storeState());
   const [asking, setAsking] = useState<Product | null>(null);
@@ -177,44 +183,54 @@ export function MoneyShelf({
       {state.products.map((product) => {
         const bought = product.kind !== 'consumable' && hasEntitlement(product.id);
         const price = state.priceOf(product.id);
+        const isGold = product.kind === 'season';
         return (
-          <Card
+          <View
             key={product.id}
-            style={styles.row}
-            onPress={() => {
-              playClick();
-              setViewing(product);
-            }}
+            onLayout={
+              isGold && onGoldLayout
+                ? (e) => onGoldLayout(e.nativeEvent.layout.y, e.nativeEvent.layout.height)
+                : undefined
+            }
           >
-            <View style={styles.rowText}>
-              <Text style={styles.rowName}>{product.name}</Text>
-              <Text style={styles.rowBlurb}>{product.blurb}</Text>
-              <Text style={styles.more}>Tap for the full story</Text>
-              {product.starterOnly && (
-                <Text style={styles.starter}>
-                  Only in your first two days with the game
-                </Text>
-              )}
-            </View>
-            {bought ? (
-              <View style={styles.owned}>
-                <Text style={styles.ownedText}>YOURS</Text>
+            <Card
+              style={styles.row}
+              onPress={() => {
+                playClick();
+                setViewing(product);
+              }}
+            >
+              <View style={styles.rowText}>
+                <Text style={styles.rowName}>{product.name}</Text>
+                <Text style={styles.rowBlurb}>{product.blurb}</Text>
+                <Text style={styles.more}>Tap for the full story</Text>
+                {product.starterOnly && (
+                  <Text style={styles.starter}>
+                    Only in your first two days with the game
+                  </Text>
+                )}
               </View>
-            ) : (
-              <Pressable
-                style={styles.buy}
-                disabled={busy}
-                accessibilityRole="button"
-                accessibilityLabel={`Buy ${product.name}`}
-                onPress={() => {
-                  playClick();
-                  setAsking(product);
-                }}
-              >
-                <Text style={styles.buyText}>{price ?? '—'}</Text>
-              </Pressable>
-            )}
-          </Card>
+              {bought ? (
+                <View style={styles.owned}>
+                  <Text style={styles.ownedText}>YOURS</Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={styles.buy}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Buy ${product.name}`}
+                  onPress={() => {
+                    playClick();
+                    setAsking(product);
+                  }}
+                >
+                  <Text style={styles.buyText}>{price ?? '—'}</Text>
+                </Pressable>
+              )}
+            </Card>
+            {isGold && <GoldGlow token={goldGlow} />}
+          </View>
         );
       })}
 
@@ -406,6 +422,36 @@ function ComingLater({ onView }: { onView: (product: Product) => void }) {
   );
 }
 
+/**
+ * A gold ring that breathes twice round the Gold Pass when the Store has
+ * just glided down to it from the Cups tab, so the eye lands where the
+ * scroll did. Native-driven opacity only, drawn over the card and never
+ * in the way of a tap.
+ */
+function GoldGlow({ token }: { token: number }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (token === 0) return;
+    opacity.setValue(0);
+    const pulse = (to: number, ms: number) =>
+      Animated.timing(opacity, {
+        toValue: to,
+        duration: ms,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      });
+    const run = Animated.sequence([
+      pulse(1, 260),
+      pulse(0.35, 320),
+      pulse(1, 320),
+      pulse(0, 700),
+    ]);
+    run.start();
+    return () => run.stop();
+  }, [token, opacity]);
+  return <Animated.View pointerEvents="none" style={[styles.goldGlow, { opacity }]} />;
+}
+
 const styles = StyleSheet.create({
   more: { ...TYPE.small, color: THEME.accent, marginTop: 4 },
   detailBackdrop: {
@@ -441,6 +487,16 @@ const styles = StyleSheet.create({
   },
   laterPriceText: { ...TYPE.body, color: THEME.inkFaint, fontWeight: '900' },
   shelf: { gap: 10 },
+  goldGlow: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: SHAPE.radius + 4,
+    borderWidth: 3,
+    borderColor: THEME.gold,
+  },
   fairness: {
     ...TYPE.small,
     color: THEME.inkSoft,

@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STORE_SKINS } from '../game/diceSkins';
 import { ARENA_PRICES, STORE_ARENAS, arenaKey } from '../game/loadout';
 import { ARENAS } from '../arena/arenas';
@@ -13,6 +13,7 @@ import { playClick } from '../audio/sounds';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
 import { MoneyShelf } from './MoneyShelf';
+import { easeInOutCubic, glideDuration, glideTarget } from './glide';
 
 /**
  * The Store: spend coins earned by playing.
@@ -49,6 +50,12 @@ interface StoreScreenProps {
   onPreview: (skinId: string) => void;
   /** Opens the battlefield itself, standing in it — bought there too. */
   onPreviewArena: (arenaId: (typeof STORE_ARENAS)[number]) => void;
+  /**
+   * Glide down to the Gold Pass. A counter rather than a flag, so every
+   * tap of "Get the Gold Pass" on the Cups tab moves it on and is
+   * honoured, even a second tap after scrolling back up. 0 = never asked.
+   */
+  focusGold?: number;
 }
 
 export function StoreScreen({
@@ -58,15 +65,99 @@ export function StoreScreen({
   onPreview,
   onPreviewArena,
   hidden = false,
+  focusGold = 0,
 }: StoreScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
+  /*
+    What the glide to the Gold Pass needs to know, all measured by the
+    layout as it happens: where the shelf starts, where the card sits in
+    it, how tall the screen and the page are, and where we are now.
+  */
+  const shelfY = useRef(0);
+  const gold = useRef<{ y: number; height: number } | null>(null);
+  const viewportH = useRef(0);
+  const contentH = useRef(0);
+  const scrollY = useRef(0);
+  const glideFrame = useRef<number | null>(null);
+  /*
+    The last "Get the Gold Pass" tap already glided to. Without it, coming
+    back to the Store from a dice preview (hidden, then shown again) would
+    replay the glide every time.
+  */
+  const glidedFor = useRef(0);
+  /** Moves on when the glide lands, so the shelf can light the card up. */
+  const [goldGlow, setGoldGlow] = useState(0);
   // Live: a fold changes how many cards fit across.
   const cardWidth = useGridCardWidth();
   // Restore before the first paint the player sees.
   useEffect(() => {
     const y = recallScroll('store');
     if (y > 0) scrollRef.current?.scrollTo({ y, animated: false });
+    scrollY.current = y;
   }, []);
+
+  const stopGlide = () => {
+    if (glideFrame.current !== null) cancelAnimationFrame(glideFrame.current);
+    glideFrame.current = null;
+  };
+
+  /*
+    THE GLIDE TO THE GOLD PASS. Driven a frame at a time rather than with
+    `scrollTo({ animated: true })`, whose fixed quarter-second makes a
+    long trip read as a jump — David asked for it to flow. A finger on the
+    page stops it at once (onScrollBeginDrag), because the player always
+    wins over an animation. With Reduce Motion on, it is the phone's own
+    short scroll instead: still not a jump, but no long sweep.
+  */
+  useEffect(() => {
+    if (focusGold === 0 || hidden || glidedFor.current === focusGold) return;
+    glidedFor.current = focusGold;
+    let cancelled = false;
+    let waited = 0;
+    const begin = (reduceMotion: boolean) => {
+      if (cancelled) return;
+      // The Store has just been unhidden; give the layout a few frames to
+      // measure the card before deciding where to go.
+      if (gold.current === null || viewportH.current === 0) {
+        if (waited++ < 30) glideFrame.current = requestAnimationFrame(() => begin(reduceMotion));
+        return;
+      }
+      const to = glideTarget({
+        cardY: shelfY.current + gold.current.y,
+        cardHeight: gold.current.height,
+        viewportHeight: viewportH.current,
+        contentHeight: contentH.current,
+      });
+      const from = scrollY.current;
+      if (reduceMotion || Math.abs(to - from) < 2) {
+        scrollRef.current?.scrollTo({ y: to, animated: true });
+        setGoldGlow((n) => n + 1);
+        return;
+      }
+      const duration = glideDuration(to - from);
+      const start = Date.now();
+      const step = () => {
+        if (cancelled) return;
+        const t = (Date.now() - start) / duration;
+        const y = from + (to - from) * easeInOutCubic(t);
+        scrollRef.current?.scrollTo({ y, animated: false });
+        if (t < 1) {
+          glideFrame.current = requestAnimationFrame(step);
+        } else {
+          glideFrame.current = null;
+          setGoldGlow((n) => n + 1);
+        }
+      };
+      glideFrame.current = requestAnimationFrame(step);
+    };
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(begin)
+      .catch(() => begin(false));
+    return () => {
+      cancelled = true;
+      stopGlide();
+    };
+  }, [focusGold, hidden]);
 
   return (
     <View style={[styles.overlay, useMenuPageArea(), hidden && styles.hidden]}>
@@ -85,8 +176,18 @@ export function StoreScreen({
           in. `animated: false` because this is not a movement the
           player made — it is where they already were.
         */
-        onScroll={(e) => rememberScroll('store', e.nativeEvent.contentOffset.y)}
-        scrollEventThrottle={64}
+        onScroll={(e) => {
+          scrollY.current = e.nativeEvent.contentOffset.y;
+          rememberScroll('store', scrollY.current);
+        }}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={stopGlide}
+        onLayout={(e) => {
+          viewportH.current = e.nativeEvent.layout.height;
+        }}
+        onContentSizeChange={(_w, h) => {
+          contentH.current = h;
+        }}
       >
         <Text style={styles.note}>
           Everything here is decoration. Nothing you buy changes the dice,
@@ -195,7 +296,20 @@ export function StoreScreen({
         </View>
 
         <Text style={styles.sectionTitle}>WITH REAL MONEY</Text>
-        <MoneyShelf onBought={onBought} familyPreview={familyPreview} />
+        <View
+          onLayout={(e) => {
+            shelfY.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <MoneyShelf
+            onBought={onBought}
+            familyPreview={familyPreview}
+            onGoldLayout={(y, height) => {
+              gold.current = { y, height };
+            }}
+            goldGlow={goldGlow}
+          />
+        </View>
       </ScrollView>
 
       {/*

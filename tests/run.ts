@@ -58,6 +58,7 @@ async function main(): Promise<void> {
   await import('./matchSearch.test');
   await import('./warmup.test');
   await import('./auditFixes.test');
+  await import('./glide.test');
   process.exit(await runAll());
 }
 

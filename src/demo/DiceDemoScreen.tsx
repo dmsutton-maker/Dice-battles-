@@ -784,6 +784,8 @@ export function DiceDemoScreen() {
   const [season, setSeason] = useState<SeasonState | undefined>(undefined);
   const [lastXp, setLastXp] = useState(0);
   /** Whether this phone owns this season's Gold Pass (seasonPass.ts). */
+  /** Moves on each time Cups' "Get the Gold Pass" sends the player to the Store. */
+  const [goldFocus, setGoldFocus] = useState(0);
   const [goldOwned, setGoldOwned] = useState(false);
 
   /**
@@ -2826,6 +2828,7 @@ export function DiceDemoScreen() {
           }}
           onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })}
           onPreviewArena={(id) => showPreview({ kind: 'arena', id, from: 'store' })}
+          focusGold={goldFocus}
         />
       )}
       {menuTab === 'leaderboard' && preview === null && (
@@ -2900,6 +2903,9 @@ export function DiceDemoScreen() {
           gold={goldOwned}
           onGetGold={() => {
             playClick();
+            // Straight to the Gold Pass at the bottom of the Store, by a
+            // glide rather than a jump (see StoreScreen / glide.ts).
+            setGoldFocus((n) => n + 1);
             setTab('store');
           }}
           onPreview={showPreview}
