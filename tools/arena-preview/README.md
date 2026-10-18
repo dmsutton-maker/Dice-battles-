@@ -11,11 +11,13 @@ npm i --no-save --legacy-peer-deps react-dom@19.1.0 playwright@1.49.0
 npx esbuild tools/arena-preview/entry.tsx --bundle --jsx=automatic \
   --outfile=tools/arena-preview/bundle.js --loader:.tsx=tsx \
   --loader:.png=dataurl \
-  --define:process.env.NODE_ENV='"production"'
+  --define:process.env.NODE_ENV='"production"' \
+  --alias:@react-three/fiber/native=@react-three/fiber
 node tools/arena-preview/shoot.js autumn volcano city   # → /tmp/arena-<id>.png
 MODE=classic node tools/arena-preview/shoot.js space   # ← paint the retreat pads
 MODE=colorwar node tools/arena-preview/shoot.js snow   # ← two colours, not six
 TOP=1 node tools/arena-preview/shoot.js volcano        # straight down
+MODE=classic QUERY=prisoners=1 node tools/arena-preview/shoot.js reef  # figures in the jail
 node tools/arena-preview/audit.js                      # measure all sixteen
 npm uninstall --no-save react-dom playwright           # ← REQUIRED, see below
 ```
@@ -25,6 +27,15 @@ automatic JSX runtime, so several files use JSX without importing React
 — `src/arena/arenas.tsx` among them — and esbuild's classic default
 emits `React.createElement` against a name that is not there. The page
 renders blank and says only "React is not defined".
+
+`--alias` is only needed for `prisoners=1`: the figures come from the
+game's own Prisoners component, which imports `useFrame` from
+`@react-three/fiber/native`, and the native entry drags in React Native
+itself, which esbuild cannot parse. The web entry is the same renderer.
+
+`prisoners=1` stands the six figures in the jail. Use it for anything
+to do with the jail: the figures are the score, and a bar or a roof
+that hides one only shows up with a figure there to hide.
 
 `MODE` matters for anything to do with the retreat row. The pads are
 painted with the colours of the round being played (David, 20 Sep

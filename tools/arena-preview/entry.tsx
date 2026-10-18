@@ -8,6 +8,7 @@ import { TUNING } from '../../src/game/tuning';
 import { laneColors, makeUnits, ModeId } from '../../src/game/modes';
 import { PRISONER_COLORS } from '../../src/game/colors';
 import { RETREAT_SLOTS } from '../../src/game/stations';
+import { Prisoners } from '../../src/game/Prisoners';
 
 const W = 393, H = 852;
 
@@ -107,6 +108,7 @@ function padsFor(mode: string | null): (string | null)[] | undefined {
   the ones with five hundred lines of their own scenery.
 */
 function Scene({ id, mode }: { id: ArenaId; mode: string | null }) {
+  const prisoners = new URLSearchParams(location.search).get('prisoners') === '1';
   const arena = ARENAS[id];
   const Arena = arena.Component;
   const l = arena.lighting ?? DAYLIGHT;
@@ -116,6 +118,16 @@ function Scene({ id, mode }: { id: ArenaId; mode: string | null }) {
       <directionalLight position={l.key.position} intensity={l.key.intensity} color={l.key.color} />
       <directionalLight position={l.fill.position} intensity={l.fill.intensity} color={l.fill.color} />
       <Arena padColors={padsFor(mode)} />
+      {/*
+        ?prisoners=1 stands the six figures in the jail, through the real
+        Prisoners component and the real slots. The jail exists to show
+        them — they are the score — so a cage cannot be judged without
+        them in it: a roof or a bar that hides a figure only shows up
+        when there is a figure there to hide.
+      */}
+      {prisoners && (
+        <Prisoners units={makeUnits('classic', PRISONER_COLORS, PRISONER_COLORS[0], PRISONER_COLORS[3])} />
+      )}
     </>
   );
 }

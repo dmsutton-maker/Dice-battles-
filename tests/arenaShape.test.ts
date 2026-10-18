@@ -14,6 +14,9 @@ const ARENA_STRUCTURES = [
 import { FIGURE_RADIUS, JAIL_SLOTS, RETREAT_SLOTS } from '../src/game/stations';
 import { EXTRA_SPOTS } from '../src/arena/sceneryProps';
 import { fitCamera } from '../src/demo/cameraFit';
+import { ARENA_JAILS } from '../src/arena/jailKinds';
+import { buildJail, JAIL_ORIGIN } from '../src/arena/jails';
+import { ARENAS } from '../src/arena/arenas';
 import { assert, assertEqual, note, suite, test } from './harness';
 
 /**
@@ -747,7 +750,7 @@ suite('arenas · the shared furniture is not shared', () => {
   test('the retreat shelter is chosen per battlefield', () => {
     const shelter = source.slice(
       source.indexOf('function RetreatShelter'),
-      source.indexOf('function jailBarShape'),
+      source.indexOf('function ThemedRetreat'),
     );
     assert(shelter.length > 500, 'RetreatShelter has moved or gone');
     for (const s of new Set(ARENA_STRUCTURES)) {
@@ -762,23 +765,22 @@ suite('arenas · the shared furniture is not shared', () => {
   });
 
   test('the jail is caged in something that belongs to the place', () => {
-    const cage = source.slice(
-      source.indexOf('function jailBarShape'),
-      source.indexOf('function ThemedJailPen'),
-    );
-    assert(cage.length > 400, 'jailBarShape has moved or gone');
-    // Not one branch per structure here — a timber stake is a timber
-    // stake in four different woods — but the shapes must genuinely
-    // differ, and no battlefield may fall through to iron by accident.
-    const shapes = new Set(
-      [...cage.matchAll(/<(\w+)Geometry args=\{\[([\d., ]+)\]/g)].map((m) => `${m[1]}:${m[2]}`),
-    );
-    note(`${shapes.size} different jail cages across the sixteen`);
-    assert(shapes.size >= 6, `only ${shapes.size} kinds of jail bar in the whole set`);
-    assert(
-      /structure: ArenaStructure/.test(source.slice(source.indexOf('function ThemedJailPen'))),
-      'the jail pen no longer knows what battlefield it is in',
-    );
+    /*
+      The same intent as before, moved with the code. The jail used to be
+      chosen here by `jailBarShape(structure)` — one bar shape per wall
+      kind, nine bars per pen — and the board redesign (18 Oct 2026)
+      found that still read as "the same thin dark railing" on every
+      board. It is now one whole design per board in jails.tsx, chosen by
+      arena id; the suite 'every board has its own jail' below checks
+      the designs. What is checked HERE is that this renderer hands the
+      choice over rather than drawing a pen of its own.
+    */
+    assert(!source.includes('function ThemedJailPen'), 'the shared themed jail pen is back');
+    assert(!source.includes('function jailBarShape'), 'jail bars are being picked by wall structure again');
+    const jail = source.slice(source.indexOf('<Jail'), source.indexOf('/>', source.indexOf('<Jail')));
+    assert(jail.length > 0, 'ThemedArena no longer draws a jail');
+    assert(/kind=\{ARENA_JAILS\[id/.test(jail), 'the jail is not chosen by arena id');
+    assert(!jail.includes('structure'), 'the jail is following the walls again');
   });
 
   test('nothing that is drawn for every arena is drawn the same way', () => {
@@ -790,7 +792,7 @@ suite('arenas · the shared furniture is not shared', () => {
       did.
     */
     for (const [what, from, to] of [
-      ['the retreat shelter', 'function RetreatShelter', 'function jailBarShape'],
+      ['the retreat shelter', 'function RetreatShelter', 'function ThemedRetreat'],
       ['the wall crest', 'function ThemedCrest', 'function ThemedCorners'],
       ['the corner pieces', 'function ThemedCorners', 'export function ThemedArena'],
     ] as const) {
@@ -806,6 +808,156 @@ suite('arenas · the shared furniture is not shared', () => {
   });
 });
 
+
+/**
+ * Every board has its own jail.
+ *
+ * Board redesign, 18 Oct 2026 (docs/board-redesign.md): "the jail — the
+ * pen at the top where prisoners wait. Never the shared black railing
+ * again." Twenty boards, twenty jails, from a portcullis gatehouse to a
+ * giant clam.
+ *
+ * The jail is also where the score stands. So besides being different,
+ * every design is measured against the two things that would make it
+ * worse than the railing it replaced: standing where a figure stands
+ * (or where a rescued one rises from), and climbing up into the band at
+ * the top of the screen the title sits in.
+ */
+suite('arenas · every board has its own jail', () => {
+  const kinds = Object.values(ARENA_JAILS);
+  const boards = Object.keys(ARENAS).sort();
+
+  test('every board in the registry has a jail, and no two share one', () => {
+    assertEqual(Object.keys(ARENA_JAILS).sort().join(','), boards.join(','), 'the boards with a jail are not the boards in the registry');
+    const repeated = kinds.filter((k, i) => kinds.indexOf(k) !== i);
+    note(`${new Set(kinds).size} different jails across ${boards.length} boards`);
+    assert(repeated.length === 0, `two boards share a jail: ${repeated.join(', ')}`);
+  });
+
+  test('every jail is drawn, and no two are drawn alike', () => {
+    // A design that quietly fell back to another's build would pass the
+    // test above; this one compares what is actually BUILT.
+    const seen = new Map<string, string>();
+    for (const kind of kinds) {
+      const layers = buildJail(kind);
+      let verts = 0;
+      const mats = new Set<string>();
+      for (const l of layers)
+        for (const m of l.meshes) {
+          verts += m.geometry.getAttribute('position').count;
+          mats.add(m.mat);
+        }
+      assert(verts > 200, `${kind} draws next to nothing`);
+      const shape = `${[...mats].sort().join('+')}|${verts}`;
+      assert(!seen.has(shape), `${kind} is built the same as ${seen.get(shape)}`);
+      seen.set(shape, kind);
+    }
+  });
+
+  test('the jail follows the board, not the walls', () => {
+    // Walls get rebuilt; a jail keyed on the wall structure would change
+    // with them, and two boards given one wall kind would share a jail.
+    const bespoke: [string, string[]][] = [
+      ['CastleArena.tsx', ['ARENA_JAILS.castle}', 'ARENA_JAILS.castleSunset}']],
+      ['JungleArena.tsx', ['ARENA_JAILS.jungle}']],
+      ['SpaceArena.tsx', ['ARENA_JAILS.space}']],
+    ];
+    for (const [file, uses] of bespoke) {
+      const src = readFileSync(join('src/arena', file), 'utf8');
+      for (const u of uses) assert(src.includes(`kind={${u}`), `${file} does not draw its own jail (${u})`);
+      assert(!/function \w*JailPen\b/.test(src), `${file} still builds its old railing pen`);
+    }
+  });
+
+  /** Every vertex of a jail, in world space. */
+  function* jailPoints(kind: (typeof kinds)[number]): Generator<THREE.Vector3> {
+    const m = new THREE.Matrix4();
+    const v = new THREE.Vector3();
+    for (const layer of buildJail(kind)) {
+      m.compose(
+        new THREE.Vector3(...layer.pivot),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(...layer.rotation)),
+        new THREE.Vector3(1, 1, 1),
+      );
+      for (const mesh of layer.meshes) {
+        const pos = mesh.geometry.getAttribute('position');
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(m);
+          v.y += JAIL_ORIGIN.y;
+          v.z += JAIL_ORIGIN.z;
+          yield v;
+        }
+      }
+    }
+  }
+
+  test('no jail stands where a prisoner stands, or rises from', () => {
+    /*
+      A figure is FIGURE_RADIUS round, and a rescue lifts it nearly
+      straight up before it moves forward (flight.ts eases z, not y), so
+      the whole column over each slot is kept clear. Floor dressing under
+      a figure's base — straw, coins, deck seams — is allowed.
+    */
+    const floor = TUNING.prison.platformHeight + 0.06;
+    for (const kind of kinds) {
+      for (const p of jailPoints(kind)) {
+        if (p.y <= floor) continue;
+        for (const slot of JAIL_SLOTS) {
+          const d = Math.hypot(p.x - slot.x, p.z - slot.z);
+          assert(
+            d >= FIGURE_RADIUS,
+            `${kind} has a piece at (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}), inside the figure at x ${slot.x.toFixed(2)}`,
+          );
+        }
+      }
+    }
+  });
+
+  test('no jail climbs into the band the title sits in', () => {
+    /*
+      cameraFit.ts frames the old bar tops at 0.82 of the way up the
+      screen, and the title sits above that. A jail's back may reach a
+      little past where those bars stood — the redesign is allowed to be
+      taller than a railing — but not up behind the HUD.
+    */
+    const LIMIT = 0.86;
+    const aspects = [393 / 852, 375 / 667, 3 / 4];
+    const cameras = aspects.map((a) => {
+      const c = new THREE.PerspectiveCamera();
+      fitCamera(c, a);
+      return c;
+    });
+    let worst = 0;
+    let worstKind = '';
+    const ndc = new THREE.Vector3();
+    for (const kind of kinds) {
+      for (const p of jailPoints(kind)) {
+        for (const c of cameras) {
+          const y = ndc.copy(p).project(c).y;
+          if (y > worst) {
+            worst = y;
+            worstKind = kind;
+          }
+        }
+      }
+    }
+    note(`highest point of any jail: ${worst.toFixed(3)} of the screen (${worstKind}); limit ${LIMIT}`);
+    assert(worst <= LIMIT, `${worstKind} reaches ${worst.toFixed(3)}, up into the title band`);
+  });
+
+  test('a jail is a handful of draw calls', () => {
+    // Merged per material per moving part (jails.tsx). Twenty-odd meshes
+    // per jail would be twenty-odd draw calls for one piece of scenery.
+    for (const kind of kinds) {
+      const layers = buildJail(kind);
+      const calls = layers.reduce((n, l) => n + l.meshes.length, 0);
+      const verts = layers.reduce((n, l) => n + l.meshes.reduce((m, x) => m + x.geometry.getAttribute('position').count, 0), 0);
+      assert(calls <= 12, `${kind} takes ${calls} draw calls`);
+      assert(verts <= 8000, `${kind} has ${verts} vertices`);
+      for (const l of layers) for (const m of l.meshes) m.geometry.dispose();
+    }
+  });
+});
 
 /**
  * The crest runs round the whole wall, whichever pieces it picks.

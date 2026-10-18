@@ -17,6 +17,8 @@ import { createFlagstoneTexture } from './flagstoneTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
 import { Campfire, Crate, Duel, Signpost, EXTRA_SPOTS } from './sceneryProps';
+import { ARENA_JAILS } from './jailKinds';
+import { Jail } from './jails';
 
 const STONE = '#9a8a72';
 const STONE_DARK = '#7d6e58';
@@ -103,79 +105,6 @@ const TREES: { position: [number, number, number]; scale: number; leaf: string }
   { position: [5.6, -0.1, -8.7], scale: 1.0, leaf: '#48a457' },
   { position: [-8.9, -0.1, 4.6], scale: 1.15, leaf: '#3e9450' },
 ];
-
-/**
- * Open-top jail pen attached behind the far castle wall: raised stone slab,
- * iron bars on the three outer sides (the castle wall is the fourth), stone
- * corner posts. The prisoners line up inside; a rescue leaps them over the
- * castle wall. Open top keeps them visible to the near-overhead camera.
- */
-function JailPen() {
-  const { innerDepth, wallThickness } = TUNING.tray;
-  const { innerWidth: penW, depth: penD, platformHeight, barHeight } = TUNING.prison;
-  const zNear = -(innerDepth / 2 + wallThickness); // shared with the far wall
-  const zFar = zNear - penD;
-  const zCenter = (zNear + zFar) / 2;
-  const halfW = penW / 2;
-  const floorY = platformHeight; // top of the platform = pen floor
-
-  const bars: [number, number][] = [];
-  // Far side of the pen.
-  const farCount = 10;
-  for (let i = 0; i <= farCount; i++) {
-    bars.push([-halfW + (i * penW) / farCount, zFar]);
-  }
-  // Short ends.
-  const endCount = 3;
-  for (let i = 1; i <= endCount; i++) {
-    const z = zNear - (i * penD) / (endCount + 1);
-    bars.push([-halfW, z]);
-    bars.push([halfW, z]);
-  }
-
-  return (
-    <group>
-      {/* Solid stone platform lifting the pen above the castle wall's cover */}
-      <mesh position={[0, floorY / 2, zCenter]}>
-        <boxGeometry args={[penW + 0.4, floorY, penD + 0.3]} />
-        <meshStandardMaterial color="#8f8371" roughness={0.95} />
-      </mesh>
-
-      {/* Iron bars */}
-      {bars.map(([x, z], i) => (
-        <mesh key={`bar-${i}`} position={[x, floorY + barHeight / 2, z]}>
-          <cylinderGeometry args={[0.045, 0.045, barHeight, 6]} />
-          <meshStandardMaterial color="#454a52" roughness={0.5} metalness={0.4} />
-        </mesh>
-      ))}
-
-      {/* Top rails */}
-      <mesh position={[0, floorY + barHeight, zFar]}>
-        <boxGeometry args={[penW + 0.2, 0.09, 0.09]} />
-        <meshStandardMaterial color="#3a3f46" roughness={0.5} metalness={0.4} />
-      </mesh>
-      {([-halfW, halfW] as const).map((x, i) => (
-        <mesh key={`rail-${i}`} position={[x, floorY + barHeight, zCenter]}>
-          <boxGeometry args={[0.09, 0.09, penD + 0.1]} />
-          <meshStandardMaterial color="#3a3f46" roughness={0.5} metalness={0.4} />
-        </mesh>
-      ))}
-
-      {/* Stone corner posts */}
-      {(
-        [
-          [-halfW, zFar],
-          [halfW, zFar],
-        ] as const
-      ).map(([x, z], i) => (
-        <mesh key={`post-${i}`} position={[x, (floorY + barHeight + 0.15) / 2, z]}>
-          <boxGeometry args={[0.24, floorY + barHeight + 0.15, 0.24]} />
-          <meshStandardMaterial color={STONE_DARK} roughness={0.9} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
 
 /**
  * The freedom retreat on the player's side of the castle — the rescuer's
@@ -550,7 +479,16 @@ export function CastleArena({
       <group key="s5" position={[EXTRA_SPOTS[5][0], 0, EXTRA_SPOTS[5][1]]} scale={0.85}><Crate color="#8a5a34" /></group>
       <group key="s6" position={[EXTRA_SPOTS[6][0], 0, EXTRA_SPOTS[6][1]]} scale={0.85}><Crate color="#8a5a34" /></group>
       <group key="s7" position={[EXTRA_SPOTS[7][0], 0, EXTRA_SPOTS[7][1]]} scale={0.85}><Signpost color="#8a5a34" /></group>
-      <JailPen />
+      {/*
+        The jail is the gatehouse by day and the timber stockade at dusk —
+        one per board, see jails.tsx. The platform keeps the colours the
+        old stone pen had.
+      */}
+      {dusk ? (
+        <Jail kind={ARENA_JAILS.castleSunset} platform="#6f5a49" bars="#5a3a26" />
+      ) : (
+        <Jail kind={ARENA_JAILS.castle} platform="#8f8371" bars="#454a52" />
+      )}
       <RetreatGarden palette={palette} padColors={padColors} />
 
       {/* Walls */}

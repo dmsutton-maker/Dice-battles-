@@ -16,6 +16,8 @@ import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
 import { Campfire, Crate, Duel, Signpost, EXTRA_SPOTS } from './sceneryProps';
 import { palisadeLogs } from './palisade';
+import { ARENA_JAILS } from './jailKinds';
+import { Jail } from './jails';
 
 /**
  * Jungle Clearing arena — ancient mossy temple ruins deep in a rainforest.
@@ -126,81 +128,6 @@ function Fern({ position, scale = 1 }: { position: [number, number, number]; sca
           <coneGeometry args={[0.16, 0.62, 5]} />
           <meshStandardMaterial color="#3a8a44" roughness={0.9} />
         </mesh>
-      ))}
-    </group>
-  );
-}
-
-/**
- * Bamboo-cage jail pen behind the far ruin wall — same platform and bar
- * coordinates as the castle's JailPen so prisoner slots line up exactly.
- */
-function JungleJailPen() {
-  const { innerDepth, wallThickness } = TUNING.tray;
-  const { innerWidth: penW, depth: penD, platformHeight, barHeight } = TUNING.prison;
-  const zNear = -(innerDepth / 2 + wallThickness);
-  const zFar = zNear - penD;
-  const zCenter = (zNear + zFar) / 2;
-  const halfW = penW / 2;
-  const floorY = platformHeight;
-
-  const bars: [number, number][] = [];
-  const farCount = 10;
-  for (let i = 0; i <= farCount; i++) {
-    bars.push([-halfW + (i * penW) / farCount, zFar]);
-  }
-  const endCount = 3;
-  for (let i = 1; i <= endCount; i++) {
-    const z = zNear - (i * penD) / (endCount + 1);
-    bars.push([-halfW, z]);
-    bars.push([halfW, z]);
-  }
-
-  return (
-    <group>
-      {/* Mossy stone platform */}
-      <mesh position={[0, floorY / 2, zCenter]}>
-        <boxGeometry args={[penW + 0.4, floorY, penD + 0.3]} />
-        <meshStandardMaterial color="#75855c" roughness={0.95} />
-      </mesh>
-
-      {/* Bamboo bars */}
-      {bars.map(([x, z], i) => (
-        <mesh key={`bar-${i}`} position={[x, floorY + barHeight / 2, z]}>
-          <cylinderGeometry args={[0.05, 0.055, barHeight, 6]} />
-          <meshStandardMaterial color="#b8a13f" roughness={0.7} />
-        </mesh>
-      ))}
-
-      {/* Lashed bamboo top rails */}
-      <mesh position={[0, floorY + barHeight, zFar]}>
-        <boxGeometry args={[penW + 0.2, 0.09, 0.09]} />
-        <meshStandardMaterial color="#8f7c2e" roughness={0.7} />
-      </mesh>
-      {([-halfW, halfW] as const).map((x, i) => (
-        <mesh key={`rail-${i}`} position={[x, floorY + barHeight, zCenter]}>
-          <boxGeometry args={[0.09, 0.09, penD + 0.1]} />
-          <meshStandardMaterial color="#8f7c2e" roughness={0.7} />
-        </mesh>
-      ))}
-
-      {/* Carved stone corner totems */}
-      {(
-        [
-          [-halfW, zFar],
-          [halfW, zFar],
-        ] as const
-      ).map(([x, z], i) => (
-        <group key={`totem-${i}`} position={[x, 0, z]}>
-          <mesh position={[0, (floorY + barHeight + 0.15) / 2, 0]}>
-            <boxGeometry args={[0.26, floorY + barHeight + 0.15, 0.26]} />
-            <meshStandardMaterial color={MOSS_STONE_DARK} roughness={0.9} />
-          </mesh>
-          <mesh position={[0, floorY + barHeight + 0.28, 0]}>
-            <boxGeometry args={[0.34, 0.26, 0.34]} />
-            <meshStandardMaterial color={MOSS_STONE} roughness={0.9} />
-          </mesh>
-        </group>
       ))}
     </group>
   );
@@ -534,7 +461,8 @@ export function JungleArena({ padColors }: ArenaProps) {
       </mesh>
 
       <JungleWorld />
-      <JungleJailPen />
+      {/* Bamboo cage with vine knots — one jail per board, see jails.tsx. */}
+      <Jail kind={ARENA_JAILS.jungle} platform="#75855c" bars="#b8a13f" />
       <JungleRetreat padColors={padColors} />
 
       {/*
