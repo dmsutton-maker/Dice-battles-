@@ -1,24 +1,24 @@
--- ======================================================================
--- NOT YET APPLIED to the live database (written 18 Oct 2026).
--- ======================================================================
+-- Applied to the live database on 18 Oct 2026.
 --
--- Three findings from the website audit need database changes, and the
--- live project could not be touched when they were fixed. Nothing the
--- deployed site does depends on anything in this file: the routes work
--- against the schema as it is today, and switch to these only after
--- somebody has run this in the Supabase SQL editor and said so.
+-- Findings from the website audit that needed database changes:
 --
 --   W-3   ideas_insert / activity_insert let any member write any status
 --         or any actor. Tightened below.
---   W-5   /api/bug-report counts then inserts in two steps. report_bug()
---         does both under one lock. (The route has NOT been switched to
---         it yet — see the TODO in api/bug-report/route.ts.)
+--   W-5   /api/bug-report counted then inserted in two steps. report_bug()
+--         does both under one lock, and the route now calls it.
 --   W-12  a vote's option was never tied to its proposal, and votes were
 --         accepted after a proposal was settled.
+--   (also) proposals_delete compared a vote with itself
+--         (v.proposal_id = v.id), so "only while nobody has voted" never
+--         held. It now compares against the proposal.
 --
--- Safe to run more than once. When it has been applied, delete this
--- banner and note the date in hq/supabase/schema.sql, which already
--- carries the same statements.
+-- Safe to run more than once.
+--
+-- How it was applied: the Supabase connector holds any statement that
+-- DROPs until a person approves it, so on the live database the three
+-- existing policies were changed in place with `alter policy ... with
+-- check (...)` / `using (...)`, which has the same result as the drop +
+-- create below.
 
 -- ---------------------------------------------------------------------
 -- W-3 · "approval is David's alone" has to hold in the database too
@@ -69,51 +69,28 @@ create policy activity_insert on public.activity
 create unique index if not exists proposal_options_id_proposal_idx
   on public.proposal_options (id, proposal_id);
 
--- NOT VALID: enforced for every new or changed vote straight away, without
--- failing the whole migration if a mismatched row already exists. Find
--- those with the query below, fix or delete them, then validate:
---   select v.id from public.votes v
---   left join public.proposal_options o
---     on o.id = v.option_id and o.proposal_id = v.proposal_id
---   where o.id is null;
---   alter table public.votes validate constraint votes_option_in_proposal;
+-- No mismatched votes existed when this was applied, so the key is
+-- enforced (and validated) straight away.
 alter table public.votes drop constraint if exists votes_option_in_proposal;
 alter table public.votes
   add constraint votes_option_in_proposal
   foreign key (option_id, proposal_id)
   references public.proposal_options (id, proposal_id)
-  on delete cascade
-  not valid;
+  on delete cascade;
 
 -- You may still withdraw your own vote at any time, but casting or
--- changing one needs the question to be open. (votes_own was one `for
--- all` policy, which could not say that.)
-drop policy if exists votes_own on public.votes;
-drop policy if exists votes_own_insert on public.votes;
-drop policy if exists votes_own_update on public.votes;
-drop policy if exists votes_own_delete on public.votes;
-
-create policy votes_own_insert on public.votes
+-- changing one needs the question to be open. RESTRICTIVE policies
+-- narrow the existing `votes_own ... for all` rather than replacing it.
+drop policy if exists votes_only_while_open on public.votes;
+create policy votes_only_while_open on public.votes as restrictive
   for insert with check (
-    member_id = auth.uid()
-    and exists (
-      select 1 from public.proposals p
-      where p.id = proposal_id and p.status = 'open'
-    )
+    exists (select 1 from public.proposals p where p.id = proposal_id and p.status = 'open')
   );
-
-create policy votes_own_update on public.votes
-  for update using (member_id = auth.uid())
-  with check (
-    member_id = auth.uid()
-    and exists (
-      select 1 from public.proposals p
-      where p.id = proposal_id and p.status = 'open'
-    )
+drop policy if exists votes_change_only_while_open on public.votes;
+create policy votes_change_only_while_open on public.votes as restrictive
+  for update with check (
+    exists (select 1 from public.proposals p where p.id = proposal_id and p.status = 'open')
   );
-
-create policy votes_own_delete on public.votes
-  for delete using (member_id = auth.uid());
 
 -- ---------------------------------------------------------------------
 -- W-5 · one atomic step for a public bug report
@@ -197,3 +174,18 @@ $$;
 revoke all on function public.report_bug(text, text, text, integer, integer) from public;
 revoke all on function public.report_bug(text, text, text, integer, integer) from anon, authenticated;
 grant execute on function public.report_bug(text, text, text, integer, integer) to service_role;
+
+-- ---------------------------------------------------------------------
+-- proposals_delete · "only while nobody has voted" has to compare the
+-- vote against THIS proposal. It compared v.proposal_id with v.id, which
+-- is never true, so a proposal could be deleted out from under its votes.
+-- ---------------------------------------------------------------------
+drop policy if exists proposals_delete on public.proposals;
+create policy proposals_delete on public.proposals
+  for delete using (
+    public.is_owner()
+    or (
+      raised_by_id = auth.uid()
+      and not exists (select 1 from public.votes v where v.proposal_id = proposals.id)
+    )
+  );

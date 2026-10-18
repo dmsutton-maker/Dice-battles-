@@ -182,15 +182,20 @@ one is added; it does not need a new build.
 
 - **Audit of 17-18 Oct 2026 (v1.110.0).** Game, website and admin
   fixes are live. Still open from it:
-  - `hq/supabase/migrations/20261018_audit_fixes.sql` is written but
-    NOT APPLIED: the session's Supabase connector was refused every
-    call from 14 Oct onward ("You do not have permission"). It tightens
-    who may insert approved ideas and activity rows, ties votes to their
-    question, and adds an atomic `report_bug()`. The server-side vote
-    check is already live; the rest waits for the migration. After
-    applying it, switch `api/bug-report` to `report_bug()` (TODO there).
-  - `changes` rows for v1.110.0 could not be written for the same
-    reason.
+  - The database half was applied on 18 Oct 2026 once Supabase was
+    reconnected: approvals can only come from David, history rows carry
+    the real author, votes are tied to their question and only accepted
+    while it is open, a raised question with votes can no longer be
+    deleted by whoever raised it, and `/api/bug-report` now files through
+    the atomic `report_bug()`. `schema.sql` now also lists `battles`,
+    `battle_invites`, `game_news` and `player_profiles.last_seen`.
+  - **The Supabase connector holds DROP, UPDATE and DELETE statements
+    for a person's approval** and the call times out after 60 s if
+    nobody answers; inserts, `create`, `alter policy` and reads go
+    straight through. Plan writes around that, or ask David to approve.
+  - Auth's leaked-password protection is off (Supabase dashboard →
+    Authentication → Passwords). A `wicked` schema shares this database;
+    it is not Dice Battles and was left alone.
   - Privacy policy and Terms do not yet mention push notifications,
     online status / friend battles, or in-app purchases. Needs David's
     wording sign-off; the live copy is in `site_content`.

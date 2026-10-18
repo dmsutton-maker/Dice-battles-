@@ -461,8 +461,10 @@ create policy proposals_delete on public.proposals
   for delete using (
     public.is_owner()
     -- Or your own question, as long as nobody has voted on it yet.
+    -- (`proposals.id`, not bare `id`: inside the subquery a bare id is
+    -- the VOTE's id, which made this check never true. Fixed 18 Oct 2026.)
     or (raised_by_id = auth.uid()
-        and not exists (select 1 from public.votes v where v.proposal_id = id))
+        and not exists (select 1 from public.votes v where v.proposal_id = proposals.id))
   );
 
 drop policy if exists proposal_options_read on public.proposal_options;
@@ -492,48 +494,33 @@ create policy votes_read on public.votes
   for select using (public.is_member());
 
 -- You may cast, change and withdraw your OWN vote, and nobody else's.
---
--- NOT YET APPLIED to the live database (W-12, see
--- migrations/20261018_audit_fixes.sql): the live policy is a single
--- `votes_own ... for all`. Casting or changing now needs the question to
--- be open, and the option must belong to the proposal.
+drop policy if exists votes_own on public.votes;
+create policy votes_own on public.votes
+  for all using (member_id = auth.uid()) with check (member_id = auth.uid());
+
+-- And only while the question is open (W-12, applied 18 Oct 2026).
+-- RESTRICTIVE, so they narrow votes_own rather than widen it: withdrawing
+-- a vote stays allowed at any time, casting or changing one does not.
+drop policy if exists votes_only_while_open on public.votes;
+create policy votes_only_while_open on public.votes as restrictive
+  for insert with check (
+    exists (select 1 from public.proposals p where p.id = proposal_id and p.status = 'open')
+  );
+drop policy if exists votes_change_only_while_open on public.votes;
+create policy votes_change_only_while_open on public.votes as restrictive
+  for update with check (
+    exists (select 1 from public.proposals p where p.id = proposal_id and p.status = 'open')
+  );
+
+-- A vote's option must belong to the vote's own proposal.
 create unique index if not exists proposal_options_id_proposal_idx
   on public.proposal_options (id, proposal_id);
-
 alter table public.votes drop constraint if exists votes_option_in_proposal;
 alter table public.votes
   add constraint votes_option_in_proposal
   foreign key (option_id, proposal_id)
   references public.proposal_options (id, proposal_id)
-  on delete cascade
-  not valid;
-
-drop policy if exists votes_own on public.votes;
-drop policy if exists votes_own_insert on public.votes;
-drop policy if exists votes_own_update on public.votes;
-drop policy if exists votes_own_delete on public.votes;
-
-create policy votes_own_insert on public.votes
-  for insert with check (
-    member_id = auth.uid()
-    and exists (
-      select 1 from public.proposals p
-      where p.id = proposal_id and p.status = 'open'
-    )
-  );
-
-create policy votes_own_update on public.votes
-  for update using (member_id = auth.uid())
-  with check (
-    member_id = auth.uid()
-    and exists (
-      select 1 from public.proposals p
-      where p.id = proposal_id and p.status = 'open'
-    )
-  );
-
-create policy votes_own_delete on public.votes
-  for delete using (member_id = auth.uid());
+  on delete cascade;
 
 -- ---------------------------------------------------------------------
 -- Row level security
@@ -571,9 +558,9 @@ drop policy if exists ideas_read on public.ideas;
 create policy ideas_read on public.ideas
   for select using (public.is_member());
 
--- NOT YET APPLIED to the live database (W-3, see
--- migrations/20261018_audit_fixes.sql): a member may only insert a pending
--- row they submitted, or an approved bug, and never fill in decided_by.
+-- A member may only insert a pending row they submitted, or an approved
+-- bug, and never fill in decided_by: approval is David's alone (W-3,
+-- applied 18 Oct 2026).
 drop policy if exists ideas_insert on public.ideas;
 create policy ideas_insert on public.ideas
   for insert with check (
@@ -616,8 +603,9 @@ drop policy if exists activity_read on public.activity;
 create policy activity_read on public.activity
   for select using (public.is_member());
 
--- NOT YET APPLIED to the live database (W-3): the actor has to be the
--- signed-in member's own name. Service-role writes bypass RLS.
+-- The actor has to be the signed-in member's own name, so the history
+-- cannot be forged (W-3, applied 18 Oct 2026). Service-role writes bypass
+-- RLS.
 drop policy if exists activity_insert on public.activity;
 create policy activity_insert on public.activity
   for insert with check (
@@ -875,7 +863,7 @@ alter table public.push_tokens enable row level security;
 -- nothing here at all — the same arrangement player_profiles has.
 
 -- ---------------------------------------------------------------------
--- NOT YET APPLIED to the live database. Mirrors migrations/20261018_audit_fixes.sql.
+-- Applied 18 Oct 2026. Mirrors migrations/20261018_audit_fixes.sql.
 -- ---------------------------------------------------------------------
 -- W-5 · one atomic step for a public bug report
 --
@@ -958,3 +946,95 @@ $$;
 revoke all on function public.report_bug(text, text, text, integer, integer) from public;
 revoke all on function public.report_bug(text, text, text, integer, integer) from anon, authenticated;
 grant execute on function public.report_bug(text, text, text, integer, integer) to service_role;
+
+-- ---------------------------------------------------------------------
+-- Tables that existed live but were never written down here.
+--
+-- Copied from the live database on 18 Oct 2026 (audit item W-8), so a
+-- project rebuilt from this file has friendly battles and the News feed.
+-- ---------------------------------------------------------------------
+
+-- Online status: stamped every few seconds while the game is open, read
+-- by the challenge check ("is my friend playing right now?").
+alter table public.player_profiles
+  add column if not exists last_seen timestamptz not null default now();
+create index if not exists player_profiles_last_seen_idx
+  on public.player_profiles (last_seen desc);
+
+-- A challenge from one friend to another. Lives 45 seconds; at most one
+-- waiting challenge per sender.
+create table if not exists public.battle_invites (
+  id          uuid primary key default gen_random_uuid(),
+  from_id     text not null references public.player_profiles (player_id) on delete cascade,
+  to_id       text not null references public.player_profiles (player_id) on delete cascade,
+  mode        text not null,
+  difficulty  text not null,
+  state       text not null default 'waiting',
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz not null,
+  decided_at  timestamptz
+);
+create index if not exists battle_invites_to_idx
+  on public.battle_invites (to_id, state, expires_at desc);
+create index if not exists battle_invites_from_idx
+  on public.battle_invites (from_id, state, expires_at desc);
+create unique index if not exists battle_invites_one_outgoing
+  on public.battle_invites (from_id) where (state = 'waiting');
+
+-- A friendly battle in progress. Each phone stamps its *_seen about once
+-- a second and reports which colours it has freed.
+create table if not exists public.battles (
+  id          uuid primary key,
+  a_id        text not null references public.player_profiles (player_id) on delete cascade,
+  b_id        text not null references public.player_profiles (player_id) on delete cascade,
+  mode        text not null,
+  difficulty  text not null,
+  a_freed     jsonb not null default '[]'::jsonb,
+  b_freed     jsonb not null default '[]'::jsonb,
+  a_seen      timestamptz not null default now(),
+  b_seen      timestamptz not null default now(),
+  winner      text,
+  state       text not null default 'playing',
+  started_at  timestamptz not null default now(),
+  ended_at    timestamptz
+);
+create index if not exists battles_players_idx
+  on public.battles (a_id, b_id, state);
+
+-- No policies on either: every read and write goes through the HQ API with
+-- the service key, which checks the device secret first — the same
+-- arrangement player_profiles has.
+alter table public.battle_invites enable row level security;
+alter table public.battles enable row level security;
+
+-- The game's News posts, edited at /admin/news and served by /api/news
+-- (published rows only).
+create table if not exists public.game_news (
+  id          uuid primary key default gen_random_uuid(),
+  slug        text not null unique,
+  shown_date  text not null,
+  title       text not null,
+  emoji       text not null default '📣',
+  body        text not null,
+  version     text,
+  published   boolean not null default false,
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists game_news_published_idx
+  on public.game_news (published, sort_order desc, created_at desc);
+
+alter table public.game_news enable row level security;
+drop policy if exists game_news_read on public.game_news;
+create policy game_news_read on public.game_news
+  for select using (public.is_member());
+drop policy if exists game_news_write on public.game_news;
+create policy game_news_write on public.game_news
+  for all using (public.is_member()) with check (public.is_member());
+
+-- Supabase's security advisor, 18 Oct 2026: a trigger function should
+-- not be callable over the API, and every function gets a fixed
+-- search_path.
+alter function public.touch_updated_at() set search_path = public;
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
