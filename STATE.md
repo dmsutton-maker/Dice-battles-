@@ -5,7 +5,7 @@ one read instead of reconstructing it from conversation history. Keep it
 current — a stale map is worse than none. `AGENTS.md` holds the *rules*;
 this holds the *facts*.
 
-Last updated: 9 October 2026.
+Last updated: 18 October 2026.
 
 ## The two things being built
 
@@ -31,6 +31,16 @@ app in it and takes the live site down.
 
 The cleaner long-term fix is to merge PR #1 so `main` is the truth
 again — that is David's call, not something to do unasked.
+
+**A fresh container has no `hq/.vercel/` link** (it is gitignored). A
+plain `npx vercel deploy --prod` from `hq/` then does NOT fail: it
+quietly creates a NEW Vercel project named `hq` and deploys there,
+leaving the live site untouched. That happened on 18 Oct 2026 (project
+`hq`, `prj_OBirL7Po9…`, created by mistake). Link first, every time:
+`npx vercel link --yes --project dice-battles-hq --scope suttonsteam`,
+then deploy. `link` also writes `hq/.env.local`; it is gitignored, but
+delete it after the deploy. Production is aliased to
+https://papershipstudio.com.
 
 As of 19 Aug 2026 the Vercel personal token in use had expired (`404
 User not found`) and the Vercel MCP connector could see the team but no
@@ -169,6 +179,25 @@ Still missing: an APNs push key on EAS. Pushes cannot be delivered until
 one is added; it does not need a new build.
 
 ## Known-open, as of the last update
+
+- **Audit of 17-18 Oct 2026 (v1.110.0).** Game, website and admin
+  fixes are live. Still open from it:
+  - `hq/supabase/migrations/20261018_audit_fixes.sql` is written but
+    NOT APPLIED: the session's Supabase connector was refused every
+    call from 14 Oct onward ("You do not have permission"). It tightens
+    who may insert approved ideas and activity rows, ties votes to their
+    question, and adds an atomic `report_bug()`. The server-side vote
+    check is already live; the rest waits for the migration. After
+    applying it, switch `api/bug-report` to `report_bug()` (TODO there).
+  - `changes` rows for v1.110.0 could not be written for the same
+    reason.
+  - Privacy policy and Terms do not yet mention push notifications,
+    online status / friend battles, or in-app purchases. Needs David's
+    wording sign-off; the live copy is in `site_content`.
+  - `schema.sql` is missing `game_news`, `battles`, `battle_invites`
+    and `player_profiles.last_seen`, which exist live.
+  - Music (6 MB, 96 kHz AAC) and the WAV voice lines could be
+    re-encoded for about 3 MB less; needs a listen test first.
 
 - **Invite links need a BUILD before they open the game** (v1.92.0,
   17 Sep 2026). Sharing a friend code works over the air today: the
