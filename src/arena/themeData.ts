@@ -629,13 +629,21 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   /* ── BOUGHT IN THE STORE ───────────────────────────────────────── */
 
   beach: {
-    // Driftwood palisade. A castle on a beach is a sandcastle, and this
-    // one is life-sized.
+    /*
+      A sand berm fenced with driftwood stakes and a sagging rope, the
+      sea breaking at the top of the board (storeBoards.tsx).
+
+      Palette, 18 Oct 2026 (docs/board-redesign.md): base the dry sand,
+      surface the berm, accent the life-ring coral, glow the shallow
+      turquoise, shadow the wet sand. The floor's second tone was
+      lifted a real step apart from the first; at a whisker apart the
+      ripples and the footprints painted nothing.
+    */
     structure: 'driftwood',
     meadow: '#f0dfa8', hill: '#e6d090', mountain: null, cloud: '#ffffff',
-    floor: { a: '#efe2b4', b: '#e0cd92' },
-    wall: { color: '#d9c284', cap: '#a8845c' },
-    tower: { body: '#d9c284', roof: '#ff8a5c' },
+    floor: { a: '#eedcae', b: '#d2b986' },
+    wall: { color: '#d8c38e', cap: '#9a8e7a' },
+    tower: { body: '#a99c86', roof: '#ef7d6a' },
     jail: { platform: '#c2a865', bars: '#6e5a34' },
     retreat: { padA: '#fff3d0', padB: '#efe0ae', post: '#8a5a34', canopy: '#ff6e6e', pool: '#4fd0c9' },
     sky: { sun: { color: '#fff6d8', size: 1.7 }, stars: false, body: null },
@@ -650,13 +658,16 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'bush', x: 3.46, z: -0.8, scale: 0.85, color: '#3a8a4a' },
       { kind: 'palm', x: 3.5, z: 1.6, scale: 0.52 },
       { kind: 'flowers', x: 3.46, z: 3.5, scale: 0.95, color: '#ff6e9e' },
-      { kind: 'rock', x: -2.4, z: -8.8, scale: 0.65, color: '#c2a865' },
-      { kind: 'pebbles', x: 0.1, z: -9, scale: 0.9, color: '#d9c08a' },
-      { kind: 'palm', x: 2.5, z: -8.8, scale: 0.46 },
+      // Behind the jail is the surf now (storeBoards.tsx), so what stands
+      // there is what stands in surf: rocks, and the palms and the sign
+      // moved up onto the wet sand.
+      { kind: 'rock', x: -2.4, z: -8.8, scale: 0.65, color: '#a99c86' },
+      { kind: 'rock', x: 0.3, z: -9.2, scale: 0.45, color: '#9a8f7c' },
+      { kind: 'rock', x: 2.5, z: -8.9, scale: 0.55, color: '#a99c86' },
       { kind: 'campfire', x: -3.75, z: -5.6, scale: 0.85 },
-      { kind: 'palm', x: -3.95, z: -9.15, scale: 0.55 },
+      { kind: 'palm', x: -3.9, z: -7.9, scale: 0.55 },
       { kind: 'crate', x: 3.75, z: -5.6, scale: 0.85, color: '#c2a865' },
-      { kind: 'signpost', x: 3.95, z: -9.15, scale: 0.8, color: '#c2a865' },
+      { kind: 'signpost', x: 3.85, z: -7.9, scale: 0.8, color: '#c2a865' },
       { kind: 'umbrella', x: -3.05, z: -2.1, scale: 0.7, color: '#ff6e6e' },
       { kind: 'pebbles', x: -3.05, z: 0.4, scale: 0.85, color: '#d9c08a' },
       { kind: 'bush', x: -3.05, z: -4.6, scale: 0.75, color: '#3a8a4a' },
@@ -674,12 +685,22 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   candy: {
-    // Gingerbread. One of the three places where a castle is the joke.
+    /*
+      A bar of milk chocolate in a frosting meadow, fenced with candy
+      canes and gumdrops on a piped-icing wall.
+
+      The floor was pale pink squares — "pink bathroom tiles" in the
+      18 Oct 2026 review — and is chocolate now: base the milk
+      chocolate, surface the pink frosting, accent the cane red, glow
+      the mint, shadow the dark chocolate in the moulding. Pink stays
+      outside the tray, where the meadow is, so the board itself is the
+      one brown thing in a pink world and every die sits on it clearly.
+    */
     structure: 'gingerbread',
     meadow: '#f4b5d6', hill: '#e89cc6', mountain: '#d086b4', cloud: '#ffe8f4',
-    floor: { a: '#fbe3ef', b: '#f3cde2' },
-    wall: { color: '#e8a8cc', cap: '#d68cb8' },
-    tower: { body: '#e8a8cc', roof: '#8ae0c0' },
+    floor: { a: '#8f5f40', b: '#6a4029' },
+    wall: { color: '#eea4c4', cap: '#fff2f7' },
+    tower: { body: '#eea4c4', roof: '#8ae0c0' },
     jail: { platform: '#d68cb8', bars: '#8a4a6e' },
     retreat: { padA: '#fff0f7', padB: '#f7d6e8', post: '#a8624a', canopy: '#8ae0c0', pool: '#8ad4e8' },
     sky: { sun: { color: '#fff6d8', size: 1.4 }, stars: false, body: null },
@@ -735,13 +756,22 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     */
     meadow: '#2b5747', hill: '#1e453c', mountain: '#3c7a64',
     cloud: null,
-    // Paler and less saturated than the moss outside, so the green die
-    // #33cc6b separates from the lawn by LIGHTNESS as well as hue. At
-    // the old #74b183/#549062 a green die on this floor was the hardest
-    // colour to find in any of the sixteen arenas.
-    floor: { a: '#a3c9a5', b: '#8bb18e' },
-    wall: { color: '#77624b', cap: '#8a7f6d' },
-    tower: { body: '#77624b', roof: '#4fd0c9' },
+    /*
+      Dark moss now, as the 18 Oct 2026 brief asks — and still apart from
+      the green die by LIGHTNESS, which is what the old note here was
+      protecting. The lawn it replaces was paler than the die (#a3c9a5);
+      this is two value steps darker than it and pulled toward blue, so
+      #33cc6b reads as the brightest green on the board instead of
+      dissolving into it. At the old mid-green #74b183 the die vanished;
+      neither side of that value is the problem, the middle was.
+
+      Palette: base the moss, surface the dark stone of the wall, accent
+      the lichen grey on the boulders, glow the cyan and lime spores,
+      shadow the crevices between the cushions.
+    */
+    floor: { a: '#4a7d66', b: '#2f5747' },
+    wall: { color: '#4f4c45', cap: '#7c776a' },
+    tower: { body: '#4f4c45', roof: '#7ff0dc' },
     jail: { platform: '#2f5a48', bars: '#152e22' },
     retreat: { padA: '#5f9c78', padB: '#4a8562', post: '#33684a', canopy: '#4fd0c9', pool: '#4fd0c9' },
     sky: { sun: null, stars: true, body: { kind: 'moon', color: '#e9f0f7' } },
@@ -785,40 +815,45 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   cove: {
-    // A beached hull with the deck cut away. The one arena where "hull"
-    // is literal rather than a metaphor for something built.
+    /*
+      A ship tied up at a quay: the board is her deck, the walls are her
+      bulwarks with a railing, cannon and boarding nets, and the sea is
+      on three sides of her (storeBoards.tsx). It used to be a hull
+      beached on sand, which from above is a wooden box in a sandpit.
+
+      Palette: base the honey deck, surface the dark hull, accent the
+      brass, glow the lanterns, shadow the tar in the seams.
+    */
     structure: 'shipHull',
     meadow: '#c9b382', hill: '#b89e68', mountain: '#6e7d8a', cloud: '#e9e4d8',
-    floor: { a: '#a8845c', b: '#93714a' },
-    wall: { color: '#7d5f3d', cap: '#66492c' },
-    tower: { body: '#7d5f3d', roof: '#ffc95c' },
+    floor: { a: '#c19763', b: '#94693e' },
+    wall: { color: '#5a3b27', cap: '#3d281a' },
+    tower: { body: '#5a3b27', roof: '#ffd27a' },
     jail: { platform: '#66492c', bars: '#33241a' },
     retreat: { padA: '#d9c799', padB: '#c2ab78', post: '#66492c', canopy: '#c23b3b', pool: '#2a7a9e' },
     sky: { sun: { color: '#fff0c0', size: 1.4 }, stars: false, body: null },
+    /*
+      Everything round the ship is sea now, so the scenery is what floats
+      or stands in it: other ships at anchor, rocks, drifting cargo and
+      kelp. The hay bales, the bush and the campfire were standing on the
+      water. Kept off the cannon (z -3.0, -0.4, 2.2) so the guns show.
+    */
     props: [
-      { kind: 'shipMast', x: -3.5, z: -7.3, scale: 0.42 },
-      { kind: 'rock', x: -3.38, z: -3.4, scale: 0.8, color: '#6e7d8a' },
-      { kind: 'lantern', x: -3.46, z: -0.8, scale: 0.85, color: '#ffc95c' },
-      { kind: 'hayBale', x: -3.4, z: 1.6, scale: 0.85 },
-      { kind: 'bush', x: -3.46, z: 3.5, scale: 0.85, color: '#5c7a3d' },
-      { kind: 'palm', x: 3.44, z: -7.3, scale: 0.58 },
-      { kind: 'banner', x: 3.38, z: -3.4, scale: 0.78, color: '#c23b3b' },
-      { kind: 'rock', x: 3.46, z: -0.8, scale: 0.7, color: '#5c6a78' },
-      { kind: 'hayBale', x: 3.4, z: 1.6, scale: 0.8 },
-      { kind: 'lantern', x: 3.46, z: 3.5, scale: 0.8, color: '#ffc95c' },
+      { kind: 'shipMast', x: -3.6, z: -7.3, scale: 0.42 },
+      { kind: 'rock', x: -3.55, z: -4.3, scale: 0.55, color: '#6e7d8a' },
+      { kind: 'seaweed', x: -3.5, z: -1.7, scale: 0.7 },
+      { kind: 'crate', x: -3.6, z: 0.9, scale: 0.7, color: '#6e5a3d' },
+      { kind: 'rock', x: -3.5, z: 3.4, scale: 0.6, color: '#5c6a78' },
+      { kind: 'shipMast', x: 3.6, z: -6.9, scale: 0.4 },
+      { kind: 'crate', x: 3.55, z: -4.3, scale: 0.75, color: '#6e5a3d' },
+      { kind: 'rock', x: 3.55, z: -1.6, scale: 0.65, color: '#5c6a78' },
+      { kind: 'seaweed', x: 3.5, z: 0.8, scale: 0.75 },
+      { kind: 'rock', x: 3.55, z: 3.3, scale: 0.55, color: '#6e7d8a' },
       { kind: 'rock', x: -2.4, z: -8.8, scale: 0.7, color: '#6e7d8a' },
-      { kind: 'pebbles', x: 0.1, z: -9, scale: 0.9, color: '#6e7d8a' },
-      { kind: 'hayBale', x: 2.5, z: -8.8, scale: 0.75 },
-      { kind: 'duel', x: -3.75, z: -5.6, scale: 1.0, color: '#c23b3b' },
-      { kind: 'campfire', x: -3.95, z: -9.15, scale: 0.85 },
-      { kind: 'crate', x: 3.75, z: -5.6, scale: 0.9, color: '#6e5a3d' },
-      { kind: 'signpost', x: 3.95, z: -9.15, scale: 0.8, color: '#6e5a3d' },
-      { kind: 'shipMast', x: -3.05, z: -2.1, scale: 0.55 },
-      { kind: 'rock', x: -3.05, z: 0.4, scale: 0.65, color: '#6e7d8a' },
-      { kind: 'pebbles', x: -3.05, z: -4.6, scale: 0.85, color: '#6e7d8a' },
-      { kind: 'palm', x: 3.05, z: -2.1, scale: 0.52 },
-      { kind: 'lantern', x: 3.05, z: 0.4, scale: 0.8, color: '#ffc95c' },
-      { kind: 'bush', x: 3.05, z: -4.6, scale: 0.7, color: '#5c7a3d' },
+      { kind: 'shipMast', x: 0.4, z: -9.3, scale: 0.36 },
+      { kind: 'crate', x: 2.5, z: -8.7, scale: 0.7, color: '#6e5a3d' },
+      { kind: 'rock', x: -3.95, z: -9.15, scale: 0.6, color: '#5c6a78' },
+      { kind: 'seaweed', x: 3.95, z: -9.15, scale: 0.7 },
     ],
     look: look(
       { color: '#b89e68', roughness: 1, metalness: 0 },
@@ -830,12 +865,24 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   farm: {
-    // A fence. Obviously a fence.
+    /*
+      A white picket fence on a grassy bank round a ploughed field.
+
+      It was meant to be a fence all along, and from above it read as a
+      wrestling ring: a thick brown wall with white diamonds on it and a
+      grey knob on every corner post (18 Oct 2026 review). From almost
+      straight down a fence is its PICKETS — a close white dashed line —
+      so the bank is green, the pickets are many, thin and white, and
+      the corners are gateposts with a sunflower.
+
+      Palette: base the ploughed earth, surface the grass bank, accent
+      the fence white, glow the sunflower, shadow the furrows.
+    */
     structure: 'picket',
     meadow: '#a8c45c', hill: '#93b34a', mountain: '#7d9958', cloud: '#ffffff',
-    floor: { a: '#d9c799', b: '#c9b380' },
-    wall: { color: '#a8845c', cap: '#8f6c44' },
-    tower: { body: '#c23b3b', roof: '#8a8e99' },
+    floor: { a: '#a8805a', b: '#7a5739' },
+    wall: { color: '#7ea650', cap: '#efeadc' },
+    tower: { body: '#c23b3b', roof: '#f0c040' },
     jail: { platform: '#8f6c44', bars: '#4a3823' },
     retreat: { padA: '#f0e6c4', padB: '#dfd0a0', post: '#8f6c44', canopy: '#c23b3b', pool: '#57b0e8' },
     sky: { sun: { color: '#fff6d8', size: 1.6 }, stars: false, body: null },
@@ -877,12 +924,23 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   reef: {
-    // Coral heads heaped round the rim. Nothing on a reef is squared off.
+    /*
+      Coral heads heaped round the rim. Nothing on a reef is squared off.
+
+      18 Oct 2026: the wall is now live rock carrying five KINDS of coral
+      — brain domes, table plates, staghorn, tube sponges, anemones — not
+      one repeated blob, and the floor is open sea-floor sand with light
+      moving over it (storeBoards.tsx). The tray was teal water-on-teal;
+      sand is what a reef stands on and what a die is easy to see on.
+
+      Palette: base the pale sand, surface the violet live rock, accent
+      the coral, glow the caustic light, shadow the deep water beyond.
+    */
     structure: 'coralRim',
     meadow: '#1a6673', hill: '#125460', mountain: '#0d4550', cloud: null,
-    floor: { a: '#2a8a99', b: '#1f7080' },
-    wall: { color: '#33a3b3', cap: '#26858f' },
-    tower: { body: '#33a3b3', roof: '#ff8a5c' },
+    floor: { a: '#d6c9a2', b: '#a2977a' },
+    wall: { color: '#7a6f95', cap: '#5f5679' },
+    tower: { body: '#625878', roof: '#ff8a5c' },
     jail: { platform: '#26858f', bars: '#0a333a' },
     retreat: { padA: '#3fbccc', padB: '#2a9aa8', post: '#c26e3d', canopy: '#ff8a5c', pool: '#0d4550' },
     sky: { sun: null, stars: false, body: null },
@@ -919,7 +977,9 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#3fbccc', border: { kind: 'stone', color: '#125460' } },
       'deep trench', 'coral head', 'Blub! A die sank into the trench!',
     ),
-    lighting: night('#2a90a8', '#0f4450', '#9fe0f0'),
+    // The key is a paler sea-light than it was (#9fe0f0), so the sand reads
+    // as sand and the coral keeps its warm colours under the water.
+    lighting: night('#3a9cb4', '#1a5662', '#d6f2f6'),
   },
 
   city: {
@@ -931,42 +991,50 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       the concrete is lit from the streets below, and the skyline behind
       still reads as night because the sky and the towers carry that.
     */
+    /*
+      18 Oct 2026: the roof is tarred felt with gravel, sealant and
+      drains, the parapet carries what a real roof does — air
+      conditioners, vents, a pipe run, aerials and a dish — the corners
+      are water towers, and the ground outside is the street grid a long
+      way down rather than more roof (storeBoards.tsx, groundTexture.ts).
+
+      Palette: base the tar felt, surface the concrete parapet, accent
+      the lit windows, glow the street lamps, shadow the streets.
+    */
     structure: 'parapet',
     meadow: '#6e7494', hill: '#5d6383', mountain: null, cloud: '#565d80',
-    floor: { a: '#8a90aa', b: '#787e9a' },
-    wall: { color: '#8b90a8', cap: '#717691', metalness: 0.25 },
-    tower: { body: '#8b90a8', roof: '#ffc95c' },
+    floor: { a: '#7f8396', b: '#64687b' },
+    wall: { color: '#7b8094', cap: '#aeb2c0', metalness: 0.1 },
+    tower: { body: '#7b8094', roof: '#ffc95c' },
     jail: { platform: '#717691', bars: '#2c2f42' },
     retreat: { padA: '#9095ad', padB: '#7b8099', post: '#4c5170', canopy: '#ffc95c', pool: '#57c9e8' },
     sky: { sun: null, stars: true, body: { kind: 'moon', color: '#f2ecd8' } },
+    /*
+      Neighbouring towers, and nothing else. The ground outside the
+      parapet is the street a long way down now, and the lanterns,
+      bushes, banners and signposts that used to stand on it read as
+      giants on the pavement. Towers of different heights coming up past
+      the roof are the one thing that belongs there — and they are what
+      makes the drop.
+    */
     props: [
       { kind: 'cityTower', x: -3.5, z: -7.3, scale: 0.46 },
-      { kind: 'cityTower', x: -3.3, z: -5.4, scale: 0.32 },
-      { kind: 'lantern', x: -3.38, z: -3.4, scale: 0.85, color: '#ffc95c' },
-      { kind: 'bush', x: -3.46, z: -1.5, scale: 0.85, color: '#3a6b4a' },
+      { kind: 'cityTower', x: -3.35, z: -5.4, scale: 0.32 },
+      { kind: 'cityTower', x: -3.45, z: -3.4, scale: 0.4 },
+      { kind: 'cityTower', x: -3.35, z: -1.5, scale: 0.3 },
       { kind: 'cityTower', x: -3.5, z: 0.4, scale: 0.38 },
-      { kind: 'banner', x: -3.4, z: 2.1, scale: 0.75, color: '#ffc95c' },
-      { kind: 'lantern', x: -3.46, z: 3.7, scale: 0.8, color: '#ffc95c' },
+      { kind: 'cityTower', x: -3.35, z: 2.1, scale: 0.3 },
+      { kind: 'cityTower', x: -3.45, z: 3.7, scale: 0.4 },
       { kind: 'cityTower', x: 3.5, z: -7.3, scale: 0.5 },
-      { kind: 'cityTower', x: 3.32, z: -5.4, scale: 0.34 },
-      { kind: 'bush', x: 3.38, z: -3.4, scale: 0.85, color: '#3a6b4a' },
-      { kind: 'lantern', x: 3.46, z: -1.4, scale: 0.85, color: '#ffc95c' },
-      { kind: 'cityTower', x: 3.5, z: 0.5, scale: 0.36 },
-      { kind: 'bush', x: 3.4, z: 2.2, scale: 0.8, color: '#3a6b4a' },
-      { kind: 'pebbles', x: 3.46, z: 3.7, scale: 0.9, color: '#4c5170' },
+      { kind: 'cityTower', x: 3.35, z: -5.4, scale: 0.34 },
+      { kind: 'cityTower', x: 3.4, z: -3.4, scale: 0.36 },
+      { kind: 'cityTower', x: 3.5, z: -1.4, scale: 0.44 },
+      { kind: 'cityTower', x: 3.4, z: 0.5, scale: 0.36 },
+      { kind: 'cityTower', x: 3.35, z: 2.2, scale: 0.3 },
+      { kind: 'cityTower', x: 3.45, z: 3.7, scale: 0.4 },
       { kind: 'cityTower', x: -2.5, z: -8.8, scale: 0.42 },
-      { kind: 'lantern', x: 0.1, z: -9.1, scale: 0.7, color: '#ffc95c' },
+      { kind: 'cityTower', x: 0.1, z: -9.1, scale: 0.3 },
       { kind: 'cityTower', x: 2.5, z: -8.8, scale: 0.4 },
-      { kind: 'crate', x: -3.95, z: -9.15, scale: 0.85, color: '#4c5170' },
-      { kind: 'cityTower', x: -3.8, z: -6.3, scale: 0.55 },
-      { kind: 'signpost', x: 3.95, z: -9.15, scale: 0.8, color: '#4c5170' },
-      { kind: 'lantern', x: 3.8, z: -6.3, scale: 0.85, color: '#ffc95c' },
-      { kind: 'bush', x: -3.7, z: -4.4, scale: 0.75, color: '#3a6b4a' },
-      { kind: 'lantern', x: -3.05, z: -0.55, scale: 0.8, color: '#ffc95c' },
-      { kind: 'pebbles', x: -3.05, z: -2.45, scale: 0.85, color: '#4c5170' },
-      { kind: 'cityTower', x: 3.05, z: -2.4, scale: 0.5 },
-      { kind: 'banner', x: 3.7, z: -4.4, scale: 0.8, color: '#ffc95c' },
-      { kind: 'bush', x: 3.05, z: -0.45, scale: 0.7, color: '#3a6b4a' },
     ],
     look: look(
       { color: '#7b8099', roughness: 0.5, metalness: 0.3 },
@@ -978,46 +1046,62 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
   },
 
   toybox: {
-    // Wooden blocks stacked into a toy castle, because that is what a
-    // child builds out of blocks.
+    /*
+      A playmat on the floorboards, walled with interlocking bricks.
+
+      18 Oct 2026: the wall is now a real brick wall — courses of
+      two-, three- and four-stud bricks, staggered, studs on top — where
+      it was a row of small cubes, and the floor is a soft mint playmat
+      with a road printed round its edge instead of yellow checks
+      (storeBoards.tsx, groundTexture.ts). Mint because none of the six
+      dice is mint, and ivory dice read on it at a glance.
+
+      Palette: base the mint mat, surface the brick, accent the mustard
+      and cream bricks, glow the beach ball, shadow the mat's binding.
+    */
     structure: 'blocks',
     meadow: '#d9a05c', hill: '#c98d4a', mountain: null, cloud: null,
-    floor: { a: '#e8c076', b: '#d9a95c' },
+    floor: { a: '#93c9bf', b: '#6ba69c' },
     // The cap and roof are OFF the dice palette. The crest cycles
     // [wall.color, cap, accent], and at #c23b3b / #3f7fd0 / #ffd21f that
     // put 48 red, blue and yellow cubes the size and colour of dice
     // along the rim — so the wall looked like a row of dice and you had
     // to look twice to find the real ones. It is the last arena a
     // player unlocks, at 3350 coins, and it should be the clearest.
-    // Red toy frame stays; the rim goes mint and cream.
-    wall: { color: '#c23b3b', cap: '#7fc4a8' },
-    tower: { body: '#3f7fd0', roof: '#f0dfb4' },
+    // Red toy frame stays; the rim goes mint and cream. The bricks
+    // themselves (storeBoards.tsx) keep to the same rule: coral, teal,
+    // mustard, periwinkle, cream and sage, none of them a die's colour,
+    // and long with studs so none of them is a die's shape either.
+    wall: { color: '#d06a5e', cap: '#f1e6cf' },
+    tower: { body: '#5aa7a8', roof: '#e7b84f' },
     jail: { platform: '#9e2f2f', bars: '#4a2a1a' },
     retreat: { padA: '#f0dfb4', padB: '#e0c98e', post: '#8a5a34', canopy: '#3fa35c', pool: '#57c9e8' },
     sky: { sun: { color: '#fff6d8', size: 1.4 }, stars: false, body: null },
     props: [
-      { kind: 'toyBlock', x: -3.46, z: -7.3, scale: 0.5, color: '#c23b3b' },
+      // Blocks in the wall's own muted colours: a red, blue or yellow cube
+      // beside the board is a die you have to look at twice.
+      { kind: 'toyBlock', x: -3.46, z: -7.3, scale: 0.5, color: '#d06a5e' },
       { kind: 'balloon', x: -3.38, z: -3.4, scale: 0.6, color: '#ff6e6e' },
-      { kind: 'toyBlock', x: -3.46, z: -0.8, scale: 0.45, color: '#3fa35c' },
+      { kind: 'toyBlock', x: -3.46, z: -0.8, scale: 0.45, color: '#93c27e' },
       { kind: 'flowers', x: -3.4, z: 1.6, scale: 0.95, color: '#ff6e6e' },
-      { kind: 'toyBlock', x: -3.46, z: 3.5, scale: 0.42, color: '#b06ee8' },
-      { kind: 'toyBlock', x: 3.44, z: -7.3, scale: 0.5, color: '#3f7fd0' },
-      { kind: 'banner', x: 3.38, z: -3.4, scale: 0.75, color: '#3f7fd0' },
-      { kind: 'toyBlock', x: 3.46, z: -0.8, scale: 0.46, color: '#ffd21f' },
+      { kind: 'toyBlock', x: -3.46, z: 3.5, scale: 0.42, color: '#b79ad8' },
+      { kind: 'toyBlock', x: 3.44, z: -7.3, scale: 0.5, color: '#7c95d6' },
+      { kind: 'banner', x: 3.38, z: -3.4, scale: 0.75, color: '#7c95d6' },
+      { kind: 'toyBlock', x: 3.46, z: -0.8, scale: 0.46, color: '#e7b84f' },
       { kind: 'balloon', x: 3.4, z: 1.6, scale: 0.58, color: '#57c9e8' },
-      { kind: 'toyBlock', x: 3.46, z: 3.5, scale: 0.42, color: '#c23b3b' },
-      { kind: 'toyBlock', x: -2.4, z: -8.8, scale: 0.44, color: '#ffd21f' },
+      { kind: 'toyBlock', x: 3.46, z: 3.5, scale: 0.42, color: '#d06a5e' },
+      { kind: 'toyBlock', x: -2.4, z: -8.8, scale: 0.44, color: '#e7b84f' },
       { kind: 'pebbles', x: 0.1, z: -9, scale: 0.9, color: '#c98d4a' },
-      { kind: 'toyBlock', x: 2.5, z: -8.8, scale: 0.42, color: '#3fa35c' },
-      { kind: 'duel', x: -3.75, z: -5.6, scale: 1.0, color: '#3f7fd0' },
+      { kind: 'toyBlock', x: 2.5, z: -8.8, scale: 0.42, color: '#93c27e' },
+      { kind: 'duel', x: -3.75, z: -5.6, scale: 1.0, color: '#7c95d6' },
       { kind: 'crate', x: -3.95, z: -9.15, scale: 0.85, color: '#c98d4a' },
-      { kind: 'toyBlock', x: 3.75, z: -5.6, scale: 0.6, color: '#3fa35c' },
-      { kind: 'balloon', x: 3.95, z: -9.15, scale: 0.7, color: '#ffd21f' },
-      { kind: 'toyBlock', x: -3.05, z: -2.1, scale: 0.58, color: '#b06ee8' },
+      { kind: 'toyBlock', x: 3.75, z: -5.6, scale: 0.6, color: '#93c27e' },
+      { kind: 'balloon', x: 3.95, z: -9.15, scale: 0.7, color: '#e7b84f' },
+      { kind: 'toyBlock', x: -3.05, z: -2.1, scale: 0.58, color: '#b79ad8' },
       { kind: 'balloon', x: -3.05, z: 0.4, scale: 0.65, color: '#57c9e8' },
       { kind: 'flowers', x: -3.05, z: -4.6, scale: 0.85, color: '#ff6e6e' },
-      { kind: 'toyBlock', x: 3.05, z: -2.1, scale: 0.55, color: '#c23b3b' },
-      { kind: 'toyBlock', x: 3.05, z: 0.4, scale: 0.6, color: '#3f7fd0' },
+      { kind: 'toyBlock', x: 3.05, z: -2.1, scale: 0.55, color: '#d06a5e' },
+      { kind: 'toyBlock', x: 3.05, z: 0.4, scale: 0.6, color: '#7c95d6' },
       { kind: 'pebbles', x: 3.05, z: -4.6, scale: 0.85, color: '#c98d4a' },
     ],
     look: look(
