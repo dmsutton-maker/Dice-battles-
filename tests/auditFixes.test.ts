@@ -205,3 +205,20 @@ suite('audit fixes · the challenge poll does not re-render for nothing', () => 
     );
   });
 });
+
+suite('audit · a slow ad SDK cannot freeze Play', () => {
+  test('starting the SDK on the waiting path is bounded like the load wait', () => {
+    /*
+      Found by the regression pass after the start guard went in: the
+      battle start waits behind showAdIfDue, and initAds (consent form,
+      SDK start-up) had no limit, so on a bad connection Play did nothing
+      for as long as the SDK took.
+    */
+    const ads = code('src/game/ads.ts');
+    const once = ads.slice(ads.indexOf('async function showAdIfDueOnce'));
+    assert(
+      /await Promise\.race\(\[\s*initAds\(\),\s*new Promise<void>\(\(resolve\) => setTimeout\(resolve, AD_LOAD_WAIT_MS\)\)/.test(once),
+      'initAds is awaited without a time limit on the path a battle start waits for',
+    );
+  });
+});

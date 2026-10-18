@@ -188,6 +188,27 @@ export async function initPurchases(): Promise<void> {
   const mod = moduleOrNull();
   if (!mod) return;
 
+  connectAttempts = 0;
+  await connectStore(mod);
+}
+
+/**
+ * How long to wait before each further try at the store connection.
+ *
+ * A launch on a slow connection used to be the only try: one timeout and
+ * the shelf said "not available" for the whole session, and a purchase
+ * interrupted last time was not replayed until the next launch. Three
+ * more goes, spread out, and then it really is not there.
+ */
+const RECONNECT_DELAYS_MS = [30_000, 120_000, 300_000];
+let connectAttempts = 0;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function connectStore(mod: NonNullable<ReturnType<typeof moduleOrNull>>): Promise<void> {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
   try {
     const connect = mod.initConnection as (() => Promise<unknown>) | undefined;
     if (connect) await connectOrThrow(connect);
@@ -202,6 +223,14 @@ export async function initPurchases(): Promise<void> {
     const changed = ready;
     ready = false;
     if (changed) notifyChanged();
+    const delay = RECONNECT_DELAYS_MS[connectAttempts];
+    connectAttempts += 1;
+    if (delay !== undefined) {
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        void connectStore(mod);
+      }, delay);
+    }
   }
 }
 
@@ -524,4 +553,7 @@ export function resetPurchasesForTest(state?: {
   waiting = null;
   listening = false;
   listeners.clear();
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+  connectAttempts = 0;
 }

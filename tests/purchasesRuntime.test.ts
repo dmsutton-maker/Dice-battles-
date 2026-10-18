@@ -92,6 +92,86 @@ suite('purchases · a store that will not connect says so', () => {
     }
   });
 
+  test('a launch that could not connect tries again later, and then works', async () => {
+    /*
+      One slow launch used to mean "not available" for the whole session.
+      The retry is caught here instead of waited for: setTimeout is
+      swapped for one that remembers the long delays.
+    */
+    resetPurchasesForTest();
+    const realSetTimeout = global.setTimeout;
+    const later: { run: () => void; ms: number }[] = [];
+    (global as { setTimeout: unknown }).setTimeout = ((run: () => void, ms?: number) => {
+      if ((ms ?? 0) >= 30_000) {
+        later.push({ run, ms: ms ?? 0 });
+        return 0 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return realSetTimeout(run, ms);
+    }) as typeof setTimeout;
+    let calls = 0;
+    try {
+      await withFakeStore(
+        {
+          initConnection: () => {
+            calls += 1;
+            return calls === 1 ? Promise.reject(new Error('slow launch')) : Promise.resolve(true);
+          },
+          purchaseUpdatedListener: () => ({ remove() {} }),
+          purchaseErrorListener: () => ({ remove() {} }),
+          fetchProducts: () => Promise.resolve([]),
+        },
+        async () => {
+          await initPurchases();
+          assertEqual(storeState().available, false, 'the first, failed try showed the shop as ready');
+          assertEqual(later.length, 1, 'a failed connection did not schedule another try');
+          later.shift()!.run();
+          await settleMicrotasks();
+          await settleMicrotasks();
+          assertEqual(calls, 2, 'the retry did not ask the store again');
+          assertEqual(storeState().available, true, 'the retry connected but the shop still says unavailable');
+        },
+      );
+    } finally {
+      (global as { setTimeout: unknown }).setTimeout = realSetTimeout;
+    }
+  });
+
+  test('a store that never connects stops trying after three more goes', async () => {
+    resetPurchasesForTest();
+    const realSetTimeout = global.setTimeout;
+    const later: (() => void)[] = [];
+    (global as { setTimeout: unknown }).setTimeout = ((run: () => void, ms?: number) => {
+      if ((ms ?? 0) >= 30_000) {
+        later.push(run);
+        return 0 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return realSetTimeout(run, ms);
+    }) as typeof setTimeout;
+    let calls = 0;
+    try {
+      await withFakeStore(
+        {
+          initConnection: () => {
+            calls += 1;
+            return Promise.reject(new Error('no store here'));
+          },
+        },
+        async () => {
+          await initPurchases();
+          while (later.length) {
+            later.shift()!();
+            await settleMicrotasks();
+            await settleMicrotasks();
+          }
+          assertEqual(calls, 4, 'the store was not tried exactly four times in all');
+          assertEqual(storeState().available, false, 'a store that never connected shows as ready');
+        },
+      );
+    } finally {
+      (global as { setTimeout: unknown }).setTimeout = realSetTimeout;
+    }
+  });
+
   test('a good connection is ready', async () => {
     resetPurchasesForTest();
     await withFakeStore(

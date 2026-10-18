@@ -560,7 +560,17 @@ async function showAdIfDueOnce(
         out of nothing, would be worse than no advert.
       */
       if (!options.wait) return false;
-      await initAds();
+      /*
+        Bounded like the load wait below. initAds waits on the consent
+        form and the SDK's own start-up, which on a bad connection can
+        take far longer than six seconds, and the battle start is queued
+        behind this promise: unbounded, Play did nothing for as long as
+        the SDK took. initAds carries on in the background either way.
+      */
+      await Promise.race([
+        initAds(),
+        new Promise<void>((resolve) => setTimeout(resolve, AD_LOAD_WAIT_MS)),
+      ]);
     }
     if (!ready) return false;
 

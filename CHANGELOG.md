@@ -21,7 +21,8 @@ bloating". Nothing here changes how the game plays.
   ad was loading, the second tap started the battle and the ad then
   appeared on top of it, or the first tap reset the race. One start at a
   time now, and a player who quits during the wait is not dropped back
-  into a battle.
+  into a battle. Starting the ad system on a bad connection is capped at
+  six seconds too, so Play never waits longer than that.
 - **No ad right before a live friend battle.** The other phone does not
   wait; the ad stays owed for the next ordinary start.
 - **RESET could delete season-pass and cup rewards for good.** It emptied
@@ -34,7 +35,9 @@ bloating". Nothing here changes how the game plays.
   the App Store answered late, and purchases approved later (Ask to Buy)
   did not show up until the next battle. The shelf and the coin count
   now update the moment anything changes. A phone that cannot reach the
-  App Store says so instead of offering buttons that always fail.
+  App Store says so instead of offering buttons that always fail, and
+  tries again three more times over the next few minutes rather than
+  giving up for the session.
 - The "UNLOCKED" callout could pop up on the menu after quitting.
 
 ### Faster, lighter
