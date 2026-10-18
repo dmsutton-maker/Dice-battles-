@@ -1022,16 +1022,24 @@ suite('arenas · the floor is not cut in half', () => {
       the Crystal Cavern's gems sank into the rock, Autumn Woods'
       litter thinned on the board, and Toy Room's rim came off the dice
       palette. Every one of those was looked at as a render first.
+
+      Re-pinned 18 Oct 2026 for the board redesign, the eight store
+      boards only: sand with shells and footprints, a chocolate bar in a
+      frosting meadow, dark moss, a nailed deck beside a quay, ploughed
+      rows inside a mown meadow, rippled sea-floor sand, tarred felt over
+      the city far below, a playmat on floorboards. Glow Glade's and
+      Coral Reef's GROUNDS are unchanged — their numbers did not move,
+      which is the check that the surround code was carried over intact.
     */
     const FINGERPRINT: Record<string, [number, number]> = {
       snowFence: [156103442, 2798872402], adobe: [3332830248, 3217809634],
       basalt: [2367338390, 812598676], logPile: [4280602225, 3677557592],
       station: [3286370816, 3018566527], stalagmite: [180147778, 18287228],
       battlement: [3236668260, 3814821791], airlock: [1806471617, 1375994754],
-      driftwood: [542929681, 1624185647], gingerbread: [4111876675, 4044205311],
-      mossStone: [1230692574, 1696864712], shipHull: [3933717449, 141008790],
-      picket: [3596239287, 2708851089], coralRim: [2795293299, 2615557615],
-      parapet: [4083942454, 1253591282], blocks: [4246978967, 3897879857],
+      driftwood: [2983235352, 4266106918], gingerbread: [1955536324, 1994353482],
+      mossStone: [2989868690, 1696864712], shipHull: [1382161784, 3572424677],
+      picket: [3035480390, 987699253], coralRim: [491381298, 2615557615],
+      parapet: [2816118182, 2308350859], blocks: [3509681399, 678744908],
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];

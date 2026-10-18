@@ -18,6 +18,7 @@ import { ArenaStructure, ArenaTheme, PropPlacement } from './themeData';
 import { buildRim, RimSpot } from './rim';
 import { ArenaProps } from './arenaProps';
 import { Campfire, Crate, Duel, Signpost } from './sceneryProps';
+import { StoreBackdrop, StoreCorner, StoreCrest } from './storeBoards';
 
 /**
  * One renderer for all sixteen themed battlefields.
@@ -1403,243 +1404,24 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
 
     /* ── store ───────────────────────────────────────────────────── */
 
+    /*
+      The eight store boards build their walls in storeBoards.tsx, one
+      component each, from instanced parts — a picket fence is a hundred
+      and fifty pickets and a brick wall two hundred bricks, which is one
+      draw call there and would be hundreds here. The board redesign
+      (18 Oct 2026, docs/board-redesign.md) is what they answer; the
+      history of each one's earlier crest is in git.
+    */
     case 'driftwood':
-      // Weathered planks driven into the sand, each leaning its own way.
-      return (
-        <group>
-          {rim.map((m, i) => {
-            const lean = (((i * 37) % 9) - 4) * 0.07;
-            const h = 0.42 + ((i * 23) % 5) / 12;
-            return (
-              <mesh
-                key={`plank-${i}`}
-                position={[m.pos[0], wallHeight + h / 2, m.pos[2]]}
-                rotation={m.alongX ? [0, 0, lean] : [lean, 0, 0]}
-              >
-                <boxGeometry args={m.alongX ? [0.3, h, 0.16] : [0.16, h, 0.3]} />
-                <meshStandardMaterial color={i % 3 === 0 ? theme.wall.color : cap} roughness={1} />
-              </mesh>
-            );
-          })}
-        </group>
-      );
-
     case 'gingerbread':
-      // Piped icing: scallops along the rim with a sweet on every third.
-      return (
-        <group>
-          {rim.map((m, i) => (
-            <group key={`icing-${i}`} position={[m.pos[0], wallHeight + 0.14, m.pos[2]]}>
-              <mesh scale={[1, 0.7, 1]}>
-                <sphereGeometry args={[0.27, 10, 8]} />
-                <meshStandardMaterial color="#fff0f7" roughness={0.5} />
-              </mesh>
-              {i % 3 === 0 && (
-                <mesh position={[0, 0.2, 0]}>
-                  <sphereGeometry args={[0.15, 8, 6]} />
-                  <meshStandardMaterial color={accent} roughness={0.35} />
-                </mesh>
-              )}
-            </group>
-          ))}
-        </group>
-      );
-
     case 'mossStone':
-      // Grey-brown boulders with a cap of moss on their tops ONLY — the
-      // rock has to read as rock against both greens, which it never did
-      // while boulder, moss and meadow were all the same forest green.
-      // Not theme.meadow for the moss: that is the dusk ground now, and
-      // moss growing in a boulder's crown catches more light than the
-      // shade it stands over.
-      return (
-        <group>
-          {rim.map((m, i) => {
-            const r = 0.21 + ((i * 31) % 8) / 48;
-            return (
-              <group key={`stone-${i}`} position={[m.pos[0], wallHeight + r * 0.62, m.pos[2]]}>
-                <mesh rotation={[i * 0.6, i * 1.1, i * 0.3]} scale={[1, 0.78, 1]}>
-                  <dodecahedronGeometry args={[r, 0]} />
-                  <meshStandardMaterial color={cap} roughness={1} />
-                </mesh>
-                <mesh position={[0, r * 0.5, 0]} scale={[1, 0.35, 1]}>
-                  <sphereGeometry args={[r * 0.78, 8, 6]} />
-                  <meshStandardMaterial color="#4c8f58" roughness={1} />
-                </mesh>
-              </group>
-            );
-          })}
-        </group>
-      );
-
     case 'shipHull':
-      // Strake planking with a capping rail along the gunwale.
-      return (
-        <group>
-          {WALL_RUNS.map(([x, z, w, d], i) => (
-            <mesh key={`gunwale-${i}`} position={[x, wallHeight + 0.11, z]}>
-              <boxGeometry args={[w * 1.02, 0.22, d * 1.02]} />
-              <meshStandardMaterial color={cap} roughness={0.9} />
-            </mesh>
-          ))}
-          {rim.map((m, i) => (
-            <mesh key={`peg-${i}`} position={[m.pos[0], wallHeight + 0.3, m.pos[2]]}>
-              <cylinderGeometry args={[0.07, 0.08, 0.2, 6]} />
-              <meshStandardMaterial color={accent} roughness={0.6} metalness={0.3} />
-            </mesh>
-          ))}
-        </group>
-      );
-
     case 'picket':
-      // A picket fence: pointed slats with two rails behind them.
-      return (
-        <group>
-          {WALL_RUNS.map(([x, z, w, d], i) => (
-            <mesh key={`rail-${i}`} position={[x, wallHeight + 0.24, z]}>
-              <boxGeometry args={[w, 0.08, d]} />
-              <meshStandardMaterial color={cap} roughness={0.95} />
-            </mesh>
-          ))}
-          {rim.map((m, i) => (
-            <group key={`picket-${i}`} position={[m.pos[0], 0, m.pos[2]]}>
-              <mesh position={[0, wallHeight + 0.2, 0]}>
-                <boxGeometry args={m.alongX ? [0.22, 0.4, 0.1] : [0.1, 0.4, 0.22]} />
-                <meshStandardMaterial color="#f7f4ea" roughness={0.9} />
-              </mesh>
-              <mesh position={[0, wallHeight + 0.48, 0]}>
-                <coneGeometry args={[0.16, 0.2, 4]} />
-                <meshStandardMaterial color="#f7f4ea" roughness={0.9} />
-              </mesh>
-            </group>
-          ))}
-        </group>
-      );
-
-    case 'coralRim': {
-      /*
-        Coral, not spikes. David: "make the things on the walls look less
-        like spikes and more like coral." Thin cones pointing straight up
-        are a fence of spears; coral is lumpy, it branches, it comes in a
-        dozen colours, and no two heads on a reef are the same size.
-      */
-      const REEF = ['#ff8a5c', '#ff6e9e', '#ffc95c', '#8ad4e8', '#b884d8', '#5ce0b0'];
-      return (
-        <group>
-          {rim.map((m, i) => {
-            const tint = REEF[i % REEF.length];
-            const kind = i % 3;
-            return (
-              <group key={`coral-${i}`} position={[m.pos[0], wallHeight, m.pos[2]]}>
-                {kind === 0 && (
-                  // A brain coral: a fat lobed dome.
-                  <>
-                    <mesh position={[0, 0.16, 0]} scale={[1, 0.72, 1]}>
-                      <sphereGeometry args={[0.27, 10, 8]} />
-                      <meshStandardMaterial color={tint} roughness={0.85} />
-                    </mesh>
-                    <mesh position={[0.13, 0.13, 0.09]} scale={[1, 0.7, 1]}>
-                      <sphereGeometry args={[0.16, 8, 6]} />
-                      <meshStandardMaterial color={cap} roughness={0.85} />
-                    </mesh>
-                  </>
-                )}
-                {kind === 1 &&
-                  // Staghorn: stubby branches forking off a short trunk.
-                  ([[0, 0.34, 0], [-0.17, 0.24, 0.5], [0.18, 0.26, -0.55]] as const).map(
-                    ([ox, h, tilt], k) => (
-                      <mesh key={k} position={[ox, h / 2 + 0.04, ox * 0.5]} rotation={[0, 0, tilt]}>
-                        <cylinderGeometry args={[0.055, 0.085, h, 6]} />
-                        <meshStandardMaterial color={k === 0 ? tint : cap} roughness={0.8} />
-                      </mesh>
-                    ),
-                  )}
-                {kind === 2 && (
-                  // A fan, stood edge-on to the current.
-                  <mesh position={[0, 0.22, 0]} scale={[1, 0.95, 0.2]}>
-                    <sphereGeometry args={[0.26, 10, 8]} />
-                    <meshStandardMaterial color={tint} roughness={0.8} />
-                  </mesh>
-                )}
-              </group>
-            );
-          })}
-        </group>
-      );
-    }
-
+    case 'coralRim':
     case 'parapet':
-      /*
-        A rooftop: coping cast in slabs, with a steel handrail above it.
-
-        It used to be one smooth grey band and a rail cut from the wall's
-        own width — 0.5 across, wider than anything standing on the
-        coping — with 0.04-radius posts underneath it. From above that is
-        a bare grey frame. Every other battlefield has something you can
-        count along its wall; this one had nothing at all.
-
-        So the coping is slabs now, alternating shade, one per crest spot
-        the whole way round, and the rail is a thin bar that leaves them
-        showing on both sides of it.
-      */
-      return (
-        <group>
-          {WALL_RUNS.map(([x, z, w, d], i) => (
-            <mesh key={`coping-${i}`} position={[x, wallHeight + 0.06, z]}>
-              <boxGeometry args={[w * 1.04, 0.12, d * 1.04]} />
-              <meshStandardMaterial color={cap} roughness={0.9} />
-            </mesh>
-          ))}
-          {rim.map((m, i) => (
-            <group key={`bay-${i}`} position={[m.pos[0], wallHeight, m.pos[2]]}>
-              <mesh position={[0, 0.19, 0]}>
-                <boxGeometry
-                  args={m.alongX ? [0.52, 0.14, 0.6] : [0.6, 0.14, 0.52]}
-                />
-                <meshStandardMaterial
-                  color={i % 2 === 0 ? cap : theme.wall.color}
-                  roughness={0.92}
-                />
-              </mesh>
-              {/* The stanchion, with a base plate you can pick out from above. */}
-              <mesh position={[0, 0.29, 0]}>
-                <boxGeometry args={[0.17, 0.06, 0.17]} />
-                <meshStandardMaterial color="#6a7285" roughness={0.4} metalness={0.6} />
-              </mesh>
-              <mesh position={[0, 0.47, 0]}>
-                <cylinderGeometry args={[0.05, 0.05, 0.34, 6]} />
-                <meshStandardMaterial color="#8f96a8" roughness={0.4} metalness={0.6} />
-              </mesh>
-            </group>
-          ))}
-          {RAIL_RUNS.map(([x, z, w, d], i) => (
-            <mesh key={`rail-${i}`} position={[x, wallHeight + 0.65, z]}>
-              <boxGeometry args={[w, 0.06, d]} />
-              <meshStandardMaterial color="#8f96a8" roughness={0.4} metalness={0.6} />
-            </mesh>
-          ))}
-        </group>
-      );
-
     case 'blocks':
     default:
-      // Wooden bricks, alternating colours the way a child would stack them.
-      return (
-        <group>
-          {rim.map((m, i) => {
-            const shade = [theme.wall.color, cap, accent][i % 3];
-            // 0.24, not 0.38 — a block that is a die's size AND a die's
-            // colour is a die. The palette moved off the dice in
-            // themeData; this stops the shape matching too.
-            return (
-              <mesh key={`block-${i}`} position={[m.pos[0], wallHeight + 0.13, m.pos[2]]}>
-                <boxGeometry args={[0.24, 0.24, 0.24]} />
-                <meshStandardMaterial color={shade} roughness={0.55} />
-              </mesh>
-            );
-          })}
-        </group>
-      );
+      return <StoreCrest theme={theme} />;
   }
 }
 
@@ -1770,158 +1552,17 @@ function ThemedCorners({
             </mesh>
           </>
         );
+      // The store boards' corners live with their walls, in storeBoards.tsx.
       case 'driftwood':
-        // A beach parasol jammed into the corner post.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 1.2) / 2, 0]}>
-              <cylinderGeometry args={[0.1, 0.14, wallHeight + 1.2, 8]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.28, 0]}>
-              <coneGeometry args={[0.72, 0.42, 10]} />
-              <meshStandardMaterial color={roof} roughness={0.7} />
-            </mesh>
-          </>
-        );
       case 'gingerbread':
-        // A candy swirl on a stick.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 1) / 2, 0]}>
-              <cylinderGeometry args={[0.13, 0.16, wallHeight + 1, 8]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.24, 0]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.34, 0.14, 8, 16]} />
-              <meshStandardMaterial color={roof} roughness={0.35} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.24, 0]}>
-              <sphereGeometry args={[0.2, 10, 8]} />
-              <meshStandardMaterial color="#fff0f7" roughness={0.35} />
-            </mesh>
-          </>
-        );
       case 'mossStone':
-        // A giant toadstool over a mossy cairn.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.5) / 2, 0]}>
-              <cylinderGeometry args={[0.2, 0.3, wallHeight + 0.5, 8]} />
-            </mesh>
-            {/*
-              0.5, down from 0.78. Sat on a stalk at the tray corner it
-              projects to a pale dome most of a world unit across, and
-              four of those at the corners of the board were doing a
-              small-scale version of the horizon blob.
-            */}
-            {/*
-              0.55 emissive, up from 0.22. The theme is GLOW Glade and
-              these four caps are its biggest lamps; at 0.22 they read as
-              painted plastic, and the 31 Aug 2026 review's one-line
-              verdict was "nothing glows".
-            */}
-            <mesh position={[0, wallHeight + 0.5, 0]} scale={[1, 0.62, 1]}>
-              <sphereGeometry args={[0.5, 12, 8]} />
-              <meshStandardMaterial color={roof} emissive={roof} emissiveIntensity={0.55} roughness={0.55} />
-            </mesh>
-          </>
-        );
       case 'shipHull':
-        // A barrel with a lantern hung above it.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.2) / 2, 0]}>
-              <cylinderGeometry args={[0.46, 0.4, wallHeight + 0.2, 10]} />
-            </mesh>
-            <mesh position={[0, wallHeight * 0.6, 0]}>
-              <cylinderGeometry args={[0.5, 0.5, 0.1, 10]} />
-              <meshStandardMaterial color="#33241a" roughness={0.6} metalness={0.4} />
-            </mesh>
-            <mesh position={[0, wallHeight + 0.5, 0]}>
-              <sphereGeometry args={[0.22, 10, 8]} />
-              <meshBasicMaterial color={roof} />
-            </mesh>
-          </>
-        );
       case 'picket':
-        // A gatepost with a lantern on top and a knob under it.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.7) / 2, 0]}>
-              <boxGeometry args={[0.36, wallHeight + 0.7, 0.36]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 0.78, 0]}>
-              <boxGeometry args={[0.46, 0.12, 0.46]} />
-              <meshStandardMaterial color={cap} roughness={0.9} />
-            </mesh>
-            <mesh position={[0, wallHeight + 0.98, 0]}>
-              <sphereGeometry args={[0.2, 10, 8]} />
-              <meshStandardMaterial color={roof} roughness={0.7} />
-            </mesh>
-          </>
-        );
       case 'coralRim':
-        // A sea anemone on a coral stump, fronds waving.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.3) / 2, 0]}>
-              <cylinderGeometry args={[0.36, 0.46, wallHeight + 0.3, 10]} />
-            </mesh>
-            {([0, 1, 2, 3, 4, 5] as const).map((k) => {
-              const a = (k * Math.PI * 2) / 6;
-              return (
-                <mesh
-                  key={k}
-                  position={[Math.cos(a) * 0.24, wallHeight + 0.6, Math.sin(a) * 0.24]}
-                  rotation={[Math.cos(a) * 0.5, 0, -Math.sin(a) * 0.5]}
-                >
-                  <coneGeometry args={[0.09, 0.72, 5]} />
-                  <meshStandardMaterial color={roof} roughness={0.65} />
-                </mesh>
-              );
-            })}
-          </>
-        );
       case 'parapet':
-        // An aerial mast with a red beacon, the way city roofs are.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.4) / 2, 0]}>
-              <boxGeometry args={[0.62, wallHeight + 0.4, 0.62]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.2, 0]}>
-              <cylinderGeometry args={[0.05, 0.07, 1.6, 6]} />
-              <meshStandardMaterial color="#8f96a8" roughness={0.4} metalness={0.6} />
-            </mesh>
-            <mesh position={[0, wallHeight + 2.02, 0]}>
-              <sphereGeometry args={[0.14, 8, 6]} />
-              <meshBasicMaterial color="#ff6e6e" />
-            </mesh>
-            <mesh position={[0, wallHeight + 0.75, 0]}>
-              <boxGeometry args={[0.5, 0.3, 0.5]} />
-              <meshStandardMaterial color={roof} roughness={0.5} metalness={0.3} />
-            </mesh>
-          </>
-        );
       case 'blocks':
       default:
-        // A tower of three bricks with a ball balanced on top.
-        return (
-          <>
-            {([0, 1, 2] as const).map((k) => (
-              <mesh key={k} position={[0, 0.34 + k * 0.66, 0]} rotation={[0, k * 0.3, 0]}>
-                <boxGeometry args={[0.66, 0.66, 0.66]} />
-                <meshStandardMaterial
-                  color={[theme.wall.color, theme.tower.body, cap][k]}
-                  roughness={0.55}
-                />
-              </mesh>
-            ))}
-            <mesh position={[0, 2.5, 0]}>
-              <sphereGeometry args={[0.34, 12, 10]} />
-              <meshStandardMaterial color={roof} roughness={0.45} />
-            </mesh>
-          </>
-        );
+        return <StoreCorner theme={theme} />;
     }
   };
 
@@ -2027,6 +1668,12 @@ export function ThemedArena({
         <planeGeometry args={[GROUND_SPAN, GROUND_SPAN]} />
         <meshStandardMaterial map={groundTexture} roughness={1} />
       </mesh>
+
+      {/*
+        What lies past the ground on a store board — the sea, the reef's
+        drop-off, fireflies. Flat or small, never a bank; see below.
+      */}
+      <StoreBackdrop theme={theme} />
 
       {/*
         There is no horizon bank here, and there must not be one.

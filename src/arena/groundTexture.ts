@@ -188,6 +188,402 @@ type SurfacePainter = (
 ) => Rgb;
 
 /**
+ * The tray picture in painter units, and the band of it under the walls.
+ *
+ * The floor plane runs under the walls (floorW is innerWidth plus two
+ * wall thicknesses), so the PLAYABLE board is the picture less RIM all
+ * round. A painter that wants its pattern to line up with the tray's
+ * own edges — chocolate segments, deck planks, ploughed rows — lays it
+ * over that inner rectangle. The same hard-coding the snow pond and the
+ * reef already used.
+ */
+const TRAY_W = 112;
+const TRAY_H = 204;
+const RIM = 10;
+
+/**
+ * Which way the key light falls across a painted floor.
+ *
+ * The scene's key light sits at +x and toward the player (+z), and
+ * painter y runs AWAY from the player, so in painter units the light
+ * comes from +x and -y. A painted bevel or ridge lit on that side
+ * agrees with the real shadows the dice cast, instead of fighting them.
+ */
+const LIGHT_X = 0.7071;
+const LIGHT_Y = -0.7071;
+
+/** Signed distance to a rounded rectangle, half-size hx by hy. */
+function roundRect(px: number, py: number, hx: number, hy: number, r: number): number {
+  const qx = Math.abs(px) - (hx - r);
+  const qy = Math.abs(py) - (hy - r);
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+}
+
+/** Candy Meadow's ground: pink frosting with sprinkles scattered on it. */
+function frosting(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rgb {
+  let c = mix(p.a, p.b, smoothstep(0.25, 0.8, fbm(x * 0.7, y * 0.7, SIZE)));
+  // Soft piped swirls in the icing, lit on one side.
+  const swirl = Math.sin(fbm(x * 1.3 + 20, y * 1.3, SIZE) * 14);
+  c = swirl > 0 ? mix(c, lift(c, 0.2), swirl * 0.25) : mix(c, shade(c, 0.93), -swirl * 0.25);
+  const SPRINKLE: Rgb[] = [
+    [255, 250, 245], [140, 224, 192], [255, 226, 120],
+    [190, 160, 240], [255, 150, 140], [130, 196, 240],
+  ];
+  // An 8-unit lattice divides the 128-unit tile, so the sprinkles wrap.
+  const cell = 8;
+  const col = Math.floor(x / cell);
+  const row = Math.floor(y / cell);
+  const h = hash(col * 3 + 1, row * 5 + 2);
+  if (h > 0.6) {
+    const lx = x - col * cell - cell / 2 - (hash(col + 4, row) - 0.5) * 3;
+    const ly = y - row * cell - cell / 2 - (hash(col, row + 4) - 0.5) * 3;
+    const a = hash(col + 7, row + 3) * Math.PI;
+    const u = lx * Math.cos(a) + ly * Math.sin(a);
+    const v = -lx * Math.sin(a) + ly * Math.cos(a);
+    if (Math.abs(v) < 0.6 && Math.abs(u) < 1.8) {
+      const s = SPRINKLE[Math.floor(hash(col + 1, row + 9) * 6) % 6];
+      c = v * LIGHT_Y < 0 ? lift(s, 0.15) : shade(s, 0.88);
+    }
+  }
+  return c;
+}
+
+/** Sunny Farm's ground: a mown meadow with daisies and buttercups. */
+function meadow(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rgb {
+  let c = mix(p.a, p.b, smoothstep(0.3, 0.75, fbm(x * 0.6, y * 0.6, SIZE)));
+  // Mower stripes, 32 units wide so four fit the tile exactly.
+  const stripe = Math.sin((x * Math.PI * 2) / 32);
+  c = mix(c, lift(c, 0.08), smoothstep(-0.2, 0.4, stripe) * 0.6);
+  // Blades: noise at 1.5x, wrapping at 1.5x the tile.
+  const blade = noise(x * 1.5, y * 1.5, SIZE * 1.5);
+  c = mix(c, shade(c, 0.86), smoothstep(0.55, 0.9, blade) * 0.45);
+  const cell = 16;
+  const col = Math.floor(x / cell);
+  const row = Math.floor(y / cell);
+  const h = hash(col + 21, row + 3);
+  if (h > 0.62) {
+    const lx = x - col * cell - cell / 2 - (hash(col + 2, row + 5) - 0.5) * 9;
+    const ly = y - row * cell - cell / 2 - (hash(col + 5, row + 2) - 0.5) * 9;
+    const d = Math.hypot(lx, ly);
+    if (h > 0.85) {
+      if (d < 0.6) c = [242, 196, 64];
+      else if (d < 1.7 && Math.cos(Math.atan2(ly, lx) * 8) > -0.3) c = [250, 248, 240];
+    } else if (d < 1.0) {
+      c = lx - ly > 0.3 ? [252, 222, 96] : [232, 192, 56];
+    }
+  }
+  return c;
+}
+
+/** Pirate Cove's quay: weathered boards running across, gaps between. */
+function quay(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rgb {
+  const W = 16;
+  const row = Math.floor(y / W);
+  const inY = y - row * W;
+  const along = x + hash(row, 3) * 64;
+  const seg = Math.floor(along / 64);
+  const inX = along - seg * 64;
+  const grey: Rgb = [150, 144, 134];
+  // `seg & 1`: the tile is two board lengths long, so a board that runs
+  // off one edge carries on at the other in the same tone.
+  let c = mix(mix(p.a, p.b, hash(row + 5, (seg & 1) + 1)), grey, 0.5);
+  const grain = noise(x / 8, y / 2, 16);
+  c = mix(c, shade(c, 0.84), smoothstep(0.5, 0.85, grain) * 0.6);
+  if (inY > W - 2) c = lift(c, 0.08);
+  else if (inY < 2) c = shade(c, 0.9);
+  if (inY < 1.1 || inX < 0.8) return mix(c, [38, 32, 28], 0.85);
+  for (const nx of [3, 61]) {
+    for (const ny of [4, 12]) {
+      if (Math.hypot(inX - nx, inY - ny) < 0.8) c = [70, 64, 60];
+    }
+  }
+  return c;
+}
+
+/**
+ * Rooftop City's ground: the city at night, far below the roof.
+ *
+ * Blocks of 32 units — four to the tile, so it wraps — with streets
+ * between them, street lamps and the odd car's lights in the streets,
+ * and in each block a few roofs, a park now and then, and lit skylights.
+ * All of it small, because it is a long way down; the scale is what
+ * puts the roof up in the air.
+ */
+function cityBelow(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rgb {
+  const BLK = 32;
+  const ST = 5;
+  const bx = Math.floor(x / BLK);
+  const by = Math.floor(y / BLK);
+  const ix = x - bx * BLK;
+  const iy = y - by * BLK;
+  if (ix < ST || iy < ST) {
+    let c: Rgb = [36, 38, 52];
+    // Street lamps along both kerbs, every eight units.
+    const along = ix < ST ? iy : ix;
+    const across = ix < ST ? ix : iy;
+    const lamp = Math.hypot(((along % 8) + 8) % 8 - 4, Math.min(across, ST - across) - 0.4);
+    c = mix(c, [255, 196, 110], smoothstep(2.6, 0.2, lamp) * 0.55);
+    if (lamp < 0.5) c = [255, 226, 160];
+    // A car: two headlights or two tail lights.
+    const lane = Math.floor(along / 6);
+    const ch = hash(lane + bx * 7, by * 5 + (ix < ST ? 1 : 2));
+    if (ch > 0.8 && Math.abs((along % 6) - 3) < 1.1 && Math.abs(across - 2.5) < 1) {
+      c = ch > 0.9 ? [255, 120, 110] : [250, 246, 226];
+    }
+    return c;
+  }
+  // Inside the block: four lots, an alley between them.
+  const lx = ix - ST;
+  const ly = iy - ST;
+  const span = BLK - ST;
+  const qx = lx < span / 2 ? 0 : 1;
+  const qy = ly < span / 2 ? 0 : 1;
+  const ux = lx - qx * (span / 2);
+  const uy = ly - qy * (span / 2);
+  const lot = hash(bx * 4 + qx + 3, by * 4 + qy + 7);
+  if (ux < 0.8 || uy < 0.8) return [30, 32, 44];
+  const half = span / 2;
+  if (lot < 0.16) {
+    // A park: dark grass and round tree tops.
+    let c: Rgb = [40, 66, 56];
+    const tr = Math.hypot(((ux % 4) + 4) % 4 - 2, ((uy % 4) + 4) % 4 - 2);
+    if (tr < 1.4 && hash(Math.floor(ux / 4) + bx, Math.floor(uy / 4) + by) > 0.4) c = [58, 92, 70];
+    return c;
+  }
+  let c = shade(mix(p.a, p.b, lot), 0.42 + lot * 0.32);
+  // The roof's own parapet, lit on the light side.
+  const re = Math.min(ux - 0.8, half - ux, uy - 0.8, half - uy);
+  if (re < 0.9) c = ux > half - 0.9 || uy < 1.7 ? lift(c, 0.2) : shade(c, 0.7);
+  // A lit skylight, or a dark plant box, on some roofs.
+  const fx = hash(bx * 9 + qx, by * 9 + qy);
+  if (Math.abs(ux - half * (0.3 + fx * 0.4)) < 1.4 && Math.abs(uy - half * (0.6 - fx * 0.3)) < 1.0) {
+    c = fx > 0.5 ? [255, 214, 140] : shade(c, 0.6);
+  }
+  return c;
+}
+
+/** Toy Room's ground: honey floorboards running up the room. */
+function floorboards(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rgb {
+  const W = 16;
+  const col = Math.floor(x / W);
+  const inX = x - col * W;
+  const along = y + hash(col, 11) * 64;
+  const seg = Math.floor(along / 64);
+  const inY = along - seg * 64;
+  let c = mix(p.a, p.b, 0.15 + hash(col + 3, (seg & 1) + 5) * 0.7);
+  // Grain along the board; both scales divide the tile so it wraps.
+  const grain = noise(x / 2, y / 8, 16);
+  c = mix(c, shade(c, 0.86), smoothstep(0.5, 0.88, grain) * 0.55);
+  c = mix(c, lift(c, 0.1), smoothstep(0.35, 0.1, grain) * 0.4);
+  if (inX > W - 1.8) c = lift(c, 0.06);
+  if (inX < 0.8 || inY < 0.8) return shade(c, 0.6);
+  return c;
+}
+
+/**
+ * Glow Glade's ground outside the wall: dusk moss, stepping stones in
+ * their own contact shadows, and spores glowing in two colours. Moved
+ * out of the painter unchanged when the TRAY became dark moss (18 Oct
+ * 2026); the surround was already right, so its pixels are untouched.
+ */
+function gladeGround(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rgb {
+  const blob = fbm(x * 0.55, y * 0.55, SIZE);
+  let c = mix(p.a, p.b, smoothstep(0.28, 0.72, blob));
+  // Damp hollows, cooled toward the dusk sky rather than just darker.
+  c = mix(c, [16, 46, 50], smoothstep(0.35, 0.05, blob) * 0.65);
+  c = mix(c, lift(p.b, 0.35), smoothstep(0.7, 0.95, blob) * 0.55);
+  // A second, finer patchwork so the green is not one flat field.
+  c = mix(c, p.accent, smoothstep(0.55, 0.85, fbm(x * 1.6 + 31, y * 1.6, SIZE)) * 0.35);
+  // The fibre of the moss itself, at the scale of a leaf.
+  // Displaced by `blob`, which is already in hand, rather than by a
+  // second fbm — that was eight more hash lookups on every texel of
+  // the floor for a wobble nobody can see.
+  const fibre = noise(x * 1.1, y * 1.1 + blob * 3, SIZE);
+  c = mix(c, shade(c, 0.84), smoothstep(0.45, 0.85, fibre) * 0.5);
+  c = mix(c, lift(c, 0.15), smoothstep(0.4, 0.08, fibre) * 0.35);
+
+  const cell = 32;
+  const col = Math.floor(x / cell);
+  const row = Math.floor(y / cell);
+  const jx = (hash(col, row) - 0.5) * 11;
+  const jy = (hash(col + 5, row + 9) - 0.5) * 11;
+  const radius = hash(col + 8, row + 6) > 0.52 ? 4 + hash(col + 2, row + 3) * 3 : -99;
+  const sx = (((x % cell) + cell) % cell) - cell / 2 - jx;
+  const sy = (((y % cell) + cell) % cell) - cell / 2 - jy;
+  /*
+    Lumpy, not round. The wobble is noise on the RADIUS rather than on
+    the position, so a stone keeps one outline instead of being blurred
+    into the moss the way adding noise to the distance did.
+  */
+  const wobble = (noise(sx * 0.55 + col * 7, sy * 0.55 + row * 7, SIZE) - 0.5) * 1.5;
+  const stone = Math.hypot(sx, sy) - wobble;
+  /*
+    Mid grey, and deliberately no lighter: the key light doubles what
+    it lands on at the near end of the ground, and the first grey
+    tried here — [156, 158, 148] — came back off the renderer as a
+    white cloud, which is the exact "pale blob" the stones were moved
+    outside the wall to stop being.
+  */
+  const rock: Rgb = [112, 115, 104];
+  /*
+    The contact shadow first: a dark ellipse pushed down and right of
+    the stone, so a crescent of it stays visible past the lit body and
+    the stone sits ON the moss instead of floating over it. The first
+    version's shadow was concentric and half this strength, and the
+    render showed exactly none of it.
+  */
+  const shadowD = Math.hypot(sx - 1.6, (sy - 2.6) * 0.82) - wobble;
+  c = mix(c, [12, 30, 28], smoothstep(radius + 4.2, radius - 0.8, shadowD) * 0.6);
+  const body = mix(rock, p.accent, 0.22);
+  c = mix(c, body, smoothstep(radius + 0.9, radius - 0.4, stone) * 0.96);
+  // Lit from the upper left, with grey mottle in the rock.
+  const lit = -(sx + sy) / Math.max(1, radius);
+  const on = smoothstep(radius + 0.4, radius - 1, stone);
+  c = mix(c, lift(rock, 0.35), on * Math.max(0, lit) * 0.6);
+  c = mix(c, shade(rock, 0.68), on * Math.max(0, -lit) * 0.55);
+  c = mix(c, shade(rock, 0.78), on * smoothstep(0.5, 0.85, noise(x * 1.7, y * 1.7, SIZE)) * 0.65);
+
+  /*
+    The glow. Spores in two colours — cyan and yellow-green, the same
+    pair the toadstool props wear — and two sizes, each drawn as three
+    alpha steps of halo around a hot centre, so every one reads as a
+    LIGHT rather than as a lit pixel.
+  */
+  const SPORE: Rgb[] = [
+    [126, 240, 224],
+    [214, 244, 130],
+  ];
+  for (let k = 0; k < 2; k++) {
+    // Both lattices divide SIZE, so the tile keeps its seamless wrap.
+    const gcell = k === 0 ? 32 : 16;
+    const oz = k * 7 + 5;
+    const gc = Math.floor((x + oz) / gcell);
+    const gr = Math.floor((y + oz) / gcell);
+    const h = hash(gc + k * 31, gr + k * 17);
+    if (h < (k === 0 ? 0.5 : 0.6)) continue;
+    const gx = (((x + oz) % gcell) + gcell) % gcell - gcell / 2
+      - (hash(gc + 2, gr + 4) - 0.5) * gcell * 0.36;
+    const gy = (((y + oz) % gcell) + gcell) % gcell - gcell / 2
+      - (hash(gc + 6, gr + 8) - 0.5) * gcell * 0.36;
+    const d = Math.hypot(gx, gy);
+    const glow = SPORE[Math.floor(h * 100) % 2];
+    const core = k === 0 ? 1.7 : 1;
+    c = mix(c, glow, smoothstep(core * 4.6, core * 1.7, d) * 0.16);
+    c = mix(c, glow, smoothstep(core * 2.6, core * 0.9, d) * 0.4);
+    c = mix(c, glow, smoothstep(core * 1.4, core * 0.4, d) * 0.8);
+    c = mix(c, lift(glow, 0.55), smoothstep(core * 0.7, 0.1, d) * 0.95);
+  }
+  return c;
+}
+
+/**
+ * Coral Reef's ground outside the wall: a living reef of coral heads on
+ * rippled sand under a caustic web. This was the whole coral painter
+ * until 18 Oct 2026, when the tray became open sea-floor sand and the
+ * coral moved up onto the walls; it is kept exactly, with `tray` pinned
+ * false, so the surround is the reef it always was.
+ */
+function reefGround(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rgb {
+  const tray = false;
+  const wob = fbm(x, y, SIZE);
+  // Rippled sand, unmistakably PALER than the water tones — the first
+  // pass painted "sand" as a second teal and the heads floated on it.
+  const sand: Rgb = [216, 202, 168];
+  const rip = Math.sin(y * 0.85 + x * 0.15 + wob * 5) * 0.5 + 0.5;
+  // The board is SAND with water over it, not water with a hint of
+  // sand. At 0.34 the tray still came out teal and six dice landed on
+  // a surface the same value as themselves.
+  let c = mix(mix(p.a, p.b, 0.5), sand, (tray ? 0.55 : 0.2) + rip * 0.3);
+  c = mix(c, shade(p.b, 0.9), smoothstep(0.5, 0.06, rip) * 0.4);
+  /*
+    How likely a lattice cell is to skip its head. On the ground it is
+    the old flat 0.38; on the tray it climbs toward ~0.93 away from the
+    walls, so the middle of the board is open sand. 112 x 204 is the
+    tray picture in painter units — floorW 5.6 by floorD 10.2 world at
+    UNITS_PER_WORLD — the same hardcoding the snow pond uses.
+  */
+  // Both surfaces were re-tuned after the 6 Sep 2026 art pass called
+  // this the worst arena of the sixteen — and it is the one that costs
+  // 2400 coins. On the TRAY the base skip went 0.38 -> 0.66 and the
+  // ramp starts almost at the wall, so heads are a thin fringe on the
+  // rim and everything else is open sand: six dice used to land in
+  // coral the same size and colour as themselves. On the GROUND the
+  // skip went 0.38 -> 0.72, because at 0.38 through four lattices the
+  // surround was a solid carpet of blobs that read as mould.
+  const skip = tray
+    ? 0.72 + smoothstep(4, 40, Math.min(x, 112 - x, y, 204 - y)) * 0.28
+    : 0.8;
+  // Coral heads, each its own colour. The 32-cell lattice (double the
+  // rest, and the one size that wraps at 128 exactly) only grows in
+  // the open ground outside the tray.
+  const REEF: Rgb[] = [
+    [232, 122, 92], [232, 108, 158], [240, 186, 92],
+    [150, 214, 168], [186, 132, 216], [244, 158, 120],
+  ];
+  const lump = (wob - 0.5) * 3.2;
+  // Two lattices outside instead of four, and only the two largest
+  // head sizes inside the walls.
+  for (let k = tray ? 2 : 0; k < (tray ? 4 : 2); k++) {
+    const cell = k === 0 ? 32 : 25 - k * 4;
+    const ox = k * 9;
+    const row = Math.floor((y + ox) / cell);
+    const col = Math.floor((x + ox * 2) / cell);
+    const h = hash(col + k * 23, row + k * 11);
+    if (h < skip) continue;
+    const cx = (((x + ox * 2) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 5;
+    const cy = (((y + ox) % cell) + cell) % cell - cell / 2 + (hash(col + 3, row) - 0.5) * 5;
+    const rad = (cell * 0.3) * (0.6 + h * 0.7);
+    const d = Math.hypot(cx, cy) + lump;
+    if (d > rad + 4.5) continue;
+    if (d > rad) {
+      // Contact shadow under the lower-right of the head, so it sits
+      // ON the sand instead of hovering over it.
+      const lr = (cx + cy) / (d || 1);
+      if (lr > 0.1) c = mix(c, shade(c, 0.5), smoothstep(rad + 4.5, rad, d) * lr * 0.6);
+      continue;
+    }
+    // The colour is its OWN hash — the first pass derived it from `h`,
+    // the same number the skip threshold cuts, so every head that
+    // survived a high threshold was the same salmon, and the first two
+    // palette entries were never drawn at all.
+    const head = REEF[Math.floor(hash(col + 19, row + k * 7) * REEF.length * 0.999)];
+    // 0.55, not 0.9: coral seen THROUGH water, rather than stickers
+    // laid on top of it. At full strength the surround read as static.
+    c = mix(c, head, 0.55);
+    // Interior structure, keyed on the head's own lattice hash: half
+    // are brain corals with concentric ridges, half are knobbly
+    // polyp mounds.
+    if (hash(col * 7 + k, row * 5 + 1) > 0.5) {
+      const ridge = Math.sin(d * 2.4 + h * 6);
+      c = mix(c, shade(head, 0.68), smoothstep(0.1, 0.9, ridge) * 0.5);
+      c = mix(c, lift(head, 0.3), smoothstep(-0.1, -0.9, ridge) * 0.4);
+    } else {
+      const pol = noise(x / 1.6 + k * 13, y / 1.6 + k * 7, SIZE / 1.6);
+      c = mix(c, lift(head, 0.42), smoothstep(0.58, 0.85, pol) * 0.6);
+      c = mix(c, shade(head, 0.7), smoothstep(0.42, 0.16, pol) * 0.5);
+    }
+    // Lit on the upper left, shaded to the lower right.
+    c = mix(c, lift(head, 0.45), Math.max(0, -(cx + cy) / rad) * 0.4);
+    c = mix(c, shade(head, 0.72), Math.max(0, (cx + cy) / rad) * 0.4);
+  }
+  /*
+    The caustic web, applied over sand and coral alike. Thin connected
+    filaments — the ridges where a noise field crosses its middle —
+    pushed toward near-white, instead of the old broad 0.55-strength
+    lift of the same teal, which was invisible under the heads (the
+    trap named at `lift`). Strongest on the tray, where the open sand
+    gives it somewhere to be seen.
+  */
+  const web =
+    1 - Math.abs(noise(x / 9 + 31, y / 9 + 57, SIZE / 9) +
+      (noise(x / 4.5 + 71, y / 4.5 + 13, SIZE / 4.5) - 0.5) * 0.35 - 0.5) * 2;
+  // A few thin glints, not white spaghetti: the ramp narrowed and the
+  // tray strength came down from 0.7 to 0.22. The web used to be laid
+  // over the whole board at full strength, on top of the coral.
+  return mix(c, lift(p.b, 0.85), smoothstep(0.9, 0.99, web) * (tray ? 0.22 : 0.5));
+}
+
+/**
  * One painter per battlefield, keyed by what the place is built of.
  *
  * Keyed on the structure rather than on the arena id because the two are
@@ -647,415 +1043,465 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     return mix(c, hash(x, y) > 0.5 ? lift(p.b, 0.25) : shade(p.a, 0.9), 0.06);
   },
 
-  driftwood: (x, y, p) => {
-    const ripple = Math.sin(y * 0.34 + fbm(x, y, SIZE) * 7) * 0.5 + 0.5;
-    let c = mix(p.a, p.b, ripple);
-    c = mix(c, shade(p.a, 0.9), smoothstep(0.6, 0.95, fbm(x * 0.4, y * 0.4, SIZE)) * 0.5);
-    if (hash(x * 2, y * 2) > 0.991) c = mix(c, p.accent, 0.85);
-    return c;
-  },
+  /*
+    ── THE EIGHT STORE BOARDS ──────────────────────────────────────────
 
-  // Iced squares, piped along their edges.
-  gingerbread: (x, y, p) => {
-    const cell = 21;
-    const tx = Math.floor(x / cell);
-    const ty = Math.floor(y / cell);
-    const edge = gridEdge(x, y, cell);
-    let c = (tx + ty) % 2 === 0 ? p.a : p.b;
-    c = mix(c, p.accent, smoothstep(2.6, 0.6, edge));
-    return mix(c, shade(c, 0.95), noise(x / 3, y / 3, SIZE / 3) * 0.5);
-  },
+    Redrawn on 18 Oct 2026 (docs/board-redesign.md): "make each board
+    look totally different ... and board matches its name." Every one of
+    these used to be a two-tone pattern — beige ripples, pink tiles, a
+    green lawn — and most of what told them apart was the tint. Each now
+    paints the actual material the board is named after, with RELIEF:
+    the key light comes from +x and the near end of the board (painter
+    +x and -y, see LIGHT_X), so a ridge, a bevel or a cushion is lit on
+    that side and shaded on the other, and the floor reads as a surface
+    rather than as a print.
 
-  // The glade: a mown clearing inside the wall, dusk moss with stepping
-  // stones and glowing spores outside it. Two pictures on purpose.
-  mossStone: (x, y, p, tray) => {
+    Two rules they all keep, because the dice have to stay findable:
+    the detail under the middle of the board is LOW CONTRAST (the
+    louder pieces — shells, spores, the road print — keep near the
+    edges or stay small), and nothing on a tray is die-sized and
+    die-coloured.
+  */
+
+  // Treasure Beach: sand with shells and a trail of footprints.
+  driftwood: (x, y, p, tray) => {
     /*
-      Marc, 27 Aug 2026: "make the glow glade floor look better." Then
-      the 31 Aug 2026 review scored the result 3/10 twice over, for the
-      same two faults. Everything — board, wall, ground — sat in one
-      narrow band of forest green, so the arena boundary vanished; and
-      the stepping stones INSIDE the tray were pale grey blobs the size
-      and value of a die face, which is a fight the floor must never
-      pick with the dice.
-
-      So the two surfaces split, like the Crystal Cavern's did. The TRAY
-      is the clearing: a mown lawn in light spring green, banded the way
-      a lawn is, with nothing on it that could be mistaken for a die.
-      The GROUND outside is the glade at dusk: moss pulled down toward
-      the teal of the sky, stepping stones that sit in their own contact
-      shadow — moved out here, where no die can stand beside them — and
-      the glow the arena is named for: spores in two colours and two
-      sizes, each a soft halo of light, which only reads as light
-      because the moss under it went dark.
+      Wind ripples whose period divides the 128-unit ground tile on both
+      axes (the x term is a whole number of waves too), so the ground
+      copies join without a seam. Quieter on the board than off it.
     */
+    const TAU = Math.PI * 2;
+    const phase = ((y + x * 0.25) / 128) * TAU * 20 + fbm(x, y, SIZE) * 4;
+    const crest = Math.cos(phase);
+    const amp = tray ? 0.8 : 1;
+    let c = mix(p.a, p.b, 0.25 + 0.4 * smoothstep(0.25, 0.85, fbm(x * 0.45 + 11, y * 0.45 + 5, SIZE)));
+    c = crest > 0
+      ? mix(c, lift(c, 0.2), crest * 0.4 * amp)
+      : mix(c, shade(c, 0.86), -crest * 0.45 * amp);
+    const grain = hash(x * 1.7, y * 1.3);
+    if (grain > 0.72) c = lift(c, 0.05);
+    else if (grain < 0.22) c = shade(c, 0.95);
+
     if (tray) {
-      // Mow bands at two widths, running the length of the tray. The
-      // wide ones are near-square with a soft edge — a sine alone
-      // spends most of its time between the two tones and the banding
-      // vanished into the grain the first time round.
-      const wide = Math.sin((x + 6) * (Math.PI / 28));
-      let c = mix(p.b, p.a, smoothstep(-0.45, 0.45, wide));
-      // Graded, not banded. A hard half-wave at 0.7 darkened every 16
-      // painter units into stripes you could not unsee, and the green
-      // die sat on them. smoothstep rolls the edge off and the depth
-      // comes down to a hint of a mow line.
-      const fine = Math.sin(x * (Math.PI / 8));
-      c = mix(c, shade(c, 0.9), smoothstep(-0.3, 0.6, fine) * 0.25);
-      // Patches where the grass grows thicker, so the lawn is not paper.
-      const blob = fbm(x * 0.5, y * 0.5, SIZE);
-      c = mix(c, lift(p.b, 0.16), smoothstep(0.62, 0.9, blob) * 0.3);
-      c = mix(c, shade(p.a, 0.93), smoothstep(0.38, 0.1, blob) * 0.3);
-      // The blades themselves, at leaf scale.
-      const grain = noise(x * 1.8, y * 1.8 + blob * 2, SIZE);
-      c = mix(c, shade(c, 0.88), smoothstep(0.55, 0.9, grain) * 0.45);
-      return mix(c, lift(c, 0.1), smoothstep(0.35, 0.05, grain) * 0.4);
+      /*
+        Somebody walked up the beach before the battle. Bare-foot prints
+        wandering from the retreat end to the jail, pressed in: dark
+        inside, with a lit lip on the side away from the light. Kept
+        faint — it is a story on the sand, not a road under the dice.
+      */
+      const path = (yy: number) => 46 + 22 * Math.sin(yy / 47) + 8 * Math.sin(yy / 19);
+      if (y > 12 && y < 192 && Math.abs(x - path(y)) < 9) {
+        const k = Math.round((y - 6) / 14);
+        const cy = 6 + k * 14;
+        const side = k % 2 === 0 ? -1 : 1;
+        const cx = path(cy) + side * 3.4;
+        const dx = (x - cx) * side;
+        const dy = y - cy;
+        const sole = (dx / (dy < -1 ? 1.6 : 2.0)) ** 2 + ((dy + 0.4) / 3.6) ** 2;
+        let toe = 9;
+        for (let t = 0; t < 4; t++) {
+          toe = Math.min(toe, Math.hypot(dx - (-1.3 + t * 0.85), dy - (4.6 - Math.abs(t - 1) * 0.35)) / 0.62);
+        }
+        const inPrint = Math.min(sole, toe * toe);
+        if (inPrint < 1.25) {
+          const press = smoothstep(1.2, 0.75, inPrint);
+          c = mix(c, shade(p.b, 0.9), press * 0.55);
+          // The lip: lit on the side facing away from the light.
+          const lip = smoothstep(1.25, 1.0, inPrint) * smoothstep(0.7, 1.0, inPrint);
+          if ((x - cx) - (y - cy) < 0) c = mix(c, lift(c, 0.25), lip * 0.5);
+        }
+      }
     }
 
-    const blob = fbm(x * 0.55, y * 0.55, SIZE);
-    let c = mix(p.a, p.b, smoothstep(0.28, 0.72, blob));
-    // Damp hollows, cooled toward the dusk sky rather than just darker.
-    c = mix(c, [16, 46, 50], smoothstep(0.35, 0.05, blob) * 0.65);
-    c = mix(c, lift(p.b, 0.35), smoothstep(0.7, 0.95, blob) * 0.55);
-    // A second, finer patchwork so the green is not one flat field.
-    c = mix(c, p.accent, smoothstep(0.55, 0.85, fbm(x * 1.6 + 31, y * 1.6, SIZE)) * 0.35);
-    // The fibre of the moss itself, at the scale of a leaf.
-    // Displaced by `blob`, which is already in hand, rather than by a
-    // second fbm — that was eight more hash lookups on every texel of
-    // the floor for a wobble nobody can see.
-    const fibre = noise(x * 1.1, y * 1.1 + blob * 3, SIZE);
-    c = mix(c, shade(c, 0.84), smoothstep(0.45, 0.85, fibre) * 0.5);
-    c = mix(c, lift(c, 0.15), smoothstep(0.4, 0.08, fibre) * 0.35);
-
-    const cell = 32;
+    // Shells, one lattice cell in a few. Mostly scallops, some
+    // periwinkles, a pebble now and then — each with a contact shadow
+    // falling away from the light, so they lie ON the sand.
+    const cell = 16;
     const col = Math.floor(x / cell);
     const row = Math.floor(y / cell);
-    const jx = (hash(col, row) - 0.5) * 11;
-    const jy = (hash(col + 5, row + 9) - 0.5) * 11;
-    const radius = hash(col + 8, row + 6) > 0.52 ? 4 + hash(col + 2, row + 3) * 3 : -99;
-    const sx = (((x % cell) + cell) % cell) - cell / 2 - jx;
-    const sy = (((y % cell) + cell) % cell) - cell / 2 - jy;
-    /*
-      Lumpy, not round. The wobble is noise on the RADIUS rather than on
-      the position, so a stone keeps one outline instead of being blurred
-      into the moss the way adding noise to the distance did.
-    */
-    const wobble = (noise(sx * 0.55 + col * 7, sy * 0.55 + row * 7, SIZE) - 0.5) * 1.5;
-    const stone = Math.hypot(sx, sy) - wobble;
-    /*
-      Mid grey, and deliberately no lighter: the key light doubles what
-      it lands on at the near end of the ground, and the first grey
-      tried here — [156, 158, 148] — came back off the renderer as a
-      white cloud, which is the exact "pale blob" the stones were moved
-      outside the wall to stop being.
-    */
-    const rock: Rgb = [112, 115, 104];
-    /*
-      The contact shadow first: a dark ellipse pushed down and right of
-      the stone, so a crescent of it stays visible past the lit body and
-      the stone sits ON the moss instead of floating over it. The first
-      version's shadow was concentric and half this strength, and the
-      render showed exactly none of it.
-    */
-    const shadowD = Math.hypot(sx - 1.6, (sy - 2.6) * 0.82) - wobble;
-    c = mix(c, [12, 30, 28], smoothstep(radius + 4.2, radius - 0.8, shadowD) * 0.6);
-    const body = mix(rock, p.accent, 0.22);
-    c = mix(c, body, smoothstep(radius + 0.9, radius - 0.4, stone) * 0.96);
-    // Lit from the upper left, with grey mottle in the rock.
-    const lit = -(sx + sy) / Math.max(1, radius);
-    const on = smoothstep(radius + 0.4, radius - 1, stone);
-    c = mix(c, lift(rock, 0.35), on * Math.max(0, lit) * 0.6);
-    c = mix(c, shade(rock, 0.68), on * Math.max(0, -lit) * 0.55);
-    c = mix(c, shade(rock, 0.78), on * smoothstep(0.5, 0.85, noise(x * 1.7, y * 1.7, SIZE)) * 0.65);
+    const h = hash(col + 3, row + 7);
+    if (h > (tray ? 0.8 : 0.7)) {
+      const lx = x - col * cell - cell / 2 - (hash(col + 9, row) - 0.5) * 8;
+      const ly = y - row * cell - cell / 2 - (hash(col, row + 9) - 0.5) * 8;
+      const kind = hash(col + 11, row + 5);
+      const a = hash(col + 2, row + 13) * TAU;
+      const u = lx * Math.cos(a) + ly * Math.sin(a);
+      const v = -lx * Math.sin(a) + ly * Math.cos(a);
+      const SHELL: Rgb[] = [[244, 212, 192], [248, 238, 222], [226, 204, 220], [238, 190, 164]];
+      const tint = SHELL[Math.floor(hash(col + 5, row + 3) * 4) % 4];
+      const R = 2.4 + hash(col + 7, row + 1) * 1.2;
+      const shadowD = Math.hypot(lx + 0.7, ly - 0.8);
+      if (kind < 0.55) {
+        // A scallop: a fan of ribs with two little ears at the hinge.
+        const r = Math.hypot(u, v + R * 0.35);
+        const inFan = v > -R * 0.35 && r < R;
+        const ear = v < -R * 0.2 && v > -R * 0.55 && Math.abs(u) < R * 0.45;
+        if (inFan || ear) {
+          const rib = Math.sin(Math.atan2(u, v + R * 0.35) * 11);
+          c = mix(tint, shade(tint, 0.8), smoothstep(0.2, 1, rib) * 0.5);
+          c = mix(c, lift(c, 0.25), Math.max(0, lx - ly) / (R * 2));
+        } else if (shadowD < R * 0.95) {
+          c = shade(c, 0.9);
+        }
+      } else if (kind < 0.85) {
+        // A periwinkle: a small spiral, amber-brown.
+        const r = Math.hypot(lx, ly);
+        if (r < 1.7) {
+          const coil = Math.sin(Math.atan2(ly, lx) + r * 3.4);
+          c = mix([196, 150, 112], [150, 108, 78], smoothstep(-0.2, 0.8, coil) * 0.7);
+          if (lx - ly > 0.7) c = lift(c, 0.3);
+        } else if (shadowD < 1.8) {
+          c = shade(c, 0.9);
+        }
+      } else {
+        const r = Math.hypot(u / 1.3, v);
+        if (r < 1.3) c = mix([176, 166, 150], [204, 196, 182], Math.max(0, (lx - ly) / 2.6 + 0.4));
+        else if (shadowD < 1.5) c = shade(c, 0.9);
+      }
+    }
+    return c;
+  },
 
+  // Candy Meadow: a bar of chocolate, segments moulded and bevelled,
+  // inside a meadow of pink frosting and sprinkles.
+  gingerbread: (x, y, p, tray) => {
+    if (!tray) return frosting(x, y, p);
     /*
-      The glow. Spores in two colours — cyan and yellow-green, the same
-      pair the toadstool props wear — and two sizes, each drawn as three
-      alpha steps of halo around a hot centre, so every one reads as a
-      LIGHT rather than as a lit pixel.
+      Square segments laid over the PLAYABLE board (the picture runs on
+      under the walls, a wall's thickness all round), four across and
+      eight down, so the bar's own edges line up with the tray's. Each
+      segment is raised: a moulded channel, then a bevel lit on the two
+      sides facing the light and shaded on the other two, then a flat
+      top with a soft sheen across it. That bevel is the whole trick —
+      flat squares in two browns read as tiles, which is what this board
+      was ("pink bathroom tiles"); bevelled ones read as chocolate.
     */
-    const SPORE: Rgb[] = [
-      [126, 240, 224],
-      [214, 244, 130],
-    ];
-    for (let k = 0; k < 2; k++) {
-      // Both lattices divide SIZE, so the tile keeps its seamless wrap.
-      const gcell = k === 0 ? 32 : 16;
-      const oz = k * 7 + 5;
-      const gc = Math.floor((x + oz) / gcell);
-      const gr = Math.floor((y + oz) / gcell);
-      const h = hash(gc + k * 31, gr + k * 17);
-      if (h < (k === 0 ? 0.5 : 0.6)) continue;
-      const gx = (((x + oz) % gcell) + gcell) % gcell - gcell / 2
-        - (hash(gc + 2, gr + 4) - 0.5) * gcell * 0.36;
-      const gy = (((y + oz) % gcell) + gcell) % gcell - gcell / 2
-        - (hash(gc + 6, gr + 8) - 0.5) * gcell * 0.36;
-      const d = Math.hypot(gx, gy);
-      const glow = SPORE[Math.floor(h * 100) % 2];
-      const core = k === 0 ? 1.7 : 1;
-      c = mix(c, glow, smoothstep(core * 4.6, core * 1.7, d) * 0.16);
-      c = mix(c, glow, smoothstep(core * 2.6, core * 0.9, d) * 0.4);
-      c = mix(c, glow, smoothstep(core * 1.4, core * 0.4, d) * 0.8);
-      c = mix(c, lift(glow, 0.55), smoothstep(core * 0.7, 0.1, d) * 0.95);
+    const cs = (TRAY_W - RIM * 2) / 4;
+    const gx = x - RIM;
+    const gy = y - RIM;
+    const col = Math.floor(gx / cs);
+    const row = Math.floor(gy / cs);
+    const u = gx - col * cs;
+    const v = gy - row * cs;
+    const toL = u;
+    const toR = cs - u;
+    const toB = v;
+    const toT = cs - v;
+    const d = Math.min(toL, toR, toB, toT);
+    let base = mix(p.a, p.b, 0.08 + hash(col + 5, row + 9) * 0.2);
+    const groove = 1.2;
+    const bevel = 4.4;
+    if (d < groove) return shade(p.b, 0.6 + (d / groove) * 0.14);
+    if (d < bevel) {
+      // Light from +x and the near end: the right and bottom bevels face it.
+      const lit = d === toR ? 0.85 : d === toB ? 0.7 : d === toL ? -0.8 : -0.65;
+      const fade = 1 - ((d - groove) / (bevel - groove)) * 0.25;
+      return lit > 0 ? lift(base, 0.17 * lit * fade) : shade(base, 1 + 0.22 * lit * fade);
+    }
+    // The flat top: a sheen running corner to corner, and the faint step
+    // of the mould's inner border.
+    const diag = u / cs - v / cs;
+    base = mix(base, lift(base, 0.13), smoothstep(0.32, 0.02, Math.abs(diag + 0.15)) * 0.7);
+    if (d > bevel + 2.4 && d < bevel + 3.3) base = shade(base, 0.94);
+    else if (d >= bevel + 3.3 && d < bevel + 4.0) base = lift(base, 0.04);
+    return mix(base, shade(base, 0.95), noise(x / 2.5, y / 2.5, SIZE / 2.5) * 0.45);
+  },
+
+  /*
+    Glow Glade: DARK moss in cushions, with spores glowing in it.
+
+    The lawn this replaces was light green on purpose — the 31 Aug 2026
+    review found the green die hard to find on the old mid-green — and
+    the brief now asks for dark moss. Dark is the safer side of that
+    argument: the die is a saturated #33cc6b and the moss is a deep
+    blue-green two value steps under it, so the die stands OFF the floor
+    by lightness as well as by hue, and the ivory bodies of every die
+    read brightest of all on it.
+  */
+  mossStone: (x, y, p, tray) => {
+    if (!tray) return gladeGround(x, y, p);
+    /*
+      Cushions of moss as a HEIGHT field — two scales of noise — shaded
+      by its own slope against the light. The first pass cut the floor
+      into Voronoi cells with dark joints and it read as crazy paving;
+      moss has no joints, it humps and dips, so the hollows are simply
+      the low ground going dark.
+    */
+    const hgt = (u: number, v: number) =>
+      noise(u / 7, v / 7, SIZE) * 0.65 + noise(u / 2.6 + 17, v / 2.6 + 9, SIZE) * 0.35;
+    const h0 = hgt(x, y);
+    const slope = -((hgt(x + 0.8, y) - h0) * LIGHT_X + (hgt(x, y + 0.8) - h0) * LIGHT_Y) / 0.8;
+    let c = mix(p.b, p.a, smoothstep(0.25, 0.75, h0));
+    c = slope > 0
+      ? mix(c, lift(c, 0.2), Math.min(1, slope * 5))
+      : mix(c, shade(c, 0.84), Math.min(1, -slope * 5));
+    c = mix(c, shade(p.b, 0.7), smoothstep(0.32, 0.18, h0) * 0.5);
+    // The fibre of the moss, at leaf scale.
+    const f = noise(x * 1.4, y * 1.4, SIZE);
+    c = mix(c, shade(c, 0.85), smoothstep(0.5, 0.9, f) * 0.45);
+    c = mix(c, lift(c, 0.12), smoothstep(0.4, 0.1, f) * 0.3);
+    /*
+      The spores: small, sparse, each a hot point in a soft halo. Few
+      enough that a die never lands on a field of them — the glade's
+      big lights are on the walls and in the air (storeBoards.tsx), and
+      the floor only has to say it glows too.
+    */
+    const SPORE: Rgb[] = [[126, 240, 224], [214, 244, 130]];
+    const sc = 18;
+    const sx = Math.floor((x + 5) / sc);
+    const sy = Math.floor((y + 3) / sc);
+    const sh = hash(sx + 17, sy + 29);
+    if (sh > 0.72) {
+      const lx = x + 5 - sx * sc - sc / 2 - (hash(sx + 2, sy + 4) - 0.5) * 9;
+      const ly = y + 3 - sy * sc - sc / 2 - (hash(sx + 6, sy + 8) - 0.5) * 9;
+      const dd = Math.hypot(lx, ly);
+      const glow = SPORE[sh > 0.86 ? 1 : 0];
+      c = mix(c, glow, smoothstep(3.2, 0.9, dd) * 0.22);
+      c = mix(c, lift(glow, 0.5), smoothstep(1.0, 0.25, dd) * 0.9);
     }
     return c;
   },
 
   /*
-    Pirate Cove: a deck on the board, a shore around it.
+    Pirate Cove: a ship's DECK, and a quay outside it.
 
-    Two faults, both found on 6 Sep 2026. The planks ran ACROSS the
-    short axis in short staggered courses with strong seams, so the
-    deck read as a chocolate brick wall rather than as boards. And the
-    painter ignored its `tray` flag, so the surrounding ground got the
-    same deck treatment — a ship beached on nothing, which is a wooden
-    crate on a warehouse floor, and there was no cove anywhere in
-    Pirate Cove.
-
-    So the boards now run the LONG axis in 64-unit lengths (64 and 16
-    both divide the 128-unit ground tile, so nothing seams at the
-    repeat), and outside the walls is rippled sand with shell flecks.
-    The hull IS the board; the shore is what it is beached on.
+    Seven planks across the playable width, running the length of the
+    board, each butted end to end at its own stagger. What makes it a
+    deck rather than a floor is the work in it: tarred seams between the
+    planks, iron nail heads in pairs at every butt and at mid-plank,
+    grain and the odd knot, and a bevel on each plank — lit along the
+    edge that faces the light. The ground outside is the quay the ship
+    is tied up to (the sea itself is drawn in storeBoards.tsx).
   */
   shipHull: (x, y, p, tray) => {
-    if (!tray) {
-      // Wet sand, the adobe ripple turned across the other diagonal so
-      // the shore does not read as the same dune field as the desert.
-      const ripple = Math.sin((y * 0.9 + x * 0.35) * 0.42 + fbm(x, y, SIZE) * 5);
-      let c = mix(p.a, p.b, (ripple + 1) / 2);
-      c = mix(c, shade(p.a, 0.92), smoothstep(0.55, 0.85, fbm(x * 0.5, y * 0.5, SIZE)) * 0.4);
-      // Shells and pebbles, in the deck's own gold so the two surfaces
-      // still belong to one arena.
-      if (hash(x * 3, y * 3) > 0.9955) c = mix(c, p.accent, 0.55);
-      if (hash(x * 3 + 41, y * 3 + 17) > 0.9975) c = mix(c, [244, 238, 224], 0.7);
-      return c;
+    if (!tray) return quay(x, y, p);
+    const W = (TRAY_W - RIM * 2) / 7;
+    const gx = x - RIM;
+    const plank = Math.floor(gx / W);
+    const inX = gx - plank * W;
+    const LEN = 68;
+    const along = y + hash(plank + 3, 7) * LEN;
+    const seg = Math.floor(along / LEN);
+    const inY = along - seg * LEN;
+    let c = mix(p.a, p.b, 0.1 + hash(plank * 7 + 1, seg * 3 + 2) * 0.55);
+    const streak = noise(x * 1.5 + plank * 13, y / 9, SIZE);
+    c = mix(c, shade(c, 0.86), smoothstep(0.45, 0.85, streak) * 0.6);
+    c = mix(c, lift(c, 0.08), smoothstep(0.4, 0.1, streak) * 0.5);
+    // A knot in some planks.
+    if (hash(plank * 5 + 2, seg * 11 + 4) > 0.55) {
+      const kx = W * (0.3 + 0.4 * hash(plank + 8, seg + 1));
+      const ky = LEN * (0.2 + 0.6 * hash(plank + 1, seg + 8));
+      const kd = Math.hypot(inX - kx, (inY - ky) / 2.2);
+      if (kd < 3) c = mix(c, shade(p.b, 0.7), smoothstep(3, 0.5, kd) * (0.35 + 0.25 * Math.sin(kd * 5)));
     }
-    const plank = 16;
-    const row = Math.floor(x / plank);
-    const inX = ((x % plank) + plank) % plank;
-    let c = mix(p.a, p.b, hash(row, Math.floor(y / 64)) * 0.7 + 0.15);
-    // Grain running the length of the plank — now the y axis.
-    c = mix(c, shade(c, 0.9), noise(y / 6, x * 2, SIZE / 6) * 0.55);
-    if (inX < 1.4 || inX > plank - 1.4) c = mix(c, p.accent, 0.45);
-    // The butt joints where one plank ends and the next begins.
-    if (Math.abs((((y + row * 17) % 64) + 64) % 64) < 1.2) c = mix(c, p.accent, 0.35);
+    // The bevel: lit along the plank's +x edge, shaded along its -x edge.
+    if (inX > W - 2.2) c = lift(c, 0.09 * (1 - (W - inX) / 2.2));
+    else if (inX < 2) c = shade(c, 0.9 + inX * 0.05);
+    const TAR: Rgb = [44, 31, 22];
+    if (inX < 0.75 || inX > W - 0.45) return mix(c, TAR, 0.85);
+    if (inY < 0.8) return mix(c, TAR, 0.75);
+    // Nail heads: iron, with a glint on the side the light comes from.
+    for (const ny of [2.4, LEN - 2.0]) {
+      for (const nx of [W * 0.27, W * 0.73]) {
+        const dx = inX - nx;
+        const dy = inY - ny;
+        const nd = dx * dx + dy * dy;
+        if (nd < 1.0) {
+          c = mix([62, 56, 52], [150, 146, 140], smoothstep(-0.2, 0.9, dx - dy) * 0.8);
+        } else if (nd < 1.6 && dx - dy < 0) {
+          c = shade(c, 0.85);
+        }
+      }
+    }
     return c;
   },
 
-  // Bare earth with straw trodden into it.
-  // Ploughed earth in rows, straw trodden into it, and the green coming
-  // through between the furrows. David: make the Sunny Farm "look better
-  // and less simple" — it was flat dirt with two straws on it.
-  picket: (x, y, p) => {
-    // Furrows: long ridges running one way across the field.
-    const wave = Math.sin((x * 0.32 + y * 0.06) + fbm(x, y, SIZE) * 3);
-    let c = mix(p.a, p.b, fbm(x * 0.7, y * 0.7, SIZE));
-    c = mix(c, shade(p.a, 0.78), smoothstep(-0.2, -1, wave) * 0.7);
-    c = mix(c, lift(p.b, 0.3), smoothstep(0.3, 1, wave) * 0.5);
-    // Clods turned up along the ridges.
-    if (hash(x, y) > 0.955 && wave > 0) c = mix(c, shade(p.a, 0.7), 0.6);
-    // Straw, lying along the furrows rather than scattered at random.
-    for (let k = 0; k < 3; k++) {
-      const cell = 15 + k * 6;
-      const cx = (((x + k * 7) % cell) + cell) % cell - cell / 2;
-      const cy = (((y + k * 11) % cell) + cell) % cell - cell / 2;
-      const a = hash(Math.floor(x / cell) + k, Math.floor(y / cell)) * 0.9 - 0.45;
-      const ux = cx * Math.cos(a) + cy * Math.sin(a);
-      const uy = -cx * Math.sin(a) + cy * Math.cos(a);
-      if (Math.abs(uy) < 0.6 && Math.abs(ux) < 5.5) c = mix(c, p.accent, 0.55);
+  // Sunny Farm: ploughed rows of brown earth, straw in the furrows and
+  // the first shoots on the ridges; a mown meadow outside the fence.
+  picket: (x, y, p, tray) => {
+    if (!tray) return meadow(x, y, p);
+    /*
+      Eight rows across the playable width, running the length of the
+      board, each a soft ridge. The relief is the point: the face of a
+      ridge turned to the light is lit and the other side is in shade,
+      which is what makes rows read as PLOUGHED rather than as stripes —
+      and keeps them gentle enough that a die on a ridge and a die in a
+      furrow look the same.
+    */
+    const ROWW = (TRAY_W - RIM * 2) / 8;
+    const wob = (fbm(x * 0.5, y * 0.5, SIZE) - 0.5) * 3;
+    const s = (x - RIM + wob) / ROWW;
+    const t = s - Math.floor(s);
+    const ridge = Math.sin(Math.PI * t);
+    const slope = Math.cos(Math.PI * t);
+    let c = mix(p.b, p.a, 0.2 + ridge * 0.65);
+    c = slope < 0 ? mix(c, lift(c, 0.14), -slope * 0.55) : mix(c, shade(c, 0.86), slope * 0.55);
+    const crumb = noise(x * 0.9, y * 0.9, SIZE);
+    c = mix(c, shade(c, 0.88), smoothstep(0.55, 0.85, crumb) * 0.5);
+    c = mix(c, lift(c, 0.08), smoothstep(0.4, 0.12, crumb) * 0.4);
+    const rowIdx = Math.floor(s);
+    if (ridge < 0.5) {
+      // Straw lying along the furrow.
+      const fx = (t < 0.5 ? t : t - 1) * ROWW;
+      const sc = 6;
+      const k = Math.floor(y / sc);
+      const sh = hash(rowIdx * 7 + 3, k * 3 + 1);
+      if (sh > 0.62) {
+        const off = (sh - 0.8) * 6;
+        const slant = (hash(rowIdx + 1, k + 7) - 0.5) * 0.5;
+        const dy = y - (k + 0.5) * sc;
+        if (Math.abs(fx - off - dy * slant) < 0.45 && Math.abs(dy) < 2.6) {
+          c = mix(c, [226, 196, 118], 0.75);
+        }
+      }
+    } else {
+      // A shoot on the ridge now and then: two little leaves.
+      const sc = 13;
+      const k = Math.floor((y + rowIdx * 5) / sc);
+      if (hash(rowIdx * 3 + 9, k * 7 + 2) > 0.7) {
+        const lx = (t - 0.5) * ROWW;
+        const ly = y + rowIdx * 5 - (k + 0.5) * sc;
+        const leaf =
+          Math.min(Math.hypot((lx - 0.9) / 1.1, (ly - 0.4) / 0.55), Math.hypot((lx + 0.9) / 1.1, (ly - 0.4) / 0.55));
+        if (leaf < 1) c = mix([112, 158, 70], [150, 196, 96], Math.max(0, lx - ly) * 0.4 + 0.3);
+      }
     }
     return c;
   },
 
   /*
-    A living reef: coral heads on a bed of rippled sand, under a caustic
-    web. The 31 Aug 2026 skin review scored the first pass 5 and 4, all
-    for the same set of faults: the heads were soft-edged uniform discs
-    ("confetti, not coral") floating on flat teal with no sand and no
-    contact shadow, the caustics were invisible under them, and — worst
-    for THIS game — the tray was tiled wall to wall with pastel blobs at
-    roughly die-face size, the single hardest background for reading
-    settled pastel dice.
-
-    So the painter uses its `tray` flag now. On the tray the head
-    probability fades with distance from the walls, so coral survives as
-    a ring hugging the rim and the middle opens into pale rippled sand
-    where the caustics finally read — the dice land on sand, not on
-    camouflage. Outside, the reef stays wall to wall but gains a lattice
-    of double-size heads so it reads as coral heads, not gravel.
+    Coral Reef: the sea floor, pale sand ridged by the current, with a
+    faint web of light on it. The coral lives on the walls now
+    (storeBoards.tsx) instead of in a ring on the floor, and the moving
+    caustics are drawn over the top; this painter only has to be a
+    believable bed of sand. The ground outside is the reef as it was.
   */
   coralRim: (x, y, p, tray) => {
-    const wob = fbm(x, y, SIZE);
-    // Rippled sand, unmistakably PALER than the water tones — the first
-    // pass painted "sand" as a second teal and the heads floated on it.
-    const sand: Rgb = [216, 202, 168];
-    const rip = Math.sin(y * 0.85 + x * 0.15 + wob * 5) * 0.5 + 0.5;
-    // The board is SAND with water over it, not water with a hint of
-    // sand. At 0.34 the tray still came out teal and six dice landed on
-    // a surface the same value as themselves.
-    let c = mix(mix(p.a, p.b, 0.5), sand, (tray ? 0.55 : 0.2) + rip * 0.3);
-    c = mix(c, shade(p.b, 0.9), smoothstep(0.5, 0.06, rip) * 0.4);
-    /*
-      How likely a lattice cell is to skip its head. On the ground it is
-      the old flat 0.38; on the tray it climbs toward ~0.93 away from the
-      walls, so the middle of the board is open sand. 112 x 204 is the
-      tray picture in painter units — floorW 5.6 by floorD 10.2 world at
-      UNITS_PER_WORLD — the same hardcoding the snow pond uses.
-    */
-    // Both surfaces were re-tuned after the 6 Sep 2026 art pass called
-    // this the worst arena of the sixteen — and it is the one that costs
-    // 2400 coins. On the TRAY the base skip went 0.38 -> 0.66 and the
-    // ramp starts almost at the wall, so heads are a thin fringe on the
-    // rim and everything else is open sand: six dice used to land in
-    // coral the same size and colour as themselves. On the GROUND the
-    // skip went 0.38 -> 0.72, because at 0.38 through four lattices the
-    // surround was a solid carpet of blobs that read as mould.
-    const skip = tray
-      ? 0.72 + smoothstep(4, 40, Math.min(x, 112 - x, y, 204 - y)) * 0.28
-      : 0.8;
-    // Coral heads, each its own colour. The 32-cell lattice (double the
-    // rest, and the one size that wraps at 128 exactly) only grows in
-    // the open ground outside the tray.
-    const REEF: Rgb[] = [
-      [232, 122, 92], [232, 108, 158], [240, 186, 92],
-      [150, 214, 168], [186, 132, 216], [244, 158, 120],
-    ];
-    const lump = (wob - 0.5) * 3.2;
-    // Two lattices outside instead of four, and only the two largest
-    // head sizes inside the walls.
-    for (let k = tray ? 2 : 0; k < (tray ? 4 : 2); k++) {
-      const cell = k === 0 ? 32 : 25 - k * 4;
-      const ox = k * 9;
-      const row = Math.floor((y + ox) / cell);
-      const col = Math.floor((x + ox * 2) / cell);
-      const h = hash(col + k * 23, row + k * 11);
-      if (h < skip) continue;
-      const cx = (((x + ox * 2) % cell) + cell) % cell - cell / 2 + (h - 0.5) * 5;
-      const cy = (((y + ox) % cell) + cell) % cell - cell / 2 + (hash(col + 3, row) - 0.5) * 5;
-      const rad = (cell * 0.3) * (0.6 + h * 0.7);
-      const d = Math.hypot(cx, cy) + lump;
-      if (d > rad + 4.5) continue;
-      if (d > rad) {
-        // Contact shadow under the lower-right of the head, so it sits
-        // ON the sand instead of hovering over it.
-        const lr = (cx + cy) / (d || 1);
-        if (lr > 0.1) c = mix(c, shade(c, 0.5), smoothstep(rad + 4.5, rad, d) * lr * 0.6);
-        continue;
-      }
-      // The colour is its OWN hash — the first pass derived it from `h`,
-      // the same number the skip threshold cuts, so every head that
-      // survived a high threshold was the same salmon, and the first two
-      // palette entries were never drawn at all.
-      const head = REEF[Math.floor(hash(col + 19, row + k * 7) * REEF.length * 0.999)];
-      // 0.55, not 0.9: coral seen THROUGH water, rather than stickers
-      // laid on top of it. At full strength the surround read as static.
-      c = mix(c, head, 0.55);
-      // Interior structure, keyed on the head's own lattice hash: half
-      // are brain corals with concentric ridges, half are knobbly
-      // polyp mounds.
-      if (hash(col * 7 + k, row * 5 + 1) > 0.5) {
-        const ridge = Math.sin(d * 2.4 + h * 6);
-        c = mix(c, shade(head, 0.68), smoothstep(0.1, 0.9, ridge) * 0.5);
-        c = mix(c, lift(head, 0.3), smoothstep(-0.1, -0.9, ridge) * 0.4);
-      } else {
-        const pol = noise(x / 1.6 + k * 13, y / 1.6 + k * 7, SIZE / 1.6);
-        c = mix(c, lift(head, 0.42), smoothstep(0.58, 0.85, pol) * 0.6);
-        c = mix(c, shade(head, 0.7), smoothstep(0.42, 0.16, pol) * 0.5);
-      }
-      // Lit on the upper left, shaded to the lower right.
-      c = mix(c, lift(head, 0.45), Math.max(0, -(cx + cy) / rad) * 0.4);
-      c = mix(c, shade(head, 0.72), Math.max(0, (cx + cy) / rad) * 0.4);
-    }
-    /*
-      The caustic web, applied over sand and coral alike. Thin connected
-      filaments — the ridges where a noise field crosses its middle —
-      pushed toward near-white, instead of the old broad 0.55-strength
-      lift of the same teal, which was invisible under the heads (the
-      trap named at `lift`). Strongest on the tray, where the open sand
-      gives it somewhere to be seen.
-    */
+    if (!tray) return reefGround(x, y, p);
+    // Current ripples: a sharp lit crest and a long shaded lee, which is
+    // the shape sand under moving water actually takes.
+    const phase = y * 0.5 + x * 0.1 + fbm(x, y, SIZE) * 2.6;
+    const wave = Math.sin(phase);
+    const crest = Math.cos(phase);
+    let c = mix(p.a, p.b, 0.12 + 0.3 * smoothstep(0.3, 0.8, fbm(x * 0.4 + 31, y * 0.4 + 7, SIZE)));
+    c = crest > 0
+      ? mix(c, lift(c, 0.26), smoothstep(0.2, 1, crest) * smoothstep(-0.2, 0.6, wave) * 0.7)
+      : mix(c, shade(c, 0.84), -crest * 0.5);
     const web =
       1 - Math.abs(noise(x / 9 + 31, y / 9 + 57, SIZE / 9) +
         (noise(x / 4.5 + 71, y / 4.5 + 13, SIZE / 4.5) - 0.5) * 0.35 - 0.5) * 2;
-    // A few thin glints, not white spaghetti: the ramp narrowed and the
-    // tray strength came down from 0.7 to 0.22. The web used to be laid
-    // over the whole board at full strength, on top of the coral.
-    return mix(c, lift(p.b, 0.85), smoothstep(0.9, 0.99, web) * (tray ? 0.22 : 0.5));
-  },
-
-  // A real rooftop: rolled felt with its seams, gravel ballast, tar
-  // patches, and the chalk lines and hatches a roof carries. David asked
-  // for Rooftop City to look better — it was grey felt and nothing else.
-  parapet: (x, y, p, tray) => {
-    const roll = 26;
-    const inY = ((y % roll) + roll) % roll;
-    let c = mix(p.a, p.b, fbm(x, y, SIZE) * 0.7 + 0.15);
-    if (inY < 1.6) c = shade(c, 0.8);
-    // Patched repairs, darker than the felt around them.
-    const patch = fbm(x * 0.5 + 40, y * 0.5, SIZE);
-    c = mix(c, shade(p.a, 0.72), smoothstep(0.62, 0.78, patch) * 0.7);
-    /*
-      A painted hatch cover, a run of duct and a yellow safety line.
-
-      Not in `p.accent`: the rooftop's accent is another grey within a few
-      per cent of its felt, so the first version's hatches were invisible
-      — the same trap the glade's stepping stones and the reef's caustics
-      both fell into. A roof's fittings are painted BECAUSE they need to
-      stand out from the roof.
-    */
-    /*
-      One hatch, one duct run and one painted line per tile — not a grid
-      of them. The first version repeated every 61 by 47 pixels, which on
-      a 128 tile is five hatches, and five hatches in a lattice read as
-      wallpaper rather than as the things on a roof.
-    */
-    /*
-      The fittings belong on the ROOF, not on the world around it.
-
-      This painter used to ignore its `tray` flag, so the duct, the
-      hatch and the safety line were drawn on the outside ground too —
-      which tiles every 128 units, printing long pale bands and a yellow
-      line across the whole surround. Rooftop City read as a street with
-      a zebra crossing and a centre line. Outside now gets felt seams,
-      patches and grit only, and the arena reads as a roof.
-    */
-    if (tray) {
-      if (y > 168 && y < 178 && x > 16 && x < 78) {
-        // Galvanised duct, ribbed along its length. Moved from mid-board
-        // (y 86-96) to the near end, and no longer spanning the full
-        // width — a full-width ribbed grey band under a near-top-down
-        // camera reads as a crossing however it is coloured. Ribs at
-        // every 3 units rather than 5, so they read as ribs, not dashes.
-        c = mix(c, [158, 166, 180], 0.7);
-        if (((x % 3) + 3) % 3 < 1.1) c = shade(c, 0.82);
-        if (y < 170 || y > 176) c = shade(c, 0.7);
-        // Capped ends, so the run stops rather than being cut off.
-        if (x < 19 || x > 75) c = shade(c, 0.62);
+    c = mix(c, lift(c, 0.55), smoothstep(0.88, 0.99, web) * 0.2);
+    // Silt and pebbles gathered against the foot of the reef wall.
+    const edge = Math.min(x - RIM, TRAY_W - RIM - x, y - RIM, TRAY_H - RIM - y);
+    if (edge < 14) {
+      c = mix(c, shade(p.b, 0.85), (1 - Math.max(0, edge) / 14) * 0.35);
+      const pc = 6;
+      const px = Math.floor(x / pc);
+      const py = Math.floor(y / pc);
+      if (hash(px + 13, py + 31) > 0.72) {
+        const dd = Math.hypot(x - (px + 0.5) * pc, y - (py + 0.5) * pc);
+        if (dd < 1.3) c = mix([150, 140, 160], [196, 186, 204], Math.max(0, x - y - (px - py) * pc) * 0.3 + 0.3);
       }
-      if (x > 20 && x < 48 && y > 14 && y < 40) {
-        const plate: Rgb = [196, 148, 62];
-        c = mix(plate, lift(plate, 0.3), (x - 20) / 28);
-        if (x < 23 || x > 45 || y < 17 || y > 37) c = shade(c, 0.72);
-      }
-      // The painted line that runs round the edge of every flat roof.
-      if (x > 108 && x < 112) c = mix(c, [214, 176, 74], 0.5);
     }
-    // Grit.
-    const g = hash(x, y);
-    if (g > 0.93) c = mix(c, lift(p.b, 0.3), 0.5);
-    else if (g < 0.08) c = shade(c, 0.9);
+    // A sand dollar, here and there.
+    const dc = 26;
+    const dx0 = Math.floor(x / dc);
+    const dy0 = Math.floor(y / dc);
+    if (hash(dx0 + 5, dy0 + 19) > 0.8) {
+      const lx = x - (dx0 + 0.5) * dc;
+      const ly = y - (dy0 + 0.5) * dc;
+      const r = Math.hypot(lx, ly);
+      if (r < 2.4) {
+        const petal = Math.cos(Math.atan2(ly, lx) * 5);
+        c = mix([236, 226, 204], [200, 188, 164], smoothstep(0.6, 1, petal) * smoothstep(0.6, 1.6, r) * 0.7);
+      }
+    }
     return c;
   },
 
-  blocks: (x, y, p) => {
-    const cell = 22;
-    const tx = Math.floor(x / cell);
-    const ty = Math.floor(y / cell);
-    const edge = gridEdge(x, y, cell);
-    let c = (tx + ty) % 2 === 0 ? p.a : p.b;
-    c = mix(c, shade(c, 0.9), smoothstep(2, 0.4, edge));
-    // The felt of the mat itself.
-    c = mix(c, shade(c, 0.93), noise(x / 2, y / 2, SIZE / 2) * 0.5);
-    if (hash(x * 5, y * 5) > 0.995) c = mix(c, p.accent, 0.6);
+  /*
+    Rooftop City: a flat roof of tarred felt in rolls, with gravel
+    ballast, crack sealant and two drains — and, outside the parapet,
+    NOT more roof: the city at night, a long way down. The roof used to
+    stand on the same grey felt as itself; from a height the street grid
+    is what says you are on top of a building.
+  */
+  parapet: (x, y, p, tray) => {
+    if (!tray) return cityBelow(x, y, p);
+    const roll = 30;
+    const inY = (((y - RIM) % roll) + roll) % roll;
+    let c = mix(p.a, p.b, 0.2 + fbm(x * 0.5, y * 0.5, SIZE) * 0.55);
+    // A lap seam: the shadowed step, then the lit edge of the sheet over it.
+    if (inY < 0.8) c = shade(c, 0.8);
+    else if (inY < 2.2) c = lift(c, 0.07);
+    const iso = Math.abs(fbm(x * 0.6 + 70, y * 0.6 + 20, SIZE) - 0.5);
+    c = mix(c, shade(p.b, 0.6), smoothstep(0.012, 0.003, iso) * 0.45);
+    c = mix(c, lift(c, 0.1), smoothstep(0.6, 0.8, fbm(x * 0.3 + 5, y * 0.3 + 50, SIZE)) * 0.5);
+    const g = hash(x * 2.3, y * 1.9);
+    if (g > 0.86) c = mix(c, lift(p.a, 0.32), 0.32);
+    else if (g < 0.1) c = shade(c, 0.86);
+    for (const [dx0, dy0] of [[30, 152], [82, 50]] as const) {
+      const dx = x - dx0;
+      const dy = y - dy0;
+      const d = Math.hypot(dx, dy);
+      if (d > 9) continue;
+      if (d < 3.6) {
+        c = [44, 46, 56];
+        if (Math.abs(dx) < 0.45 || Math.abs(dy) < 0.45 || Math.abs(d - 2.2) < 0.35) c = [126, 130, 142];
+      } else if (d < 4.8) {
+        c = mix([128, 132, 144], [178, 182, 194], smoothstep(-3, 3, dx - dy));
+      } else {
+        // The ring of grime where water stands round a drain.
+        c = mix(c, shade(c, 0.86), smoothstep(9, 5, d) * 0.6);
+      }
+    }
+    return c;
+  },
+
+  // Toy Room: a soft playmat with a road printed round it, on a floor of
+  // honey floorboards.
+  blocks: (x, y, p, tray) => {
+    if (!tray) return floorboards(x, y, p);
+    let c = mix(p.a, p.b, smoothstep(0.3, 0.8, fbm(x * 0.35, y * 0.35, SIZE)) * 0.35);
+    // The pile of the carpet: two fine scales, low contrast.
+    const pile = noise(x * 1.6, y * 1.6, SIZE) * 0.6 + hash(x * 3.1, y * 2.7) * 0.4;
+    c = mix(shade(c, 0.93), lift(c, 0.06), pile);
+    const edge = Math.min(x - RIM, TRAY_W - RIM - x, y - RIM, TRAY_H - RIM - y);
+    if (edge < 5) {
+      // The bound edge of the mat, with a running stitch along it.
+      c = mix(c, shade(p.b, 0.78), 0.75);
+      if (edge > 2 && edge < 2.9 && (x + y) % 4 < 2) c = lift(c, 0.4);
+      return c;
+    }
+    /*
+      A printed road loop, round the outside of the mat so the middle —
+      where the dice land — is plain pile. Printed, so it is a tint on the
+      carpet rather than a slab of grey, with dashes down the middle and
+      a zebra crossing on one side.
+    */
+    const cx = TRAY_W / 2;
+    const cy = TRAY_H / 2;
+    const sd = roundRect(x - cx, y - cy, 33, 78, 18);
+    if (Math.abs(sd) < 5.4) {
+      const ink = 0.62;
+      let road = mix(c, [118, 124, 134], ink);
+      if (Math.abs(sd) > 4.6) road = mix(road, [238, 236, 226], 0.55);
+      const vertical = Math.abs(x - cx) * 78 > Math.abs(y - cy) * 33;
+      const along = vertical ? y : x;
+      if (Math.abs(sd) < 0.6 && (((along % 9) + 9) % 9) < 4.5) road = mix(road, [244, 238, 210], 0.7);
+      if (x < cx && Math.abs(y - cy) < 7 && Math.abs(sd) < 4.4 && (((y % 3) + 3) % 3) < 1.5) {
+        road = mix(road, [240, 238, 230], 0.65);
+      }
+      return road;
+    }
+    // Printed trees in the four corners inside the loop.
+    for (const [tx, ty] of [[cx - 17, cy - 58], [cx + 17, cy - 58], [cx - 17, cy + 58], [cx + 17, cy + 58]] as const) {
+      const d = Math.hypot(x - tx, y - ty);
+      if (d < 5.2) {
+        c = mix(c, d < 1.2 ? [150, 108, 72] : [96, 160, 104], 0.5);
+        if (d > 3.8) c = shade(c, 0.9);
+      }
+    }
     return c;
   },
 };
