@@ -17,10 +17,15 @@ const IDS = process.argv.slice(2);
     // MODE=classic|ultimate|skirmish|colorwar paints the retreat pads
     // with that round's colours, which is the only way to see them.
     const mode = process.env.MODE ? '&mode=' + process.env.MODE : '';
-    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id + top + mode);
+    // QUERY=hazards=1&... is passed straight through to entry.tsx.
+    const extra = process.env.QUERY ? '&' + process.env.QUERY : '';
+    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id + top + mode + extra);
     await page.waitForFunction('window.__ready === true', { timeout: 20000 }).catch(() => {});
     const tag = `${top ? '-top' : ''}${process.env.MODE ? '-' + process.env.MODE : ''}`;
-    await page.screenshot({ path: `/tmp/arena-${id}${tag}.png` });
+    // OUT_DIR keeps two people (or two agents) shooting the same arena
+    // from overwriting each other's pictures in /tmp.
+    const dir = process.env.OUT_DIR ?? '/tmp';
+    await page.screenshot({ path: path.join(dir, `arena-${id}${tag}.png`) });
     console.log('shot', id);
   }
   await browser.close();
