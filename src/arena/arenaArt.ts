@@ -20,10 +20,9 @@ import type { ArenaId } from './arenas';
  * DISTINCT. The hard half, and one this project has already been caught
  * by: the Sunset Castle was reported as "doesn't really look any
  * different from the regular castle" and had to be rebuilt once already.
- * The two share a building, so the difference is carried by what actually
- * differs when you stand in them — a low huge sun instead of a high small
- * one, warm masonry instead of grey, lit windows, and long shadows thrown
- * toward the viewer.
+ * Since the 18 Oct 2026 redesign they no longer even share a building:
+ * the Sunset Castle is a ruin at dusk, and its picture shows roofless
+ * tower stumps, a broken wall, ivy and two lit braziers under a low sun.
  *
  * ── WHY THIS FILE EXISTS SEPARATELY FROM arenas.tsx ──
  *

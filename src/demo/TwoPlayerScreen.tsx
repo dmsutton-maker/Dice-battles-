@@ -188,8 +188,9 @@ function ZoneView({
     },
     [markBoardBusy, onSettled],
   );
-  const waterIdle =
-    appActive && phase === 'battle' && !!obstacleLook(arenaId).pit.water;
+  // Every board keeps its idle life moving during a battle; see the same
+  // rule in DiceDemoScreen.
+  const waterIdle = appActive && phase === 'battle';
 
   const panResponder = useRef(
     PanResponder.create({

@@ -90,6 +90,23 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-111-0-new-battlefields',
+    date: '18 October 2026',
+    version: 'v1.111.0',
+    title: 'Every battlefield, rebuilt',
+    icon: 'arena',
+    body:
+      'All twenty battlefields have been rebuilt so that no two look alike. ' +
+      'Candy Meadow is a chocolate bar, Pirate Cove is a ship\'s deck out at ' +
+      'sea, Volcano Rim glows through its cracks, the Toy Room has a road ' +
+      'round its playmat, and the Sunset Castle is a ruin at dusk.\n\n' +
+      'The traps match their battlefield now too: a snowman and a frozen ' +
+      'pond in Snowy Hollow, a lava pool on Volcano Rim, an open hatch onto ' +
+      'the stars on the Space Station, a beach ball and a toy box in the Toy ' +
+      'Room. They work exactly as before, so nothing is harder or easier. ' +
+      'And the dice have had a polish.',
+  },
+  {
     id: 'v1-107-0-gold-pass',
     date: '13 October 2026',
     version: 'v1.107.0',

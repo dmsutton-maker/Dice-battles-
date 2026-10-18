@@ -158,12 +158,18 @@ suite('water · and the battery', () => {
   const screen = code('src/demo/DiceDemoScreen.tsx');
   const expr = screen.slice(screen.indexOf('frameloop={'), screen.indexOf('camera={{ position'));
 
-  test('water only keeps the board drawing during a battle', () => {
-    assert(/'demand'/.test(expr), 'water never asks for a frame');
+  test('idle life only keeps the board drawing during a battle', () => {
+    /*
+      Since the 18 Oct 2026 redesign every board has something moving
+      besides water (lava, beacons, torches, fireflies), so the idle
+      redraw no longer asks whether the pit is water. What it must still
+      never do is draw behind the menus or with the game in the
+      background — that is the battery rule this test is for.
+    */
+    assert(/'demand'/.test(expr), 'the idle board never asks for a frame');
     const rule = screen.slice(screen.indexOf('const waterIdle ='), screen.indexOf(';', screen.indexOf('const waterIdle =')));
-    assert(/appActive/.test(rule), 'the water keeps drawing with the game in the background');
-    assert(/phase === 'battle'/.test(rule), 'the water keeps the board drawing behind the menus');
-    assert(/pit\.water/.test(rule), 'a board with no water is kept drawing for it');
+    assert(/appActive/.test(rule), 'the board keeps drawing with the game in the background');
+    assert(/phase === 'battle'/.test(rule), 'the board keeps drawing behind the menus');
   });
 
   test('idle water is drawn at a fraction of the full rate', () => {

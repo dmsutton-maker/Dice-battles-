@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.111.0 — 2026-10-18 · requested by David
+
+### Changed
+- **Every battlefield redesigned so no two look alike.** David: "relook
+  at all the boards and dice and make them better looking with better
+  graphics. Make sure each board looks totally different don't just make
+  different color castles. And make sure each trap matches its board name
+  and board matches its name." Seen side by side, all twenty were the same
+  tray with the same black railing for a jail; Sky Kingdom was built from
+  the castle's battlements and Frozen Lights from the space station's
+  walls. Now each has its own floor, walls, surroundings and jail — a
+  chocolate bar in Candy Meadow, a ship's deck at sea in Pirate Cove, hex
+  basalt with glowing lava seams on Volcano Rim, a playmat with a road in
+  the Toy Room, and the Sunset Castle is a ruin at dusk rather than the
+  Castle Courtyard in orange. Plan and per-board table:
+  `docs/board-redesign.md`.
+- **Every trap is that board's own hazard.** The bump and the pit were the
+  same ball and square everywhere in a different colour. Now: a snowman
+  and a frozen pond, a smoking rock and a lava pool, a haystack and a mud
+  puddle, a gumdrop and chocolate fondue, a bulkhead beacon and an
+  airlock open onto the stars, a beach ball and an open toy box, and so
+  on for all twenty, with the words in the hints and callouts to match.
+  The physics is untouched: same sphere, same square hole, same
+  difficulty on every board.
+- **A die going into the pit gets a buzz and the pit "gulps"; a die that
+  glances off the bump gets a light tap and the bump squashes.**
+- **The dice look solid.** Shading is baked into the die (lighting stays
+  off on purpose, see `DieMesh.tsx`), stickers look set into the face
+  with a thin bevel and highlight while the colour itself is unchanged,
+  and 26 pattern skins lost their jagged edges.
+- Every board keeps its moving parts moving between rolls during a
+  battle (at the same gentle twenty frames a second water already used),
+  not only the boards with water.
+- The Sunset Castle's picture in the Items screen is a ruin too.
+
 ## v1.110.0 — 2026-10-18 · requested by David
 
 A full audit of the game, the website and the admin. David: "do a deep

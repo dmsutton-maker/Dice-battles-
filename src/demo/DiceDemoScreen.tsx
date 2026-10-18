@@ -1990,9 +1990,16 @@ export function DiceDemoScreen() {
     demand (see WaterClock) rather than the full sixty, because water is
     slow and the battery is not free. Menus and result screens still
     stop the board entirely.
+
+    EVERY BOARD, since the 18 Oct 2026 redesign. Each battlefield now has
+    something alive besides water — lava bubbling, a beacon blinking,
+    braziers and torches, fireflies, a force field, a breathing clam —
+    and on a board with no water all of it froze between rolls, which
+    the redesign's own reviewers flagged on every board without water.
+    Same twenty frames a second, same "battle only" rule; the name stays
+    for the WaterClock prop it feeds.
   */
-  const waterIdle =
-    appActive && phase === 'battle' && !!obstacleLook(sceneArenaId).pit.water;
+  const waterIdle = appActive && phase === 'battle';
   const [drawnToken, setDrawnToken] = useState('');
   const stale = preview !== null && drawnToken !== sceneToken;
 

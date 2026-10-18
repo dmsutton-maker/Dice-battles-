@@ -115,6 +115,69 @@ def castle(sunset=False):
     return img
 
 
+# ── Sunset Castle: the ruin ───────────────────────────────────────────
+def ruin():
+    """
+    The board was rebuilt on 18 Oct 2026 as a RUINED castle at dusk, so
+    the picture is one too: roofless tower stumps, a broken wall line,
+    ivy, fallen blocks and two braziers. The old picture was the Castle
+    Courtyard's building tinted orange — the exact "doesn't look any
+    different" the family reported about the board itself.
+    """
+    sky = canvas((255, 172, 110), (122, 70, 110))      # dusk into violet
+    ground, ground_dk = (92, 70, 82), (70, 52, 66)
+    stone, stone_dk = (150, 112, 104), (104, 74, 76)
+    ivy, ivy_dk = (92, 128, 78), (64, 96, 62)
+    img = sky.copy()
+    d = ImageDraw.Draw(img)
+    # a low sun sinking behind the ruin
+    d.ellipse([196, 150, 300, 254], fill=(255, 222, 150))
+    d.ellipse([210, 164, 286, 240], fill=(255, 240, 196))
+    # ground, cobbles in warm light
+    d.rectangle([0, 240, S, S], fill=ground)
+    d.ellipse([-40, 226, 220, 300], fill=ground_dk)
+    for cx, cy in [(60, 300), (110, 322), (170, 296), (230, 318), (290, 300), (140, 336), (250, 340)]:
+        d.ellipse([cx - 16, cy - 7, cx + 16, cy + 7], fill=(120, 92, 96))
+    # the broken curtain wall: one block row at a time, uneven tops
+    tops = [196, 184, 206, 174, 190, 214, 200, 178, 192, 210, 186]
+    bw = S / len(tops)
+    for i, t in enumerate(tops):
+        x0 = i * bw
+        d.rectangle([x0, t, x0 + bw - 2, 250], fill=stone if i % 2 else stone_dk)
+        d.rectangle([x0 + 3, t + 8, x0 + bw - 6, t + 14], fill=stone_dk)
+    # a gap blown out of the middle, sky showing through
+    d.polygon([(150, 250), (164, 200), (190, 194), (206, 250)], fill=(255, 196, 140))
+    # two roofless tower stumps, jagged tops
+    for cx, top in ((70, 120), (282, 136)):
+        d.rectangle([cx - 30, top, cx + 30, 252], fill=stone)
+        d.rectangle([cx, top, cx + 30, 252], fill=stone_dk)
+        jag = [(cx - 30, top), (cx - 18, top - 16), (cx - 6, top - 4), (cx + 6, top - 22),
+               (cx + 18, top - 6), (cx + 30, top - 12), (cx + 30, top)]
+        d.polygon(jag, fill=stone)
+        d.rounded_rectangle([cx - 7, top + 34, cx + 7, top + 58], radius=7, fill=(48, 34, 48))
+        # ivy climbing the lit side
+        for k in range(6):
+            iy = top + 20 + k * 16
+            d.ellipse([cx - 34, iy, cx - 14, iy + 18], fill=ivy if k % 2 else ivy_dk)
+    # fallen blocks in front
+    for x, y, w in [(118, 262, 26), (226, 270, 22), (40, 276, 20), (300, 266, 18)]:
+        d.polygon([(x, y), (x + w, y - 6), (x + w + 6, y + 12), (x + 4, y + 16)], fill=stone_dk)
+    # braziers either side of the gap, flames lit
+    for cx in (126, 232):
+        d.rectangle([cx - 4, 226, cx + 4, 250], fill=(60, 44, 52))
+        d.polygon([(cx - 14, 214), (cx + 14, 214), (cx + 8, 228), (cx - 8, 228)], fill=(80, 58, 62))
+        d.polygon([(cx - 10, 214), (cx, 186), (cx + 10, 214)], fill=(255, 150, 70))
+        d.polygon([(cx - 5, 214), (cx, 198), (cx + 5, 214)], fill=(255, 226, 150))
+    # long shadows toward the viewer
+    sh = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(sh)
+    sd.polygon([(40, 252), (100, 252), (60, S), (-40, S)], fill=(50, 30, 52, 120))
+    sd.polygon([(252, 252), (312, 252), (380, S), (270, S)], fill=(50, 30, 52, 120))
+    blur = sh.filter(ImageFilter.GaussianBlur(4))
+    img.paste(blur, (0, 0), blur)
+    return img
+
+
 # ── Jungle Clearing ────────────────────────────────────────────────────
 def leaf(img, x, y, length, width, angle, fill, rib):
     """One palm frond: a long leaf with a midrib, rotated into place.
@@ -226,7 +289,7 @@ def space():
 
 SCENES = {
     'castle': castle(False),
-    'castle-sunset': castle(True),
+    'castle-sunset': ruin(),
     'jungle': jungle(),
     'space': space(),
 }
