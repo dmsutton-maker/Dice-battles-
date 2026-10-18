@@ -266,3 +266,36 @@ suite('speed · the heavy tabs are up in the frame you tap', () => {
     note('a throwing onDone is swallowed, as every other step here is');
   });
 });
+
+/**
+ * Why a battlefield preview took a second to appear.
+ *
+ * David, 18 Oct 2026: "when you click on something to preview it it takes
+ * a second to load the item." Painting a battlefield's floor and ground
+ * happened on the tap. They are painted on the menu now, after the dice,
+ * under the very keys the boards ask for — so this checks the keys agree
+ * by opening every board afterwards and counting how many pictures it
+ * still had to paint. Any is a miss.
+ */
+suite('speed · the battlefields are painted before they are opened', () => {
+  test('a pause paints nothing, and every board opens from the cache afterwards', () => {
+    const { warmAllArenaTextures } = require('../src/arena/warmArenas');
+    const { themedFloorTexture, themedGroundTexture } = require('../src/arena/ThemedArena');
+    const { ARENA_THEMES } = require('../src/arena/themeData');
+    const { cachedTextureCount } = require('../src/arena/textureCache');
+
+    const before = cachedTextureCount();
+    warmAllArenaTextures((run: () => void) => run(), () => false);
+    assertEqual(cachedTextureCount(), before, 'painted while told to stop');
+
+    warmAllArenaTextures((run: () => void) => run(), () => true);
+    const warmed = cachedTextureCount();
+    assert(warmed > before, 'a stopped warm-up could not be started again');
+
+    for (const id of Object.keys(ARENA_THEMES)) {
+      themedFloorTexture(id, ARENA_THEMES[id]);
+      themedGroundTexture(id, ARENA_THEMES[id]);
+    }
+    assertEqual(cachedTextureCount(), warmed, 'a board painted a picture the warm-up missed');
+  });
+});

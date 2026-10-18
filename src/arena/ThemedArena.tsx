@@ -1104,6 +1104,43 @@ function NearCornerPost({ theme, wallMaterial }: { theme: ArenaTheme; wallMateri
   );
 }
 
+/**
+ * A themed board's floor picture, from the cache or painted now.
+ *
+ * A function rather than inline in the component so the background
+ * warm-up (warmArenas.ts) asks for EXACTLY the same key: everything the
+ * picture is built from is in it, so repainting a theme's colours can
+ * never hand back the old picture.
+ */
+export function themedFloorTexture(id: string, theme: ArenaTheme): THREE.Texture {
+  const floorW = innerWidth + wallThickness * 2;
+  const floorD = innerDepth + wallThickness * 2;
+  return cachedTexture(
+    `themed-floor-${id}-${theme.structure}-${theme.floor.a}-${theme.floor.b}` +
+      `-${theme.wall.cap}-${floorW}x${floorD}`,
+    () =>
+      createTraySurface(
+        theme.structure,
+        { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
+        [floorW, floorD],
+      ),
+  );
+}
+
+/** A themed board's ground picture, the same way. */
+export function themedGroundTexture(id: string, theme: ArenaTheme): THREE.Texture {
+  return cachedTexture(
+    `themed-ground-${id}-${theme.structure}-${theme.meadow}-${theme.hill}` +
+      `-${theme.mountain ?? theme.wall.cap}`,
+    () =>
+      createGroundSurface(
+        theme.structure,
+        { a: theme.meadow, b: theme.hill, accent: theme.mountain ?? theme.wall.cap },
+        GROUND_SPAN / 6.5,
+      ),
+  );
+}
+
 /* ── the arena itself ─────────────────────────────────────────────── */
 
 export function ThemedArena({
@@ -1120,40 +1157,15 @@ export function ThemedArena({
     anything. That grid is most of what is on screen, which is a large
     part of why David called the new maps unfinished.
   */
-  const floorW = innerWidth + wallThickness * 2;
-  const floorD = innerDepth + wallThickness * 2;
   const floorTexture = useMemo(
-    () =>
-      cachedTexture(
-        // Everything the picture is built FROM is in the key. Keyed on
-        // the arena id alone, repainting a theme's floor colours — which
-        // this project does — would hand back the picture painted from
-        // the old ones, and the deps array below would be the only thing
-        // that noticed.
-        `themed-floor-${id}-${theme.structure}-${theme.floor.a}-${theme.floor.b}` +
-          `-${theme.wall.cap}-${floorW}x${floorD}`, () =>
-        createTraySurface(
-          theme.structure,
-          { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
-          [floorW, floorD],
-        ),
-      ),
-    [id, theme.structure, theme.floor.a, theme.floor.b, theme.wall.cap, floorW, floorD],
+    () => themedFloorTexture(id, theme),
+    [id, theme],
   );
 
   /* The ground outside it, in the same material family a shade duller. */
   const groundTexture = useMemo(
-    () =>
-      cachedTexture(
-        `themed-ground-${id}-${theme.structure}-${theme.meadow}-${theme.hill}` +
-          `-${theme.mountain ?? theme.wall.cap}`, () =>
-        createGroundSurface(
-          theme.structure,
-          { a: theme.meadow, b: theme.hill, accent: theme.mountain ?? theme.wall.cap },
-          GROUND_SPAN / 6.5,
-        ),
-      ),
-    [id, theme.structure, theme.meadow, theme.hill, theme.mountain, theme.wall.cap],
+    () => themedGroundTexture(id, theme),
+    [id, theme],
   );
 
   const wallMaterial = useMemo(

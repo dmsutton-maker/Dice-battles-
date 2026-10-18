@@ -104,6 +104,7 @@ import { TUNING } from '../game/tuning';
 import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { hasEntitlement, initPurchases, onPurchasesChanged } from '../game/purchases';
 import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
+import { warmAllArenaTextures } from '../arena/warmArenas';
 import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
@@ -209,6 +210,9 @@ import {
  * a new throw is LOCKED until the dice settle, so every roll is binding.
  * The AI rolls fair virtual dice on a timer (difficulty = speed).
  */
+
+/** Longest a preview waits for its board before showing its name anyway. */
+const PREVIEW_DRAW_WAIT_MS = 2500;
 
 type Phase =
   | 'pick'
@@ -443,6 +447,7 @@ export function DiceDemoScreen() {
           warmAllDieFaces(
             (run) => setTimeout(run, 0),
             shouldWarmFaces,
+            warmArenas,
           );
         },
       );
@@ -920,11 +925,18 @@ export function DiceDemoScreen() {
   const shouldWarmFaces = () =>
     activeRef.current && phaseRef.current === 'pick' && previewRef.current === null;
 
+  /*
+    Then every battlefield's floor and ground, under the same rule. A
+    battlefield preview used to paint them on the tap, which is most of
+    the second David saw on 18 Oct 2026 before the board appeared.
+  */
+  const warmArenas = () => warmAllArenaTextures((run) => setTimeout(run, 0), shouldWarmFaces);
+
   useEffect(() => {
     // Not until the earlier stages have finished and handed over to it.
     if (!facesWarmableRef.current) return;
     if (!appActive || phase !== 'pick' || preview !== null) return;
-    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
+    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces, warmArenas);
   }, [appActive, phase, preview]);
 
   useEffect(() => {
@@ -2004,6 +2016,19 @@ export function DiceDemoScreen() {
   const waterIdle = appActive && phase === 'battle';
   const [drawnToken, setDrawnToken] = useState('');
   const stale = preview !== null && drawnToken !== sceneToken;
+  /*
+    A board that has still not drawn after this long is let through
+    anyway, name and button included, so the player is never left on a
+    shelf with no way to close what they opened.
+  */
+  const [staleTooLong, setStaleTooLong] = useState(false);
+  useEffect(() => {
+    setStaleTooLong(false);
+    if (!stale) return;
+    const t = setTimeout(() => setStaleTooLong(true), PREVIEW_DRAW_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [stale, sceneToken]);
+  const waiting = stale && !staleTooLong;
 
   /*
     Hold the shelf up until the board has really drawn.
@@ -2026,7 +2051,7 @@ export function DiceDemoScreen() {
     sky slab stays for the paths that have no shelf up — previewing from
     inside another preview — where fading into the arena is right.
   */
-  const holdShelf = stale;
+  const holdShelf = waiting;
 
   const showPreview = (target: PreviewTarget | null) => {
     previewRef.current = target;
@@ -2913,7 +2938,13 @@ export function DiceDemoScreen() {
         />
       )}
 
-      {previewView && (
+      {/*
+        Not until the item is on the board. David, 18 Oct 2026: "it shows
+        the name and description and the equip button early" — the bar
+        used to go up on the tap, over a shelf still waiting for the
+        board, so the words arrived a beat before the thing they named.
+      */}
+      {previewView && !waiting && (
         <ItemPreviewBar
           name={previewView.name}
           note={previewView.note}

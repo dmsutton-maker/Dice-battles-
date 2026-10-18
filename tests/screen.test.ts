@@ -1033,8 +1033,21 @@ suite('screen · the board belongs to the battle screen', () => {
       leaving a preview cannot leave the shelf stuck over the board.
     */
     assert(
-      /const holdShelf = stale;/.test(source),
+      /const holdShelf = waiting;/.test(source) &&
+        /const waiting = stale && !staleTooLong;/.test(source),
       'the shelf hold is no longer tied to the frame watch',
+    );
+    // David, 18 Oct 2026: the name and the Equip button arrived before
+    // the item. They wait for the same frame the shelf does now, and the
+    // same time limit lets both through, so a board that never draws
+    // still leaves a way to close the preview.
+    assert(
+      /\{previewView && !waiting && \(\s*<ItemPreviewBar/.test(source),
+      'the preview bar goes up before the board has drawn',
+    );
+    assert(
+      /setTimeout\(\(\) => setStaleTooLong\(true\), PREVIEW_DRAW_WAIT_MS\)/.test(source),
+      'nothing lets the preview through if its board never draws',
     );
     assert(
       /const stale = preview !== null && drawnToken !== sceneToken;/.test(source),

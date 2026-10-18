@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.114.0 — 2026-10-18 · requested by David
+
+### Added
+- **Season pass rewards explain themselves.** David: "On the season pass
+  you should be able to click on rewards and see a description of it."
+  Every tile opens a short card: what it is, which level and row, and
+  where you stand (yours, how many XP and wins to go, or needs the Gold
+  Pass). Dice and battlefields have "See it"; a locked Gold reward has
+  "Get the Gold Pass".
+
+### Changed
+- **Description boxes fit the screen and say less.** David: "shorten
+  the description boxes to not go off the screen to the left and right.
+  and dont overcomplicate the description." Popups were losing their
+  width limit (`src/ui/placement.ts` now carries width, maxWidth and
+  minWidth to the wrapper), and the product and reward wording is cut
+  to one line each.
+- **Previews show the item and its name together.** David: "it shows
+  the name and description and the equip button early. make the items
+  load faster when previewing them." The name bar now waits for the
+  board to draw (with a 2.5s limit so a preview can always be closed)
+  and fades in with it. Every battlefield's floor and ground is painted
+  in the background on the menu, after the dice faces, so a battlefield
+  preview no longer paints them on the tap (`src/arena/warmArenas.ts`;
+  35 pictures, about 8.5 MB).
+- **The Ivory dice are whiter.**
+- **No umbrellas or tower roofs at the bottom corners of the boards.**
+  David: "get rid of the umbrellas at the bottom of the arenas where
+  it's unnecesary." The near corners are low posts now, so nothing
+  stands between the player and their own dice; the far corners keep
+  their scenery.
+- **The castle courtyard has no cracks in its flagstones.**
+
+### Fixed
+- **"Get the Gold Pass" now lands on the Gold Pass**, not just the top
+  of the Store. It gave up if the Store had not laid itself out within
+  thirty frames, which on a phone it often had not; it now waits up to
+  three seconds for the page to be measured, then glides.
+
 ## v1.113.0 — 2026-10-18 · requested by David
 
 ### Added
