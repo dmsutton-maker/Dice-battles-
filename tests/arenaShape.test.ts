@@ -13,6 +13,7 @@ const ARENA_STRUCTURES = [
 ];
 import { FIGURE_RADIUS, JAIL_SLOTS, RETREAT_SLOTS } from '../src/game/stations';
 import { EXTRA_SPOTS } from '../src/arena/sceneryProps';
+import { CREST_PIECES } from '../src/arena/boardKits';
 import { fitCamera } from '../src/demo/cameraFit';
 import { ARENA_JAILS } from '../src/arena/jailKinds';
 import { buildJail, JAIL_ORIGIN } from '../src/arena/jails';
@@ -278,19 +279,26 @@ suite('arenas · the themed sixteen are not all castles', () => {
       He is right, and the reason four was not enough is the reason one
       was not. A SKYLINE is what you recognise a place by, so four
       skylines across sixteen battlefields is four places wearing sixteen
-      coats of paint. Exactly one arena is still a castle, and it is the
-      Sky KINGDOM.
+      coats of paint.
+
+      This used to allow exactly one castle, the Sky Kingdom. The board
+      redesign of 18 Oct 2026 asked for none — "don't just make different
+      color castles" — and named the two themes still wearing a bespoke
+      arena's building: Sky Kingdom the castle's merlons, Frozen Lights
+      the Space Station's panelling. So the rule is tighter now, not
+      looser: no themed arena is built of either.
     */
     assertEqual(
       new Set(structures).size,
       structures.length,
       `only ${new Set(structures).size} kinds of building across ${structures.length} arenas`,
     );
-    assertEqual(
-      structures.filter((s) => s === 'battlement').length,
-      1,
-      'more than one themed arena is a castle again',
-    );
+    for (const borrowed of ['battlement', 'station']) {
+      assert(
+        !structures.includes(borrowed),
+        `a themed arena is built as '${borrowed}' — another arena's building in different colours`,
+      );
+    }
   });
 
   test('the renderer actually draws every structure a theme asks for', () => {
@@ -719,6 +727,110 @@ suite('arenas · nothing looms over the board', () => {
         z > -9.5,
         `something is placed at z ${z}, behind the jail where the camera has no room for it`,
       );
+    }
+  });
+});
+
+/**
+ * The eight boards rebuilt in October 2026 (boardKits.tsx) draw their wall
+ * crests as instanced meshes — one draw call per kind of piece instead of
+ * one per piece — and an instanced piece is sized and placed by a matrix,
+ * where neither the source scans above nor anything else can read it.
+ *
+ * So the pieces are built as plain data first (CREST_PIECES), and this
+ * measures the data: every piece stands on the wall rather than in the
+ * tray or out in the scenery, nothing on a wall top is tall enough to
+ * loom, and every board dresses all four walls in matching measure —
+ * the "it only goes round half of it" fault Marc found on 27 Aug 2026,
+ * checked before a render rather than after. audit.js still reads the
+ * render; this catches the same fault without one.
+ */
+suite('arenas · the instanced crests stand on the wall, all the way round', () => {
+  const rim = buildRim();
+  const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
+  const outerX = innerWidth / 2 + wallThickness;
+  const outerZ = innerDepth / 2 + wallThickness;
+  const built = (Object.keys(ARENA_THEMES) as ThemedArenaId[]).filter(
+    (id) => CREST_PIECES[ARENA_THEMES[id].structure],
+  );
+  const piecesOf = (id: ThemedArenaId) => {
+    const t = ARENA_THEMES[id];
+    return CREST_PIECES[t.structure]!(t, rim);
+  };
+  /** Which wall a piece belongs to: whichever edge of the tray it is nearer. */
+  const wallOf = (x: number, z: number) =>
+    Math.abs(x) - innerWidth / 2 > Math.abs(z) - innerDepth / 2
+      ? x < 0 ? 'left' : 'right'
+      : z < 0 ? 'jail' : 'near';
+
+  test('the eight redesigned boards build their crests as data', () => {
+    note(`crests as data: ${built.join(', ')}`);
+    assertEqual(built.length, 8, 'a redesigned board has lost its crest data');
+  });
+
+  test('every crest piece stands on the wall, not in the tray or the scenery', () => {
+    for (const id of built) {
+      for (const [kind, list] of Object.entries(piecesOf(id))) {
+        for (const { p } of list) {
+          const [x, y, z] = p;
+          assert(
+            Math.abs(x) <= outerX + 0.5 && Math.abs(z) <= outerZ + 0.5,
+            `${id}'s ${kind} at (${x.toFixed(2)}, ${z.toFixed(2)}) is off the wall, out in the scenery`,
+          );
+          assert(
+            Math.abs(x) >= innerWidth / 2 - 0.5 || Math.abs(z) >= innerDepth / 2 - 0.5,
+            `${id}'s ${kind} at (${x.toFixed(2)}, ${z.toFixed(2)}) stands in the tray where the dice roll`,
+          );
+          assert(
+            y <= wallHeight + 1.2,
+            `${id}'s ${kind} is centred ${(y - wallHeight).toFixed(2)} above the wall — that is a tower, not a crest`,
+          );
+        }
+      }
+    }
+  });
+
+  test('every crest dresses all four walls, the long ones alike', () => {
+    for (const id of built) {
+      const counts: Record<string, number> = { left: 0, right: 0, jail: 0, near: 0 };
+      for (const list of Object.values(piecesOf(id))) {
+        for (const { p } of list) counts[wallOf(p[0], p[2])]++;
+      }
+      for (const [wall, n] of Object.entries(counts)) {
+        assert(n >= 8, `${id}'s crest puts only ${n} pieces on the ${wall} wall`);
+      }
+      // The two long walls are mirror images; so, nearly, are the ends —
+      // the jail end keeps low where prisoners stand, which may thin it.
+      const sides = Math.min(counts.left, counts.right) / Math.max(counts.left, counts.right);
+      const ends = Math.min(counts.jail, counts.near) / Math.max(counts.jail, counts.near);
+      note(`${id}: left ${counts.left}, right ${counts.right}, jail ${counts.jail}, near ${counts.near}`);
+      assert(sides >= 0.9, `${id}'s long walls are dressed unequally (${counts.left} against ${counts.right})`);
+      assert(ends >= 0.6, `${id}'s end walls are dressed unequally (${counts.jail} against ${counts.near})`);
+    }
+  });
+
+  test('nothing in the kits is the size of a landscape either', () => {
+    // The same blunt rule the renderer is held to above, for the file the
+    // eight boards' scenery moved into.
+    const source = readFileSync('src/arena/boardKits.tsx', 'utf8');
+    const limit = TUNING.tray.wallHeight * 2;
+    const offenders: string[] = [];
+    for (const m of source.matchAll(
+      /<(sphere|cone|cylinder|box|dodecahedron|torus|icosahedron)Geometry args=\{\[([\d.]+)/g,
+    )) {
+      if (Number(m[2]) > limit) offenders.push(`${m[1]}Geometry at ${m[2]}`);
+    }
+    assert(offenders.length === 0, `boardKits builds something the size of a landscape: ${offenders.join(', ')}`);
+    for (const id of built) {
+      for (const [kind, list] of Object.entries(piecesOf(id))) {
+        for (const { s } of list) {
+          const big = s ? Math.max(...s) : 1;
+          assert(
+            big <= innerDepth + wallThickness * 2 + 0.01,
+            `${id}'s ${kind} is scaled to ${big.toFixed(2)}, longer than the tray`,
+          );
+        }
+      }
     }
   });
 });
@@ -1182,12 +1294,22 @@ suite('arenas · the floor is not cut in half', () => {
       the city far below, a playmat on floorboards. Glow Glade's and
       Coral Reef's GROUNDS are unchanged — their numbers did not move,
       which is the check that the surround code was carried over intact.
+
+      Re-pinned 18 Oct 2026 for the board redesign, eight of them, each
+      looked at in the arena preview first: Snowy Hollow's sled tracks,
+      Desert Dunes' lopsided ripples and lit dunes, Volcano Rim's
+      hexagonal basalt with lava seams and its darker ground, Autumn
+      Woods' shadowed leaves (ovals only on the board), Frozen Lights'
+      cracked lake ice, Crystal Cavern's veins moving into the seams,
+      Sky Kingdom's gilded paving and fields below the clouds, and Moon
+      Base's side-lit craters, bootprints and rover tracks. Frozen
+      Lights' GROUND did not change — its number below is the old one.
     */
     const FINGERPRINT: Record<string, [number, number]> = {
-      snowFence: [156103442, 2798872402], adobe: [3332830248, 3217809634],
-      basalt: [2367338390, 812598676], logPile: [4280602225, 3677557592],
-      station: [3286370816, 3018566527], stalagmite: [180147778, 18287228],
-      battlement: [3236668260, 3814821791], airlock: [1806471617, 1375994754],
+      snowFence: [879933628, 1748098948], adobe: [2821043458, 3900606433],
+      basalt: [2690871555, 806594499], logPile: [1225568642, 4050140699],
+      iceBlocks: [1365271429, 3018566527], stalagmite: [4037918524, 2535224425],
+      cloudBalustrade: [3074522939, 2797275688], airlock: [3016314491, 823697198],
       driftwood: [2983235352, 4266106918], gingerbread: [1955536324, 1994353482],
       mossStone: [2989868690, 1696864712], shipHull: [1382161784, 3572424677],
       picket: [3035480390, 987699253], coralRim: [491381298, 2615557615],

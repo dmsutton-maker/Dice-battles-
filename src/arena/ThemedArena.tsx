@@ -1,5 +1,5 @@
 import { troughOf, WaterSurface } from './water';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
 import {
@@ -12,7 +12,7 @@ import {
   RETREAT_XS,
   RETREAT_Z,
 } from '../game/stations';
-import { createGroundSurface, createTraySurface } from './groundTexture';
+import { createGroundSurface, createTraySurface, surfaceExtras } from './groundTexture';
 import { cachedTexture } from './textureCache';
 import { ArenaStructure, ArenaTheme, PropPlacement, ThemedArenaId } from './themeData';
 import { ARENA_JAILS } from './jailKinds';
@@ -21,6 +21,30 @@ import { buildRim, RimSpot } from './rim';
 import { ArenaProps } from './arenaProps';
 import { Campfire, Crate, Duel, Signpost } from './sceneryProps';
 import { StoreBackdrop, StoreCorner, StoreCrest } from './storeBoards';
+import {
+  AdobeCorner,
+  AdobeCrest,
+  BasaltCorner,
+  BasaltCrest,
+  BOARD_KITS,
+  BoardScenery,
+  floorBreath,
+  IceCorner,
+  IceCrest,
+  IceShelter,
+  LogCorner,
+  LogCrest,
+  MoonCorner,
+  MoonCrest,
+  SkyCorner,
+  SkyCrest,
+  SkyShelter,
+  SnowCorner,
+  SnowCrest,
+  StalagmiteCorner,
+  StalagmiteCrest,
+  useBoardLive,
+} from './boardKits';
 
 /**
  * One renderer for all sixteen themed battlefields.
@@ -630,20 +654,9 @@ function RetreatShelter({ theme }: { theme: ArenaTheme }) {
           ))}
         </>
       );
-    case 'station':
-      // A floodlight on a bracket, pointing down at the ice.
-      return (
-        <>
-          <mesh position={[0, 1.42, 0.1]} rotation={[0.5, 0, 0]}>
-            <cylinderGeometry args={[0.34, 0.42, 0.4, 10]} />
-            <meshStandardMaterial color={r.post} roughness={0.4} metalness={0.55} />
-          </mesh>
-          <mesh position={[0, 1.28, 0.28]} rotation={[0.5, 0, 0]}>
-            <circleGeometry args={[0.36, 12]} />
-            <meshBasicMaterial color={r.canopy} />
-          </mesh>
-        </>
-      );
+    case 'iceBlocks':
+      // A block of ice with a light frozen inside it (boardKits.tsx).
+      return <IceShelter theme={theme} />;
     case 'stalagmite':
       // A crystal hung point-down, glowing.
       return (
@@ -657,14 +670,9 @@ function RetreatShelter({ theme }: { theme: ArenaTheme }) {
           />
         </mesh>
       );
-    case 'battlement':
-      // The parasol the other fifteen used to borrow. It belongs here.
-      return (
-        <mesh position={[0, 1.42, 0]}>
-          <coneGeometry args={[0.85, 0.5, 10]} />
-          <meshStandardMaterial color={r.canopy} roughness={0.7} />
-        </mesh>
-      );
+    case 'cloudBalustrade':
+      // A little cloud caught on the post, a gold ring through it.
+      return <SkyShelter theme={theme} />;
     case 'airlock':
       // A landing beacon: a ring light on a short mast.
       return (
@@ -965,314 +973,33 @@ const WALL_RUNS: [number, number, number, number][] = [
 function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
   const cap = theme.wall.cap;
   const accent = theme.tower.roof;
-  const y = wallHeight + 0.12;
 
   switch (theme.structure) {
-    /* ── ladder ──────────────────────────────────────────────────── */
+    /* ── ladder (and the two season-pass boards) ─────────────────── */
 
+    /*
+      These eight are built in boardKits.tsx since the October 2026 board
+      redesign, each from its own shape language and each with its
+      repeated pieces instanced. The cases stay here, one per board, so
+      this switch still shows at a glance that every structure has a
+      crest of its own.
+    */
     case 'snowFence':
-      /*
-        Timber palings, standing PROUD of the snow lying along the rail.
-
-        They used to top out at 0.40 above the wall and the drift of snow
-        was a slab from 0.355 to 0.485 across the full width of it — so
-        from the camera, which looks down, the fence was buried and every
-        wall of the Snowy Woods read as a blank white kerb. The posts had
-        been there the whole time. Nobody could see one.
-      */
-      return (
-        <group>
-          {WALL_RUNS.map(([x, z, w, d], i) => (
-            <group key={`rail-${i}`}>
-              <mesh position={[x, wallHeight + 0.22, z]}>
-                <boxGeometry args={[w, 0.09, d]} />
-                <meshStandardMaterial color={cap} roughness={0.95} />
-              </mesh>
-              {/*
-                The snow along the rail sits a step cooler than the
-                caps on the posts, so the posts read as posts and the
-                wall top stops matching the ground outside it (31 Aug
-                2026 skin review: "white-on-white-on-white").
-              */}
-              <mesh position={[x, wallHeight + 0.32, z]}>
-                <boxGeometry args={[w * 0.86, 0.11, d * 0.86]} />
-                <meshStandardMaterial color="#e6eef6" roughness={0.8} />
-              </mesh>
-            </group>
-          ))}
-          {rim.map((m, i) => {
-            const h = 0.62 + ((i * 37) % 5) / 20;
-            return (
-              <group key={`paling-${i}`} position={[m.pos[0], wallHeight, m.pos[2]]}>
-                <mesh position={[0, h / 2, 0]}>
-                  <boxGeometry args={[0.19, h, 0.19]} />
-                  <meshStandardMaterial
-                    color={i % 3 === 0 ? theme.wall.color : cap}
-                    roughness={0.95}
-                  />
-                </mesh>
-                {/* A cap of snow sitting on each post, not over it. */}
-                <mesh position={[0, h + 0.05, 0]}>
-                  <boxGeometry args={[0.23, 0.1, 0.23]} />
-                  <meshStandardMaterial color="#f7fafc" roughness={0.8} />
-                </mesh>
-              </group>
-            );
-          })}
-          {/*
-            A bank of drifted snow along the INSIDE base of every wall —
-            all four of them, walked through the same measured rim ring
-            as the palings so it cannot go half way round. It separates
-            wall from floor at the 17-degree camera: the 31 Aug 2026
-            skin review found white walls on a white floor dissolving
-            into one shape. Decoration only — the physics wall the dice
-            bounce off is untouched; a die that hugs the wall sinks its
-            bottom edge into soft snow, which is what snow does.
-          */}
-          {rim.map((m, i) => {
-            const s = 0.8 + ((i * 29) % 5) / 12;
-            const px = m.alongX ? m.pos[0] : Math.sign(m.pos[0]) * (innerWidth / 2);
-            const pz = m.alongX ? Math.sign(m.pos[2]) * (innerDepth / 2) : m.pos[2];
-            return (
-              <mesh
-                key={`drift-${i}`}
-                position={[px, 0.02, pz]}
-                scale={m.alongX ? [1.15 * s, 0.3 * s, 0.42] : [0.42, 0.3 * s, 1.15 * s]}
-              >
-                <sphereGeometry args={[0.34, 10, 7]} />
-                <meshStandardMaterial color="#f4f9fd" roughness={0.85} />
-              </mesh>
-            );
-          })}
-        </group>
-      );
-
+      return <SnowCrest theme={theme} rim={rim} />;
     case 'adobe':
-      // Sun-dried brick: fat rounded blocks, no two the same height.
-      return (
-        <group>
-          {rim.map((m, i) => {
-            const h = 0.3 + ((i * 29) % 7) / 22;
-            return (
-              <mesh key={`brick-${i}`} position={[m.pos[0], wallHeight + h / 2, m.pos[2]]}>
-                <boxGeometry args={m.alongX ? [0.62, h, 0.44] : [0.44, h, 0.62]} />
-                <meshStandardMaterial color={i % 3 === 0 ? theme.wall.color : cap} roughness={1} />
-              </mesh>
-            );
-          })}
-        </group>
-      );
-
+      return <AdobeCrest theme={theme} rim={rim} />;
     case 'basalt':
-      // Hexagonal columns, the way cooling lava actually splits.
-      return (
-        <group>
-          {rim.map((m, i) => {
-            const h = 0.34 + ((i * 41) % 9) / 16;
-            return (
-              <mesh
-                key={`column-${i}`}
-                position={[m.pos[0], wallHeight + h / 2, m.pos[2]]}
-                rotation={[0, i * 0.4, 0]}
-              >
-                <cylinderGeometry args={[0.28, 0.3, h, 6]} />
-                <meshStandardMaterial color={i % 4 === 0 ? accent : cap} roughness={0.95} />
-              </mesh>
-            );
-          })}
-        </group>
-      );
-
+      return <BasaltCrest theme={theme} rim={rim} />;
     case 'logPile':
-      // Cordwood stacked along the rim, cut ends showing.
-      return (
-        <group>
-          {rim.map((m, i) => (
-            <mesh
-              key={`log-${i}`}
-              position={[m.pos[0], wallHeight + 0.23, m.pos[2]]}
-              rotation={m.alongX ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0]}
-            >
-              <cylinderGeometry args={[0.24, 0.24, m.alongX ? 0.95 : 1, 8]} />
-              <meshStandardMaterial color={i % 2 === 0 ? cap : theme.wall.color} roughness={1} />
-            </mesh>
-          ))}
-        </group>
-      );
-
-    case 'station':
-      // A polar station: sealed panels with a strip light running round.
-      return (
-        <group>
-          {WALL_RUNS.map(([x, z, w, d], i) => (
-            <group key={`panel-${i}`}>
-              <mesh position={[x, wallHeight + 0.08, z]}>
-                <boxGeometry args={[w, 0.16, d]} />
-                <meshStandardMaterial color={cap} roughness={0.4} metalness={0.45} />
-              </mesh>
-              <mesh position={[x, wallHeight + 0.18, z]}>
-                <boxGeometry args={[w * 0.88, 0.05, d * 0.88]} />
-                <meshBasicMaterial color={accent} />
-              </mesh>
-            </group>
-          ))}
-          {rim.map((m, i) =>
-            i % 2 === 0 ? (
-              <mesh key={`rib-${i}`} position={[m.pos[0], wallHeight + 0.3, m.pos[2]]}>
-                <boxGeometry args={[0.16, 0.28, 0.16]} />
-                <meshStandardMaterial color={theme.wall.color} roughness={0.4} metalness={0.5} />
-              </mesh>
-            ) : null,
-          )}
-        </group>
-      );
-
-    case 'stalagmite': {
-      /*
-        Clusters, picked off the design canvas — Marc, 28 Aug 2026: "the
-        CrestCluster for the wall toppers."
-
-        Crystal does not grow one to a spot. It grows in CLUSTERS from a
-        common root: several six-sided prisms of different heights
-        splaying outward, tallest in the middle. That is the whole
-        difference between this and what stood here, which was a single
-        stubby prism per spot — from any distance, a row of studs.
-
-        Every rim spot carries one, so the wall is crystal the whole way
-        round rather than every second or third pillar with bare cap
-        between them. How many prisms, how tall, which colour and which
-        ones glow all come off the spot's own index, so no two
-        neighbours match and none of it is random at runtime.
-      */
-      // The cavern's own crystal colours, the same five its props use.
-      const GEM = ['#c98aff', '#a37ae8', '#dcaeff', '#7fd4e8', '#f0d68a'];
-      return (
-        <group>
-          {rim.map((m, i) => {
-            const blades = 3 + ((i * 7) % 3);
-            const mid = (blades - 1) / 2;
-            return (
-              <group
-                key={`cluster-${i}`}
-                position={[m.pos[0], wallHeight, m.pos[2]]}
-                rotation={[0, i * 1.7, 0]}
-              >
-                {Array.from({ length: blades }, (_, b) => {
-                  const k = i * 5 + b * 13;
-                  /*
-                    Tallest in the middle, shorter towards the edges —
-                    what makes a handful of prisms read as one cluster
-                    rather than as a scatter of separate spikes.
-                  */
-                  const fromMid = Math.abs(b - mid) / (mid + 0.5);
-                  const h = (0.34 + ((k * 31) % 13) / 26) * (1 - fromMid * 0.42);
-                  const r = 0.085 + ((k * 17) % 7) / 110;
-                  const gem = GEM[(i * 3 + b) % GEM.length];
-                  /*
-                    Most of a cluster is coloured crystal and the rest is
-                    clear quartz — NOT the wall's own cap stone, which
-                    was the first thing tried. Cap is a dark violet a
-                    shade off the wall itself, so four prisms in five
-                    came out as dark studs sitting on a dark wall and the
-                    whole ring read as gravel from above.
-                  */
-                  const lit = (k * 11) % 5 < 4;
-                  const color = lit ? gem : '#b7a8d6';
-                  return (
-                    <group
-                      key={b}
-                      position={[(b - mid) * 0.085, 0, (((k * 23) % 5) - 2) * 0.022]}
-                      rotation={[0, b * 1.1, (b - mid) * 0.26]}
-                    >
-                      {/* The shaft: a six-sided prism, tapering upward. */}
-                      <mesh position={[0, h * 0.42, 0]}>
-                        <cylinderGeometry args={[r * 0.86, r, h * 0.84, 6]} />
-                        <meshStandardMaterial
-                          color={color}
-                          emissive={lit ? gem : '#000000'}
-                          emissiveIntensity={lit ? 0.34 : 0}
-                          roughness={0.3}
-                          metalness={0.1}
-                        />
-                      </mesh>
-                      {/* And the point: six facets meeting at the tip. */}
-                      <mesh position={[0, h * 0.94, 0]}>
-                        <coneGeometry args={[r * 0.86, h * 0.34, 6]} />
-                        <meshStandardMaterial
-                          color={color}
-                          emissive={lit ? gem : '#000000'}
-                          emissiveIntensity={lit ? 0.34 : 0}
-                          roughness={0.25}
-                          metalness={0.1}
-                        />
-                      </mesh>
-                    </group>
-                  );
-                })}
-              </group>
-            );
-          })}
-        </group>
-      );
-    }
-
-    case 'battlement':
-      // Notched stone teeth, each capped in gold. The Sky Kingdom is a
-      // kingdom, and the crown running the whole rim is what says so —
-      // pale merlons alone vanished into the pale floor behind them.
-      return (
-        <group>
-          {rim.map((m, i) => (
-            <group key={`merlon-${i}`}>
-              <mesh position={[m.pos[0], y, m.pos[2]]}>
-                <boxGeometry args={m.alongX ? [0.45, 0.24, wallThickness] : [wallThickness, 0.24, 0.5]} />
-                <meshStandardMaterial color={cap} roughness={0.85} />
-              </mesh>
-              {/* A gold boss centred on the tooth, not a gold lid over
-                  it — the camera is near top-down, so a full-width trim
-                  turned the entire ring solid yellow. */}
-              <mesh position={[m.pos[0], y + 0.15, m.pos[2]]}>
-                <boxGeometry args={m.alongX ? [0.26, 0.07, wallThickness * 0.5] : [wallThickness * 0.5, 0.07, 0.28]} />
-                <meshStandardMaterial color={accent} roughness={0.4} metalness={0.2} />
-              </mesh>
-            </group>
-          ))}
-        </group>
-      );
-
+      return <LogCrest theme={theme} rim={rim} />;
+    case 'iceBlocks':
+      return <IceCrest theme={theme} rim={rim} />;
+    case 'stalagmite':
+      return <StalagmiteCrest theme={theme} rim={rim} />;
+    case 'cloudBalustrade':
+      return <SkyCrest theme={theme} rim={rim} />;
     case 'airlock':
-      // Ribbed hull plating with a hazard stripe along the seam.
-      return (
-        <group>
-          {WALL_RUNS.map(([x, z, w, d], i) => (
-            <group key={`plate-${i}`}>
-              <mesh position={[x, wallHeight + 0.07, z]}>
-                <boxGeometry args={[w, 0.14, d]} />
-                <meshStandardMaterial color={cap} roughness={0.35} metalness={0.6} />
-              </mesh>
-              {/*
-                Narrow ACROSS the wall, full length ALONG it. Scaling
-                both axes by 0.6 shortened the hazard stripe as well as
-                narrowing it, so every wall had a bare grey gap at each
-                end and the rim never closed — the same "the decoration
-                doesn't go all the way round" fault reported before.
-                WALL_RUNS is [left, right, near, far], so 0 and 1 run
-                along d and the other two along w.
-              */}
-              <mesh position={[x, wallHeight + 0.15, z]}>
-                <boxGeometry args={[i < 2 ? w * 0.6 : w, 0.04, i < 2 ? d : d * 0.6]} />
-                <meshBasicMaterial color={accent} />
-              </mesh>
-            </group>
-          ))}
-          {rim.map((m, i) => (
-            <mesh key={`rib-${i}`} position={[m.pos[0], wallHeight + 0.24, m.pos[2]]}>
-              <boxGeometry args={m.alongX ? [0.12, 0.22, wallThickness * 0.9] : [wallThickness * 0.9, 0.22, 0.12]} />
-              <meshStandardMaterial color={theme.wall.color} roughness={0.3} metalness={0.7} />
-            </mesh>
-          ))}
-        </group>
-      );
+      return <MoonCrest theme={theme} rim={rim} />;
 
     /* ── store ───────────────────────────────────────────────────── */
 
@@ -1310,120 +1037,23 @@ function ThemedCorners({
 
   const piece = (s: ArenaStructure) => {
     switch (s) {
+      // The eight redesigned boards: boardKits.tsx, one corner each.
       case 'snowFence':
-        // A gatepost under a hat of snow.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 1) / 2, 0]}>
-              <boxGeometry args={[0.42, wallHeight + 1, 0.42]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.06, 0]} scale={[1, 0.6, 1]}>
-              <sphereGeometry args={[0.34, 10, 8]} />
-              <meshStandardMaterial color="#f7fafc" roughness={0.8} />
-            </mesh>
-          </>
-        );
+        return <SnowCorner theme={theme} wallMaterial={wallMaterial} />;
       case 'adobe':
-        // A stepped mud-brick pier, three courses narrowing upward.
-        return (
-          <>
-            {([0.9, 0.62, 0.4] as const).map((w, k) => (
-              <mesh key={k} position={[0, wallHeight * 0.4 + k * 0.5, 0]}>
-                <boxGeometry args={[w, 0.5, w]} />
-                <meshStandardMaterial color={k === 2 ? roof : cap} roughness={1} />
-              </mesh>
-            ))}
-          </>
-        );
+        return <AdobeCorner theme={theme} wallMaterial={wallMaterial} />;
       case 'basalt':
-        // An obsidian spire out of a bundle of columns.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.6) / 2, 0]}>
-              <cylinderGeometry args={[0.44, 0.5, wallHeight + 0.6, 6]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.15, 0]}>
-              <coneGeometry args={[0.34, 1.4, 6]} />
-              <meshStandardMaterial color={roof} emissive={roof} emissiveIntensity={0.35} roughness={0.4} />
-            </mesh>
-          </>
-        );
+        return <BasaltCorner theme={theme} wallMaterial={wallMaterial} />;
       case 'logPile':
-        // A sawn stump with the axe-cut face showing.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.3) / 2, 0]}>
-              <cylinderGeometry args={[0.52, 0.6, wallHeight + 0.3, 10]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 0.33, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[0.52, 12]} />
-              <meshStandardMaterial color={roof} roughness={1} />
-            </mesh>
-          </>
-        );
-      case 'station':
-        // A mast with an anemometer cup head.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 1.8) / 2, 0]}>
-              <cylinderGeometry args={[0.08, 0.13, wallHeight + 1.8, 8]} />
-            </mesh>
-            {([0, 1, 2] as const).map((k) => (
-              <mesh
-                key={k}
-                position={[
-                  Math.cos((k * Math.PI * 2) / 3) * 0.3,
-                  wallHeight + 1.82,
-                  Math.sin((k * Math.PI * 2) / 3) * 0.3,
-                ]}
-              >
-                <sphereGeometry args={[0.11, 8, 6]} />
-                <meshBasicMaterial color={roof} />
-              </mesh>
-            ))}
-          </>
-        );
+        return <LogCorner theme={theme} wallMaterial={wallMaterial} />;
+      case 'iceBlocks':
+        return <IceCorner theme={theme} wallMaterial={wallMaterial} />;
       case 'stalagmite':
-        // A cluster of crystals growing out of the corner.
-        return (
-          <>
-            {([[0, 1.7, 0.26], [0.3, 1.1, 0.2], [-0.28, 1.3, 0.22]] as const).map(([ox, h, r], k) => (
-              <mesh key={k} position={[ox, h / 2, ox * 0.5]} rotation={[0, k, ox * 0.4]}>
-                <coneGeometry args={[r, h, 5]} />
-                <meshStandardMaterial color={roof} emissive={roof} emissiveIntensity={0.5} roughness={0.3} />
-              </mesh>
-            ))}
-          </>
-        );
-      case 'battlement':
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, wallHeight / 2 + 0.2, 0]}>
-              <cylinderGeometry args={[0.5, 0.56, wallHeight + 0.4, 12]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 0.72, 0]}>
-              <coneGeometry args={[0.6, 0.8, 12]} />
-              <meshStandardMaterial color={roof} roughness={0.6} />
-            </mesh>
-          </>
-        );
+        return <StalagmiteCorner theme={theme} wallMaterial={wallMaterial} />;
+      case 'cloudBalustrade':
+        return <SkyCorner theme={theme} wallMaterial={wallMaterial} />;
       case 'airlock':
-        // A dish antenna on a short stanchion.
-        return (
-          <>
-            <mesh material={wallMaterial} position={[0, (wallHeight + 0.9) / 2, 0]}>
-              <cylinderGeometry args={[0.22, 0.3, wallHeight + 0.9, 8]} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.15, 0]} rotation={[-0.7, 0, 0]}>
-              <sphereGeometry args={[0.42, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2.4]} />
-              <meshStandardMaterial color="#e9ecf5" roughness={0.4} metalness={0.4} side={THREE.DoubleSide} />
-            </mesh>
-            <mesh position={[0, wallHeight + 1.34, 0.18]}>
-              <sphereGeometry args={[0.09, 8, 6]} />
-              <meshBasicMaterial color={roof} />
-            </mesh>
-          </>
-        );
+        return <MoonCorner theme={theme} wallMaterial={wallMaterial} />;
       // The store boards' corners live with their walls, in storeBoards.tsx.
       case 'driftwood':
       case 'gingerbread':
@@ -1513,12 +1143,34 @@ export function ThemedArena({
 
   const rim = useMemo(() => buildRim(), []);
 
+  /*
+    Relief and glow, for the surfaces that paint them (groundTexture.ts,
+    SIDE): a bump map the key light rakes, and an emissive map for lava,
+    crystal and aurora that shines whatever the rig. Null everywhere
+    else, so the other boards draw exactly as before.
+  */
+  const kit = BOARD_KITS[theme.structure];
+  const floorExtras = surfaceExtras(floorTexture);
+  const groundExtras = surfaceExtras(groundTexture);
+  const floorRef = useRef<THREE.Mesh>(null);
+  const groundRef = useRef<THREE.Mesh>(null);
+  const breath = useMemo(() => floorBreath(theme.structure), [theme.structure]);
+  useBoardLive(floorRef, floorExtras.glow ? breath : undefined);
+  useBoardLive(groundRef, groundExtras.glow ? breath : undefined);
+
   return (
     <group>
       {/* Tray floor */}
-      <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={floorRef} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[innerWidth + wallThickness * 2, innerDepth + wallThickness * 2]} />
-        <meshStandardMaterial map={floorTexture} roughness={0.95} />
+        <meshStandardMaterial
+          map={floorTexture}
+          roughness={0.95}
+          bumpMap={floorExtras.bump}
+          bumpScale={kit?.relief ?? 1}
+          emissiveMap={floorExtras.glow}
+          emissive={floorExtras.glow ? '#ffffff' : '#000000'}
+        />
       </mesh>
 
       {/*
@@ -1536,9 +1188,16 @@ export function ThemedArena({
         What replaces them is a textured ground and a bank at the very
         back — both of which ARE in frame.
       */}
-      <mesh position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={groundRef} position={[0, -0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[GROUND_SPAN, GROUND_SPAN]} />
-        <meshStandardMaterial map={groundTexture} roughness={1} />
+        <meshStandardMaterial
+          map={groundTexture}
+          roughness={1}
+          bumpMap={groundExtras.bump}
+          bumpScale={kit?.relief ?? 1}
+          emissiveMap={groundExtras.glow}
+          emissive={groundExtras.glow ? '#ffffff' : '#000000'}
+        />
       </mesh>
 
       {/*
@@ -1581,6 +1240,9 @@ export function ThemedArena({
       {theme.props.map((p, i) => (
         <Prop key={`prop-${i}`} p={p} />
       ))}
+
+      {/* The far haze and the idle life, for the boards that have them. */}
+      <BoardScenery theme={theme} />
 
       {/* Walls */}
       <mesh material={wallMaterial} position={[-(halfW + wallThickness / 2), wallHeight / 2, 0]}>
