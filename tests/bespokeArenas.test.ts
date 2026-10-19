@@ -101,8 +101,8 @@ suite('bespoke arenas · the sunset castle is a ruin, not the castle in orange',
       assert(spot === 2 || spot === 3, `a silhouette at (${t.x}, ${t.z}) is not on a far prop spot`);
     }
     const source = readFileSync('src/arena/CastleArena.tsx', 'utf8');
-    assert(/\{!dusk && <group key="s2"/.test(source), 'the day campfire is still drawn inside a dusk tower');
-    assert(/\{!dusk && <group key="s3"/.test(source), 'the day crate is still drawn inside a dusk tower');
+    assert(/\{!dusk && <group key="s2"/.test(source), 'the day prop on the far-left spot is still drawn inside a dusk tower');
+    assert(/\{!dusk && <group key="s3"/.test(source), 'the day prop on the far-right spot is still drawn inside a dusk tower');
   });
 
   test('the two castles draw different walls', () => {

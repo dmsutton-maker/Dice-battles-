@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { useSceneryTick } from './sceneryClock';
 
 /**
  * Scenery that more than one arena wants.
@@ -67,33 +69,72 @@ export const EXTRA_SPOTS: readonly (readonly [number, number])[] = [
  * built differently would read as a second kind of person in a game that
  * has exactly one.
  *
- * POSED, NOT ANIMATED, and that is a decision rather than laziness.
- * Motion in the corner of the screen competes with the dice, which are
- * the thing the player is watching and the only thing on the board
- * allowed to move quickly.
+ * ANIMATED since 19 Oct 2026. They were posed still, on the grounds that
+ * motion in the corner competes with the dice; David then asked for it
+ * outright: "Animate the guys fighting around castle courtyard." So
+ * they fight. The pair circle each other slowly, and take turns: one
+ * lunges in with a swing, the other rocks back and parries, the blades
+ * cross and part, then it goes the other way. Everything is movement
+ * SEEN FROM ABOVE — footwork across the ground and blades swinging in
+ * the ground plane — for the same reason the blades were laid flat in
+ * the first place. The tick writes numbers into groups built once (see
+ * sceneryClock.ts) and allocates nothing.
  *
  * `color` tints one fighter; the other takes a fixed cool slate so the
  * pair reads as two people rather than as one object with a blur.
+ * `seed` starts each fight at its own moment, so two on one board are
+ * not in step.
  */
-export function Duel({ color = '#c23b3b' }: { color?: string }) {
-  const Fighter = ({ x, tunic, lean }: { x: number; tunic: string; lean: number }) => (
-    <group position={[x, 0, 0]}>
-      <group rotation={[0, 0, lean]}>
-        <mesh position={[0, 0.24, 0]}>
-          <capsuleGeometry args={[0.12, 0.26, 4, 8]} />
-          <meshStandardMaterial color={tunic} roughness={0.75} />
-        </mesh>
-        <mesh position={[0, 0.5, 0]}>
-          <sphereGeometry args={[0.12, 10, 8]} />
-          <meshStandardMaterial color="#f0d2b4" roughness={0.8} />
-        </mesh>
-      </group>
-    </group>
+export function Duel({ color = '#c23b3b', seed = 0 }: { color?: string; seed?: number }) {
+  const ring = useRef<THREE.Group | null>(null);
+  const left = useRef<THREE.Group | null>(null);
+  const right = useRef<THREE.Group | null>(null);
+  const bladeL = useRef<THREE.Group | null>(null);
+  const bladeR = useRef<THREE.Group | null>(null);
+  const tick = useMemo(
+    () => (seconds: number) => {
+      const t = seconds + seed * 1.7;
+      // The whole fight turns, so "around" is literal: a full circle
+      // every twenty seconds or so, slow enough to be footwork.
+      if (ring.current) ring.current.rotation.y = t * 0.3 + seed;
+      // One exchange every two and a half seconds. `bout` runs -1..1:
+      // positive is the left fighter pressing in, negative the right.
+      const bout = Math.sin(t * 2.5);
+      // A press is sharper than a sine: hold, then step. Cubing keeps
+      // the sign and the range and squashes the middle.
+      const press = bout * bout * bout;
+      const l = left.current;
+      const r = right.current;
+      if (l) {
+        l.position.x = -0.36 + Math.max(0, press) * 0.2 - Math.max(0, -press) * 0.08;
+        l.rotation.z = 0.16 + press * 0.14;
+        l.position.y = Math.max(0, press) * 0.03;
+      }
+      if (r) {
+        r.position.x = 0.36 - Math.max(0, -press) * 0.2 + Math.max(0, press) * 0.08;
+        r.rotation.z = -0.16 + press * 0.14;
+        r.position.y = Math.max(0, -press) * 0.03;
+      }
+      // The blades: each swings about its hand (the mesh is offset so
+      // the hilt end sits at the pivot), and they meet when `bout` peaks
+      // either way. The attacker's blade comes across the middle; the
+      // defender's comes up to it. In between they open out again.
+      const swingL = 0.62 + press * 0.55 + Math.sin(t * 5) * 0.08;
+      const swingR = -0.62 - press * 0.55 + Math.sin(t * 5 + 1.3) * 0.08;
+      if (bladeL.current) bladeL.current.rotation.y = swingL;
+      if (bladeR.current) bladeR.current.rotation.y = swingR;
+    },
+    [seed],
   );
+  useSceneryTick(tick);
   return (
-    <group>
-      <Fighter x={-0.36} tunic={color} lean={0.16} />
-      <Fighter x={0.36} tunic="#4a5570" lean={-0.16} />
+    <group ref={ring}>
+      <group ref={left} position={[-0.36, 0, 0]} rotation={[0, 0, 0.16]}>
+        <Fighter tunic={color} />
+      </group>
+      <group ref={right} position={[0.36, 0, 0]} rotation={[0, 0, -0.16]}>
+        <Fighter tunic="#4a5570" />
+      </group>
       {/*
         The two blades, crossing in the GROUND plane rather than the
         upright one.
@@ -107,21 +148,44 @@ export function Duel({ color = '#c23b3b' }: { color?: string }) {
         that is long in Y into one that is long in X; the Y rotation then
         swings each one out to its own diagonal, and the small X tilt
         lifts the far end so they still look held rather than dropped.
+
+        Each blade pivots at its holder's side (the box is shifted along
+        its own length so the hilt sits at the group origin), so the
+        swing the tick writes into rotation.y reads as a sword swung from
+        the hand, not a bar spinning about its middle.
       */}
-      {([1, -1] as const).map((dir) => (
-        <mesh
-          key={dir}
-          position={[0, 0.46, dir * 0.04]}
-          rotation={[0.18, dir * 0.62, Math.PI / 2]}
-        >
+      <group ref={bladeL} position={[-0.2, 0.46, 0.04]} rotation={[0.18, 0.62, 0]}>
+        <mesh position={[0.3, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <boxGeometry args={[0.05, 0.66, 0.05]} />
           <meshStandardMaterial color="#dce2ea" roughness={0.3} metalness={0.55} />
         </mesh>
-      ))}
+      </group>
+      <group ref={bladeR} position={[0.2, 0.46, -0.04]} rotation={[0.18, -0.62, 0]}>
+        <mesh position={[-0.3, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <boxGeometry args={[0.05, 0.66, 0.05]} />
+          <meshStandardMaterial color="#dce2ea" roughness={0.3} metalness={0.55} />
+        </mesh>
+      </group>
       {/* A shield laid at the near fighter's feet, to break the symmetry. */}
       <mesh position={[-0.52, 0.04, 0.24]} rotation={[0, 0.4, 0]}>
         <boxGeometry args={[0.24, 0.06, 0.3]} />
         <meshStandardMaterial color="#8a5a34" roughness={0.85} />
+      </mesh>
+    </group>
+  );
+}
+
+/** One fighter, built like a prisoner: capsule body, ball head. */
+function Fighter({ tunic }: { tunic: string }) {
+  return (
+    <group>
+      <mesh position={[0, 0.24, 0]}>
+        <capsuleGeometry args={[0.12, 0.26, 4, 8]} />
+        <meshStandardMaterial color={tunic} roughness={0.75} />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <sphereGeometry args={[0.12, 10, 8]} />
+        <meshStandardMaterial color="#f0d2b4" roughness={0.8} />
       </mesh>
     </group>
   );

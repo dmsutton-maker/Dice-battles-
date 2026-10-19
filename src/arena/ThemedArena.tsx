@@ -654,7 +654,7 @@ function Prop({ p }: { p: PropPlacement }) {
       case 'pebbles': return <Pebbles color={p.color} />;
       case 'torch': return <Torch color={p.color} />;
       case 'banner': return <Banner color={p.color} />;
-      case 'duel': return <Duel color={p.color} />;
+      case 'duel': return <Duel color={p.color} seed={p.x * 13 + p.z * 7} />;
       case 'crate': return <Crate color={p.color} />;
       case 'signpost': return <Signpost color={p.color} />;
       case 'campfire': return <Campfire color={p.color} />;

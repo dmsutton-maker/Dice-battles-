@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.129.0 — 2026-10-19 · requested by David
+
+### Added
+- **The fighters fight.** David: "Animate the guys fighting around
+  castle courtyard." The two pairs of sword fighters outside the castle
+  were posed still; now they circle each other slowly and take turns —
+  one steps in with a swing, the other rocks back and parries, the
+  blades cross and part, then it goes the other way. The fight is the
+  same little figures on every board that has one: both castles, the
+  jungle and the themed battlefields. All the movement is across the
+  ground and in the swing of the blades, so it reads from the game's
+  near-overhead camera.
+
+### Changed
+- **The fights moved into the open.** The day castle's corner tower
+  roofs, the dusk castle's broken stumps and the jungle's big tree each
+  hid half of a fight from the camera, which did not matter much while
+  the fighters held still. The day castle's fights now stand beside the
+  gatehouse (the campfire and crate take their old corners), the dusk
+  castle's on open sand between the stump and the fallen tower, and the
+  jungle's at the far-left corner, with the crate under the tree.
+
 ## v1.128.1 — 2026-10-19 · requested by David
 
 ### Fixed

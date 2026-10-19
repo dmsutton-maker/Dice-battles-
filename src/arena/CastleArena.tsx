@@ -20,6 +20,17 @@ import { DuskSurroundings, RuinWalls } from './ruinParts';
 import { cachedTexture } from './textureCache';
 import { ArenaProps } from './arenaProps';
 import { Campfire, Crate, Duel, Signpost, EXTRA_SPOTS } from './sceneryProps';
+
+/**
+ * Where the two fights stand, by day and at dusk; see the note at their
+ * mount. Both pairs sit a little inside the shared far spots: a fight
+ * circles about 0.6 around its spot, and from the far spots that swing
+ * takes a head over the edge of an iPhone 15's frame.
+ */
+const DAY_DUEL_X = 3.55;
+const DAY_DUEL_Z = -9.0;
+const DUSK_DUEL_X = 3.6;
+const DUSK_DUEL_Z = -8.2;
 import { ARENA_JAILS } from './jailKinds';
 import { Jail } from './jails';
 
@@ -282,10 +293,34 @@ export function CastleArena({
         are dressed. At dusk the two far ones hold the fallen towers
         (DUSK_SILHOUETTES in ruin.ts) and the four side ones are dressed.
       */}
-      <group key="s0" position={[EXTRA_SPOTS[0][0], 0, EXTRA_SPOTS[0][1]]} scale={1}><Duel color="#c23b3b" /></group>
-      <group key="s1" position={[EXTRA_SPOTS[1][0], 0, EXTRA_SPOTS[1][1]]} scale={0.95}><Duel color="#3f7fd0" /></group>
-      {!dusk && <group key="s2" position={[EXTRA_SPOTS[2][0], 0, EXTRA_SPOTS[2][1]]} scale={0.9}><Campfire /></group>}
-      {!dusk && <group key="s3" position={[EXTRA_SPOTS[3][0], 0, EXTRA_SPOTS[3][1]]} scale={0.9}><Crate color="#8a5a34" /></group>}
+      {/*
+        By day the fights go beside the gatehouse, just inside the far
+        pair of spots, and the campfire and crate under the corner towers. It was the other
+        way round until the fighters started moving (19 Oct 2026): the
+        coral roofs of the two corner towers cover most of the near pair
+        from this camera, which hid half of each fight, and a campfire
+        half under a roof is nothing anyone looks for. At dusk the far
+        pair hold the fallen towers, the corner towers are stumps with no
+        roof, and the fights go back toward the near pair — but not onto
+        it. The far stumps stand eight courses high, and from this camera
+        their broken tops lean out over the ground at (±3.85, -7), so a
+        fight placed exactly on the spot was two heads behind a wall. A
+        little further back and a little further in, it stands on open
+        sand between the stump and the fallen tower.
+      */}
+      {dusk ? (
+        <>
+          <group key="s0" position={[-DUSK_DUEL_X, 0, DUSK_DUEL_Z]} scale={1}><Duel color="#c23b3b" seed={1} /></group>
+          <group key="s1" position={[DUSK_DUEL_X, 0, DUSK_DUEL_Z]} scale={0.95}><Duel color="#3f7fd0" seed={2} /></group>
+        </>
+      ) : (
+        <>
+          <group key="s0" position={[EXTRA_SPOTS[0][0], 0, EXTRA_SPOTS[0][1]]} scale={0.9}><Campfire /></group>
+          <group key="s1" position={[EXTRA_SPOTS[1][0], 0, EXTRA_SPOTS[1][1]]} scale={0.9}><Crate color="#8a5a34" /></group>
+        </>
+      )}
+      {!dusk && <group key="s2" position={[-DAY_DUEL_X, 0, DAY_DUEL_Z]} scale={1}><Duel color="#c23b3b" seed={1} /></group>}
+      {!dusk && <group key="s3" position={[DAY_DUEL_X, 0, DAY_DUEL_Z]} scale={0.95}><Duel color="#3f7fd0" seed={2} /></group>}
       {dusk && (
         <>
           <group key="s4" position={[EXTRA_SPOTS[4][0], 0, EXTRA_SPOTS[4][1]]} scale={0.85}><Campfire /></group>

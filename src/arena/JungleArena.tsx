@@ -319,9 +319,19 @@ export function JungleArena({ padColors }: ArenaProps) {
         perfectly hidden behind a platform standing 1.15 high between it
         and the camera, which is exactly what the first attempt did.
       */}
-      <group key="s0" position={[EXTRA_SPOTS[0][0], 0, EXTRA_SPOTS[0][1]]} scale={1}><Duel color="#c9a03d" /></group>
+      {/*
+        The fight takes the far-left corner and the crate the near-left
+        spot, swapped on 19 Oct 2026 when the fighters started moving: the
+        big tree at the near-left corner hides most of that spot from
+        this camera, and a fight nobody can see is not worth animating.
+        A crate half under a tree is just a crate under a tree. The fight
+        sits a little inside the shared far spot, because it circles
+        about 0.6 around its centre and from the spot itself that swing
+        takes a head over the edge of an iPhone 15's frame.
+      */}
+      <group key="s0" position={[EXTRA_SPOTS[0][0], 0, EXTRA_SPOTS[0][1]]} scale={0.9}><Crate color="#6e4a28" /></group>
       <group key="s1" position={[EXTRA_SPOTS[1][0], 0, EXTRA_SPOTS[1][1]]} scale={0.95}><Signpost color="#6e4a28" /></group>
-      <group key="s2" position={[EXTRA_SPOTS[2][0], 0, EXTRA_SPOTS[2][1]]} scale={0.9}><Crate color="#6e4a28" /></group>
+      <group key="s2" position={[-3.55, 0, -9.0]} scale={1}><Duel color="#c9a03d" seed={3} /></group>
       <group key="s3" position={[EXTRA_SPOTS[3][0], 0, EXTRA_SPOTS[3][1]]} scale={0.9}><Campfire /></group>
       <group key="s4" position={[EXTRA_SPOTS[4][0], 0, EXTRA_SPOTS[4][1]]} scale={0.85}><Signpost color="#6e4a28" /></group>
       <group key="s5" position={[EXTRA_SPOTS[5][0], 0, EXTRA_SPOTS[5][1]]} scale={0.85}><Crate color="#6e4a28" /></group>
