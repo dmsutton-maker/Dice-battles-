@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.123.1 — 2026-10-19 · requested by David
+
+### Fixed
+- **The News tab catches up.** v1.123.0 went out with the suite's "the
+  News tab is 4 minor versions behind the game" check failing, because
+  the release command read the test result through a filter that
+  swallowed its exit code. Nothing in the game was wrong; the gate is
+  on the News content. This adds the post for the Cookie, Football and
+  Volleyball redraws, and the release command now stops on a failing
+  suite.
+
 ## v1.123.0 — 2026-10-19 · requested by David
 
 ### Changed

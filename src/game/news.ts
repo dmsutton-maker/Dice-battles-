@@ -90,6 +90,19 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-123-0-three-more-dice',
+    date: '19 October 2026',
+    version: 'v1.123.0',
+    title: 'Cookie, Football and Volleyball, redrawn',
+    icon: 'dice',
+    body:
+      'The Cookie is a regular classic chocolate-chip cookie now, warm ' +
+      'tan dough with chocolate morsels sunk into it. The Football is ' +
+      'cleaner: chestnut hide, one white lace, two thin stripes. The ' +
+      'Volleyball is white with blue and yellow panels curving across ' +
+      'each side, instead of a quilt of stripes.',
+  },
+  {
     id: 'v1-119-0-dice-redrawn',
     date: '19 October 2026',
     version: 'v1.119.0',
