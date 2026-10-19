@@ -991,15 +991,81 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
   },
 
   cookie: (x, y) => {
-    const cell = 13;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + offset) / cell);
-    const h = hashCell(col, row);
-    const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 5;
-    const cy = (y % cell) - cell / 2 + (hashCell(col + 3, row) - 0.5) * 5;
-    if (Math.hypot(cx, cy) < 1.9 + h * 1.4) return 0.95;
-    return (wrappedNoise(x, y, 8) - 0.5) * 0.14;
+    /*
+      A chocolate-chip cookie, redrawn 19 Oct 2026 — David: "make the
+      cookie dice look better." It was a flat tan with round dark dots
+      on an even grid, which rendered as leopard print.
+
+      Baked, now. The dough is mottled golden with toasted patches, a
+      few crackle lines where it split in the oven, and sugar glinting
+      here and there. The chips are irregular chunks of different sizes
+      — a chip is never a circle — each with a gloss on its upper-left
+      shoulder and a darker ring of dough melted round it. Everything
+      is laid out on a lattice that wraps at the tile, so the sides of
+      the die meet without a seam.
+
+      Still a mask: positive is the ink (dark chocolate), negative is
+      toward white. Toasted dough is a little ink, a sugar crystal is a
+      little white, and that is all a cookie needs.
+    */
+    // Dough: two scales of mottle, and toasted patches where the big one peaks.
+    const big = wrappedNoise(x + 7, y + 3, 16);
+    const fine = wrappedNoise(x * 1.7 + 21, y * 1.7 + 9, 8);
+    let m = (big - 0.5) * 0.26 + (fine - 0.5) * 0.1;
+    m += smoothstep(0.62, 0.8, big) * 0.22;
+    // Crackle: thin iso-lines of a slow noise, only in some places.
+    const crack = Math.abs(wrappedNoise(x + 40, y + 50, 32) - 0.5);
+    const where = wrappedNoise(x * 0.5 + 3, y * 0.5 + 60, 32);
+    m += smoothstep(0.014, 0.004, crack) * smoothstep(0.45, 0.6, where) * 0.3;
+    // Sugar: a rare bright speck.
+    if (hashCell(Math.floor(x), Math.floor(y)) > 0.972) m -= 0.3;
+
+    // Chips on a 16-unit lattice, two tries per cell, most kept. The
+    // lattice wraps at the tile, and the three-by-three neighbourhood
+    // is searched so a chip straddling the edge carries on round.
+    const CELL = 16;
+    const N = SIZE / CELL;
+    const cx0 = Math.floor(x / CELL);
+    const cy0 = Math.floor(y / CELL);
+    let best = 0;
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        const gx = cx0 + ox;
+        const gy = cy0 + oy;
+        const wx = ((gx % N) + N) % N;
+        const wy = ((gy % N) + N) % N;
+        // One chip per cell, always; a second, smaller one only when it
+        // lands well clear of the first — two chips touching read as one
+        // ragged splat, which is what the first pass of this looked like.
+        const p1x = 3 + hashCell(wx * 4, wy * 4 + 2) * (CELL - 6);
+        const p1y = 3 + hashCell(wx * 4, wy * 4 + 3) * (CELL - 6);
+        for (let k = 0; k < 2; k++) {
+          const h = k === 0 ? 0.55 + hashCell(wx * 4, wy * 4 + 1) * 0.45 : hashCell(wx * 4 + 1, wy * 4 + 1) * 0.6;
+          const lx = k === 0 ? p1x : 2 + hashCell(wx * 4 + 1, wy * 4 + 2) * (CELL - 4);
+          const ly = k === 0 ? p1y : 2 + hashCell(wx * 4 + 1, wy * 4 + 3) * (CELL - 4);
+          if (k === 1 && (h < 0.25 || Math.hypot(lx - p1x, ly - p1y) < 8.5)) continue;
+          const px = gx * CELL + lx;
+          const py = gy * CELL + ly;
+          const dx = x - px;
+          const dy = y - py;
+          const d = Math.hypot(dx, dy);
+          if (d > 6) continue;
+          // An irregular chunk: the radius wobbles round the chip.
+          const R = 1.9 + h * 1.7;
+          const a = Math.atan2(dy, dx);
+          const r = R * (1 + 0.22 * Math.sin(3 * a + h * 9) + 0.14 * Math.sin(5 * a + h * 23));
+          if (d < r) {
+            // Gloss on the upper-left shoulder, where the light is.
+            const gloss = Math.hypot(dx + r * 0.38, dy + r * 0.38) < r * 0.3 ? 0.6 : 0.95;
+            best = Math.max(best, gloss);
+          } else if (d < r + 1.8) {
+            // The dough darkens where the chip melted into it.
+            best = Math.max(best, 0.16 * smoothstep(r + 1.8, r, d));
+          }
+        }
+      }
+    }
+    return best > 0.5 ? best : m + best;
   },
 
   /** Candy cane: wide, soft-edged diagonal stripes. */

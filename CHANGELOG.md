@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.117.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Cookie dice are a baked chocolate-chip cookie.** David: "make
+  the cookie dice look better." It was a flat tan with round dark dots
+  on an even grid, which rendered as leopard print. Now the dough is
+  mottled golden with toasted patches, crackle lines and sugar glints,
+  and the chips are irregular chunks of different sizes, each with a
+  gloss on its shoulder and a darker ring of dough melted round it,
+  spaced so no two merge. The lattice wraps at the tile, so the sides
+  meet without a seam. Stickers untouched.
+
 ## v1.116.0 — 2026-10-19 · requested by David
 
 ### Changed
