@@ -166,8 +166,15 @@ export function ReefFish() {
  * drawn: the deck is the tray, and a fin poking up through the planks
  * would be a different request.
  */
+/** How often the shark bites, and for how long, in seconds. */
+const BITE_EVERY = 5;
+const BITE_FOR = 1.1;
+
 export function CoveShark() {
   const shark = useRef<THREE.Group | null>(null);
+  const head = useRef<THREE.Group | null>(null);
+  const gape = useRef<THREE.Group | null>(null);
+  const tail = useRef<THREE.Group | null>(null);
   const tick = useMemo(
     () => (t: number) => {
       const g = shark.current;
@@ -183,7 +190,16 @@ export function CoveShark() {
       // The cove's sea is painted on the ground at y = 0, so the shark
       // rides just above it, not in a water sheet below it.
       g.position.set(P.x, 0.02, P.z);
-      g.rotation.set(0, heading, 0);
+      // Swims with a slow roll; the tail sweeps side to side.
+      g.rotation.set(0, heading, Math.sin(t * 1.3) * 0.08);
+      if (tail.current) tail.current.rotation.y = Math.sin(t * 3.2) * 0.35;
+      // Every few seconds it rears its head out of the water and
+      // snaps its jaws: the head pitches up so the open mouth faces
+      // the camera, and the gape opens wide, then shuts.
+      const bite = t % BITE_EVERY;
+      const open = bite < BITE_FOR ? Math.sin((bite / BITE_FOR) * Math.PI) : 0;
+      if (head.current) head.current.rotation.x = -open * 0.75;
+      if (gape.current) gape.current.scale.set(1, 0.25 + open * 0.75, 1);
     },
     [],
   );
@@ -191,44 +207,118 @@ export function CoveShark() {
   return (
     <group ref={shark}>
       {/*
-        Seen from above, as the camera sees it: a long dark body just
-        under the surface, two pectoral fins, a tail, and a paler back
-        where the dorsal fin breaks the water, with foam off it.
+        A proper body this time. The first shark was flat discs on the
+        water with a paler patch at the front, and David, 19 Oct 2026:
+        "it looks like it's floating upside down and I don't see any
+        shark teeth." Pale at the front read as a belly. So: one solid
+        grey-blue body, a dorsal fin standing UP out of it, two cartoon
+        eyes on top of the head so there is no doubt which way up it
+        is, and a mouth full of teeth that it lifts out of the water.
       */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.42, 1.25, 1]}>
-        <circleGeometry args={[1, 18]} />
-        <meshStandardMaterial color="#2c4a58" roughness={0.6} />
+      <mesh position={[0, 0.1, -0.1]} scale={[0.34, 0.24, 1.0]}>
+        <sphereGeometry args={[1, 16, 12]} />
+        <meshStandardMaterial color="#4f6e80" roughness={0.55} />
       </mesh>
-      <mesh position={[0, 0.03, 0.25]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.33, 0.45, 1]}>
-        <circleGeometry args={[1, 14]} />
-        <meshStandardMaterial color="#3d6070" roughness={0.6} />
+      {/* A lighter stripe down the back, where the light catches it. */}
+      <mesh position={[0, 0.3, -0.2]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.14, 0.8, 1]}>
+        <circleGeometry args={[1, 12]} />
+        <meshStandardMaterial color="#6a8a9b" roughness={0.6} />
       </mesh>
-      {/* Pectoral fins, swept back. */}
-      <mesh position={[0.45, 0.02, 0.1]} rotation={[-Math.PI / 2, 0, -0.9]} scale={[0.7, 1, 1]}>
-        <coneGeometry args={[0.2, 0.55, 3]} />
-        <meshStandardMaterial color="#2c4a58" roughness={0.6} side={THREE.DoubleSide} />
+      {/* Gill slits, three a side, on the top of the flanks. */}
+      {[-1, 1].map((side) =>
+        [0.3, 0.38, 0.46].map((gz) => (
+          <mesh key={`${side}${gz}`} position={[side * 0.22, 0.26, gz]} rotation={[0, 0, side * 0.6]}>
+            <boxGeometry args={[0.015, 0.1, 0.015]} />
+            <meshStandardMaterial color="#2c4452" roughness={0.8} />
+          </mesh>
+        )),
+      )}
+      {/* The head: snout, eyes and jaws, pitched up on a bite. */}
+      <group ref={head} position={[0, 0.1, 0.6]}>
+        <mesh position={[0, 0, 0.15]} scale={[0.3, 0.2, 0.42]}>
+          <sphereGeometry args={[1, 14, 10]} />
+          <meshStandardMaterial color="#4f6e80" roughness={0.55} />
+        </mesh>
+        {/* Eyes on TOP of the head, where the camera sees them. */}
+        {[-0.14, 0.14].map((ex) => (
+          <group key={ex} position={[ex, 0.16, 0.12]}>
+            <mesh>
+              <sphereGeometry args={[0.065, 10, 8]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.4} />
+            </mesh>
+            <mesh position={[ex * 0.15, 0.035, 0.035]}>
+              <sphereGeometry args={[0.03, 8, 6]} />
+              <meshStandardMaterial color="#141a1e" roughness={0.4} />
+            </mesh>
+          </group>
+        ))}
+        {/*
+          The mouth: a dark red gape at the front of the snout, tilted
+          to face forward and up, ringed with white teeth on both jaws.
+          The gape's height is what opens and shuts.
+        */}
+        <group position={[0, -0.02, 0.5]} rotation={[-0.5, 0, 0]}>
+          <group ref={gape} scale={[1, 0.25, 1]}>
+            <mesh>
+              <circleGeometry args={[0.2, 16]} />
+              <meshStandardMaterial color="#8d1f2a" roughness={0.9} side={THREE.DoubleSide} />
+            </mesh>
+            <mesh position={[0, 0, 0.005]} scale={[1, 0.6, 1]}>
+              <circleGeometry args={[0.14, 14]} />
+              <meshStandardMaterial color="#3a0a10" roughness={0.9} side={THREE.DoubleSide} />
+            </mesh>
+            {/* Upper teeth, hanging down; lower teeth, pointing up. */}
+            {[-0.15, -0.09, -0.03, 0.03, 0.09, 0.15].map((tx) => (
+              <mesh key={`u${tx}`} position={[tx, 0.13, 0.01]} rotation={[0, 0, Math.PI]}>
+                <coneGeometry args={[0.028, 0.08, 4]} />
+                <meshStandardMaterial color="#ffffff" roughness={0.3} />
+              </mesh>
+            ))}
+            {[-0.12, -0.06, 0, 0.06, 0.12].map((tx) => (
+              <mesh key={`l${tx}`} position={[tx, -0.13, 0.01]}>
+                <coneGeometry args={[0.025, 0.07, 4]} />
+                <meshStandardMaterial color="#ffffff" roughness={0.3} />
+              </mesh>
+            ))}
+          </group>
+          {/* The lips: a pale rim round the gape so the mouth reads shut too. */}
+          <mesh position={[0, 0, -0.005]}>
+            <ringGeometry args={[0.19, 0.23, 16]} />
+            <meshStandardMaterial color="#9fb4bf" roughness={0.6} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      </group>
+      {/* Dorsal fin: standing up, swept back. */}
+      <mesh position={[0, 0.3, -0.15]} rotation={[-0.45, 0, 0]} scale={[0.3, 1, 1]}>
+        <coneGeometry args={[0.18, 0.42, 3]} />
+        <meshStandardMaterial color="#3f5c6c" roughness={0.6} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[-0.45, 0.02, 0.1]} rotation={[-Math.PI / 2, 0, 0.9]} scale={[0.7, 1, 1]}>
-        <coneGeometry args={[0.2, 0.55, 3]} />
-        <meshStandardMaterial color="#2c4a58" roughness={0.6} side={THREE.DoubleSide} />
-      </mesh>
-      {/* The tail: a crescent, as two lobes. */}
-      <mesh position={[0.16, 0.02, -1.35]} rotation={[-Math.PI / 2, 0, 0.5]} scale={[0.6, 1, 1]}>
-        <coneGeometry args={[0.16, 0.5, 3]} />
-        <meshStandardMaterial color="#2c4a58" roughness={0.6} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[-0.16, 0.02, -1.35]} rotation={[-Math.PI / 2, 0, -0.5]} scale={[0.6, 1, 1]}>
-        <coneGeometry args={[0.16, 0.5, 3]} />
-        <meshStandardMaterial color="#2c4a58" roughness={0.6} side={THREE.DoubleSide} />
-      </mesh>
-      {/* The dorsal fin breaking the surface, and its wake. */}
-      <mesh position={[0, 0.2, -0.1]} rotation={[0, Math.PI / 2, 0]}>
-        <coneGeometry args={[0.1, 0.3, 3]} />
-        <meshStandardMaterial color="#5a7886" roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 0.0, -0.6]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.25, 1.6, 1]}>
+      {/* Pectoral fins, swept back and a little down. */}
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 0.42, 0.04, 0.2]} rotation={[-Math.PI / 2, 0, -side * 0.95]} scale={[0.6, 1, 1]}>
+          <coneGeometry args={[0.2, 0.55, 3]} />
+          <meshStandardMaterial color="#4f6e80" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      {/* The tail: a vertical crescent that sweeps side to side. */}
+      <group ref={tail} position={[0, 0.1, -1.0]}>
+        <mesh position={[0, 0.18, -0.2]} rotation={[-0.9, 0, 0]} scale={[0.25, 1, 1]}>
+          <coneGeometry args={[0.14, 0.5, 3]} />
+          <meshStandardMaterial color="#3f5c6c" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0, -0.08, -0.15]} rotation={[-2.3, 0, 0]} scale={[0.25, 1, 1]}>
+          <coneGeometry args={[0.1, 0.32, 3]} />
+          <meshStandardMaterial color="#3f5c6c" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+      {/* Foam off the dorsal fin, and a bow wave at the nose. */}
+      <mesh position={[0, 0.0, -0.7]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.25, 1.6, 1]}>
         <circleGeometry args={[0.3, 10]} />
         <meshBasicMaterial color="#eef8f6" transparent opacity={0.45} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0.0, 1.0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.2, 0.5, 1]}>
+        <ringGeometry args={[0.3, 0.42, 14, 1, 0, Math.PI]} />
+        <meshBasicMaterial color="#eef8f6" transparent opacity={0.4} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );

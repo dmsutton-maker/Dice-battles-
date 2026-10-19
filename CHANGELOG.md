@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.135.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Pirate Cove shark, rebuilt.** David: "I still think the shark
+  looks terrible and it looks like it's floating upside down and I
+  don't see any shark teeth." The old one was flat discs on the water
+  with a paler patch at the front, which read as a belly. The new one
+  is a solid grey-blue body with a dorsal fin standing up out of the
+  water, two cartoon eyes on top of its head so there is no doubt which
+  way up it is, pectoral fins, gill slits, and a vertical tail that
+  sweeps side to side as it swims. Every few seconds it rears its head
+  out of the water and snaps its jaws: a wide red mouth with a row of
+  white teeth on each jaw, facing the camera. It still circles the ship
+  and dives under the hull mid-ship.
+
 ## v1.134.0 — 2026-10-19 · requested by David
 
 ### Added
