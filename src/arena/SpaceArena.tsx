@@ -18,6 +18,7 @@ import { Crate, Signpost, EXTRA_SPOTS } from './sceneryProps';
 import { ARENA_JAILS } from './jailKinds';
 import { Jail } from './jails';
 import { useSceneryTick } from './sceneryClock';
+import { SpaceDogfight } from './spaceDogfight';
 
 /**
  * Space Station arena — the 700🏆 Mystery Arena. A dice deck floating in
@@ -284,6 +285,8 @@ export function SpaceArena({ padColors }: ArenaProps) {
       </mesh>
 
       <SpaceWorld />
+      {/* Ships chasing each other in the space beside the deck (spaceDogfight.tsx). */}
+      <SpaceDogfight />
       {/* Force-field cell — one jail per board, see jails.tsx. */}
       <Jail kind={ARENA_JAILS.space} platform={HULL_DARK} bars={GLOW_CYAN} />
       <SpaceRetreat padColors={padColors} />

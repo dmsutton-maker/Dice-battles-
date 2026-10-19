@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.130.0 — 2026-10-19 · requested by David
+
+### Added
+- **A space battle under the Space Station.** David: "On the space
+  station, add fighting spaceships with lasers shooting at each other in
+  the background." Three pairs of fighters chase each other round a loop
+  BELOW the deck, so they show in the two strips of stars beside it,
+  fly under the station at either end and come out the other side. The
+  ship behind fires forward, the one in front jinks, banks and fires
+  back over its tail, and a bolt that arrives lights a flash on its
+  target. White-and-orange ships with cyan lasers against dark raiders
+  with red ones. Nothing crosses above the deck. The path leans with
+  the wedge of space the camera sees, and sits inward at the near end
+  so a ship that does not fit on an iPhone 15 is clipped by the deck's
+  edge, not the screen's.
+- A News post for the castle fights and the space battle.
+
 ## v1.129.0 — 2026-10-19 · requested by David
 
 ### Added

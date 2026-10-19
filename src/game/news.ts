@@ -90,6 +90,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-130-0-fights-and-dogfights',
+    date: '19 October 2026',
+    version: 'v1.130.0',
+    title: 'Sword fights and a space battle',
+    icon: 'arena',
+    body:
+      'The sword fighters outside the castle actually fight now: they ' +
+      'circle each other, lunge, parry and clash blades. The same pairs ' +
+      'fight on Sunset Castle, the Jungle and the themed boards.\n\n' +
+      'On the Space Station, fighter ships chase each other through the ' +
+      'stars beside the deck, firing lasers back and forth, and duck ' +
+      'under the station at either end. The toy train still goes round ' +
+      'the Toy Room, and nothing crosses the playing surface.',
+  },
+  {
     id: 'v1-127-0-boards-come-alive',
     date: '19 October 2026',
     version: 'v1.127.0',

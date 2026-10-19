@@ -33,7 +33,7 @@ const P = new THREE.Vector3();
  * `u` in 0..1 goes once round, anticlockwise seen from above. Heading
  * is returned as the angle the mover faces, in radians about +y.
  */
-function loop(u: number, half: number, zFar: number, zNear: number, out: THREE.Vector3): number {
+export function loop(u: number, half: number, zFar: number, zNear: number, out: THREE.Vector3): number {
   const straight = zNear - zFar;
   const arc = Math.PI * half;
   const total = 2 * straight + 2 * arc;
