@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.118.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Basketball dice are orange, with a basketball's seams.** David:
+  "make the basketball dice look better." It was a brown box: the hide
+  started at a rust brown, the pebble was heavy and dark, and the curved
+  seams sat so close to each face's edges that every side wore a dark
+  rounded frame. Now the hide is a real basketball orange with a fine,
+  quiet pebble, and the seams are the ones everybody draws: a straight
+  seam across and down, meeting under the colour sticker, and a curved
+  seam either side bowing in round the sticker's rim. Stickers
+  untouched.
+
 ## v1.117.0 — 2026-10-19 · requested by David
 
 ### Changed

@@ -1850,40 +1850,40 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   basketball: (x, y) => {
     /*
-      A basketball: deep orange pebbled hide with the eight-panel seams
-      wide and black over it. The seams used to be hairlines a pixel and
-      a half wide, which at a die's size vanished into the pebble and
-      left an orange cube.
+      A basketball, redrawn 19 Oct 2026 — David: "make the basketball
+      dice look better." The last version was a brown box: the hide
+      started at a rust #a34a14, the pebble was heavy and dark, and the
+      curved seams were drawn so close to the face's edges that each
+      side wore a dark rounded frame rather than a ball's panels.
+
+      Now the hide is the bright orange a basketball actually is, the
+      pebble is fine and quiet, and the seams are the ones everybody
+      draws when they draw a basketball: a straight seam across and a
+      straight seam down, meeting under the colour sticker, and a
+      curved seam either side bowing in toward the middle. Each curve
+      runs from the top edge, hugs the sticker's rim, and comes out
+      again at the bottom — so the sticker sits in the ball the way a
+      logo does, and what shows round it is unmistakably a basketball.
     */
     const c = SIZE / 2;
-    /*
-      1.4375, out from 1.375. The seams got much wider when they were
-      made bold enough to read, and at the old radius their inner lip
-      reached 19.8 from the centre — inside the 21-pixel circle the
-      colour sticker covers. Widening a line means moving it too.
-    */
-    const reach = SIZE * 1.4375;
-    const seamAt = Math.min(
-      Math.abs(Math.hypot(x - SIZE * 1.5, y - c) - reach),
-      Math.abs(Math.hypot(x + SIZE * 0.5, y - c) - reach),
-      Math.abs(Math.hypot(x - c, y - SIZE * 1.5) - reach),
-      Math.abs(Math.hypot(x - c, y + SIZE * 0.5) - reach),
+    // The cross, from the sticker's rim out to the edges.
+    const cross = Math.min(Math.abs(x - c), Math.abs(y - c));
+    // The curves: centred far out to either side, radius chosen so each
+    // crosses the top and bottom edges 8 in and meets the sticker's rim.
+    const bow = Math.min(
+      Math.abs(Math.hypot(x + 52, y - c) - 68),
+      Math.abs(Math.hypot(x - SIZE - 52, y - c) - 68),
     );
-    /*
-      Pebble: a tight hex lattice of little domes over the whole hide.
-      Built with hexCell rather than by rounding two axial stripes — the
-      stripe version is not a distance to anything, and its beat against
-      the tile put a third more contrast inside the sticker's circle than
-      outside it.
-    */
-    const grain = hexCell(x, y, 2.1);
-    const lit = ((x - grain.cx) + (y - grain.cy)) / 2.1;
-    let px = mixRgb(rgb('#a34a14'), rgb('#cf6b24'), wrappedNoise(x, y, 32));
-    px = mixRgb(px, rgb('#e8964f'), Math.max(0, lit) * 0.5);
-    px = mixRgb(px, rgb('#66290a'), Math.max(0, -lit) * 0.45);
+    const seamAt = Math.min(cross, bow);
+    // Pebble: a fine hex lattice of little domes, lit from the upper left.
+    const grain = hexCell(x, y, 1.9);
+    const lit = ((grain.cx - x) + (grain.cy - y)) / 1.9;
+    let px = mixRgb(rgb('#e0691f'), rgb('#f08a3c'), wrappedNoise(x, y, 32));
+    px = mixRgb(px, rgb('#f7ab66'), Math.max(0, lit) * 0.32);
+    px = mixRgb(px, rgb('#a84a14'), Math.max(0, -lit) * 0.3);
     // The seam: a black channel with the hide lipping over its edges.
-    px = mixRgb(px, rgb('#1d1622'), smoothstep(2.8, 1.4, seamAt));
-    px = mixRgb(px, rgb('#7a3a10'), smoothstep(4.2, 2.8, seamAt) * 0.5);
+    px = mixRgb(px, rgb('#1a1418'), smoothstep(2.4, 1.2, seamAt));
+    px = mixRgb(px, rgb('#9a4514'), smoothstep(3.6, 2.4, seamAt) * 0.45);
     return px;
   },
   laces: (x, y) => {
