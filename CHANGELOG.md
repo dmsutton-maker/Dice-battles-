@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.122.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Cookie dice are a regular, classic chocolate-chip cookie.**
+  David, of the v1.120.0 cookie: "No, make it look like a regular
+  classic chocolate chip cookie." That one was pale gold with neat
+  little ovals stuck on — a sugar cookie with buttons. Now the dough is
+  warm tan-brown, lumpy and lit from the upper left, browner where it
+  baked; the chips are proper morsels, rounded and a little irregular,
+  a good size, in a warm chocolate brown rather than black, each sunk
+  into the dough with the dough darkened round its base where it
+  melted. No sugar sparkle, no pale cracks. Stickers untouched.
+
 ## v1.121.0 — 2026-10-19 · requested by David
 
 ### Changed

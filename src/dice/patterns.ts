@@ -1814,59 +1814,52 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   },
   cookie: (x, y) => {
     /*
-      A chocolate-chip cookie, painted in full colour since 19 Oct 2026.
+      A regular, classic chocolate-chip cookie. Full colour since
+      19 Oct 2026, and this is the third paint of the day.
 
-      David, twice that day: "make the cookie dice look better", and of
-      the first redo, "I still don't like the cookie." The first redo was
-      still a MASK: one ink over the shell, so a chip was a flat splat of
-      the same dark brown as the shadow round it and the dough was one
-      tan with light and dark versions of itself. It read as mud on
-      sand.
+      David: "make the cookie dice look better" — then "I still don't
+      like the cookie" — then "No, make it look like a regular classic
+      chocolate chip cookie." The first redo had ragged chips that read
+      as mud; the second swung the other way to pale sand with neat
+      little ovals stuck on, which is a sugar cookie with buttons.
 
-      This one mixes its own paint. The dough is golden, lighter where
-      it rose and toasted to brown where it caught the oven, with a few
-      cracks showing the paler inside and sugar glinting on top. A chip
-      is a CHUNK: deep chocolate with a lit shoulder on its upper-left,
-      a hard edge, a glint, and a shadow cast onto the dough to its
-      lower-right — it stands up off the cookie instead of staining it.
-      Big ones, well apart, with a small one here and there. Everything
-      sits on a lattice that wraps at the tile, so the sides of the die
-      meet without a seam.
+      A classic cookie is warm tan-brown dough, not pale gold — baked,
+      lumpy, a little darker where it browned — and the chips are
+      proper morsels: rounded, slightly irregular, a good size, in a
+      warm chocolate brown rather than black, each sunk a little into
+      the dough with the dough darkened round its base where it
+      melted. No sugar sparkle, no pale cracks: nothing a plain cookie
+      does not have.
     */
-    const DOUGH = rgb('#e6b86b');
-    const RISEN = rgb('#f2cf8f');
-    const TOASTED = rgb('#b4733a');
-    const CRACK = rgb('#f6dfa9');
-    const SUGAR = rgb('#fff4d2');
-    const CHOC = rgb('#3a1f10');
-    const CHOC_LIT = rgb('#7a4a2a');
-    const CHOC_EDGE = rgb('#24120a');
-    const GLINT = rgb('#b98a68');
+    const DOUGH = rgb('#d59d5c');
+    const RISEN = rgb('#e6b878');
+    const TOASTED = rgb('#ad6f30');
+    const CHOC = rgb('#4e2b17');
+    const CHOC_LIT = rgb('#80502e');
+    const CHOC_EDGE = rgb('#30190c');
+    const GLINT = rgb('#a9815f');
+    const MELT = rgb('#9a5f27');
 
-    // The dough.
-    const big = wrappedNoise(x + 7, y + 3, 16);
-    const fine = wrappedNoise(x * 1.7 + 21, y * 1.7 + 9, 8);
-    let px = mixRgb(DOUGH, RISEN, smoothstep(0.35, 0.75, big) * 0.8);
-    px = mixRgb(px, TOASTED, smoothstep(0.52, 0.3, big) * 0.55);
-    px = mixRgb(px, mixRgb(DOUGH, TOASTED, 0.5), (fine - 0.5) * 0.3 + 0.15);
-    const crack = Math.abs(wrappedNoise(x + 40, y + 50, 32) - 0.5);
-    const where = wrappedNoise(x * 0.5 + 3, y * 0.5 + 60, 32);
-    px = mixRgb(px, CRACK, smoothstep(0.012, 0.004, crack) * smoothstep(0.45, 0.6, where) * 0.7);
-    if (hashCell(Math.floor(x), Math.floor(y)) > 0.975) px = mixRgb(px, SUGAR, 0.8);
+    // The dough: lumpy, lit from the upper left, browner in patches.
+    const slope = wrappedNoise(x - 1.2 + 7, y - 1.2 + 3, 16) - wrappedNoise(x + 1.2 + 7, y + 1.2 + 3, 16);
+    const brown = wrappedNoise(x * 0.8 + 33, y * 0.8 + 15, 32);
+    const fine = wrappedNoise(x * 2.1 + 21, y * 2.1 + 9, 8);
+    let px = mixRgb(DOUGH, RISEN, Math.max(0, slope) * 1.6);
+    px = mixRgb(px, TOASTED, Math.max(0, -slope) * 1.3);
+    px = mixRgb(px, TOASTED, smoothstep(0.55, 0.78, brown) * 0.45);
+    px = mixRgb(px, mixRgb(DOUGH, TOASTED, 0.5), (fine - 0.5) * 0.18 + 0.09);
 
     /*
-      The chunks. Clean, rounded, slightly oval, each turned its own
-      way, with a soft edge — the ragged outlines of the first two
-      passes are exactly what made the chips read as dirt. One big per
-      16-cell and a small one where it lands clear of it; the
-      three-by-three neighbourhood is searched so a chunk straddling the
-      tile's edge carries on round.
+      The morsels. One big per 16-cell and a small one where it lands
+      clear of it; the three-by-three neighbourhood is searched so a
+      chip straddling the tile's edge carries on round the die.
     */
     const CELL = 16;
     const N = SIZE / CELL;
     const cx0 = Math.floor(x / CELL);
     const cy0 = Math.floor(y / CELL);
     let cover = 0;
+    let melt = 0;
     let chip: [number, number, number] = CHOC;
     for (let oy = -1; oy <= 1; oy++) {
       for (let ox = -1; ox <= 1; ox++) {
@@ -1874,34 +1867,38 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
         const gy = cy0 + oy;
         const wx = ((gx % N) + N) % N;
         const wy = ((gy % N) + N) % N;
-        const p1x = 4 + hashCell(wx * 4, wy * 4 + 2) * (CELL - 8);
-        const p1y = 4 + hashCell(wx * 4, wy * 4 + 3) * (CELL - 8);
+        const p1x = 4.5 + hashCell(wx * 4, wy * 4 + 2) * (CELL - 9);
+        const p1y = 4.5 + hashCell(wx * 4, wy * 4 + 3) * (CELL - 9);
         for (let k = 0; k < 2; k++) {
           const h = hashCell(wx * 4 + k, wy * 4 + 1);
-          const lx = k === 0 ? p1x : 2 + hashCell(wx * 4 + 1, wy * 4 + 2) * (CELL - 4);
-          const ly = k === 0 ? p1y : 2 + hashCell(wx * 4 + 1, wy * 4 + 3) * (CELL - 4);
-          if (k === 1 && (h < 0.5 || Math.hypot(lx - p1x, ly - p1y) < 9.5)) continue;
-          const R = k === 0 ? 2.9 + h * 1.0 : 1.4 + h * 0.5;
+          const lx = k === 0 ? p1x : 2.5 + hashCell(wx * 4 + 1, wy * 4 + 2) * (CELL - 5);
+          const ly = k === 0 ? p1y : 2.5 + hashCell(wx * 4 + 1, wy * 4 + 3) * (CELL - 5);
+          if (k === 1 && (h < 0.5 || Math.hypot(lx - p1x, ly - p1y) < 10)) continue;
+          const R = k === 0 ? 3.2 + h * 1.2 : 1.6 + h * 0.5;
           const dx = x - (gx * CELL + lx);
           const dy = y - (gy * CELL + ly);
-          if (Math.abs(dx) > R + 1.5 || Math.abs(dy) > R + 1.5) continue;
-          // An oval, turned by the chunk's own hash.
+          if (Math.abs(dx) > R + 2.5 || Math.abs(dy) > R + 2.5) continue;
+          // A morsel: rounded, a little irregular, turned its own way.
           const ang = h * Math.PI;
           const u = dx * Math.cos(ang) + dy * Math.sin(ang);
           const v = -dx * Math.sin(ang) + dy * Math.cos(ang);
-          const e = Math.hypot(u / R, v / (R * (0.72 + h * 0.28)));
-          const c = smoothstep(1.0, 0.82, e);
+          const a = Math.atan2(v, u);
+          const wobble = 1 + 0.09 * Math.sin(3 * a + h * 11) + 0.05 * Math.sin(5 * a + h * 29);
+          const e = Math.hypot(u / (R * wobble), v / (R * (0.8 + h * 0.2) * wobble));
+          const c = smoothstep(1.0, 0.86, e);
+          // The dough darkens where the chocolate melted into it.
+          melt = Math.max(melt, smoothstep(1.55, 1.0, e) * 0.5);
           if (c <= cover) continue;
           cover = c;
-          // The lit shoulder faces the upper left; the rim is darker.
           const toward = (-dx - dy) / (R * 1.6);
-          let col = mixRgb(CHOC, CHOC_LIT, Math.max(0, Math.min(1, toward * 0.8 + 0.3)));
-          col = mixRgb(col, CHOC_EDGE, smoothstep(0.7, 0.95, e) * 0.7);
-          if (Math.hypot(dx + R * 0.35, dy + R * 0.4) < R * 0.18) col = GLINT;
+          let col = mixRgb(CHOC, CHOC_LIT, Math.max(0, Math.min(1, toward * 0.7 + 0.35)));
+          col = mixRgb(col, CHOC_EDGE, smoothstep(0.66, 0.96, e) * 0.6);
+          if (Math.hypot(dx + R * 0.33, dy + R * 0.38) < R * 0.17) col = GLINT;
           chip = col;
         }
       }
     }
+    px = mixRgb(px, MELT, melt * (1 - cover));
     return mixRgb(px, chip, cover);
   },
 
