@@ -437,18 +437,25 @@ function cityBelow(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rg
   const ix = x - bx * BLK;
   const iy = y - by * BLK;
   if (ix < ST || iy < ST) {
-    let c: Rgb = [36, 38, 52];
-    // Street lamps along both kerbs, every eight units.
+    let c: Rgb = [30, 33, 50];
+    // Street lamps along both kerbs, every eight units, and their pools.
     const along = ix < ST ? iy : ix;
     const across = ix < ST ? ix : iy;
     const lamp = Math.hypot(((along % 8) + 8) % 8 - 4, Math.min(across, ST - across) - 0.4);
-    c = mix(c, [255, 196, 110], smoothstep(2.6, 0.2, lamp) * 0.55);
-    if (lamp < 0.5) c = [255, 226, 160];
-    // A car: two headlights or two tail lights.
+    c = mix(c, [255, 190, 100], smoothstep(3.2, 0.2, lamp) * 0.62);
+    if (lamp < 0.5) c = [255, 230, 170];
+    /*
+      Traffic, 19 Oct 2026: streaks rather than dots. Headlights run one
+      way down the middle of the street and tail lights the other, each a
+      short trail, which from this height is what moving traffic looks
+      like and what says the city below is awake.
+    */
     const lane = Math.floor(along / 6);
     const ch = hash(lane + bx * 7, by * 5 + (ix < ST ? 1 : 2));
-    if (ch > 0.8 && Math.abs((along % 6) - 3) < 1.1 && Math.abs(across - 2.5) < 1) {
-      c = ch > 0.9 ? [255, 120, 110] : [250, 246, 226];
+    const inLane = ((along % 6) + 6) % 6;
+    if (ch > 0.62 && inLane > 0.6 && inLane < 4.6 && Math.abs(across - (ch > 0.81 ? 1.7 : 3.3)) < 0.75) {
+      const fade = ch > 0.81 ? smoothstep(0.6, 2.4, inLane) : smoothstep(4.6, 2.8, inLane);
+      c = mix(c, ch > 0.81 ? [255, 118, 104] : [252, 246, 222], 0.35 + fade * 0.65);
     }
     return c;
   }
@@ -474,10 +481,15 @@ function cityBelow(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): Rg
   // The roof's own parapet, lit on the light side.
   const re = Math.min(ux - 0.8, half - ux, uy - 0.8, half - uy);
   if (re < 0.9) c = ux > half - 0.9 || uy < 1.7 ? lift(c, 0.2) : shade(c, 0.7);
-  // A lit skylight, or a dark plant box, on some roofs.
+  // A lit skylight, or a dark plant box, on some roofs — and on most, a
+  // second: a stair-head hut with its light on, or a tank's dark disc.
   const fx = hash(bx * 9 + qx, by * 9 + qy);
   if (Math.abs(ux - half * (0.3 + fx * 0.4)) < 1.4 && Math.abs(uy - half * (0.6 - fx * 0.3)) < 1.0) {
     c = fx > 0.5 ? [255, 214, 140] : shade(c, 0.6);
+  }
+  const gx = hash(bx * 3 + qx + 11, by * 3 + qy + 5);
+  if (gx > 0.3 && Math.hypot(ux - half * (0.72 - gx * 0.3), uy - half * (0.3 + gx * 0.35)) < 1.1) {
+    c = gx > 0.65 ? [232, 196, 130] : shade(c, 0.5);
   }
   return c;
 }
@@ -1726,12 +1738,32 @@ const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
     // A lap seam: the shadowed step, then the lit edge of the sheet over it.
     if (inY < 0.8) c = shade(c, 0.8);
     else if (inY < 2.2) c = lift(c, 0.07);
+    /*
+      19 Oct 2026: the sealant used to wander over the whole roof and
+      read as scribble. Now it is a few short runs where the felt has
+      split, and the roof has what a roof has at night — two puddles
+      holding the sky, and a painted safety line a step in from the
+      parapet, the one warm colour on the tar.
+    */
     const iso = Math.abs(fbm(x * 0.6 + 70, y * 0.6 + 20, SIZE) - 0.5);
-    c = mix(c, shade(p.b, 0.6), smoothstep(0.012, 0.003, iso) * 0.45);
+    const split = smoothstep(0.58, 0.7, fbm(x * 0.18 + 31, y * 0.18 + 9, SIZE));
+    c = mix(c, shade(p.b, 0.55), smoothstep(0.009, 0.003, iso) * 0.5 * split);
     c = mix(c, lift(c, 0.1), smoothstep(0.6, 0.8, fbm(x * 0.3 + 5, y * 0.3 + 50, SIZE)) * 0.5);
     const g = hash(x * 2.3, y * 1.9);
     if (g > 0.86) c = mix(c, lift(p.a, 0.32), 0.32);
     else if (g < 0.1) c = shade(c, 0.86);
+    const edge = Math.min(x - RIM, TRAY_W - RIM - x, y - RIM, TRAY_H - RIM - y);
+    if (edge > 3.2 && edge < 4.6) {
+      const worn = smoothstep(0.35, 0.7, fbm(x * 0.9 + 3, y * 0.9 + 77, SIZE));
+      c = mix(c, [214, 174, 66], 0.62 * worn);
+    }
+    for (const [px, py, rx, ry] of [[84, 168, 10, 6], [40, 108, 7.5, 4.6]] as const) {
+      const d = Math.hypot((x - px) / rx, (y - py) / ry);
+      if (d < 1.15) {
+        const sky = mix([88, 104, 150], [128, 146, 192], smoothstep(1, 0, d) * (0.5 + noise(x * 0.9, y * 0.9, SIZE) * 0.5));
+        c = mix(c, sky, smoothstep(1.15, 0.9, d) * 0.72);
+      }
+    }
     for (const [dx0, dy0] of [[30, 152], [82, 50]] as const) {
       const dx = x - dx0;
       const dy = y - dy0;

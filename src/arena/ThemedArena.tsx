@@ -1,5 +1,5 @@
 import { troughOf, WaterSurface } from './water';
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../game/stations';
 import { createGroundSurface, createTraySurface, surfaceExtras } from './groundTexture';
 import { cachedTexture } from './textureCache';
+import { useSceneryTick } from './sceneryClock';
 import { ArenaStructure, ArenaTheme, PropPlacement, ThemedArenaId } from './themeData';
 import { ARENA_JAILS } from './jailKinds';
 import { Jail } from './jails';
@@ -340,26 +341,117 @@ function LavaPool() {
   );
 }
 
-function CityTower() {
+/**
+ * A neighbouring tower, coming up past the roof.
+ *
+ * 19 Oct 2026. These were dark boxes with eight window squares on one
+ * side and a flat lit lid, and from the camera the lids read as a grid
+ * of grey tiles. Now every side wears a painted grid of windows — lit
+ * amber, lit cool, or dark, by a hash so no two towers match — the roof
+ * is a dark slab with a water tank or an aerial on it, and the tallest
+ * carry a red aviation beacon that blinks on the board's own clock.
+ * One picture per variant, cached app-wide, so the seventeen towers on
+ * the board cost three small textures between them.
+ */
+const TOWER_W = 16;
+const TOWER_H = 48;
+
+function cityTowerWindows(variant: number): THREE.Texture {
+  return cachedTexture(`city-tower-windows-${variant}`, () => {
+    const data = new Uint8Array(TOWER_W * TOWER_H * 4);
+    for (let y = 0; y < TOWER_H; y++) {
+      for (let x = 0; x < TOWER_W; x++) {
+        // Rows of windows every four texels, three tall; columns every
+        // four, two wide. The gaps are the wall.
+        const col = Math.floor(x / 4);
+        const row = Math.floor(y / 4);
+        const inWindow = x % 4 < 2 && y % 4 < 3 && y < TOWER_H - 2;
+        const h = Math.abs((Math.sin(col * 127.1 + row * 311.7 + variant * 53.3) * 43758.5453) % 1);
+        // Darker toward the street: the haze a long way down.
+        const deep = 1 - (y / TOWER_H) * 0.35;
+        let c: [number, number, number] = [62 * deep, 66 * deep, 90 * deep];
+        if (inWindow) {
+          c = h < 0.42 ? [255, 212, 128] : h < 0.6 ? [150, 172, 214] : [40, 44, 64];
+        }
+        const i = (y * TOWER_W + x) * 4;
+        data[i] = Math.round(c[0]);
+        data[i + 1] = Math.round(c[1]);
+        data[i + 2] = Math.round(c[2]);
+        data[i + 3] = 255;
+      }
+    }
+    const t = new THREE.DataTexture(data, TOWER_W, TOWER_H);
+    t.colorSpace = THREE.SRGBColorSpace;
+    // Crisp: a blurred window is a smear, and these are tiny on screen.
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
+    t.needsUpdate = true;
+    return t;
+  });
+}
+
+function CityTower({ seed = 0 }: { seed?: number }) {
+  const h = Math.abs((Math.sin(seed * 12.9898) * 43758.5453) % 1);
+  const variant = Math.floor(h * 3);
+  const height = 3.0 + h * 1.4;
+  const tall = height > 3.9;
+  const sides = useMemo(() => {
+    const side = new THREE.MeshStandardMaterial({ map: cityTowerWindows(variant), roughness: 0.7 });
+    const roof = new THREE.MeshStandardMaterial({ color: '#2e3248', roughness: 0.8 });
+    // three's box order: +x, -x, +y, -y, +z, -z.
+    return [side, side, roof, roof, side, side];
+  }, [variant]);
+  useEffect(() => () => sides.forEach((m) => m.dispose()), [sides]);
+
+  // The beacon blinks: on for a beat, off for two, each tower to its own
+  // phase. The tick writes one flag and allocates nothing.
+  const beacon = useRef<THREE.Mesh>(null);
+  const tick = useMemo(
+    () => (t: number) => {
+      if (beacon.current) beacon.current.visible = Math.sin(t * 2.4 + seed) > 0.35;
+    },
+    [seed],
+  );
+  useSceneryTick(tall ? tick : null);
+
   return (
     <group>
-      <mesh position={[0, 1.6, 0]}>
-        <boxGeometry args={[1.2, 3.2, 1.2]} />
-        <meshStandardMaterial color="#454a63" roughness={0.7} />
+      <mesh position={[0, height / 2, 0]} material={sides}>
+        <boxGeometry args={[1.15, height, 1.15]} />
       </mesh>
-      {/* A lit roof, so the tower is not one flat dark shape from above. */}
-      <mesh position={[0, 3.22, 0]}>
-        <boxGeometry args={[1.24, 0.1, 1.24]} />
-        <meshStandardMaterial color="#5e6480" roughness={0.6} />
+      {/* A lit parapet round the roof edge, so the roof reads as a top. */}
+      <mesh position={[0, height + 0.03, 0]}>
+        <boxGeometry args={[1.21, 0.06, 1.21]} />
+        <meshStandardMaterial color="#6a7090" roughness={0.7} />
       </mesh>
-      {/* Lit windows: a few emissive squares, not a texture — cheap. */}
-      {[0.6, 1.3, 2.0, 2.7].map((y) =>
-        [-0.3, 0.3].map((x) => (
-          <mesh key={`${x}-${y}`} position={[x, y, 0.61]}>
-            <boxGeometry args={[0.22, 0.28, 0.02]} />
-            <meshBasicMaterial color={(x + y) % 0.9 > 0.45 ? '#ffd98a' : '#79809c'} />
+      <mesh position={[0, height + 0.035, 0]}>
+        <boxGeometry args={[1.05, 0.07, 1.05]} />
+        <meshStandardMaterial color="#2e3248" roughness={0.85} />
+      </mesh>
+      {h > 0.5 ? (
+        // A water tank on stilts.
+        <group position={[0.25, height, -0.2]}>
+          <mesh position={[0, 0.3, 0]}>
+            <cylinderGeometry args={[0.2, 0.2, 0.34, 10]} />
+            <meshStandardMaterial color="#6e5641" roughness={0.9} />
           </mesh>
-        )),
+          <mesh position={[0, 0.52, 0]}>
+            <coneGeometry args={[0.23, 0.14, 10]} />
+            <meshStandardMaterial color="#3f3328" roughness={0.9} />
+          </mesh>
+        </group>
+      ) : (
+        // An aerial mast.
+        <mesh position={[-0.2, height + 0.35, 0.2]}>
+          <cylinderGeometry args={[0.015, 0.025, 0.7, 6]} />
+          <meshStandardMaterial color="#8f96a8" roughness={0.4} metalness={0.6} />
+        </mesh>
+      )}
+      {tall && (
+        <mesh ref={beacon} position={[-0.2, height + 0.74, 0.2]}>
+          <sphereGeometry args={[0.07, 8, 6]} />
+          <meshBasicMaterial color="#ff5a5a" />
+        </mesh>
       )}
     </group>
   );
@@ -551,7 +643,7 @@ function Prop({ p }: { p: PropPlacement }) {
       case 'coral': return <Coral color={p.color} />;
       case 'seaweed': return <Seaweed />;
       case 'lavaPool': return <LavaPool />;
-      case 'cityTower': return <CityTower />;
+      case 'cityTower': return <CityTower seed={p.x * 13 + p.z * 7} />;
       case 'cloudIsle': return <CloudIsle />;
       case 'toyBlock': return <ToyBlock color={p.color} />;
       case 'balloon': return <Balloon color={p.color} />;

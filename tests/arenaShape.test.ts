@@ -1325,6 +1325,12 @@ suite('arenas · the floor is not cut in half', () => {
       Sky Kingdom's gilded paving and fields below the clouds, and Moon
       Base's side-lit craters, bootprints and rover tracks. Frozen
       Lights' GROUND did not change — its number below is the old one.
+
+      Re-pinned 19 Oct 2026 for Rooftop City alone, looked at in the
+      arena preview first: moonlit blue-grey tar with a painted safety
+      line and two puddles holding the sky, and streets below with lamp
+      pools and traffic streaks. David: "Keep the same night time city
+      aesthetic but make it look better."
     */
     const FINGERPRINT: Record<string, [number, number]> = {
       snowFence: [879933628, 1748098948], adobe: [2821043458, 3900606433],
@@ -1334,7 +1340,7 @@ suite('arenas · the floor is not cut in half', () => {
       driftwood: [2983235352, 4266106918], gingerbread: [1955536324, 1994353482],
       mossStone: [2989868690, 1696864712], shipHull: [1382161784, 3572424677],
       picket: [3035480390, 987699253], coralRim: [491381298, 2615557615],
-      parapet: [2816118182, 2308350859], blocks: [3509681399, 678744908],
+      parapet: [1537814120, 972724624], blocks: [3509681399, 678744908],
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];

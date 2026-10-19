@@ -1075,13 +1075,23 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       Palette: base the tar felt, surface the concrete parapet, accent
       the lit windows, glow the street lamps, shadow the streets.
     */
+    /*
+      19 Oct 2026, David: "Keep the same night time city aesthetic but
+      make it look better." Still night, but a night with light in it:
+      the tar is moonlit blue-grey rather than wet cement, the parapet is
+      a shade cooler and darker so the fittings on it read, the roofs
+      below are lighter so the street grid shows as a grid of buildings
+      rather than a void with dots in it, and the lighting is split the
+      way a city night is — sodium-warm key, blue fill — so lit faces go
+      amber and shadows go blue instead of everything going grey.
+    */
     structure: 'parapet',
-    meadow: '#6e7494', hill: '#5d6383', mountain: null, cloud: '#565d80',
-    floor: { a: '#7f8396', b: '#64687b' },
-    wall: { color: '#7b8094', cap: '#aeb2c0', metalness: 0.1 },
-    tower: { body: '#7b8094', roof: '#ffc95c' },
+    meadow: '#7a82a8', hill: '#585f86', mountain: null, cloud: '#565d80',
+    floor: { a: '#6b7290', b: '#4f5570' },
+    wall: { color: '#777d96', cap: '#9fa5ba', metalness: 0.1 },
+    tower: { body: '#777d96', roof: '#ffc95c' },
     jail: { platform: '#717691', bars: '#2c2f42' },
-    retreat: { padA: '#9095ad', padB: '#7b8099', post: '#4c5170', canopy: '#ffc95c', pool: '#57c9e8' },
+    retreat: { padA: '#8a90ab', padB: '#747a97', post: '#4c5170', canopy: '#ffc95c', pool: '#57c9e8' },
     sky: { sun: null, stars: true, body: { kind: 'moon', color: '#f2ecd8' } },
     /*
       Neighbouring towers, and nothing else. The ground outside the
@@ -1116,7 +1126,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
         edge: '#ffc95c', border: { kind: 'hull', color: '#717691' } },
       'skylight', 'rooftop air conditioner', 'Clang! A die fell through the skylight!',
     ),
-    lighting: night('#6e78a5', '#4a4f6a', '#ffe0a0'),
+    lighting: night('#7d8ac4', '#363a56', '#ffd39a'),
   },
 
   toybox: {
