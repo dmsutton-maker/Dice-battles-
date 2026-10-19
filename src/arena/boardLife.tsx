@@ -631,3 +631,185 @@ export function BeachLife() {
     </group>
   );
 }
+
+/* ── Toy Room: the train ───────────────────────────────────────────── */
+
+/**
+ * A point on a rounded rectangle round the tray: straights at x = ±half
+ * and at zFar and zNear, joined by quarter circles of radius `r`. The
+ * near straight runs between the tray's near wall and the retreat pads.
+ */
+function track(u: number, half: number, zFar: number, zNear: number, r: number, out: THREE.Vector3): number {
+  const sx = 2 * (half - r);
+  const sz = zNear - zFar - 2 * r;
+  const q = (Math.PI / 2) * r;
+  const total = 2 * sx + 2 * sz + 4 * q;
+  let d = ((u % 1) + 1) % 1 * total;
+  // Right side, toward zFar.
+  if (d < sz) { out.set(half, 0, zNear - r - d); return Math.PI; }
+  d -= sz;
+  if (d < q) { const a = d / r; out.set(half - r + Math.cos(a) * r, 0, zFar + r - Math.sin(a) * r); return Math.PI + a; }
+  d -= q;
+  // Far side, toward -x.
+  if (d < sx) { out.set(half - r - d, 0, zFar); return -Math.PI / 2; }
+  d -= sx;
+  if (d < q) { const a = d / r; out.set(-half + r - Math.sin(a) * r, 0, zFar + r - Math.cos(a) * r); return -Math.PI / 2 + a; }
+  d -= q;
+  // Left side, toward zNear.
+  if (d < sz) { out.set(-half, 0, zFar + r + d); return 0; }
+  d -= sz;
+  if (d < q) { const a = d / r; out.set(-half + r - Math.cos(a) * r, 0, zNear - r + Math.sin(a) * r); return a; }
+  d -= q;
+  // Near side, toward +x.
+  if (d < sx) { out.set(-half + r + d, 0, zNear); return Math.PI / 2; }
+  d -= sx;
+  const a = d / r;
+  out.set(half - r + Math.sin(a) * r, 0, zNear - r + Math.cos(a) * r);
+  return Math.PI / 2 + a;
+}
+
+const TRACK_HALF = 3.72;
+const TRACK_FAR = -9.4;
+const TRACK_NEAR = 5.55;
+const TRACK_R = 0.55;
+
+/**
+ * A toy train going round the playmat on a loop of track laid on the
+ * floorboards: an engine with a boiler, a cab and a chimney puffing,
+ * and two carriages behind it, each following the track at its own
+ * distance back so the train bends round the corners. The track is
+ * sleepers all the way round (one instanced mesh) and rails on the
+ * straights.
+ */
+export function ToyTrain() {
+  const cars = useRef<(THREE.Group | null)[]>([]);
+  const puff = useRef<THREE.Mesh | null>(null);
+  const sleepers = useRef<THREE.InstancedMesh | null>(null);
+  const SLEEPERS = 96;
+  const lay = useMemo(
+    () => (mesh: THREE.InstancedMesh) => {
+      const o = new THREE.Object3D();
+      for (let i = 0; i < SLEEPERS; i++) {
+        const heading = track(i / SLEEPERS, TRACK_HALF, TRACK_FAR, TRACK_NEAR, TRACK_R, P);
+        o.position.set(P.x, 0.012, P.z);
+        o.rotation.set(0, heading, 0);
+        o.updateMatrix();
+        mesh.setMatrixAt(i, o.matrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    },
+    [],
+  );
+  const tick = useMemo(
+    () => (t: number) => {
+      // Path length, for spacing the carriages a fixed distance apart.
+      const sx = 2 * (TRACK_HALF - TRACK_R);
+      const sz = TRACK_NEAR - TRACK_FAR - 2 * TRACK_R;
+      const total = 2 * sx + 2 * sz + 2 * Math.PI * TRACK_R;
+      const head = (t * 1.5) / total;
+      for (let i = 0; i < 3; i++) {
+        const g = cars.current[i];
+        if (!g) continue;
+        const heading = track(head - (i * 0.66) / total, TRACK_HALF, TRACK_FAR, TRACK_NEAR, TRACK_R, P);
+        g.position.set(P.x, 0.03, P.z);
+        g.rotation.set(0, heading, 0);
+      }
+      const p = puff.current;
+      if (p) {
+        const c = ((t * 0.8) % 1 + 1) % 1;
+        p.position.y = 0.42 + c * 0.35;
+        const sc = 0.05 + c * 0.1;
+        p.scale.set(sc, sc, sc);
+        (p.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - c);
+      }
+    },
+    [],
+  );
+  useSceneryTick(tick);
+  const Car = ({ body, roof, i }: { body: string; roof: string; i: number }) => (
+    <group ref={(g) => { cars.current[i] = g; }}>
+      <mesh position={[0, 0.12, 0]}>
+        <boxGeometry args={[0.3, 0.18, 0.56]} />
+        <meshStandardMaterial color={body} roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.24, 0]}>
+        <boxGeometry args={[0.32, 0.04, 0.5]} />
+        <meshStandardMaterial color={roof} roughness={0.5} />
+      </mesh>
+      {[-0.16, 0.16].map((wx) =>
+        [-0.18, 0.18].map((wz) => (
+          <mesh key={`${wx}${wz}`} position={[wx, 0.06, wz]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.06, 0.06, 0.03, 10]} />
+            <meshStandardMaterial color="#2b2b33" roughness={0.6} />
+          </mesh>
+        )),
+      )}
+    </group>
+  );
+  return (
+    <group>
+      {/* The track: sleepers all round, rails on the straights. */}
+      <instancedMesh ref={(m) => { sleepers.current = m; if (m) lay(m); }} args={[undefined, undefined, SLEEPERS]} frustumCulled={false}>
+        <boxGeometry args={[0.38, 0.02, 0.07]} />
+        <meshStandardMaterial color="#8a6a46" roughness={0.9} />
+      </instancedMesh>
+      {[-TRACK_HALF, TRACK_HALF].map((x) =>
+        [-0.13, 0.13].map((off) => (
+          <mesh key={`${x}${off}`} position={[x + off, 0.03, (TRACK_FAR + TRACK_NEAR) / 2]}>
+            <boxGeometry args={[0.03, 0.02, TRACK_NEAR - TRACK_FAR - 2 * TRACK_R]} />
+            <meshStandardMaterial color="#5a5e66" roughness={0.4} metalness={0.5} />
+          </mesh>
+        )),
+      )}
+      {[TRACK_FAR, TRACK_NEAR].map((z) =>
+        [-0.13, 0.13].map((off) => (
+          <mesh key={`${z}${off}`} position={[0, 0.03, z + off]}>
+            <boxGeometry args={[2 * (TRACK_HALF - TRACK_R), 0.02, 0.03]} />
+            <meshStandardMaterial color="#5a5e66" roughness={0.4} metalness={0.5} />
+          </mesh>
+        )),
+      )}
+      {/* The engine: a boiler, a cab, a chimney, and a puff of steam. */}
+      <group ref={(g) => { cars.current[0] = g; }}>
+        <mesh position={[0, 0.1, 0]}>
+          <boxGeometry args={[0.3, 0.1, 0.6]} />
+          <meshStandardMaterial color="#2b2b33" roughness={0.6} />
+        </mesh>
+        <mesh position={[0, 0.2, 0.1]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 0.36, 12]} />
+          <meshStandardMaterial color="#2f8f4e" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.24, -0.18]}>
+          <boxGeometry args={[0.3, 0.28, 0.22]} />
+          <meshStandardMaterial color="#d04a3a" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.4, -0.18]}>
+          <boxGeometry args={[0.34, 0.04, 0.26]} />
+          <meshStandardMaterial color="#2b2b33" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.36, 0.2]}>
+          <cylinderGeometry args={[0.04, 0.05, 0.12, 8]} />
+          <meshStandardMaterial color="#2b2b33" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.2, 0.3]}>
+          <sphereGeometry args={[0.05, 8, 6]} />
+          <meshStandardMaterial color="#ffd21f" roughness={0.4} />
+        </mesh>
+        <mesh ref={puff} position={[0, 0.45, 0.2]}>
+          <sphereGeometry args={[1, 8, 6]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.8} depthWrite={false} />
+        </mesh>
+        {[-0.16, 0.16].map((wx) =>
+          [-0.2, 0, 0.2].map((wz) => (
+            <mesh key={`${wx}${wz}`} position={[wx, 0.06, wz]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.06, 0.06, 0.03, 10]} />
+              <meshStandardMaterial color="#2b2b33" roughness={0.6} />
+            </mesh>
+          )),
+        )}
+      </group>
+      <Car body="#7c95d6" roof="#e7b84f" i={1} />
+      <Car body="#e7b84f" roof="#7c95d6" i={2} />
+    </group>
+  );
+}

@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.128.0 — 2026-10-19 · requested by David
+
+### Added
+- **A toy train round the Toy Room.** David: "Show a toy train going
+  around the toy board." A loop of track is laid on the floorboards
+  round the playmat — sleepers all the way round, rails on the
+  straights — passing between the mat's near wall and the retreat
+  pads. A green engine with a red cab, a chimney puffing steam and a
+  yellow lamp pulls two carriages, each following the track at its own
+  distance back so the train bends round the corners. One lap takes
+  about half a minute. Nothing crosses the mat.
+
 ## v1.127.0 — 2026-10-19 · requested by David
 
 ### Added
