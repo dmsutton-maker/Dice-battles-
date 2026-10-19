@@ -29,12 +29,15 @@ const [view = 'table', skins = 'ivory'] = process.argv.slice(2);
     h: String(h),
     symbols: process.env.SYMBOLS === '1' ? '1' : '0',
     arena: process.env.ARENA ?? 'castle',
+    fishT: process.env.FISH_T ?? '0',
   });
   await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?' + q);
   await page.waitForFunction('window.__ready === true', { timeout: 30000 }).catch(() => {
     console.log('  (timed out waiting for ready)');
   });
-  const tag = process.env.SYMBOLS === '1' ? '-symbols' : '';
+  const tag =
+    (process.env.SYMBOLS === '1' ? '-symbols' : '') +
+    (process.env.FISH_T ? `-t${process.env.FISH_T}` : '');
   const out = path.join(process.env.OUT ?? '/tmp', `dice-${view}${tag}.png`);
   await page.screenshot({ path: out });
   console.log(out);

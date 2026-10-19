@@ -2,6 +2,7 @@ import { DICE_SKINS } from '../game/diceSkins';
 import { shellPreviewUri } from './preview';
 import { createDieFaceTextures, PatternId } from './patterns';
 import { warmDieShading } from './dieShading';
+import { fishSchoolTexture, fishWaterTexture } from './fishSwim';
 import type { DiceSkin } from '../game/diceSkins';
 
 /**
@@ -197,6 +198,13 @@ export function warmDieFaces(skin: DiceSkin | undefined): void {
   }
   if (!skin || skin.pattern === 'plain') return;
   try {
+    // The Fish die on the board is water plus two swimming schools, not
+    // the six painted sides (fishSwim.ts).
+    if (skin.pattern === 'fish') {
+      fishWaterTexture();
+      fishSchoolTexture(1);
+      fishSchoolTexture(-1);
+    }
     createDieFaceTextures(
       skin.pattern as Exclude<PatternId, 'plain'>,
       skin.body,

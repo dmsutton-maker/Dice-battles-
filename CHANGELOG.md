@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.115.0 — 2026-10-18 · requested by David
+
+### Changed
+- **The goldfish on the Fish dice swim.** David: "On the fish dice, can
+  you make the fish look like they're swimming around on the dice?" The
+  sides are painted as water only, and the fish sit on two clear layers
+  that the GPU slides across each side, nose-first, with a bob and a
+  kick. The top school swims one way and the bottom school the other,
+  and each side starts at a different point. Repainting a side every
+  frame would cost more than the rest of the board; moving a picture
+  costs nothing. They swim whenever the board is drawing (previews and
+  battles) and hold still on the menus, like the water. The colour
+  stickers are separate pieces on top, so the fish pass under them. The
+  shop card keeps the still picture, drawn from the same fish
+  (`src/dice/goldfish.ts`, `src/dice/fishSwim.ts`).
+- **Every money shop item shows its price.** David: "Add the prices to
+  all the money shop items." A buy button showed a dash until Apple's
+  store answered, and for good when it would not (the Starter pack until
+  it exists in App Store Connect, or no connection). It now shows the
+  phone's own price when it has one and the US price until then, and
+  the "are you sure" question always says what it costs. Apple's own
+  sheet still shows the real price before anything is charged.
+
+### Tools
+- `tools/die-preview` takes `FISH_T=<seconds>` to show where the fish
+  have swum to, since the preview has no clock of its own.
+
 ## v1.114.0 — 2026-10-18 · requested by David
 
 ### Added

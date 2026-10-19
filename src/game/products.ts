@@ -265,3 +265,19 @@ export function withinStarterWindow(
 export function productById(id: string): Product | undefined {
   return PRODUCTS.find((p) => p.id === id);
 }
+
+/**
+ * The price on a money shop button.
+ *
+ * David, 18 Oct 2026: "Add the prices to all the money shop items." The
+ * button showed a dash until the phone's store answered, and for good
+ * when it never would — the Starter pack before it exists in App Store
+ * Connect, or a phone with no connection. The phone's own localised price
+ * still wins whenever it has one; until then the catalogue's US price
+ * stands in, as the full-story card already did. Apple's sheet shows the
+ * real price again before anything is charged, so this can never be the
+ * number somebody pays.
+ */
+export function priceLabel(product: Pick<Product, 'usd'>, fromStore: string | null): string {
+  return fromStore ?? `$${product.usd.toFixed(2)}`;
+}

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../../src/arena/arenas';
 import { fitCamera } from '../../src/demo/cameraFit';
 import { DieMesh } from '../../src/dice/DieMesh';
+import { FISH_TICK } from '../../src/dice/fishSwim';
 import { DICE_SKINS } from '../../src/game/diceSkins';
 import { TUNING } from '../../src/game/tuning';
 
@@ -28,6 +29,8 @@ import { TUNING } from '../../src/game/tuning';
  * ?skins=ivory,gold,fire   which dice, in order
  * ?symbols=1               colourblind shapes on the stickers
  * ?arena=castle            the battlefield under the table view
+ * ?fishT=4                 where the Fish dice's fish have swum to, in
+ *                          seconds (there is no clock here to move them)
  *
  * Usage (react-dom and playwright must be in node_modules, and taken out
  * again afterwards — see tools/arena-preview/README.md for why):
@@ -45,6 +48,7 @@ const SYMBOLS = P.get('symbols') === '1';
 const ARENA = (P.get('arena') ?? 'castle') as ArenaId;
 const W = Number(P.get('w') ?? 393);
 const H = Number(P.get('h') ?? 852);
+FISH_TICK(Number(P.get('fishT') ?? 0));
 
 /** Resting orientations that put a different face up, with some yaw. */
 const RESTS: [number, number, number][] = [

@@ -15,6 +15,8 @@ import {
   SHADE_INTENSITY,
   stickerTexture,
 } from './dieShading';
+import { FISH_TICK, swimmingFishMaterials } from './fishSwim';
+import { useSceneryTick } from '../arena/sceneryClock';
 
 /*
   One body geometry and one sticker geometry, shared by every die and built
@@ -129,12 +131,18 @@ export const DieMesh = forwardRef<
       three.js's own face order, which is the order CUBE_NET_CELLS is
       written in. Do not reorder one without the other.
     */
+    // The Fish dice swim: water painted once, the fish slid over it by
+    // the GPU (fishSwim.ts). The shop card keeps the still picture.
+    if (pattern === 'fish') return swimmingFishMaterials(shade);
     return createDieFaceTextures(pattern, bodyColor, patternInk ?? bodyColor).map(
       // A colour painter ignores the ink; a mask painter cannot do
       // without one.
       (map) => new THREE.MeshBasicMaterial({ map, ...shade }),
     );
   }, [bodyColor, pattern, patternInk]);
+  // The board's own clock moves the fish, so they swim while the board
+  // draws and hold still when it stops, like the water and the torches.
+  useSceneryTick(pattern === 'fish' ? FISH_TICK : null);
   // Unlit stickers with toneMapped:false — the face color IS the game
   // signal, so it must render as the exact palette hex from every angle and
   // must bypass the scene's tone mapping curve. This lets the rest of the

@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 import { playClick } from '../audio/sounds';
-import { PRODUCTS, type Product } from '../game/products';
+import { PRODUCTS, priceLabel, type Product } from '../game/products';
 import {
   buy,
   hasEntitlement,
@@ -186,7 +186,7 @@ export function MoneyShelf({
 
       {state.products.map((product) => {
         const bought = product.kind !== 'consumable' && hasEntitlement(product.id);
-        const price = state.priceOf(product.id);
+        const price = priceLabel(product, state.priceOf(product.id));
         const isGold = product.kind === 'season';
         return (
           <View
@@ -229,7 +229,7 @@ export function MoneyShelf({
                     setAsking(product);
                   }}
                 >
-                  <Text style={styles.buyText}>{price ?? '—'}</Text>
+                  <Text style={styles.buyText}>{price}</Text>
                 </Pressable>
               )}
             </Card>
@@ -270,9 +270,8 @@ export function MoneyShelf({
           title={`Buy ${asking.name}?`}
           body={
             `${asking.blurb}\n\n` +
-            (state.priceOf(asking.id)
-              ? `It costs ${state.priceOf(asking.id)}. Your phone will ask you to confirm as well.`
-              : 'Your phone will show the price and ask you to confirm.')
+            `It costs ${priceLabel(asking, state.priceOf(asking.id))}. ` +
+            'Your phone will ask you to confirm as well.'
           }
           confirmLabel="Yes, buy it"
           cancelLabel="No, not now"
@@ -339,7 +338,7 @@ function ProductDetail({
   onBuy: () => void;
   onClose: () => void;
 }) {
-  const shown = price ?? `$${product.usd.toFixed(2)}`;
+  const shown = priceLabel(product, price);
   return (
     <View style={styles.detailBackdrop}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />

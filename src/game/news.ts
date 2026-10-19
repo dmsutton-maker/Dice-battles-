@@ -90,6 +90,20 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-115-0-swimming-fish',
+    date: '19 October 2026',
+    version: 'v1.115.0',
+    title: 'The goldfish swim',
+    icon: 'dice',
+    body:
+      'The goldfish on the Fish dice swim now, round and round the sides, ' +
+      'passing under the colours as they go.\n\n' +
+      'Also new since the last post: tap any reward on the season pass to ' +
+      'see what it is and how close you are, the Starter pack is in the ' +
+      'shop, every money shop item shows its price, the Ivory dice are ' +
+      'whiter, and previews show the item and its name together.',
+  },
+  {
     id: 'v1-111-0-new-battlefields',
     date: '18 October 2026',
     version: 'v1.111.0',

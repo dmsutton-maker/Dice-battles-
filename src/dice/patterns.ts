@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { cachedTexture } from '../arena/textureCache';
+import { bubbleAt, goldfishAt, waterAt } from './goldfish';
 
 /**
  * Procedural patterns for dice shells. Built pixel by pixel because React
@@ -132,7 +133,7 @@ function hashCell(ix: number, iy: number): number {
   return Math.abs((Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453) % 1);
 }
 
-function wrappedNoise(x: number, y: number, period: number): number {
+export function wrappedNoise(x: number, y: number, period: number): number {
   const cells = SIZE / period;
   const gx = Math.floor(x / period);
   const gy = Math.floor(y / period);
@@ -2401,72 +2402,13 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       along the top of the face, two swim left along the bottom, each
       tilted its own small way so they school rather than march; the
       middle stays water because the colour sticker covers it anyway.
+
+      This is the STILL picture — the shop card. The die on the board
+      paints the water and the fish apart so the fish can swim
+      (fishSwim.ts); both take their shapes from goldfish.ts.
     */
-    const WATER = rgb('#7fb8d9'); // must match the skin's body
-    const RIPPLE = rgb('#9ccce4');
-    const BODY = rgb('#e8622a');
-    const FIN = rgb('#c2481a'); // tail, dorsal fin — darker, so they separate
-    const BELLY = rgb('#f7c98f');
-    const EYE = rgb('#ffffff');
-    const PUPIL = rgb('#26343d');
-    const BUBBLE = rgb('#eef7fc');
-
-    // cx, cy, swim direction, tilt. Rows sit against the top and bottom
-    // edges: the sticker disc owns the centre of the face.
-    const SCHOOL: readonly (readonly [number, number, 1 | -1, number])[] = [
-      [15, 8, 1, -0.1],
-      [49, 9, 1, 0.08],
-      [17, 56, -1, 0.1],
-      [48, 55, -1, -0.07],
-    ];
-    const BUBBLES: readonly (readonly [number, number, number])[] = [
-      [57, 26, 1.8],
-      [5, 36, 1.4],
-      [59, 44, 1.1],
-    ];
-
-    const sample = (x: number, y: number): [number, number, number] | null => {
-      for (const [cx, cy, dir, tilt] of SCHOOL) {
-        // Fish-local coordinates: +u toward the nose, +v toward the belly.
-        const dx = (x - cx) * dir;
-        const dy = y - cy;
-        const u = dx * Math.cos(tilt) - dy * Math.sin(tilt);
-        const v = dx * Math.sin(tilt) + dy * Math.cos(tilt);
-        const half = 8; // half body length
-        const t = u / half;
-        if (Math.abs(t) < 1) {
-          // Teardrop, not ellipse: the profile is fullest just behind
-          // the head and tapers toward the rear, which with the forked
-          // tail is the pair of shapes that actually says "fish".
-          const h = 5.2 * Math.sqrt(1 - t * t) * (0.6 + 0.2 * (t + 1));
-          if (Math.abs(v) <= h) {
-            if (Math.hypot(u - 4.6, v + 1) < 1.7) {
-              return Math.hypot(u - 5, v + 1) < 0.9 ? PUPIL : EYE;
-            }
-            return v > 1.1 ? BELLY : BODY;
-          }
-          // Dorsal fin: a small bump on the back over mid-body.
-          if (v < 0 && -v <= h + Math.max(0, 2.8 - Math.abs(u - 1.2) * 1.1)) {
-            return FIN;
-          }
-        }
-        // Forked tail, separated from the body by a sliver of water.
-        const s = -u - half - 1;
-        if (s >= 0 && s <= 6) {
-          const spread = 1.2 + s * 0.8;
-          const notch = s > 2.4 ? (s - 2.4) * 0.95 : 0;
-          if (Math.abs(v) <= spread && Math.abs(v) >= notch) return FIN;
-        }
-      }
-      for (const [bx, by, br] of BUBBLES) {
-        if (Math.hypot(x - bx, y - by) < br) return BUBBLE;
-      }
-      return null;
-    };
-
     return (x: number, y: number): [number, number, number] => {
-      // Faint ripple on the water, kept far quieter than the fish.
-      const ground = mixRgb(WATER, RIPPLE, wrappedNoise(x, y, 16) * 0.45);
+      const ground = waterAt(wrappedNoise(x, y, 16));
       // Supersample 3x3 — blossom's lesson: tilted edges on a 64px grid
       // only survive with partial coverage along every boundary.
       const N = 3;
@@ -2475,7 +2417,9 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       let sb = 0;
       for (let sy = 0; sy < N; sy++) {
         for (let sx = 0; sx < N; sx++) {
-          const c = sample(x + (sx + 0.5) / N, y + (sy + 0.5) / N) ?? ground;
+          const fx = x + (sx + 0.5) / N;
+          const fy = y + (sy + 0.5) / N;
+          const c = goldfishAt(fx, fy) ?? bubbleAt(fx, fy) ?? ground;
           sr += c[0];
           sg += c[1];
           sb += c[2];
