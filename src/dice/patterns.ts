@@ -1957,30 +1957,40 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   volleyball: (x, y) => {
     /*
-      Panels in threes, each one domed, with a real seam channel between
-      them and the grain of synthetic leather over the lot — and each
-      GROUP turned ninety degrees against its neighbour.
+      A volleyball, redrawn 19 Oct 2026 — David: "make the volleyball
+      dice look better."
 
-      That turn is the whole thing. Run on one axis across the whole
-      face, the bands went edge to edge in one direction and the die sat
-      on the shelf next to Candy Cane and Rainbow as a third stripey
-      die. A real volleyball's signature is groups of three panels that
-      cross each other, and the crossing is what the eye reads as a ball.
+      The old one split every face into four quarters, each with its
+      own diagonal stripes, with grainy edges on everything. It read as
+      a harlequin quilt. A volleyball is a white ball with blue and
+      yellow panels sweeping round it in curved bands, and that sweep
+      is what the eye wants: every face now carries one curve of wide
+      panels — white, blue, yellow, white — bending across it, with a
+      clean dark seam between each pair and a soft dome of light on
+      every panel. The sticker sits in the middle like the ball's own
+      valve mark. Per face, so each side is the same clean picture.
     */
-    const flip = (Math.floor(x / 32) + Math.floor(y / 32)) % 2 === 0;
-    const t = (flip ? x * 0.78 + y * 0.62 : y * 0.78 - x * 0.62) / 15;
-    const band = ((Math.floor(t) % 3) + 3) % 3;
+    // Distance from a point well off the face: the panels are arcs of
+    // circles round it, which is what makes them bend like a ball's.
+    const r = Math.hypot(x + 28, y - 92);
+    const t = (r - 54) / 13;
+    const band = ((Math.floor(t) % 4) + 4) % 4;
     const frac = t - Math.floor(t);
-    // Deeper than the old #f0c020: that sat ΔLab 18.6 from the yellow
-    // face, the tightest painted colour in the set.
-    let px = band === 1 ? rgb('#2a4a8a') : band === 2 ? rgb('#cf9c14') : rgb('#f0ede6');
-    px = mixRgb(px, rgb('#ffffff'), (0.5 - Math.abs(frac - 0.5)) * 0.4);
-    const edge = Math.abs(frac - 0.5);
-    if (edge > 0.44) px = mixRgb(px, rgb('#66625a'), 0.8);
-    else if (edge > 0.38) px = mixRgb(px, rgb('#ffffff'), 0.45);
-    return mixRgb(px, rgb('#000000'), (hashCell(x, y) - 0.5) * 0.07 + 0.035);
+    const WHITE = rgb('#f4f1ea');
+    const BLUE = rgb('#2b4f9e');
+    const YELLOW = rgb('#dca81a');
+    let px = band === 1 ? BLUE : band === 2 ? YELLOW : WHITE;
+    // Each panel is domed: lighter down its middle, shaded at its seams.
+    const dome = 0.5 - Math.abs(frac - 0.5);
+    px = mixRgb(px, rgb('#ffffff'), dome * 0.35);
+    px = mixRgb(px, rgb('#000000'), smoothstep(0.3, 0.5, Math.abs(frac - 0.5)) * 0.12);
+    // The seam: a dark channel, with the leather lipping over its edges.
+    const seam = Math.min(frac, 1 - frac) * 13;
+    px = mixRgb(px, rgb('#4a4842'), smoothstep(1.2, 0.5, seam) * 0.85);
+    px = mixRgb(px, rgb('#ffffff'), smoothstep(2.4, 1.2, seam) * smoothstep(0.5, 1.2, seam) * 0.25);
+    // The faintest grain of synthetic leather.
+    return mixRgb(px, rgb('#000000'), (hashCell(x, y) - 0.5) * 0.04 + 0.02);
   },
-
   bowling: (x, y) => {
     /*
       Polished resin: a swirl marbled through it, a hard gloss highlight,
@@ -2645,6 +2655,8 @@ const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
   'fish',
   'denim',
   'basketball',
+  // Volleyball, 19 Oct 2026: one clean sweep of curved panels per side.
+  'volleyball',
   'ivory',
   'lavender',
   'satin',

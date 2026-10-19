@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.123.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Volleyball dice are curved panels, not a quilt.** David: "make
+  the volleyball dice look better." Every face was split into four
+  quarters, each with its own diagonal stripes and grainy edges, and it
+  read as a harlequin quilt. Now each face carries one curve of wide
+  panels — white, blue, yellow, white — bending across it like the
+  panels of a ball, with a clean dark seam between each pair and a soft
+  dome of light on every panel. Painted per side, so each is the same
+  clean picture. Stickers untouched.
+
 ## v1.122.0 — 2026-10-19 · requested by David
 
 ### Changed
