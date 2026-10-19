@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.134.0 — 2026-10-19 · requested by David
+
+### Added
+- **Winter on Snowy Hollow.** David: "On the snowboard, I want to see
+  people having a snowball fight and I wanna see snowman being built
+  and walking around." Three things, all off the tray:
+  - A snowball fight beyond the far wall, between the two pines: two
+    children in coats and bobble hats take turns winding up and
+    throwing, the snowball arcs across, the other sidesteps and
+    flinches when it lands, then throws back. Each has a heap of
+    snowballs ready.
+  - A snowman being built in the far right corner, where a snowman
+    used to just stand: a child rolls a snowball that grows as it
+    goes, the middle and the head rise onto it, the carrot nose and
+    the top hat go on, the child steps back and bounces about it —
+    and then it sinks into the snow and the child goes back for
+    another. Fourteen seconds a snowman.
+  - A snowman out for a walk along the front of the board between the
+    wall and the landing pads, waddling from one side to the other
+    and back, stick arms swinging, hat and blue scarf on.
+
 ## v1.133.0 — 2026-10-19 · requested by David
 
 ### Added

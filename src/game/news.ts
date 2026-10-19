@@ -90,6 +90,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-134-0-more-life-on-the-boards',
+    date: '19 October 2026',
+    version: 'v1.134.0',
+    title: 'Camels, aliens, lava and snow',
+    icon: 'arena',
+    body:
+      'A camel train crosses the dunes behind Desert Dunes, two of the ' +
+      'camels with riders. Little green aliens bound about behind Moon ' +
+      'Base. A river of lava flows right round Volcano Rim, and the ' +
+      'fighters there have gone.\n\n' +
+      'On Snowy Hollow two children have a snowball fight behind the far ' +
+      'wall, a snowman gets built in the corner over and over, and a ' +
+      'finished one waddles along the front of the board.',
+  },
+  {
     id: 'v1-130-0-fights-and-dogfights',
     date: '19 October 2026',
     version: 'v1.130.0',

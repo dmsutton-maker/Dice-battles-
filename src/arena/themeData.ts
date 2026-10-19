@@ -250,7 +250,8 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       { kind: 'bush', x: -3.46, z: -0.9, scale: 0.9, color: '#9db8a8' },
       { kind: 'pine', x: -3.4, z: 1.6, scale: 0.58 },
       { kind: 'pebbles', x: -3.46, z: 3.6, scale: 0.9, color: '#c7d6e2' },
-      { kind: 'snowman', x: 3.42, z: -7.4, scale: 0.62 },
+      // The snowman that stood at (3.42, -7.4) is built there now, over
+      // and over, by a child (snowLife.tsx, 19 Oct 2026).
       { kind: 'pine', x: 3.38, z: -3.3, scale: 0.6 },
       { kind: 'rock', x: 3.46, z: -0.9, scale: 0.7, color: '#c7d6e2' },
       { kind: 'pine', x: 3.4, z: 1.6, scale: 0.52 },
