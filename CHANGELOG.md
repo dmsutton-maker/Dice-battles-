@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.132.0 — 2026-10-19 · requested by David
+
+### Added
+- **Aliens on Moon Base.** David: "On the moon base do aliens walking
+  around." Four little green aliens with big domed heads, black eyes,
+  silver suits and antennae with lit tips wander the regolith beyond
+  the far wall, each on its own slow figure of eight. Low gravity: they
+  move in long slow bounds, arms swinging and antennae swaying with
+  every landing. They stay behind the moon rocks and off the tray.
+
 ## v1.131.0 — 2026-10-19 · requested by David
 
 ### Added
