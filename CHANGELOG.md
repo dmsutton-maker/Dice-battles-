@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.121.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Football dice, again, cleaner.** David, of the v1.119.0
+  football: "I don't like this football." That one was busy and dark: a
+  heavy grain over a red-brown hide, a ladder of seven thin laces boxed
+  in by dark seam channels, and taped-on stripes with dark edges. Now it
+  is the football everybody draws: a warm chestnut hide, smooth but for
+  the faintest grain and lit from the upper left; one clean white spine
+  with five fat laces across it and nothing boxing it in; two thin white
+  stripes at the right-hand end. Stickers untouched.
+
 ## v1.120.0 — 2026-10-19 · requested by David
 
 ### Changed
