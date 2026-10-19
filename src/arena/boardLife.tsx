@@ -227,3 +227,103 @@ export function CoveShark() {
     </group>
   );
 }
+
+/* ── Rooftop City: helicopters ─────────────────────────────────────── */
+
+/**
+ * Two helicopters circling the rooftop, well above the neighbouring
+ * towers, one wider and higher than the other. From the camera a
+ * helicopter is its rotor: a blurred disc with two blades turning in
+ * it, over a small body with a tail boom, a tail rotor and a red light
+ * that blinks. Each banks a little into its turn.
+ */
+export function CityHelicopters() {
+  const craft = useRef<(THREE.Group | null)[]>([]);
+  const rotors = useRef<(THREE.Group | null)[]>([]);
+  const lights = useRef<(THREE.Mesh | null)[]>([]);
+  const tick = useMemo(
+    () => (t: number) => {
+      for (let i = 0; i < 2; i++) {
+        const g = craft.current[i];
+        if (!g) continue;
+        const wide = i === 1;
+        const heading = loop(t * (wide ? 0.028 : 0.036) + i * 0.5, wide ? 4.0 : 3.6, wide ? -8.2 : -7.4, 4.6, P);
+        g.position.set(P.x, (wide ? 3.3 : 2.7) + Math.sin(t * 0.9 + i * 2) * 0.12, P.z);
+        // Nose along the path, banked into the turn.
+        g.rotation.set(0, heading, 0.12);
+        const rotor = rotors.current[i];
+        if (rotor) rotor.rotation.y = t * 38 + i;
+        const light = lights.current[i];
+        if (light) light.visible = Math.sin(t * 5 + i * 2) > 0.3;
+      }
+    },
+    [],
+  );
+  useSceneryTick(tick);
+  return (
+    <group>
+      {[0, 1].map((i) => (
+        <group key={i} ref={(g) => { craft.current[i] = g; }} scale={1.8}>
+          {/*
+            Big and bright on purpose: against the night city a small
+            dark helicopter was a grey smudge. These are the size a news
+            helicopter would look from a rooftop, in white and yellow.
+          */}
+          {/* Body: a short capsule, nose toward +z. */}
+          <mesh scale={[0.22, 0.18, 0.42]}>
+            <sphereGeometry args={[1, 10, 8]} />
+            <meshStandardMaterial color={i === 0 ? '#f4f1ea' : '#ffcf3c'} roughness={0.5} metalness={0.2} />
+          </mesh>
+          {/* A stripe along the body. */}
+          <mesh position={[0, 0.1, -0.02]} scale={[0.24, 0.05, 0.36]}>
+            <sphereGeometry args={[1, 8, 6]} />
+            <meshStandardMaterial color={i === 0 ? '#e0452f' : '#243a66'} roughness={0.5} />
+          </mesh>
+          {/* The cockpit glass. */}
+          <mesh position={[0, 0.06, 0.2]} scale={[0.16, 0.12, 0.2]}>
+            <sphereGeometry args={[1, 8, 6]} />
+            <meshStandardMaterial color="#8fd0f0" roughness={0.2} metalness={0.3} />
+          </mesh>
+          {/* The tail boom and its rotor. */}
+          <mesh position={[0, 0.02, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.035, 0.06, 0.6, 6]} />
+            <meshStandardMaterial color={i === 0 ? '#f4f1ea' : '#ffcf3c'} roughness={0.5} metalness={0.2} />
+          </mesh>
+          <mesh position={[0.05, 0.08, -0.8]} rotation={[0, Math.PI / 2, 0]}>
+            <circleGeometry args={[0.1, 10]} />
+            <meshBasicMaterial color="#555b66" transparent opacity={0.5} side={THREE.DoubleSide} />
+          </mesh>
+          {/* The main rotor: a blurred disc and two blades, turning. */}
+          <group ref={(g) => { rotors.current[i] = g; }} position={[0, 0.2, 0]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[0.62, 24]} />
+              <meshBasicMaterial color="#c9cfdb" transparent opacity={0.3} side={THREE.DoubleSide} depthWrite={false} />
+            </mesh>
+            <mesh>
+              <boxGeometry args={[1.24, 0.015, 0.07]} />
+              <meshBasicMaterial color="#e6e9f0" transparent opacity={0.85} />
+            </mesh>
+            <mesh rotation={[0, Math.PI / 2, 0]}>
+              <boxGeometry args={[1.24, 0.015, 0.07]} />
+              <meshBasicMaterial color="#e6e9f0" transparent opacity={0.85} />
+            </mesh>
+          </group>
+          {/* Skids. */}
+          <mesh position={[0.14, -0.16, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.015, 0.015, 0.5, 5]} />
+            <meshStandardMaterial color="#2a2d35" roughness={0.6} />
+          </mesh>
+          <mesh position={[-0.14, -0.16, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.015, 0.015, 0.5, 5]} />
+            <meshStandardMaterial color="#2a2d35" roughness={0.6} />
+          </mesh>
+          {/* The blinking light on the tail. */}
+          <mesh ref={(m) => { lights.current[i] = m; }} position={[0, 0.1, -0.78]}>
+            <sphereGeometry args={[0.045, 8, 6]} />
+            <meshBasicMaterial color="#ff4a4a" />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}

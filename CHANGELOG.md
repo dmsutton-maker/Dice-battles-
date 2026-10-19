@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.125.0 — 2026-10-19 · requested by David
+
+### Added
+- **Helicopters over Rooftop City.** David: "Add helicopters flying
+  around the city board." Two of them circle the rooftop well above the
+  neighbouring towers, one wider and higher than the other: a white one
+  with a red stripe and a yellow one, each with a turning rotor, a tail
+  rotor, skids and a blinking red tail light, banking into its turns.
+  Big and bright on purpose — a small dark helicopter was a grey smudge
+  against the night city. They fly whenever the board is drawing and
+  hold still on the menus.
+
 ## v1.124.0 — 2026-10-19 · requested by David
 
 ### Changed

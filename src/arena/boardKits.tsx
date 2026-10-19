@@ -4,7 +4,7 @@ import { TUNING } from '../game/tuning';
 import { cachedTexture } from './textureCache';
 import type { ArenaStructure, ArenaTheme } from './themeData';
 import type { RimSpot } from './rim';
-import { CoveShark, ReefFish } from './boardLife';
+import { CityHelicopters, CoveShark, ReefFish } from './boardLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1551,6 +1551,7 @@ export function BoardScenery({ theme }: { theme: ArenaTheme }) {
       {/* The creatures David asked for on 19 Oct 2026, in boardLife.tsx. */}
       {theme.structure === 'coralRim' && <ReefFish />}
       {theme.structure === 'shipHull' && <CoveShark />}
+      {theme.structure === 'parapet' && <CityHelicopters />}
     </group>
   );
 }
