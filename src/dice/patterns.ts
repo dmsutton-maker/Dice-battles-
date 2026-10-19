@@ -1678,36 +1678,52 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       other way round these same circles read as pearls stuck onto the
       ball — a render proved that before this comment did.
     */
-    const size = 6.6;
-    // Comfortably under half the lattice spacing, so flat land shows
-    // between the pits. Wider and they merge into overlapping scales.
-    const R = size * 0.6;
-    const cell = hexCell(x, y, size);
+    /*
+      REDRAWN A FOURTH TIME, 19 Oct 2026 — David: "make the golf ball
+      look better." Rendered on the table, the 9 Sep ball was a GREY,
+      KNOBBLY cube: the dimples were big (six to a face), the shading
+      inside each ran the full way from dark to white, and at the size a
+      die is seen that contrast reads as pebbles stuck on, not hollows
+      cut in. The grey came from starting the shell at #c9d1c9.
+
+      A golf ball seen from arm's length is a bright white ball with a
+      fine grid of faint grey dots — each dimple catches a little less
+      light than the flat around it, and that is nearly all the eye
+      gets. So: the shell is white; the dimples are smaller, over nine
+      to a face; most of what each one carries is a soft darkening at
+      its centre, with only a whisper of the lit and shadowed walls on
+      top so a close look still shows a bowl; and the lattice is
+      slightly turned so the rows do not line up with the face's edges
+      and read as a grid.
+    */
+    const size = 4.4;
+    const R = size * 0.58;
+    // Turned eleven degrees, so the rows do not run with the edges.
+    const a = 0.19;
+    const rx = x * Math.cos(a) - y * Math.sin(a);
+    const ry = x * Math.sin(a) + y * Math.cos(a);
+    const cell = hexCell(rx, ry, size);
     const u = Math.min(1, cell.d / R);
-    // Full strength right across the bowl, easing off only in the last
-    // sliver before the rim. Fading from the centre leaves the middle
-    // unshaded and each pit reads as a thin hook rather than a hollow.
-    const inside = smoothstep(1, 0.9, u);
-    // The bowl's normal as an ANGLE, so it stays unit length to the rim.
-    // 0.72 of a right angle, not the full 90°: a dimple is a shallow
-    // saucer and a hemisphere shades far too hard.
+    const inside = smoothstep(1, 0.86, u);
     const tilt = u * 0.72 * (Math.PI / 2);
     const dir = cell.d > 1e-6 ? 1 / cell.d : 0;
-    const nx = -(x - cell.cx) * dir * Math.sin(tilt);
-    const ny = -(y - cell.cy) * dir * Math.sin(tilt);
+    const nx = -(rx - cell.cx) * dir * Math.sin(tilt);
+    const ny = -(ry - cell.cy) * dir * Math.sin(tilt);
     const nz = Math.cos(tilt);
-    // Light from the upper left, well in front of the surface.
     const L = 1 / Math.sqrt(3);
-    // Flat land is the reference, so only the bowl shades.
     const delta = (-nx * L - ny * L + nz * L - L) * inside;
+    // The hollow as a whole sits a little in shade: deepest at the
+    // centre, nothing at the rim.
+    const hollow = inside * (1 - u * u) * 0.3;
 
-    // A gentle fall-off so a face is not perfectly flat. Kept small:
-    // this is a texture on a cube and a strong gradient fights the
-    // scene's own lighting.
-    const ball = 1 - (x + y) / (SIZE * 3.4);
-    let px = mixRgb(rgb('#c9d1c9'), rgb('#eef2ee'), ball);
-    if (delta < 0) px = mixRgb(px, rgb('#6b746e'), Math.min(1, -delta * 1.5));
-    else px = mixRgb(px, rgb('#ffffff'), Math.min(1, delta * 2.4));
+    // A flat shell, just off white so a lit rim still has somewhere to
+    // go. The old painted fall-off across the sheet is gone: the die's
+    // shade map (dieShading.ts) rounds the body far better than paint
+    // can, and the paint left one side paler than the rest.
+    let px: [number, number, number] = rgb('#f5f8f9');
+    px = mixRgb(px, rgb('#b8c2c6'), hollow);
+    if (delta < 0) px = mixRgb(px, rgb('#9aa6ab'), Math.min(1, -delta * 0.9));
+    else px = mixRgb(px, rgb('#ffffff'), Math.min(1, delta * 1.2));
     return px;
   },
 

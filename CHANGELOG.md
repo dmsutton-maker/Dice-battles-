@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.116.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Golf Ball dice are a white ball with fine dimples.** David:
+  "make the golf ball look better." On the table it was a grey, knobbly
+  cube: the shell started grey, and six big dimples to a side shaded
+  from dark to white read as pebbles stuck on. The shell is white now
+  (the die's own shade map rounds it), there are over nine small,
+  shallow dimples to a side — a soft dark centre with a whisper of lit
+  rim — and the lattice is turned eleven degrees so it reads as a ball
+  rather than a grid. Stickers untouched.
+- **Rooftop City is a better night.** David: "Keep the same night time
+  city aesthetic but make it look better." Still night, with light in
+  it: every neighbouring tower wears a painted window grid on all four
+  sides and the tallest blink a red beacon on the board's clock; the
+  streets below have lamp pools and traffic streaks; the roof is
+  moonlit blue-grey with a painted safety line, two puddles holding the
+  sky and far less sealant scribble; the lighting is split sodium-warm
+  against blue fill. The shelf thumbnail is regenerated from the new
+  palette.
+
 ## v1.115.0 — 2026-10-18 · requested by David
 
 ### Changed
