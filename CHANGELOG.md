@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.126.0 — 2026-10-19 · requested by David
+
+### Added
+- **Animals on Sunny Farm.** David: "Add farm animals wondering around
+  the farm board." Two cows on the grass behind the barn, three sheep
+  along the outer edges of the side strips and three chickens pecking
+  about between them. Each wanders its own slow figure-of-eight, slows
+  to a stop at the turns the way an animal stops to graze — cows and
+  sheep drop their heads to the grass as they slow, chickens bob and
+  dart — and faces where it is going. They keep to the outside of the
+  strips, behind the farm's own trees and bales, and never cross the
+  field.
+
 ## v1.125.0 — 2026-10-19 · requested by David
 
 ### Added

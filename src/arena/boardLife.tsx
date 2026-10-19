@@ -327,3 +327,169 @@ export function CityHelicopters() {
     </group>
   );
 }
+
+/* ── Sunny Farm: animals ───────────────────────────────────────────── */
+
+/**
+ * Where each animal lives and how far it wanders: a home on the grass,
+ * a reach along the strip and across it. Cows on the far strip behind
+ * the barn, sheep on the outer edge of the side strips, chickens
+ * pecking about between them. Every one keeps to the outside of its
+ * strip, behind the board's own trees and bales.
+ */
+const FARM_ANIMALS: readonly { kind: 'cow' | 'sheep' | 'chicken'; x: number; z: number; dx: number; dz: number }[] = [
+  // The barn's roof reaches z -9 and a bale stands at the middle of the
+  // far strip, so the cows keep to the open grass beyond both.
+  { kind: 'cow', x: -2.0, z: -9.85, dx: 0.6, dz: 0.18 },
+  { kind: 'cow', x: 2.1, z: -9.8, dx: 0.6, dz: 0.18 },
+  { kind: 'sheep', x: -3.95, z: -0.9, dx: 0.12, dz: 1.1 },
+  { kind: 'sheep', x: -3.95, z: 2.7, dx: 0.12, dz: 0.9 },
+  { kind: 'sheep', x: 3.95, z: 1.3, dx: 0.12, dz: 1.2 },
+  { kind: 'chicken', x: 3.95, z: -5.0, dx: 0.1, dz: 0.6 },
+  { kind: 'chicken', x: 3.95, z: -7.1, dx: 0.1, dz: 0.5 },
+  { kind: 'chicken', x: 0.9, z: -9.75, dx: 0.4, dz: 0.1 },
+];
+
+/**
+ * Cows, sheep and chickens wandering the farm. Each follows its own
+ * slow figure-of-eight inside its patch, which slows to a stop at the
+ * turns the way an animal stops to graze, and faces where it is going.
+ * Sheep and cows drop their heads to the grass as they slow; chickens
+ * bob and dart.
+ */
+export function FarmAnimals() {
+  const bodies = useRef<(THREE.Group | null)[]>([]);
+  const heads = useRef<(THREE.Group | null)[]>([]);
+  const tick = useMemo(
+    () => (t: number) => {
+      for (let i = 0; i < FARM_ANIMALS.length; i++) {
+        const g = bodies.current[i];
+        if (!g) continue;
+        const a = FARM_ANIMALS[i];
+        const speed = a.kind === 'chicken' ? 0.09 : a.kind === 'sheep' ? 0.045 : 0.035;
+        const p = (t * speed + jit(i, 1)) * Math.PI * 2;
+        // A figure of eight along the strip: sin along, sin 2p across.
+        const x = a.x + Math.sin(p) * a.dx + Math.sin(2 * p) * a.dz * 0.15 * (a.dx > a.dz ? 1 : 0);
+        const z = a.z + (a.dx > a.dz ? Math.sin(2 * p) * a.dz : Math.sin(p) * a.dz);
+        const vx = a.dx > a.dz ? Math.cos(p) * a.dx : Math.cos(2 * p) * 2 * a.dx * 0.5;
+        const vz = a.dx > a.dz ? Math.cos(2 * p) * 2 * a.dz : Math.cos(p) * a.dz;
+        const pace = Math.hypot(vx, vz);
+        g.position.set(x, 0, z);
+        if (pace > 0.02) g.rotation.set(0, Math.atan2(vx, vz), 0);
+        const head = heads.current[i];
+        if (head) {
+          if (a.kind === 'chicken') head.position.y = 0.16 + Math.abs(Math.sin(t * 7 + i)) * 0.03;
+          else head.rotation.x = 0.1 + Math.max(0, 0.35 - pace * 3) * 1.8;
+        }
+      }
+    },
+    [],
+  );
+  useSceneryTick(tick);
+  return (
+    <group>
+      {FARM_ANIMALS.map((a, i) => (
+        <group key={i} ref={(g) => { bodies.current[i] = g; }}>
+          {a.kind === 'cow' && (
+            <>
+              <mesh position={[0, 0.22, 0]}>
+                <boxGeometry args={[0.3, 0.26, 0.56]} />
+                <meshStandardMaterial color="#f4f1ea" roughness={0.8} />
+              </mesh>
+              {/* Black patches, where the camera sees them: on the back. */}
+              <mesh position={[0.07, 0.36, 0.12]}>
+                <boxGeometry args={[0.14, 0.01, 0.2]} />
+                <meshStandardMaterial color="#2b2622" roughness={0.8} />
+              </mesh>
+              <mesh position={[-0.08, 0.36, -0.14]}>
+                <boxGeometry args={[0.12, 0.01, 0.16]} />
+                <meshStandardMaterial color="#2b2622" roughness={0.8} />
+              </mesh>
+              <group ref={(g) => { heads.current[i] = g; }} position={[0, 0.3, 0.3]}>
+                <mesh position={[0, 0, 0.1]}>
+                  <boxGeometry args={[0.18, 0.16, 0.22]} />
+                  <meshStandardMaterial color="#f4f1ea" roughness={0.8} />
+                </mesh>
+                <mesh position={[0, -0.02, 0.22]}>
+                  <boxGeometry args={[0.16, 0.08, 0.04]} />
+                  <meshStandardMaterial color="#e8a0a8" roughness={0.8} />
+                </mesh>
+                <mesh position={[0.11, 0.06, 0.02]} rotation={[0, 0, 0.5]}>
+                  <boxGeometry args={[0.1, 0.03, 0.06]} />
+                  <meshStandardMaterial color="#f4f1ea" roughness={0.8} />
+                </mesh>
+                <mesh position={[-0.11, 0.06, 0.02]} rotation={[0, 0, -0.5]}>
+                  <boxGeometry args={[0.1, 0.03, 0.06]} />
+                  <meshStandardMaterial color="#f4f1ea" roughness={0.8} />
+                </mesh>
+              </group>
+              {[-0.1, 0.1].map((lx) =>
+                [-0.2, 0.2].map((lz) => (
+                  <mesh key={`${lx}${lz}`} position={[lx, 0.06, lz]}>
+                    <boxGeometry args={[0.07, 0.12, 0.07]} />
+                    <meshStandardMaterial color="#2b2622" roughness={0.8} />
+                  </mesh>
+                )),
+              )}
+            </>
+          )}
+          {a.kind === 'sheep' && (
+            <>
+              <mesh position={[0, 0.2, 0]} scale={[0.2, 0.16, 0.26]}>
+                <sphereGeometry args={[1, 10, 8]} />
+                <meshStandardMaterial color="#f7f3ea" roughness={1} />
+              </mesh>
+              {/* Fleece lumps, so it is woolly from above. */}
+              {[[0.1, 0.1], [-0.1, 0.08], [0.06, -0.14], [-0.08, -0.12]].map(([fx, fz], k) => (
+                <mesh key={k} position={[fx, 0.3, fz]} scale={[0.09, 0.07, 0.09]}>
+                  <sphereGeometry args={[1, 8, 6]} />
+                  <meshStandardMaterial color="#fbf8f0" roughness={1} />
+                </mesh>
+              ))}
+              <group ref={(g) => { heads.current[i] = g; }} position={[0, 0.24, 0.22]}>
+                <mesh position={[0, 0, 0.06]} scale={[0.09, 0.09, 0.13]}>
+                  <sphereGeometry args={[1, 8, 6]} />
+                  <meshStandardMaterial color="#2b2622" roughness={0.8} />
+                </mesh>
+              </group>
+              {[-0.08, 0.08].map((lx) =>
+                [-0.12, 0.12].map((lz) => (
+                  <mesh key={`${lx}${lz}`} position={[lx, 0.05, lz]}>
+                    <boxGeometry args={[0.05, 0.1, 0.05]} />
+                    <meshStandardMaterial color="#2b2622" roughness={0.8} />
+                  </mesh>
+                )),
+              )}
+            </>
+          )}
+          {a.kind === 'chicken' && (
+            <>
+              <mesh position={[0, 0.1, 0]} scale={[0.09, 0.09, 0.13]}>
+                <sphereGeometry args={[1, 8, 6]} />
+                <meshStandardMaterial color="#f7f3ea" roughness={0.9} />
+              </mesh>
+              <group ref={(g) => { heads.current[i] = g; }} position={[0, 0.16, 0.1]}>
+                <mesh scale={[0.06, 0.06, 0.07]}>
+                  <sphereGeometry args={[1, 8, 6]} />
+                  <meshStandardMaterial color="#f7f3ea" roughness={0.9} />
+                </mesh>
+                <mesh position={[0, 0.06, 0]}>
+                  <boxGeometry args={[0.03, 0.05, 0.06]} />
+                  <meshStandardMaterial color="#e0452f" roughness={0.8} />
+                </mesh>
+                <mesh position={[0, 0, 0.08]} rotation={[Math.PI / 2, 0, 0]}>
+                  <coneGeometry args={[0.025, 0.06, 4]} />
+                  <meshStandardMaterial color="#f2b02a" roughness={0.8} />
+                </mesh>
+              </group>
+              <mesh position={[0, 0.1, -0.13]} rotation={[-0.6, 0, 0]}>
+                <coneGeometry args={[0.04, 0.09, 4]} />
+                <meshStandardMaterial color="#d9cfb8" roughness={0.9} />
+              </mesh>
+            </>
+          )}
+        </group>
+      ))}
+    </group>
+  );
+}
