@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.120.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Cookie dice, again, in full colour.** David, of the v1.117.0
+  cookie: "I still don't like the cookie." That one was still a mask —
+  one ink over the shell — so a chip was a ragged splat of the same
+  brown as the shadow round it, and it read as mud on sand. The cookie
+  now mixes its own paint: golden dough, lighter where it rose and
+  toasted where it caught the oven, with cracks showing the paler
+  inside and sugar glinting on top; and the chips are clean, rounded,
+  slightly oval chocolate chunks, each turned its own way, with a lit
+  shoulder, a darker rim and a glint. Big ones well apart, a small one
+  here and there. Stickers untouched.
+
 ## v1.119.0 — 2026-10-19 · requested by David
 
 ### Changed
