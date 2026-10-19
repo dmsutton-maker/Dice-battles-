@@ -4,7 +4,7 @@ import { TUNING } from '../game/tuning';
 import { cachedTexture } from './textureCache';
 import type { ArenaStructure, ArenaTheme } from './themeData';
 import type { RimSpot } from './rim';
-import { CityHelicopters, CoveShark, FarmAnimals, ReefFish } from './boardLife';
+import { BeachLife, CityHelicopters, CoveShark, FarmAnimals, ReefFish } from './boardLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1553,6 +1553,7 @@ export function BoardScenery({ theme }: { theme: ArenaTheme }) {
       {theme.structure === 'shipHull' && <CoveShark />}
       {theme.structure === 'parapet' && <CityHelicopters />}
       {theme.structure === 'picket' && <FarmAnimals />}
+      {theme.structure === 'driftwood' && <BeachLife />}
     </group>
   );
 }

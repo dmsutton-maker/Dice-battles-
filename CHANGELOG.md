@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.127.0 — 2026-10-19 · requested by David
+
+### Added
+- **People on Treasure Beach.** David: "Show surfers and sun bathers on
+  the beach board moving around." Two surfers ride the sea along the
+  top of the frame on bright boards, leaning into their turns and
+  trailing foam; two sunbathers lie on striped towels on the outer edge
+  of the sand and roll over now and then; two people in sun hats stroll
+  the edge of each strip, turning round at the end of their beat.
+  Nothing crosses the sand inside the walls.
+
 ## v1.126.0 — 2026-10-19 · requested by David
 
 ### Added

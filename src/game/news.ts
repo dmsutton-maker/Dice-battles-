@@ -90,6 +90,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-127-0-boards-come-alive',
+    date: '19 October 2026',
+    version: 'v1.127.0',
+    title: 'The boards come alive',
+    icon: 'arena',
+    body:
+      'Little fish swim around the Coral Reef, a shark circles the pirate ' +
+      'ship and ducks under its hull, two helicopters fly over Rooftop ' +
+      'City, cows, sheep and chickens wander Sunny Farm, and Treasure ' +
+      'Beach has surfers on the waves and sunbathers on the sand.\n\n' +
+      'They move during battles and previews and keep off the playing ' +
+      'surface. The goldfish on the Fish dice also swim three times ' +
+      'faster.',
+  },
+  {
     id: 'v1-123-0-three-more-dice',
     date: '19 October 2026',
     version: 'v1.123.0',

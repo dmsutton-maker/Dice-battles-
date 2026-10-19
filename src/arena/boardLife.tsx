@@ -493,3 +493,141 @@ export function FarmAnimals() {
     </group>
   );
 }
+
+/* ── Treasure Beach: surfers and sunbathers ────────────────────────── */
+
+/**
+ * Two surfers riding the sea along the top of the frame, two
+ * sunbathers on towels on the outer edge of the sand who roll over now
+ * and then, and two people strolling the water's edge of each strip.
+ * The surfers lean into their turns and trail foam; the strollers bob
+ * as they walk and turn round at the end of their beat.
+ */
+export function BeachLife() {
+  const surfers = useRef<(THREE.Group | null)[]>([]);
+  const bathers = useRef<(THREE.Group | null)[]>([]);
+  const walkers = useRef<(THREE.Group | null)[]>([]);
+  const tick = useMemo(
+    () => (t: number) => {
+      for (let i = 0; i < 2; i++) {
+        const s = surfers.current[i];
+        if (s) {
+          const p = t * (0.22 + i * 0.05) + i * 2.1;
+          const x = Math.sin(p) * 2.6;
+          const vx = Math.cos(p);
+          s.position.set(x, 0.0, -9.75 + i * 0.35 + Math.sin(t * 1.3 + i) * 0.18);
+          // Facing along the wave, leaning into the ride.
+          s.rotation.set(0, vx >= 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+          s.rotation.z = -vx * 0.25;
+        }
+        const b = bathers.current[i];
+        if (b) {
+          // Roll over every so often: a smooth half turn, then rest.
+          const cycle = ((t * 0.08 + i * 0.5) % 1 + 1) % 1;
+          const roll = cycle < 0.12 ? (1 - Math.cos((cycle / 0.12) * Math.PI)) / 2 : 1;
+          const side = Math.floor(t * 0.08 + i * 0.5) % 2;
+          b.rotation.set(0, 0, (side + roll) * Math.PI);
+        }
+        const w = walkers.current[i];
+        if (w) {
+          const side = i === 0 ? -1 : 1;
+          const p = t * 0.12 + i * 1.7;
+          const z = (i === 0 ? -1.0 : 0.6) + Math.sin(p) * 2.0;
+          const vz = Math.cos(p);
+          w.position.set(side * 3.95, Math.abs(Math.sin(t * 6 + i)) * 0.02, z);
+          w.rotation.set(0, vz >= 0 ? 0 : Math.PI, 0);
+        }
+      }
+    },
+    [],
+  );
+  useSceneryTick(tick);
+  const Person = ({ skin, suit, lying = false }: { skin: string; suit: string; lying?: boolean }) =>
+    lying ? (
+      <group>
+        <mesh position={[0, 0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <capsuleGeometry args={[0.07, 0.3, 4, 8]} />
+          <meshStandardMaterial color={skin} roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.07, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
+          <capsuleGeometry args={[0.075, 0.12, 4, 8]} />
+          <meshStandardMaterial color={suit} roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.07, 0.3]}>
+          <sphereGeometry args={[0.07, 8, 6]} />
+          <meshStandardMaterial color={skin} roughness={0.8} />
+        </mesh>
+      </group>
+    ) : (
+      <group>
+        <mesh position={[0, 0.17, 0]}>
+          <capsuleGeometry args={[0.06, 0.2, 4, 8]} />
+          <meshStandardMaterial color={suit} roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.07, 0]}>
+          <cylinderGeometry args={[0.05, 0.06, 0.14, 6]} />
+          <meshStandardMaterial color={skin} roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.36, 0]}>
+          <sphereGeometry args={[0.075, 8, 6]} />
+          <meshStandardMaterial color={skin} roughness={0.8} />
+        </mesh>
+      </group>
+    );
+  return (
+    <group>
+      {/* Surfers: a bright board, a rider, foam off the tail. */}
+      {[0, 1].map((i) => (
+        <group key={`surf-${i}`} ref={(g) => { surfers.current[i] = g; }}>
+          <mesh position={[0, 0.02, 0]}>
+            <boxGeometry args={[0.2, 0.03, 0.62]} />
+            <meshStandardMaterial color={i === 0 ? '#ff6e6e' : '#ffd21f'} roughness={0.4} />
+          </mesh>
+          <mesh position={[0, 0.036, 0]}>
+            <boxGeometry args={[0.03, 0.01, 0.5]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.4} />
+          </mesh>
+          <group position={[0, 0.03, -0.05]} rotation={[0, Math.PI / 2, 0]}>
+            <Person skin={i === 0 ? '#c68a5c' : '#8a5a3a'} suit={i === 0 ? '#1f8fd6' : '#2fb88a'} />
+          </group>
+          <mesh position={[0, -0.01, -0.5]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.5, 1.4, 1]}>
+            <circleGeometry args={[0.3, 10]} />
+            <meshBasicMaterial color="#fbfaf3" transparent opacity={0.6} depthWrite={false} />
+          </mesh>
+        </group>
+      ))}
+      {/* Sunbathers: a striped towel at the top of each sand strip, a person on it. */}
+      {[
+        { x: -3.95, z: 2.5, a: '#ff6e9e', b: '#ffffff' },
+        { x: 3.95, z: -5.3, a: '#1f8fd6', b: '#fff3b0' },
+      ].map((tw, i) => (
+        <group key={`towel-${i}`} position={[tw.x, 0.01, tw.z]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.42, 0.8]} />
+            <meshStandardMaterial color={tw.a} roughness={0.9} />
+          </mesh>
+          {[-0.25, 0, 0.25].map((sz) => (
+            <mesh key={sz} position={[0, 0.002, sz]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[0.42, 0.1]} />
+              <meshStandardMaterial color={tw.b} roughness={0.9} />
+            </mesh>
+          ))}
+          <group ref={(g) => { bathers.current[i] = g; }} position={[0, 0.0, -0.08]}>
+            <Person skin={i === 0 ? '#e0b088' : '#a06a44'} suit={i === 0 ? '#2fb88a' : '#ff6e6e'} lying />
+          </group>
+        </group>
+      ))}
+      {/* Strollers along the outer edge of each strip. */}
+      {[0, 1].map((i) => (
+        <group key={`walk-${i}`} ref={(g) => { walkers.current[i] = g; }}>
+          <Person skin={i === 0 ? '#8a5a3a' : '#e0b088'} suit={i === 0 ? '#ffd21f' : '#cc79fc'} />
+          {/* A sun hat, seen from above as a disc. */}
+          <mesh position={[0, 0.43, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.13, 12]} />
+            <meshStandardMaterial color={i === 0 ? '#f4e2b0' : '#ffffff'} roughness={0.9} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
