@@ -7,6 +7,7 @@ import type { RimSpot } from './rim';
 import { BeachLife, CityHelicopters, CoveShark, FarmAnimals, ReefFish, ToyTrain } from './boardLife';
 import { DesertCamels } from './desertLife';
 import { MoonAliens } from './moonLife';
+import { LavaRiver } from './volcanoLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1559,6 +1560,7 @@ export function BoardScenery({ theme }: { theme: ArenaTheme }) {
       {theme.structure === 'blocks' && <ToyTrain />}
       {theme.structure === 'adobe' && <DesertCamels />}
       {theme.structure === 'airlock' && <MoonAliens />}
+      {theme.structure === 'basalt' && <LavaRiver />}
     </group>
   );
 }

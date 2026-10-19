@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.133.0 — 2026-10-19 · requested by David
+
+### Added
+- **A river of lava round Volcano Rim.** David: "On the volcano, let me
+  see a river of lava flowing around it and take away the fighting
+  people." A river of lava now runs right round the outside of the
+  rim: down both sides, behind the far wall and across the front
+  between the wall and the landing pads, with dark stone banks and a
+  glow on the ground beside it. The lava flows, clockwise seen from
+  above: dark crust with streaks of orange and yellow sliding along
+  the river. The rocks and lava pools along the edges stand on its
+  banks.
+
+### Removed
+- **The fighters on Volcano Rim.** Gone, as asked. The torches and the
+  far crate moved a step in from the edge so they stand on the river's
+  bank rather than in it.
+
 ## v1.132.0 — 2026-10-19 · requested by David
 
 ### Added

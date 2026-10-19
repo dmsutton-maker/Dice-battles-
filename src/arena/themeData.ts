@@ -355,24 +355,31 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     jail: { platform: '#6e4e4c', bars: '#33232a' },
     retreat: { padA: '#94706a', padB: '#7a5a54', post: '#4a3336', canopy: '#ff6b2b', pool: '#ff7a2f' },
     sky: { sun: null, stars: false, body: null },
+    /*
+      No fighters here since 19 Oct 2026 (David: "take away the fighting
+      people"), and the torches and the far crate sit a step in from
+      the edge, on the near bank of the lava river that now runs round
+      the outside of the rim (volcanoLife.tsx). Rocks and lava pools
+      stay where they were; a rock in a lava river is a rock in a lava
+      river.
+    */
     props: [
-      { kind: 'torch', x: -3.44, z: -7.3, scale: 0.75, color: '#ff9440' },
+      { kind: 'torch', x: -3.3, z: -7.3, scale: 0.75, color: '#ff9440' },
       { kind: 'rock', x: -3.38, z: -3.4, scale: 0.8, color: '#5c4042' },
       { kind: 'lavaPool', x: -3.5, z: -0.8, scale: 0.42 },
       { kind: 'rock', x: -3.4, z: 1.6, scale: 0.65, color: '#4a3336' },
-      { kind: 'torch', x: -3.46, z: 3.5, scale: 0.7, color: '#ff9440' },
+      { kind: 'torch', x: -3.3, z: 3.5, scale: 0.7, color: '#ff9440' },
       { kind: 'rock', x: 3.42, z: -7.3, scale: 0.75, color: '#67494a' },
-      { kind: 'torch', x: 3.38, z: -3.4, scale: 0.75, color: '#ff9440' },
+      { kind: 'torch', x: 3.3, z: -3.4, scale: 0.75, color: '#ff9440' },
       { kind: 'lavaPool', x: 3.5, z: -0.8, scale: 0.42 },
       { kind: 'pebbles', x: 3.4, z: 1.6, scale: 0.95, color: '#573b3d' },
       { kind: 'rock', x: 3.46, z: 3.5, scale: 0.7, color: '#5c4042' },
       { kind: 'rock', x: -2.4, z: -8.8, scale: 0.65, color: '#4a3336' },
       { kind: 'lavaPool', x: 0.1, z: -9, scale: 0.4 },
       { kind: 'rock', x: 2.5, z: -8.8, scale: 0.6, color: '#67494a' },
-      { kind: 'duel', x: -3.75, z: -5.6, scale: 1.0, color: '#c23b3b' },
-      { kind: 'torch', x: -3.95, z: -9.15, scale: 0.85, color: '#ff9440' },
+      { kind: 'torch', x: -3.3, z: -9.0, scale: 0.85, color: '#ff9440' },
       { kind: 'rock', x: 3.75, z: -5.6, scale: 0.7, color: '#5c4042' },
-      { kind: 'crate', x: 3.95, z: -9.15, scale: 0.8, color: '#4a3336' },
+      { kind: 'crate', x: 3.3, z: -9.0, scale: 0.8, color: '#4a3336' },
       { kind: 'lavaPool', x: -3.05, z: -2.1, scale: 0.7 },
       { kind: 'rock', x: -3.05, z: 0.4, scale: 0.6, color: '#67494a' },
       { kind: 'pebbles', x: -3.05, z: -4.6, scale: 0.85, color: '#573b3d' },

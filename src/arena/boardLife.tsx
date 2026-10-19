@@ -645,7 +645,7 @@ export function BeachLife() {
  * and at zFar and zNear, joined by quarter circles of radius `r`. The
  * near straight runs between the tray's near wall and the retreat pads.
  */
-function track(u: number, half: number, zFar: number, zNear: number, r: number, out: THREE.Vector3): number {
+export function track(u: number, half: number, zFar: number, zNear: number, r: number, out: THREE.Vector3): number {
   const sx = 2 * (half - r);
   const sz = zNear - zFar - 2 * r;
   const q = (Math.PI / 2) * r;
