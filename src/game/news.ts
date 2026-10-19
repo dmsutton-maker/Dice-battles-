@@ -90,6 +90,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-119-0-dice-redrawn',
+    date: '19 October 2026',
+    version: 'v1.119.0',
+    title: 'Four dice, redrawn',
+    icon: 'dice',
+    body:
+      'The Golf Ball is a white ball with fine dimples, the Cookie is a ' +
+      'baked chocolate-chip cookie, the Basketball is orange with a ' +
+      'basketball\'s seams, and the Football is pigskin with a proper lace ' +
+      'panel and end stripes.\n\n' +
+      'Rooftop City is still night-time, with more light in it: lit ' +
+      'windows and blinking beacons on the towers next door, lamps and ' +
+      'traffic in the streets far below, and a painted safety line and ' +
+      'puddles on the roof.',
+  },
+  {
     id: 'v1-115-0-swimming-fish',
     date: '19 October 2026',
     version: 'v1.115.0',

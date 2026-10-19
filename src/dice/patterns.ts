@@ -1887,29 +1887,57 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return px;
   },
   laces: (x, y) => {
-    // A football: pebbled hide, the lace panel on the left third and the
-    // long seam sweeping the right, both clear of the colour sticker.
+    /*
+      A football, redrawn 19 Oct 2026 — David: "make the football dice
+      look better." The last one rendered as a brown wicker cube: the
+      pebble was a tight checker grid that read as basket weave, the
+      hide was muddy, and the laces were thin and half under the sticker.
+
+      What says football from across a table is three things, all bold:
+      pigskin the colour of a real ball, a thick white lace panel — a
+      spine with short laces crossing it — and the two white stripes at
+      the ends. The lace panel sits in the left third of the face and
+      the stripes on the right, both clear of the colour sticker in the
+      middle; the pebble is a fine hex grain like the basketball's, lit
+      from the upper left, and the ends fall into shadow so the face
+      still reads as the curve of a ball.
+    */
     const c = SIZE / 2;
-    const cell = 4;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const gx = ((x + offset) % cell) - cell / 2;
-    const gy = (y % cell) - cell / 2;
-    const lit = (-gx - gy) / 2.6;
-    let px = mixRgb(rgb('#6b3315'), rgb('#8a4722'), wrappedNoise(x, y, 32));
-    px = mixRgb(px, rgb('#a3663a'), Math.max(0, lit) * 0.4);
-    px = mixRgb(px, rgb('#45200e'), Math.max(0, -lit) * 0.35);
+    const grain = hexCell(x, y, 1.9);
+    const lit = ((grain.cx - x) + (grain.cy - y)) / 1.9;
+    let px = mixRgb(rgb('#9a4e28'), rgb('#bd6a3c'), wrappedNoise(x, y, 32));
+    px = mixRgb(px, rgb('#d48a58'), Math.max(0, lit) * 0.3);
+    px = mixRgb(px, rgb('#5e2c12'), Math.max(0, -lit) * 0.3);
     // The pointed ends fall away, hinting the ball's curve.
-    px = mixRgb(px, rgb('#38190b'), smoothstep(20, 32, Math.abs(y - c)) * 0.4);
-    if (Math.abs(Math.hypot(x - SIZE * 1.4, y - c) - SIZE * 0.63) < 1.5) {
-      px = mixRgb(rgb('#e8dfcc'), rgb('#bdb39b'), 0.4);
+    px = mixRgb(px, rgb('#3e1c0c'), smoothstep(22, 32, Math.abs(y - c)) * 0.35);
+
+    // The lace panel: a dark seam channel either side of the spine.
+    const lx = 12;
+    const seam = Math.min(Math.abs(x - (lx - 5)), Math.abs(x - (lx + 5)));
+    px = mixRgb(px, rgb('#2a1206'), smoothstep(1.4, 0.5, seam) * 0.7);
+    const WHITE = rgb('#f6f1e6');
+    const CREAM = rgb('#cfc4ae');
+    // The spine, thick, from near the top to near the bottom.
+    const spine = Math.abs(x - lx) < 1.7 && Math.abs(y - c) < 25;
+    // Seven cross laces, each a short bar with rounded ends.
+    let cross = false;
+    for (let i = -3; i <= 3; i++) {
+      const cy = c + i * 7;
+      const dy = Math.abs(y - cy);
+      const dx = Math.abs(x - lx);
+      if (dy < 1.4 && dx < 4.6) cross = true;
+      else if (dx >= 4.6 && Math.hypot(dx - 4.6, dy) < 1.4) cross = true;
     }
-    const lx = SIZE * 0.22;
-    if (Math.abs(x - lx) < 1.6 && Math.abs(y - c) < 18) px = rgb('#f2ece0');
-    for (let i = -2; i <= 2; i++) {
-      if (Math.abs(y - (c + i * 7.5)) < 1.6 && Math.abs(x - lx) < 6.2) {
-        px = mixRgb(rgb('#f7f2e8'), rgb('#c9c1af'), Math.abs(x - lx) / 6.2);
-      }
+    if (spine || cross) {
+      // A lace is a round cord: lit on top, shaded underneath.
+      const shade = spine ? (x - lx) / 1.7 : ((y - c + 3.5) % 7) / 1.4 - 0.5;
+      px = mixRgb(WHITE, CREAM, Math.min(1, Math.max(0, shade * 0.5 + 0.3)));
+    }
+    // The two white stripes near the right end, each with a dark edge.
+    for (const sx of [51.5, 58.5]) {
+      const d = Math.abs(x - sx);
+      if (d < 1.9) px = mixRgb(WHITE, CREAM, 0.25 + d * 0.2);
+      else if (d < 2.6) px = mixRgb(px, rgb('#3e1c0c'), 0.45);
     }
     return px;
   },

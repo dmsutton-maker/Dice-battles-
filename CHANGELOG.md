@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.119.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The Football dice are pigskin with a real lace panel.** David:
+  "make the football dice look better." It rendered as a brown wicker
+  cube: the pebble was a tight checker grid that read as basket weave,
+  the hide was muddy, and the laces were thin and half under the
+  sticker. Now the hide is the colour of a real ball with a fine hex
+  grain, a thick white spine with seven laces crossing it sits in the
+  left third of each face, and the two white end stripes sit on the
+  right, both clear of the colour sticker. Stickers untouched.
+
 ## v1.118.0 — 2026-10-19 · requested by David
 
 ### Changed
