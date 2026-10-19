@@ -5,6 +5,7 @@ import { cachedTexture } from './textureCache';
 import type { ArenaStructure, ArenaTheme } from './themeData';
 import type { RimSpot } from './rim';
 import { BeachLife, CityHelicopters, CoveShark, FarmAnimals, ReefFish, ToyTrain } from './boardLife';
+import { DesertCamels } from './desertLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1555,6 +1556,7 @@ export function BoardScenery({ theme }: { theme: ArenaTheme }) {
       {theme.structure === 'picket' && <FarmAnimals />}
       {theme.structure === 'driftwood' && <BeachLife />}
       {theme.structure === 'blocks' && <ToyTrain />}
+      {theme.structure === 'adobe' && <DesertCamels />}
     </group>
   );
 }

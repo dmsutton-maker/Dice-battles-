@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.131.0 — 2026-10-19 · requested by David
+
+### Added
+- **A camel train on Desert Dunes.** David: "In the desert show me
+  people riding on camels in the background." Three camels walk the
+  dune beyond the far wall from left to right, two of them with a rider
+  in a bright robe and a white headscarf, and come back in on the left
+  when the last has gone off the right. Legs swing, heads nod with the
+  step, and each camel rocks a little as it walks. They pass behind the
+  cactus and the rocks and never touch the tray.
+
 ## v1.130.0 — 2026-10-19 · requested by David
 
 ### Added
