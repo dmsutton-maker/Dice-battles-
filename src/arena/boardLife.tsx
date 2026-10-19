@@ -38,29 +38,33 @@ function loop(u: number, half: number, zFar: number, zNear: number, out: THREE.V
   const arc = Math.PI * half;
   const total = 2 * straight + 2 * arc;
   let d = ((u % 1) + 1) % 1 * total;
+  // Headings are atan2(dx, dz) of the direction of travel, which is
+  // what rotation.y needs for a thing built nose toward +z. The first
+  // version had every one a quarter turn short, so the shark and the
+  // helicopters flew sideways (David, 19 Oct 2026).
   // Right side, heading toward zFar (negative z).
   if (d < straight) {
     out.set(half, 0, zNear - d);
-    return Math.PI / 2;
+    return Math.PI;
   }
   d -= straight;
   // Far arc, from the right round to the left.
   if (d < arc) {
     const a = d / half;
     out.set(Math.cos(a) * half, 0, zFar - Math.sin(a) * half);
-    return Math.PI / 2 + a;
+    return Math.PI + a;
   }
   d -= arc;
   // Left side, heading toward zNear.
   if (d < straight) {
     out.set(-half, 0, zFar + d);
-    return -Math.PI / 2;
+    return 0;
   }
   d -= straight;
   // Near arc, from the left round to the right.
   const a = d / half;
   out.set(-Math.cos(a) * half, 0, zNear + Math.sin(a) * half);
-  return -Math.PI / 2 + a;
+  return a;
 }
 
 /** A repeatable 0..1 jitter for creature `i`, channel `k`. Never random. */
@@ -169,10 +173,12 @@ export function CoveShark() {
       const g = shark.current;
       if (!g) return;
       // A loop that rounds the bow inside the frame — the far arc peaks
-      // at z = -10 — and dips under the stern at the near end.
-      const heading = loop(t * 0.05, 3.6, -6.4, 4.4, P);
-      // Under the hull: the near arc's middle, where |x| is small.
-      const under = Math.abs(P.x) < 2.95 && P.z > 3.5;
+      // at z = -10 — and crosses under the hull mid-ship, where the
+      // whole near arc lies under the deck. The shark is a long shape,
+      // so it is hidden for the whole crossing rather than clipped at
+      // the hull's side with its tail still inside the planks.
+      const heading = loop(t * 0.05, 3.6, -6.4, 1.5, P);
+      const under = P.z > 1.55;
       g.visible = !under;
       // The cove's sea is painted on the ground at y = 0, so the shark
       // rides just above it, not in a water sheet below it.

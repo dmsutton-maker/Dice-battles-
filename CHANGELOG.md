@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.128.1 — 2026-10-19 · requested by David
+
+### Fixed
+- **The shark and the helicopters face the way they are going.** David:
+  "the helicopter on the city look like they're flying sideways and the
+  shark's tail is going through the boat." The path they share had every
+  heading a quarter turn short, so both flew sideways, and the shark's
+  long body stuck into the hull. The headings are right now, and the
+  shark dives under the ship mid-ship — hidden for the whole crossing
+  rather than clipped at the hull's side — and comes up on the other.
+
 ## v1.128.0 — 2026-10-19 · requested by David
 
 ### Added
