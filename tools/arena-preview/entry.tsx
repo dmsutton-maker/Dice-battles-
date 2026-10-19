@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ARENAS, ArenaId } from '../../src/arena/arenas';
+import { SCENERY_LIFE } from '../../src/arena/sceneryClock';
 import { fitCamera } from '../../src/demo/cameraFit';
 import { TUNING } from '../../src/game/tuning';
 import { laneColors, makeUnits, ModeId } from '../../src/game/modes';
@@ -173,4 +174,16 @@ createRoot(host).render(
     <Scene id={id} mode={mode} />
   </Canvas>,
 );
-setTimeout(() => { (window as any).__ready = true; }, 1200);
+/*
+  ?t=<seconds> runs the boards' idle life — the ticks registered on
+  SCENERY_LIFE, which WaterClock drives in the game — to that moment
+  before the shot, so a creature that moves can be seen somewhere other
+  than its starting place. There is no clock here otherwise.
+*/
+const lifeT = Number(new URLSearchParams(location.search).get('t') ?? 0);
+setTimeout(() => {
+  for (const tick of SCENERY_LIFE) tick(lifeT);
+  // Two frames on: the tick moved things, and the shot must be of the
+  // frame drawn after that, not the one in flight.
+  requestAnimationFrame(() => requestAnimationFrame(() => { (window as any).__ready = true; }));
+}, 1200);

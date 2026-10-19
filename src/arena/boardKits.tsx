@@ -4,6 +4,7 @@ import { TUNING } from '../game/tuning';
 import { cachedTexture } from './textureCache';
 import type { ArenaStructure, ArenaTheme } from './themeData';
 import type { RimSpot } from './rim';
+import { CoveShark, ReefFish } from './boardLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1538,13 +1539,18 @@ function MoonSky() {
  */
 export function BoardScenery({ theme }: { theme: ArenaTheme }) {
   const kit = BOARD_KITS[theme.structure];
-  if (!kit) return null;
+  // The store boards have no kit here — their walls live in
+  // storeBoards.tsx — but they do have creatures (boardLife.tsx), so
+  // this no longer gives up without one.
   return (
     <group>
-      <Haze structure={theme.structure} kit={kit} />
+      {kit && <Haze structure={theme.structure} kit={kit} />}
       {theme.structure === 'cloudBalustrade' && <DriftingClouds />}
       {theme.structure === 'logPile' && <FallingLeaves />}
       {theme.structure === 'airlock' && <MoonSky />}
+      {/* The creatures David asked for on 19 Oct 2026, in boardLife.tsx. */}
+      {theme.structure === 'coralRim' && <ReefFish />}
+      {theme.structure === 'shipHull' && <CoveShark />}
     </group>
   );
 }

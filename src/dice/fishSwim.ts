@@ -33,10 +33,12 @@ const SIZE = 64;
 
 /**
  * How far the fish swim per second, in side-widths: one crossing about
- * every fifteen seconds. Slower reads as drifting; much faster and a fish
- * is gone before anyone sees it is a fish.
+ * every four and a half seconds. It was 0.065 — a crossing every
+ * fifteen seconds — and David, 19 Oct 2026: "The fish on the fish dice
+ * move too slow. Hard to see they are moving." Much faster than this
+ * and a fish is gone before anyone sees it is a fish.
  */
-export const FISH_SWIM_SPEED = 0.065;
+export const FISH_SWIM_SPEED = 0.22;
 
 /** The clock every swimming fish reads, shared by both dice. */
 const FISH_TIME = { value: 0 };
@@ -174,10 +176,10 @@ void main() {`,
   float ft = uFishTime;
   // Nose-first: a layer drawn facing +u slides toward +u. A slow bob,
   // and a surge in the swim so it reads as kicking, not gliding.
-  float surge = sin(ft * 2.1 + uFishPhase * 11.0) * 0.012;
+  float surge = sin(ft * 2.6 + uFishPhase * 11.0) * 0.022;
   float go = ft * ${FISH_SWIM_SPEED.toFixed(4)} + uFishPhase;
-  vec2 bobR = vec2(0.0, sin(ft * 1.3 + uFishPhase * 7.0) * 0.018);
-  vec2 bobL = vec2(0.0, sin(ft * 1.1 + uFishPhase * 5.0 + 1.7) * 0.018);
+  vec2 bobR = vec2(0.0, sin(ft * 1.6 + uFishPhase * 7.0) * 0.028);
+  vec2 bobL = vec2(0.0, sin(ft * 1.4 + uFishPhase * 5.0 + 1.7) * 0.028);
   vec4 fr = texture2D(uFishRight, vMapUv - vec2(go + surge, 0.0) - bobR);
   vec4 fl = texture2D(uFishLeft, vMapUv + vec2(go * 0.85 - surge, 0.0) - bobL);
   diffuseColor.rgb = mix(diffuseColor.rgb, fr.rgb, fr.a);

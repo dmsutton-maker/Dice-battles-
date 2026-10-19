@@ -19,7 +19,11 @@ const IDS = process.argv.slice(2);
     const mode = process.env.MODE ? '&mode=' + process.env.MODE : '';
     // QUERY=hazards=1&... is passed straight through to entry.tsx.
     const extra = process.env.QUERY ? '&' + process.env.QUERY : '';
-    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id + top + mode + extra);
+    // T=<seconds> runs the board's idle life to that moment before the
+    // shot, so a creature that moves can be seen somewhere other than
+    // its starting place.
+    const life = process.env.T ? '&t=' + process.env.T : '';
+    await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?id=' + id + top + mode + extra + life);
     await page.waitForFunction('window.__ready === true', { timeout: 20000 }).catch(() => {});
     const tag = `${top ? '-top' : ''}${process.env.MODE ? '-' + process.env.MODE : ''}`;
     // OUT_DIR keeps two people (or two agents) shooting the same arena

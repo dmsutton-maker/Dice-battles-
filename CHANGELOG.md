@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.124.0 — 2026-10-19 · requested by David
+
+### Changed
+- **The goldfish on the Fish dice swim three times faster.** David:
+  "The fish on the fish dice move too slow. Hard to see they are
+  moving." One crossing of a side every four and a half seconds instead
+  of fifteen, with a stronger kick and bob.
+
+### Added
+- **Fish on the Coral Reef.** David: "add swimming around the reef
+  board." Eight little fish, each circling its own narrow oval in the
+  sea beside and beyond the tray, at its own height and speed, nose
+  first with its tail beating. Built for the game's camera: wide and
+  flat so the shape reads from above.
+- **A shark round the pirate ship.** David: "Add a shark swimming under
+  the pirate boat." One shark, seen as it would be from the deck: a dark
+  silhouette just under the surface with a fin breaking the water and
+  foam off it, circling the ship — down one side, round the bow, down
+  the other, and under the hull at the stern, where it is simply not
+  drawn until it comes up on the far side.
+- Both move whenever the board is drawing (battles and previews) and
+  hold still on the menus, like the water. Nothing crosses the play
+  surface. The arena preview tool takes `T=<seconds>` to run the
+  board's idle life to a moment before a shot (`src/arena/boardLife.tsx`).
+
 ## v1.123.1 — 2026-10-19 · requested by David
 
 ### Fixed
