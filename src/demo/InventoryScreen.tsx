@@ -1,4 +1,5 @@
 import { seasonLevelOf, seasonTrackOf } from '../game/seasonPass';
+import { paidSkinWhere } from '../game/products';
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TIERS } from '../game/progress';
@@ -146,8 +147,10 @@ export function InventoryScreen({
                   */
                   <Text style={styles.priceTag}>Win it in a cup</Text>
                 ) : skin.paid ? (
-                  // Real money only, so not a coin tag and not a trophy tag.
-                  <Text style={styles.priceTag}>Starter pack</Text>
+                  // Real money only, so not a coin tag and not a trophy
+                  // tag: "Starter pack" for the Supporter die, "$1.99"
+                  // for Neon (products.ts paidSkinWhere).
+                  <Text style={styles.priceTag}>{paidSkinWhere(skin.id)}</Text>
                 ) : skin.pass ? (
                   // Season pass only — same reason as the cup prize above.
                   <Text style={styles.priceTag}>

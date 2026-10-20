@@ -90,6 +90,19 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-138-0-neon-dice',
+    date: '20 October 2026',
+    version: 'v1.138.0',
+    title: 'Neon dice',
+    icon: 'dice',
+    body:
+      'New in the money shop: Neon dice. Black glass with a glowing pink ' +
+      'tube round every side, and they leave a trail of light as they ' +
+      'roll, with a ring of light where they land. $1.99, yours for good.\n\n' +
+      'Also new: the Supporter die has a gold compass rose, and the Pizza ' +
+      'die is a whole pizza on every side.',
+  },
+  {
     id: 'v1-134-0-more-life-on-the-boards',
     date: '19 October 2026',
     version: 'v1.134.0',

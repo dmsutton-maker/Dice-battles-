@@ -295,4 +295,19 @@ export const TUNING = {
     frozenSeconds: 5,
     thawSeconds: 1.5,
   },
+  /**
+   * The Neon die's light (diceNeon.ts), 20 Oct 2026. Looks only, like
+   * Fire and Ice: none of this reaches the physics.
+   */
+  neon: {
+    particles: 420,
+    /** World units a die travels between two dots of its trail. */
+    trailSpacing: 0.07,
+    /** Seconds a trail dot glows before it is gone. */
+    trailLife: 0.55,
+    /** Dots in the ring of light where a die comes to rest. */
+    landingRing: 36,
+    /** How fast that ring spreads across the floor, units a second. */
+    landingSpeed: 2.6,
+  },
 } as const;

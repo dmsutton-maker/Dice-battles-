@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.138.0 — 2026-10-20 · requested by David
+
+### Added
+- **Neon dice, $1.99.** David: "make a new cool dice that is worth one
+  or two dollars", then of three designs, "I like the neon. Add it to
+  the game in the store and write the $1.99 price tag and make sure
+  it's available with admin mode." Black glass with a glowing pink tube
+  round every side, cyan corner marks and a faint grid. They leave a
+  pink and cyan trail of light as they roll, and a ring of light spreads
+  across the floor where each one comes to rest. In the moat they fizz
+  cyan sparks and sink like any die. Looks only: nothing about how they
+  land is different.
+  - On the money shelf as "Neon dice" at $1.99 (`neon_dice`, a one-off
+    purchase that Restore brings back). The locked die's card and its
+    preview now say "$1.99" instead of "Starter pack".
+  - Family tester mode (the FAMILY code) lends it like every paid die.
+  - Before anyone can buy it, `neon_dice` has to be created in App Store
+    Connect as a Non-Consumable at $1.99.
+- A News post for the Neon dice, the compass rose and the pizza.
+
 ## v1.137.0 — 2026-10-20 · requested by David
 
 ### Changed

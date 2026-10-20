@@ -62,9 +62,11 @@ suite('fire dice · the skin', () => {
     assert(fire.pass === true, 'the Fire dice are not a season pass die');
   });
 
-  test('only the Fire and Ice dice have an effect', () => {
+  test('only the Fire, Ice and Neon dice have an effect', () => {
+    // Neon joined on 20 Oct 2026 (a light trail, diceNeon.ts), the first
+    // effect on a die sold for money rather than won on the pass.
     const moving = DICE_SKINS.filter((s) => s.effect !== undefined).map((s) => `${s.id}:${s.effect}`);
-    assertEqual(moving.sort().join(','), 'fire:fire,ice:ice', 'an unexpected skin has an effect');
+    assertEqual(moving.sort().join(','), 'fire:fire,ice:ice,neon:neon', 'an unexpected skin has an effect');
   });
 
   test('the scene builds the fire only for a skin that asks for it', () => {
@@ -173,8 +175,9 @@ suite('fire dice · it never hides the roll', () => {
       './particles',
       './diceFire',
       './diceIce',
+      './diceNeon',
     ]);
-    for (const file of ['diceFire', 'diceIce', 'dieEffect', 'groundMarks', 'particles']) {
+    for (const file of ['diceFire', 'diceIce', 'diceNeon', 'dieEffect', 'groundMarks', 'particles']) {
       const source = readFileSync(`src/dice/${file}.ts`, 'utf8');
       const imports = [...source.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
       const stray = imports.filter((m) => !allowed.has(m));

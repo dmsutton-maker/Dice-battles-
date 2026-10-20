@@ -25,6 +25,9 @@ export const Kind = {
   Mist: 5,
   Glint: 6,
   Shard: 7,
+  // The Neon die's two lights, 20 Oct 2026.
+  NeonPink: 8,
+  NeonCyan: 9,
 } as const;
 export type Kind = (typeof Kind)[keyof typeof Kind];
 
@@ -274,6 +277,16 @@ export class ParticlePool {
         r = 0.92; g = 0.98; b = 1;
         a = Math.sin(Math.PI * t);
         glow = 0.85;
+      } else if (k === Kind.NeonPink || k === Kind.NeonCyan) {
+        // Light, not stuff: all additive, bright at once and fading out,
+        // so it glows on the dark boards and still shows on pale ones.
+        if (k === Kind.NeonPink) {
+          r = 1; g = lerp(0.35, 0.2, t); b = lerp(0.8, 0.7, t);
+        } else {
+          r = lerp(0.3, 0.15, t); g = 0.92; b = 1;
+        }
+        a = Math.pow(1 - t, 1.3);
+        glow = 0.75;
       } else if (k === Kind.Shard) {
         r = 0.8; g = 0.93; b = 1;
         a = 1 - t * t;

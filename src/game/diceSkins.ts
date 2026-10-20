@@ -60,7 +60,7 @@ export interface DiceSkin {
    * than the shell texture: 'fire' and 'ice' — see src/dice/dieEffect.ts.
    * Looks only: an effect never reaches the physics or the settle rule.
    */
-  effect?: 'fire' | 'ice';
+  effect?: 'fire' | 'ice' | 'neon';
 }
 
 export const DICE_SKINS: DiceSkin[] = [
@@ -411,6 +411,23 @@ export const DICE_SKINS: DiceSkin[] = [
     pattern: 'supporterCompass',
     ink: '#d6b25e',
     paid: true,
+  },
+  /*
+    NEON. The first die sold on its own for real money, $1.99 (the
+    `neon_dice` product). David, 20 Oct 2026: "make a new cool dice that
+    is worth one or two dollars", then of three designs, "I like the
+    neon." Black glass with a glowing pink tube round every side and cyan
+    corner marks, and it leaves a trail of light as it rolls (diceNeon.ts).
+    The near-black shell keeps it clear of all six face colours.
+  */
+  {
+    id: 'neon',
+    name: 'Neon',
+    body: '#0c0a18',
+    pattern: 'neon',
+    ink: '#ff2fb4',
+    paid: true,
+    effect: 'neon',
   },
 ];
 

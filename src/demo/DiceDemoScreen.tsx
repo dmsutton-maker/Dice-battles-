@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
+import { paidSkinWhere } from '../game/products';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -2214,6 +2215,7 @@ export function DiceDemoScreen() {
         needTrophies: TIERS.find((t) => t.id === skin.unlock)?.at ?? 0,
         prize: skin.prize,
         paid: skin.paid,
+        paidWhere: skin.paid ? paidSkinWhere(skin.id) : undefined,
         passLevel: skin.pass ? seasonLevelOf('dice', skin.id) : null,
         passGold: seasonTrackOf('dice', skin.id) === 'gold',
         canBuy: preview.from === 'store',

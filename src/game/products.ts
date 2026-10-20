@@ -169,6 +169,28 @@ export const PRODUCTS: Product[] = [
   },
 
   /*
+    NEON, the first die sold on its own. David, 20 Oct 2026: "make a new
+    cool dice that is worth one or two dollars", then "I like the neon.
+    Add it to the game in the store and write the $1.99 price tag." The
+    die is `neon` in diceSkins.ts (`paid: true`), owned through the
+    purchase record so Restore brings it back. Needs its own product in
+    App Store Connect: neon_dice, Non-Consumable, $1.99. Until that
+    exists the button shows $1.99 and Apple's sheet cannot open; family
+    tester mode lends the die regardless, like every paid die.
+  */
+  {
+    id: 'neon_dice',
+    kind: 'once',
+    name: 'Neon dice',
+    details:
+      "Black glass dice with a glowing pink tube round every side. They leave a trail of light as they roll, and a ring of light spreads out where they land. Yours for good, and back on a new phone with Restore.",
+    blurb: 'Glowing dice that leave a trail of light.',
+    usd: 1.99,
+    grants: ['neon'],
+    available: true,
+  },
+
+  /*
     ── The two that are not ready, and why ─────────────────────────────
 
     Left in the file deliberately. The family chose all of these, and a
@@ -185,10 +207,9 @@ export const PRODUCTS: Product[] = [
     usd: 1.99,
     available: false,
     blockedBy:
-      'No such sets have been drawn. All 53 in the game are earnable, ' +
-      'and the family asked specifically for exclusive ones rather than ' +
-      'existing sets moved behind a price. That is artwork, not a ' +
-      'product id.',
+      'More money-only dice to put in it. The first one, Neon, is sold ' +
+      'on its own; a pack needs several, and the family asked for new ' +
+      'ones rather than existing sets moved behind a price.',
   },
   {
     id: 'premium_arena_pack',
@@ -264,6 +285,20 @@ export function withinStarterWindow(
 
 export function productById(id: string): Product | undefined {
   return PRODUCTS.find((p) => p.id === id);
+}
+
+/**
+ * Where a money-only die is got, in a few words for its locked card and
+ * its preview: "Starter pack" for the Supporter die, the price for one
+ * sold on its own (Neon: "$1.99"). The phone's localised price is not
+ * to hand on those screens, so this is the catalogue's US price, the
+ * same stand-in the shelf shows before the store answers.
+ */
+export function paidSkinWhere(skinId: string): string {
+  const product = PRODUCTS.find((p) => p.available && (p.grants ?? []).includes(skinId));
+  if (!product) return 'Money shop';
+  if (product.starterOnly) return product.name;
+  return priceLabel(product, null);
 }
 
 /**

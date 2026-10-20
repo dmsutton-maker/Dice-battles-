@@ -68,11 +68,14 @@ export type PreviewAction =
    */
   | { kind: 'pass'; level: number; gold?: boolean }
   /**
-   * Only in the Starter pack, bought with real money. Its own kind for
-   * the reason the others have one: "keep saving coins" or "keep playing"
-   * would both send a player looking in the wrong place.
+   * Bought with real money: in the Starter pack, or on its own in the
+   * money shop (Neon, $1.99). Its own kind for the reason the others
+   * have one: "keep saving coins" or "keep playing" would both send a
+   * player looking in the wrong place. `where` is products.ts's
+   * paidSkinWhere; missing means the Starter pack, the only one there
+   * was before Neon.
    */
-  | { kind: 'paid' };
+  | { kind: 'paid'; where?: string };
 
 export interface PreviewState {
   trophies: number;
@@ -98,6 +101,8 @@ export interface PreviewState {
   passLevel?: number | null;
   /** On the Gold Pass row rather than the free one (seasonPass.ts). */
   passGold?: boolean;
+  /** Where a money-only item is got (products.ts paidSkinWhere). */
+  paidWhere?: string;
   /** Only sold for real money (the Supporter die, in the Starter pack). */
   paid?: boolean;
 }
@@ -129,7 +134,7 @@ export function previewAction(state: PreviewState): PreviewAction {
   // Before the trophy fallback, which would otherwise answer "0 more
   // trophies to go" for something trophies cannot buy at all.
   if (state.prize) return { kind: 'prize' };
-  if (state.paid) return { kind: 'paid' };
+  if (state.paid) return { kind: 'paid', where: state.paidWhere };
   if (state.passLevel) return { kind: 'pass', level: state.passLevel, gold: state.passGold === true };
 
   const need = state.needTrophies ?? 0;
@@ -156,7 +161,8 @@ export function actionLabel(action: PreviewAction): string {
     case 'pass':
       return action.gold ? `Gold Pass level ${action.level}` : `Season pass level ${action.level}`;
     case 'paid':
-      return 'In the Starter pack';
+      if (!action.where || action.where === 'Starter pack') return 'In the Starter pack';
+      return `${action.where} in the money shop`;
   }
 }
 

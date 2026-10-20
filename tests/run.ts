@@ -22,6 +22,7 @@ async function main(): Promise<void> {
   await import('./tournament.test');
   await import('./push.test');
   await import('./fire.test');
+  await import('./neonDice.test');
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');

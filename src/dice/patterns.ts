@@ -19,6 +19,7 @@ export type PatternId =
   | 'stars'
   // The Supporter die: a gold compass rose on teal (19 Oct 2026).
   | 'supporterCompass'
+  | 'neon'
   | 'grain'
   | 'bubbles'
   | 'frost'
@@ -276,6 +277,8 @@ export type ColorPatternId =
   // sticker as the compass's heart — three golds and a teal deepening
   // outward, which a one-ink mask cannot draw.
   | 'supporterCompass'
+  // Neon, 20 Oct 2026: the first die sold on its own for real money.
+  | 'neon'
   | 'patches' | 'bands' | 'diamonds' | 'tigerStripes' | 'honeycomb'
   // Cookie, 19 Oct 2026: a chocolate chunk is dark with a lit shoulder
   // and a glint, over golden dough that goes toasted — four colours,
@@ -1142,7 +1145,53 @@ function pizzaAt(x: number, y: number): [number, number, number] {
   return mixRgb([0, 0, 0], px, cut);
 }
 
+/** Distance from (x, y) to the segment a-b. */
+function segDist(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
+  const vx = bx - ax;
+  const vy = by - ay;
+  const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy)));
+  return Math.hypot(x - ax - vx * t, y - ay - vy * t);
+}
+
+/** Distance to a polyline. */
+function lineDist(x: number, y: number, pts: readonly (readonly [number, number])[]): number {
+  let d = Infinity;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    d = Math.min(d, segDist(x, y, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]));
+  }
+  return d;
+}
+
+const NEON_RING: readonly (readonly [number, number])[] = [
+  [6, 6], [58, 6], [58, 58], [6, 58], [6, 6],
+];
+
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
+  neon: (x, y) => {
+    /*
+      Neon, 20 Oct 2026. David asked for "a new cool dice that is worth
+      one or two dollars" and picked this of three: an arcade at night.
+      Near-black glass with a faint purple grid, a glowing magenta tube
+      round the edge of every side and cyan corner marks. The glow is
+      painted, so the shelf picture has it too; the light trail it
+      leaves when it rolls is diceNeon.ts.
+    */
+    let px = rgb('#0c0a18');
+    const gx = Math.abs(((x % 8) + 8) % 8 - 4);
+    const gy = Math.abs(((y % 8) + 8) % 8 - 4);
+    px = mixRgb(px, rgb('#3a2470'), smoothstep(0.9, 0.2, Math.min(4 - gx, 4 - gy)) * 0.5);
+    const ring = lineDist(x, y, NEON_RING);
+    px = mixRgb(px, rgb('#ff2fb4'), Math.exp(-ring / 2.2) * 0.9);
+    px = mixRgb(px, rgb('#ffd0f0'), smoothstep(1.1, 0.3, ring));
+    let chev = Infinity;
+    for (const [cx, cy, sx, sy] of [[12, 12, 1, 1], [52, 12, -1, 1], [12, 52, 1, -1], [52, 52, -1, -1]] as const) {
+      chev = Math.min(chev, lineDist(x, y, [[cx, cy + sy * 6], [cx, cy], [cx + sx * 6, cy]]));
+    }
+    px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-chev / 1.8) * 0.85);
+    px = mixRgb(px, rgb('#d8fbff'), smoothstep(0.9, 0.2, chev));
+    return px;
+  },
+
   supporterCompass: (x, y) => {
     /*
       The Supporter die, 19 Oct 2026. David: "make the supporter dice
@@ -2759,6 +2808,7 @@ const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
   'volleyball',
   // The Supporter compass is drawn once per side, centred on the sticker.
   'supporterCompass',
+  'neon',
   'ivory',
   'lavender',
   'satin',
