@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.137.0 — 2026-10-20 · requested by David
+
+### Changed
+- **The Pizza die, redrawn.** David: "make the pizza dice look better",
+  then "show me the redone pizza." It was one corner of a round pizza
+  per side, a flat brown band of crust with four blocky pepperoni,
+  which read as a cracker with stickers on it. Now every side is a
+  whole square pan pizza seen from above: toasted crust round all four
+  edges, a line of tomato sauce peeking out from under the cheese,
+  melted cheese with browned blisters, a big pepperoni in each corner,
+  basil leaves top and bottom, black olives at the sides, and the pan
+  cut into eight slices. Owners get the new look automatically.
+
 ## v1.136.0 — 2026-10-20 · requested by David
 
 ### Changed

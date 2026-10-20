@@ -1067,6 +1067,81 @@ const mixRgb = (
  * and `ink` is unused — kept on the skin so the texture tests can treat
  * every patterned skin alike.
  */
+/** The pizza side at a sub-pixel point; `pizza` averages nine of these. */
+function pizzaAt(x: number, y: number): [number, number, number] {
+  const CRUST_OUT = rgb('#a9662a');
+  const CRUST = rgb('#dda257');
+  const CRUST_LIT = rgb('#ecc27c');
+  const SAUCE = rgb('#b3342a');
+  const CHEESE = rgb('#f4d27a');
+  const CHEESE_BROWN = rgb('#d49a45');
+  const PEP = rgb('#c23a2f');
+  const PEP_RIM = rgb('#83241e');
+  const PEP_FAT = rgb('#e0806a');
+  const BASIL = rgb('#2f9a3a');
+  const BASIL_VEIN = rgb('#8fd06a');
+  const OLIVE = rgb('#22201f');
+  const c = SIZE / 2;
+  const dx = x - c;
+  const dy = y - c;
+  const edge = Math.min(x, SIZE - x, y, SIZE - y);
+  // The crust's inner line wanders a little, as a hand-pressed crust does.
+  const wobble = (wrappedNoise(x * 2, y * 2, 16) - 0.5) * 1.6;
+  const crustLine = 5.4 + wobble;
+  // Eight slices: cuts at 22.5 degrees off the axes, between toppings.
+  let cut = 1;
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 8 + (k * Math.PI) / 4;
+    const across = Math.abs(-dx * Math.sin(a) + dy * Math.cos(a));
+    if (across < 0.5) cut = Math.min(cut, 0.74 + across * 0.5);
+  }
+  if (edge < crustLine) {
+    // Crust: toasted at the very edge, golden toward the cheese, with a
+    // lit shoulder along its top and a few darker bake spots.
+    const t = edge / crustLine;
+    let px = mixRgb(CRUST_OUT, CRUST, smoothstep(0, 0.55, t));
+    px = mixRgb(px, CRUST_LIT, smoothstep(0.45, 0.75, t) * smoothstep(1, 0.8, t) * 0.8);
+    px = mixRgb(px, CRUST_OUT, smoothstep(0.7, 0.9, wrappedNoise(x * 3 + 7, y * 3 + 3, 8)) * 0.5);
+    return mixRgb([0, 0, 0], px, cut);
+  }
+  // Sauce peeking out from under the cheese, unevenly, along the crust.
+  const sauce = smoothstep(2.4, 0.6, edge - crustLine + (wrappedNoise(x * 2 + 30, y * 2 + 10, 16) - 0.5) * 2.4);
+  // Melted cheese, browned where it blistered.
+  let px = mixRgb(CHEESE, CHEESE_BROWN, smoothstep(0.55, 0.85, wrappedNoise(x + 13, y + 41, 16)) * 0.7);
+  const blister = wrappedNoise(x * 4 + 5, y * 4 + 9, 8);
+  px = mixRgb(px, CHEESE_BROWN, smoothstep(0.78, 0.9, blister) * 0.75);
+  px = mixRgb(px, SAUCE, sauce);
+  // Pepperoni: a big round in each corner, cupped — a dark rim, a
+  // lighter fleck of fat here and there, a glint on the far side.
+  for (const [px0, py0] of [[12, 12], [52, 12], [12, 52], [52, 52]] as const) {
+    const d = Math.hypot(x - px0, y - py0);
+    const R = 6.3;
+    if (d < R) {
+      let pep = d > R - 1.3 ? PEP_RIM : PEP;
+      if (hashCell(Math.floor(x * 1.5 + px0), Math.floor(y * 1.5 + py0)) > 0.86 && d < R - 1.6) pep = mixRgb(pep, PEP_FAT, 0.7);
+      const lit = Math.hypot(x - px0 + 2, y - py0 + 2);
+      if (lit < 1.4) pep = mixRgb(pep, rgb('#f2b8a8'), 0.6);
+      return mixRgb([0, 0, 0], pep, cut);
+    }
+    // A soft shadow where the slice sits in the cheese.
+    if (d < R + 0.8) px = mixRgb(px, CHEESE_BROWN, 0.6);
+  }
+  // Basil leaves, top and bottom, lying along the crust.
+  for (const [lx, ly] of [[32, 8.4], [32, 55.6]] as const) {
+    const u = (x - lx) / 5.4;
+    const v = (y - ly) / 2.4;
+    const inLeaf = u * u + v * v < 1 && Math.abs(v) < 1 - u * u * 0.5;
+    if (inLeaf) return Math.abs(y - ly) < 0.35 ? BASIL_VEIN : BASIL;
+  }
+  // Black olives, left and right: rings with a hole.
+  for (const [ox, oy] of [[8.8, 30], [55.2, 34]] as const) {
+    const d = Math.hypot(x - ox, y - oy);
+    if (d < 3.3 && d > 1.3) return d < 1.8 ? rgb('#4a4541') : OLIVE;
+    if (d <= 1.3) return px;
+  }
+  return mixRgb([0, 0, 0], px, cut);
+}
+
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   supporterCompass: (x, y) => {
     /*
@@ -1138,22 +1213,35 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   /** Cheese, crust at one corner, pepperoni, herbs. */
   pizza: (x, y) => {
-    const d = Math.hypot(x - SIZE * 1.05, y - SIZE * 1.05);
-    if (d > 60) return rgb('#b3802e');
-    // Four pepperoni, every one clear of BOTH the sticker and the crust.
-    // Two of the original four sat under the sticker; the first attempt
-    // at moving them put one out on the crust, where the crust — tested
-    // first — simply painted over it.
-    for (const [cx, cy, r] of [[46, 13, 7], [54, 38, 6.5], [20, 52, 7], [36, 58, 6]] as const) {
-      const pd = Math.hypot(x - cx, y - cy);
-      if (pd < r) {
-        // A darker rim where the slice cupped in the oven.
-        return pd > r - 1.8 ? rgb('#8e2f26') : rgb('#c24338');
+    /*
+      Redrawn 20 Oct 2026. David: "make the pizza dice look better."
+
+      It was one corner of a round pizza per side: a flat brown band of
+      crust across the corner, four blocky pepperoni and green specks,
+      which read as a cracker with stickers on it. Now every side is a
+      WHOLE square pan pizza seen from above, because a cube has square
+      sides and a square pizza fills one edge to edge: toasted crust
+      round all four edges, a line of tomato sauce peeking out from
+      under the cheese, melted cheese with browned blisters, a big
+      cupped pepperoni in each corner — the most room between the
+      sticker and the crust — basil leaves top and bottom, black olives
+      at the sides, and the pan cut into eight between them.
+      Supersampled 3x3, so the toppings have clean round edges at shelf
+      size.
+    */
+    const N = 3;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    for (let sy = 0; sy < N; sy++) {
+      for (let sx = 0; sx < N; sx++) {
+        const c = pizzaAt(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+        r += c[0];
+        g += c[1];
+        b += c[2];
       }
     }
-    if (hashCell(x, y) > 0.965) return rgb('#4a7a2e');
-    // The cheese itself, gently mottled where it browned.
-    return mixRgb(rgb('#e8c078'), rgb('#d9a55c'), wrappedNoise(x, y, 16) * 0.7);
+    return [r / (N * N), g / (N * N), b / (N * N)];
   },
 
   donut: (x, y) => {
