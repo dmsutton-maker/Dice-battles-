@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import {
   isPerFace,
-  CUBE_NET_CELLS,
+  DIE_FACE_SLOTS,
+  dieFacePixels,
   patternPixels,
   PATTERN_SIZE,
   PatternId,
@@ -286,9 +287,13 @@ suite('textures · a die is one object, not six copies of a picture', () => {
 
     One 64x64 texture used to be handed to the whole box, so a zebra die
     was the same stripes six times and read as wallpaper rather than an
-    object. Each side now takes its own square of one continuous design,
-    laid out as the paper cube every child cuts out.
+    object. Each side now takes its own part of one continuous design:
+    the four sides are four squares of one strip that goes once round the
+    die, and the top and bottom carry it on over their edges. That every
+    edge really joins is tests/continuity.test.ts; these are the rest.
   */
+  const face = (skin: (typeof DICE_SKINS)[number], f: number) =>
+    dieFacePixels(skin.pattern as Exclude<PatternId, 'plain'>, skin.body, skin.ink ?? skin.body, f);
   test('a die is continuous, whether or not its sides differ', () => {
     /*
       MEASURED, and the measuring corrected the premise.
@@ -305,6 +310,12 @@ suite('textures · a die is one object, not six copies of a picture', () => {
       So the rule is continuity, and uniqueness is one way of getting
       there rather than the goal. A skin passes if its sides differ, or
       if it tiles so exactly that they need not.
+
+      18 Oct 2026: the noise now repeats once round the die rather than
+      once per square, so of those nine only the strictly regular prints
+      — candy stripes, tartan — still repeat side to side, and David's
+      "same design copied and pasted to every side" is gone from the rest.
+      The floor below was raised to match.
     */
     let unique = 0;
     let tiling = 0;
@@ -317,23 +328,30 @@ suite('textures · a die is one object, not six copies of a picture', () => {
           cx,
           cy,
         ).join(',');
-      const front = cell(1, 1);
-      const distinct = new Set(CUBE_NET_CELLS.map(([cx, cy]) => cell(cx, cy)));
-      if (distinct.size > 1) {
+      const sides = DIE_FACE_SLOTS.map((_, f) => face(skin, f).join(','));
+      // Every design painted as a strip must differ side to side: that
+      // is the whole point of the strip (20 Oct 2026).
+      if (!isPerFace(skin.pattern)) {
+        assert(new Set(sides).size > 1, `${skin.id} is painted as a strip but has the same picture on every side`);
+      }
+      if (new Set(sides).size > 1) {
         unique++;
       } else {
         // Identical, so it must be identical BECAUSE it tiles: the
-        // square two to the right has to match as well, which a
+        // square one along and one up have to match as well, which a
         // one-off coincidence would not.
+        const front = cell(0, 0);
         assert(
-          cell(3, 1) === front && cell(1, 2) === front,
+          cell(1, 0) === front && cell(0, 1) === front,
           `${skin.id} paints one picture on every side without tiling, so the ` +
             'die really is wallpaper',
         );
         tiling++;
       }
     }
-    assert(unique > 0, 'no skin has different sides at all — the net is being ignored');
+    // Was a fixed count (more than forty), which went stale as one-picture-
+    // per-side designs were added; the per-skin check above is the real one.
+    assert(unique > 30, `only ${unique} skins have different sides — the strip is being ignored`);
     note(`${unique} skins have six different sides; ${tiling} tile exactly and do not need to`);
   });
 
@@ -374,20 +392,13 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     */
 
     const S = PATTERN_SIZE;
-    const cell = (skin: (typeof DICE_SKINS)[number], cx: number, cy: number) =>
-      patternPixels(
-        skin.pattern as Exclude<PatternId, 'plain'>,
-        skin.body,
-        skin.ink ?? skin.body,
-        cx,
-        cy,
-      );
     let worst = 0;
     let worstId = '';
     for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
       if (isPerFace(skin.pattern)) continue;
-      const front = cell(skin, 1, 1);
-      const right = cell(skin, 2, 1);
+      // The front (+Z) and the side to its right (+X), as the die wears them.
+      const front = face(skin, 4);
+      const right = face(skin, 0);
       let inside = 0;
       let n = 0;
       for (let x = 1; x < S; x++) {
@@ -494,17 +505,7 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     for (const skin of DICE_SKINS) {
       if (SHAPELESS.includes(skin.pattern)) continue;
       checked++;
-      const stats = CUBE_NET_CELLS.map(([cx, cy]) =>
-        faceStats(
-          patternPixels(
-            skin.pattern as Exclude<PatternId, 'plain'>,
-            skin.body,
-            skin.ink ?? skin.body,
-            cx,
-            cy,
-          ),
-        ),
-      );
+      const stats = DIE_FACE_SLOTS.map((_, f) => faceStats(face(skin, f)));
       /*
         MEASURED AGAINST THE SHELF PICTURE, not against the other faces.
 
@@ -556,7 +557,12 @@ suite('textures · a die is one object, not six copies of a picture', () => {
         ['colours', (f: ReturnType<typeof faceStats>) => f.colours],
       ] as const) {
         if (why === 'colours' && SOFT_GRADIENTS[skin.id]) continue;
-        const reference = Math.max(pick(shelf), ...stats.map(pick));
+        // The colour COUNT is judged against the shelf picture alone: the
+        // top and bottom are painted from two sides blended along their
+        // diagonals (patterns.ts, dieFaceSampler), and on a two-tone
+        // design those blends count as a dozen extra colours that the
+        // four sides, rightly, do not have (the leopard, 20 Oct 2026).
+        const reference = why === 'colours' ? pick(shelf) : Math.max(pick(shelf), ...stats.map(pick));
         const ratio = reference === 0 ? 1 : Math.min(...stats.map(pick)) / reference;
         if (ratio < tightest) {
           tightest = ratio;
@@ -577,20 +583,36 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     );
   });
 
-  test('the net is written in three.js face order', () => {
+  test('the strip is written in three.js face order', () => {
     /*
       An array of materials on a BoxGeometry is matched to its groups in
       the order +X, -X, +Y, -Y, +Z, -Z. Get this wrong and the pattern
       still looks continuous on the flat sheet while being scrambled on
-      the actual die — the kind of bug a screenshot of the net would not
-      show.
+      the actual die — the kind of bug a screenshot of the sheet would
+      not show.
+
+      This used to pin the paper cube net, which looked right on paper
+      and joined only three of the die's twelve edges. Its intent is the
+      same: the order is pinned here, and tests/continuity.test.ts checks
+      it against the geometry itself.
     */
-    assertEqual(CUBE_NET_CELLS.length, 6, 'a cube has six sides');
-    assertEqual(CUBE_NET_CELLS[4].join(','), '1,1', '+Z must be the middle of the net');
-    assertEqual(CUBE_NET_CELLS[0].join(','), '2,1', '+X sits to the right of it');
-    assertEqual(CUBE_NET_CELLS[1].join(','), '0,1', '-X sits to the left of it');
-    assertEqual(CUBE_NET_CELLS[2].join(','), '1,0', '+Y sits above it');
-    assertEqual(CUBE_NET_CELLS[3].join(','), '1,2', '-Y sits below it');
+    assertEqual(DIE_FACE_SLOTS.length, 6, 'a cube has six sides');
+    assertEqual(DIE_FACE_SLOTS[4], 0, '+Z, the front, must be the first square — the shelf picture');
+    assertEqual(DIE_FACE_SLOTS[0], 1, '+X carries on from the front');
+    assertEqual(DIE_FACE_SLOTS[5], 2, '-Z carries on from +X');
+    assertEqual(DIE_FACE_SLOTS[1], 3, '-X carries on from -Z, and back round to the front');
+    assertEqual(DIE_FACE_SLOTS[2], null, '+Y is painted from the sides it borders');
+    assertEqual(DIE_FACE_SLOTS[3], null, '-Y is painted from the sides it borders');
+  });
+
+  test('the shelf picture is the front of the die', () => {
+    // What you buy is what you roll: the card is the +Z side, exactly.
+    for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
+      const pattern = skin.pattern as Exclude<PatternId, 'plain'>;
+      if (isPerFace(pattern)) continue;
+      const card = patternPixels(pattern, skin.body, skin.ink ?? skin.body).join(',');
+      assert(card === face(skin, 4).join(','), `${skin.id}'s card is not the front of its die`);
+    }
   });
 
   test('the shelf pictures still paint one square, not six', () => {
@@ -599,7 +621,7 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     // release that shipped it.
     const preview = readFileSync('src/dice/preview.ts', 'utf8');
     assert(
-      !/CUBE_NET_CELLS|createDieFaceTextures/.test(preview),
+      !/DIE_FACE_SLOTS|dieFacePixels|createDieFaceTextures/.test(preview),
       'the shelf pictures now paint all six sides of every die',
     );
   });

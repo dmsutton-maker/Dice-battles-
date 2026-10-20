@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.141.0 — 2026-10-20 · requested by David
+
+### Changed
+- **Every die's design flows round the whole die.** David, 18 Oct:
+  "make all the dice have a continuous flowing design instead of the
+  same design copied and pasted to every side", then "do the continued
+  dice faces." Until now each side was cut from a paper cube net that
+  looked joined when laid flat and was not on the die: of twelve
+  edges, three matched. Now the four sides are painted as one strip
+  that runs right round the die and closes up where it started, and the
+  top and bottom are painted as that strip carrying on over each of
+  their four edges, blended along their diagonals. Marble's veins, the
+  wood's rings, the cow's patches, the leopard's rings, the tartan and
+  the zebra's stripes all run over every edge. The dice that are one
+  picture per side (the pizza, the balls, the fish, Neon, the compass)
+  are exactly as they were.
+  - Some lattice designs were nudged so no motif sits on an edge of the
+    die: the stars, the leopard's rings (now scattered rather than in
+    rows), the giraffe's plates, the strawberry's seeds, the tartan's
+    pinstripes and two of the cow's patches. The golf ball's dimples
+    now run straight so the lattice closes up round the die, the
+    cookie's dough and chips come back round to where they started,
+    and the galaxy has a second, smaller galaxy on its far side so no
+    side is left as thin cloud.
+  - A test paints the die with a pattern whose colour is its own place
+    on the cube and checks every texel lands where it sits; another
+    measures the step across all twelve edges against the step inside a
+    face, for every design, and proves the old net fails that measure.
+
 ## v1.140.0 — 2026-10-20 · requested by David
 
 ### Fixed

@@ -34,6 +34,7 @@ async function main(): Promise<void> {
   await import('./itemPreviewContrast.test');
   await import('./preview.test');
   await import('./textures.test');
+  await import('./continuity.test');
   await import('./tutorial.test');
   await import('./friends.test');
   await import('./invite.test');

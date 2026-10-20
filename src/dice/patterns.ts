@@ -85,6 +85,24 @@ export type PatternId =
 const SIZE = 64;
 
 /**
+ * Once round the four sides of a die, in sheet pixels.
+ *
+ * David, 18 Oct 2026: "make all the dice have a continuous flowing design
+ * instead of the same design copied and pasted to every side." The four
+ * sides are painted as four consecutive squares of one strip (see
+ * DIE_FACE_SLOTS), so the strip has to come back to where it started when
+ * it reaches the far side: every painter that is not drawn per face must
+ * repeat across RING — and only across RING, not across one square, or
+ * the four sides are the same picture again. That is why the noise below
+ * wraps here rather than at SIZE, and why the cell sizes of the dotted and
+ * hexagonal designs are chosen to fit a whole number of times round it.
+ */
+const RING = SIZE * 4;
+
+/** A remainder that is never negative — the strip runs below y = 0 too. */
+const mod = (v: number, m: number) => ((v % m) + m) % m;
+
+/**
  * How much of a face the coloured sticker covers, as a fraction of the
  * face's width.
  *
@@ -108,7 +126,13 @@ const SIZE = 64;
 export const STICKER_FRACTION = 0.33;
 const STICKER_RADIUS = SIZE * STICKER_FRACTION;
 
-type Painter = (x: number, y: number) => number;
+/**
+ * A painter is asked for a SHEET position (x, y) and, for the few that
+ * need to know, the position on the face itself (fx, fy) — light painted
+ * onto one face, like ivory's sheen, belongs to the face and not to the
+ * strip. Most painters ignore the second pair.
+ */
+type Painter = (x: number, y: number, fx: number, fy: number) => number;
 
 /**
  * How dark a mask of -1 makes the shell. The dice are rendered UNLIT (see
@@ -129,13 +153,18 @@ const SHADE_DEPTH = 0.55;
  * marble tiled 2x2 showed exactly that: a hard vertical join straight
  * down the middle. This lattice is indexed modulo the tile, so the left
  * edge genuinely is the right edge.
+ *
+ * It wraps at RING, not SIZE, since 18 Oct 2026. Wrapping at one square
+ * made every square of the sheet the same picture, so a marble die had one
+ * slab of marble printed on each of its sides; wrapping once round the
+ * die gives four different sides that still close up round the back.
  */
 function hashCell(ix: number, iy: number): number {
   return Math.abs((Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453) % 1);
 }
 
 export function wrappedNoise(x: number, y: number, period: number): number {
-  const cells = SIZE / period;
+  const cells = RING / period;
   const gx = Math.floor(x / period);
   const gy = Math.floor(y / period);
   const fx = x / period - gx;
@@ -153,10 +182,12 @@ export function wrappedNoise(x: number, y: number, period: number): number {
 /**
  * Octaves of it, centred on zero.
  *
- * `periods` must all DIVIDE the tile, which is why this takes periods
- * rather than a frequency multiplier. Scaling the coordinate instead —
- * `wrappedNoise(x * 1.6, ...)` — silently breaks the wrap, because the
- * lattice only repeats when x advances by a whole tile. Displacing the
+ * `periods` must all DIVIDE the ring (RING), which is why this takes
+ * periods rather than a frequency multiplier. Scaling the coordinate
+ * instead — `wrappedNoise(x * 1.6, ...)` — silently breaks the wrap,
+ * because the lattice only repeats when x advances by a whole ring; a
+ * WHOLE-number multiplier is the one safe kind, since it just goes round
+ * more than once. Displacing the
  * coordinate is fine and is how the veins get their turbulence: any
  * offset that is itself tile-periodic carries the periodicity with it.
  */
@@ -244,6 +275,192 @@ function hexCell(x: number, y: number, size: number): {
   const folded = Math.abs((((a + sector / 2) % sector) + sector) % sector - sector / 2);
   const boundary = ((size * Math.sqrt(3)) / 2) / Math.cos(folded);
   return { q, r, cx, cy, d, t: d / boundary };
+}
+
+/*
+  ── The die as a solid ──────────────────────────────────────────────
+
+  The sheet is laid out so the four sides are four squares of one strip
+  (y 0..64), and the top and bottom are painted as the strip carrying on
+  over each top and bottom edge — see dieFaceSampler. So every sheet
+  point is also a point ON THE CUBE, and a design that belongs to a real
+  round object — the seam of a baseball, the panels of a football — can
+  be drawn on the cube itself and come out continuous over every edge
+  and every corner, with no seam left anywhere.
+*/
+
+/** Each side's outward normal and the way its x runs, in strip order. */
+const SIDE_FRAMES: readonly (readonly [readonly number[], readonly number[]])[] = [
+  [[0, 0, 1], [1, 0, 0]], // +Z, the front
+  [[1, 0, 0], [0, 0, -1]], // +X
+  [[0, 0, -1], [-1, 0, 0]], // -Z
+  [[-1, 0, 0], [0, 0, 1]], // -X
+];
+
+/**
+ * The point on the cube a sheet position stands for, in texels from the
+ * die's centre (a face is 64 across, so the cube runs -32..32).
+ *
+ * Inside the strip it is a point on that side. Above it, it is the top
+ * reached by carrying straight on over that side's top edge, and below
+ * it the bottom — the same unfolding dieFaceSampler paints the top and
+ * bottom from, so a sheet painter and a solid one agree everywhere.
+ */
+export function sheetToCube(x: number, y: number): [number, number, number] {
+  const sx = mod(x, RING);
+  const k = Math.min(3, Math.floor(sx / SIZE));
+  const [n, t] = SIDE_FRAMES[k];
+  const along = sx - k * SIZE + 0.5 - SIZE / 2;
+  const c = y + 0.5;
+  const up = Math.max(0, Math.min(SIZE, c)) - SIZE / 2;
+  // How far past the top or bottom edge, across the cap; capped at a
+  // whole face so anything further stays on the cube.
+  const over = Math.min(SIZE, c > SIZE ? c - SIZE : c < 0 ? -c : 0);
+  const out = SIZE / 2 - over;
+  return [n[0] * out + t[0] * along, up, n[2] * out + t[2] * along];
+}
+
+/**
+ * How far a cube point is from a plane through the die's centre, measured
+ * ACROSS THE FACE the point is on, in texels.
+ *
+ * `g` is the plane's value at the point and `grad` its gradient. The face
+ * is the one whose axis the point is furthest along; dropping that axis
+ * from the gradient leaves its slope along the face, and value over slope
+ * is the distance to where it crosses zero. Exact for a plane, and very
+ * nearly so for the gently curved seams below.
+ */
+function acrossFace(P: readonly number[], g: number, grad: readonly number[]): number {
+  const ax = Math.abs(P[0]);
+  const ay = Math.abs(P[1]);
+  const az = Math.abs(P[2]);
+  const gx = ax >= ay && ax >= az ? 0 : grad[0];
+  const gy = ay > ax && ay >= az ? 0 : grad[1];
+  const gz = az > ax && az > ay ? 0 : grad[2];
+  return g / Math.max(1e-6, Math.hypot(gx, gy, gz));
+}
+
+const norm3 = (v: readonly number[]) => {
+  const l = Math.hypot(v[0], v[1], v[2]);
+  return [v[0] / l, v[1] / l, v[2] / l];
+};
+const dot3 = (a: readonly number[], b: readonly number[]) =>
+  a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/*
+  The seam of a tennis ball or a baseball, wrapped round the die.
+
+  A real seam is one closed curve that splits the ball into two identical
+  halves. The cube's version winds round the body diagonal (1,1,1),
+  rising and falling three times — a smoothed copy of the zig-zag of six
+  edges that cuts a cube into two identical three-sided halves. It is
+  phased to swing AWAY from each face's centre, so it never runs under a
+  colour sticker: it crosses every side once, through the corner region
+  the sticker leaves showing.
+*/
+const SEAM_AXIS = norm3([1, 1, 1]);
+const SEAM_E1 = norm3([1, -1, 0]);
+const SEAM_E2 = norm3([1, 1, -2]);
+/**
+ * How far the seam swings either side of the flat hexagon, as tan(lat).
+ * At 0 it would cross each side 22.6px from the middle, under the
+ * sticker's rim; at 0.2 it hugged the bevels and the sides looked blank.
+ * 0.09 puts it about 27px out along the diagonal, on the flat of the face.
+ */
+const SEAM_SWING = 0.09;
+
+/**
+ * Signed distance from the seam in texels across the face, and where
+ * along it the point is (an angle round the die's diagonal, -PI..PI).
+ */
+function seamAt(P: readonly number[]): { off: number; along: number } {
+  const a = dot3(P, SEAM_E1);
+  const b = dot3(P, SEAM_E2);
+  const h = dot3(P, SEAM_AXIS);
+  const r2 = Math.max(1e-6, a * a + b * b);
+  // f = r sin(3 phi), written in a and b so the gradient comes easily.
+  const num = 3 * a * a * b - b * b * b;
+  const f = num / r2;
+  const fa = (6 * a * b * r2 - num * 2 * a) / (r2 * r2);
+  const fb = ((3 * a * a - 3 * b * b) * r2 - num * 2 * b) / (r2 * r2);
+  const g = h + SEAM_SWING * f;
+  const grad = [0, 1, 2].map(
+    (i) => SEAM_AXIS[i] + SEAM_SWING * (fa * SEAM_E1[i] + fb * SEAM_E2[i]),
+  );
+  return { off: acrossFace(P, g, grad), along: Math.atan2(b, a) };
+}
+
+/*
+  A football's panels, on the die.
+
+  A football is a truncated icosahedron: twelve pentagons where an
+  icosahedron's corners were, twenty hexagons where its faces were. Each
+  panel is a flat face of that solid, and a point belongs to whichever
+  face the ray from the centre reaches first — the largest n·p / r, with
+  r the distance of that face from the centre. Two neighbouring panels
+  meet along a plane through the centre, so the seam between them is
+  exactly a straight line on each side of the die, and nothing breaks
+  at the edges or corners because it is all one ball.
+*/
+const PHI = (1 + Math.sqrt(5)) / 2;
+const SOCCER_PANELS: readonly (readonly [number, number, number, boolean])[] = (() => {
+  const panels: [number, number, number, boolean][] = [];
+  // Pentagons: the icosahedron's twelve corners. Hexagons: the
+  // dodecahedron's twenty, which sit over the icosahedron's faces.
+  // Hexagons are 1/2.2673 of the way out, pentagons 1/2.3274 — the two
+  // face distances of a truncated icosahedron with unit edges.
+  const add = (v: number[], pent: boolean) => {
+    const n = norm3(v);
+    const w = pent ? 2.2673 / 2.3274 : 1;
+    panels.push([n[0] * w, n[1] * w, n[2] * w, pent]);
+  };
+  const cyc = (a: number, b: number, c: number) => [
+    [a, b, c],
+    [b, c, a],
+    [c, a, b],
+  ];
+  for (const s1 of [-1, 1]) {
+    for (const s2 of [-1, 1]) {
+      for (const v of cyc(0, s1, s2 * PHI)) add(v, true);
+      for (const v of cyc(0, s1 / PHI, s2 * PHI)) add(v, false);
+    }
+  }
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) add([sx, sy, sz], false);
+  return panels;
+})();
+
+/**
+ * Which football panel a cube point is on, and how far it is from that
+ * panel's seam, in texels across the face.
+ */
+function soccerPanelAt(P: readonly number[]): { pent: boolean; seam: number; centre: number } {
+  let best = -Infinity;
+  let second = -Infinity;
+  let bi = 0;
+  let si = 0;
+  for (let i = 0; i < SOCCER_PANELS.length; i++) {
+    const v = SOCCER_PANELS[i];
+    const s = v[0] * P[0] + v[1] * P[1] + v[2] * P[2];
+    if (s > best) {
+      second = best;
+      si = bi;
+      best = s;
+      bi = i;
+    } else if (s > second) {
+      second = s;
+      si = i;
+    }
+  }
+  const a = SOCCER_PANELS[bi];
+  const b = SOCCER_PANELS[si];
+  const m = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const len = Math.hypot(P[0], P[1], P[2]);
+  return {
+    pent: a[3],
+    seam: acrossFace(P, best - second, m),
+    // How squarely the point faces its panel's middle: 1 at the middle.
+    centre: best / (len * Math.hypot(a[0], a[1], a[2])),
+  };
 }
 
 /** The thirty-two patterns painted in full colour rather than through a mask. */
@@ -343,8 +560,8 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     const cell = 16;
     const row = Math.floor(y / cell);
     const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
+    const cx = mod(x + offset, cell) - cell / 2;
+    const cy = mod(y, cell) - cell / 2;
     return Math.hypot(cx, cy) < 4.2 ? 1 : 0;
   },
 
@@ -373,8 +590,12 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
   stars: (x, y) => {
     const cell = SIZE / 4;
     const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + offset) / cell);
+    // A quarter cell along, so no star is centred on an edge of the die
+    // and no cell boundary lies along one (20 Oct 2026).
+    const offset = (row % 2 === 0 ? 0 : cell / 2) + cell / 4;
+    // Wrapped once round the die, so the star the strip ends on is the
+    // star it started with.
+    const col = mod(Math.floor((x + offset) / cell), RING / cell);
     const h = hashCell(col + 3, row + 11);
     const spin = (hashCell(col + 17, row + 5) - 0.5) * 1.2;
     // Small enough that there is night sky between them: at 0.82-1.12
@@ -429,8 +650,12 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
   frost: (x, y) => {
     const cell = 32;
     const row = Math.floor(y / cell);
-    const col = Math.floor(x / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
+    const offset = mod(row, 2) === 0 ? 0 : cell / 2;
+    // The column counts the row's offset, as the flake's centre does.
+    // Without it every flake on an offset row was cut down the middle,
+    // each half drawn at a different size and angle. Wrapped at RING so
+    // the strip closes up round the die.
+    const col = mod(Math.floor((x + offset) / cell), RING / cell);
 
     // Deterministic per-cell variation. No Math.random — the shelf and the
     // table have to show the same dice.
@@ -441,8 +666,8 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
 
     /** Is this exact point inside the flake? Coordinates are in pixels. */
     const inside = (px: number, py: number): boolean => {
-      const dx = ((px + offset) % cell) - cell / 2;
-      const dy = (py % cell) - cell / 2;
+      const dx = mod(px + offset, cell) - cell / 2;
+      const dy = mod(py, cell) - cell / 2;
       const r = Math.hypot(dx, dy);
       if (r > reach * 1.02) return false;
 
@@ -681,8 +906,11 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     // is what still tells stone from noise: broad patches of lighter and
     // darker rock, with a finer drift inside them. Raised now that the
     // flecks are not drowning them.
-    const coarse = Math.sin(x / 11 + Math.sin(y / 8) * 1.6) * 0.24;
-    const fine = Math.sin(x / 5.5 + y / 6.5 + Math.sin(x / 17) * 1.3) * 0.12;
+    // Whole turns round the die (4, 7 and 2 — the nearest to the old
+    // x/11, x/5.5 and x/17), so the stone closes up round the back.
+    const turn = (x * Math.PI * 2) / RING;
+    const coarse = Math.sin(turn * 4 + Math.sin(y / 8) * 1.6) * 0.24;
+    const fine = Math.sin(turn * 7 + y / 6.5 + Math.sin(turn * 2) * 1.3) * 0.12;
     return coarse + fine + fleck;
   },
 
@@ -796,11 +1024,16 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * At arm's length it should still say "plain pale die" — ceramic, not
    * vector fill.
    */
-  ivory: (x, y) => {
+  ivory: (x, y, fx, fy) => {
     // Gold's single sweep of light at roughly a quarter of its strength:
     // one broad soft band brightening the upper-left diagonal, the body
     // falling away only slightly either side of it.
-    const d = (x * 0.62 + y * 0.78) / SIZE;
+    //
+    // Measured on the FACE (fx, fy): every side of a polished die catches
+    // its own light. The grain below is measured on the strip, so it runs
+    // on over the edges — 18 Oct 2026, when ivory stopped being painted
+    // per face.
+    const d = (fx * 0.62 + fy * 0.78) / SIZE;
     const bar = (centre: number, width: number, strength: number) =>
       Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
     const sheen = bar(0.38, 0.26, 0.55) + bar(1.05, 0.16, 0.16) - 0.1;
@@ -861,25 +1094,50 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
 
   /** Leopard: broken rings on a staggered grid, a dot in some. */
   rosettes: (x, y) => {
+    /*
+      Each rosette sits in a cell of a staggered lattice, jittered, and
+      its ring can reach past the cell: so every texel looks in the
+      neighbouring cells too (20 Oct 2026). Before that a rosette was cut
+      off at its cell's edge, which showed wherever a cell boundary fell,
+      and the lattice's rows fall exactly on the top and bottom edges of
+      every side.
+    */
     const cell = 16;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + offset) / cell);
-    const h = hashCell(col, row);
-    const cx = ((x + offset) % cell) - cell / 2 + (h - 0.5) * 3;
-    const cy = (y % cell) - cell / 2 + (hashCell(col + 9, row) - 0.5) * 3;
-    const r = Math.hypot(cx, cy);
-    const ring = 4.6 + h * 1.4;
-    // The ring, BROKEN in one or two places — an unbroken ring is a
-    // polka dot with a hole, not a rosette.
-    const a = Math.atan2(cy, cx);
-    const gapAt = h * Math.PI * 2;
-    const inGap =
-      Math.abs(Math.atan2(Math.sin(a - gapAt), Math.cos(a - gapAt))) < 0.7;
-    const onRing = Math.abs(r - ring) < 1.6 && !inGap;
-    // A smaller solid freckle in the middle of about half of them.
-    const freckle = h > 0.5 && r < 1.8;
-    return onRing || freckle ? 0.95 : 0;
+    const cols = RING / cell;
+    // The rows a quarter cell up, for the same reason the columns are
+    // slid: the rows' edges fell on the top and bottom edges of every
+    // side, and every ring's rim crossed them in the same place.
+    const row0 = Math.floor((y + cell / 4) / cell);
+    for (let oy = -1; oy <= 1; oy++) {
+      const row = row0 + oy;
+      // Each row slid along by its own amount, not the alternate half
+      // cell of a brick lattice: with a regular stagger every other row's
+      // rosettes line up in columns, and a column's rings all cross the
+      // same edge of the die at the same point, which read as a seam
+      // there. A leopard's spots are not in columns anyway.
+      const offset = hashCell(row + 77, 3) * cell;
+      const col0 = Math.floor((x + offset) / cell);
+      for (let ox = -1; ox <= 1; ox++) {
+        const col = mod(col0 + ox, cols);
+        const h = hashCell(col, row);
+        // Jittered by up to six texels each way (it was one and a half):
+        // looser, as a leopard's spots are, and no row's rings all reach
+        // the same line, so no edge of the die gets a row of rims.
+        const cx = x - ((col0 + ox) * cell - offset + cell / 2 - (h - 0.5) * 12);
+        const cy = y - (row * cell - cell / 4 + cell / 2 - (hashCell(col + 9, row) - 0.5) * 12);
+        const r = Math.hypot(cx, cy);
+        const ring = 4.6 + h * 1.4;
+        // The ring, BROKEN in one or two places — an unbroken ring is a
+        // polka dot with a hole, not a rosette.
+        const a = Math.atan2(cy, cx);
+        const gapAt = h * Math.PI * 2;
+        const inGap = Math.abs(Math.atan2(Math.sin(a - gapAt), Math.cos(a - gapAt))) < 0.7;
+        if (Math.abs(r - ring) < 1.6 && !inGap) return 0.95;
+        // A smaller solid freckle in the middle of about half of them.
+        if (h > 0.5 && r < 1.8) return 0.95;
+      }
+    }
+    return 0;
   },
 
   /** Tiger: vertical stripes that wave and TAPER to points. */
@@ -887,12 +1145,15 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     const cell = 16;
     let d1 = 99;
     let d2 = 99;
-    const gx = Math.floor(x / cell);
-    const gy = Math.floor(y / cell);
+    // Half a cell off, so the plates' seams run across the die's edges
+    // rather than along them (20 Oct 2026).
+    const gx = Math.floor((x + cell / 2) / cell);
+    const gy = Math.floor((y + cell / 2) / cell);
     for (let oy = -1; oy <= 1; oy++) {
       for (let ox = -1; ox <= 1; ox++) {
-        const px = (gx + ox + 0.5 + (hashCell(gx + ox, gy + oy) - 0.5) * 0.8) * cell;
-        const py = (gy + oy + 0.5 + (hashCell(gx + ox + 7, gy + oy) - 0.5) * 0.8) * cell;
+        const hx = mod(gx + ox, RING / cell);
+        const px = (gx + ox + (hashCell(hx, gy + oy) - 0.5) * 0.8) * cell;
+        const py = (gy + oy + (hashCell(hx + 7, gy + oy) - 0.5) * 0.8) * cell;
         const d = Math.hypot(x - px, y - py);
         if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
       }
@@ -901,14 +1162,24 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
   },
 
   paws: (x, y) => {
-    const cell = 21;
+    // Three to a side, twelve round the die: 21px did not go round a whole
+    // number of times, so the prints broke where the strip closed up.
+    const cell = SIZE / 3;
     const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
+    const offset = mod(row, 2) === 0 ? 0 : cell / 2;
+    const cx = mod(x + offset, cell) - cell / 2;
+    const cy = mod(y, cell) - cell / 2;
+    /*
+      Each shape fades over about a texel at its rim rather than stopping
+      dead (18 Oct 2026). A print that was in or out per texel came out
+      as a staircase, and on the mitred top of the die, where two sides
+      meet along a diagonal, it was the one design with nothing between
+      its two colours.
+    */
+    const rim = (d: number) => smoothstep(0.55, -0.55, d);
     // Main pad: a wide ellipse low in the cell. Trimmed from 3.4 so
     // there is still visible ground between the pad and the toe row.
-    if (Math.hypot(cx / 1.3, cy - 2.5) < 3.1) return 0.95;
+    let ink = rim((Math.hypot(cx / 1.3, cy - 2.5) - 3.1) * 1.15);
     /*
       FOUR toes on an arc, which is what a cat's or a dog's print
       actually has. With three, this was the only animal skin in the set
@@ -919,47 +1190,35 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     for (const [tx, ty] of [
       [-4.4, -1.6], [-1.7, -3.7], [1.7, -3.7], [4.4, -1.6],
     ] as const) {
-      if (Math.hypot(cx - tx, cy - ty) < 1.5) return 0.95;
+      ink = Math.max(ink, rim(Math.hypot(cx - tx, cy - ty) - 1.5));
     }
-    return 0;
+    return ink * 0.95;
   },
 
   /**
    * Basketball: the classic four seams — one vertical, one horizontal,
    * two side arcs — over a faint pebbled grain.
    */
+  /*
+    Tennis and baseball were drawn per face until 18 Oct 2026: two arcs on
+    every side, so the seams stopped dead at each edge and started again
+    on the next side. A real ball's seam is ONE curve, and so is this —
+    drawn on the cube itself (seamAt), so it runs unbroken over every
+    edge, crosses each side once, and stays clear of every sticker.
+  */
   tennis: (x, y) => {
-    const c = SIZE / 2;
-    /*
-      The two seams bulge in from the left and right EDGES. They used to
-      cross the middle line about six pixels either side of the centre —
-      that is, both of them ran under the colour sticker for most of
-      their length, and a Tennis Ball die was a plain green square with
-      two short white ticks top and bottom.
-    */
-    const left = Math.abs(Math.hypot(x + SIZE * 0.86, y - c) - SIZE);
-    const right = Math.abs(Math.hypot(x - SIZE * 1.86, y - c) - SIZE);
-    if (Math.min(left, right) < 1.8) return 0.95;
+    const { off } = seamAt(sheetToCube(x, y));
+    if (Math.abs(off) < 1.8) return 0.95;
     // Felt: the faintest fuzz so the ground is not a flat wash.
     return (hashCell(x, y) - 0.5) * 0.08;
   },
 
   baseball: (x, y) => {
-    /*
-      Both stitch runs used to cross the middle third of the face, under
-      the sticker. They sweep the left and right thirds now, which is
-      also closer to where a baseball's seams actually sit when you look
-      at one straight on.
-    */
-    for (const cx of [-SIZE * 0.53, SIZE * 1.53]) {
-      const d = Math.hypot(x - cx, y - SIZE / 2);
-      const off = Math.abs(d - SIZE * 0.69);
-      if (off < 3.2) {
-        // Position along the arc decides the dash rhythm.
-        const a = Math.atan2(y - SIZE / 2, x - cx);
-        if (Math.abs(Math.sin(a * 16)) > 0.55 && off > 0.8) return 0.9;
-      }
-    }
+    const { off, along } = seamAt(sheetToCube(x, y));
+    const side = Math.abs(off);
+    // Stitches either side of a bare seam line, in a steady rhythm along
+    // it — forty-eight stitches right round the die.
+    if (side < 3.2 && side > 0.8 && Math.abs(Math.sin(along * 24)) > 0.55) return 0.9;
     return 0;
   },
 
@@ -1042,7 +1301,7 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
 };
 
 /** A colour painter returns the actual pixel, not a mask. */
-type ColorPainter = (x: number, y: number) => [number, number, number];
+type ColorPainter = (x: number, y: number, fx: number, fy: number) => [number, number, number];
 
 const rgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.slice(1), 16);
@@ -1165,6 +1424,42 @@ function lineDist(x: number, y: number, pts: readonly (readonly [number, number]
 const NEON_RING: readonly (readonly [number, number])[] = [
   [6, 6], [58, 6], [58, 58], [6, 58], [6, 6],
 ];
+
+/**
+ * The cow's markings, over the whole strip: the four sides (y 0..64) and
+ * the parts of it the top and bottom are painted from (above 64, below
+ * 0). Centre x and y, radii, turn. The first six are the original front
+ * face; the rest were scattered once, kept clear of each other, and
+ * written down here, so the die is the same die every time.
+ */
+const COW_PATCHES: readonly (readonly [number, number, number, number, number, number, number])[] = (
+  [
+    [14, 12, 13, 9, 0.5], [46, 20, 9, 14, -0.9], [24, 44, 15, 10, 1.2],
+    [56, 52, 8, 7, 0.2], [4, 34, 6, 11, -0.4], [38, 60, 11, 6, 0.8],
+    [85, -9, 8, 12, 1.5], [221, -8, 14, 8, 1.4], [13, 90, 14, 9, -1.3],
+    [178, 43, 8, 7, 1.6], [79, 36, 12, 11, 0], [136, -28, 11, 7, 0.5],
+    [149, 18, 9, 13, -1], [205, 38, 9, 9, -0.6], [164, -17, 10, 12, -1.5],
+    [238, 55, 9, 7, 0.8], [71, 72, 6, 10, 0.9], [185, 11, 12, 7, -1.5],
+    [120, 5, 9, 13, 0.4], [114, 62, 14, 6, -1.0], [41, -21, 8, 12, -0.6],
+    [155, 85, 8, 10, 0.6], [16, -35, 8, 12, -1.5], [240, 99, 6, 12, 0.7],
+    [103, 86, 6, 9, 0], [199, 83, 7, 10, 0.5], [42, 94, 7, 11, 0.2],
+    [106, -29, 7, 13, 0], [194, -21, 7, 13, -0.1], [229, 22, 11, 11, 0],
+    [244, -25, 12, 8, 0.4], [148, 55, 13, 12, 0.2], [127, 89, 7, 7, 0.3],
+    [98, 18, 6, 7, 0], [122, 35, 13, 7, 1.2], [63, -34, 6, 11, -1.4],
+    [215, 64, 9, 8, 0.4], [80, 96, 12, 7, 1.1], [176, 75, 6, 8, -1.4],
+    [219, -34, 6, 9, 0.5], [176, 98, 10, 7, 0.6], [192, 61, 7, 7, 0.6],
+  ] as const
+).map(([cx, cy, rx, ry, spin]) => [
+  cx,
+  cy,
+  rx,
+  ry,
+  Math.cos(spin),
+  Math.sin(spin),
+  // The furthest the chewed edge can reach: the noise can push the
+  // boundary out to 1.65 radii.
+  Math.max(rx, ry) * 1.7,
+]);
 
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   neon: (x, y) => {
@@ -1334,7 +1629,9 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   rainbow: (x, y) => {
     const order = ['#e05a5a', '#e8963d', '#e8d23d', '#57b366', '#4a7fd0', '#9a6ee0'];
     const d = (x + y) / 2;
-    const band = (d / 9) % order.length;
+    // Bands of 32/3px rather than 9, so the colours come round a whole
+    // number of times and close up round the die.
+    const band = mod(d / (SIZE / 6), order.length);
     const i = Math.floor(band);
     const frac = band - i;
     const here = rgb(order[i]);
@@ -1362,11 +1659,23 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     px = mixRgb(px, rgb('#2a6e9e'), cloudB * 0.5);
     const gx = SIZE * 0.17;
     const gy = SIZE * 0.83;
+    // Measured the short way round the die: the core sits near the left
+    // edge of the front, so its disc spills onto the side round the back.
+    const ox = mod(x - gx + RING / 2, RING) - RING / 2;
     // The disc, tilted, and the core burning at one end of it.
-    const ux = (x - gx) * 0.94 + (y - gy) * 0.34;
-    const uy = -(x - gx) * 0.34 + (y - gy) * 0.94;
+    const ux = ox * 0.94 + (y - gy) * 0.34;
+    const uy = -ox * 0.34 + (y - gy) * 0.94;
     px = mixRgb(px, rgb('#6e3aa8'), Math.exp(-(Math.pow(ux / 30, 2) + Math.pow(uy / 10, 2))) * 0.55);
-    px = mixRgb(px, rgb('#ffeccc'), Math.exp(-Math.pow(Math.hypot(x - gx, y - gy) / 8, 2)));
+    px = mixRgb(px, rgb('#ffeccc'), Math.exp(-Math.pow(Math.hypot(ox, y - gy) / 8, 2)));
+    // A second, smaller galaxy high on the far side of the die (the -X
+    // side of the strip), tilted the other way, so no side is left as
+    // thin cloud and pinpricks now that the sides differ (20 Oct 2026).
+    const ox2 = mod(x - SIZE * 3.5 + RING / 2, RING) - RING / 2;
+    const oy2 = y - SIZE * 0.22;
+    const vx = ox2 * 0.9 - oy2 * 0.44;
+    const vy = ox2 * 0.44 + oy2 * 0.9;
+    px = mixRgb(px, rgb('#9a4ab0'), Math.exp(-(Math.pow(vx / 22, 2) + Math.pow(vy / 7, 2))) * 0.5);
+    px = mixRgb(px, rgb('#ffe2c0'), Math.exp(-Math.pow(Math.hypot(ox2, oy2) / 5.5, 2)) * 0.9);
     // Stars: mostly pinpricks, a few brighter.
     const h = hashCell(x, y);
     if (h > 0.992) return rgb('#ffffff');
@@ -1397,8 +1706,10 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   tartan: (x, y) => {
     const bandH = Math.abs(tiling(y, 2)) > 0.62;
     const bandV = Math.abs(tiling(x, 2)) > 0.62;
-    const pinH = Math.abs(tiling(y + 8, 2)) > 0.985;
-    const pinV = Math.abs(tiling(x + 8, 2)) > 0.985;
+    // Pins on the bands' far edges rather than on the die's edges, where
+    // they sat before the strip (20 Oct 2026).
+    const pinH = Math.abs(tiling(y + 12, 2)) > 0.985;
+    const pinV = Math.abs(tiling(x + 12, 2)) > 0.985;
     // The woven look is entirely in the overlap rule: two bands crossing
     // go DARKER, a band alone goes its own colour.
     let px: [number, number, number] = rgb('#742533');
@@ -1425,12 +1736,14 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       hand-place vertebral and costal rows and produced a grid of small
       squares.
     */
-    const size = 10.5;
+    // Fourteen plates round the die (10.56px, from 10.5), so the lattice
+    // closes up round the back.
+    const size = RING / (14 * Math.sqrt(3));
     const cell = hexCell(x, y, size);
     // The hexagon's own boundary, not a circle: scutes tile a shell with
     // no gaps, and round plates leave gaps.
     const t = cell.t;
-    const tone = hashCell(cell.q * 5 + 2, cell.r * 9 + 4);
+    const tone = hashCell(mod(cell.q, 14) * 5 + 2, cell.r * 9 + 4);
     let px = mixRgb(rgb('#4a7d31'), rgb('#8fb85c'), tone);
     // Domed, lit from the upper left.
     const lit = -((x - cell.cx) + (y - cell.cy)) / size;
@@ -1453,11 +1766,13 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       ink it was a flat teal target: an eye whose entire point is that it
       changes colour ring by ring cannot be drawn in one colour.
     */
-    const cell = 21;
+    // Three eyes to a side, so they go round the die a whole number of
+    // times (21px did not).
+    const cell = SIZE / 3;
     const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
+    const offset = mod(row, 2) === 0 ? 0 : cell / 2;
+    const cx = mod(x + offset, cell) - cell / 2;
+    const cy = mod(y, cell) - cell / 2;
     const r = Math.hypot(cx, cy);
     const a = Math.atan2(cy, cx);
     if (r < 2.7) return rgb('#101c33');
@@ -1532,15 +1847,18 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       rather than fruit skin — so each one takes the same per-cell
       jitter the cookie painter already uses for its chocolate chips.
     */
-    const cell = 11;
+    // Twenty-three seeds round the die, from 11px apart, so they fit.
+    const cell = RING / 23;
     const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + offset) / cell);
+    const offset = mod(row, 2) === 0 ? 0 : cell / 2;
+    // A quarter cell along, so no seed sits on the join where the strip
+    // closes up round the die (20 Oct 2026).
+    const col = mod(Math.floor((x + offset + cell / 4) / cell), 23);
     const h = hashCell(col + 5, row + 13);
     const jx = (h - 0.5) * 3;
     const jy = (hashCell(col + 19, row + 2) - 0.5) * 3;
-    const cx = ((x + offset) % cell) - cell / 2 - jx;
-    const cy = (y % cell) - cell / 2 - jy;
+    const cx = mod(x + offset + cell / 4, cell) - cell / 2 - jx;
+    const cy = mod(y, cell) - cell / 2 - jy;
     const d = Math.hypot(cx, cy);
     let px = mixRgb(rgb('#c93a52'), rgb('#e0687a'), wrappedNoise(x, y, 16) * 0.9);
     px = mixRgb(px, rgb('#9e2a40'), smoothstep(4.6, 1.9, d) * 0.7);
@@ -1577,16 +1895,26 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       weird yellow dot on denim." On a shell this size it did not read as
       a rivet, it read as a stray dot.
     */
+    /*
+      One cloth all the way round, since 18 Oct 2026, rather than one
+      patch per side. The weave counts in fours instead of threes, which
+      is what lets it go round the die a whole number of times. The
+      topstitching sits 11px in from every edge (y mod 64), so on the
+      sides it runs right round the die and on the top and bottom it is a
+      stitched square — two rows of stitching either side of each edge,
+      like a sewn bean bag.
+    */
     const diag = tiling(x * 2 - y * 2, 16);
     let px = mixRgb(rgb('#22395c'), rgb('#5480ad'), smoothstep(0.12, 0.9, diag));
-    px = mixRgb(px, rgb('#a3c2d9'), (x + y) % 3 === 0 ? 0.3 : 0);
-    px = mixRgb(px, rgb('#16263f'), (x - y + 64) % 3 === 0 ? 0.22 : 0);
+    px = mixRgb(px, rgb('#a3c2d9'), mod(x + y, 4) === 0 ? 0.3 : 0);
+    px = mixRgb(px, rgb('#16263f'), mod(x - y, 4) === 0 ? 0.22 : 0);
     if (hashCell(x, Math.floor(y / 4)) > 0.978) px = mixRgb(px, rgb('#cfe0ea'), 0.75);
+    const inFace = mod(y, SIZE);
     for (const sy of [11, 52]) {
-      const near = Math.abs(y - sy);
+      const near = Math.abs(inFace - sy);
       if (near < 4) px = mixRgb(px, rgb('#16263f'), smoothstep(4, 1.6, near) * 0.35);
-      if (near < 1.5 && (x + Math.floor(y)) % 7 < 4) {
-        px = mixRgb(rgb('#d99a35'), rgb('#a5701f'), (x % 2) * 0.5);
+      if (near < 1.5 && mod(x + Math.floor(y), 8) < 4) {
+        px = mixRgb(rgb('#d99a35'), rgb('#a5701f'), mod(x, 2) * 0.5);
       }
     }
     return px;
@@ -1665,13 +1993,14 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     let owner = 0;
     for (let oy = -1; oy <= 1; oy++) {
       for (let ox = -1; ox <= 1; ox++) {
-        const cx = (gx + ox) * cell + hashCell(gx + ox, gy + oy) * cell;
-        const cy = (gy + oy) * cell + hashCell(gx + ox + 31, gy + oy + 17) * cell;
+        const hx = mod(gx + ox, RING / cell);
+        const cx = (gx + ox) * cell + hashCell(hx, gy + oy) * cell;
+        const cy = (gy + oy) * cell + hashCell(hx + 31, gy + oy + 17) * cell;
         const d = Math.hypot(x - cx, y - cy);
         if (d < d1) {
           d2 = d1;
           d1 = d;
-          owner = hashCell(gx + ox + 5, gy + oy + 9);
+          owner = hashCell(hx + 5, gy + oy + 9);
         } else if (d < d2) d2 = d;
       }
     }
@@ -1697,7 +2026,10 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   slate: (x, y) => {
     // Slate splits along its bedding: flat planes, a stepped edge where
     // one layer sits proud of the next, and the fine cleavage grain.
-    const bed = fbm(x * 0.5, y * 2.2, [32, 16], [1, 0.5]);
+    // fbm(x * 0.5, y * 2.2, [32, 16]) as it was, with the halving of x
+    // moved into the periods: a half-scaled x wraps after TWO trips round
+    // the die, and the strip has to close after one.
+    const bed = fbm(x, y * 4.4, [64, 32], [1, 0.5]);
     let px = mixRgb(rgb('#454d59'), rgb('#6e7784'), (bed + 0.6) * 0.8);
     const step = Math.abs(((((y + bed * 9) % 17) + 17) % 17) - 8.5);
     px = mixRgb(px, rgb('#2b323c'), smoothstep(2.2, 0.4, step) * 0.55);
@@ -1749,9 +2081,11 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     */
     const wander = fbm(x, y, [32, 16], [0.8, 0.28]) * 0.45;
     // The long roll: two swells across the tile, down and to the right.
-    const roll = Math.sin(((y + x * 0.42) / SIZE) * Math.PI * 4 + wander);
+    // 0.375 and 0.35 across (from 0.42 and 0.34), so both trains of waves
+    // go round the die a whole number of times and meet themselves.
+    const roll = Math.sin(((y + x * 0.375) / SIZE) * Math.PI * 4 + wander);
     // Shorter waves riding it, turned a little across the roll.
-    const rip = Math.sin(((y * 0.85 - x * 0.34) / SIZE) * Math.PI * 10 + wander * 1.7 + roll * 0.75);
+    const rip = Math.sin(((y * 0.85 - x * 0.35) / SIZE) * Math.PI * 10 + wander * 1.7 + roll * 0.75);
     const water = roll * 0.6 + rip * 0.4;
 
     /*
@@ -1837,12 +2171,14 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       slightly turned so the rows do not line up with the face's edges
       and read as a grid.
     */
-    const size = 4.4;
+    // Thirty-four dimples round the die (20 Oct 2026), so the lattice
+    // closes up behind it. It used to be turned eleven degrees so the
+    // rows did not run with the edges; a turned lattice never comes back
+    // to where it started round the die, so it runs straight now.
+    const size = RING / (34 * Math.sqrt(3));
     const R = size * 0.58;
-    // Turned eleven degrees, so the rows do not run with the edges.
-    const a = 0.19;
-    const rx = x * Math.cos(a) - y * Math.sin(a);
-    const ry = x * Math.sin(a) + y * Math.cos(a);
+    const rx = x;
+    const ry = y;
     const cell = hexCell(rx, ry, size);
     const u = Math.min(1, cell.d / R);
     const inside = smoothstep(1, 0.86, u);
@@ -1887,40 +2223,24 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       with its pentagons. And a black panel is drawn as a regular
       PENTAGON rather than as its hexagon, because five sides against six
       is the whole difference between a football and a honeycomb.
+
+      SINCE 18 OCT 2026 IT IS THE BALL ITSELF. A flat hex lattice cannot
+      be folded round a cube without breaking at the edges, and a real
+      football is not a lattice anyway: it is twelve pentagons and twenty
+      hexagons that close up into one ball. So the die is painted from
+      that ball (soccerPanelAt) — every panel where a real one would be,
+      every seam a straight stitched line, and nothing breaking at any
+      edge or corner. The pentagons are never neighbours by construction.
     */
-    const size = 6.6;
-    const cell = hexCell(x, y, size);
-    const inradius = (size * Math.sqrt(3)) / 2;
+    const panel = soccerPanelAt(sheetToCube(x, y));
 
     // White leather, with the grain barely showing.
     let px = mixRgb(rgb('#f7f5f0'), rgb('#dcd8cf'), wrappedNoise(x, y, 16) * 0.55);
-
-    // The seam net, on every panel edge.
-    px = mixRgb(px, rgb('#a9a49b'), smoothstep(0.78, 0.97, cell.t) * 0.9);
-
-    const klass = (((cell.q + 2 * cell.r) % 3) + 3) % 3;
-    if (klass === 0) {
-      /*
-        A regular pentagon's boundary at the angle we are looking along:
-        its inradius over the cosine of the angle folded into one fifth
-        of a turn — the same trick hexCell uses for six sides. Turned a
-        little from panel to panel, the way a stitched ball never has two
-        quite aligned.
-      */
-      const sector = (Math.PI * 2) / 5;
-      const spin = ((((cell.q * 5 + cell.r * 3) % 5) + 5) % 5) * 0.22;
-      const a = Math.atan2(y - cell.cy, x - cell.cx) + spin - Math.PI / 2;
-      const folded = Math.abs(((((a + sector / 2) % sector) + sector) % sector) - sector / 2);
-      const edge = (inradius * 0.9) / Math.cos(folded);
-      px = mixRgb(px, rgb('#1b1826'), smoothstep(edge + 0.8, edge - 0.8, cell.d));
-      // Stitching round it, a shade off the black so the edge reads.
-      px = mixRgb(
-        px,
-        rgb('#6e6a79'),
-        smoothstep(1.8, 0.3, Math.abs(cell.d - edge)) * 0.45,
-      );
-    }
-    return px;
+    if (panel.pent) px = rgb('#1b1826');
+    // The seam: one thin stitched line on every panel edge. Kept narrow
+    // on purpose — a wide soft groove either side of a black panel read
+    // as a smudge at 64 texels a side, not as an edge.
+    return mixRgb(px, rgb('#77727e'), smoothstep(1.0, 0.35, panel.seam) * 0.85);
   },
 
   basketball: (x, y) => {
@@ -1991,8 +2311,10 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
     // The dough: lumpy, lit from the upper left, browner in patches.
     const slope = wrappedNoise(x - 1.2 + 7, y - 1.2 + 3, 16) - wrappedNoise(x + 1.2 + 7, y + 1.2 + 3, 16);
-    const brown = wrappedNoise(x * 0.8 + 33, y * 0.8 + 15, 32);
-    const fine = wrappedNoise(x * 2.1 + 21, y * 2.1 + 9, 8);
+    // Whole-number scales only: a fractional one never comes back round
+    // the die (see fbm's note), and this showed as a join at the seam.
+    const brown = wrappedNoise(x + 33, y + 15, 32);
+    const fine = wrappedNoise(x * 2 + 21, y * 2 + 9, 8);
     let px = mixRgb(DOUGH, RISEN, Math.max(0, slope) * 1.6);
     px = mixRgb(px, TOASTED, Math.max(0, -slope) * 1.3);
     px = mixRgb(px, TOASTED, smoothstep(0.55, 0.78, brown) * 0.45);
@@ -2001,10 +2323,11 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     /*
       The morsels. One big per 16-cell and a small one where it lands
       clear of it; the three-by-three neighbourhood is searched so a
-      chip straddling the tile's edge carries on round the die.
+      chip straddling a cell's edge carries on, and the cells go once
+      round the die (RING), so the four sides carry different chips.
     */
     const CELL = 16;
-    const N = SIZE / CELL;
+    const N = RING / CELL;
     const cx0 = Math.floor(x / CELL);
     const cy0 = Math.floor(y / CELL);
     let cover = 0;
@@ -2191,24 +2514,31 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       because a 64-pixel tile has room for about one island of
       low-frequency noise: pure noise gives one enormous blob, which is
       what sent this to a lattice in the first place.
+
+      Since 18 Oct 2026 they are placed over the WHOLE die (COW_PATCHES)
+      instead of six repeated on every side, which printed the same
+      markings six times over. The front keeps the original six.
     */
     let px = mixRgb(rgb('#efece4'), rgb('#ffffff'), wrappedNoise(x, y, 16));
-    const patch = (cx: number, cy: number, rx: number, ry: number, spin: number) => {
-      // Wrapped so a patch crossing the tile edge comes back the far side.
-      const dx = ((((x - cx) % SIZE) + SIZE * 1.5) % SIZE) - SIZE / 2;
-      const dy = ((((y - cy) % SIZE) + SIZE * 1.5) % SIZE) - SIZE / 2;
-      const ux = dx * Math.cos(spin) + dy * Math.sin(spin);
-      const uy = -dx * Math.sin(spin) + dy * Math.cos(spin);
-      const chew = fbm(x * 1.6, y * 1.6, [32, 16], [1, 0.6]) * 0.5 - 0.15;
-      return Math.hypot(ux / rx, uy / ry) + chew < 1;
-    };
-    const inside =
-      patch(14, 12, 13, 9, 0.5) ||
-      patch(46, 20, 9, 14, -0.9) ||
-      patch(24, 44, 15, 10, 1.2) ||
-      patch(56, 52, 8, 7, 0.2) ||
-      patch(4, 34, 6, 11, -0.4) ||
-      patch(38, 60, 11, 6, 0.8);
+    let inside = false;
+    // The edge of every patch is chewed by the same noise, worked out
+    // once and only when a patch is near (it used to be worked out six
+    // times a pixel, once per patch, which made this the slowest die).
+    let chew = NaN;
+    for (const [cx, cy, rx, ry, cos, sin, reach] of COW_PATCHES) {
+      // Measured the short way round the die, so a patch near the back
+      // edge comes round onto the front.
+      const dx = mod(x - cx + RING / 2, RING) - RING / 2;
+      const dy = y - cy;
+      if (Math.abs(dx) > reach || Math.abs(dy) > reach) continue;
+      if (Number.isNaN(chew)) chew = fbm(x * 2, y * 2, [32, 16], [1, 0.6]) * 0.5 - 0.15;
+      const ux = dx * cos + dy * sin;
+      const uy = -dx * sin + dy * cos;
+      if (Math.hypot(ux / rx, uy / ry) + chew < 1) {
+        inside = true;
+        break;
+      }
+    }
     if (inside) {
       px = mixRgb(rgb('#2b2723'), rgb('#4a443b'), wrappedNoise(x * 2, y * 2, 16));
     }
@@ -2238,12 +2568,18 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       fine scales. The scales used to BE the diamonds, which is a
       lattice — a diamondback's markings are several scales across.
     */
-    const su = (x + y) / 4.4;
-    const sv = (x - y) / 4.4;
+    // Fifty-eight scales round the die (4.41px, from 4.4).
+    const scale = RING / 58;
+    const su = (x + y) / scale;
+    const sv = (x - y) / scale;
     const fu = su - Math.floor(su) - 0.5;
     const fv = sv - Math.floor(sv) - 0.5;
     const keel = -(fu + fv) * 1.4;
-    let px = mixRgb(rgb('#97ac60'), rgb('#c6d393'), hashCell(Math.floor(su), Math.floor(sv)) * 0.7);
+    let px = mixRgb(
+      rgb('#97ac60'),
+      rgb('#c6d393'),
+      hashCell(mod(Math.floor(su), 58), mod(Math.floor(sv), 58)) * 0.7,
+    );
     px = mixRgb(px, rgb('#e4ecc1'), Math.max(0, keel) * 0.4);
     px = mixRgb(px, rgb('#606f37'), Math.max(0, -keel) * 0.45);
     px = mixRgb(px, rgb('#4e5b2d'), smoothstep(0.4, 0.5, Math.max(Math.abs(fu), Math.abs(fv))) * 0.5);
@@ -2252,7 +2588,8 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       the noise so they are not a stamped grid, and edged in cream — the
       edging is most of what makes a snake read as a snake.
     */
-    const wobble = fbm(x * 0.7, y * 0.7, [32, 16], [1, 0.5]) * 9 - 4.5;
+    // Unscaled: x * 0.7 does not go round the die a whole number of times.
+    const wobble = fbm(x, y, [32, 16], [1, 0.5]) * 9 - 4.5;
     const bx = Math.abs(((x + wobble + SIZE * 1.5) % 32) - 16) / 16;
     const by = Math.abs(((y - wobble * 0.5 + SIZE * 1.5) % 21.33) - 10.67) / 10.67;
     const saddle = bx * 0.62 + by * 0.38;
@@ -2292,7 +2629,8 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       cell's top rim, and about a third of the cells flooded to the
       brim with glossy honey.
     */
-    const h = hexCell(x, y, 12);
+    // Twelve cells round the die (12.3px, from 12), so the comb closes.
+    const h = hexCell(x, y, RING / (12 * Math.sqrt(3)));
     // Roughly how many pixels this point sits in from the cell wall.
     const rim = (1 - h.t) * 10.9;
     const dy = (y - h.cy) / 12;
@@ -2304,7 +2642,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     px = mixRgb(px, rgb('#f6d478'), smoothstep(3.4, 1.1, rim) * smoothstep(0.1, -0.45, dy) * 0.7);
     px = mixRgb(px, rgb('#5c3a0e'), smoothstep(3.4, 1.1, rim) * smoothstep(-0.1, 0.45, dy) * 0.35);
     // A random third of the cells are full: glossy pooled honey.
-    if (hashCell(h.q * 5 + 13, h.r * 7 + 4) < 0.34) {
+    if (hashCell(mod(h.q, 12) * 5 + 13, h.r * 7 + 4) < 0.34) {
       let honey = mixRgb(rgb('#a85708'), rgb('#d98a16'), smoothstep(0.5, 6, rim));
       honey = mixRgb(honey, rgb('#f2b14a'), smoothstep(0.15, -0.4, dy) * 0.4);
       const gleam = Math.hypot(x - h.cx + 3.2, y - h.cy + 3.6) / 12;
@@ -2324,16 +2662,17 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       soap film throws. The mask version could only tint toward one ink,
       so every bubble was the same flat outline in the same one colour.
     */
-    const cell = 15;
+    // Seventeen bubbles round the die (15.06px, from 15).
+    const cell = RING / 17;
     let px = mixRgb(rgb('#bfe2f7'), rgb('#dff0fc'), fbm(x, y, [32, 16], [1, 0.5]));
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const row = Math.floor(y / cell) + dy;
         const col = Math.floor(x / cell) + dx;
-        const h = hashCell(col, row);
+        const h = hashCell(mod(col, 17), row);
         const offset = ((row % 2) + 2) % 2 === 0 ? 0 : cell / 2;
         const cx = col * cell + offset + (h - 0.5) * 4 + cell / 2;
-        const cy = row * cell + (hashCell(col + 9, row) - 0.5) * 4 + cell / 2;
+        const cy = row * cell + (hashCell(mod(col, 17) + 9, row) - 0.5) * 4 + cell / 2;
         const r = 4.6 + h * 2.6;
         const d = Math.hypot(x - cx, y - cy);
         if (d > r + 0.6) continue;
@@ -2770,13 +3109,30 @@ export function isColorPattern(pattern: PatternId): boolean {
  * is on, to tilt the highlight a little differently on each.
  */
 const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
-  // Found in the first pass, 11 Sep 2026: a whole object each.
-  'baseball',
+  /*
+    Found in the first pass, 11 Sep 2026: a whole object each.
+
+    Baseball and tennis left this list on 18 Oct 2026: a ball's seam is
+    one curve round the whole ball, and it is drawn that way now — on the
+    cube itself, so it never breaks (see seamAt). Denim and ivory left it
+    the same day: cloth and bone are materials, and a material carries on
+    over an edge. Ivory keeps its sheen per face (see its painter).
+
+    The rest stay, and each for a reason that is about the design rather
+    than about convenience: a pizza, a lemon slice, a blossom sprig, a
+    donut, a watermelon wedge, a football's laces, a bowling ball's
+    finger holes, a drumstick and a sprig of lavender are each ONE thing,
+    placed round the sticker, and smearing one across the die would leave
+    most sides without it. A basketball's eight panels could be wrapped
+    the way the baseball's seam is, and has not been yet. Circuit's
+    traces enter each side from its left edge. The Fire die's flames rise
+    from the bottom of every side and ring each sticker. The fish die no
+    longer wears these sides on the board at all.
+  */
   'pizza',
   'circuit',
   'citrus',
   'blossom',
-  'tennis',
   'donut',
   'watermelon',
   'laces',
@@ -2802,14 +3158,14 @@ const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
     waffle grid.
   */
   'fish',
-  'denim',
   'basketball',
   // Volleyball, 19 Oct 2026: one clean sweep of curved panels per side.
   'volleyball',
   // The Supporter compass is drawn once per side, centred on the sticker.
   'supporterCompass',
   'neon',
-  'ivory',
+  // Ivory left this list on 20 Oct 2026: its grain runs round the strip
+  // and only its sheen is measured on the face, through (fx, fy).
   'lavender',
   'satin',
   'waffle',
@@ -2837,8 +3193,12 @@ export function isPerFace(pattern: string): boolean {
 /** A sheet coordinate, wrapped back onto its own face. */
 const onFace = (v: number) => ((v % SIZE) + SIZE) % SIZE;
 
-/** One shell colour at a sheet coordinate, unrounded. */
-type Sampler = (sx: number, sy: number) => [number, number, number];
+/**
+ * One shell colour at a sheet coordinate, unrounded. `fx` and `fy` are the
+ * position on the face itself, for the light a face catches on its own
+ * (see Painter); left out, they are the sheet position folded onto a face.
+ */
+type Sampler = (sx: number, sy: number, fx?: number, fy?: number) => [number, number, number];
 
 /**
  * The colour of a pattern at any SHEET coordinate, fractions included.
@@ -2861,14 +3221,14 @@ export function shellSampler(
   // The full-colour patterns paint their own pixels outright.
   if (COLOR_IDS.has(pattern)) {
     const paintColor = COLOR_PAINTERS[pattern as ColorPatternId];
-    return (sx, sy) => paintColor(wrap(sx), wrap(sy));
+    return (sx, sy, fx = onFace(sx), fy = onFace(sy)) => paintColor(wrap(sx), wrap(sy), fx, fy);
   }
 
   const [br, bg, bb] = rgb(base);
   const [ir, ig, ib] = rgb(ink);
   const paint = PAINTERS[pattern as MaskPatternId];
-  return (sx, sy) => {
-    const mask = Math.max(-1, Math.min(1, paint(wrap(sx), wrap(sy))));
+  return (sx, sy, fx = onFace(sx), fy = onFace(sy)) => {
+    const mask = Math.max(-1, Math.min(1, paint(wrap(sx), wrap(sy), fx, fy)));
     // Positive tints toward the ink, negative darkens the shell itself.
     const mix = (b: number, i: number) =>
       mask >= 0 ? b + (i - b) * mask : b * (1 + mask * SHADE_DEPTH);
@@ -2914,7 +3274,6 @@ export const SMOOTH_EDGES: ReadonlySet<string> = new Set([
   'diamonds',
   'shell',
   'peacock',
-  'paws',
   // Balls and food: round shapes and seams.
   'soccer',
   'baseball',
@@ -2951,46 +3310,26 @@ const SUBSAMPLES: readonly (readonly [number, number])[] = [
   [1 / 3, -1 / 6],
 ];
 
-/**
- * Raw RGB bytes for a pattern, one triple per pixel.
- *
- * Shared by the 3D shell texture and the 2D preview in the Store and the
- * Inventory, so what is on the shelf cannot drift away from what ends up
- * in your hand.
- */
-export function patternPixels(
-  pattern: Exclude<PatternId, 'plain'>,
-  base: string,
-  ink: string,
-  /**
-   * Where this square sits on a larger sheet, in whole squares.
-   *
-   * Every painter is a function of position, so asking it for the square
-   * one to the right yields the CONTINUATION of the pattern rather than
-   * a copy of it. That is what lets the six sides of a die be six
-   * different views of one design instead of the same picture stamped
-   * six times — see createDieFaceTextures.
-   *
-   * Defaults to the origin, which is what the shelf pictures use.
-   */
-  cellX = 0,
-  cellY = 0,
-): number[] {
-  const sample = shellSampler(pattern, base, ink);
-  const ox = cellX * SIZE;
-  const oy = cellY * SIZE;
+/** A colour for a texel of one square, fractions of a texel allowed. */
+type TexelSampler = (x: number, y: number) => [number, number, number];
 
+/**
+ * Paint one 64x64 square from a texel sampler, smoothing the hard edges
+ * of the painters on SMOOTH_EDGES. Shared by the shelf picture and every
+ * side of the die, so the two cannot drift apart.
+ */
+function paintSquare(texel: TexelSampler, smooth: boolean): number[] {
   const px = new Float64Array(SIZE * SIZE * 3);
   for (let y = 0, i = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++, i += 3) {
-      const c = sample(x + ox, y + oy);
+      const c = texel(x, y);
       px[i] = c[0];
       px[i + 1] = c[1];
       px[i + 2] = c[2];
     }
   }
 
-  if (SMOOTH_EDGES.has(pattern)) {
+  if (smooth) {
     // Mark both texels of every sharp step, across and down.
     const edge = new Uint8Array(SIZE * SIZE);
     const step = (a: number, b: number) =>
@@ -3017,9 +3356,9 @@ export function patternPixels(
       for (const [dx, dy] of SUBSAMPLES) {
         // Kept on this square: a motif painted per face would otherwise
         // wrap round and borrow a texel from the far side of the face.
-        const c = sample(
-          Math.min(SIZE - 1, Math.max(0, x + dx)) + ox,
-          Math.min(SIZE - 1, Math.max(0, y + dy)) + oy,
+        const c = texel(
+          Math.min(SIZE - 1, Math.max(0, x + dx)),
+          Math.min(SIZE - 1, Math.max(0, y + dy)),
         );
         r += c[0];
         g += c[1];
@@ -3040,59 +3379,178 @@ export function patternPixels(
   return out;
 }
 
+/**
+ * Raw RGB bytes for a pattern, one triple per pixel.
+ *
+ * Shared by the 3D shell texture and the 2D preview in the Store and the
+ * Inventory, so what is on the shelf cannot drift away from what ends up
+ * in your hand. With no cell given this is the die's FRONT, exactly as
+ * dieFacePixels paints it for +Z.
+ */
+export function patternPixels(
+  pattern: Exclude<PatternId, 'plain'>,
+  base: string,
+  ink: string,
+  /**
+   * Where this square sits on the sheet, in whole squares. Every painter
+   * is a function of position, so the square one to the right is the
+   * CONTINUATION of the pattern rather than a copy of it. Defaults to the
+   * origin — the front of the die, and what the shelf pictures show.
+   */
+  cellX = 0,
+  cellY = 0,
+): number[] {
+  const sample = shellSampler(pattern, base, ink);
+  const ox = cellX * SIZE;
+  const oy = cellY * SIZE;
+  return paintSquare((x, y) => sample(x + ox, y + oy), SMOOTH_EDGES.has(pattern));
+}
+
 /** The size every pattern is drawn at. */
 export const PATTERN_SIZE = SIZE;
 
 /**
- * Build the shell texture for a pattern. `base` is the skin's own colour
- * and `ink` is the pattern colour drawn over it.
+ * Where each side of the die sits in the strip, in three.js's own face
+ * order (+X, -X, +Y, -Y, +Z, -Z): a number 0..3 is a square of the strip,
+ * and null is the top or the bottom, which are painted from the strip
+ * carrying on over their four edges (see dieFaceSampler).
+ *
+ * David, 18 Oct 2026: "make all the dice have a continuous flowing design
+ * instead of the same design copied and pasted to every side." The paper
+ * cube net this replaced (UP over FRONT, LEFT-FRONT-RIGHT-BACK in a row)
+ * looked continuous on paper and was not on the die. Rendering it showed
+ * why: a face's texture is laid on with its own u running a particular
+ * way round the box, and the net had put UP under FRONT rather than over
+ * it — v runs upward on a side, so the row below on the sheet is the
+ * BOTTOM. Of twelve edges, three joined.
+ *
+ * Read off RoundedBoxGeometry rather than assumed: on every side v runs
+ * up the die, and u runs round it the same way on all four — +Z's u
+ * leads onto +X, +X's onto -Z, -Z's onto -X and -X's back onto +Z. So
+ * painting the four as consecutive squares in THAT order makes the
+ * design run unbroken round the die, and because the painters repeat
+ * across RING the strip closes up behind it too.
  */
+export const DIE_FACE_SLOTS: readonly (number | null)[] = [1, 3, null, null, 0, 2];
+
 /**
- * Where each side of the die sits on an unfolded cube.
- *
- * David, 10 Sep 2026: "make all the dice have unique sides that make the
- * entire dice a continuous pattern rather than the same image on every
- * side." Until now one 64x64 picture was handed to all six faces, so a
- * zebra die was the same six stripes six times and the eye read it as
- * wallpaper rather than an object.
- *
- * The layout is the paper cube every child cuts out:
- *
- *            [ UP ]
- *     [LEFT][FRONT][RIGHT][BACK]
- *            [DOWN]
- *
- * Because every painter is a function of position, asking one for the
- * square to the right of FRONT gives the pattern CONTINUING, not
- * repeating. So the four sides round the middle flow into each other,
- * and up and down flow out of the front.
- *
- * ONE SEAM IS UNAVOIDABLE and it is worth saying so rather than
- * pretending. A cube cannot be unwrapped onto a flat sheet without
- * cutting some edges: BACK meets LEFT again round the far side, and UP
- * and DOWN only truly join FRONT. Four of the twelve edges line up
- * exactly, the rest are as close as any cut-out cube manages — and every
- * face is different, which is the thing that was actually wrong.
- *
- * The order is three.js's own for a box: +X, -X, +Y, -Y, +Z, -Z.
+ * The cube net the per-face designs are still painted from. They ignore
+ * where on the sheet they are — except gold's highlight, which leans a
+ * little differently per face by its square — so this keeps those dice
+ * exactly as they were.
  */
-export const CUBE_NET_CELLS: readonly (readonly [number, number])[] = [
-  [2, 1], // +X  right
-  [0, 1], // -X  left
-  [1, 0], // +Y  up
-  [1, 2], // -Y  down
-  [1, 1], // +Z  front
-  [3, 1], // -Z  back
+const PER_FACE_CELLS: readonly (readonly [number, number])[] = [
+  [2, 1],
+  [0, 1],
+  [1, 0],
+  [1, 2],
+  [1, 1],
+  [3, 1],
 ];
+
+/**
+ * How far the top and bottom blend the two sides they carry on from, in
+ * texels either side of the diagonal where they meet. Just enough to
+ * draw that line smooth rather than as a staircase.
+ */
+const MITRE = 1;
+
+/*
+  The top and bottom, as the strip carrying on over each of their four
+  edges.
+
+  A cube cannot be unfolded flat with every edge joined, but every edge
+  CAN join if each cap is cut into four triangles along its diagonals,
+  each one painted as the continuation of the side it borders — the way
+  a picture frame is mitred. All twelve edges of the die then flow, and
+  the only joins left are the four diagonals of the top and bottom, which
+  run from the corners into the middle, where the sticker covers half of
+  each.
+
+  For each edge: its distance from a texel (tx, ty) of the cap, and the
+  sheet position that carries the side's design straight on over it.
+  Worked out from RoundedBoxGeometry's UVs — the top's u runs along +X
+  and its v toward -Z; the bottom's u along +X and its v toward +Z — and
+  checked by tests/continuity.test.ts, which finds each edge's neighbours
+  from the geometry itself.
+*/
+type CapRoute = [(tx: number, ty: number) => number, (tx: number, ty: number) => [number, number]];
+const TOP_ROUTES: readonly CapRoute[] = [
+  [(tx, ty) => ty + 0.5, (tx, ty) => [tx, SIZE + ty]], // over +Z
+  [(tx) => SIZE - 0.5 - tx, (tx, ty) => [SIZE + ty, 2 * SIZE - 1 - tx]], // over +X
+  [(tx, ty) => SIZE - 0.5 - ty, (tx, ty) => [3 * SIZE - 1 - tx, 2 * SIZE - 1 - ty]], // over -Z
+  [(tx) => tx + 0.5, (tx, ty) => [RING - 1 - ty, SIZE + tx]], // over -X
+];
+const BOTTOM_ROUTES: readonly CapRoute[] = [
+  [(tx, ty) => SIZE - 0.5 - ty, (tx, ty) => [tx, ty - SIZE]], // under +Z
+  [(tx) => SIZE - 0.5 - tx, (tx, ty) => [2 * SIZE - 1 - ty, tx - SIZE]], // under +X
+  [(tx, ty) => ty + 0.5, (tx, ty) => [3 * SIZE - 1 - tx, -1 - ty]], // under -Z
+  [(tx) => tx + 0.5, (tx, ty) => [3 * SIZE + ty, -1 - tx]], // under -X
+];
+
+/**
+ * The colour of any texel of one side of the die, from a sheet sampler.
+ *
+ * Exported so the edge test can paint a plain gradient through exactly
+ * the mapping the dice use, and so can the preview tools.
+ */
+export function dieFaceSampler(sample: Sampler, face: number): TexelSampler {
+  const slot = DIE_FACE_SLOTS[face];
+  if (slot !== null) return (tx, ty) => sample(slot * SIZE + tx, ty, tx, ty);
+  const routes = face === 2 ? TOP_ROUTES : BOTTOM_ROUTES;
+  return (tx, ty) => {
+    // The nearest edge, and the next nearest.
+    let near = 0;
+    let next = 1;
+    let dNear = Infinity;
+    let dNext = Infinity;
+    for (let i = 0; i < 4; i++) {
+      const d = routes[i][0](tx, ty);
+      if (d < dNear) {
+        next = near;
+        dNext = dNear;
+        near = i;
+        dNear = d;
+      } else if (d < dNext) {
+        next = i;
+        dNext = d;
+      }
+    }
+    const [ax, ay] = routes[near][1](tx, ty);
+    const a = sample(ax, ay, tx, ty);
+    const gap = dNext - dNear;
+    if (gap >= MITRE) return a;
+    // On the mitre: half and half exactly on the diagonal.
+    const [bx, by] = routes[next][1](tx, ty);
+    const b = sample(bx, by, tx, ty);
+    const w = 0.5 + 0.5 * smoothstep(0, MITRE, gap);
+    return [b[0] + (a[0] - b[0]) * w, b[1] + (a[1] - b[1]) * w, b[2] + (a[2] - b[2]) * w];
+  };
+}
+
+/** Raw RGB for one side of the die, in three.js face order. */
+export function dieFacePixels(
+  pattern: Exclude<PatternId, 'plain'>,
+  base: string,
+  ink: string,
+  face: number,
+): number[] {
+  const sample = shellSampler(pattern, base, ink);
+  const smooth = SMOOTH_EDGES.has(pattern);
+  if (isPerFace(pattern)) {
+    const [cx, cy] = PER_FACE_CELLS[face];
+    return paintSquare((x, y) => sample(cx * SIZE + x, cy * SIZE + y), smooth);
+  }
+  return paintSquare(dieFaceSampler(sample, face), smooth);
+}
 
 /**
  * Six textures, one per side, cut from one continuous design.
  *
- * Costs six squares of painting rather than one — about 115ms on a
- * desktop for a whole die — and is built once per skin per run by the
- * same cache everything else uses. The shelf pictures still paint a
- * single square (the FRONT one), so the Store and the Inventory are
- * unaffected.
+ * Costs six squares of painting rather than one, and is built once per
+ * skin per run by the same cache everything else uses. The shelf
+ * pictures still paint a single square — the front — so the Store and
+ * the Inventory are unaffected.
  */
 export function createDieFaceTextures(
   pattern: Exclude<PatternId, 'plain'>,
@@ -3109,10 +3567,10 @@ export function createDieFaceTextures(
     land again on every roll of a newly equipped skin. Keyed on
     everything the painting depends on, so two skins cannot collide.
   */
-  return CUBE_NET_CELLS.map(
-    ([cx, cy]) =>
-      cachedTexture(`die:${pattern}:${base}:${ink}:${cx},${cy}`, () =>
-        textureFromPixels(patternPixels(pattern, base, ink, cx, cy)),
+  return DIE_FACE_SLOTS.map(
+    (_, face) =>
+      cachedTexture(`die:${pattern}:${base}:${ink}:face${face}`, () =>
+        textureFromPixels(dieFacePixels(pattern, base, ink, face)),
       ) as THREE.DataTexture,
   );
 }
