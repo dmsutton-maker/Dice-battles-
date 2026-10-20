@@ -17,8 +17,8 @@ export type PatternId =
   | 'stripes'
   | 'spots'
   | 'stars'
-  // The Supporter die, 18 Oct 2026: the Paper Ship studio's own mark.
-  | 'paperShips'
+  // The Supporter die: a gold compass rose on teal (19 Oct 2026).
+  | 'supporterCompass'
   | 'grain'
   | 'bubbles'
   | 'frost'
@@ -272,6 +272,10 @@ export type ColorPatternId =
     colour toward one other.
   */
   | 'dimples' | 'soccer' | 'basketball' | 'laces' | 'bowling'
+  // The Supporter die, 19 Oct 2026: gold rope, gold points, and the
+  // sticker as the compass's heart — three golds and a teal deepening
+  // outward, which a one-ink mask cannot draw.
+  | 'supporterCompass'
   | 'patches' | 'bands' | 'diamonds' | 'tigerStripes' | 'honeycomb'
   // Cookie, 19 Oct 2026: a chocolate chunk is dark with a lit shoulder
   // and a glint, over golden dough that goes toasted — four colours,
@@ -394,44 +398,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
         const folded = ((a % sector) + sector) % sector;
         const t = Math.abs(folded - half) / half;
         if (r <= (INNER + (1 - INNER) * t) * 0.95) hit++;
-      }
-    }
-    return hit / 9;
-  },
-
-  /**
-   * Paper ships: little folded-paper boats, the Paper Ship studio's own
-   * mark, for the Supporter die (the Starter pack's money-only set, 18 Oct
-   * 2026). A boat is a hull that narrows toward the keel under one tall
-   * triangular sail — the shape a child folds from a sheet of paper. Laid
-   * out like `stars` (staggered rows, a little tilt from a hash of each
-   * cell, 3x3 supersampled) so the edges come out clean at shelf size.
-   */
-  paperShips: (x, y) => {
-    const cell = SIZE / 4;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + offset) / cell);
-    const tilt = (hashCell(col + 29, row + 13) - 0.5) * 0.5;
-    const cos = Math.cos(tilt);
-    const sin = Math.sin(tilt);
-    const scale = 0.94;
-    let hit = 0;
-    for (let sy = 0; sy < 3; sy++) {
-      for (let sx = 0; sx < 3; sx++) {
-        const px = x + (sx - 1) / 3;
-        const py = y + (sy - 1) / 3;
-        const cx0 = ((((px + offset) % cell) + cell) % cell - cell / 2) / (cell / 2);
-        const cy0 = ((((py % cell) + cell) % cell) - cell / 2) / (cell / 2);
-        const u = (cx0 * cos + cy0 * sin) / scale;
-        const v = (-cx0 * sin + cy0 * cos) / scale;
-        // Hull: from v 0.16 (deck, half-width 0.86) down to v 0.62
-        // (keel, half-width 0.44).
-        const hull = v >= 0.16 && v <= 0.62 && Math.abs(u) <= 0.86 - (v - 0.16) * 0.9;
-        // Sail: apex at (0, -0.8), foot at v 0.06 — the thin gap above the
-        // deck is what makes it read as a folded boat rather than a hat.
-        const sail = v >= -0.8 && v < 0.06 && Math.abs(u) <= ((v + 0.8) / 0.86) * 0.46;
-        if (hull || sail) hit++;
       }
     }
     return hit / 9;
@@ -1102,6 +1068,52 @@ const mixRgb = (
  * every patterned skin alike.
  */
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
+  supporterCompass: (x, y) => {
+    /*
+      The Supporter die, 19 Oct 2026. David: "make the supporter dice
+      look better or give me new ideas for how it should look", then of
+      five compass variations, "I like the teal one, the first one."
+
+      It was sixteen tiny gold paper boats per side, which at die size
+      were yellow smudges. Now every side is a compass: a twisted gold
+      rope round the edge, a ring of gold ticks round the colour sticker,
+      and eight gold points radiating from it, the four cardinal ones
+      longest, each drawn as two facets, one lit and one in shade, the
+      way a chart's compass rose is. The sticker sits in the middle as
+      the compass's heart. Teal deepening toward the edge, so the gold
+      reads warm against it from across the table.
+    */
+    const GOLD = rgb('#d6b25e');
+    const GOLD_LIT = rgb('#f0d48a');
+    const GOLD_SHADE = rgb('#9c7b36');
+    const c = SIZE / 2;
+    const dx = x - c;
+    const dy = y - c;
+    const r = Math.hypot(dx, dy);
+    const a = Math.atan2(dy, dx);
+    let px = mixRgb(rgb('#14555c'), rgb('#0e4248'), smoothstep(14, 32, r) * 0.6);
+    // The rope: two twisted strands, as a band of slanted gold dashes.
+    const edge = Math.min(x, SIZE - x, y, SIZE - y);
+    if (edge > 1.2 && edge < 4.2) {
+      const along = edge === x || edge === SIZE - x ? y : x;
+      const twist = ((along + (edge - 2.7) * 2.2) % 5 + 5) % 5;
+      px = mixRgb(GOLD_SHADE, GOLD_LIT, smoothstep(0.5, 2.5, twist) * smoothstep(5, 3, twist));
+    }
+    // Ticks round the sticker, every fifteen degrees.
+    if (r > 22.5 && r < 25 && ((a / (Math.PI / 12)) % 1 + 1) % 1 < 0.22) px = mixRgb(px, GOLD, 0.8);
+    // Eight points: the cardinals reach the rope, the diagonals stop short.
+    for (let k = 0; k < 8; k++) {
+      const pa = (k * Math.PI) / 4;
+      const len = k % 2 === 0 ? 31 : 27;
+      const along = dx * Math.cos(pa) + dy * Math.sin(pa);
+      const across = -dx * Math.sin(pa) + dy * Math.cos(pa);
+      if (along < 19 || along > len) continue;
+      const half = 3.2 * (1 - (along - 19) / (len - 19));
+      if (Math.abs(across) <= half) px = across < 0 ? mixRgb(GOLD, GOLD_LIT, 0.5) : GOLD_SHADE;
+    }
+    return px;
+  },
+
   /** White leather in curved panels, every third panel blue or yellow. */
   watermelon: (x, y) => {
     const d = Math.hypot(x - SIZE * 1.1, y - SIZE * 1.1);
@@ -2657,6 +2669,8 @@ const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
   'basketball',
   // Volleyball, 19 Oct 2026: one clean sweep of curved panels per side.
   'volleyball',
+  // The Supporter compass is drawn once per side, centred on the sticker.
+  'supporterCompass',
   'ivory',
   'lavender',
   'satin',

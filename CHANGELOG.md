@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.136.0 — 2026-10-20 · requested by David
+
+### Changed
+- **The Supporter die is a compass rose.** David, of five compass
+  variations: "I like the teal one, the first one." Every side is deep
+  teal with a twisted gold rope round the edge, a ring of gold ticks
+  round the colour sticker and eight gold points radiating from it, so
+  the sticker sits at the compass's heart. It replaces a grid of sixteen
+  tiny paper boats that read as yellow smudges at die size. Anyone who
+  already owns the Supporter die gets the new look automatically.
+
 ## v1.135.0 — 2026-10-19 · requested by David
 
 ### Changed

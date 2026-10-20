@@ -397,9 +397,10 @@ export const DICE_SKINS: DiceSkin[] = [
   },
   /*
     THE SUPPORTER DIE. Only in the Starter pack, which David moved onto
-    the real-money shelf on 18 Oct 2026. Deep sea teal with a fleet of
-    little antique-gold paper ships — the studio's own mark, on the one
-    die that says you supported it. The gold is muted on purpose:
+    the real-money shelf on 18 Oct 2026. Deep sea teal with a gold
+    compass rose on every side, the sticker at its heart (David's pick of
+    five, 19 Oct 2026); it replaced a fleet of little paper ships that
+    read as smudges at die size. The gold is muted on purpose:
     Starry's note above is why — pattern in the palette's bright yellow
     competed with the yellow face sticker.
   */
@@ -407,7 +408,7 @@ export const DICE_SKINS: DiceSkin[] = [
     id: 'supporter',
     name: 'Supporter',
     body: '#14555c',
-    pattern: 'paperShips',
+    pattern: 'supporterCompass',
     ink: '#d6b25e',
     paid: true,
   },

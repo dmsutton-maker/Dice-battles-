@@ -32,7 +32,9 @@ suite('starter pack · on sale, with a real Supporter die', () => {
     assert(!LADDER_SKINS.includes(die!), 'the Supporter die is on the trophy ladder');
     assert(!STORE_SKINS.includes(die!), 'the Supporter die is on the coin shelf');
     assert(PAID_SKINS.includes(die!), 'the Supporter die is not listed as money-only');
-    assertEqual(die!.pattern, 'paperShips', 'the Supporter die lost its paper ships');
+    // The compass rose David picked on 19 Oct 2026, over the paper
+    // ships it started with.
+    assertEqual(die!.pattern, 'supporterCompass', 'the Supporter die lost its compass rose');
   });
 
   test('it is locked until bought, and the purchase record unlocks it', () => {
