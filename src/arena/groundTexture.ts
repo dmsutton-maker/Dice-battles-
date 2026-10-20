@@ -723,7 +723,90 @@ function reefGround(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }): R
  * honest: a basalt-walled arena stands on cooled lava, a ship's hull
  * stands on deck planks.
  */
+/**
+ * Dino Valley's floor: packed red earth with two trackways of
+ * three-toed dinosaur footprints pressed into it, a big one walking up
+ * the board and a little one crossing it. Each print is a heel pad and
+ * three toes, sunk: the wall that faces the key light lit, the far one
+ * in shade. Outside the tray, a jungle floor of leaves.
+ */
+function dinoPrint(lx: number, ly: number, size: number): number {
+  // Toes point +y (away from the player). Returns depth 0..1.
+  const heel = Math.hypot(lx / (size * 0.75), (ly + size * 0.15) / (size * 0.65));
+  let d = heel < 1 ? 1 - heel : 0;
+  for (const a of [-0.5, 0, 0.5]) {
+    const u = lx * Math.cos(a) - ly * Math.sin(a);
+    const v = lx * Math.sin(a) + ly * Math.cos(a);
+    const toe = Math.hypot(u / (size * 0.28), (v - size * 1.15) / (size * 0.85));
+    if (toe < 1) d = Math.max(d, 1 - toe);
+  }
+  return d;
+}
+
+function dinoEarth(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tray: boolean): Rgb {
+  if (!tray) {
+    let c = mix(p.a, p.b, smoothstep(0.3, 0.75, fbm(x * 0.6, y * 0.6, SIZE)));
+    const cell = 10;
+    const col = Math.floor(x / cell);
+    const row = Math.floor(y / cell);
+    const h = hash(col + 13, row + 29);
+    if (h > 0.45) {
+      const lx = x - col * cell - cell / 2;
+      const ly = y - row * cell - cell / 2;
+      const a = h * Math.PI * 2;
+      const u = lx * Math.cos(a) + ly * Math.sin(a);
+      const v = -lx * Math.sin(a) + ly * Math.cos(a);
+      if (Math.abs(v) < 1.6 - Math.abs(u) * 0.35 && Math.abs(u) < 4.2) {
+        c = mix(c, h > 0.8 ? [62, 104, 40] : [96, 140, 58], 0.7);
+      }
+    }
+    return c;
+  }
+  let c = mix(p.a, p.b, smoothstep(0.3, 0.8, fbm(x * 0.5, y * 0.5, SIZE)));
+  const crumb = noise(x * 0.9, y * 0.9, SIZE);
+  c = mix(c, shade(c, 0.9), smoothstep(0.6, 0.85, crumb) * 0.5);
+  // Dried cracks.
+  const crack = Math.abs(fbm(x * 0.8 + 31, y * 0.8 + 7, SIZE) - 0.5);
+  c = mix(c, shade(c, 0.78), smoothstep(0.018, 0.004, crack) * 0.6);
+  // The big trackway: steps up the middle, left, right, left.
+  let depth = 0;
+  let lit = 0;
+  const STEP = 30;
+  const k = Math.round((y - 22) / STEP);
+  for (let j = k - 1; j <= k + 1; j++) {
+    const py = 22 + j * STEP;
+    if (py < RIM + 6 || py > TRAY_H - RIM - 6) continue;
+    const px = TRAY_W / 2 + (j % 2 === 0 ? -9 : 9) + Math.sin(j * 1.7) * 2;
+    const d = dinoPrint(x - px, y - py, 6.5);
+    if (d > depth) {
+      depth = d;
+      lit = (x - px) * LIGHT_X + (y - py) * LIGHT_Y;
+    }
+  }
+  // The little one, crossing on a diagonal near the far end.
+  for (let j = 0; j < 6; j++) {
+    const px = RIM + 14 + j * 14;
+    const py = TRAY_H - RIM - 40 + j * 4 + (j % 2 === 0 ? -3 : 3);
+    const lx = x - px;
+    const ly = y - py;
+    // Rotate so its toes point along +x.
+    const d = dinoPrint(-ly, lx, 3);
+    if (d > depth) {
+      depth = d;
+      lit = lx * LIGHT_X + ly * LIGHT_Y;
+    }
+  }
+  if (depth > 0) {
+    const sunk = shade(c, 0.72);
+    c = mix(c, sunk, smoothstep(0, 0.35, depth));
+    // The rim: lit on the side away from the light, which is the wall facing it.
+    c = mix(c, lift(c, 0.18), smoothstep(0.25, 0, depth) * smoothstep(0, -3, lit) * 0.8);
+  }
+  return c;
+}
+
 const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
+  fernRock: dinoEarth,
   /*
     Snowy Hollow: fresh snow with sled tracks in it.
 

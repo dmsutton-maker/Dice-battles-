@@ -9,6 +9,7 @@ import { DesertCamels } from './desertLife';
 import { MoonAliens } from './moonLife';
 import { LavaRiver } from './volcanoLife';
 import { SnowLife } from './snowLife';
+import { DinoLife } from './dinoLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1563,6 +1564,7 @@ export function BoardScenery({ theme }: { theme: ArenaTheme }) {
       {theme.structure === 'airlock' && <MoonAliens />}
       {theme.structure === 'basalt' && <LavaRiver />}
       {theme.structure === 'snowFence' && <SnowLife />}
+      {theme.structure === 'fernRock' && <DinoLife />}
     </group>
   );
 }

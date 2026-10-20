@@ -1,5 +1,5 @@
 """
-Inventory pictures for the sixteen THEMED battlefields.
+Inventory pictures for the THEMED battlefields (sixteen, and Dino Valley).
 
 The four originals have bespoke scenes in make-arenas.py. These sixteen
 are painted from the same source their arenas are: the script parses
@@ -32,7 +32,7 @@ ROOT = '/home/user/Dice-battles-'
 SRC = open(f'{ROOT}/src/arena/themeData.ts').read()
 
 IDS = ['snow', 'desert', 'volcano', 'beach', 'candy', 'glade', 'autumn', 'cove',
-       'farm', 'aurora', 'reef', 'cavern', 'city', 'sky', 'moon', 'toybox']
+       'farm', 'aurora', 'reef', 'cavern', 'city', 'sky', 'moon', 'toybox', 'dino']
 
 
 def hx(h):
@@ -470,11 +470,39 @@ def g_toybox(d, c):
         d.ellipse([wx - 7, 319, wx + 7, 333], fill=(226, 220, 208))
     sparkles(d, ((214, 96, 7), (312, 138, 6), (26, 244, 6)), (255, 246, 216))
 
+def g_dino(d, c):
+    # Dino Valley, 20 Oct 2026: a long-neck in front of a smoking volcano,
+    # a pterodactyl overhead, ferns in front.
+    d.polygon([(214, 206), (262, 112), (284, 112), (334, 206)], fill=(122, 102, 80))
+    d.polygon([(262, 112), (284, 112), (278, 124), (268, 124)], fill=(255, 140, 60))
+    for k, (sx, sy, r) in enumerate(((272, 96, 12), (262, 78, 15), (276, 56, 18))):
+        d.ellipse([sx - r, sy - r, sx + r, sy + r], fill=(206, 200, 196))
+    body = (138, 156, 112)
+    d.ellipse([86, 196, 236, 268], fill=body)
+    d.polygon([(220, 214), (300, 236), (232, 250)], fill=body)
+    d.polygon([(104, 214), (70, 120), (88, 112), (128, 214)], fill=body)
+    d.ellipse([56, 98, 102, 124], fill=body)
+    d.ellipse([66, 104, 74, 112], fill=(30, 30, 30))
+    for lx in (108, 136, 184, 210):
+        d.rectangle([lx, 250, lx + 20, 300], fill=(118, 136, 96))
+    for sx, sy in ((150, 214), (180, 206), (200, 226), (126, 232)):
+        d.ellipse([sx - 9, sy - 6, sx + 9, sy + 6], fill=(106, 132, 86))
+    # A pterodactyl: two swept wings and a crest.
+    d.polygon([(118, 52), (64, 40), (100, 62)], fill=(192, 120, 74))
+    d.polygon([(118, 52), (172, 40), (136, 62)], fill=(192, 120, 74))
+    d.polygon([(112, 50), (128, 50), (120, 70)], fill=(160, 96, 60))
+    # Ferns along the front.
+    for fx in range(10, S, 46):
+        for k in (-2, -1, 0, 1, 2):
+            d.line([(fx, 336), (fx + k * 10, 304 + abs(k) * 6)], fill=(79, 138, 48), width=5)
+    stones(d, ((300, 312, 12), (44, 300, 9)), (154, 140, 116))
+
 GLYPHS = {
     'snow': g_snow, 'desert': g_desert, 'volcano': g_volcano, 'beach': g_beach,
     'candy': g_candy, 'glade': g_glade, 'autumn': g_autumn, 'cove': g_cove,
     'farm': g_farm, 'aurora': g_aurora, 'reef': g_reef, 'cavern': g_cavern,
     'city': g_city, 'sky': g_sky, 'moon': g_moon, 'toybox': g_toybox,
+    'dino': g_dino,
 }
 
 for tid in IDS:
@@ -485,7 +513,7 @@ for tid in IDS:
 # Contact sheet: all sixteen, big and at 58pt.
 pad = 12
 cols = 8
-rows = 2
+rows = math.ceil(len(IDS) / cols)
 sheet = Image.new('RGB', (cols * (S // 2 + pad) + pad, rows * (S // 2 + 70) + pad), (253, 246, 236))
 sd = ImageDraw.Draw(sheet)
 for i, tid in enumerate(IDS):
@@ -499,4 +527,4 @@ for i, tid in enumerate(IDS):
     sheet.paste(small, (x + S // 4 - 29, y + S // 2 + 4), small)
     sd.text((x + 2, y + S // 2 + 48), tid, fill=(29, 26, 46))
 sheet.save('/tmp/themed-arenas-sheet.png')
-print('wrote 16 thumbnails + sheet')
+print(f'wrote {len(IDS)} thumbnails + sheet')

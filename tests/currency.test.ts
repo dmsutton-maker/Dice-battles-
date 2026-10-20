@@ -32,6 +32,7 @@ import {
   PASS_ARENAS,
   arenaKey,
   coinShopItemIds,
+  PAID_ARENAS,
 } from '../src/game/loadout';
 import { setUnlockAll } from '../src/game/progress';
 import { assert, assertEqual, suite, test } from './harness';
@@ -529,9 +530,11 @@ suite('inventory · everything is listed cheapest first', () => {
     const store = ARENA_ORDER.filter((id) => ARENA_PRICES[id] !== undefined);
     // The season pass's battlefields go last, as its dice do.
     const pass = ARENA_ORDER.filter((id) => seasonLevelOf('arena', id) !== null);
+    // Then the money-only ones (Dino Valley, 20 Oct 2026), as with the dice.
+    const paid = ARENA_ORDER.filter((id) => PAID_ARENAS.includes(id));
     assertEqual(
       ARENA_ORDER.join(','),
-      [...ladder, ...store, ...pass].join(','),
+      [...ladder, ...store, ...pass, ...paid].join(','),
       'the ladder, the shop and the season pass are interleaved',
     );
     assertEqual(pass.join(','), PASS_ARENAS.join(','), 'a season pass battlefield is missing');

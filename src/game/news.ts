@@ -90,6 +90,20 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-139-0-dino-valley',
+    date: '20 October 2026',
+    version: 'v1.139.0',
+    title: 'Dino Valley',
+    icon: 'arena',
+    body:
+      'A new battlefield in the money shop: Dino Valley. Dinosaur ' +
+      'footprints in the dirt, a nest of eggs, a bubbling tar pit, a jail ' +
+      'made of bones, and dinosaurs roaming round the edge while you ' +
+      'play: a long-neck, a triceratops, two little raptors racing past ' +
+      'them, and pterodactyls overhead. $2.99, yours for good. It plays ' +
+      'exactly like every other battlefield.',
+  },
+  {
     id: 'v1-138-0-neon-dice',
     date: '20 October 2026',
     version: 'v1.138.0',

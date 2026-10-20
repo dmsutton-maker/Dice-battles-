@@ -1211,6 +1211,54 @@ const DESIGNS: Record<JailKind, Design> = {
       k.in('base');
     },
   },
+
+  /*
+    Dino Valley, 20 Oct 2026: a cage of dinosaur bones. The bamboo
+    cage's footprint exactly — bars along the back and down both sides,
+    open at the front — so it stands clear of every figure the same way;
+    only the material is new. Every bar is a bone, knobbed at both ends,
+    the rails are long bones lashed across them, and a horned skull sits
+    on each back corner.
+  */
+  boneCage: {
+    looks: (p) => ({
+      platform: { color: p.platform, rough: 0.95 },
+      bone: { color: p.bars, rough: 0.65 },
+      knob: { color: '#f4ecd6', rough: 0.6 },
+      socket: { color: '#3a2e24', rough: 0.9 },
+      horn: { color: '#d8c8a2', rough: 0.6 },
+      lash: { color: '#6e5a3a', rough: 0.9 },
+    }),
+    build(k) {
+      platform(k);
+      const bar = (x: number, z: number, h: number) => {
+        k.cyl('bone', 0.04, 0.046, h, 7, [x, h / 2, z]);
+        for (const y of [0.04, h]) {
+          for (const dx of [-0.035, 0.035]) k.ball('knob', 0.05, [x + dx, y, z], ONE, 8);
+        }
+      };
+      const rail = (len: number, pos: V3, rot: V3, along: 'x' | 'z') => {
+        k.cyl('bone', 0.038, 0.038, len, 7, pos, rot);
+        for (const s of [-1, 1]) {
+          const end: V3 = along === 'x' ? [pos[0] + (s * len) / 2, pos[1], pos[2]] : [pos[0], pos[1], pos[2] + (s * len) / 2];
+          k.ball('knob', 0.06, end, ONE, 8);
+        }
+      };
+      span(-2.25, 2.25, 14).forEach((x, i) => bar(x, -0.86, 1.18 + 0.06 * jit(i)));
+      for (const y of [0.32, 1.08]) rail(4.6, [0, y, -0.8], [0, 0, PI / 2], 'x');
+      for (const s of [-1, 1]) {
+        for (const z of [-0.5, -0.15, 0.2]) bar(s * 2.28, z, 1.16);
+        for (const y of [0.32, 1.08]) rail(1.15, [s * 2.22, y, -0.33], [PI / 2, 0, 0], 'z');
+        // Lashings where the rails cross the corner bars.
+        for (const y of [0.32, 1.08]) k.ring('lash', 0.06, 0.016, [s * 2.25, y, -0.84], [PI / 2, 0, 0], PI * 2, 10);
+        // A horned skull on the back corner, looking out.
+        k.ball('bone', 0.16, [s * 2.25, 1.38, -0.82], [1, 0.75, 1.15], 10);
+        k.ball('bone', 0.1, [s * 2.25, 1.32, -0.66], [1, 0.8, 1.2], 8);
+        for (const dx of [-0.06, 0.06]) k.ball('socket', 0.04, [s * 2.25 + dx, 1.42, -0.7], ONE, 6);
+        for (const dx of [-0.08, 0.08]) k.cyl('horn', 0.005, 0.03, 0.18, 6, [s * 2.25 + dx, 1.52, -0.78], [-0.6, 0, dx * 3]);
+      }
+    },
+  },
 };
 
 /* ── the component ────────────────────────────────────────────────── */

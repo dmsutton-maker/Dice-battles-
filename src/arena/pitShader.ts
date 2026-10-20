@@ -37,6 +37,8 @@ export const PIT_MODES = {
   skylight: 11,
   cargo: 12,
   toyBox: 13,
+  // Dino Valley's tar pit, 20 Oct 2026.
+  tar: 14,
 } as const;
 
 export type PitMode = keyof typeof PIT_MODES;
@@ -159,6 +161,27 @@ const FRAGMENT = `
     float foam = smoothstep(0.55, 0.95, s) * smoothstep(0.05, 0.35, r);
     col = mix(col, uC, foam * 0.75);
     col *= 0.35 + 0.65 * smoothstep(0.0, 0.32, r);
+    return col;
+  #elif MODE == 14
+    // Tar: thick, glossy and nearly black, the sky's sheen sliding across
+    // it, and big slow bubbles that swell up as domes and pop.
+    float n = fbm(q * 1.6 + vec2(t * 0.02, 0.0));
+    vec3 col = mix(uB, uA, smoothstep(0.3, 0.8, n));
+    float streak = smoothstep(0.35, 0.0, abs(q.x * 0.6 + q.y - 0.25 + 0.12 * sin(t * 0.3)));
+    col += uC * streak * 0.3;
+    vec2 bq = q * 1.4;
+    vec2 bc = floor(bq);
+    vec2 f = fract(bq) - 0.5 - 0.2 * (hash2(bc) - 0.5);
+    float ph = fract(t * 0.18 + hash(bc) * 5.0);
+    float rad = ph * 0.3;
+    float live = step(0.45, hash(bc + 2.3)) * (1.0 - smoothstep(0.86, 1.0, ph));
+    float dome = smoothstep(rad, rad - 0.03, length(f)) * live;
+    col = mix(col, uA * 1.5, dome * 0.45);
+    float glint = smoothstep(rad * 0.45, 0.0, length(f + vec2(rad * 0.35, -rad * 0.35))) * dome;
+    col += uC * glint * 0.7;
+    // The ring a popped bubble leaves.
+    float popped = step(0.86, ph) * step(0.45, hash(bc + 2.3));
+    col += uC * 0.25 * popped * smoothstep(0.03, 0.0, abs(length(f) - 0.3 - (ph - 0.86) * 0.6)) * (1.0 - ph) * 7.0;
     return col;
   #else
     // Ice: pale and cracked, with deeper blue where it is thick.
@@ -349,6 +372,7 @@ const DEPTHS: Record<PitMode, number> = {
   skylight: 1.5,
   cargo: 0.5,
   toyBox: 0.75,
+  tar: 0.08,
 };
 
 /**

@@ -23,6 +23,7 @@ async function main(): Promise<void> {
   await import('./push.test');
   await import('./fire.test');
   await import('./neonDice.test');
+  await import('./dinoValley.test');
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');

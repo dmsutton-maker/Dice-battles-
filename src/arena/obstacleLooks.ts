@@ -36,7 +36,8 @@ export type MoundKind =
   | 'hill' | 'rubble' | 'stump' | 'bulkhead' | 'dune'
   | 'leafPile' | 'iceBoulder' | 'crystals' | 'cloud' | 'boulder'
   | 'snowman' | 'smokingRock' | 'haystack' | 'sandcastle' | 'gumdrop'
-  | 'mushroom' | 'treasure' | 'anemone' | 'acUnit' | 'beachBall';
+  | 'mushroom' | 'treasure' | 'anemone' | 'acUnit' | 'beachBall'
+  | 'eggNest';
 
 /**
  * What the pit IS on each board. The physics is the same square hole for
@@ -46,7 +47,8 @@ export type PitKind =
   | 'moat' | 'candlePool' | 'lake' | 'hatch' | 'quicksand'
   | 'puddle' | 'iceHole' | 'chasm' | 'cloudGap' | 'crater'
   | 'frozenPond' | 'lava' | 'mud' | 'tidePool' | 'chocolate'
-  | 'spring' | 'cargoHatch' | 'whirlpool' | 'skylight' | 'toyBox';
+  | 'spring' | 'cargoHatch' | 'whirlpool' | 'skylight' | 'toyBox'
+  | 'tarPit';
 
 export interface ObstacleLook {
   /** The bump the dice deflect off. */

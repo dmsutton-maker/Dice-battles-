@@ -64,4 +64,5 @@ export const ARENA_ART: Record<ArenaId, ImageSourcePropType> = {
   sky: require('../../assets/arenas/sky.png'),
   moon: require('../../assets/arenas/moon.png'),
   toybox: require('../../assets/arenas/toybox.png'),
+  dino: require('../../assets/arenas/dino.png'),
 };

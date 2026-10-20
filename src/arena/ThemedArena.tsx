@@ -888,6 +888,27 @@ function RetreatShelter({ theme }: { theme: ArenaTheme }) {
           </mesh>
         </>
       );
+    case 'fernRock':
+      // Dino Valley: a crown of big drooping fern leaves, like a cycad.
+      return (
+        <>
+          {([0, 1, 2, 3, 4, 5] as const).map((k) => (
+            <mesh
+              key={k}
+              position={[Math.cos((k * Math.PI) / 3) * 0.3, 1.38, Math.sin((k * Math.PI) / 3) * 0.3]}
+              rotation={[0, -(k * Math.PI) / 3, -0.45]}
+              scale={[0.42, 0.05, 0.14]}
+            >
+              <sphereGeometry args={[1, 10, 6]} />
+              <meshStandardMaterial color={k % 2 ? '#4f8a30' : '#6aa844'} roughness={0.85} />
+            </mesh>
+          ))}
+          <mesh position={[0, 1.44, 0]}>
+            <sphereGeometry args={[0.1, 8, 6]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.9} />
+          </mesh>
+        </>
+      );
     case 'blocks':
     default:
       // A pinwheel, four coloured vanes.
@@ -1111,6 +1132,8 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
     case 'coralRim':
     case 'parapet':
     case 'blocks':
+    // Dino Valley, the first money-only board (20 Oct 2026).
+    case 'fernRock':
     default:
       return <StoreCrest theme={theme} />;
   }
@@ -1155,6 +1178,7 @@ function ThemedCorners({
       case 'coralRim':
       case 'parapet':
       case 'blocks':
+      case 'fernRock':
       default:
         return <StoreCorner theme={theme} />;
     }

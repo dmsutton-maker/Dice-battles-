@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.139.0 — 2026-10-20 · requested by David
+
+### Added
+- **Dino Valley, a $2.99 battlefield.** David: "give me a cool arena
+  worth 3 dollars ... it can be a completely different theme", then of
+  the design, "Yes, do those things. Also make the dinosaurs move
+  around the surroundings." The first battlefield sold for real money.
+  - Packed red earth with two trackways of three-toed dinosaur
+    footprints pressed into it, a rim of mossy boulders and ferns,
+    giant fossil ribs arching out of the far corners, and fern-leaf
+    crowns on the landing-pad posts.
+  - Its own jail: a cage of bones with knobbed ends and a horned skull
+    on each back corner. Its own bump: a twig nest with three speckled
+    eggs. Its own pit: a tar pit, glossy black, with big bubbles that
+    swell and pop and old ribs beside it ("Gloop! A die sank in the tar
+    pit!").
+  - The dinosaurs roam right round the board on a loop outside the
+    tray: a long-neck and a triceratops (which stops to graze) on the
+    outer lane, two little raptors dashing past them on the inner lane,
+    and two pterodactyls circling overhead. Nothing crosses the dice.
+  - Its own picture in the battlefield list.
+  - On the money shelf as "Dino Valley" at $2.99 (`dino_valley`, a
+    one-off purchase that Restore brings back). The locked card and its
+    preview say "$2.99". Family tester mode lends it like every paid
+    item. Battlefields can now be money-only, the way dice already
+    could.
+  - Before anyone can buy it, `dino_valley` has to be created in App
+    Store Connect as a Non-Consumable at $2.99.
+- A News post for Dino Valley.
+
 ## v1.138.0 — 2026-10-20 · requested by David
 
 ### Added

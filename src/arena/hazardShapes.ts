@@ -761,6 +761,33 @@ const MOUNDS: Record<MoundKind, (kit: Kit, look: MoundLook) => void> = {
     kit.mesh(geo, kit.std('#ffffff', { painted: true, rough: look.roughness }), [0, C, 0]);
   },
 
+  // Dino Valley, 20 Oct 2026: a nest of woven twigs with three big
+  // speckled dinosaur eggs sitting in it.
+  eggNest: (kit, look) => {
+    const rand = rng(151);
+    const nest = paintVertices(domeGeometry(30, 10, 0, 0.95), (c) => {
+      // Twigs woven round and round, light and dark.
+      const a = Math.atan2(c.z, c.x);
+      const band = Math.sin(a * 9 + c.y * 40) * 0.5 + 0.5;
+      return mixed(look.color, '#5a3f22', band * 0.6 + rand() * 0.2);
+    });
+    kit.mesh(nest, kit.std('#ffffff', { painted: true, rough: 1 }), [0, C, 0]);
+    const twigs = domeSpots(152, 46, 0.4, 0.95).map(({ p, n, rand: r }) => ({
+      position: p,
+      up: new THREE.Vector3(r() - 0.5, 0.15, r() - 0.5).normalize().add(n.clone().multiplyScalar(0.2)).normalize(),
+      color: r() > 0.5 ? '#8a6436' : '#6a4a28',
+    }));
+    kit.scatter(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 3), kit.std('#ffffff', { rough: 1 }), twigs);
+    const speck = rng(153);
+    const shell = paintVertices(new THREE.SphereGeometry(1, 16, 12), () =>
+      speck() > 0.86 ? col('#7a6a4a') : speck() > 0.7 ? col('#c8b48a') : col('#efe4c8'),
+    );
+    const mat = kit.std('#ffffff', { painted: true, rough: 0.55 });
+    for (const [x, z, tilt, spin] of [[-0.14, 0.08, 0.35, 0.4], [0.15, 0.06, -0.3, 1.6], [0.0, -0.15, 0.2, 2.7]] as const) {
+      kit.mesh(shell, mat, [x, MOUND_TOP + 0.05, z], { rot: [tilt, spin, tilt * 0.5], scale: [0.13, 0.18, 0.13], flags: { crown: true } });
+    }
+  },
+
   // A snowman: the dome is his bottom snowball.
   snowman: (kit, look) => {
     const snow = kit.std(look.color, { rough: 0.7 });
@@ -1226,6 +1253,7 @@ const SHADER_PITS: Partial<Record<PitKind, { mode: PitMode; colors: (l: PitLook)
   skylight: { mode: 'skylight', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
   cargoHatch: { mode: 'cargo', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
   toyBox: { mode: 'toyBox', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
+  tarPit: { mode: 'tar', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
 };
 
 /** Four boxes round the opening, their inner faces flush with the hole. */
@@ -1579,6 +1607,18 @@ const PITS: Record<PitKind, (kit: Kit, look: PitLook) => void> = {
       color: rand() > 0.5 ? '#e3c56f' : '#c9a24c',
     }));
     kit.scatter(new THREE.CylinderGeometry(0.01, 0.01, 0.22, 3), kit.std('#ffffff', { rough: 1 }), straws);
+  },
+
+  // Dino Valley's tar pit: dark rock round it, and the ribs of something
+  // that wandered in long ago arching up beside it — outside the hole,
+  // so nothing hangs over where a die falls in.
+  tarPit: (kit, look) => {
+    lumps(kit, 341, [look.border?.color ?? '#5a4a3a', '#3f342a', '#6e5a40'], 9, [0.18, 0.3], 0.1);
+    const bone = kit.std('#e6dcc0', { rough: 0.7 });
+    for (const [z, r] of [[-0.35, 0.2], [-0.12, 0.26], [0.12, 0.27], [0.35, 0.21]] as const) {
+      kit.mesh(new THREE.TorusGeometry(r, 0.028, 6, 12, Math.PI), bone, [-H - 0.2, 0, z], { rot: [0, Math.PI / 2, 0] });
+    }
+    kit.mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.95, 7), bone, [-H - 0.2, 0.04, 0], { rot: [Math.PI / 2, 0, 0] });
   },
 
   // A tide pool: rocks round it, a starfish and a shell on them.

@@ -21,6 +21,7 @@ import {
   isArenaUnlocked,
   isSkinUnlocked,
   ARENA_PRICES,
+  PAID_ARENAS,
 } from '../game/loadout';
 
 /**
@@ -227,6 +228,9 @@ export function InventoryScreen({
                   >
                     {ARENA_PRICES[id]}
                   </CoinLabel>
+                ) : PAID_ARENAS.includes(id) ? (
+                  // Real money only, like the Neon die: the price, "$2.99".
+                  <Text style={styles.priceTag}>{paidSkinWhere(id)}</Text>
                 ) : seasonLevelOf('arena', id) !== null ? (
                   <Text style={styles.priceTag}>
                     {seasonTrackOf('arena', id) === 'gold' ? 'Gold Pass' : 'Pass'} level{' '}

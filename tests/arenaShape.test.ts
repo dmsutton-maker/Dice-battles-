@@ -1341,6 +1341,10 @@ suite('arenas · the floor is not cut in half', () => {
       mossStone: [2989868690, 1696864712], shipHull: [1382161784, 3572424677],
       picket: [3035480390, 987699253], coralRim: [491381298, 2615557615],
       parapet: [1537814120, 972724624], blocks: [3509681399, 678744908],
+      // Dino Valley, pinned 20 Oct 2026 after it was looked at in the
+      // arena preview: packed earth with two dinosaur trackways, and a
+      // jungle floor of leaves outside.
+      fernRock: [1095928635, 3950926147],
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];

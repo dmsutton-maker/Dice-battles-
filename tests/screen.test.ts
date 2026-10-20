@@ -15,6 +15,7 @@ import {
   isSkinUnlocked,
   ARENA_PRICES,
   STORE_ARENAS,
+  PAID_ARENAS,
 } from '../src/game/loadout';
 import { PRISONER_COLORS } from '../src/game/colors';
 import { TIERS, UnlockId } from '../src/game/progress';
@@ -137,19 +138,21 @@ suite('screen · arenas', () => {
       would sell what the ladder was about to award. Since 26 Aug 2026
       battlefields follow the rule dice skins always had: a trophy tier on
       the ladder, or a coin price in the Store — exactly one each. Since
-      30 Sep 2026 there is a third route, the season pass, and the rule
-      is the same: exactly one.
+      30 Sep 2026 there is a third route, the season pass, and since
+      20 Oct 2026 a fourth, real money (Dino Valley). The rule is the
+      same: exactly one.
     */
     const tierIds = new Set<UnlockId>(TIERS.map((t) => t.id));
     for (const id of Object.keys(ARENAS) as ArenaId[]) {
       const unlock = ARENA_UNLOCKS[id];
       const price = ARENA_PRICES[id];
       const pass = seasonLevelOf('arena', id);
-      const routes = [unlock !== undefined, price !== undefined, pass !== null].filter(Boolean).length;
+      const paid = PAID_ARENAS.includes(id);
+      const routes = [unlock !== undefined, price !== undefined, pass !== null, paid].filter(Boolean).length;
       assertEqual(
         routes,
         1,
-        `arena ${id} must have exactly one of a tier, a price or a season pass level`,
+        `arena ${id} must have exactly one of a tier, a price, a season pass level or a real-money product`,
       );
       if (unlock !== undefined) {
         assert(tierIds.has(unlock), `arena ${id} maps to unknown unlock '${unlock}'`);

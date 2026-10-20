@@ -1644,6 +1644,98 @@ function ToyCorner({ theme }: { theme: ArenaTheme }) {
   );
 }
 
+/* ── Dino Valley ──────────────────────────────────────────────────── */
+
+const BOULDER = ['#857a68', '#7a705f', '#948a76', '#6f6656'];
+const FERN = ['#4f8a30', '#5f9a3a', '#3f7a28', '#6aa844'];
+
+/**
+ * Dino Valley's rim, a concept, 20 Oct 2026: a mossy bank heaped with
+ * boulders, ferns sprouting between them and leaning out over the edge.
+ * Every boulder and every frond is one instanced draw.
+ */
+function DinoWall() {
+  const { rocks, fronds } = useMemo(() => {
+    const rocks: Inst[] = [];
+    const fronds: Inst[] = [];
+    for (const run of RUNS) {
+      for (const s of spots(run, 0.4, 0.1)) {
+        const sz = 0.15 + h1(s.seed) * 0.09;
+        const off = (h1(s.seed + 3) - 0.5) * 0.14;
+        rocks.push({
+          p: [s.x + run.nx * off, wallHeight + sz * 0.5, s.z + run.nz * off],
+          r: [h1(s.seed + 4) * 3, h1(s.seed + 5) * 3, h1(s.seed + 6) * 3],
+          s: [sz * 1.2, sz, sz * 1.1],
+          c: BOULDER[Math.floor(h1(s.seed + 7) * BOULDER.length)],
+        });
+      }
+      for (const s of spots(run, 0.33, 0.05)) {
+        for (let k = 0; k < 2; k++) {
+          const seed = s.seed + k * 17;
+          const out = k === 0 ? 0.18 : -0.05;
+          const lean = (k === 0 ? 1 : -0.4) * (0.7 + h1(seed) * 0.4);
+          // A frond leans along the run's normal: tilt about the run's own axis.
+          const yaw = Math.atan2(run.nx, run.nz) + (h1(seed + 1) - 0.5) * 1.2;
+          fronds.push({
+            p: [s.x + run.nx * out, wallHeight + 0.12, s.z + run.nz * out],
+            r: [lean, yaw, 0],
+            s: [0.55, 1.2 + h1(seed + 2) * 0.5, 0.18],
+            c: FERN[Math.floor(h1(seed + 3) * FERN.length)],
+          });
+        }
+      }
+    }
+    return { rocks, fronds };
+  }, []);
+  return (
+    <group>
+      <Berm color="#6f9a3c" radius={0.3} squash={0.45} />
+      <Instanced items={rocks}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.95} flatShading />
+      </Instanced>
+      <Instanced items={fronds}>
+        <coneGeometry args={[0.18, 0.5, 4]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </Instanced>
+    </group>
+  );
+}
+
+/**
+ * A corner of Dino Valley: a giant fossil ribcage half buried in the
+ * bank — a spine lying across the corner with five ribs arching up out
+ * of it, the middle ones tallest — beside a mossy boulder.
+ */
+function DinoCorner({ theme }: { theme: ArenaTheme }) {
+  const bone = theme.tower.body;
+  return (
+    <group rotation={[0, Math.PI / 4, 0]}>
+      <mesh position={[0, wallHeight + 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.07, 0.05, 1.2, 8]} />
+        <meshStandardMaterial color={bone} roughness={0.7} />
+      </mesh>
+      {[-0.44, -0.22, 0, 0.22, 0.44].map((x, k) => {
+        const r = 0.42 - Math.abs(x) * 0.45;
+        return (
+          <mesh key={k} position={[x, wallHeight + 0.04, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <torusGeometry args={[r, 0.045, 6, 14, Math.PI]} />
+            <meshStandardMaterial color={bone} roughness={0.7} />
+          </mesh>
+        );
+      })}
+      <mesh position={[0.55, wallHeight + 0.18, 0.35]} scale={[0.32, 0.26, 0.3]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="#7a705f" roughness={0.95} flatShading />
+      </mesh>
+      <mesh position={[0.55, wallHeight + 0.4, 0.35]} scale={[0.26, 0.06, 0.24]}>
+        <sphereGeometry args={[1, 10, 6]} />
+        <meshStandardMaterial color="#5f9a3a" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
 /* ── what ThemedArena asks for ────────────────────────────────────── */
 
 /** The wall of a store board, or null for any other structure. */
@@ -1657,6 +1749,7 @@ export function StoreCrest({ theme }: { theme: ArenaTheme }) {
     case 'coralRim': return <ReefWall />;
     case 'parapet': return <CityWall theme={theme} />;
     case 'blocks': return <ToyWall />;
+    case 'fernRock': return <DinoWall />;
     default: return null;
   }
 }
@@ -1672,6 +1765,7 @@ export function StoreCorner({ theme }: { theme: ArenaTheme }) {
     case 'coralRim': return <ReefCorner theme={theme} />;
     case 'parapet': return <CityCorner />;
     case 'blocks': return <ToyCorner theme={theme} />;
+    case 'fernRock': return <DinoCorner theme={theme} />;
     default: return null;
   }
 }

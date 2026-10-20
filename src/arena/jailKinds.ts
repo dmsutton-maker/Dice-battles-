@@ -40,7 +40,8 @@ export type JailKind =
   | 'brig'          // pirate cove: plank bulkhead, iron bars, swinging lantern
   | 'giantClam'     // coral reef: open clam, pearl
   | 'fireEscape'    // rooftop city: brick wall, lit windows, railing, grating
-  | 'toyChest';     // toy room: painted chest, flat lid, blocks and a ball
+  | 'toyChest'      // toy room: painted chest, flat lid, blocks and a ball
+  | 'boneCage';     // dino valley: bars of bone with knobbed ends, a horned skull
 
 /** Every board in the registry: the sixteen themed ones and the four originals. */
 export type JailArenaId = ThemedArenaId | 'castle' | 'castleSunset' | 'jungle' | 'space';
@@ -66,4 +67,5 @@ export const ARENA_JAILS: Record<JailArenaId, JailKind> = {
   reef: 'giantClam',
   city: 'fireEscape',
   toybox: 'toyChest',
+  dino: 'boneCage',
 };

@@ -131,7 +131,8 @@ export type ArenaStructure =
   | 'picket'       // farm: pointed pickets, a lantern on the gatepost
   | 'coralRim'     // reef: branching coral heads, anemones
   | 'parapet'      // city: concrete parapet, railing, aerial masts
-  | 'blocks';      // toybox: alternating wooden bricks, block towers
+  | 'blocks'       // toybox: alternating wooden bricks, block towers
+  | 'fernRock';    // dino: mossy boulders and ferns, fossil ribs at the corners
 
 export interface ArenaTheme {
   /** What the walls and corners are made of. */
@@ -182,7 +183,8 @@ export type ThemedArenaId =
   | 'snow' | 'desert' | 'volcano' | 'beach'
   | 'candy' | 'glade' | 'autumn' | 'cove'
   | 'farm' | 'aurora' | 'reef' | 'cavern'
-  | 'city' | 'sky' | 'moon' | 'toybox';
+  | 'city' | 'sky' | 'moon' | 'toybox'
+  | 'dino';
 
 /** Shared daylight, matching the rig the originals use. */
 const DAY: ArenaLighting | null = null;
@@ -1204,6 +1206,51 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     ),
     lighting: DAY,
   },
+
+  dino: {
+    /*
+      Dino Valley, the first battlefield sold for real money ($2.99),
+      20 Oct 2026. David: "give me a cool arena worth 3 dollars ... it
+      can be a completely different theme", then "Yes, do those things.
+      Also make the dinosaurs move around the surroundings." A clearing in a prehistoric valley: packed red
+      earth with dinosaur footprints pressed into it, a rim of mossy
+      boulders and ferns, giant fossil ribs arching at the corners, a
+      tar pit, and dinosaurs going about their day around it.
+    */
+    structure: 'fernRock',
+    meadow: '#79a845', hill: '#638f38', mountain: '#7a6650', cloud: '#ffffff',
+    floor: { a: '#c09062', b: '#956a42' },
+    wall: { color: '#857a68', cap: '#9a8c74' },
+    tower: { body: '#ece0c4', roof: '#4f8a30' },
+    jail: { platform: '#857a68', bars: '#ece0c4' },
+    retreat: { padA: '#efe2c0', padB: '#dcc89a', post: '#7a5636', canopy: '#c9a25a', pool: '#5fb8c8' },
+    sky: { sun: { color: '#fff3c8', size: 1.8 }, stars: false, body: null },
+    /*
+      Few props, and none on the strips beside the walls: that is where
+      the dinosaurs walk (dinoLife.tsx). A few stand just inside their
+      path, at x ±3.05, and the far corners keep a tree and a bush,
+      outside the loop the walkers take round the back.
+    */
+    props: [
+      { kind: 'roundTree', x: -3.05, z: -2.1, scale: 0.5, color: '#3f7a28' },
+      { kind: 'bush', x: 3.05, z: -2.1, scale: 0.8, color: '#5f9a3a' },
+      { kind: 'rock', x: -3.05, z: 0.4, scale: 0.6, color: '#857a68' },
+      { kind: 'roundTree', x: 3.05, z: 0.4, scale: 0.48, color: '#5f9a3a' },
+      { kind: 'pebbles', x: -3.05, z: 2.8, scale: 0.85, color: '#9a8c74' },
+      { kind: 'bush', x: 3.05, z: 2.8, scale: 0.75, color: '#4f8a30' },
+      { kind: 'bush', x: -3.05, z: -4.6, scale: 0.75, color: '#4f8a30' },
+      { kind: 'rock', x: 3.05, z: -4.6, scale: 0.65, color: '#9a8c74' },
+      { kind: 'bush', x: -3.95, z: -9.15, scale: 0.8, color: '#4f8a30' },
+      { kind: 'roundTree', x: 3.95, z: -9.15, scale: 0.5, color: '#3f7a28' },
+    ],
+    look: look(
+      { kind: 'eggNest', color: '#a07a48', roughness: 1, metalness: 0 },
+      { kind: 'tarPit', depths: '#0b0908', surface: '#2a221e', surfaceOpacity: 0.95, surfaceRoughness: 0.1,
+        edge: '#9fb0b8', border: { kind: 'bank', color: '#5a4a3a' } },
+      'tar pit', 'nest of eggs', 'Gloop! A die sank in the tar pit!',
+    ),
+    lighting: DAY,
+  },
 };
 
 /**
@@ -1234,6 +1281,11 @@ export interface ThemedArenaMeta {
   price?: number;
   /** Won on the season pass, and available no other way (seasonPass.ts). */
   pass?: true;
+  /**
+   * Bought with real money and available no other way (products.ts).
+   * Owned through the purchase record, so Restore brings it back.
+   */
+  paid?: true;
 }
 
 export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
@@ -1258,4 +1310,6 @@ export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   reef: { name: 'Coral Reef', short: 'Reef', skyColor: '#0e4e5c', price: 2400 },
   city: { name: 'Rooftop City', short: 'City', skyColor: '#2e3352', price: 2850 },
   toybox: { name: 'Toy Room', short: 'Toys', skyColor: '#f2e2c4', price: 3350 },
+  // Bought with real money only: $2.99, the `dino_valley` product.
+  dino: { name: 'Dino Valley', short: 'Dino', skyColor: '#cfe8c0', paid: true },
 };

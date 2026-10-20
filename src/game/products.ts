@@ -191,6 +191,26 @@ export const PRODUCTS: Product[] = [
   },
 
   /*
+    DINO VALLEY, the first battlefield sold on its own. David, 20 Oct
+    2026: "give me a cool arena worth 3 dollars", then "Yes, do those
+    things." The board is `dino` in themeData.ts (`paid: true`), owned
+    through the purchase record so Restore brings it back. Needs its own
+    product in App Store Connect: dino_valley, Non-Consumable, $2.99.
+    Family tester mode lends it regardless.
+  */
+  {
+    id: 'dino_valley',
+    kind: 'once',
+    name: 'Dino Valley',
+    details:
+      "A battlefield in a prehistoric valley: dinosaur footprints in the dirt, a tar pit, fossil bones at the corners, and dinosaurs roaming round the edge while you play. It plays exactly like every other battlefield. Yours for good, and back on a new phone with Restore.",
+    blurb: 'A battlefield with dinosaurs roaming round it.',
+    usd: 2.99,
+    grants: ['dino'],
+    available: true,
+  },
+
+  /*
     ── The two that are not ready, and why ─────────────────────────────
 
     Left in the file deliberately. The family chose all of these, and a
@@ -221,8 +241,8 @@ export const PRODUCTS: Product[] = [
     usd: 2.99,
     available: false,
     blockedBy:
-      'Same as the dice: all 16 themed battlefields are earnable today, ' +
-      'and an exclusive one has to be built before it can be sold.',
+      'More money-only battlefields to put in it. The first one, Dino ' +
+      'Valley, is sold on its own; a pack needs several.',
   },
   /*
     The Gold Pass. David, 13 Oct 2026: "Make a paid season pass bought
@@ -288,9 +308,9 @@ export function productById(id: string): Product | undefined {
 }
 
 /**
- * Where a money-only die is got, in a few words for its locked card and
- * its preview: "Starter pack" for the Supporter die, the price for one
- * sold on its own (Neon: "$1.99"). The phone's localised price is not
+ * Where a money-only die or battlefield is got, in a few words for its
+ * locked card and its preview: "Starter pack" for the Supporter die, the
+ * price for one sold on its own (Neon: "$1.99", Dino Valley: "$2.99"). The phone's localised price is not
  * to hand on those screens, so this is the catalogue's US price, the
  * same stand-in the shelf shows before the store answers.
  */

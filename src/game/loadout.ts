@@ -73,6 +73,15 @@ export const PASS_ARENAS: ArenaId[] = (Object.keys(THEMED_ARENA_META) as ThemedA
   .sort((a, b) => (seasonLevelOf('arena', a) ?? 0) - (seasonLevelOf('arena', b) ?? 0));
 
 /**
+ * Battlefields bought with real money (Dino Valley, 20 Oct 2026). Not on
+ * the ladder, the coin shelf or the pass: the purchase record is the
+ * only way in, apart from family tester mode.
+ */
+export const PAID_ARENAS: ArenaId[] = (Object.keys(THEMED_ARENA_META) as ThemedArenaId[]).filter(
+  (id) => THEMED_ARENA_META[id].paid,
+);
+
+/**
  * Where the two season-pass battlefields used to sit on the trophy
  * ladder, before 30 Sep 2026. Read once, by keepPassArenas, and never
  * again: see Progress.passArenasKept.
@@ -135,8 +144,8 @@ export const ARENA_ORDER: ArenaId[] = (() => {
   const store = all
     .filter((id) => ARENA_PRICES[id] !== undefined)
     .sort((a, b) => ARENA_PRICES[a]! - ARENA_PRICES[b]!);
-  // The season's battlefields last, like the season's dice.
-  return [...ladder, ...store, ...PASS_ARENAS];
+  // The season's battlefields, then the money-only ones, like the dice.
+  return [...ladder, ...store, ...PASS_ARENAS, ...PAID_ARENAS];
 })();
 
 /** The battlefields on the Store shelf, cheapest first. */
@@ -237,6 +246,9 @@ export function equipSkin(skinId: string): Loadout {
 export function isArenaUnlocked(arenaId: ArenaId, trophies: number): boolean {
   const tier = ARENA_UNLOCKS[arenaId];
   if (tier !== undefined) return isUnlocked(tier, trophies);
+  // Bought with real money: the purchase record is the proof, exactly as
+  // for the money-only dice.
+  if (THEMED_ARENA_META[arenaId as ThemedArenaId]?.paid) return hasUnlockAll() || hasEntitlement(arenaId);
   return hasUnlockAll() || owns(arenaKey(arenaId));
 }
 

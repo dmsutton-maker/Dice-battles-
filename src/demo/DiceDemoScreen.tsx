@@ -33,6 +33,7 @@ import {
   getLoadout,
   loadLoadout,
   ARENA_PRICES,
+  PAID_ARENAS,
   arenaKey,
   coinShopItemIds,
 } from '../game/loadout';
@@ -2191,6 +2192,8 @@ export function DiceDemoScreen() {
           price,
           passLevel: seasonLevelOf('arena', preview.id),
           passGold: seasonTrackOf('arena', preview.id) === 'gold',
+          paid: PAID_ARENAS.includes(preview.id),
+          paidWhere: PAID_ARENAS.includes(preview.id) ? paidSkinWhere(preview.id) : undefined,
           // Coins are spent in the Store and nowhere else, exactly as for
           // dice — the Inventory shows the price but points at the shop.
           canBuy: preview.from === 'store',
