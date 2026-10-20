@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.143.0 — 2026-10-20 · requested by David
+
+### Changed
+- **Shorter, simpler words, and a line for every die and battlefield.**
+  David: "Shorten and simplify the descriptions of everything. Add short
+  descriptions of all the dice and arenas."
+  - Opening any die or battlefield to look at it now shows a short line
+    of its own under the name ("Tiger stripes.", "A pirate ship and a
+    hungry shark."), where every die used to say the same sentence about
+    shells and face colours and every battlefield the same one about the
+    view. All 58 dice and 21 battlefields have one; a test holds each to
+    44 characters.
+  - The money shop's words are cut down: shorter one-liners and full
+    descriptions, "Tap to see more", "First two days only", and one line
+    on fairness instead of two.
+
 ## v1.142.0 — 2026-10-20 · requested by David
 
 ### Added

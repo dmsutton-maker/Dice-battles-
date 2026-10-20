@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { paidSkinWhere } from '../game/products';
+import { arenaBlurb, dieBlurb } from '../game/itemBlurbs';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -2180,7 +2181,7 @@ export function DiceDemoScreen() {
       const price = ARENA_PRICES[preview.id];
       return {
         name: arena.name,
-        note: 'Every battlefield plays the same — only the view changes.',
+        note: arenaBlurb(preview.id),
         action: previewAction({
           trophies,
           coins: wallet.coins,
@@ -2204,7 +2205,7 @@ export function DiceDemoScreen() {
     const skin = skinById(preview.id);
     return {
       name: `${skin.name} dice`,
-      note: 'The shell is all that changes — the six face colours never do.',
+      note: dieBlurb(skin.id),
       action: previewAction({
         trophies,
         coins: wallet.coins,

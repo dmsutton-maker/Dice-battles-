@@ -93,8 +93,8 @@ export const PRODUCTS: Product[] = [
     kind: 'once',
     name: 'No more ads',
     details:
-      "No more ads after games, for good. Works on every phone signed in to your Apple account.",
-    blurb: 'No more ads, for good.',
+      "No more ads after games, ever. Works on all your phones.",
+    blurb: 'No more ads, ever.',
     usd: 3.99,
     grants: [REMOVE_ADS],
     available: true,
@@ -127,7 +127,7 @@ export const PRODUCTS: Product[] = [
     kind: 'consumable',
     name: 'Chest of coins',
     details:
-      "3,000 coins to spend in the Store. Six pouches for the price of five.",
+      "3,000 coins to spend in the Store. A better deal than pouches.",
     blurb: '3,000 coins.',
     usd: 4.99,
     coins: 3000,
@@ -138,7 +138,7 @@ export const PRODUCTS: Product[] = [
     kind: 'consumable',
     name: 'Vault of coins',
     details:
-      "7,000 coins to spend in the Store. The best value.",
+      "7,000 coins to spend in the Store. The best deal.",
     blurb: '7,000 coins.',
     usd: 9.99,
     coins: 7000,
@@ -151,7 +151,7 @@ export const PRODUCTS: Product[] = [
     name: 'Starter pack',
     details:
       "1,500 coins and the Supporter die. Only in your first two days.",
-    blurb: '1,500 coins and the Supporter die.',
+    blurb: '1,500 coins and a special die.',
     usd: 4.99,
     coins: 1500,
     grants: ['supporter'],
@@ -183,8 +183,8 @@ export const PRODUCTS: Product[] = [
     kind: 'once',
     name: 'Neon dice',
     details:
-      "Black glass dice with a glowing pink tube round every side. They leave a trail of light as they roll, and a ring of light spreads out where they land. Yours for good, and back on a new phone with Restore.",
-    blurb: 'Glowing dice that leave a trail of light.',
+      "Black dice that glow pink and leave a trail of light. Yours to keep.",
+    blurb: 'Glowing dice with a light trail.',
     usd: 1.99,
     grants: ['neon'],
     available: true,
@@ -203,8 +203,8 @@ export const PRODUCTS: Product[] = [
     kind: 'once',
     name: 'Dino Valley',
     details:
-      "A battlefield in a prehistoric valley: dinosaur footprints in the dirt, a tar pit, fossil bones at the corners, and dinosaurs roaming round the edge while you play. It plays exactly like every other battlefield. Yours for good, and back on a new phone with Restore.",
-    blurb: 'A battlefield with dinosaurs roaming round it.',
+      "Dinosaurs roam round a tar pit while you play. Plays like any battlefield. Yours to keep.",
+    blurb: 'A battlefield full of dinosaurs.',
     usd: 2.99,
     grants: ['dino'],
     available: true,
@@ -222,14 +222,12 @@ export const PRODUCTS: Product[] = [
     kind: 'once',
     name: 'Money-only dice sets',
     details:
-      "Special dice sets you can only buy.",
-    blurb: 'Special dice sets.',
+      "Special dice you can only buy.",
+    blurb: 'Special dice.',
     usd: 1.99,
     available: false,
-    blockedBy:
-      'More money-only dice to put in it. The first one, Neon, is sold ' +
-      'on its own; a pack needs several, and the family asked for new ' +
-      'ones rather than existing sets moved behind a price.',
+    // A pack needs several new dice; Neon, the first, is sold on its own.
+    blockedBy: 'More new dice to put in it. Neon was the first.',
   },
   {
     id: 'premium_arena_pack',
@@ -240,9 +238,8 @@ export const PRODUCTS: Product[] = [
     blurb: 'Special battlefields.',
     usd: 2.99,
     available: false,
-    blockedBy:
-      'More money-only battlefields to put in it. The first one, Dino ' +
-      'Valley, is sold on its own; a pack needs several.',
+    // A pack needs several; Dino Valley, the first, is sold on its own.
+    blockedBy: 'More new battlefields. Dino Valley was the first.',
   },
   /*
     The Gold Pass. David, 13 Oct 2026: "Make a paid season pass bought
@@ -259,8 +256,8 @@ export const PRODUCTS: Product[] = [
     kind: 'season',
     name: 'Gold Pass — Season 1',
     details:
-      "Unlocks the bottom row of the season pass: Snowy Hollow, the Fire Dice, Volcano Rim and coins. Levels you have already reached pay out right away.",
-    blurb: 'The bottom row of the season pass.',
+      "Unlocks the season pass bottom row: Snowy Hollow, Fire Dice, Volcano Rim and coins. Levels you've reached pay out now.",
+    blurb: 'More season pass prizes.',
     usd: 2.99,
     // Grants nothing but itself — see GOLD_PASS in seasonPass.ts.
     available: true,

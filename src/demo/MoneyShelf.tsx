@@ -167,9 +167,8 @@ export function MoneyShelf({
       <Card style={styles.notYet} drop={0} background={THEME.sunk}>
         <Text style={styles.notYetTitle}>Not on this phone yet</Text>
         <Text style={styles.notYetBody}>
-          Buying things needs a newer version of the game than this one.
-          Everything in the Store above can still be earned by playing —
-          which is how most of it is meant to be got anyway.
+          Buying needs a newer version of the game. Everything above can
+          still be earned by playing.
         </Text>
       </Card>
       {comingLater}
@@ -181,8 +180,7 @@ export function MoneyShelf({
   return (
     <View style={styles.shelf}>
       <Text style={styles.fairness}>
-        Nothing here changes how the dice land. Every one of these is
-        something to look at, or an ad switched off.
+        Nothing here changes how the dice land.
       </Text>
 
       {state.products.map((product) => {
@@ -209,10 +207,10 @@ export function MoneyShelf({
               <View style={styles.rowText}>
                 <Text style={styles.rowName}>{product.name}</Text>
                 <Text style={styles.rowBlurb}>{product.blurb}</Text>
-                <Text style={styles.more}>Tap for the full story</Text>
+                <Text style={styles.more}>Tap to see more</Text>
                 {product.starterOnly && (
                   <Text style={styles.starter}>
-                    Only in your first two days with the game
+                    First two days only
                   </Text>
                 )}
               </View>
@@ -398,8 +396,7 @@ function ComingLater({ onView }: { onView: (product: Product) => void }) {
     <View style={styles.later}>
       <Text style={styles.laterTitle}>COMING LATER</Text>
       <Text style={styles.laterNote}>
-        Only the family sees this part, in tester mode. These are not on
-        sale yet — this is how they would look.
+        Only the family sees these. Not on sale yet.
       </Text>
       {parked.map((product) => (
         <Card
