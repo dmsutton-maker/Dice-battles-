@@ -157,15 +157,100 @@ export function ReefFish() {
 
 /* ── Pirate Cove: the shark ────────────────────────────────────────── */
 
-/**
- * One shark, the way a shark is seen from a deck: a fin cutting the
- * water with a dark shape under it, circling the ship. Down one side,
- * round the bow, down the other — and at the stern it dives under the
- * hull and comes up on the far side, which is the "under the pirate
- * boat" David asked for. While it is under the hull it is simply not
- * drawn: the deck is the tray, and a fin poking up through the planks
- * would be a different request.
+/*
+ * One shark circling the bow of the pirate ship. Up one side, round the
+ * bow, down the other side to about mid-ship, a U-turn, and back the way
+ * it came on an outer lane. It used to dive under the hull at the stern and vanish for the
+ * crossing, which read as the shark disappearing (David, 20 Oct 2026);
+ * it never goes under the ship now. Every few seconds it rears its head
+ * and snaps a hinged jaw full of teeth.
  */
+
+/** The shark's teeth, on a U round the front of each jaw: [x, z]. */
+const UPPER_TEETH: readonly (readonly [number, number])[] = Array.from({ length: 9 }, (_, k) => {
+  const a = -1.25 + (k * 2.5) / 8;
+  return [Math.sin(a) * 0.24, 0.2 + Math.cos(a) * 0.34] as const;
+});
+const LOWER_TEETH: readonly (readonly [number, number])[] = Array.from({ length: 7 }, (_, k) => {
+  const a = -1.1 + (k * 2.2) / 6;
+  return [Math.sin(a) * 0.19, 0.18 + Math.cos(a) * 0.26] as const;
+});
+
+/**
+ * The shark's lanes: inner going round the bow, outer coming back. The
+ * strip of sea between the hull and the edge of an iPhone 15's screen is
+ * only about 0.6 wide, and narrowest toward the player, so the lanes are
+ * close together (one shark, never on both at once) and the U-turns come
+ * at about the middle of the ship, where the strip is still wide enough
+ * to see the whole shark.
+ */
+const SHARK_IN = 3.6;
+const SHARK_OUT = 3.78;
+const SHARK_FAR = -6.4;
+const SHARK_NEAR = -2.2;
+/** How far past SHARK_NEAR the U-turns swing, so they are wide, not a spin. */
+const SHARK_DIP = 1.3;
+const SHARK_TURN = (SHARK_OUT - SHARK_IN) / 2;
+/** Half the perimeter of the U-turn's half-ellipse (Ramanujan). */
+const SHARK_UTURN =
+  (Math.PI * (3 * (SHARK_TURN + SHARK_DIP) - Math.sqrt((3 * SHARK_TURN + SHARK_DIP) * (SHARK_TURN + 3 * SHARK_DIP)))) / 2;
+const SHARK_STRAIGHT = SHARK_NEAR - SHARK_FAR;
+const SHARK_LAP = 4 * SHARK_STRAIGHT + Math.PI * SHARK_IN + Math.PI * SHARK_OUT + 2 * SHARK_UTURN;
+/** World units a second. */
+const SHARK_SPEED = 1.6;
+
+/**
+ * A point on the shark's lap, `u` 0..1, written into `out`; returns the
+ * heading for a thing built nose toward +z. Up the left side on the
+ * inner lane, round behind the bow, down the right side, a U-turn out to
+ * the outer lane, back up the right side, round the bow the other way,
+ * down the left side, and a U-turn back in to where it started.
+ */
+function sharkPath(u: number, out: THREE.Vector3): number {
+  let d = (((u % 1) + 1) % 1) * SHARK_LAP;
+  const a = SHARK_IN;
+  const b = SHARK_OUT;
+  const zF = SHARK_FAR;
+  const zN = SHARK_NEAR;
+  const uturn = (cx: number, f: number) => {
+    // A half-ellipse bulging toward the player, f 0..1.
+    const phi = f * Math.PI;
+    out.set(cx - SHARK_TURN * Math.cos(phi), 0, zN + SHARK_DIP * Math.sin(phi));
+    return Math.atan2(SHARK_TURN * Math.sin(phi), SHARK_DIP * Math.cos(phi));
+  };
+  // 1. Left side, inner lane, swimming away from the player.
+  if (d < SHARK_STRAIGHT) { out.set(-a, 0, zN - d); return Math.PI; }
+  d -= SHARK_STRAIGHT;
+  // 2. Round behind the bow, inner lane, left to right.
+  if (d < Math.PI * a) {
+    const phi = d / a;
+    out.set(-a * Math.cos(phi), 0, zF - a * Math.sin(phi));
+    return Math.atan2(Math.sin(phi), -Math.cos(phi));
+  }
+  d -= Math.PI * a;
+  // 3. Right side, inner lane, toward the player.
+  if (d < SHARK_STRAIGHT) { out.set(a, 0, zF + d); return 0; }
+  d -= SHARK_STRAIGHT;
+  // 4. The U-turn out to the right's outer lane.
+  if (d < SHARK_UTURN) return uturn((a + b) / 2, d / SHARK_UTURN);
+  d -= SHARK_UTURN;
+  // 5. Right side, outer lane, away from the player.
+  if (d < SHARK_STRAIGHT) { out.set(b, 0, zN - d); return Math.PI; }
+  d -= SHARK_STRAIGHT;
+  // 6. Round behind the bow, outer lane, right to left.
+  if (d < Math.PI * b) {
+    const phi = d / b;
+    out.set(b * Math.cos(phi), 0, zF - b * Math.sin(phi));
+    return Math.atan2(-Math.sin(phi), -Math.cos(phi));
+  }
+  d -= Math.PI * b;
+  // 7. Left side, outer lane, toward the player.
+  if (d < SHARK_STRAIGHT) { out.set(-b, 0, zF + d); return 0; }
+  d -= SHARK_STRAIGHT;
+  // 8. The U-turn back in to the left's inner lane.
+  return uturn(-(a + b) / 2, Math.min(1, d / SHARK_UTURN));
+}
+
 /** How often the shark bites, and for how long, in seconds. */
 const BITE_EVERY = 5;
 const BITE_FOR = 1.1;
@@ -179,17 +264,18 @@ export function CoveShark() {
     () => (t: number) => {
       const g = shark.current;
       if (!g) return;
-      // A loop that rounds the bow inside the frame — the far arc peaks
-      // at z = -10 — and crosses under the hull mid-ship, where the
-      // whole near arc lies under the deck. The shark is a long shape,
-      // so it is hidden for the whole crossing rather than clipped at
-      // the hull's side with its tail still inside the planks.
-      const heading = loop(t * 0.05, 3.6, -6.4, 1.5, P);
-      const under = P.z > 1.55;
-      g.visible = !under;
+      // Up one side, round the bow, down the other side, then a wide
+      // U-turn at the bottom and back the way it came on the outside.
+      // David, 20 Oct 2026: "when it swims around and reaches the
+      // bottom of the board it disappears and then reappears a couple
+      // seconds later at the start." It used to dive under the ship
+      // mid-ship and stay hidden for the whole crossing; now it never
+      // goes under the hull at all, so it is always in view.
+      const heading = sharkPath((t * SHARK_SPEED) / SHARK_LAP, P);
       // The cove's sea is painted on the ground at y = 0, so the shark
       // rides just above it, not in a water sheet below it.
       g.position.set(P.x, 0.02, P.z);
+      g.scale.setScalar(0.8);
       // Swims with a slow roll; the tail sweeps side to side.
       g.rotation.set(0, heading, Math.sin(t * 1.3) * 0.08);
       if (tail.current) tail.current.rotation.y = Math.sin(t * 3.2) * 0.35;
@@ -198,8 +284,10 @@ export function CoveShark() {
       // the camera, and the gape opens wide, then shuts.
       const bite = t % BITE_EVERY;
       const open = bite < BITE_FOR ? Math.sin((bite / BITE_FOR) * Math.PI) : 0;
-      if (head.current) head.current.rotation.x = -open * 0.75;
-      if (gape.current) gape.current.scale.set(1, 0.25 + open * 0.75, 1);
+      // Two snaps per bite: the jaw drops wide and slams shut, twice.
+      const snap = bite < BITE_FOR ? Math.abs(Math.sin((bite / BITE_FOR) * Math.PI * 2)) : 0;
+      if (head.current) head.current.rotation.x = -open * 0.7;
+      if (gape.current) gape.current.rotation.x = snap * 0.75;
     },
     [],
   );
@@ -233,9 +321,19 @@ export function CoveShark() {
           </mesh>
         )),
       )}
-      {/* The head: snout, eyes and jaws, pitched up on a bite. */}
+      {/*
+        The head: an upper snout with the eyes and the top row of teeth,
+        and a lower jaw HINGED at the back of the mouth that drops open
+        and snaps shut. David, 20 Oct 2026: "make the mouth actually move
+        because right now the teeth just go through the head when
+        chomping." The old mouth was a flat disc squashed and stretched
+        on the front of a round head, so its teeth slid through the
+        snout. Now each row of teeth rides on its own jaw, and the dark
+        inside of the mouth is only seen when the jaw is down.
+      */}
       <group ref={head} position={[0, 0.1, 0.6]}>
-        <mesh position={[0, 0, 0.15]} scale={[0.3, 0.2, 0.42]}>
+        {/* The upper snout. */}
+        <mesh position={[0, 0.04, 0.15]} scale={[0.3, 0.16, 0.44]}>
           <sphereGeometry args={[1, 14, 10]} />
           <meshStandardMaterial color="#4f6e80" roughness={0.55} />
         </mesh>
@@ -252,40 +350,34 @@ export function CoveShark() {
             </mesh>
           </group>
         ))}
-        {/*
-          The mouth: a dark red gape at the front of the snout, tilted
-          to face forward and up, ringed with white teeth on both jaws.
-          The gape's height is what opens and shuts.
-        */}
-        <group position={[0, -0.02, 0.5]} rotation={[-0.5, 0, 0]}>
-          <group ref={gape} scale={[1, 0.25, 1]}>
-            <mesh>
-              <circleGeometry args={[0.2, 16]} />
-              <meshStandardMaterial color="#8d1f2a" roughness={0.9} side={THREE.DoubleSide} />
-            </mesh>
-            <mesh position={[0, 0, 0.005]} scale={[1, 0.6, 1]}>
-              <circleGeometry args={[0.14, 14]} />
-              <meshStandardMaterial color="#3a0a10" roughness={0.9} side={THREE.DoubleSide} />
-            </mesh>
-            {/* Upper teeth, hanging down; lower teeth, pointing up. */}
-            {[-0.15, -0.09, -0.03, 0.03, 0.09, 0.15].map((tx) => (
-              <mesh key={`u${tx}`} position={[tx, 0.13, 0.01]} rotation={[0, 0, Math.PI]}>
-                <coneGeometry args={[0.028, 0.08, 4]} />
-                <meshStandardMaterial color="#ffffff" roughness={0.3} />
-              </mesh>
-            ))}
-            {[-0.12, -0.06, 0, 0.06, 0.12].map((tx) => (
-              <mesh key={`l${tx}`} position={[tx, -0.13, 0.01]}>
-                <coneGeometry args={[0.025, 0.07, 4]} />
-                <meshStandardMaterial color="#ffffff" roughness={0.3} />
-              </mesh>
-            ))}
-          </group>
-          {/* The lips: a pale rim round the gape so the mouth reads shut too. */}
-          <mesh position={[0, 0, -0.005]}>
-            <ringGeometry args={[0.19, 0.23, 16]} />
-            <meshStandardMaterial color="#9fb4bf" roughness={0.6} side={THREE.DoubleSide} />
+        {/* The roof of the mouth, dark red, under the snout. */}
+        <mesh position={[0, -0.1, 0.22]} rotation={[Math.PI / 2, 0, 0]} scale={[0.24, 0.34, 1]}>
+          <circleGeometry args={[1, 18]} />
+          <meshStandardMaterial color="#7a1822" roughness={0.9} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Top teeth, hanging from the rim of the snout in a U. */}
+        {UPPER_TEETH.map(([tx, tz], k) => (
+          <mesh key={`u${k}`} position={[tx, -0.13, tz]} rotation={[Math.PI, 0, 0]}>
+            <coneGeometry args={[0.026, 0.085, 4]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.3} />
           </mesh>
+        ))}
+        {/* The lower jaw, hinged at the back of the mouth. */}
+        <group ref={gape} position={[0, -0.1, -0.08]}>
+          <mesh position={[0, -0.03, 0.28]} scale={[0.25, 0.07, 0.36]}>
+            <sphereGeometry args={[1, 14, 8]} />
+            <meshStandardMaterial color="#5d7c8c" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 0.0, 0.27]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.2, 0.3, 1]}>
+            <circleGeometry args={[1, 18]} />
+            <meshStandardMaterial color="#5a0f18" roughness={0.9} side={THREE.DoubleSide} />
+          </mesh>
+          {LOWER_TEETH.map(([tx, tz], k) => (
+            <mesh key={`l${k}`} position={[tx, 0.03, tz + 0.08]}>
+              <coneGeometry args={[0.024, 0.075, 4]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.3} />
+            </mesh>
+          ))}
         </group>
       </group>
       {/* Dorsal fin: standing up, swept back. */}
@@ -311,14 +403,10 @@ export function CoveShark() {
           <meshStandardMaterial color="#3f5c6c" roughness={0.6} side={THREE.DoubleSide} />
         </mesh>
       </group>
-      {/* Foam off the dorsal fin, and a bow wave at the nose. */}
+      {/* Foam off the dorsal fin. */}
       <mesh position={[0, 0.0, -0.7]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.25, 1.6, 1]}>
         <circleGeometry args={[0.3, 10]} />
         <meshBasicMaterial color="#eef8f6" transparent opacity={0.45} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, 0.0, 1.0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.2, 0.5, 1]}>
-        <ringGeometry args={[0.3, 0.42, 14, 1, 0, Math.PI]} />
-        <meshBasicMaterial color="#eef8f6" transparent opacity={0.4} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );

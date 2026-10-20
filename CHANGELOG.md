@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.140.0 — 2026-10-20 · requested by David
+
+### Fixed
+- **The Pirate Cove shark.** David: "Get rid of the circle around the
+  shark's mouth in pirate's cove. and make the mouth actually move
+  because right now the teeth just go through the head when chomping.
+  also when it swims around and reaches the bottom of the board it
+  disappears and then reappears a couple seconds later at the start."
+  - The pale ring round the mouth, and the pale bow wave at its nose,
+    are gone.
+  - The mouth really opens now: an upper snout with its own row of
+    teeth, and a lower jaw hinged at the back of the mouth, with its
+    own teeth, that drops open and snaps shut twice each bite. The dark
+    red inside only shows when the jaw is down, and no tooth passes
+    through the head.
+  - It never vanishes: instead of diving under the ship at the bottom,
+    it swims round the bow and down each side to about mid-ship, makes a
+    U-turn and swims back. It stops there because the sea beside the
+    hull gets too narrow to see a whole shark on an iPhone 15 further
+    down.
+
 ## v1.139.0 — 2026-10-20 · requested by David
 
 ### Added
