@@ -66,6 +66,7 @@ async function main(): Promise<void> {
   await import('./shopPrices.test');
   await import('./fishSwim.test');
   await import('./rewardInfo.test');
+  await import('./productArt.test');
   process.exit(await runAll());
 }
 

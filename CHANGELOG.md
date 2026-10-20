@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.142.0 — 2026-10-20 · requested by David
+
+### Added
+- **Pictures on everything in the money shop.** David: "Add pictures
+  and icons for the money items in the store so you know what you're
+  getting." Every card now has a picture beside its name, and a bigger
+  one at the top of its full story:
+  - Neon dice shows the real Neon die, and Dino Valley the battlefield's
+    own picture.
+  - The coin packs are piles of the game's gold coins that grow with the
+    pack: three for the pouch, six for the chest, ten for the vault.
+  - The Starter pack shows the Supporter die with coins beside it.
+  - The Gold Pass shows the three things only it unlocks, Snowy Hollow,
+    the Fire Dice and Volcano Rim, fanned out on gold.
+  - No more ads is an advert crossed out.
+  - The two packs that are not on sale yet (family tester mode) show
+    plain dice and plain battlefields, since their contents do not exist.
+  - Each picture is worked out from what the product actually gives, so
+    a card cannot show one thing and sell another; a test checks it.
+
 ## v1.141.0 — 2026-10-20 · requested by David
 
 ### Changed

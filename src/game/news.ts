@@ -90,6 +90,18 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-142-0-shop-pictures',
+    date: '20 October 2026',
+    version: 'v1.142.0',
+    title: 'Pictures in the money shop',
+    icon: 'shop',
+    body:
+      'Everything in the money shop now has a picture of what you get: ' +
+      'the real Neon die, the Dino Valley battlefield, piles of coins that ' +
+      'grow with the pack, and the three things the Gold Pass unlocks. ' +
+      'Tap any of them for a bigger look.',
+  },
+  {
     id: 'v1-139-0-dino-valley',
     date: '20 October 2026',
     version: 'v1.139.0',

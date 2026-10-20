@@ -5,6 +5,7 @@ import { Confirm, Tell } from '../ui/Confirm';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 import { playClick } from '../audio/sounds';
 import { PRODUCTS, priceLabel, type Product } from '../game/products';
+import { ProductArt } from './ProductArt';
 import {
   buy,
   hasEntitlement,
@@ -204,6 +205,7 @@ export function MoneyShelf({
                 setViewing(product);
               }}
             >
+              <ProductArt product={product} size={ROW_ART} />
               <View style={styles.rowText}>
                 <Text style={styles.rowName}>{product.name}</Text>
                 <Text style={styles.rowBlurb}>{product.blurb}</Text>
@@ -344,6 +346,9 @@ function ProductDetail({
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
       <Card style={styles.detailPanel} radius={SHAPE.radiusLg}>
         <ScrollView style={styles.detailText} contentContainerStyle={styles.detailScroll}>
+          <View style={styles.detailArt}>
+            <ProductArt product={product} size={DETAIL_ART} />
+          </View>
           <Text style={styles.detailTitle}>{product.name}</Text>
           <Text style={styles.detailPrice}>
             {owned ? 'Yours already' : product.available ? shown : `${shown} · not on sale yet`}
@@ -407,6 +412,7 @@ function ComingLater({ onView }: { onView: (product: Product) => void }) {
             onView(product);
           }}
         >
+          <ProductArt product={product} size={ROW_ART} />
           <View style={styles.rowText}>
             <Text style={styles.rowName}>{product.name}</Text>
             <Text style={styles.rowBlurb}>{product.blurb}</Text>
@@ -455,7 +461,16 @@ function GoldGlow({ token }: { token: number }) {
   return <Animated.View pointerEvents="none" style={[styles.goldGlow, { opacity }]} />;
 }
 
+/**
+ * The picture on each card, and the bigger one on its full story. David,
+ * 20 Oct 2026: "Add pictures and icons for the money items in the store
+ * so you know what you're getting."
+ */
+const ROW_ART = 64;
+const DETAIL_ART = 132;
+
 const styles = StyleSheet.create({
+  detailArt: { alignItems: 'center', marginBottom: 2 },
   more: { ...TYPE.small, color: THEME.accent, marginTop: 4 },
   detailBackdrop: {
     ...StyleSheet.absoluteFillObject,
