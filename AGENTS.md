@@ -156,13 +156,23 @@ three of these wrong.
 
 - **One or two on screen, never more, and none always on.** Changed by
   David on 30 Sep 2026: "I only want one or two cups and there shouldn't
-  be any always on cups." Nothing is bundled any more (The Gauntlet is
-  gone); every cup comes from the board, and `liveTournaments` shows at
-  most two and drops any cup that is `standing` or has no closing date.
-  A week with nothing on the board shows no cups — that is correct.
-- **They change every week or two**, from the `tournaments` table on the
-  HQ site. That is the whole point of them being online: a new cup, a
-  retuned target or a retired one needs no release and no OTA update.
+  be any always on cups." `liveTournaments` shows at most two and drops
+  any cup that is `standing` or has no closing date.
+- **One cup a week comes from the game itself, since 21 Oct 2026.**
+  David: "make 10 different unique cups ... automatically change the cup
+  every week at 12 AM EST ... can't be used again for at least another
+  6 weeks ... I don't want the same rotation every time." The ten live
+  in `src/game/cupRotation.ts`; the week's cup is worked out from the
+  date (midnight Monday, New York time, daylight saving included) by
+  every phone alike, so nothing runs on a server and nothing is written
+  anywhere. A cup rests at least `REST_WEEKS` (6) and is never idle more
+  than `MAX_IDLE_WEEKS` (12); the order is scrambled by week number.
+  `tests/cupRotation.test.ts` walks 2,000 weeks of it. Retuning one of
+  the ten IS a release (an OTA update).
+- **A second cup can still come from the board**, the `tournaments`
+  table on the HQ site, and runs beside the week's cup. That is what
+  the board is for now: a one-off event, a retuned extra, with no
+  release and no OTA update.
 - **They are meant to be HARD.** The first version asked for three wins in
   a row on Easy, which is close to free. A streak compounds — at roughly
   even odds, five in a row takes about sixty battles and eight takes five

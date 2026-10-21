@@ -118,26 +118,31 @@ export interface TournamentDef {
 }
 
 /**
- * NO CUP IS BUILT INTO THE GAME ANY MORE.
-
+ * NO ALWAYS-ON CUP IS BUILT INTO THE GAME.
+ *
  * David, 30 Sep 2026: "I only want one or two cups and there shouldn't
  * be any always on cups." Until then the game carried one standing
  * challenge, The Gauntlet — six Hard Ultimate wins in a row, no end date
- * — shown below the board's cups and never crowded off. It is gone, and
- * every cup now comes from the `tournaments` table on the HQ site, with
- * dates, at most two at once (see `liveTournaments`).
+ * — shown below the board's cups and never crowded off. It is gone.
+ *
+ * Since 21 Oct 2026 the game DOES carry ten cups, but none of them is
+ * always on: one runs each week, changing at midnight Monday in New
+ * York, chosen by the date so every phone agrees — see cupRotation.ts.
+ * They are not in this list, because this list is merged with the
+ * board's rows by id and a weekly cup carries the week in its id. The
+ * board's cups (the `tournaments` table on the HQ site) run alongside,
+ * at most two on the tab at once (see `liveTournaments`).
  *
  * WHAT THAT COSTS, said plainly so nobody rediscovers it:
  *
- *   - Offline, on a fresh install before the first fetch, or in a week
- *     when nothing is on the board, the Cups tab shows no cups. It says
- *     so and points at the season pass above it.
+ *   - Offline, or on a fresh install before the first fetch, the Cups
+ *     tab shows the week's cup from the rotation and nothing from the
+ *     board.
  *   - The Amethyst die was The Gauntlet's prize and nothing else's. It
- *     is still a cup-only die, so it can be won again only when a cup on
- *     the board offers it (`item_kind = 'dice', item_id = 'amethyst'`).
- *     Anybody who won it keeps it — the wallet is untouched — and a
- *     player's saved Gauntlet streak stays in their save, unread,
- *     harmless, and ready if a cup with that id ever returns.
+ *     is still a cup-only die: the rotation's Gauntlet offers it when
+ *     that week comes round, and a board cup can too
+ *     (`item_kind = 'dice', item_id = 'amethyst'`). Anybody who won it
+ *     keeps it — the wallet is untouched.
  *
  * Kept as an exported empty list rather than deleted, so a later
  * decision to bundle one again is one entry here and not a re-plumbing

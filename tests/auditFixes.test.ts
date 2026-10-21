@@ -36,7 +36,9 @@ suite('audit fixes · finishRound scores only the cups the tab shows', () => {
   test('the battle is scored against scorableTournaments, not the raw list', () => {
     const body = between('const finishRound', 'const startCountdown');
     assert(
-      /scoreBattle\(\s*scorableTournaments\(cupsRef\.current, todayStamp\(\)\)/.test(body),
+      // The week's cup is added in front of the board's (cupRotation.ts),
+      // and the whole list still goes through scorableTournaments.
+      /scoreBattle\(\s*scorableTournaments\(withRotation\(cupsRef\.current, Date\.now\(\)\), todayStamp\(\)\)/.test(body),
       'finishRound scores against every fetched cup, closed and not-yet-open ones included',
     );
     assert(

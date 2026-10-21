@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.147.0 — 2026-10-21 · requested by David
+
+### Added
+- **A new cup every week, on its own.** David: "make 10 different
+  unique cups of varying difficulty but never too easy ... automatically
+  change the cup every week at 12 AM EST ... Whenever a cup is used, it
+  can't be used again for at least another 6 weeks after. I don't want
+  the same rotation every time though, so give some variation."
+  - Ten cups are built into the game, from Courtyard Streak (five Color
+    Rush wins in a row on Medium) up to The Gauntlet (eight Ultimate
+    wins in a row on Hard, with the Amethyst dice as its prize, back for
+    the first time since 30 Sep). None is on Easy and none asks for
+    fewer than five in a row; the harder the cup, the bigger the prize.
+  - One runs each week and changes at midnight on Sunday night, New
+    York time, with the clocks changing for daylight saving. Nothing
+    runs on a server to do it: every phone works out the week's cup from
+    the date, so the change lands at the same instant everywhere.
+  - A cup that has just run rests for at least six weeks, and none is
+    left out for more than twelve. The order is scrambled by the week
+    number rather than looping round the ten, so it is never the same
+    rotation twice. The first ten weeks use every cup once.
+  - The week's cup takes the first place on the Cups tab; a cup from
+    the website's board can still run beside it. Each week's run starts
+    from nothing, so a cup can be won again when it comes round.
+  - A test walks 2,000 weeks of the schedule to check the rest, the
+    fairness and the variation, and the clock against the real dates
+    the clocks change.
+
 ## v1.146.0 — 2026-10-21 · requested by David
 
 ### Added

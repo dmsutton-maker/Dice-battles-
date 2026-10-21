@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
 import { paidSkinWhere } from '../game/products';
+import { withRotation } from '../game/cupRotation';
 import { arenaBlurb, dieBlurb } from '../game/itemBlurbs';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -1273,7 +1274,7 @@ export function DiceDemoScreen() {
         battle used to move all of them and pay prizes for cups the
         player was told were not running.
       */
-      const scored = scoreBattle(scorableTournaments(cupsRef.current, todayStamp()), cupStatesRef.current, {
+      const scored = scoreBattle(scorableTournaments(withRotation(cupsRef.current, Date.now()), todayStamp()), cupStatesRef.current, {
         mode: modeRef.current,
         difficulty: difficultyRef.current,
         outcome,
@@ -2929,7 +2930,7 @@ export function DiceDemoScreen() {
       )}
       {menuTab === 'cups' && preview === null && (
         <TournamentScreen
-          tournaments={cups}
+          tournaments={withRotation(cups, Date.now())}
           states={cupStates}
           today={todayStamp()}
           onPlay={playCup}

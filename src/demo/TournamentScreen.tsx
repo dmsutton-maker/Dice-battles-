@@ -92,17 +92,17 @@ export function TournamentScreen({
           players (see AGENTS.md).
         */}
         <Text style={styles.noteQuiet}>
-          One or two cups run at a time, and they change every week or so.
-          They come from the Dice Battles website — so you never have to
-          update the game to get them. You play them all against the
-          game&rsquo;s own rivals.
+          A new cup every week, from midnight on Sunday night (New York
+          time), picked from ten so the order is never the same twice. Now
+          and then a second one comes from the Dice Battles website. You
+          play them all against the game&rsquo;s own rivals.
         </Text>
 
         {showing.length === 0 && (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
-              No cups are running just now — a new one turns up every week or
-              so. The season pass above keeps counting every battle meanwhile.
+              No cups are running just now — a new one turns up every Monday.
+              The season pass above keeps counting every battle meanwhile.
             </Text>
           </View>
         )}

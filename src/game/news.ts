@@ -90,6 +90,20 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-147-0-weekly-cups',
+    date: '21 October 2026',
+    version: 'v1.147.0',
+    title: 'A new cup every week',
+    icon: 'cups',
+    body:
+      'Ten cups now take turns, one a week, changing at midnight on ' +
+      'Sunday night (New York time). They run from five Color Rush wins ' +
+      'in a row up to The Gauntlet: eight Ultimate wins in a row on Hard, ' +
+      'with the Amethyst dice as the prize. None of them is easy. A cup ' +
+      'that has just run rests for at least six weeks, and the order is ' +
+      'never the same twice.',
+  },
+  {
     id: 'v1-145-0-every-die-flows',
     date: '21 October 2026',
     version: 'v1.145.0',

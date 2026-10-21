@@ -10,7 +10,8 @@ import { BottomNav } from '../../src/demo/BottomNav';
 import { MoneyShelf } from '../../src/demo/MoneyShelf';
 import { initPurchases } from '../../src/game/purchases';
 import { Text } from 'react-native';
-import { TOURNAMENTS, TournamentDef } from '../../src/game/tournament';
+import { todayStamp, TOURNAMENTS, TournamentDef } from '../../src/game/tournament';
+import { withRotation } from '../../src/game/cupRotation';
 
 /**
  * A real screen, drawn through react-native-web.
@@ -162,7 +163,9 @@ if (params.get('screen') === 'dots') {
           included so the one-to-three cap is visible in the picture
           rather than only in the tests.
         */
-        tournaments={[
+        // The week's cup from the rotation (cupRotation.ts) in front, as
+        // the game puts it.
+        tournaments={withRotation([
           ...TOURNAMENTS,
           ...WEEKS,
           {
@@ -172,12 +175,12 @@ if (params.get('screen') === 'dots') {
             blurb: 'Should never reach the screen — the tab holds three.',
             target: 4,
           },
-        ]}
+        ], Date.now())}
         states={{
           'skirmish-siege-w40': { streak: 2, best: 3, won: false },
           'the-gauntlet': { streak: 0, best: 4, won: false },
         }}
-        today="2026-09-28"
+        today={todayStamp(new Date())}
         onPlay={() => {}}
         // Part-way up the season pass, past Snowy Hollow at level 6, so
         // reached, next and still-to-come tiles all show at once.
