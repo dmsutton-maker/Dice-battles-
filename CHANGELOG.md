@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.146.0 — 2026-10-21 · requested by David
+
+### Added
+- **Pulses run along the Circuit Board dice.** David: "Show electrical
+  pulses going through the circuit board dice." Bright pulses now travel
+  along the wires from chip to chip, over the edges of the die and round
+  the loops at its corners, each wire on its own beat. The board is
+  painted once and the pulses are moved by the GPU, the way the goldfish
+  swim on the Fish dice, so it costs nothing to run; they move while the
+  board is drawing and hold still when it stops, like the water and the
+  torches. The shop card keeps the still picture, and nothing about how
+  the dice roll has changed.
+
 ## v1.145.0 — 2026-10-21 · requested by David
 
 ### Changed

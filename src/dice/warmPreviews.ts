@@ -3,6 +3,7 @@ import { shellPreviewUri } from './preview';
 import { createDieFaceTextures, PatternId } from './patterns';
 import { warmDieShading } from './dieShading';
 import { fishCapTexture, fishSchoolTexture, fishWaterTexture } from './fishSwim';
+import { circuitPulseTexture } from './circuitPulse';
 import type { DiceSkin } from '../game/diceSkins';
 
 /**
@@ -205,6 +206,11 @@ export function warmDieFaces(skin: DiceSkin | undefined): void {
       fishSchoolTexture(1);
       fishSchoolTexture(-1);
       fishCapTexture();
+    }
+    // The Circuit Board's wiring map, which the pulses run along
+    // (circuitPulse.ts), on top of its six painted sides.
+    if (skin.pattern === 'circuit') {
+      for (let face = 0; face < 6; face++) circuitPulseTexture(face);
     }
     createDieFaceTextures(
       skin.pattern as Exclude<PatternId, 'plain'>,

@@ -508,7 +508,7 @@ function soccerPanelAt(P: readonly number[]): { pent: boolean; seam: number; cen
 */
 
 /** Each face's outward normal and its texture's u and v axes, in three.js face order. */
-const FACE_FRAMES: readonly { n: readonly number[]; u: readonly number[]; v: readonly number[] }[] = [
+export const FACE_FRAMES: readonly { n: readonly number[]; u: readonly number[]; v: readonly number[] }[] = [
   { n: [1, 0, 0], u: [0, 0, -1], v: [0, 1, 0] }, // +X
   { n: [-1, 0, 0], u: [0, 0, 1], v: [0, 1, 0] }, // -X
   { n: [0, 1, 0], u: [1, 0, 0], v: [0, 0, -1] }, // +Y
@@ -873,6 +873,42 @@ type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
   every side and mirror-symmetric about every edge, which is what lets
   it meet itself across edges whose texture runs the other way.
 */
+/**
+ * One run of the circuit's wiring on a side, as a polyline in texels
+ * from the side's centre. The same twelve runs are on every side.
+ *
+ *  - `pin`: from a chip's pin out to an edge of the die, where the next
+ *    side's matching run comes the other way, so the two make one wire
+ *    from chip to chip. `edge` says which edge it reaches: `v` is the
+ *    edge at v = ±SIZE/2, `u` the edge at u = ±SIZE/2.
+ *  - `corner`: in from one edge, round a via, out to the other — one of
+ *    the three pieces of the loop round that corner of the die.
+ *
+ * Exported for circuitPulse.ts, which runs the pulses along them.
+ */
+export interface CircuitRoute {
+  kind: 'pin' | 'corner';
+  su: 1 | -1;
+  sv: 1 | -1;
+  edge: 'u' | 'v';
+  points: readonly (readonly [number, number])[];
+}
+export const CIRCUIT_ROUTES: readonly CircuitRoute[] = (() => {
+  const out: CircuitRoute[] = [];
+  const H = SIZE / 2;
+  for (const su of [-1, 1] as const) {
+    for (const sv of [-1, 1] as const) {
+      // The pin at the top (or bottom) of the chip: out, jog outward, then to the edge.
+      out.push({ kind: 'pin', su, sv, edge: 'v', points: [[su * 9, sv * 23], [su * 9, sv * 26], [su * 13, sv * 26], [su * 13, sv * H]] });
+      // The pin at the side of the chip, the same the other way round.
+      out.push({ kind: 'pin', su, sv, edge: 'u', points: [[su * 23, sv * 9], [su * 26, sv * 9], [su * 26, sv * 13], [su * H, sv * 13]] });
+      // Round the corner: in from the v edge, turn at the via, out to the u edge.
+      out.push({ kind: 'corner', su, sv, edge: 'v', points: [[su * 24, sv * H], [su * 24, sv * 24], [su * H, sv * 24]] });
+    }
+  }
+  return out;
+})();
+
 interface TraceSegment {
   face: number;
   a: readonly [number, number];
@@ -880,23 +916,9 @@ interface TraceSegment {
 }
 const CIRCUIT_TRACES: readonly TraceSegment[] = (() => {
   const out: TraceSegment[] = [];
-  const H = SIZE / 2;
   for (let face = 0; face < 6; face++) {
-    const seg = (a: readonly [number, number], b: readonly [number, number]) => out.push({ face, a, b });
-    for (const su of [-1, 1]) {
-      for (const sv of [-1, 1]) {
-        // The pin at the top (or bottom) of the chip: out, jog outward, then to the edge.
-        seg([su * 9, sv * 23], [su * 9, sv * 26]);
-        seg([su * 9, sv * 26], [su * 13, sv * 26]);
-        seg([su * 13, sv * 26], [su * 13, sv * H]);
-        // The pin at the side of the chip, the same the other way round.
-        seg([su * 23, sv * 9], [su * 26, sv * 9]);
-        seg([su * 26, sv * 9], [su * 26, sv * 13]);
-        seg([su * 26, sv * 13], [su * H, sv * 13]);
-        // Round the corner: in from one edge, turn, out to the other.
-        seg([su * 24, sv * H], [su * 24, sv * 24]);
-        seg([su * 24, sv * 24], [su * H, sv * 24]);
-      }
+    for (const route of CIRCUIT_ROUTES) {
+      for (let i = 1; i < route.points.length; i++) out.push({ face, a: route.points[i - 1], b: route.points[i] });
     }
   }
   return out;
@@ -1745,7 +1767,7 @@ function pizzaAt(x: number, y: number): [number, number, number] {
 }
 
 /** Distance from (x, y) to the segment a-b. */
-function segDist(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
+export function segDist(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
   const vx = bx - ax;
   const vy = by - ay;
   const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy)));

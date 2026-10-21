@@ -136,6 +136,6 @@ suite('fish dice · the fish swim', () => {
   test('the die on the board swims, and the shop card stays a still picture', () => {
     const mesh = readFileSync(join(__dirname, '..', 'src', 'dice', 'DieMesh.tsx'), 'utf8');
     assert(/pattern === 'fish'\) return swimmingFishMaterials\(shade\)/.test(mesh), 'the Fish die does not swim');
-    assert(/useSceneryTick\(pattern === 'fish' \? FISH_TICK : null\)/.test(mesh), 'nothing moves the fish');
+    assert(/useSceneryTick\(pattern === 'fish' \? FISH_TICK : /.test(mesh), 'nothing moves the fish');
   });
 });

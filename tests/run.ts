@@ -69,6 +69,7 @@ async function main(): Promise<void> {
   await import('./productArt.test');
   await import('./itemBlurbs.test');
   await import('./ladder.test');
+  await import('./circuitPulse.test');
   process.exit(await runAll());
 }
 

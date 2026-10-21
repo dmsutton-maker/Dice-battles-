@@ -6,6 +6,7 @@ import { ARENAS, ArenaId } from '../../src/arena/arenas';
 import { fitCamera } from '../../src/demo/cameraFit';
 import { DieMesh } from '../../src/dice/DieMesh';
 import { FISH_TICK } from '../../src/dice/fishSwim';
+import { PULSE_TICK } from '../../src/dice/circuitPulse';
 import { DICE_SKINS } from '../../src/game/diceSkins';
 import { TUNING } from '../../src/game/tuning';
 
@@ -49,6 +50,8 @@ const ARENA = (P.get('arena') ?? 'castle') as ArenaId;
 const W = Number(P.get('w') ?? 393);
 const H = Number(P.get('h') ?? 852);
 FISH_TICK(Number(P.get('fishT') ?? 0));
+// The same clock moves the Circuit Board's pulses.
+PULSE_TICK(Number(P.get('fishT') ?? 0));
 
 /** Resting orientations that put a different face up, with some yaw. */
 const RESTS: [number, number, number][] = [
