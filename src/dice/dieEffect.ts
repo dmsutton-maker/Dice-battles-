@@ -3,11 +3,14 @@ import type { ObstaclePlacement } from '../game/obstacles';
 import { DiceFire } from './diceFire';
 import { DiceIce } from './diceIce';
 import { DiceNeon } from './diceNeon';
+import { DiceSun } from './diceSun';
+import { DiceMoon } from './diceMoon';
 
 /**
  * A dice skin that DOES something, rather than only looking like
- * something: the Fire dice (29 Sep 2026), the Ice dice (30 Sep 2026) and
- * the Neon die (20 Oct 2026).
+ * something: the Fire dice (29 Sep 2026), the Ice dice (30 Sep 2026),
+ * the Neon die (20 Oct 2026) and season 2's Sun and Moon dice (21 Oct
+ * 2026).
  *
  * LOOKS ONLY, for every one of them. An effect has no body in the
  * physics world and nothing in settle.ts can see it. A die that freezes
@@ -53,7 +56,7 @@ export interface DieEffect {
   dispose(): void;
 }
 
-export type DieEffectId = 'fire' | 'ice' | 'neon';
+export type DieEffectId = 'fire' | 'ice' | 'neon' | 'sun' | 'moon';
 
 /** Build the effect for a skin, told where this round's moat is. */
 export function createDieEffect(
@@ -62,5 +65,8 @@ export function createDieEffect(
   moat: ObstaclePlacement | null,
 ): DieEffect {
   if (id === 'neon') return new DiceNeon(dice);
+  // Season 2 (21 Oct 2026): the Sun dice and the Moon dice.
+  if (id === 'sun') return new DiceSun(dice);
+  if (id === 'moon') return new DiceMoon(dice);
   return id === 'ice' ? new DiceIce(dice, moat) : new DiceFire(dice, moat);
 }

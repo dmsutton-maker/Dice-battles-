@@ -128,6 +128,8 @@ export function shellPreviewUri(skin: DiceSkin): string | null {
   );
   if (skin.effect === 'fire') paintFlames(rgb);
   if (skin.effect === 'ice') paintIce(rgb);
+  if (skin.effect === 'sun') paintSun(rgb);
+  if (skin.effect === 'moon') paintMoon(rgb);
   const uri = encodePng(rgb, SIZE, SIZE);
   cache.set(skin.id, uri);
   return uri;
@@ -275,6 +277,81 @@ export function paintIce(rgb: number[]): void {
         const dy = Math.abs(v - sy) * SIZE;
         const arm = (dx < 0.7 && dy < 4) || (dy < 0.7 && dx < 4);
         if (arm) mixInto(rgb, i, WHITE, 1 - Math.max(dx, dy) / 5);
+      }
+    }
+  }
+}
+
+/*
+  The sun on the shelf picture of the Sun dice, season 2 (21 Oct 2026).
+
+  The shell carries the sun on one corner and its rays everywhere, and it
+  keeps a dark ring round each colour sticker so the sticker's edge reads
+  — and the card shows no sticker, so the middle of the picture was a
+  dark disc, exactly the fault the Fire card had. The card gets the sun
+  itself in that space: a white-hot heart, a gold rim and a corona laid
+  over the rays, and a few sparkles of light out among them.
+  Deterministic, like the flames.
+*/
+const SUN_HEART = [255, 246, 208];
+const SUN_GOLD = [255, 226, 154];
+const SUN_RIM = [255, 190, 48];
+const SUN_SPARKLES: readonly (readonly [number, number])[] = [
+  [0.18, 0.2],
+  [0.8, 0.26],
+  [0.22, 0.8],
+];
+
+export function paintSun(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const dx = x + 0.5 - SIZE / 2;
+      const dy = y + 0.5 - SIZE / 2;
+      const d = Math.hypot(dx, dy);
+      const i = (y * SIZE + x) * 3;
+      // The corona over whatever is there, then the disc.
+      const corona = Math.min(1, Math.max(0, 1 - (d - 18) / 14));
+      mixInto(rgb, i, SUN_RIM, corona * 0.8);
+      if (d < 17) mixInto(rgb, i, SUN_GOLD, Math.min(1, (17 - d) / 2));
+      if (d < 11) mixInto(rgb, i, SUN_HEART, Math.min(1, (11 - d) / 3));
+      // Sparkles: four-pointed glints out in the rays.
+      for (const [sx, sy] of SUN_SPARKLES) {
+        const ax = Math.abs(x + 0.5 - sx * SIZE);
+        const ay = Math.abs(y + 0.5 - sy * SIZE);
+        const arm = (ax < 0.7 && ay < 4) || (ay < 0.7 && ax < 4);
+        if (arm) mixInto(rgb, i, SUN_HEART, 1 - Math.max(ax, ay) / 5);
+      }
+    }
+  }
+}
+
+/*
+  Moonlight on the shelf picture of the Moon dice — the same reason: the
+  shell keeps a thin ring of moonlight round each sticker, which on a
+  card with no sticker was a ring round nothing. The card gets a pool of
+  soft moonlight in the middle, so the ring reads as the edge of a halo,
+  and a few more sparkles. Deterministic, like the rest.
+*/
+const MOON_SILVER = [201, 210, 232];
+const MOON_WHITE = [244, 244, 255];
+const MOON_SPARKLES: readonly (readonly [number, number])[] = [
+  [0.2, 0.22],
+  [0.78, 0.18],
+  [0.16, 0.78],
+];
+
+export function paintMoon(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const d = Math.hypot(x + 0.5 - SIZE / 2, y + 0.5 - SIZE / 2);
+      const i = (y * SIZE + x) * 3;
+      mixInto(rgb, i, MOON_SILVER, Math.max(0, 1 - d / 26) * 0.5);
+      mixInto(rgb, i, MOON_WHITE, Math.max(0, 1 - d / 12) * 0.55);
+      for (const [sx, sy] of MOON_SPARKLES) {
+        const ax = Math.abs(x + 0.5 - sx * SIZE);
+        const ay = Math.abs(y + 0.5 - sy * SIZE);
+        const arm = (ax < 0.7 && ay < 4.5) || (ay < 0.7 && ax < 4.5);
+        if (arm) mixInto(rgb, i, MOON_WHITE, 1 - Math.max(ax, ay) / 5.5);
       }
     }
   }

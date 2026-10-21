@@ -1,4 +1,8 @@
+import { easternLocalToUtc, easternOffsetMs } from './easternTime';
 import { todayStamp, type TournamentDef } from './tournament';
+
+/** New York's clock, shared with the season pass. Re-exported for the tests. */
+export { easternOffsetMs };
 
 /**
  * The weekly cup: ten cups built into the game, one running at a time,
@@ -152,26 +156,6 @@ export const WEEK = 7 * DAY;
 /** Monday 19 October 2026, 00:00, as a local Eastern time written as if UTC. */
 const EPOCH_LOCAL = Date.UTC(2026, 9, 19);
 
-/** The day of the month of the n-th Sunday of a month. */
-function nthSunday(year: number, month: number, n: number): number {
-  const first = new Date(Date.UTC(year, month, 1)).getUTCDay();
-  return 1 + ((7 - first) % 7) + (n - 1) * 7;
-}
-
-/**
- * New York's offset from UTC at an instant, in milliseconds: four hours
- * behind in summer, five in winter. Daylight saving runs from 2 AM on
- * the second Sunday of March to 2 AM on the first Sunday of November —
- * the rule since 2007, written here rather than asked of the phone, so
- * every phone (and the test suite) agrees to the second.
- */
-export function easternOffsetMs(utcMs: number): number {
-  const year = new Date(utcMs).getUTCFullYear();
-  const start = Date.UTC(year, 2, nthSunday(year, 2, 2), 7); // 2 AM EST
-  const end = Date.UTC(year, 10, nthSunday(year, 10, 1), 6); // 2 AM EDT
-  return utcMs >= start && utcMs < end ? -4 * HOUR : -5 * HOUR;
-}
-
 /** Which week of the rotation an instant falls in. Never negative. */
 export function weekIndex(utcMs: number): number {
   const local = utcMs + easternOffsetMs(utcMs);
@@ -180,10 +164,7 @@ export function weekIndex(utcMs: number): number {
 
 /** The instant week `w` begins: midnight Monday, New York time. */
 export function weekStart(w: number): number {
-  const local = EPOCH_LOCAL + w * WEEK;
-  // Midnight Monday is never inside the hour the clocks change (that is
-  // 2 AM Sunday), so the offset at either guess is the right one.
-  return local - easternOffsetMs(local + 5 * HOUR);
+  return easternLocalToUtc(EPOCH_LOCAL + w * WEEK);
 }
 
 /* ── the schedule ─────────────────────────────────────────────────── */

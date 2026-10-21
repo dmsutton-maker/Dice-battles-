@@ -310,4 +310,40 @@ export const TUNING = {
     /** How fast that ring spreads across the floor, units a second. */
     landingSpeed: 2.6,
   },
+  /**
+   * The Sun dice (diceSun.ts), season 2 of the pass, 21 Oct 2026: motes
+   * of light rising off them as they roll, a sunburst where one lands,
+   * and a warm pool of light on the floor under one at rest. Looks only,
+   * like Fire and Ice: none of this reaches the physics.
+   */
+  sun: {
+    particles: 520,
+    /** Motes of light born per second per die, tumbling and at rest. */
+    moteRateMoving: 40,
+    moteRateStill: 14,
+    /** Rays in the sunburst where a die lands, and how fast they fly out. */
+    burstRays: 16,
+    burstSpeed: 4.5,
+    /** How strong the pool of light on the floor is under a resting die. */
+    glowOpacity: 0.45,
+  },
+  /**
+   * The Moon dice (diceMoon.ts), season 2: a halo of moonlight round
+   * them, stardust trailing behind as they roll, and a ripple of
+   * moonlight where one comes to rest. Looks only, like the rest.
+   */
+  moon: {
+    particles: 420,
+    /** World units a die travels between two grains of stardust. */
+    trailSpacing: 0.1,
+    /** Seconds a grain shines before it is gone. */
+    trailLife: 0.9,
+    /** Grains of stardust per second drifting off a die at rest. */
+    driftRate: 6,
+    /** Dots in the ripple of moonlight where a die comes to rest, and its speed. */
+    rippleDots: 28,
+    rippleSpeed: 1.8,
+    /** How strong the moonlight on the floor is under a resting die. */
+    glowOpacity: 0.22,
+  },
 } as const;

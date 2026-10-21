@@ -28,6 +28,12 @@ export const Kind = {
   // The Neon die's two lights, 20 Oct 2026.
   NeonPink: 8,
   NeonCyan: 9,
+  // Season 2 (21 Oct 2026): the Sun dice's motes of light and the flash
+  // of a sunburst; the Moon dice's halo and the stardust they trail.
+  Mote: 10,
+  Flash: 11,
+  Halo: 12,
+  Stardust: 13,
 } as const;
 export type Kind = (typeof Kind)[keyof typeof Kind];
 
@@ -216,7 +222,8 @@ export class ParticlePool {
       const damp = Math.exp(-this.drag[i] * dt);
       // A little sideways wander, so flames lick rather than rise in a
       // column and smoke curls rather than climbing a pole.
-      const wanders = k === Kind.Flame || k === Kind.Smoke || k === Kind.Steam || k === Kind.Mist;
+      const wanders =
+        k === Kind.Flame || k === Kind.Smoke || k === Kind.Steam || k === Kind.Mist || k === Kind.Mote || k === Kind.Stardust;
       const wx = wanders ? Math.sin(time * 7 + this.seed[i]) * 0.9 * dt : 0;
       const wz = wanders ? Math.cos(time * 5 + this.seed[i]) * 0.5 * dt : 0;
       this.vel[p] = this.vel[p] * damp + wx;
@@ -287,6 +294,27 @@ export class ParticlePool {
         }
         a = Math.pow(1 - t, 1.3);
         glow = 0.75;
+      } else if (k === Kind.Mote) {
+        // A mote of sunlight: warm gold, in and out, mostly additive so
+        // it glows on a dark board and still shows on a pale one.
+        r = 1; g = lerp(0.92, 0.72, t); b = lerp(0.6, 0.25, t);
+        a = Math.pow(Math.sin(Math.PI * t), 0.7) * 0.9;
+        glow = 0.85;
+      } else if (k === Kind.Flash) {
+        // The sunburst: white-gold light, brightest at once and gone fast.
+        r = 1; g = lerp(0.97, 0.8, t); b = lerp(0.82, 0.4, t);
+        a = Math.pow(1 - t, 2);
+        glow = 0.9;
+      } else if (k === Kind.Halo) {
+        // Moonlight round the die: pale silver-blue, faint, all light.
+        r = 0.78; g = 0.85; b = 1;
+        a = Math.sin(Math.PI * t) * 0.3;
+        glow = 0.85;
+      } else if (k === Kind.Stardust) {
+        // A grain of stardust: silver-white, twinkling as it fades.
+        r = 0.9; g = 0.95; b = 1;
+        a = (1 - t) * (0.55 + 0.45 * Math.sin(time * 14 + this.seed[i] * 3));
+        glow = 0.9;
       } else if (k === Kind.Shard) {
         r = 0.8; g = 0.93; b = 1;
         a = 1 - t * t;
@@ -346,5 +374,9 @@ export const PARTICLE_KIND = {
   mist: Kind.Mist,
   glint: Kind.Glint,
   shard: Kind.Shard,
+  mote: Kind.Mote,
+  flash: Kind.Flash,
+  halo: Kind.Halo,
+  stardust: Kind.Stardust,
 } as const;
 

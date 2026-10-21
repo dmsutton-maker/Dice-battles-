@@ -788,6 +788,83 @@ const MOUNDS: Record<MoundKind, (kit: Kit, look: MoundLook) => void> = {
     }
   },
 
+  /*
+    Season 2 of the pass, 21 Oct 2026. The Sun Temple's altar: a dome
+    of cut sandstone courses with a gold sun carved on top — a disc, a
+    white-hot heart and eight rays — and marigold petals strewn round
+    its foot. The sun and its rays are crown pieces, kept within the
+    middle of the top where a die skidding off the dome never reaches.
+  */
+  sunAltar: (kit, look) => {
+    const rand = rng(161);
+    const stone = paintVertices(domeGeometry(30, 10, 0, 0.95), (c) => {
+      const course = Math.floor((c.y + 0.6) / 0.16);
+      const a = Math.atan2(c.z, c.x);
+      const seam =
+        Math.abs(Math.sin(a * 7 + course * 1.3)) < 0.08 || Math.abs(((c.y + 0.6) % 0.16) - 0.01) < 0.012;
+      return seam ? mixed(look.color, '#8a6a3a', 0.6) : mixed(look.color, '#f6e6c0', 0.45 + rand() * 0.15 + Math.max(0, c.y) * 0.25);
+    });
+    kit.mesh(stone, kit.std('#ffffff', { painted: true, rough: look.roughness }), [0, C, 0]);
+    const gold = kit.std('#f0b240', { rough: 0.35, metal: 0.5, emissive: '#ff9a2a', glow: 0.25 });
+    kit.mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.05, 20), gold, [0, MOUND_TOP + 0.01, 0], { flags: { crown: true } });
+    kit.mesh(
+      new THREE.CylinderGeometry(0.1, 0.1, 0.07, 16),
+      kit.std('#fff0b0', { rough: 0.3, emissive: '#ffd27a', glow: 0.4 }),
+      [0, MOUND_TOP + 0.015, 0],
+      { flags: { crown: true } },
+    );
+    const rays = Array.from({ length: 8 }, (_, i) => {
+      const a = (i / 8) * Math.PI * 2;
+      return {
+        position: new THREE.Vector3(Math.cos(a) * 0.3, MOUND_TOP + 0.01, Math.sin(a) * 0.3),
+        up: new THREE.Vector3(Math.cos(a), 0, Math.sin(a)),
+        scale: new THREE.Vector3(0.8, 1, 0.5),
+      };
+    });
+    kit.scatter(new THREE.ConeGeometry(0.05, 0.2, 4), gold, rays, { crown: true });
+    const petals = domeSpots(162, 16, 0.55, 0.86).map(({ p, n, rand: r }) => ({
+      position: p,
+      up: n,
+      spin: r() * 6,
+      scale: new THREE.Vector3(0.05 + r() * 0.03, 0.02, 0.035),
+      color: r() > 0.5 ? '#f0b240' : '#e07a2a',
+    }));
+    kit.scatter(new THREE.SphereGeometry(1, 6, 4), kit.std('#ffffff', { rough: 0.7 }), petals);
+  },
+
+  /*
+    The Moon Garden's bump: a mossy mound with moonflowers open on it
+    and a stone lantern standing on top, its window lit. The lantern is
+    a crown piece — pedestal, post, firebox, roof and finial all within
+    the middle of the top.
+  */
+  moonLantern: (kit, look) => {
+    const rand = rng(171);
+    const moss = paintVertices(domeGeometry(28, 10, 0, 0.95), (c) =>
+      mixed(look.color, '#2e4a3a', 0.35 + rand() * 0.3 - Math.max(0, c.y) * 0.3),
+    );
+    kit.mesh(moss, kit.std('#ffffff', { painted: true, rough: look.roughness }), [0, C, 0]);
+    const flowers = domeSpots(172, 18, 0.32, 0.86).map(({ p, n, rand: r }) => ({
+      position: p,
+      up: n,
+      scale: 0.028 + r() * 0.014,
+      color: r() > 0.3 ? '#f4f4ff' : '#ffe9b0',
+    }));
+    kit.scatter(new THREE.SphereGeometry(1, 7, 5), kit.std('#ffffff', { rough: 0.6, emissive: '#8a98d8', glow: 0.5 }), flowers);
+    const stone = kit.std('#8a93a8', { rough: 0.95 });
+    const top = MOUND_TOP;
+    kit.mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.1, 8), stone, [0, top + 0.04, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.22, 8), stone, [0, top + 0.2, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.BoxGeometry(0.26, 0.2, 0.26), kit.std('#6c758c', { rough: 0.9 }), [0, top + 0.41, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.BoxGeometry(0.28, 0.13, 0.2), kit.basic('#ffe9b0'), [0, top + 0.41, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.BoxGeometry(0.2, 0.13, 0.28), kit.basic('#ffe9b0'), [0, top + 0.41, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.ConeGeometry(0.26, 0.16, 6), stone, [0, top + 0.59, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.SphereGeometry(0.05, 8, 6), stone, [0, top + 0.7, 0], { flags: { crown: true } });
+    const disc = new THREE.CircleGeometry(0.42, 18);
+    disc.rotateX(-Math.PI / 2);
+    kit.mesh(disc, kit.basic('#ffd27a', { additive: true, opacity: 0.35 }), [0, top + 0.012, 0], { flags: { crown: true } });
+  },
+
   // A snowman: the dome is his bottom snowball.
   snowman: (kit, look) => {
     const snow = kit.std(look.color, { rough: 0.7 });
@@ -1233,7 +1310,7 @@ type PitLook = ObstacleLook['pit'];
  * drawn by the Pit component. Everything else is drawn by the pit
  * shader, here.
  */
-export const WATER_PITS: readonly PitKind[] = ['moat', 'candlePool', 'lake', 'tidePool', 'puddle', 'spring', 'iceHole'];
+export const WATER_PITS: readonly PitKind[] = ['moat', 'candlePool', 'lake', 'tidePool', 'puddle', 'spring', 'iceHole', 'moonPond'];
 
 export function isWaterPit(kind: PitKind): boolean {
   return WATER_PITS.includes(kind);
@@ -1254,6 +1331,8 @@ const SHADER_PITS: Partial<Record<PitKind, { mode: PitMode; colors: (l: PitLook)
   cargoHatch: { mode: 'cargo', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
   toyBox: { mode: 'toyBox', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
   tarPit: { mode: 'tar', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
+  // The Sun Temple's well: the water, the sandstone of the shaft, the sun's light.
+  sunWell: { mode: 'well', colors: (l) => ({ a: l.surface, b: l.border?.color ?? l.surface, c: l.edge }) },
 };
 
 /** Four boxes round the opening, their inner faces flush with the hole. */
@@ -1619,6 +1698,77 @@ const PITS: Record<PitKind, (kit: Kit, look: PitLook) => void> = {
       kit.mesh(new THREE.TorusGeometry(r, 0.028, 6, 12, Math.PI), bone, [-H - 0.2, 0, z], { rot: [0, Math.PI / 2, 0] });
     }
     kit.mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.95, 7), bone, [-H - 0.2, 0.04, 0], { rot: [Math.PI / 2, 0, 0] });
+  },
+
+  /*
+    The Sun Temple's well (season 2, 21 Oct 2026): a square well of cut
+    sandstone going down to sunlit water (the shader), a kerb of blocks
+    round it with a small gold sun on each corner, and marigold petals
+    on the stone. Nothing over the opening.
+  */
+  sunWell: (kit, look) => {
+    cutStone(kit, 351, look.border?.color ?? '#c8a264', 0.15);
+    const gold = kit.std('#f0b240', { rough: 0.35, metal: 0.5, emissive: '#ff9a2a', glow: 0.2 });
+    const suns = [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ].map(([sx, sz]) => ({ position: new THREE.Vector3(sx * (H + 0.12), 0.17, sz * (H + 0.12)), scale: 1 }));
+    kit.scatter(new THREE.CylinderGeometry(0.09, 0.09, 0.03, 12), gold, suns);
+    kit.scatter(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 10), kit.basic('#fff0b0'), suns);
+    const petals = ringSpots(352, 14, [0.3, 0.42]).map(({ p, rand }) => ({
+      position: p.setY(0.012),
+      spin: rand() * 6,
+      scale: new THREE.Vector3(0.05 + rand() * 0.03, 0.015, 0.035),
+      color: rand() > 0.5 ? '#f0b240' : '#e07a2a',
+    }));
+    kit.scatter(new THREE.SphereGeometry(1, 6, 4), kit.std('#ffffff', { rough: 0.7 }), petals);
+  },
+
+  /*
+    The Moon Garden's pond: a still pool edged with river stones, the
+    moon's reflection lying on the water, lotus pads and two open lotus
+    flowers floating, and a little stone lantern on the bank.
+  */
+  moonPond: (kit, look) => {
+    lumps(kit, 361, [look.border?.color ?? '#6c758c', '#56688a', '#7f8aa6'], 9, [0.18, 0.28], 0.1);
+    const moon = new THREE.CircleGeometry(0.32, 20);
+    moon.rotateX(-Math.PI / 2);
+    kit.mesh(moon, kit.basic('#f4f0e0', { opacity: 0.55 }), [0.18, 0.052, -0.12], { flags: { float: true } });
+    const pad = new THREE.CircleGeometry(0.15, 14, 0.35, Math.PI * 2 - 0.7);
+    pad.rotateX(-Math.PI / 2);
+    const spots: [number, number][] = [
+      [-0.55, 0.5],
+      [0.58, 0.52],
+      [-0.5, -0.56],
+    ];
+    const pads = spots.map(([x, z], i) => ({
+      position: new THREE.Vector3(x, 0.05, z),
+      spin: i * 2.1,
+      scale: 0.9 + (i % 2) * 0.2,
+      color: i % 2 ? '#3f6a4a' : '#4f7a55',
+    }));
+    kit.scatter(pad, kit.std('#ffffff', { rough: 0.6 }), pads, { float: true });
+    const petals: Item[] = [];
+    for (const [x, z] of spots.slice(0, 2)) {
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        petals.push({
+          position: new THREE.Vector3(x + Math.cos(a) * 0.045, 0.085, z + Math.sin(a) * 0.045),
+          up: new THREE.Vector3(Math.cos(a) * 0.5, 1, Math.sin(a) * 0.5).normalize(),
+          color: k % 2 ? '#ffd9e8' : '#fff4f8',
+        });
+      }
+    }
+    kit.scatter(new THREE.ConeGeometry(0.035, 0.09, 5), kit.std('#ffffff', { rough: 0.7 }), petals, { float: true });
+    const hearts = spots.slice(0, 2).map(([x, z]) => ({ position: new THREE.Vector3(x, 0.08, z), color: '#ffe9b0' }));
+    kit.scatter(new THREE.SphereGeometry(0.025, 6, 5), kit.std('#ffffff', { rough: 0.6 }), hearts, { float: true });
+    const stone = kit.std('#8a93a8', { rough: 0.95 });
+    kit.mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.16, 8), stone, [H + 0.3, 0.08, -H - 0.25]);
+    kit.mesh(new THREE.BoxGeometry(0.16, 0.12, 0.16), kit.basic('#ffe9b0'), [H + 0.3, 0.22, -H - 0.25]);
+    kit.mesh(new THREE.ConeGeometry(0.16, 0.1, 6), stone, [H + 0.3, 0.33, -H - 0.25]);
+    void look;
   },
 
   // A tide pool: rocks round it, a starfish and a shell on them.

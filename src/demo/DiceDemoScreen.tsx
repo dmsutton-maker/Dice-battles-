@@ -106,7 +106,8 @@ import {
 } from '../game/modes';
 import { TUNING } from '../game/tuning';
 import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
-import { hasEntitlement, initPurchases, onPurchasesChanged } from '../game/purchases';
+import { hasEntitlement,
+  hasGoldPass, initPurchases, onPurchasesChanged } from '../game/purchases';
 import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
 import { warmAllArenaTextures } from '../arena/warmArenas';
 import { useAppActive } from '../game/useAppActive';
@@ -191,13 +192,11 @@ import {
   asPrize,
   battleXp,
   claimGold,
-  GOLD_PASS,
   goldRewardFor,
   levelFor,
   rewardFor,
-  seasonLevelOf,
+  passInfo,
   SeasonState,
-  seasonTrackOf,
 } from '../game/seasonPass';
 import { Reward, RewardPopup } from './RewardPopup';
 import { pictureOfItem } from './ItemIcon';
@@ -810,7 +809,7 @@ export function DiceDemoScreen() {
    * paid, so calling it again is always safe.
    */
   const claimGoldLevels = () => {
-    const owned = hasEntitlement(GOLD_PASS.entitlement);
+    const owned = hasGoldPass();
     setGoldOwned(owned);
     if (!owned) return;
     const claimed = claimGold(getProgress().season);
@@ -2187,6 +2186,7 @@ export function DiceDemoScreen() {
       const arena = ARENAS[preview.id];
       const need = TIERS.find((t) => t.id === ARENA_UNLOCKS[preview.id])?.at ?? 0;
       const price = ARENA_PRICES[preview.id];
+      const pass = passInfo('arena', preview.id);
       return {
         name: arena.name,
         note: arenaBlurb(preview.id),
@@ -2199,8 +2199,10 @@ export function DiceDemoScreen() {
           equipped: arenaId === preview.id,
           needTrophies: need,
           price,
-          passLevel: seasonLevelOf('arena', preview.id),
-          passGold: seasonTrackOf('arena', preview.id) === 'gold',
+          passLevel: pass?.level ?? null,
+          passGold: pass?.track === 'gold',
+          passCurrent: pass?.current,
+          passSeason: pass ? `Season ${pass.season.number}` : undefined,
           paid: PAID_ARENAS.includes(preview.id),
           paidWhere: PAID_ARENAS.includes(preview.id) ? paidSkinWhere(preview.id) : undefined,
           // Coins are spent in the Store and nowhere else, exactly as for
@@ -2211,6 +2213,7 @@ export function DiceDemoScreen() {
     }
 
     const skin = skinById(preview.id);
+    const pass = skin.pass ? passInfo('dice', skin.id) : null;
     return {
       name: `${skin.name} dice`,
       note: dieBlurb(skin.id),
@@ -2228,8 +2231,10 @@ export function DiceDemoScreen() {
         prize: skin.prize,
         paid: skin.paid,
         paidWhere: skin.paid ? paidSkinWhere(skin.id) : undefined,
-        passLevel: skin.pass ? seasonLevelOf('dice', skin.id) : null,
-        passGold: seasonTrackOf('dice', skin.id) === 'gold',
+        passLevel: pass?.level ?? null,
+        passGold: pass?.track === 'gold',
+        passCurrent: pass?.current,
+        passSeason: pass ? `Season ${pass.season.number}` : undefined,
         canBuy: preview.from === 'store',
       }),
     };

@@ -1,4 +1,4 @@
-import { seasonLevelOf, seasonTrackOf } from '../game/seasonPass';
+import { passTag, seasonLevelOf } from '../game/seasonPass';
 import { paidSkinWhere } from '../game/products';
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -155,8 +155,7 @@ export function InventoryScreen({
                 ) : skin.pass ? (
                   // Season pass only — same reason as the cup prize above.
                   <Text style={styles.priceTag}>
-                    {seasonTrackOf('dice', skin.id) === 'gold' ? 'Gold Pass' : 'Pass'} level{' '}
-                    {seasonLevelOf('dice', skin.id)}
+                    {passTag('dice', skin.id)}
                   </Text>
                 ) : (
                   <View style={styles.priceTagRow}>
@@ -233,8 +232,7 @@ export function InventoryScreen({
                   <Text style={styles.priceTag}>{paidSkinWhere(id)}</Text>
                 ) : seasonLevelOf('arena', id) !== null ? (
                   <Text style={styles.priceTag}>
-                    {seasonTrackOf('arena', id) === 'gold' ? 'Gold Pass' : 'Pass'} level{' '}
-                    {seasonLevelOf('arena', id)}
+                    {passTag('arena', id)}
                   </Text>
                 ) : (
                   <View style={styles.priceTagRow}>

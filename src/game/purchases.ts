@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { grantCoins } from './currency';
 import { loadStoreKit } from './storeKit';
 import { PRODUCTS, Product, REMOVE_ADS, productById, sellable } from './products';
+import { GOLD_PASS_ID, SEASON_1_PASS } from './products';
+import { monthStamp } from './easternTime';
 
 /**
  * Buying things with real money.
@@ -37,12 +39,15 @@ const STORAGE_KEY = 'dice-battles:entitlements';
 const INSTALLED_KEY = 'dice-battles:installed-at';
 /** Store transactions already handed over, so a replay never pays twice. */
 const HANDLED_KEY = 'dice-battles:handled-transactions';
+/** The New York months a Gold Pass was bought in, YYYY-MM. */
+const PASS_KEY = 'dice-battles:gold-pass-months';
 
 /** Long enough for a slow shop request, short enough not to feel broken. */
 const TIMEOUT_MS = 12_000;
 
 /** Everything bought with money on this device, by entitlement id. */
 let owned = new Set<string>();
+let passMonths = new Set<string>();
 /** Transaction ids already handed over. Not entitlements — bookkeeping. */
 let handled = new Set<string>();
 let installedAt: number | null = null;
@@ -165,6 +170,13 @@ export async function initPurchases(): Promise<void> {
   } catch {
     handled = new Set();
   }
+  try {
+    const raw = await AsyncStorage.getItem(PASS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    passMonths = new Set(Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : []);
+  } catch {
+    passMonths = new Set();
+  }
 
   /*
     The install time is written the FIRST time the game runs and never
@@ -267,9 +279,24 @@ export function storeState(now: number = Date.now(), family = false): StoreState
   };
 }
 
-/** Does this device own that entitlement? */
+/** Does this device own that entitlement? The Gold Pass: for this month. */
 export function hasEntitlement(id: string): boolean {
+  if (id === GOLD_PASS_ID) return hasGoldPass();
   return owned.has(id);
+}
+
+/**
+ * Is this month's Gold Pass owned?
+ *
+ * Bought this New York month (or restored from a purchase made in it),
+ * or Season 1's own product for its month. Nothing carries over: a pass
+ * bought in October is October's, and on the first of November the
+ * shelf offers November's.
+ */
+export function hasGoldPass(now: number = Date.now()): boolean {
+  const month = monthStamp(now);
+  if (passMonths.has(month)) return true;
+  return month === SEASON_1_PASS.month && owned.has(SEASON_1_PASS.id);
 }
 
 /**
@@ -294,6 +321,7 @@ async function persistHandled(): Promise<void> {
 async function persist(): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...owned]));
+    await AsyncStorage.setItem(PASS_KEY, JSON.stringify([...passMonths]));
   } catch {
     // Written again next time. A lost write costs a restore, not a purchase.
   }
@@ -305,12 +333,19 @@ async function persist(): Promise<void> {
  * Only ever called after StoreKit has confirmed, and it is deliberately
  * the only path that grants anything.
  */
-async function grant(product: Product): Promise<void> {
+async function grant(product: Product, boughtAt: number = Date.now()): Promise<void> {
   if (product.coins) grantCoins(product.coins);
   for (const id of product.grants ?? []) owned.add(id);
-  // A one-off is remembered by its own id too, so the Store can show it
-  // as bought even when it granted nothing but coins.
-  if (product.kind !== 'consumable') owned.add(product.id);
+  if (product.kind === 'season') {
+    // The Gold Pass is for the month it is bought in, New York time
+    // (seasonPass.ts). Remembered by month, not by product, so next
+    // month's shelf offers it again.
+    passMonths.add(monthStamp(Number.isFinite(boughtAt) ? boughtAt : Date.now()));
+  } else if (product.kind !== 'consumable') {
+    // A one-off is remembered by its own id too, so the Store can show it
+    // as bought even when it granted nothing but coins.
+    owned.add(product.id);
+  }
   await persist();
   // After the write, so a screen that reacts by reading finds it all.
   notifyChanged();
@@ -332,6 +367,8 @@ interface StorePurchase {
   id?: string;
   productId?: string;
   purchaseState?: 'pending' | 'purchased' | 'unknown';
+  /** When it was bought, in milliseconds. Decides a Gold Pass's month. */
+  transactionDate?: number;
 }
 
 /**
@@ -413,7 +450,7 @@ async function settle(mod: Record<string, unknown>, purchase: StorePurchase): Pr
 
     const key = purchase.id ?? '';
     if (!key || !handled.has(key)) {
-      await grant(product);
+      await grant(product, purchase.transactionDate);
       if (key) {
         handled.add(key);
         await persistHandled();
@@ -512,15 +549,31 @@ export async function restore(): Promise<{ restored: number; ok: boolean }> {
     if (sync) await withTimeout(sync(), null);
 
     const fetchOwned = mod.getAvailablePurchases as
-      | (() => Promise<StorePurchase[]>)
+      | ((options: { onlyIncludeActiveItemsIOS: boolean; alsoPublishToEventListenerIOS: boolean }) => Promise<StorePurchase[]>)
       | undefined;
     if (!fetchOwned) return { restored: 0, ok: false };
 
-    const purchases = await withTimeout(fetchOwned(), []);
+    // EVERY past transaction, not only the active ones: a Gold Pass is a
+    // non-renewing subscription, which Apple leaves out of the active
+    // list, and its purchase date is what says which month it bought.
+    const purchases = await withTimeout(
+      fetchOwned({ onlyIncludeActiveItemsIOS: false, alsoPublishToEventListenerIOS: false }),
+      [],
+    );
     let restored = 0;
     for (const purchase of purchases) {
       // productId, not id: id is the transaction.
       const id = purchase?.productId;
+      if (id === GOLD_PASS_ID || id === SEASON_1_PASS.id) {
+        const month =
+          id === SEASON_1_PASS.id
+            ? SEASON_1_PASS.month
+            : monthStamp(Number.isFinite(purchase.transactionDate) ? (purchase.transactionDate as number) : Date.now());
+        if (passMonths.has(month)) continue;
+        passMonths.add(month);
+        restored += 1;
+        continue;
+      }
       const product = id ? productById(id) : undefined;
       // Consumables are never restored — they were spent when granted.
       if (!product || product.kind === 'consumable') continue;
@@ -542,10 +595,12 @@ export async function restore(): Promise<{ restored: number; ok: boolean }> {
 /** Test seam: forget everything this module has cached. */
 export function resetPurchasesForTest(state?: {
   owned?: string[];
+  passMonths?: string[];
   installedAt?: number | null;
   ready?: boolean;
 }): void {
   owned = new Set(state?.owned ?? []);
+  passMonths = new Set(state?.passMonths ?? []);
   installedAt = state?.installedAt === undefined ? null : state.installedAt;
   ready = state?.ready ?? false;
   priceById = new Map();

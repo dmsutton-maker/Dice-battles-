@@ -18,7 +18,7 @@ import {
   PRIZE_SKINS,
   STORE_SKINS,
 } from '../src/game/diceSkins';
-import { seasonLevelOf } from '../src/game/seasonPass';
+import { passOrder, seasonLevelOf } from '../src/game/seasonPass';
 import { COIN_CODE_MAX, TIERS, UnlockId } from '../src/game/progress';
 
 const priceInTrophies = (id: UnlockId): number =>
@@ -478,7 +478,8 @@ suite('inventory · everything is listed cheapest first', () => {
     assertEqual(pass.length, PASS_SKINS.length, 'a season pass die fell off the list');
     for (let i = 1; i < pass.length; i++) {
       assert(
-        (seasonLevelOf('dice', pass[i].id) ?? 0) > (seasonLevelOf('dice', pass[i - 1].id) ?? 0),
+        // Season by season, then level by level within one.
+        passOrder('dice', pass[i].id) > passOrder('dice', pass[i - 1].id),
         `${pass[i].name} is out of season-pass order`,
       );
     }

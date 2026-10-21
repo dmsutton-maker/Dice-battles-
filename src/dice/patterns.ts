@@ -81,7 +81,10 @@ export type PatternId =
   // plant. Sprigs of the plant itself: green stems, purple bud spikes.
   | 'lavender'
   | 'embers'
-  | 'ice';
+  | 'ice'
+  // Season 2, "Sun & Moon" (21 Oct 2026): the Sun dice and the Moon dice.
+  | 'sunburst'
+  | 'moonlit';
 
 const SIZE = 64;
 
@@ -858,7 +861,12 @@ export type ColorPatternId =
   | 'embers'
   // Ice, 30 Sep 2026, for the Ice dice: facets of pale blue, deeper
   // blue in the cracks, white where they catch the light.
-  | 'ice';
+  | 'ice'
+  // Sun and Moon, 21 Oct 2026, for season 2 of the pass: a sun on one
+  // corner with rays round the whole die; a crescent moon on one corner
+  // over a starry night.
+  | 'sunburst'
+  | 'moonlit';
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 /*
@@ -1695,6 +1703,8 @@ const BARE_CORNERS: readonly (readonly [number, number, number])[] = [
 
 /** The goldfish on the still picture of the Fish dice: two to a side, each headed its own way. */
 const GOLDFISH = new StickerSheet(scatterStickers(29, 2, 15.5, 20, 3, 10, [0, 1]));
+/** The Moon dice's twinkles: three four-pointed stars to a side, some over an edge. */
+const MOON_TWINKLES = new StickerSheet(scatterStickers(41, 3, 6, 11, 2, 6));
 const FISH_BUBBLES = new StickerSheet(scatterStickers(37, 3, 2.2, 7, 1));
 
 /**
@@ -2597,6 +2607,158 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       const r = Math.hypot(x - bx, y - by);
       if (r < 1.8) px = mixRgb(px, rgb(r < 0.9 ? '#8cc3dc' : '#ffffff'), 0.7);
     }
+    return px;
+  },
+  sunburst: (x, y) => {
+    /*
+      SUN — season 2 of the pass, "Sun & Moon", 21 Oct 2026. David:
+      "Make 2 new dice and 2 new arenas every month normally going on
+      with a theme like how this one is fire and ice."
+
+      ONE SUN ON THE DIE. The sun itself sits on a corner of the cube
+      (the +++ corner): a white-hot disc wrapped over the three faces
+      that meet there, with a gold rim and a warm corona round it. Its
+      rays are planes through the die's body diagonal, so every ray is a
+      straight line running out from the sun's corner over the three
+      faces round it and on over the edges, converging on the far corner
+      — a sunburst drawn on the solid, continuous over every edge. The
+      ground between the rays is deep amber, warming toward the sun, and
+      motes of light drift everywhere.
+
+      THE COLOURS KEEP CLEAR OF THE STICKERS. A sun is made of exactly
+      the colours of two of the six faces, yellow and orange, so the
+      shell is amber rather than orange (33 ΔLab from the Orange face)
+      and the rays are pale gold rather than yellow (40 from Yellow), and
+      a dark amber ring circles every sticker so its edge reads whatever
+      burns round it. screen.test.ts reads every hex written here.
+    */
+    const P = sheetToCube(x, y);
+    const f = cubeFace(P);
+    const F = FACE_FRAMES[f];
+    // Round the sun's axis — the body diagonal from the far corner up
+    // to the sun — and how far along it: 0 at the far corner, 1 at the
+    // sun.
+    const a = dot3(P, SEAM_E1);
+    const b = dot3(P, SEAM_E2);
+    const phi = Math.atan2(b, a);
+    const toward = (dot3(P, SEAM_AXIS) / 55.4 + 1) / 2;
+    const dSun = Math.hypot(P[0] - 32, P[1] - 32, P[2] - 32);
+    const dFar = Math.hypot(P[0] + 32, P[1] + 32, P[2] + 32);
+    // Heat shimmer bends the rays a little — a little: at more than a
+    // few degrees the rays curled into stripes of caramel.
+    const shimmer = cubeFbm([P[0] + 5, P[1] + 9, P[2] + 3], [16, 8], [1, 0.5]);
+    /*
+      Twenty-four rays. The three edges that meet at the sun's corner
+      (and the three at the far corner) each lie in a plane through the
+      axis, so each one runs along a single ray angle for its whole
+      length — and with the rays' phase left at zero the EDGE of a ray
+      ran exactly along the edge of the die: one side all gold, the
+      other all amber, the one seam this design could have. The phase
+      puts the middle of a ray on each of those six edges instead.
+    */
+    const ray = Math.sin(24 * phi + 3.76 + shimmer * 0.35);
+    const beam = smoothstep(-0.1, 0.25, ray);
+    // The ground between the rays: deep amber at the far corner, warmer
+    // toward the sun, with darker patches in the shade.
+    let ground = mixRgb(rgb('#ad4a0e'), rgb('#c9601a'), toward);
+    const patch = cubeFbm([P[0] + 21, P[1] + 2, P[2] + 17], [16, 8], [1, 0.5]);
+    ground = mixRgb(ground, rgb('#8a3a0a'), smoothstep(0.1, 0.6, patch) * (1 - toward) * 0.5);
+    // The rays: bright gold everywhere, white-gold next to the sun.
+    let gold = mixRgb(rgb('#ffbe30'), rgb('#ffcd4d'), toward);
+    gold = mixRgb(gold, rgb('#ffe29a'), smoothstep(0.6, 1, toward) * 0.7);
+    let px = mixRgb(ground, gold, beam);
+    // The sun's warmth spreading over rays and gaps alike, then the
+    // corona, then the disc: a gold rim round a white-hot heart.
+    px = mixRgb(px, rgb('#ffb000'), smoothstep(0.5, 1, toward) * 0.3);
+    px = mixRgb(px, rgb('#ffbe30'), smoothstep(42, 22, dSun) * 0.75);
+    // The disc has an EDGE — a thin deeper-gold rim — so it reads as a
+    // sun on the corner rather than a soft bright patch.
+    px = mixRgb(px, rgb('#e07a2a'), smoothstep(1.6, 0.3, Math.abs(dSun - 21.5)) * 0.6);
+    px = mixRgb(px, rgb('#ffd27a'), smoothstep(21.5, 20, dSun));
+    px = mixRgb(px, rgb('#ffe29a'), smoothstep(19, 15, dSun));
+    px = mixRgb(px, rgb('#fff6d0'), smoothstep(15, 8, dSun));
+    // A glint where the rays meet again at the far corner.
+    px = mixRgb(px, rgb('#ffe29a'), smoothstep(14, 3, dFar) * 0.85);
+    // Motes of light in the air.
+    const h = cubeSpeck(P);
+    if (h > 0.988) px = mixRgb(px, rgb('#fff6d0'), 0.9);
+    else if (h > 0.975) px = mixRgb(px, rgb('#ffd27a'), 0.6);
+    // The dark ring round each sticker, feathered at its outer edge.
+    const d = Math.hypot(dot3(P, F.u), dot3(P, F.v));
+    const r = STICKER_FRACTION * SIZE;
+    return mixRgb(px, rgb('#7a3c0a'), smoothstep(r * 1.3, r * 1.12, d) * 0.85);
+  },
+  moonlit: (x, y) => {
+    /*
+      MOON — the Sun dice's opposite number, season 2 of the pass.
+
+      A night sky over the whole die: indigo with thin wisps of deeper
+      blue and violet, pinprick stars everywhere and a few four-pointed
+      twinkles lying over the edges. The moon is a crescent on one
+      corner (the +++ corner, where the Sun dice carry their sun): a
+      silver disc wrapped over the three faces that meet there with its
+      dark side bitten out, grey seas on its face and a soft moonglow
+      round it. On the far corner one big star shines along the three
+      edges that meet there, so the night side of the die has a light of
+      its own. A thin ring of moonlight round every sticker gives each
+      side a touch of silver.
+
+      Every colour is far from every face (the nearest, the silver, is
+      60 ΔLab from Purple); the shell is darker than the Blue face by a
+      long way, so that face reads as clearly as it does on Midnight.
+    */
+    const P = sheetToCube(x, y);
+    const f = cubeFace(P);
+    const F = FACE_FRAMES[f];
+    let px = rgb('#1c2252');
+    const wisp = cubeFbm([P[0] + 11, P[1] + 4, P[2] + 23], [32, 16], [1, 0.5]);
+    px = mixRgb(px, rgb('#2c3a7a'), smoothstep(0.05, 0.5, wisp) * 0.7);
+    px = mixRgb(px, rgb('#4a3f7a'), smoothstep(0.1, 0.55, cubeFbm([P[0] + 40, P[1] + 31, P[2] + 7], [32, 16], [1, 0.5])) * 0.5);
+    px = mixRgb(px, rgb('#141838'), smoothstep(-0.1, -0.5, wisp) * 0.6);
+    // Stars: pinpricks, some brighter, hashed by their place in space so
+    // a star on an edge is the same star from both sides.
+    const h = cubeSpeck(P);
+    if (h > 0.992) px = mixRgb(px, rgb('#ffffff'), 0.95);
+    else if (h > 0.982) px = mixRgb(px, rgb('#c9d2e8'), 0.6);
+    // Twinkles: four-pointed, three to a side, some lying over an edge.
+    let tw = 0;
+    for (const { s, lx, ly } of MOON_TWINKLES.hits(P)) {
+      const reach = 3.5 + s.h * 3;
+      const arm = Math.min(Math.abs(lx), Math.abs(ly));
+      const len = Math.max(Math.abs(lx), Math.abs(ly));
+      tw = Math.max(tw, smoothstep(0.8, 0.15, arm) * smoothstep(reach, 0.5, len), smoothstep(1.7, 0.2, Math.hypot(lx, ly)));
+    }
+    px = mixRgb(px, rgb('#ffffff'), Math.min(1, tw));
+    // The big star on the far corner: arms along the three edges.
+    const ex = P[0] + 32;
+    const ey = P[1] + 32;
+    const ez = P[2] + 32;
+    const farArm = Math.min(Math.hypot(ey, ez), Math.hypot(ex, ez), Math.hypot(ex, ey));
+    const farLen = Math.max(ex, ey, ez);
+    const farStar = Math.max(
+      smoothstep(1.3, 0.2, farArm) * smoothstep(15, 1, farLen),
+      smoothstep(10, 0, Math.hypot(ex, ey, ez)) * 0.85,
+    );
+    px = mixRgb(px, rgb('#9aa6c8'), smoothstep(18, 2, Math.hypot(ex, ey, ez)) * 0.5);
+    px = mixRgb(px, rgb('#ffffff'), farStar);
+    // The moon: disc A on the corner with disc B bitten out of it.
+    const R = 26;
+    const dA = Math.hypot(P[0] - 32, P[1] - 32, P[2] - 32);
+    const dB = Math.hypot(P[0] - 32 - SEAM_E1[0] * 16, P[1] - 32 - SEAM_E1[1] * 16, P[2] - 32 - SEAM_E1[2] * 16);
+    const inA = smoothstep(R + 0.8, R - 0.6, dA);
+    const outB = smoothstep(R - 1.6, R - 0.2, dB);
+    const crescent = inA * outB;
+    // Moonglow round it, fainter in the bite.
+    px = mixRgb(px, rgb('#8c8aa8'), smoothstep(R + 18, R + 1, dA) * (0.35 + 0.65 * outB) * 0.6);
+    // The lit face: silver-white, with grey seas and a shaded limb toward the dark.
+    let face = rgb('#f6f3e6');
+    const sea = cubeNoise([P[0] + 3, P[1] + 8, P[2] + 5], 7);
+    face = mixRgb(face, rgb('#b3bfd6'), smoothstep(0.55, 0.75, sea) * 0.7);
+    face = mixRgb(face, rgb('#9aa6c8'), smoothstep(R + 3, R - 5, dB) * 0.55);
+    px = mixRgb(px, face, crescent);
+    // A ring of moonlight round each sticker.
+    const d = Math.hypot(dot3(P, F.u), dot3(P, F.v));
+    px = mixRgb(px, rgb('#c9d2e8'), Math.exp(-Math.abs(d - 24.5) / 1.4) * 0.4);
     return px;
   },
   slate: (x, y) => {

@@ -74,7 +74,11 @@ export type PropKind =
   | 'duel'          // two little figures mid-fight, blades crossed
   | 'crate'         // stacked boxes, for a camp or a dock
   | 'signpost'      // post with a crossed board
-  | 'campfire';     // ring of stones with a flame
+  | 'campfire'      // ring of stones with a flame
+  // Season 2 of the pass (21 Oct 2026): the Sun Temple's obelisks and
+  // the Moon Garden's stone lanterns.
+  | 'obelisk'       // a tall sandstone needle with a gold tip
+  | 'stoneLantern'; // a stone garden lantern, its window lit
 
 export interface PropPlacement {
   kind: PropKind;
@@ -132,7 +136,9 @@ export type ArenaStructure =
   | 'coralRim'     // reef: branching coral heads, anemones
   | 'parapet'      // city: concrete parapet, railing, aerial masts
   | 'blocks'       // toybox: alternating wooden bricks, block towers
-  | 'fernRock';    // dino: mossy boulders and ferns, fossil ribs at the corners
+  | 'fernRock'     // dino: mossy boulders and ferns, fossil ribs at the corners
+  | 'sunstone'     // sun temple: courses of cut sandstone, sun medallions and braziers along them
+  | 'lanternWall'; // moon garden: a low wall of dark stone, paper lanterns on posts, bamboo
 
 export interface ArenaTheme {
   /** What the walls and corners are made of. */
@@ -184,7 +190,8 @@ export type ThemedArenaId =
   | 'candy' | 'glade' | 'autumn' | 'cove'
   | 'farm' | 'aurora' | 'reef' | 'cavern'
   | 'city' | 'sky' | 'moon' | 'toybox'
-  | 'dino';
+  | 'dino'
+  | 'suntemple' | 'moongarden';
 
 /** Shared daylight, matching the rig the originals use. */
 const DAY: ArenaLighting | null = null;
@@ -1251,6 +1258,109 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     ),
     lighting: DAY,
   },
+
+  /* ── SEASON 2 OF THE PASS: SUN & MOON ──────────────────────────── */
+
+  suntemple: {
+    /*
+      Sun Temple, season 2 of the pass (21 Oct 2026). David, on the pass
+      rotating monthly: "Make 2 new dice and 2 new arenas every month
+      normally going on with a theme like how this one is fire and ice."
+      A temple clearing at golden hour: sandstone paving with a great
+      sun carved into the middle of it, walls of cut sandstone with sun
+      medallions and braziers along them, a stepped shrine at each far
+      corner, obelisks and palms round about, a well of sunlit water,
+      and a procession of priests carrying the sun round the temple
+      while ibises circle overhead (templeLife.tsx).
+
+      Few props on the strips beside the walls: that is where the
+      procession walks. The ones there stand against the wall, at
+      x ±2.95, inside its path.
+    */
+    structure: 'sunstone',
+    /*
+      The ground is red earth with dry olive scrub (mountain is the
+      scrub's colour); the paving is paler than it and the walls darker,
+      so the tray reads as a tray. The first render had floor, walls and
+      ground in one beige, and the board vanished into it.
+    */
+    meadow: '#b9803f', hill: '#9a6530', mountain: '#7f8a3c', cloud: null,
+    floor: { a: '#e6c88e', b: '#cfa868' },
+    wall: { color: '#a8743c', cap: '#e6c98a' },
+    tower: { body: '#e8d0a0', roof: '#f0b240' },
+    jail: { platform: '#b8894a', bars: '#6b4a2a' },
+    retreat: { padA: '#efdcb0', padB: '#dcc08a', post: '#8a5a34', canopy: '#f0b240', pool: '#5fb8c8' },
+    sky: { sun: { color: '#fff0b0', size: 2 }, stars: false, body: null },
+    props: [
+      { kind: 'palm', x: -2.95, z: -4.6, scale: 0.62 },
+      { kind: 'torch', x: -2.95, z: -2.1, scale: 0.9, color: '#ffb347' },
+      { kind: 'rock', x: -2.95, z: 0.4, scale: 0.6, color: '#c8a264' },
+      { kind: 'palm', x: -2.95, z: 2.8, scale: 0.58 },
+      { kind: 'palm', x: 2.95, z: -4.6, scale: 0.6 },
+      { kind: 'torch', x: 2.95, z: -2.1, scale: 0.9, color: '#ffb347' },
+      { kind: 'pebbles', x: 2.95, z: 0.4, scale: 0.9, color: '#c8a264' },
+      { kind: 'palm', x: 2.95, z: 2.8, scale: 0.56 },
+      { kind: 'obelisk', x: -2.5, z: -8.8, scale: 0.9 },
+      { kind: 'flowers', x: 0.1, z: -9.0, scale: 1.0, color: '#f0b240' },
+      { kind: 'obelisk', x: 2.5, z: -8.8, scale: 0.9 },
+      { kind: 'palm', x: -3.95, z: -9.15, scale: 0.7 },
+      { kind: 'banner', x: 3.95, z: -9.15, scale: 0.8, color: '#f0b240' },
+    ],
+    look: look(
+      { kind: 'sunAltar', color: '#d9b878', roughness: 0.85, metalness: 0 },
+      { kind: 'sunWell', depths: '#3a2a10', surface: '#d4a85a', surfaceOpacity: 0.9, surfaceRoughness: 0.6,
+        edge: '#fff0b0', border: { kind: 'stone', color: '#c8a264' } },
+      'sun well', 'sun altar', 'Splash! A die fell down the sun well!',
+    ),
+    // Golden hour: a low warm sun off to one side, cool skylight filling.
+    lighting: {
+      hemisphere: { sky: '#ffd9a0', ground: '#7a5a3a', intensity: 0.95 },
+      key: { position: [6, 8, 5], intensity: 2.3, color: '#ffd27a' },
+      fill: { position: [-6, 8, -4], intensity: 0.6, color: '#9fb8e0' },
+    },
+  },
+
+  moongarden: {
+    /*
+      Moon Garden, season 2 of the pass: a garden at night under a big
+      moon. Raked gravel with stepping stones and fallen petals for the
+      board, a low wall of dark stone with paper lanterns on posts along
+      it and a stone lantern at each far corner, a torii gate over the
+      jail, a still pond holding the moon, moonflowers glowing in the
+      moss outside, fireflies, and moths drifting round the lanterns
+      (gardenLife.tsx). Lit, not dark: moonlight is blue, not black.
+    */
+    structure: 'lanternWall',
+    meadow: '#36465e', hill: '#2c3a50', mountain: '#56688a', cloud: null,
+    floor: { a: '#8a93a8', b: '#6c758c' },
+    wall: { color: '#555e72', cap: '#9aa3b8' },
+    tower: { body: '#4a4f5e', roof: '#ffd9a0' },
+    jail: { platform: '#5a6274', bars: '#2e2a3a' },
+    retreat: { padA: '#c9d0de', padB: '#aab2c4', post: '#4a3f3a', canopy: '#ffe2a8', pool: '#3f6f9a' },
+    sky: { sun: null, stars: true, body: { kind: 'moon', color: '#f4f0e0' } },
+    props: [
+      { kind: 'stoneLantern', x: -3.05, z: -4.6, scale: 0.9 },
+      { kind: 'bush', x: -3.05, z: -2.1, scale: 0.8, color: '#2e4a3a' },
+      { kind: 'flowers', x: -3.05, z: 0.4, scale: 1.0, color: '#f4f4ff' },
+      { kind: 'pine', x: -3.05, z: 2.8, scale: 0.55, color: '#2f5a3e' },
+      { kind: 'pine', x: 3.05, z: -4.6, scale: 0.52, color: '#2f5a3e' },
+      { kind: 'flowers', x: 3.05, z: -2.1, scale: 1.0, color: '#f4f4ff' },
+      { kind: 'stoneLantern', x: 3.05, z: 0.4, scale: 0.9 },
+      { kind: 'rock', x: 3.05, z: 2.8, scale: 0.6, color: '#6c758c' },
+      { kind: 'pine', x: -2.5, z: -8.8, scale: 0.5, color: '#2f5a3e' },
+      { kind: 'stoneLantern', x: 0.1, z: -9.0, scale: 0.95 },
+      { kind: 'pine', x: 2.5, z: -8.8, scale: 0.46, color: '#2f5a3e' },
+      { kind: 'rock', x: -3.95, z: -9.15, scale: 0.7, color: '#56688a' },
+      { kind: 'bush', x: 3.95, z: -9.15, scale: 0.8, color: '#2e4a3a' },
+    ],
+    look: look(
+      { kind: 'moonLantern', color: '#4f6a4a', roughness: 0.95, metalness: 0 },
+      { kind: 'moonPond', water: true, depths: '#0c1428', surface: '#3f6f9a', surfaceOpacity: 0.9, surfaceRoughness: 0.08,
+        edge: '#dfe8ff', border: { kind: 'stone', color: '#6c758c' } },
+      'moon pond', 'stone lantern', 'Splash! A die fell in the moon pond!',
+    ),
+    lighting: night('#4a5a90', '#1e2240', '#dfe8ff'),
+  },
 };
 
 /**
@@ -1312,4 +1422,8 @@ export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   toybox: { name: 'Toy Room', short: 'Toys', skyColor: '#f2e2c4', price: 3350 },
   // Bought with real money only: $2.99, the `dino_valley` product.
   dino: { name: 'Dino Valley', short: 'Dino', skyColor: '#cfe8c0', paid: true },
+
+  // Season 2 of the pass, Sun & Moon (21 Oct 2026): won on the pass only.
+  suntemple: { name: 'Sun Temple', short: 'Temple', skyColor: '#ffd9a0', pass: true },
+  moongarden: { name: 'Moon Garden', short: 'Garden', skyColor: '#1c2252', pass: true },
 };

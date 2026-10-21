@@ -1,4 +1,6 @@
 import type { AiDifficultyId } from './ai';
+import { monthsBetween, monthStamp, monthStartUtc, nextMonth } from './easternTime';
+import { GOLD_PASS_ID } from './products';
 import type { PrizeItem, TournamentPrize } from './tournament';
 
 /**
@@ -24,11 +26,90 @@ import type { PrizeItem, TournamentPrize } from './tournament';
  * "already own it" means.
  */
 
-export const SEASON = {
-  id: 'season-1',
-  number: 1,
-  name: 'Fire & Ice',
-} as const;
+/**
+ * A season: a month, a theme, and the four things only its pass gives.
+ *
+ * ONE A MONTH since 21 Oct 2026. David: "I want the gold pass to rotate
+ * on the first of every month according to EST", and "Make 2 new dice
+ * and 2 new arenas every month normally going on with a theme like how
+ * this one is fire and ice." The season turns at midnight on the first,
+ * New York time (easternTime.ts), on every phone alike; experience and
+ * the levels paid start again from nothing, and the old season's items
+ * stay in the cupboard of whoever earned them.
+ *
+ * EVERY MONTH NEEDS ITS SEASON BUILT AND SHIPPED BEFORE THE FIRST: two
+ * new dice, two new battlefields, a name. A month with no season here
+ * falls back to the latest one's items under the new month's number,
+ * so nothing breaks — but a player who finished the last season would
+ * only be paid coins for items they already own, which is a poor month.
+ * tests/seasonRotation.test.ts fails from the 20th of a month whose
+ * successor is missing, so this cannot slip quietly.
+ */
+export interface SeasonDef {
+  number: number;
+  id: string;
+  name: string;
+  /** The New York month it runs, YYYY-MM. */
+  month: string;
+  items: readonly { level: number; item: PrizeItem; track: Track }[];
+}
+
+export const SEASONS: readonly SeasonDef[] = [
+  {
+    number: 1,
+    id: 'season-1',
+    name: 'Fire & Ice',
+    month: '2026-10',
+    /*
+      Three of the four on the Gold row, as David asked: "most of the
+      good rewards only in the paid version". The Ice Dice stay on the
+      free row so that somebody who never pays still has something
+      special to climb towards, and it sits two-thirds of the way up so
+      it is earned. The same shape every season.
+    */
+    items: [
+      { level: 6, item: { kind: 'arena', id: 'snow' }, track: 'gold' },
+      { level: 12, item: { kind: 'dice', id: 'fire' }, track: 'gold' },
+      { level: 20, item: { kind: 'dice', id: 'ice' }, track: 'free' },
+      { level: 30, item: { kind: 'arena', id: 'volcano' }, track: 'gold' },
+    ],
+  },
+  {
+    number: 2,
+    id: 'season-2',
+    name: 'Sun & Moon',
+    month: '2026-11',
+    items: [
+      { level: 6, item: { kind: 'arena', id: 'suntemple' }, track: 'gold' },
+      { level: 12, item: { kind: 'dice', id: 'sun' }, track: 'gold' },
+      { level: 20, item: { kind: 'dice', id: 'moon' }, track: 'free' },
+      { level: 30, item: { kind: 'arena', id: 'moongarden' }, track: 'gold' },
+    ],
+  },
+];
+
+/** The season running at an instant. See SEASONS for the fallback. */
+export function seasonAt(now: number = Date.now()): SeasonDef {
+  const month = monthStamp(now);
+  const exact = SEASONS.find((s) => s.month === month);
+  if (exact) return exact;
+  // Before the first season: the first. After the last built: the last,
+  // renumbered for the month it is standing in for.
+  if (month < SEASONS[0].month) return SEASONS[0];
+  const last = SEASONS[SEASONS.length - 1];
+  const number = SEASONS[0].number + monthsBetween(SEASONS[0].month, month);
+  return { ...last, number, id: `season-${number}`, name: `Season ${number}`, month };
+}
+
+/** The instant the season running at `now` ends: midnight on the 1st, New York time. */
+export function seasonEndsAt(now: number = Date.now()): number {
+  return monthStartUtc(nextMonth(monthStamp(now)));
+}
+
+/** Whole days until the season turns, at least 1 on its last day. */
+export function seasonDaysLeft(now: number = Date.now()): number {
+  return Math.max(1, Math.ceil((seasonEndsAt(now) - now) / 86_400_000));
+}
 
 /** How many levels there are. */
 export const LEVELS = 30;
@@ -102,44 +183,64 @@ export type Track = 'free' | 'gold';
  * everybody climbs the free row, and a Gold Pass holder is paid BOTH
  * rows at every level.
  *
- * One product per season, because a pass is bought for a season and a
- * product id is forever (see products.ts): season 2 will be
- * `season_pass_2`, and buying season 1's never unlocks season 2's.
+ * ONE PRODUCT, BOUGHT EACH MONTH, since 21 Oct 2026 (David chose it
+ * over a product per season, which would have needed a new one created
+ * in App Store Connect every month). `gold_pass` is a non-renewing
+ * subscription in App Store Connect; the New York month it is bought in
+ * is the season it unlocks — purchases.ts keeps the months, and Restore
+ * brings them back on a new phone from the purchase dates. Season 1's
+ * own product, `season_pass_1`, is still honoured for October 2026.
  */
 export const GOLD_PASS = {
-  productId: `season_pass_${SEASON.number}`,
-  /*
-    Owning the pass IS the entitlement: purchases.ts remembers every
-    one-off product by its own id. The product grants nothing else, so
-    the fairness test in tests/purchases.test.ts has nothing new to
-    trust — the Gold row only ever pays coins and cosmetics.
-  */
-  entitlement: `season_pass_${SEASON.number}`,
+  productId: GOLD_PASS_ID,
 } as const;
 
-/**
- * The four things the pass is the ONLY way to get.
- *
- * Three of the four are on the Gold row, as David asked: "most of the
- * good rewards only in the paid version". The Ice Dice stay on the free
- * row so that somebody who never pays still has something special to
- * climb towards, and it sits two-thirds of the way up so it is earned.
- */
-export const SEASON_ITEMS: readonly { level: number; item: PrizeItem; track: Track }[] = [
-  { level: 6, item: { kind: 'arena', id: 'snow' }, track: 'gold' },
-  { level: 12, item: { kind: 'dice', id: 'fire' }, track: 'gold' },
-  { level: 20, item: { kind: 'dice', id: 'ice' }, track: 'free' },
-  { level: 30, item: { kind: 'arena', id: 'volcano' }, track: 'gold' },
-];
-
-/** Which row a season item is on, or null if it is not on the pass. */
-export function seasonTrackOf(kind: 'dice' | 'arena', id: string): Track | null {
-  return SEASON_ITEMS.find((s) => s.item.kind === kind && s.item.id === id)?.track ?? null;
+/** Where an item sits on a pass: which season's, which row, which level. */
+export interface PassPlace {
+  level: number;
+  track: Track;
+  season: SeasonDef;
+  /** Whether that season is the one running now. */
+  current: boolean;
 }
 
-/** The level a season item is won at, or null if it is not on the pass. */
+/** An item's place on the pass, in whichever season, or null if it is on none. */
+export function passInfo(kind: 'dice' | 'arena', id: string, now: number = Date.now()): PassPlace | null {
+  for (const season of SEASONS) {
+    const hit = season.items.find((s) => s.item.kind === kind && s.item.id === id);
+    if (hit) return { level: hit.level, track: hit.track, season, current: season.id === seasonAt(now).id };
+  }
+  return null;
+}
+
+/** Which row a season item is on, in its season, or null if it is on no pass. */
+export function seasonTrackOf(kind: 'dice' | 'arena', id: string): Track | null {
+  return passInfo(kind, id)?.track ?? null;
+}
+
+/**
+ * Where a pass item sits in a list of pass items: season by season, and
+ * level by level within one, so the Inventory reads as the seasons ran.
+ */
+export function passOrder(kind: 'dice' | 'arena', id: string): number {
+  const place = passInfo(kind, id);
+  return place ? place.season.number * 100 + place.level : 0;
+}
+
+/** The level a season item is won at, in its season, or null if it is on no pass. */
 export function seasonLevelOf(kind: 'dice' | 'arena', id: string): number | null {
-  return SEASON_ITEMS.find((s) => s.item.kind === kind && s.item.id === id)?.level ?? null;
+  return passInfo(kind, id)?.level ?? null;
+}
+
+/**
+ * The words on a locked pass item's card: "Gold Pass level 12" while its
+ * season runs, "Season 1 pass" once it is over.
+ */
+export function passTag(kind: 'dice' | 'arena', id: string, now: number = Date.now()): string | null {
+  const place = passInfo(kind, id, now);
+  if (!place) return null;
+  if (!place.current) return `Season ${place.season.number} pass`;
+  return `${place.track === 'gold' ? 'Gold Pass' : 'Pass'} level ${place.level}`;
 }
 
 /**
@@ -168,8 +269,8 @@ export interface SeasonReward {
  * 30). A level with an item pays the item and nothing else — the item is
  * the reward.
  */
-export function rewardFor(level: number): SeasonReward {
-  const special = SEASON_ITEMS.find((s) => s.level === level && s.track === 'free');
+export function rewardFor(level: number, season: SeasonDef = seasonAt()): SeasonReward {
+  const special = season.items.find((s) => s.level === level && s.track === 'free');
   if (special) return { coins: 0, trophies: 0, item: special.item };
   if (level % 2 === 1) return { coins: 20 + 5 * (level - 1), trophies: 0 };
   return { coins: 0, trophies: 3 + level / 2 };
@@ -187,8 +288,8 @@ export function rewardFor(level: number): SeasonReward {
  * About 2,500 coins over the whole season plus three things nobody else
  * can get — a tunable first guess, to be settled with the family.
  */
-export function goldRewardFor(level: number): SeasonReward {
-  const special = SEASON_ITEMS.find((s) => s.level === level && s.track === 'gold');
+export function goldRewardFor(level: number, season: SeasonDef = seasonAt()): SeasonReward {
+  const special = season.items.find((s) => s.level === level && s.track === 'gold');
   if (special) return { coins: 0, trophies: 0, item: special.item };
   return { coins: 20 + 5 * (level - 1), trophies: 0 };
 }
@@ -215,8 +316,8 @@ export interface SeasonState {
   goldPaid?: number;
 }
 
-export function freshSeason(): SeasonState {
-  return { season: SEASON.id, xp: 0, paid: 0, goldPaid: 0 };
+export function freshSeason(now: number = Date.now()): SeasonState {
+  return { season: seasonAt(now).id, xp: 0, paid: 0, goldPaid: 0 };
 }
 
 /**
@@ -230,8 +331,9 @@ export function freshSeason(): SeasonState {
 export function addXp(
   state: SeasonState | undefined,
   xp: number,
+  now: number = Date.now(),
 ): { state: SeasonState; reached: number[] } {
-  const base = state && state.season === SEASON.id ? state : freshSeason();
+  const base = state && state.season === seasonAt(now).id ? state : freshSeason(now);
   const add = Number.isFinite(xp) ? Math.max(0, Math.floor(xp)) : 0;
   const next = { ...base, xp: base.xp + add };
   const level = levelFor(next.xp);
@@ -250,8 +352,11 @@ export function addXp(
  * levels still to come — and `goldPaid` makes sure no Gold level is ever
  * paid twice, the same promise `paid` makes for the free row.
  */
-export function claimGold(state: SeasonState | undefined): { state: SeasonState; reached: number[] } {
-  const base = state && state.season === SEASON.id ? state : freshSeason();
+export function claimGold(
+  state: SeasonState | undefined,
+  now: number = Date.now(),
+): { state: SeasonState; reached: number[] } {
+  const base = state && state.season === seasonAt(now).id ? state : freshSeason(now);
   const level = levelFor(base.xp);
   const already = base.goldPaid ?? 0;
   const reached: number[] = [];

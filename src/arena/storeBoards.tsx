@@ -723,7 +723,7 @@ const FIREFLY_FRAGMENT = `
   }
 `;
 
-function Fireflies() {
+function Fireflies({ colors = SPORE }: { colors?: readonly string[] } = {}) {
   const { items, phases } = useMemo(() => {
     const items: Inst[] = [];
     const ph: number[] = [];
@@ -750,14 +750,14 @@ function Fireflies() {
         fragmentShader: FIREFLY_FRAGMENT,
         uniforms: {
           uTime: { value: 0 },
-          uA: { value: new THREE.Color(SPORE[0]) },
-          uB: { value: new THREE.Color(SPORE[1]) },
+          uA: { value: new THREE.Color(colors[0]) },
+          uB: { value: new THREE.Color(colors[1]) },
         },
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       }),
-    [],
+    [colors],
   );
   useLive(material);
   return (
@@ -1736,6 +1736,290 @@ function DinoCorner({ theme }: { theme: ArenaTheme }) {
   );
 }
 
+/* ── Sun Temple ───────────────────────────────────────────────────── */
+
+const SANDSTONE = ['#c99a55', '#b8864a', '#d4a962', '#a8743c'];
+
+/**
+ * The Sun Temple's wall, season 2 of the pass (21 Oct 2026): two
+ * courses of cut sandstone laid in running bond along the wall top, a
+ * gold sun medallion lying on the top course every so often, and a
+ * brazier burning between them. Blocks, medallions, rays, bowls, flames
+ * and halos are one instanced draw each.
+ */
+function TempleWall() {
+  const { blocks, medals, rays, bowls, flames, halos } = useMemo(() => {
+    const blocks: Inst[] = [];
+    const medals: Inst[] = [];
+    const rays: Inst[] = [];
+    const bowls: Inst[] = [];
+    const flames: Inst[] = [];
+    const halos: Inst[] = [];
+    for (const run of RUNS) {
+      for (const s of spots(run, 0.36, 0.02)) {
+        blocks.push({
+          p: [s.x, wallHeight + 0.09, s.z],
+          r: [0, run.yaw, 0],
+          s: [0.34, 0.18, 0.46],
+          c: SANDSTONE[Math.floor(h1(s.seed) * SANDSTONE.length)],
+        });
+        if (s.k % 2 === 0) {
+          blocks.push({
+            p: [s.x + run.tx * 0.18, wallHeight + 0.27, s.z + run.tz * 0.18],
+            r: [0, run.yaw, 0],
+            s: [0.34, 0.18, 0.34],
+            c: SANDSTONE[Math.floor(h1(s.seed + 5) * SANDSTONE.length)],
+          });
+        }
+      }
+      for (const s of spots(run, 1.15, 0.45)) {
+        if (s.k % 2 === 0) {
+          medals.push({ p: [s.x, wallHeight + 0.38, s.z], s: [0.15, 0.03, 0.15], c: '#f0b240' });
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2 + run.yaw;
+            rays.push({
+              p: [s.x + Math.cos(a) * 0.19, wallHeight + 0.38, s.z + Math.sin(a) * 0.19],
+              r: [0, -a, -Math.PI / 2],
+              s: [0.045, 0.09, 0.03],
+              c: '#f0b240',
+            });
+          }
+        } else {
+          bowls.push({ p: [s.x, wallHeight + 0.42, s.z], s: [0.1, 0.1, 0.1], c: '#4a3823' });
+          flames.push({ p: [s.x, wallHeight + 0.56, s.z], s: [0.075, 0.13, 0.075], c: '#ffb347' });
+          halos.push({ p: [s.x, wallHeight + 0.5, s.z], r: [-Math.PI / 2, 0, 0], s: 0.6, c: '#ff9a2a' });
+        }
+      }
+    }
+    return { blocks, medals, rays, bowls, flames, halos };
+  }, []);
+  const glow = glowTexture();
+  return (
+    <group>
+      <Instanced items={blocks}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </Instanced>
+      <Instanced items={medals}>
+        <cylinderGeometry args={[1, 1, 1, 18]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.5} />
+      </Instanced>
+      <Instanced items={rays}>
+        <coneGeometry args={[1, 1, 4]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.5} />
+      </Instanced>
+      <Instanced items={bowls}>
+        <cylinderGeometry args={[1, 0.6, 1, 8]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.8} />
+      </Instanced>
+      {/* Unlit, so a flame is a light under any rig. */}
+      <Instanced items={flames}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshBasicMaterial color="#ffffff" />
+      </Instanced>
+      <Instanced items={halos} renderOrder={2}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color="#ffffff" map={glow} transparent opacity={0.45} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </Instanced>
+    </group>
+  );
+}
+
+/** A corner of the Sun Temple: a stepped shrine with a gold sun on top. */
+function TempleCorner({ theme }: { theme: ArenaTheme }) {
+  const gold = theme.tower.roof;
+  return (
+    <group>
+      {([
+        [0.9, 0.26],
+        [0.62, 0.24],
+        [0.36, 0.22],
+      ] as const).map(([w, h], k) => (
+        <mesh key={k} position={[0, wallHeight + 0.02 + k * 0.25 + h / 2, 0]}>
+          <boxGeometry args={[w, h, w]} />
+          <meshStandardMaterial color={k % 2 ? '#e8d0a0' : '#d9b878'} roughness={0.9} />
+        </mesh>
+      ))}
+      <mesh position={[0, wallHeight + 1.0, 0]}>
+        <cylinderGeometry args={[0.24, 0.24, 0.05, 20]} />
+        <meshStandardMaterial color={gold} roughness={0.35} metalness={0.5} />
+      </mesh>
+      <mesh position={[0, wallHeight + 1.01, 0]}>
+        <cylinderGeometry args={[0.11, 0.11, 0.07, 16]} />
+        <meshBasicMaterial color="#fff0b0" />
+      </mesh>
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((k) => {
+        const a = (k * Math.PI) / 4;
+        return (
+          <mesh key={k} position={[Math.cos(a) * 0.33, wallHeight + 1.0, Math.sin(a) * 0.33]} rotation={[0, -a, -Math.PI / 2]}>
+            <coneGeometry args={[0.05, 0.16, 4]} />
+            <meshStandardMaterial color={gold} roughness={0.35} metalness={0.5} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/* ── Moon Garden ──────────────────────────────────────────────────── */
+
+const DARK_STONE = ['#555e72', '#4a5266', '#616a7e', '#3f4658'];
+
+/**
+ * The Moon Garden's wall, season 2 of the pass: a low wall of dark
+ * stone slabs with moss on it, a paper lantern on a post every few
+ * steps, bamboo leaning out over the edge, and moonflowers open along
+ * the top. The lanterns are unlit material with a halo, so they are
+ * lights under the night rig.
+ */
+function LanternWall() {
+  const { slabs, moss, posts, lanterns, caps, halos, stalks, flowers } = useMemo(() => {
+    const slabs: Inst[] = [];
+    const moss: Inst[] = [];
+    const posts: Inst[] = [];
+    const lanterns: Inst[] = [];
+    const caps: Inst[] = [];
+    const halos: Inst[] = [];
+    const stalks: Inst[] = [];
+    const flowers: Inst[] = [];
+    for (const run of RUNS) {
+      for (const s of spots(run, 0.3, 0.02)) {
+        slabs.push({
+          p: [s.x, wallHeight + 0.07, s.z],
+          r: [0, run.yaw, 0],
+          s: [0.28, 0.14, 0.46],
+          c: DARK_STONE[Math.floor(h1(s.seed) * DARK_STONE.length)],
+        });
+        if (s.k % 2) {
+          slabs.push({
+            p: [s.x + run.tx * 0.15, wallHeight + 0.2, s.z + run.tz * 0.15],
+            r: [0, run.yaw, 0],
+            s: [0.28, 0.12, 0.38],
+            c: DARK_STONE[Math.floor(h1(s.seed + 1) * DARK_STONE.length)],
+          });
+        }
+        if (h1(s.seed + 3) < 0.4) {
+          const off = (h1(s.seed + 4) - 0.5) * 0.2;
+          moss.push({
+            p: [s.x + run.nx * off, wallHeight + 0.27, s.z + run.nz * off],
+            s: [0.09, 0.03, 0.08],
+            c: h1(s.seed + 5) > 0.5 ? '#3f6a4a' : '#4f7a55',
+          });
+        }
+      }
+      for (const s of spots(run, 1.3, 0.5)) {
+        posts.push({ p: [s.x, wallHeight + 0.5, s.z], s: [0.03, 0.5, 0.03], c: '#3a2f2a' });
+        lanterns.push({ p: [s.x, wallHeight + 0.82, s.z], s: [0.1, 0.2, 0.1], c: '#ffe9b0' });
+        // A small knob on top, not a full cap: from this camera a cap the
+        // width of the lantern hid the light and left a black dot.
+        caps.push({ p: [s.x, wallHeight + 0.94, s.z], s: [0.04, 0.03, 0.04], c: '#3a2f2a' });
+        caps.push({ p: [s.x, wallHeight + 0.71, s.z], s: [0.11, 0.02, 0.11], c: '#3a2f2a' });
+        halos.push({ p: [s.x, wallHeight + 0.86, s.z], r: [-Math.PI / 2, 0, 0], s: 0.8, c: '#ffd27a' });
+      }
+      for (const s of spots(run, 0.85, 0.2)) {
+        const lean = 0.3 + h1(s.seed) * 0.25;
+        const yaw = Math.atan2(run.nx, run.nz) + (h1(s.seed + 1) - 0.5) * 0.6;
+        stalks.push({
+          p: [s.x + run.nx * 0.2, wallHeight + 0.5, s.z + run.nz * 0.2],
+          r: [lean, yaw, 0],
+          s: [0.025, 1.0, 0.025],
+          c: h1(s.seed + 2) > 0.5 ? '#7f9a5a' : '#95ad66',
+        });
+      }
+      for (const s of spots(run, 0.5, 0.1)) {
+        if (h1(s.seed + 9) < 0.5) continue;
+        const off = (h1(s.seed + 7) - 0.5) * 0.3;
+        flowers.push({
+          p: [s.x + run.nx * off, wallHeight + 0.3, s.z + run.nz * off],
+          s: 0.035,
+          c: h1(s.seed + 8) > 0.3 ? '#f4f4ff' : '#ffe9b0',
+        });
+      }
+    }
+    return { slabs, moss, posts, lanterns, caps, halos, stalks, flowers };
+  }, []);
+  const glow = glowTexture();
+  return (
+    <group>
+      <Instanced items={slabs}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.95} />
+      </Instanced>
+      <Instanced items={moss}>
+        <sphereGeometry args={[1, 7, 5]} />
+        <meshStandardMaterial color="#ffffff" roughness={1} />
+      </Instanced>
+      <Instanced items={posts}>
+        <cylinderGeometry args={[1, 1, 1, 6]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </Instanced>
+      <Instanced items={lanterns}>
+        <cylinderGeometry args={[1, 1, 1, 10]} />
+        <meshBasicMaterial color="#ffffff" />
+      </Instanced>
+      <Instanced items={caps}>
+        <cylinderGeometry args={[1, 1, 1, 10]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.8} />
+      </Instanced>
+      <Instanced items={stalks}>
+        <cylinderGeometry args={[0.7, 1, 1, 5]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.8} />
+      </Instanced>
+      <Instanced items={flowers}>
+        <sphereGeometry args={[1, 7, 5]} />
+        <meshBasicMaterial color="#ffffff" />
+      </Instanced>
+      <Instanced items={halos} renderOrder={2}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color="#ffffff" map={glow} transparent opacity={0.5} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </Instanced>
+    </group>
+  );
+}
+
+/** A corner of the Moon Garden: a big stone lantern, lit, on the wall. */
+function GardenCorner({ theme }: { theme: ArenaTheme }) {
+  const glow = theme.tower.roof;
+  const stone = '#8a93a8';
+  return (
+    <group position={[0, wallHeight, 0]}>
+      <mesh position={[0, 0.12, 0]}>
+        <cylinderGeometry args={[0.3, 0.34, 0.24, 8]} />
+        <meshStandardMaterial color={stone} roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[0.1, 0.13, 0.55, 8]} />
+        <meshStandardMaterial color={stone} roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.95, 0]}>
+        <boxGeometry args={[0.42, 0.34, 0.42]} />
+        <meshStandardMaterial color="#6c758c" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.95, 0]}>
+        <boxGeometry args={[0.44, 0.22, 0.3]} />
+        <meshBasicMaterial color={glow} />
+      </mesh>
+      <mesh position={[0, 0.95, 0]}>
+        <boxGeometry args={[0.3, 0.22, 0.44]} />
+        <meshBasicMaterial color={glow} />
+      </mesh>
+      <mesh position={[0, 1.23, 0]}>
+        <coneGeometry args={[0.4, 0.22, 4]} />
+        <meshStandardMaterial color={stone} roughness={0.95} />
+      </mesh>
+      {/* A lit finial, so the lantern reads as lit from above, where the roof hides its window. */}
+      <mesh position={[0, 1.4, 0]}>
+        <sphereGeometry args={[0.08, 8, 6]} />
+        <meshBasicMaterial color={glow} />
+      </mesh>
+      <mesh position={[0, 0.96, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.4, 1.4]} />
+        <meshBasicMaterial color={glow} map={glowTexture()} transparent opacity={0.4} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+    </group>
+  );
+}
+
 /* ── what ThemedArena asks for ────────────────────────────────────── */
 
 /** The wall of a store board, or null for any other structure. */
@@ -1750,6 +2034,9 @@ export function StoreCrest({ theme }: { theme: ArenaTheme }) {
     case 'parapet': return <CityWall theme={theme} />;
     case 'blocks': return <ToyWall />;
     case 'fernRock': return <DinoWall />;
+    // Season 2 of the pass, Sun & Moon (21 Oct 2026).
+    case 'sunstone': return <TempleWall />;
+    case 'lanternWall': return <LanternWall />;
     default: return null;
   }
 }
@@ -1766,6 +2053,8 @@ export function StoreCorner({ theme }: { theme: ArenaTheme }) {
     case 'parapet': return <CityCorner />;
     case 'blocks': return <ToyCorner theme={theme} />;
     case 'fernRock': return <DinoCorner theme={theme} />;
+    case 'sunstone': return <TempleCorner theme={theme} />;
+    case 'lanternWall': return <GardenCorner theme={theme} />;
     default: return null;
   }
 }
@@ -1782,6 +2071,8 @@ export function StoreBackdrop({ theme }: { theme: ArenaTheme }) {
     case 'mossStone': return <Fireflies />;
     case 'shipHull': return <CoveBackdrop />;
     case 'coralRim': return <ReefBackdrop />;
+    // The Moon Garden's fireflies: silver and lantern-gold, not the glade's spores.
+    case 'lanternWall': return <Fireflies colors={['#dfe8ff', '#ffe9b0']} />;
     default: return null;
   }
 }

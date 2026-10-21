@@ -39,6 +39,8 @@ export const PIT_MODES = {
   toyBox: 13,
   // Dino Valley's tar pit, 20 Oct 2026.
   tar: 14,
+  // The Sun Temple's well, season 2 of the pass, 21 Oct 2026.
+  well: 15,
 } as const;
 
 export type PitMode = keyof typeof PIT_MODES;
@@ -239,6 +241,15 @@ const FRAGMENT = `
     vec3 col = uA * (0.9 + 0.1 * noise(vec2(u * 8.0, y * 30.0)));
     col *= 1.0 - 0.3 * step(0.93, fract(u * 2.0));
     return col * (1.0 - 0.45 * d);
+  #elif MODE == 15
+    // The well's shaft: courses of cut sandstone, lit warm from above,
+    // going dark toward the water.
+    float course = floor(y * 5.0);
+    vec3 col = uB * (0.8 + 0.3 * hash(vec2(course, floor(u * 2.2 + 0.5 * mod(course, 2.0)))));
+    col *= 1.0 - 0.45 * smoothstep(0.9, 1.0, fract(y * 5.0));
+    col *= 1.0 - 0.35 * smoothstep(0.93, 1.0, fract(u * 2.2 + 0.5 * mod(course, 2.0)));
+    col *= 0.85 + 0.15 * noise(vec2(u * 9.0, y * 12.0));
+    return col * (1.0 - 0.65 * d) + uC * 0.05 * (1.0 - d);
   #else
     // The lip round a liquid: the bank or the stone it sits in.
     return uB * (1.1 - 0.5 * d) * (0.8 + 0.4 * noise(vec2(u * 10.0, y * 40.0)));
@@ -318,6 +329,17 @@ const FRAGMENT = `
     float shape = h < 0.4 ? length(f) - 0.33 : h < 0.75 ? max(abs(f.x), abs(f.y)) - 0.3 : abs(f.x) + abs(f.y) - 0.38;
     vec3 col = mix(uB, paint * (0.75 + 0.45 * (0.5 - f.y)), smoothstep(0.02, -0.02, shape));
     return col;
+  #elif MODE == 15
+    // Sunlit water far down the well: slow ripples, and the sun's
+    // reflection lying on it, a gold disc with rays wavering round it.
+    float rip = sin(q.x * 7.0 + q.y * 3.0 + t * 1.2 + noise(q * 2.5 + t * 0.1) * 4.0) * 0.5 + 0.5;
+    vec3 col = mix(uA * 0.45, uA, 0.35 + 0.4 * rip);
+    float r = length(q);
+    float ang = atan(q.y, q.x);
+    float rays = smoothstep(0.2, 0.9, sin(ang * 8.0 + t * 0.4) * 0.5 + 0.5) * smoothstep(0.62, 0.22, r);
+    col = mix(col, uC, rays * 0.35);
+    col = mix(col, uC, smoothstep(0.27, 0.13, r + 0.03 * sin(ang * 5.0 + t * 2.0)));
+    return col;
   #else
     return liquid(q, t);
   #endif
@@ -373,6 +395,7 @@ const DEPTHS: Record<PitMode, number> = {
   cargo: 0.5,
   toyBox: 0.75,
   tar: 0.08,
+  well: 1.1,
 };
 
 /**

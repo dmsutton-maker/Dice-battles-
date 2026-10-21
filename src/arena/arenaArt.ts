@@ -65,4 +65,7 @@ export const ARENA_ART: Record<ArenaId, ImageSourcePropType> = {
   moon: require('../../assets/arenas/moon.png'),
   toybox: require('../../assets/arenas/toybox.png'),
   dino: require('../../assets/arenas/dino.png'),
+  // Season 2 of the pass, Sun & Moon (21 Oct 2026).
+  suntemple: require('../../assets/arenas/suntemple.png'),
+  moongarden: require('../../assets/arenas/moongarden.png'),
 };

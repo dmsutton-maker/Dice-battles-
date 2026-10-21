@@ -10,6 +10,8 @@ import { MoonAliens } from './moonLife';
 import { LavaRiver } from './volcanoLife';
 import { SnowLife } from './snowLife';
 import { DinoLife } from './dinoLife';
+import { TempleLife } from './templeLife';
+import { GardenLife } from './gardenLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1565,6 +1567,9 @@ export function BoardScenery({ theme }: { theme: ArenaTheme }) {
       {theme.structure === 'basalt' && <LavaRiver />}
       {theme.structure === 'snowFence' && <SnowLife />}
       {theme.structure === 'fernRock' && <DinoLife />}
+      {/* Season 2 of the pass (21 Oct 2026): the procession and the moths. */}
+      {theme.structure === 'sunstone' && <TempleLife />}
+      {theme.structure === 'lanternWall' && <GardenLife />}
     </group>
   );
 }

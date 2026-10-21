@@ -90,6 +90,19 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-149-0-season-2-sun-and-moon',
+    date: '21 October 2026',
+    version: 'v1.149.0',
+    title: 'Season 2: Sun & Moon',
+    icon: 'cups',
+    body:
+      'The season pass now changes on the 1st of every month. Season 2, ' +
+      'Sun & Moon, starts on 1 November: the Sun dice, the Moon dice, the ' +
+      'Sun Temple and the Moon Garden. Everything you earned in Fire & Ice ' +
+      'is yours to keep. The Gold Pass is bought for the month, so it is ' +
+      'on the shelf again every month.',
+  },
+  {
     id: 'v1-147-0-weekly-cups',
     date: '21 October 2026',
     version: 'v1.147.0',

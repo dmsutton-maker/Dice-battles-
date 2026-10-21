@@ -805,8 +805,196 @@ function dinoEarth(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tra
   return c;
 }
 
+/**
+ * The Sun Temple's floor (season 2 of the pass, 21 Oct 2026):
+ * flagstones of cut sandstone with a great sun carved into the middle
+ * of the board — a disc, a ring round it and twelve rays — cut into the
+ * stone so the key light rakes it. Outside the tray, dry ground: sand
+ * and scorched grass, pebbles, and marigold petals blown off the altar.
+ */
+function templeStone(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tray: boolean): Rgb {
+  if (!tray) {
+    const blob = fbm(x * 0.7, y * 0.7, SIZE);
+    let c = mix(p.a, p.b, smoothstep(0.3, 0.75, blob));
+    // Scorched grass in patches, blades at the scale of a finger.
+    const grass = noise(x * 1.3, y * 1.3 + blob * 2, SIZE);
+    c = mix(c, shade(mix(p.b, p.accent, 0.3), 0.95), smoothstep(0.5, 0.85, grass) * 0.4);
+    c = mix(c, lift(p.a, 0.2), smoothstep(0.4, 0.1, grass) * 0.25);
+    SIDE.h = 0.5 + (blob - 0.5) * 0.25;
+    // Pebbles and petals on a jittered lattice, lit on the side toward
+    // the light and in shade on the other.
+    const cell = 12;
+    const col = Math.floor(x / cell);
+    const row = Math.floor(y / cell);
+    const h = hash(col + 7, row + 3);
+    if (h > 0.55) {
+      const lx = x - col * cell - cell / 2 - (hash(col, row + 1) - 0.5) * 5;
+      const ly = y - row * cell - cell / 2 - (hash(col + 4, row) - 0.5) * 5;
+      const petal = h > 0.86;
+      const r = petal ? 1.6 : 1.3 + h * 1.5;
+      const d = Math.hypot(lx * (petal ? 1.4 : 1), ly);
+      if (d < r) {
+        const body: Rgb = petal ? (h > 0.93 ? [240, 178, 64] : [224, 122, 42]) : mix(p.accent, [255, 255, 255], 0.35);
+        const on = smoothstep(r, r - 0.6, d);
+        c = mix(c, body, on * 0.9);
+        const lit = (lx * LIGHT_X + ly * LIGHT_Y) / r;
+        c = mix(c, lift(body, 0.3), on * Math.max(0, -lit) * 0.5);
+        c = mix(c, shade(body, 0.7), on * Math.max(0, lit) * 0.4);
+        if (!petal) SIDE.h = 0.5 + smoothstep(r, r - 0.8, d) * 0.3;
+      }
+    }
+    return c;
+  }
+  // Flagstones of cut sandstone, each its own tone, grooves between.
+  const cell = 28;
+  const col = Math.floor(x / cell);
+  const row = Math.floor(y / cell);
+  const tone = hash(col + 3, row + 11);
+  let c = mix(p.a, p.b, 0.2 + tone * 0.55);
+  c = mix(c, lift(p.a, 0.2), smoothstep(0.55, 0.85, fbm(x * 0.9 + col * 3, y * 0.9 + row * 5, SIZE)) * 0.4);
+  const e = gridEdge(x, y, cell);
+  const groove = smoothstep(1.7, 0.4, e);
+  c = mix(c, shade(p.b, 0.7), groove * 0.7);
+  let h = 0.55 - groove * 0.3;
+  // The sun carved into the middle of the board.
+  const dx = x - TRAY_W / 2;
+  const dy = y - TRAY_H / 2;
+  const r = Math.hypot(dx, dy);
+  if (r < 40) {
+    const ang = Math.atan2(dy, dx);
+    // Where this point is within its twelfth of the circle: 0 at the
+    // middle of a ray, 1 halfway to the next.
+    const slice = Math.abs(((((ang * 12) / (Math.PI * 2)) % 1) + 1) % 1 - 0.5) * 2;
+    // A ray narrows from the ring out to its tip.
+    const width = 0.55 * (1 - smoothstep(18, 36, r));
+    const ray = smoothstep(width + 0.08, width - 0.06, slice) * smoothstep(17.5, 19, r) * smoothstep(37, 35, r);
+    const disc = smoothstep(13.5, 12.5, r);
+    const ring = smoothstep(1.4, 0.4, Math.abs(r - 15.5));
+    const carved = Math.max(ray, ring, smoothstep(12.5, 13.5, r) * smoothstep(14.5, 13.5, r));
+    // Carved stone: deeper and darker in the cuts, the disc gilded.
+    c = mix(c, mix(shade(c, 0.62), p.accent, 0.2), carved * 0.9);
+    c = mix(c, mix(p.accent, [240, 178, 64], 0.5), disc * 0.75);
+    h -= carved * 0.3;
+    h += disc * 0.08;
+    // The lit edge of every cut, so it reads as relief even unlit.
+    const toward = (dx * LIGHT_X + dy * LIGHT_Y) / Math.max(1, r);
+    c = mix(c, lift(c, 0.25), carved * Math.max(0, -toward) * 0.5);
+  }
+  SIDE.h = h;
+  return c;
+}
+
+/** The Moon Garden's stepping stones, wandering up the board: x, y in painter units, and radius. */
+const STEPPING_STONES: readonly (readonly [number, number, number])[] = [
+  [44, 24, 8], [62, 46, 7], [48, 70, 8.5], [66, 94, 7], [52, 118, 8], [68, 142, 7.5], [50, 166, 8], [64, 186, 6.5],
+];
+
+/**
+ * The Moon Garden's floor: raked gravel, the rake lines running up the
+ * board and circling the stepping stones that wander across it, with
+ * cherry petals fallen on the gravel. Outside the tray, moss at night
+ * with moonflowers open in it — five pale petals round a gold heart —
+ * glowing (the glow map), so the garden is lit by its own flowers under
+ * the night rig.
+ */
+function moonGarden(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tray: boolean): Rgb {
+  if (!tray) {
+    const blob = fbm(x * 0.6, y * 0.6, SIZE);
+    let c = mix(p.a, p.b, smoothstep(0.3, 0.75, blob));
+    c = mix(c, shade(p.b, 0.75), smoothstep(0.35, 0.05, blob) * 0.6);
+    const fibre = noise(x * 1.2, y * 1.2 + blob * 2, SIZE);
+    c = mix(c, shade(c, 0.85), smoothstep(0.5, 0.85, fibre) * 0.45);
+    c = mix(c, lift(c, 0.12), smoothstep(0.4, 0.1, fibre) * 0.3);
+    SIDE.h = 0.5 + (blob - 0.5) * 0.3;
+    const cell = 16;
+    const col = Math.floor(x / cell);
+    const row = Math.floor(y / cell);
+    const h = hash(col + 17, row + 5);
+    // A flower in about a third of the cells, smaller and softer than
+    // the first try, which read as snow from the game's camera.
+    if (h > 0.76) {
+      const cx = col * cell + cell / 2 + (hash(col + 2, row + 9) - 0.5) * 8;
+      const cy = row * cell + cell / 2 + (hash(col + 6, row + 3) - 0.5) * 8;
+      const dx = x - cx;
+      const dy = y - cy;
+      const d = Math.hypot(dx, dy);
+      const a = Math.atan2(dy, dx);
+      const petal = 1.6 + 0.8 * Math.cos(a * 5 + h * 9);
+      const flower = smoothstep(petal + 0.6, petal - 0.3, d);
+      const bloom: Rgb = h > 0.86 ? [232, 226, 250] : [214, 208, 240];
+      const halo = smoothstep(petal + 3.5, petal, d);
+      c = mix(c, [120, 140, 210], halo * 0.25);
+      c = mix(c, bloom, flower * 0.9);
+      c = mix(c, [255, 230, 150], smoothstep(0.8, 0.15, d));
+      glowAt(flower * 0.45 + halo * 0.15, bloom);
+    }
+    return c;
+  }
+  // Gravel: fine, pale, grey-blue.
+  let c = mix(p.a, p.b, 0.4 + 0.25 * noise(x * 1.6, y * 1.6, SIZE));
+  c = mix(c, hash(x, y) > 0.5 ? lift(p.a, 0.15) : shade(p.b, 0.92), 0.12);
+  // The nearest stepping stone, and the rake lines: up the board, and
+  // circling every stone.
+  let best = 1e9;
+  let bx = 0;
+  let by = 0;
+  let br = 0;
+  for (const [sx, sy, sr] of STEPPING_STONES) {
+    const d = Math.hypot(x - sx, y - sy) - sr;
+    if (d < best) {
+      best = d;
+      bx = sx;
+      by = sy;
+      br = sr;
+    }
+  }
+  const dStone = Math.hypot(x - bx, y - by);
+  const around = smoothstep(br + 14, br + 4, dStone);
+  const line = Math.sin(x * 1.6) * (1 - around) + Math.sin(dStone * 1.6) * around;
+  const ridge = smoothstep(-0.2, 0.7, line);
+  c = mix(c, lift(c, 0.14), ridge * 0.5);
+  c = mix(c, shade(c, 0.86), (1 - ridge) * 0.4);
+  let h = 0.5 + (ridge - 0.5) * 0.18;
+  // The stone itself: a grey-blue slab, lumpy, lit on the side toward
+  // the light, with its shadow on the gravel beyond it.
+  const wobble = (noise((x - bx) * 0.5 + bx, (y - by) * 0.5 + by, SIZE) - 0.5) * 2.2;
+  const edge = best + wobble;
+  if (edge < 3) {
+    const stone: Rgb = shade(mix(p.b, p.accent, 0.35), 0.8);
+    const on = smoothstep(1.2, 0.2, edge);
+    const lit = ((x - bx) * LIGHT_X + (y - by) * LIGHT_Y) / Math.max(1, br);
+    c = mix(c, shade(c, 0.78), smoothstep(3, 0.4, edge) * (1 - on) * Math.max(0, lit) * 0.7);
+    c = mix(c, stone, on * 0.95);
+    c = mix(c, lift(stone, 0.3), on * Math.max(0, -lit) * 0.5);
+    c = mix(c, shade(stone, 0.72), on * Math.max(0, lit) * 0.45);
+    c = mix(c, shade(stone, 0.85), on * smoothstep(0.5, 0.85, noise(x * 1.5 + 9, y * 1.5, SIZE)) * 0.5);
+    h = Math.max(h, 0.5 + on * 0.25);
+  }
+  // Petals fallen on the gravel: pale pink, each lying its own way.
+  const cell = 14;
+  const col = Math.floor(x / cell);
+  const row = Math.floor(y / cell);
+  const h2 = hash(col + 23, row + 31);
+  if (h2 > 0.72) {
+    const lx = x - col * cell - cell / 2 - (hash(col + 1, row) - 0.5) * 6;
+    const ly = y - row * cell - cell / 2 - (hash(col, row + 2) - 0.5) * 6;
+    const a = h2 * 9;
+    const u = lx * Math.cos(a) + ly * Math.sin(a);
+    const v = -lx * Math.sin(a) + ly * Math.cos(a);
+    const d = Math.hypot(u / 2.2, v / 1.4);
+    const on = smoothstep(1, 0.7, d);
+    c = mix(c, h2 > 0.9 ? [246, 201, 216] : [240, 228, 240], on * 0.9);
+    c = mix(c, [255, 255, 255], smoothstep(1, 0.6, Math.hypot((u - 0.5) / 2.2, (v - 0.3) / 1.4)) * on * 0.25);
+  }
+  SIDE.h = h;
+  return c;
+}
+
 const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   fernRock: dinoEarth,
+  // Season 2 of the pass (21 Oct 2026).
+  sunstone: templeStone,
+  lanternWall: moonGarden,
   /*
     Snowy Hollow: fresh snow with sled tracks in it.
 
@@ -1937,6 +2125,9 @@ const EXTRAS: Partial<Record<ArenaStructure, { bump: boolean; glow: boolean }>> 
   stalagmite: { bump: true, glow: true },
   cloudBalustrade: { bump: true, glow: false },
   airlock: { bump: true, glow: false },
+  // Season 2 (21 Oct 2026): the carved sun is relief; the moonflowers glow.
+  sunstone: { bump: true, glow: false },
+  lanternWall: { bump: true, glow: true },
 };
 
 /** A picture as a texture, filtered the way every surface here is. */

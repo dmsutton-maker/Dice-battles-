@@ -66,7 +66,11 @@ export function rewardInfo(input: RewardInfoInput): RewardInfo {
             ? 'Dice that frost over as they roll.'
             : effect === 'neon'
               ? 'Dice that leave a trail of light as they roll.'
-              : 'A new look for your dice.';
+              : effect === 'sun'
+                ? 'Dice that shine like the sun as they roll.'
+                : effect === 'moon'
+                  ? 'Dice that glow with moonlight as they roll.'
+                  : 'A new look for your dice.';
     } else {
       body = 'A new battlefield to play on.';
     }

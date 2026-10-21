@@ -59,8 +59,10 @@ export interface DiceSkin {
    * Something the skin does beyond its paint, drawn by the scene rather
    * than the shell texture: 'fire' and 'ice' — see src/dice/dieEffect.ts.
    * Looks only: an effect never reaches the physics or the settle rule.
+   * 'sun' and 'moon' (season 2, 21 Oct 2026) are in diceSun.ts and
+   * diceMoon.ts.
    */
-  effect?: 'fire' | 'ice' | 'neon';
+  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon';
 }
 
 export const DICE_SKINS: DiceSkin[] = [
@@ -364,6 +366,47 @@ export const DICE_SKINS: DiceSkin[] = [
     // Season pass, level 6. Was on sale for a day at a placeholder 1550.
     pass: true,
     effect: 'ice',
+  },
+
+  /*
+    SUN AND MOON — season 2 of the pass, 21 Oct 2026.
+
+    David, on the pass rotating monthly: "Make 2 new dice and 2 new
+    arenas every month normally going on with a theme like how this one
+    is fire and ice." Season 1 is Fire & Ice; these two are Sun & Moon,
+    and like Fire and Ice they are won on the pass and available no
+    other way (seasonPass.ts puts them on season 2's rows).
+
+    THE SUN DICE: a white-hot sun on one corner with gold rays running
+    right round the die over burnt amber (patterns.ts `sunburst`), motes
+    of light rising off it as it rolls, and a sunburst of light where it
+    lands (diceSun.ts). Burnt amber, not orange: the Orange and Yellow
+    faces are exactly a sun's colours, and the shell has to stay clear of both
+    — 29 ΔLab from Red is the nearest the shell comes to any face.
+  */
+  {
+    id: 'sun',
+    name: 'Sun',
+    body: '#ad4a0e',
+    pattern: 'sunburst',
+    pass: true,
+    effect: 'sun',
+  },
+  /*
+    THE MOON DICE: a silver crescent on one corner over an indigo night
+    full of stars, with one big star on the far corner (patterns.ts
+    `moonlit`); a soft halo of moonlight round it as it rolls, stardust
+    trailing behind, and a ripple of moonlight where it comes to rest
+    (diceMoon.ts). Darker than the Blue face by a long way, as Midnight
+    and Starry are.
+  */
+  {
+    id: 'moon',
+    name: 'Moon',
+    body: '#1c2252',
+    pattern: 'moonlit',
+    pass: true,
+    effect: 'moon',
   },
 
   /*

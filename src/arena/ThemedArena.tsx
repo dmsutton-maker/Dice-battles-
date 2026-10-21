@@ -537,6 +537,65 @@ function Lantern({ color = '#ffc95c' }: { color?: string }) {
   );
 }
 
+/** The Sun Temple's obelisk: a sandstone needle on a plinth, gold-tipped. */
+function Obelisk() {
+  return (
+    <group>
+      <mesh position={[0, 0.12, 0]}>
+        <boxGeometry args={[0.5, 0.24, 0.5]} />
+        <meshStandardMaterial color="#c8a264" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 1.0, 0]}>
+        <cylinderGeometry args={[0.1, 0.17, 1.6, 4]} />
+        <meshStandardMaterial color="#e8d0a0" roughness={0.85} />
+      </mesh>
+      {/* Unlit gold, so the tip catches the sun whatever the rig does. */}
+      <mesh position={[0, 1.95, 0]}>
+        <coneGeometry args={[0.1, 0.3, 4]} />
+        <meshBasicMaterial color="#f0b240" />
+      </mesh>
+    </group>
+  );
+}
+
+/** The Moon Garden's stone lantern, its window lit. */
+function StoneLantern() {
+  return (
+    <group>
+      <mesh position={[0, 0.1, 0]}>
+        <cylinderGeometry args={[0.2, 0.24, 0.2, 8]} />
+        <meshStandardMaterial color="#8a93a8" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[0.08, 0.1, 0.6, 8]} />
+        <meshStandardMaterial color="#8a93a8" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.98, 0]}>
+        <boxGeometry args={[0.34, 0.3, 0.34]} />
+        <meshStandardMaterial color="#6c758c" roughness={0.9} />
+      </mesh>
+      {/* The window, unlit so it is a light in a dark world, not paint. */}
+      <mesh position={[0, 0.98, 0]}>
+        <boxGeometry args={[0.36, 0.2, 0.26]} />
+        <meshBasicMaterial color="#ffe9b0" />
+      </mesh>
+      <mesh position={[0, 0.98, 0]}>
+        <boxGeometry args={[0.26, 0.2, 0.36]} />
+        <meshBasicMaterial color="#ffe9b0" />
+      </mesh>
+      <mesh position={[0, 1.22, 0]}>
+        <coneGeometry args={[0.32, 0.2, 4]} />
+        <meshStandardMaterial color="#8a93a8" roughness={0.95} />
+      </mesh>
+      {/* A lit finial: from above the roof hides the window, and this says it is lit. */}
+      <mesh position={[0, 1.36, 0]}>
+        <sphereGeometry args={[0.065, 8, 6]} />
+        <meshBasicMaterial color="#ffe9b0" />
+      </mesh>
+    </group>
+  );
+}
+
 function Flowers({ color = '#ff6e6e' }: { color?: string }) {
   return (
     <group>
@@ -665,6 +724,8 @@ function Prop({ p }: { p: PropPlacement }) {
       case 'crate': return <Crate color={p.color} />;
       case 'signpost': return <Signpost color={p.color} />;
       case 'campfire': return <Campfire color={p.color} />;
+      case 'obelisk': return <Obelisk />;
+      case 'stoneLantern': return <StoneLantern />;
     }
   })();
   return (
@@ -916,6 +977,51 @@ function RetreatShelter({ theme }: { theme: ArenaTheme }) {
           </mesh>
         </>
       );
+    case 'sunstone':
+      // The Sun Temple: a sun standard on the post, a gold disc with
+      // rays round it. Flat and small: a sun seen from above, not a
+      // parasol.
+      return (
+        <>
+          <mesh position={[0, 1.42, 0]}>
+            <cylinderGeometry args={[0.3, 0.3, 0.05, 20]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.35} metalness={0.5} />
+          </mesh>
+          <mesh position={[0, 1.43, 0]}>
+            <cylinderGeometry args={[0.14, 0.14, 0.07, 16]} />
+            <meshBasicMaterial color="#fff0b0" />
+          </mesh>
+          {([0, 1, 2, 3, 4, 5, 6, 7] as const).map((k) => {
+            const a = (k * Math.PI) / 4;
+            return (
+              <mesh key={k} position={[Math.cos(a) * 0.42, 1.42, Math.sin(a) * 0.42]} rotation={[0, -a, -Math.PI / 2]}>
+                <coneGeometry args={[0.06, 0.22, 4]} />
+                <meshStandardMaterial color={r.canopy} roughness={0.35} metalness={0.5} />
+              </mesh>
+            );
+          })}
+        </>
+      );
+    case 'lanternWall':
+      // The Moon Garden: a paper lantern hung from the post.
+      return (
+        <>
+          <mesh position={[0, 1.2, 0]}>
+            <cylinderGeometry args={[0.26, 0.26, 0.42, 12]} />
+            <meshBasicMaterial color={r.canopy} />
+          </mesh>
+          {[0.98, 1.42].map((y) => (
+            <mesh key={y} position={[0, y, 0]}>
+              <cylinderGeometry args={[0.28, 0.28, 0.04, 12]} />
+              <meshStandardMaterial color={r.post} roughness={0.8} />
+            </mesh>
+          ))}
+          <mesh position={[0, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.27, 0.012, 6, 16]} />
+            <meshStandardMaterial color="#9a2f2a" roughness={0.6} />
+          </mesh>
+        </>
+      );
     case 'blocks':
     default:
       // A pinwheel, four coloured vanes.
@@ -1141,6 +1247,9 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
     case 'blocks':
     // Dino Valley, the first money-only board (20 Oct 2026).
     case 'fernRock':
+    // Season 2 of the pass, Sun & Moon (21 Oct 2026).
+    case 'sunstone':
+    case 'lanternWall':
     default:
       return <StoreCrest theme={theme} />;
   }
@@ -1186,6 +1295,8 @@ function ThemedCorners({
       case 'parapet':
       case 'blocks':
       case 'fernRock':
+      case 'sunstone':
+      case 'lanternWall':
       default:
         return <StoreCorner theme={theme} />;
     }

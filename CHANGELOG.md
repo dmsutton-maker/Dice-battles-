@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.149.0 — 2026-10-21 · requested by David
+
+### Added
+- **The season pass turns over on the 1st of every month, and Season 2
+  is built: Sun & Moon.** David: "I want the gold pass to rotate on the
+  first of every month according to EST", and "Make 2 new dice and 2
+  new arenas every month normally going on with a theme like how this
+  one is fire and ice."
+  - A season is a month, New York time. At midnight on the 1st the pass
+    starts again from level 1 with a new name and four new things on
+    it. The Cups tab says how many days the season has left. Every
+    phone works it out from the date, so nothing runs on a server.
+  - **Season 2, Sun & Moon, starts 1 November:** the Sun dice (blazing
+    gold with rays, a sunburst where they land), the Moon dice (a
+    silver moon and stars on the night, a soft shimmer), the Sun Temple
+    battlefield (a golden temple with a sun carved in the floor, a sun
+    altar, a well, priests and birds) and the Moon Garden battlefield (a
+    night garden of stone lanterns, raked gravel, a lily pond and a
+    torii gate, with moths and petals drifting). Three on the Gold row,
+    the Moon dice on the free row.
+  - The Fire & Ice items stay with whoever earned them; their locked
+    cards say "Season 1 pass" once October is over.
+- **The Gold Pass is one product, bought again each month.** It is for
+  the month it is bought in; next month the Store offers it again. The
+  purchase question says how much of the month is left. Restore brings
+  back the months bought on another phone. Season 1's own pass still
+  counts for October. (David has to create `gold_pass` in App Store
+  Connect as a one-month non-renewing subscription at $2.99 before it
+  can be bought.)
+- A test walks the turning of the months against the real dates the
+  clocks change, checks every season has two dice and two battlefields
+  that exist and are pass-only, and fails from the 20th of any month
+  whose successor is not built yet.
+
 ## v1.148.0 — 2026-10-21 · requested by David
 
 ### Changed

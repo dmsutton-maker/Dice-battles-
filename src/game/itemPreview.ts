@@ -66,7 +66,7 @@ export type PreviewAction =
    * wrong way. The advice here is simply "keep playing" — every battle
    * fills the pass.
    */
-  | { kind: 'pass'; level: number; gold?: boolean }
+  | { kind: 'pass'; level: number; gold?: boolean; current?: boolean; season?: string }
   /**
    * Bought with real money: in the Starter pack, or on its own in the
    * money shop (Neon, $1.99). Its own kind for the reason the others
@@ -101,6 +101,10 @@ export interface PreviewState {
   passLevel?: number | null;
   /** On the Gold Pass row rather than the free one (seasonPass.ts). */
   passGold?: boolean;
+  /** Whether that pass's season is the one running now. */
+  passCurrent?: boolean;
+  /** "Season 1": the season the item was on, for one that is over. */
+  passSeason?: string;
   /** Where a money-only item is got (products.ts paidSkinWhere). */
   paidWhere?: string;
   /** Only sold for real money (the Supporter die, in the Starter pack). */
@@ -135,7 +139,15 @@ export function previewAction(state: PreviewState): PreviewAction {
   // trophies to go" for something trophies cannot buy at all.
   if (state.prize) return { kind: 'prize' };
   if (state.paid) return { kind: 'paid', where: state.paidWhere };
-  if (state.passLevel) return { kind: 'pass', level: state.passLevel, gold: state.passGold === true };
+  if (state.passLevel) {
+    return {
+      kind: 'pass',
+      level: state.passLevel,
+      gold: state.passGold === true,
+      current: state.passCurrent !== false,
+      season: state.passSeason,
+    };
+  }
 
   const need = state.needTrophies ?? 0;
   return { kind: 'locked', needTrophies: need, short: Math.max(0, need - state.trophies) };
@@ -159,6 +171,9 @@ export function actionLabel(action: PreviewAction): string {
     case 'prize':
       return 'Win it in a cup';
     case 'pass':
+      // A season that is over: the item is not to be had until it comes
+      // round again, and "level 12" would send a player climbing for it.
+      if (action.current === false) return `Was on the ${action.season ?? 'season'} pass`;
       return action.gold ? `Gold Pass level ${action.level}` : `Season pass level ${action.level}`;
     case 'paid':
       if (!action.where || action.where === 'Starter pack') return 'In the Starter pack';

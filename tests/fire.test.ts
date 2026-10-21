@@ -62,11 +62,12 @@ suite('fire dice · the skin', () => {
     assert(fire.pass === true, 'the Fire dice are not a season pass die');
   });
 
-  test('only the Fire, Ice and Neon dice have an effect', () => {
+  test('only the Fire, Ice, Neon, Sun and Moon dice have an effect', () => {
     // Neon joined on 20 Oct 2026 (a light trail, diceNeon.ts), the first
-    // effect on a die sold for money rather than won on the pass.
+    // effect on a die sold for money rather than won on the pass; Sun and
+    // Moon on 21 Oct 2026, season 2 of the pass (diceSun.ts, diceMoon.ts).
     const moving = DICE_SKINS.filter((s) => s.effect !== undefined).map((s) => `${s.id}:${s.effect}`);
-    assertEqual(moving.sort().join(','), 'fire:fire,ice:ice,neon:neon', 'an unexpected skin has an effect');
+    assertEqual(moving.sort().join(','), 'fire:fire,ice:ice,moon:moon,neon:neon,sun:sun', 'an unexpected skin has an effect');
   });
 
   test('the scene builds the fire only for a skin that asks for it', () => {
@@ -176,8 +177,11 @@ suite('fire dice · it never hides the roll', () => {
       './diceFire',
       './diceIce',
       './diceNeon',
+      // Season 2 (21 Oct 2026): the Sun and Moon dice, checked the same way.
+      './diceSun',
+      './diceMoon',
     ]);
-    for (const file of ['diceFire', 'diceIce', 'diceNeon', 'dieEffect', 'groundMarks', 'particles']) {
+    for (const file of ['diceFire', 'diceIce', 'diceNeon', 'diceSun', 'diceMoon', 'dieEffect', 'groundMarks', 'particles']) {
       const source = readFileSync(`src/dice/${file}.ts`, 'utf8');
       const imports = [...source.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
       const stray = imports.filter((m) => !allowed.has(m));

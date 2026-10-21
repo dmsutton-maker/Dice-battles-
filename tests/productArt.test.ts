@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { assert, assertEqual, suite, test } from './harness';
 import { PRODUCTS, productById } from '../src/game/products';
 import { coinsInPile, pictureOfProduct } from '../src/game/productPictures';
-import { SEASON_ITEMS } from '../src/game/seasonPass';
+import { seasonAt } from '../src/game/seasonPass';
 
 /*
   David, 20 Oct 2026: "Add pictures and icons for the money items in the
@@ -35,7 +35,7 @@ suite('money shop · every item has a picture of what you get', () => {
   test('the Gold Pass shows the things only it unlocks', () => {
     const pass = PRODUCTS.find((p) => p.kind === 'season')!;
     const shown = pictureOfProduct(pass).items.map((i) => i.id).sort().join();
-    const gold = SEASON_ITEMS.filter((s) => s.track === 'gold').map((s) => s.item.id).sort().join();
+    const gold = seasonAt().items.filter((s) => s.track === 'gold').map((s) => s.item.id).sort().join();
     assertEqual(shown, gold, 'Gold Pass picture');
   });
 

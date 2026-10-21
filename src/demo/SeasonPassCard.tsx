@@ -8,7 +8,8 @@ import {
   LEVELS,
   progressIn,
   rewardFor,
-  SEASON,
+  seasonAt,
+  seasonDaysLeft,
   SeasonReward,
   SeasonState,
 } from '../game/seasonPass';
@@ -60,7 +61,18 @@ export function SeasonPassCard({
   onGetGold: () => void;
   onPreview: (target: PreviewTarget) => void;
 }) {
-  const xp = state && state.season === SEASON.id ? state.xp : 0;
+  const season = seasonAt();
+  const xp = state && state.season === season.id ? state.xp : 0;
+  const daysLeft = seasonDaysLeft();
+  // What this month's Gold row holds, by name: "the Sun Dice, Sun Temple
+  // and Moon Garden". From the season, so the card can never name last
+  // month's prizes.
+  const goldNames = season.items
+    .filter((s) => s.track === 'gold')
+    .map((s) => resolveItem(s.item)?.name ?? s.item.id)
+    .map((name, i, all) => (i === all.length - 1 && all.length > 1 ? `and ${name}` : name))
+    .join(season.items.length > 2 ? ', ' : ' ')
+    .replace(', and', ' and');
   const { level, into, need } = progressIn(xp);
   const done = level >= LEVELS;
   const fill = done ? 1 : need > 0 ? into / need : 0;
@@ -157,7 +169,10 @@ export function SeasonPassCard({
   return (
     <View style={styles.card}>
       <Text style={styles.kicker}>
-        SEASON {SEASON.number} · {SEASON.name.toUpperCase()}
+        SEASON {season.number} · {season.name.toUpperCase()}
+      </Text>
+      <Text style={styles.ends}>
+        {daysLeft === 1 ? 'Last day' : `${daysLeft} days left`} · a new season starts on the 1st
       </Text>
       <View style={styles.headRow}>
         <Text style={styles.level}>Level {level}</Text>
@@ -192,9 +207,8 @@ export function SeasonPassCard({
       ) : (
         <View style={styles.goldAsk}>
           <Text style={styles.goldWhy}>
-            The bottom row is the Gold Pass: Snowy Hollow, the Fire Dice,
-            Volcano Rim and coins at every level. Levels you have already
-            reached pay out straight away.
+            The bottom row is the Gold Pass: {goldNames} and coins at every
+            level. Levels you have already reached pay out straight away.
           </Text>
           <SecondaryButton onPress={onGetGold} style={styles.goldButton}>
             <Text style={styles.goldButtonText}>Get the Gold Pass</Text>
@@ -295,6 +309,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   kicker: { color: THEME.accent, ...TYPE.label, letterSpacing: 0.8 },
+  ends: { ...TYPE.small, color: THEME.inkSoft, marginTop: 2 },
   headRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 4 },
   level: { color: THEME.ink, ...TYPE.heading },
   ofLevels: { color: THEME.inkSoft, ...TYPE.small },

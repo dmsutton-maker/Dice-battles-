@@ -41,7 +41,9 @@ export type JailKind =
   | 'giantClam'     // coral reef: open clam, pearl
   | 'fireEscape'    // rooftop city: brick wall, lit windows, railing, grating
   | 'toyChest'      // toy room: painted chest, flat lid, blocks and a ball
-  | 'boneCage';     // dino valley: bars of bone with knobbed ends, a horned skull
+  | 'boneCage'      // dino valley: bars of bone with knobbed ends, a horned skull
+  | 'sunShrine'     // sun temple: sandstone pillars, a carved lintel with a gold sun, braziers
+  | 'toriiGate';    // moon garden: a torii gate over a bamboo fence, paper lanterns swinging
 
 /** Every board in the registry: the sixteen themed ones and the four originals. */
 export type JailArenaId = ThemedArenaId | 'castle' | 'castleSunset' | 'jungle' | 'space';
@@ -68,4 +70,7 @@ export const ARENA_JAILS: Record<JailArenaId, JailKind> = {
   city: 'fireEscape',
   toybox: 'toyChest',
   dino: 'boneCage',
+  // Season 2 of the pass, Sun & Moon (21 Oct 2026).
+  suntemple: 'sunShrine',
+  moongarden: 'toriiGate',
 };

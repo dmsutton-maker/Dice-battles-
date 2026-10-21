@@ -1259,6 +1259,111 @@ const DESIGNS: Record<JailKind, Design> = {
       }
     },
   },
+
+  /*
+    Sun Temple, season 2 of the pass (21 Oct 2026): a shrine of cut
+    sandstone. Pillars along the back carry a carved lintel with a gold
+    sun on its face, low walls with a pillar at each end run down the
+    sides, and a brazier burns on each back corner. The bamboo cage's
+    footprint — bars along the back and down both sides, open at the
+    front — so it stands clear of every figure the same way.
+  */
+  sunShrine: {
+    looks: (p) => ({
+      platform: { color: p.platform, rough: 0.95 },
+      stone: { color: '#e8d0a0', rough: 0.9 },
+      carved: { color: '#c8a264', rough: 0.9 },
+      dark: { color: p.bars, rough: 0.9 },
+      gold: { color: '#f0b240', rough: 0.35, metal: 0.5 },
+      flame: { color: '#ffb347', unlit: true },
+      core: { color: '#fff0b0', unlit: true },
+    }),
+    build(k) {
+      platform(k);
+      for (const x of span(-2.0, 2.0, 9)) k.box('carved', [0.02, 0.012, 1.5], [x, 0.004, 0]);
+      for (const x of span(-1.6, 1.6, 6)) {
+        k.box('stone', [0.16, 1.1, 0.16], [x, 0.55, -0.86]);
+        k.box('carved', [0.22, 0.08, 0.22], [x, 1.12, -0.86]);
+        k.box('carved', [0.22, 0.06, 0.22], [x, 0.03, -0.86]);
+      }
+      k.box('stone', [4.0, 0.18, 0.26], [0, 1.25, -0.86]);
+      k.box('carved', [4.1, 0.06, 0.3], [0, 1.37, -0.86]);
+      // The sun on the lintel's face, eight rays round it.
+      k.cyl('gold', 0.2, 0.2, 0.04, 20, [0, 1.25, -0.71], [PI / 2, 0, 0]);
+      k.cyl('core', 0.1, 0.1, 0.05, 16, [0, 1.25, -0.71], [PI / 2, 0, 0]);
+      for (const a of span(0, PI * 2 - PI / 4, 8)) {
+        k.cone('gold', 0.04, 0.12, 4, [Math.cos(a) * 0.28, 1.25 + Math.sin(a) * 0.28, -0.71], [0, 0, a - PI / 2]);
+      }
+      for (const s of [-1, 1]) {
+        k.box('stone', [0.16, 0.6, 1.1], [s * 2.28, 0.3, -0.33]);
+        k.box('stone', [0.18, 1.0, 0.18], [s * 2.28, 0.5, 0.2]);
+        k.box('stone', [0.2, 1.3, 0.2], [s * 2.28, 0.65, -0.86]);
+        k.box('carved', [0.26, 0.06, 0.26], [s * 2.28, 1.33, -0.86]);
+        // A brazier on each back corner, burning.
+        k.cyl('dark', 0.13, 0.07, 0.12, 8, [s * 2.28, 1.42, -0.86]);
+        k.in(`flame${s > 0 ? 'R' : 'L'}`, [s * 2.28, 1.46, -0.86]);
+        k.cone('flame', 0.1, 0.24, 7, [0, 0.12, 0]);
+        k.cone('core', 0.05, 0.13, 6, [0, 0.065, 0]);
+        k.in('base');
+      }
+    },
+    tick(t, live) {
+      flicker(live.layers.flameL, t, 0);
+      flicker(live.layers.flameR, t, 2.1);
+    },
+  },
+
+  /*
+    Moon Garden, season 2 of the pass: a torii gate at the back of the
+    pen — two round lacquered posts, the curved top beam with its
+    upturned ends, the tie beam under it — over a bamboo fence that runs
+    along the back and down both sides, and three paper lanterns hanging
+    from the tie beam, swinging gently.
+  */
+  toriiGate: {
+    looks: (p) => ({
+      platform: { color: p.platform, rough: 0.95 },
+      lacquer: { color: '#9a2f2a', rough: 0.5 },
+      dark: { color: p.bars, rough: 0.8 },
+      stone: { color: '#8a93a8', rough: 0.95 },
+      bamboo: { color: '#8aa36a', rough: 0.8 },
+      paper: { color: '#ffe9b0', unlit: true },
+    }),
+    build(k) {
+      platform(k);
+      for (const z of span(-0.6, 0.6, 7)) k.box('stone', [4.6, 0.01, 0.02], [0, 0.004, z]);
+      for (const s of [-1, 1]) {
+        k.cyl('lacquer', 0.09, 0.11, 1.35, 10, [s * 2.1, 0.675, -0.86]);
+        k.cyl('dark', 0.14, 0.14, 0.08, 10, [s * 2.1, 0.04, -0.86]);
+      }
+      k.box('lacquer', [4.9, 0.12, 0.16], [0, 1.36, -0.86]);
+      k.box('dark', [5.0, 0.06, 0.2], [0, 1.45, -0.86]);
+      for (const s of [-1, 1]) k.box('dark', [0.3, 0.1, 0.2], [s * 2.5, 1.5, -0.86], [0, 0, s * -0.35]);
+      k.box('lacquer', [4.4, 0.1, 0.12], [0, 1.1, -0.86]);
+      k.box('lacquer', [0.14, 0.2, 0.14], [0, 1.23, -0.86]);
+      for (const x of span(-1.9, 1.9, 12)) k.cyl('bamboo', 0.03, 0.03, 0.9, 6, [x, 0.45, -0.8]);
+      for (const y of [0.3, 0.75]) k.cyl('bamboo', 0.025, 0.025, 4.0, 6, [0, y, -0.76], [0, 0, PI / 2]);
+      for (const s of [-1, 1]) {
+        for (const z of span(-0.55, 0.2, 4)) k.cyl('bamboo', 0.03, 0.03, 0.9, 6, [s * 2.28, 0.45, z]);
+        for (const y of [0.3, 0.75]) k.cyl('bamboo', 0.025, 0.025, 0.95, 6, [s * 2.24, y, -0.18], [PI / 2, 0, 0]);
+      }
+      [-1.3, 0, 1.3].forEach((x, i) => {
+        k.in(`lantern${i}`, [x, 1.05, -0.86]);
+        k.cyl('dark', 0.008, 0.008, 0.12, 4, [0, -0.06, 0]);
+        k.cyl('paper', 0.1, 0.1, 0.22, 10, [0, -0.23, 0]);
+        // A knob on top rather than a cap: a cap hid the light from this camera.
+        k.cyl('dark', 0.04, 0.04, 0.03, 8, [0, -0.11, 0]);
+        k.cyl('dark', 0.11, 0.11, 0.02, 10, [0, -0.34, 0]);
+        k.in('base');
+      });
+    },
+    tick(t, live) {
+      for (let i = 0; i < 3; i++) {
+        const l = live.layers[`lantern${i}`];
+        if (l) l.rotation.z = 0.07 * Math.sin(t * 1.1 + i * 2.0);
+      }
+    },
+  },
 };
 
 /* ── the component ────────────────────────────────────────────────── */

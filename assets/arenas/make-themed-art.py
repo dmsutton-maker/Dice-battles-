@@ -32,7 +32,8 @@ ROOT = '/home/user/Dice-battles-'
 SRC = open(f'{ROOT}/src/arena/themeData.ts').read()
 
 IDS = ['snow', 'desert', 'volcano', 'beach', 'candy', 'glade', 'autumn', 'cove',
-       'farm', 'aurora', 'reef', 'cavern', 'city', 'sky', 'moon', 'toybox', 'dino']
+       'farm', 'aurora', 'reef', 'cavern', 'city', 'sky', 'moon', 'toybox', 'dino',
+       'suntemple', 'moongarden']
 
 
 def hx(h):
@@ -497,12 +498,70 @@ def g_dino(d, c):
             d.line([(fx, 336), (fx + k * 10, 304 + abs(k) * 6)], fill=(79, 138, 48), width=5)
     stones(d, ((300, 312, 12), (44, 300, 9)), (154, 140, 116))
 
+def g_suntemple(d, c):
+    # Sun Temple, season 2 of the pass (21 Oct 2026): a big sun over a
+    # stepped sandstone shrine, an obelisk either side, palms and a
+    # brazier in front.
+    for r, col in ((70, (255, 214, 120)), (52, (255, 232, 160)), (34, (255, 246, 208))):
+        d.ellipse([174 - r, 96 - r, 174 + r, 96 + r], fill=col)
+    for k in range(12):
+        a = math.radians(k * 30 + 15)
+        d.line([(174 + math.cos(a) * 74, 96 + math.sin(a) * 74),
+                (174 + math.cos(a) * 98, 96 + math.sin(a) * 98)], fill=(255, 214, 120), width=7)
+    for w, y, col in ((200, 300, (200, 162, 100)), (150, 262, (217, 184, 120)), (100, 226, (232, 208, 160))):
+        d.rectangle([174 - w // 2, y - 38, 174 + w // 2, y], fill=col)
+        d.rectangle([174 - w // 2, y - 38, 174 + w // 2, y - 32], fill=lighten(col, 0.25))
+    d.rectangle([160, 262, 188, 300], fill=(100, 70, 40))
+    d.ellipse([162, 196, 186, 220], fill=(240, 178, 64))
+    for x in (46, 302):
+        d.polygon([(x - 10, 300), (x + 10, 300), (x + 4, 150), (x - 4, 150)], fill=(232, 208, 160))
+        d.polygon([(x - 5, 152), (x + 5, 152), (x, 132)], fill=(240, 178, 64))
+    for x, s in ((96, 0.8), (262, 0.7)):
+        d.line([(x, 300), (x + 8 * s, 230)], fill=(120, 80, 50), width=int(8 * s))
+        for k in range(-2, 3):
+            d.line([(x + 8 * s, 232), (x + 8 * s + k * 34 * s, 212 + abs(k) * 14 * s)],
+                   fill=(70, 140, 80), width=int(9 * s))
+    # A brazier burning in front of the steps.
+    d.rectangle([118, 286, 134, 310], fill=(74, 56, 35))
+    d.ellipse([112, 268, 140, 292], fill=(255, 179, 71))
+    d.ellipse([120, 262, 132, 282], fill=(255, 240, 176))
+    birds(d, ((70, 60, 0.8), (300, 46, 0.7)))
+    stones(d, ((36, 316, 10), (316, 318, 12)), (200, 162, 100))
+
+def g_moongarden(d, c):
+    # Moon Garden, season 2 of the pass: a big moon over a torii gate,
+    # paper lanterns hanging from it, stone lanterns lit either side.
+    d.ellipse([112, 28, 238, 154], fill=(170, 184, 255))
+    d.ellipse([120, 36, 230, 146], fill=(244, 240, 224))
+    for x, y, r in ((150, 70, 12), (190, 100, 9), (170, 120, 7)):
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(216, 210, 192))
+    sparkles(d, ((44, 50, 5), (292, 38, 5), (322, 112, 4), (24, 140, 4), (270, 170, 4), (90, 150, 4)),
+             (255, 255, 240))
+    red = (154, 47, 42)
+    dark = (46, 42, 58)
+    d.rectangle([80, 184, 268, 198], fill=dark)
+    d.polygon([(80, 184), (80, 198), (62, 198), (70, 188)], fill=dark)
+    d.polygon([(268, 184), (268, 198), (286, 198), (278, 188)], fill=dark)
+    d.rectangle([92, 214, 256, 224], fill=red)
+    for x in (104, 244):
+        d.rectangle([x - 9, 190, x + 9, 304], fill=red)
+    for x in (134, 174, 214):
+        d.line([(x, 224), (x, 238)], fill=dark, width=2)
+        d.rounded_rectangle([x - 12, 238, x + 12, 268], radius=10, fill=(255, 233, 176))
+    for x in (36, 316):
+        d.rectangle([x - 6, 250, x + 6, 300], fill=(138, 147, 168))
+        d.rectangle([x - 16, 232, x + 16, 252], fill=(108, 117, 140))
+        d.rectangle([x - 13, 236, x + 13, 248], fill=(255, 233, 176))
+        d.polygon([(x - 20, 232), (x + 20, 232), (x, 218)], fill=(138, 147, 168))
+    tufts(d, ((70, 318, 20), (286, 316, 22), (170, 322, 16)), (46, 90, 70))
+
 GLYPHS = {
     'snow': g_snow, 'desert': g_desert, 'volcano': g_volcano, 'beach': g_beach,
     'candy': g_candy, 'glade': g_glade, 'autumn': g_autumn, 'cove': g_cove,
     'farm': g_farm, 'aurora': g_aurora, 'reef': g_reef, 'cavern': g_cavern,
     'city': g_city, 'sky': g_sky, 'moon': g_moon, 'toybox': g_toybox,
     'dino': g_dino,
+    'suntemple': g_suntemple, 'moongarden': g_moongarden,
 }
 
 for tid in IDS:

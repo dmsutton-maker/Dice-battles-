@@ -87,6 +87,12 @@ export const STARTER_WINDOW_MS = 48 * 60 * 60 * 1000;
 /** The entitlement id that switches advertising off for good. */
 export const REMOVE_ADS = 'remove-ads';
 
+/** The monthly Gold Pass product. One id, bought again each month. */
+export const GOLD_PASS_ID = 'gold_pass';
+
+/** Season 1's own pass, the product-per-season design: honoured for its month. */
+export const SEASON_1_PASS = { id: 'season_pass_1', month: '2026-10' } as const;
+
 export const PRODUCTS: Product[] = [
   {
     id: 'remove_ads',
@@ -245,24 +251,35 @@ export const PRODUCTS: Product[] = [
     The Gold Pass. David, 13 Oct 2026: "Make a paid season pass bought
     with real money in the shop ... we'll figure that more out later."
     The price is the family's 31 Aug choice and is a placeholder until
-    then. One product per season — see GOLD_PASS in seasonPass.ts.
+    then.
 
-    The id was `season_pass` while it was parked; it was never created in
-    App Store Connect, so it was still free to change. From here on it is
-    permanent like every other id in this file.
+    ONE PRODUCT, BOUGHT EACH MONTH, since 21 Oct 2026, when the season
+    pass started turning over on the first of every month (David: "I
+    want the gold pass to rotate on the first of every month according
+    to EST"). It is a NON-RENEWING SUBSCRIPTION in App Store Connect
+    (one month), which is the one kind Apple lets a player buy again and
+    again and still restore: the month it is bought in, New York time,
+    is the season it unlocks (purchases.ts, hasGoldPass). Buying it on
+    the 28th buys three days — the Store says so before asking.
+
+    Its predecessor was `season_pass_1`, one product per season, which
+    would have meant David creating a new product every month. That id
+    stays honoured for October 2026 (SEASON_1_PASS) in case it was ever
+    bought, and like every id here is never reused.
   */
   {
-    id: 'season_pass_1',
+    id: GOLD_PASS_ID,
     kind: 'season',
-    name: 'Gold Pass — Season 1',
+    name: 'Gold Pass',
     details:
-      "Unlocks the season pass bottom row: Snowy Hollow, Fire Dice, Volcano Rim and coins. Levels you've reached pay out now.",
-    blurb: 'More season pass prizes.',
+      "This month's Gold row: two of the new dice and battlefields, and coins at every level. Lasts until the end of the month.",
+    blurb: "This month's extra prizes.",
     usd: 2.99,
     // Grants nothing but itself — see GOLD_PASS in seasonPass.ts.
     available: true,
   },
 ];
+
 
 /** The products a player can actually be shown right now. */
 export function sellable(

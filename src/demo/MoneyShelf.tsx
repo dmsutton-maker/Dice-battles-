@@ -6,6 +6,7 @@ import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 import { playClick } from '../audio/sounds';
 import { PRODUCTS, priceLabel, type Product } from '../game/products';
 import { ProductArt } from './ProductArt';
+import { seasonAt, seasonDaysLeft } from '../game/seasonPass';
 import {
   buy,
   hasEntitlement,
@@ -216,7 +217,7 @@ export function MoneyShelf({
               </View>
               {bought ? (
                 <View style={styles.owned}>
-                  <Text style={styles.ownedText}>YOURS</Text>
+                  <Text style={styles.ownedText}>{product.kind === 'season' ? 'THIS MONTH' : 'YOURS'}</Text>
                 </View>
               ) : (
                 <Pressable
@@ -270,6 +271,12 @@ export function MoneyShelf({
           title={`Buy ${asking.name}?`}
           body={
             `${asking.blurb}\n\n` +
+            // The Gold Pass is for this month only, so the question says
+            // how much of the month is left — three days is three days.
+            (asking.kind === 'season'
+              ? `It is for ${seasonAt().name} and lasts until the end of the month: ` +
+                `${seasonDaysLeft() === 1 ? 'today only' : `${seasonDaysLeft()} days`}.\n\n`
+              : '') +
             `It costs ${priceLabel(asking, state.priceOf(asking.id))}. ` +
             'Your phone will ask you to confirm as well.'
           }
@@ -349,7 +356,13 @@ function ProductDetail({
           </View>
           <Text style={styles.detailTitle}>{product.name}</Text>
           <Text style={styles.detailPrice}>
-            {owned ? 'Yours already' : product.available ? shown : `${shown} · not on sale yet`}
+            {owned
+              ? product.kind === 'season'
+                ? 'Yours for this month'
+                : 'Yours already'
+              : product.available
+                ? shown
+                : `${shown} · not on sale yet`}
           </Text>
           <Text style={styles.detailBody}>{product.details}</Text>
           {!product.available && product.blockedBy && (

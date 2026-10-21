@@ -1,7 +1,7 @@
 import { ARENAS } from '../arena/arenas';
 import { DICE_SKINS } from './diceSkins';
 import { REMOVE_ADS, type Product } from './products';
-import { GOLD_PASS, SEASON_ITEMS } from './seasonPass';
+import { GOLD_PASS, seasonAt } from './seasonPass';
 
 /**
  * What the picture on a money shop card shows.
@@ -42,7 +42,7 @@ export function pictureOfProduct(product: Product): ProductPicture {
   }
   // The Gold Pass grants only itself; what it opens is the Gold row.
   if (product.id === GOLD_PASS.productId) {
-    for (const s of SEASON_ITEMS) {
+    for (const s of seasonAt().items) {
       if (s.track === 'gold') items.push({ kind: s.item.kind === 'dice' ? 'die' : 'arena', id: s.item.id });
     }
   }

@@ -13,9 +13,9 @@ import {
   levelFor,
   progressIn,
   rewardFor,
-  SEASON,
+  seasonAt,
   SEASON_ITEM_WORTH,
-  SEASON_ITEMS,
+  SEASONS,
   SeasonReward,
   seasonTrackOf,
   xpForLevel,
@@ -48,8 +48,15 @@ import { PRODUCTS } from '../src/game/products';
  */
 
 /** What a level pays on the row a season item sits on. */
+/*
+  Season 1, Fire & Ice, by name: these tests are about the pass's rules,
+  which hold in every season, and they must not change their answer on
+  the first of the month (seasonRotation.test.ts covers the turning).
+*/
+const S1 = SEASONS[0];
+const SEASON_ITEMS = S1.items;
 const rewardOn = (level: number, track: 'free' | 'gold'): SeasonReward =>
-  track === 'gold' ? goldRewardFor(level) : rewardFor(level);
+  track === 'gold' ? goldRewardFor(level, S1) : rewardFor(level, S1);
 
 const DIFFICULTIES = Object.keys(AI_DIFFICULTIES) as (keyof typeof AI_DIFFICULTIES)[];
 
@@ -149,7 +156,7 @@ suite('season pass · rewards', () => {
 
   test('a save from another season starts this one fresh', () => {
     const step = addXp({ season: 'season-0', xp: 99999, paid: 30 }, 50);
-    assertEqual(step.state.season, SEASON.id, 'the old season was kept');
+    assertEqual(step.state.season, seasonAt().id, 'the old season was kept');
     assertEqual(step.state.xp, 50, 'the old season\'s XP carried over');
   });
 
@@ -232,22 +239,25 @@ suite('season pass · the Gold Pass', () => {
   });
 
   test('a save from before the Gold Pass reads as nothing paid', () => {
-    const old = { season: SEASON.id, xp: xpToReach(4), paid: 4 };
+    const old = { season: seasonAt().id, xp: xpToReach(4), paid: 4 };
     assertEqual(claimGold(old).reached.join(','), '1,2,3,4', 'an old save was treated as already paid');
   });
 
-  test('it is on sale, keeps for ever, and grants nothing but itself', () => {
+  test('it is on sale, is bought again each month, and grants nothing but itself', () => {
     const product = PRODUCTS.find((p) => p.id === GOLD_PASS.productId);
     assert(product !== undefined, 'the Gold Pass is not in the catalogue');
     assert(product!.available, 'the Gold Pass is not on sale');
-    assert(product!.kind !== 'consumable', 'the Gold Pass would be lost on a new phone');
+    assertEqual(product!.kind, 'season', 'the Gold Pass is not a season product');
     assertEqual((product!.grants ?? []).length, 0, 'the Gold Pass hands over something besides itself');
-    assertEqual(GOLD_PASS.entitlement, product!.id, 'owning the pass is not what unlocks the Gold row');
+    assertEqual(PRODUCTS.filter((p) => p.kind === 'season').length, 1, 'more than one Gold Pass on the shelf');
+    // One id for every month; the month bought decides the season.
+    assertEqual(GOLD_PASS.productId, 'gold_pass', 'the Gold Pass is still one product per season');
+    assert(!PRODUCTS.some((p) => /^season_pass_\d+$/.test(p.id)), 'a per-season pass product is still on sale');
   });
 
   test('the game pays the Gold row after battles, purchases and launch', () => {
     const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
-    assert(/hasEntitlement\(GOLD_PASS\.entitlement\)/.test(screen), 'the Gold row is paid without checking the pass is owned');
+    assert(/const owned = hasGoldPass\(\);/.test(screen), 'the Gold row is paid without checking this month\'s pass is owned');
     assertEqual((screen.match(/claimGoldLevels\(\)/g) ?? []).length >= 3, true, 'the Gold row is not claimed after battles, purchases and launch');
     assert(/kicker: 'GOLD PASS'/.test(screen), 'a Gold level reached is never announced');
   });
@@ -263,7 +273,9 @@ suite('season pass · the only way in', () => {
       resetWalletForTests({ coins: 999999, owned: [] });
       assert(!isSkinUnlocked(id, 99999), `${id} is usable without the pass`);
     }
-    assertEqual(DICE_SKINS.filter((s) => s.pass).length, 2, 'the pass has the wrong number of dice');
+    // Two a season, every season (seasonRotation.test.ts checks each).
+    const onSeasons = SEASONS.reduce((n, s) => n + s.items.filter((i) => i.item.kind === 'dice').length, 0);
+    assertEqual(DICE_SKINS.filter((s) => s.pass).length, onSeasons, 'the pass has the wrong number of dice');
   });
 
   test('Snowy Hollow and Volcano Rim cannot be bought or climbed to', () => {

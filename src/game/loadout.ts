@@ -23,7 +23,7 @@ import {
   TIERS,
   UnlockId,
 } from './progress';
-import { seasonLevelOf } from './seasonPass';
+import { passOrder } from './seasonPass';
 
 /**
  * What the player has EQUIPPED, as opposed to what they have earned
@@ -71,7 +71,7 @@ export const ARENA_PRICES: Partial<Record<ArenaId, number>> = Object.fromEntries
  */
 export const PASS_ARENAS: ArenaId[] = (Object.keys(THEMED_ARENA_META) as ThemedArenaId[])
   .filter((id) => THEMED_ARENA_META[id].pass)
-  .sort((a, b) => (seasonLevelOf('arena', a) ?? 0) - (seasonLevelOf('arena', b) ?? 0));
+  .sort((a, b) => passOrder('arena', a) - passOrder('arena', b));
 
 /**
  * Battlefields bought with real money (Dino Valley, 20 Oct 2026). Not on
@@ -218,7 +218,7 @@ export const INVENTORY_SKIN_ORDER: DiceSkin[] = [
   ...PRIZE_SKINS,
   // The season pass's dice, in the order the pass hands them over.
   ...PASS_SKINS.slice().sort(
-    (a, b) => (seasonLevelOf('dice', a.id) ?? 0) - (seasonLevelOf('dice', b.id) ?? 0),
+    (a, b) => passOrder('dice', a.id) - passOrder('dice', b.id),
   ),
   // Bought with real money (the Starter pack's Supporter die).
   ...PAID_SKINS,

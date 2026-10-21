@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   await import('./fire.test');
   await import('./neonDice.test');
   await import('./dinoValley.test');
+  await import('./season2.test');
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');
@@ -72,6 +73,7 @@ async function main(): Promise<void> {
   await import('./circuitPulse.test');
   await import('./cupRotation.test');
   await import('./arenaSpeed.test');
+  await import('./seasonRotation.test');
   process.exit(await runAll());
 }
 

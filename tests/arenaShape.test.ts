@@ -1345,6 +1345,13 @@ suite('arenas · the floor is not cut in half', () => {
       // arena preview: packed earth with two dinosaur trackways, and a
       // jungle floor of leaves outside.
       fernRock: [1095928635, 3950926147],
+      // Season 2 of the pass (21 Oct 2026), pinned after both were looked
+      // at in the arena preview: the Sun Temple's sandstone paving with
+      // its carved sun, and red earth with scrub outside; the Moon
+      // Garden's raked gravel with stepping stones and petals, and moss
+      // with moonflowers outside.
+      sunstone: [3442838687, 2785190741],
+      lanternWall: [1320850189, 1400482458],
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];
