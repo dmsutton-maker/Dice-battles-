@@ -451,11 +451,12 @@ export function DiceDemoScreen() {
             opened from exists.
           */
           facesWarmableRef.current = true;
-          warmAllDieFaces(
-            (run) => setTimeout(run, 0),
-            shouldWarmFaces,
-            warmArenas,
-          );
+          // The battlefields alongside the dice, not after them: their
+          // floors are painted in short slices (warmArenas.ts), so the
+          // two share the idle time and every board is warm within the
+          // first minute instead of after the last die.
+          warmArenas();
+          warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
         },
       );
     });
@@ -933,9 +934,11 @@ export function DiceDemoScreen() {
     activeRef.current && phaseRef.current === 'pick' && previewRef.current === null;
 
   /*
-    Then every battlefield's floor and ground, under the same rule. A
-    battlefield preview used to paint them on the tap, which is most of
-    the second David saw on 18 Oct 2026 before the board appeared.
+    And every battlefield's floor and ground, under the same rule, in
+    slices beside the dice. A battlefield preview used to paint them on
+    the tap, which is most of the second David saw on 18 Oct 2026 before
+    the board appeared; since 21 Oct 2026 a board opened before its turn
+    shows a quick stand-in floor and swaps the real one in.
   */
   const warmArenas = () => warmAllArenaTextures((run) => setTimeout(run, 0), shouldWarmFaces);
 
@@ -943,7 +946,8 @@ export function DiceDemoScreen() {
     // Not until the earlier stages have finished and handed over to it.
     if (!facesWarmableRef.current) return;
     if (!appActive || phase !== 'pick' || preview !== null) return;
-    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces, warmArenas);
+    warmArenas();
+    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
   }, [appActive, phase, preview]);
 
   useEffect(() => {

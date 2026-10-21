@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.148.0 — 2026-10-21 · requested by David
+
+### Changed
+- **Battlefields open much faster when you tap one to look at it.**
+  David: "I want the arenas to load much faster when you click on them
+  to view them." A board's floor is a big picture painted pixel by pixel
+  (35 to 360 milliseconds on a desktop, a second on a phone), and a
+  board the background warm-up had not reached yet painted it on the
+  tap. Now:
+  - A themed board opens at once with a quick low-detail floor (a
+    sixteenth of the work) while the real floor is painted a few rows
+    at a time between frames, and swaps it in a moment later. Measured
+    on a desktop, opening a cold themed board went from 66–281 ms of
+    work to 19–73 ms, the same as a warm one.
+  - The warm-up that paints every board's floor runs beside the dice
+    warm-up from the start instead of after all 53 dice, in short
+    slices, so every board is usually ready before it is tapped. The
+    castle, Sunset Castle, jungle and space station, whose floors are
+    painted in one piece, go first; the space station's pictures were
+    not in the warm-up at all before.
+  - A test checks the floor painted in rows is byte for byte the floor
+    painted in one go, bump and glow included, for every board.
+
 ## v1.147.0 — 2026-10-21 · requested by David
 
 ### Added

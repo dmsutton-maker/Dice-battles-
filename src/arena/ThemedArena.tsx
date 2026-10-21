@@ -1,5 +1,5 @@
 import { troughOf, WaterSurface } from './water';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
 import {
@@ -12,8 +12,15 @@ import {
   RETREAT_XS,
   RETREAT_Z,
 } from '../game/stations';
-import { createGroundSurface, createTraySurface, surfaceExtras } from './groundTexture';
-import { cachedTexture } from './textureCache';
+import {
+  createGroundSurface,
+  createTraySurface,
+  QUICK_DENSITY,
+  startGroundSurface,
+  startTraySurface,
+  surfaceExtras,
+} from './groundTexture';
+import { cachedTexture, paintInBackground, progressiveTexture } from './textureCache';
 import { useSceneryTick } from './sceneryClock';
 import { ArenaStructure, ArenaTheme, PropPlacement, ThemedArenaId } from './themeData';
 import { ARENA_JAILS } from './jailKinds';
@@ -1229,32 +1236,83 @@ function NearCornerPost({ theme, wallMaterial }: { theme: ArenaTheme; wallMateri
  * never hand back the old picture.
  */
 export function themedFloorTexture(id: string, theme: ArenaTheme): THREE.Texture {
-  const floorW = innerWidth + wallThickness * 2;
-  const floorD = innerDepth + wallThickness * 2;
-  return cachedTexture(
-    `themed-floor-${id}-${theme.structure}-${theme.floor.a}-${theme.floor.b}` +
-      `-${theme.wall.cap}-${floorW}x${floorD}`,
-    () =>
-      createTraySurface(
-        theme.structure,
-        { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
-        [floorW, floorD],
-      ),
-  );
+  const f = floorSpec(theme);
+  return cachedTexture(floorKey(id, theme), () => createTraySurface(theme.structure, f.paint, f.world));
 }
 
 /** A themed board's ground picture, the same way. */
 export function themedGroundTexture(id: string, theme: ArenaTheme): THREE.Texture {
-  return cachedTexture(
-    `themed-ground-${id}-${theme.structure}-${theme.meadow}-${theme.hill}` +
-      `-${theme.mountain ?? theme.wall.cap}`,
-    () =>
-      createGroundSurface(
-        theme.structure,
-        { a: theme.meadow, b: theme.hill, accent: theme.mountain ?? theme.wall.cap },
-        GROUND_SPAN / 6.5,
-      ),
+  const g = groundSpec(theme);
+  return cachedTexture(groundKey(id, theme), () => createGroundSurface(theme.structure, g.paint, g.repeat));
+}
+
+const floorSpec = (theme: ArenaTheme) => ({
+  paint: { a: theme.floor.a, b: theme.floor.b, accent: theme.wall.cap },
+  world: [innerWidth + wallThickness * 2, innerDepth + wallThickness * 2] as [number, number],
+});
+const groundSpec = (theme: ArenaTheme) => ({
+  paint: { a: theme.meadow, b: theme.hill, accent: theme.mountain ?? theme.wall.cap },
+  repeat: GROUND_SPAN / 6.5,
+});
+
+export function floorKey(id: string, theme: ArenaTheme): string {
+  const { world } = floorSpec(theme);
+  return (
+    `themed-floor-${id}-${theme.structure}-${theme.floor.a}-${theme.floor.b}` +
+    `-${theme.wall.cap}-${world[0]}x${world[1]}`
   );
+}
+
+export function groundKey(id: string, theme: ArenaTheme): string {
+  return (
+    `themed-ground-${id}-${theme.structure}-${theme.meadow}-${theme.hill}` +
+    `-${theme.mountain ?? theme.wall.cap}`
+  );
+}
+
+/**
+ * Paint a themed board's floor and ground in the background, a slice at
+ * a time, under the keys the board reads. For the warm-up.
+ */
+export function paintThemedSurfaces(
+  id: string,
+  theme: ArenaTheme,
+  schedule: (run: () => void) => void,
+  onDone: () => void,
+): void {
+  const f = floorSpec(theme);
+  const g = groundSpec(theme);
+  paintInBackground(floorKey(id, theme), () => startTraySurface(theme.structure, f.paint, f.world), schedule, () =>
+    paintInBackground(groundKey(id, theme), () => startGroundSurface(theme.structure, g.paint, g.repeat), schedule, onDone),
+  );
+}
+
+/**
+ * The floor and ground to draw NOW, and the real ones when they are
+ * painted.
+ *
+ * David, 21 Oct 2026: "I want the arenas to load much faster when you
+ * click on them to view them." Opening a board whose floor the warm-up
+ * had not reached painted it on the tap — up to 360ms on a desktop, a
+ * second on a phone. Now the tap gets a quick low-detail floor at once
+ * (a sixteenth of the work) while the real one is painted between
+ * frames, and the board swaps it in a moment later; a board whose
+ * pictures are cached gets them straight away as before.
+ */
+function useProgressiveSurface(key: string, quick: () => THREE.Texture, start: () => import('./groundTexture').SurfaceJob): THREE.Texture {
+  const first = useMemo(() => progressiveTexture(key, quick, start), [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [texture, setTexture] = useState(first.texture);
+  useEffect(() => {
+    let alive = true;
+    setTexture(first.texture);
+    first.ready?.then((t) => {
+      if (alive) setTexture(t);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [first]);
+  return texture;
 }
 
 /* ── the arena itself ─────────────────────────────────────────────── */
@@ -1273,15 +1331,19 @@ export function ThemedArena({
     anything. That grid is most of what is on screen, which is a large
     part of why David called the new maps unfinished.
   */
-  const floorTexture = useMemo(
-    () => themedFloorTexture(id, theme),
-    [id, theme],
+  const f = floorSpec(theme);
+  const floorTexture = useProgressiveSurface(
+    floorKey(id, theme),
+    () => createTraySurface(theme.structure, f.paint, f.world, QUICK_DENSITY),
+    () => startTraySurface(theme.structure, f.paint, f.world),
   );
 
   /* The ground outside it, in the same material family a shade duller. */
-  const groundTexture = useMemo(
-    () => themedGroundTexture(id, theme),
-    [id, theme],
+  const g = groundSpec(theme);
+  const groundTexture = useProgressiveSurface(
+    groundKey(id, theme),
+    () => createGroundSurface(theme.structure, g.paint, g.repeat, QUICK_DENSITY),
+    () => startGroundSurface(theme.structure, g.paint, g.repeat),
   );
 
   const wallMaterial = useMemo(

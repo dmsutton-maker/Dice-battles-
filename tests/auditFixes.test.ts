@@ -162,7 +162,7 @@ suite('audit fixes · die faces are painted only on the menu', () => {
     assert(/warmAllDieFaces\(/.test(resume), 'nothing restarts the warm-up on the way back to the menu');
   });
 
-  test('the battlefields are painted after the dice, under the same rule', () => {
+  test('the battlefields are painted beside the dice, under the same rule', () => {
     assert(
       /const warmArenas = \(\) => warmAllArenaTextures\(\(run\) => setTimeout\(run, 0\), shouldWarmFaces\)/.test(screen),
       'the battlefield warm-up is not given the menu-only rule',

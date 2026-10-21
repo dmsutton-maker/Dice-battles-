@@ -1954,14 +1954,34 @@ function surfaceTexture(data: Uint8Array, w: number, h: number, srgb: boolean): 
 
 const byte = (v: number) => (v < 0 ? 0 : v > 255 ? 255 : v);
 
-function build(
+/**
+ * A picture being painted a few rows at a time.
+ *
+ * David, 21 Oct 2026: "I want the arenas to load much faster when you
+ * click on them to view them." A floor is 224 x 408 texels and takes 35
+ * to 360ms to paint on a desktop — a second on a phone — and painting it
+ * in one go is what the tap used to wait for. Painted in rows between
+ * frames (textureCache.ts, paintInBackground), the same picture costs
+ * the same in all but blocks nothing; the board shows a quick low-detail
+ * floor meanwhile and swaps the finished one in. `step` paints up to
+ * `rows` more rows and says whether the picture is done; the bytes are
+ * exactly what `build` produces in one go.
+ */
+export interface SurfaceJob {
+  readonly texture: THREE.DataTexture;
+  /** How many rows there are to paint. */
+  readonly rows: number;
+  step(rows: number): boolean;
+}
+
+function startBuild(
   structure: ArenaStructure,
   paint: SurfacePaint,
   wUnits: number,
   hUnits: number,
   density: number,
   tray: boolean,
-): THREE.DataTexture {
+): SurfaceJob {
   const painter = PAINTERS[structure];
   const p = { a: rgb(paint.a), b: rgb(paint.b), accent: rgb(paint.accent) };
   const w = Math.round(wUnits * density);
@@ -1979,7 +1999,16 @@ function build(
   const eh = Math.ceil(h / step);
   const bump = extra?.bump ? new Uint8Array(ew * eh * 4) : null;
   const glow = extra?.glow ? new Uint8Array(ew * eh * 4) : null;
-  for (let y = 0; y < h; y++) {
+  const texture = surfaceTexture(data, w, h, true);
+  /*
+    Carried on the colour texture rather than returned beside it, so the
+    one cache entry (textureCache.ts) holds all three and they cannot be
+    painted from different colours or evicted separately.
+  */
+  texture.userData.bump = bump ? surfaceTexture(bump, ew, eh, false) : null;
+  texture.userData.glow = glow ? surfaceTexture(glow, ew, eh, true) : null;
+  let y = 0;
+  const paintRow = () => {
     for (let x = 0; x < w; x++) {
       SIDE.h = 0.5;
       SIDE.g = 0;
@@ -2006,17 +2035,28 @@ function build(
         }
       }
     }
-  }
-  const texture = surfaceTexture(data, w, h, true);
-  /*
-    Carried on the colour texture rather than returned beside it, so the
-    one cache entry (textureCache.ts) holds all three and they cannot be
-    painted from different colours or evicted separately.
-  */
-  texture.userData.bump = bump ? surfaceTexture(bump, ew, eh, false) : null;
-  texture.userData.glow = glow ? surfaceTexture(glow, ew, eh, true) : null;
-  return texture;
+  };
+  return {
+    texture,
+    rows: h,
+    step(rows: number): boolean {
+      const end = Math.min(h, y + rows);
+      for (; y < end; y++) paintRow();
+      if (y < h) return false;
+      // Painted after the texture was made: tell the GPU to read it again.
+      texture.needsUpdate = true;
+      for (const m of [texture.userData.bump, texture.userData.glow]) if (m) m.needsUpdate = true;
+      return true;
+    },
+  };
 }
+
+/**
+ * The stand-in's resolution, as a fraction of the real one: a quarter
+ * the texels each way, a sixteenth of the work, soft but the right
+ * colours. On screen for well under a second.
+ */
+export const QUICK_DENSITY = 0.25;
 
 /** The relief and glow painted alongside a surface, where it has them. */
 export function surfaceExtras(t: THREE.Texture): {
@@ -2042,7 +2082,20 @@ export function createTraySurface(
   structure: ArenaStructure,
   paint: SurfacePaint,
   world: [number, number],
+  density = TRAY_DENSITY,
 ): THREE.DataTexture {
+  const job = startTraySurface(structure, paint, world, density);
+  job.step(job.rows);
+  return job.texture;
+}
+
+/** The tray floor, to be painted in rows — see SurfaceJob. */
+export function startTraySurface(
+  structure: ArenaStructure,
+  paint: SurfacePaint,
+  world: [number, number],
+  density = TRAY_DENSITY,
+): SurfaceJob {
   /*
     ONE PICTURE, the shape of the tray.
 
@@ -2064,14 +2117,15 @@ export function createTraySurface(
     proportions and it is laid down once, at repeat [1, 1]. No join, and
     nothing stretched, because the texels stay square in world space.
   */
-  const t = build(
+  const job = startBuild(
     structure,
     paint,
     world[0] * UNITS_PER_WORLD,
     world[1] * UNITS_PER_WORLD,
-    TRAY_DENSITY,
+    density,
     true,
   );
+  const t = job.texture;
   // It covers the floor exactly once, so there is nothing to wrap, and
   // clamping stops the filter reaching round to the opposite edge.
   t.wrapS = THREE.ClampToEdgeWrapping;
@@ -2088,7 +2142,7 @@ export function createTraySurface(
   */
   t.anisotropy = 8;
   matchExtras(t);
-  return t;
+  return job;
 }
 
 /** The ground outside the tray, out to the edge of the frame. */
@@ -2096,7 +2150,20 @@ export function createGroundSurface(
   structure: ArenaStructure,
   paint: SurfacePaint,
   repeat: number,
+  density = 1,
 ): THREE.DataTexture {
+  const job = startGroundSurface(structure, paint, repeat, density);
+  job.step(job.rows);
+  return job.texture;
+}
+
+/** The ground, to be painted in rows — see SurfaceJob. */
+export function startGroundSurface(
+  structure: ArenaStructure,
+  paint: SurfacePaint,
+  repeat: number,
+  density = 1,
+): SurfaceJob {
   /*
     The ground still tiles, and that is right. It reaches 26 world units
     where the tray reaches ten, it is mostly behind scenery, and one
@@ -2104,10 +2171,11 @@ export function createGroundSurface(
     nothing. Its painters wrap at SIZE, so its joins really are seamless
     — which is what the tray's could never be at repeat 1.594.
   */
-  const t = build(structure, paint, SIZE, SIZE, 1, false);
+  const job = startBuild(structure, paint, SIZE, SIZE, density, false);
+  const t = job.texture;
   t.repeat.set(repeat, repeat);
   matchExtras(t);
-  return t;
+  return job;
 }
 
 /** Test-only: the painters, so a suite can measure what they produce. */

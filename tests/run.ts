@@ -71,6 +71,7 @@ async function main(): Promise<void> {
   await import('./ladder.test');
   await import('./circuitPulse.test');
   await import('./cupRotation.test');
+  await import('./arenaSpeed.test');
   process.exit(await runAll());
 }
 
