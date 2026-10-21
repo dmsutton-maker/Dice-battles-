@@ -6,6 +6,11 @@ import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 import { playClick } from '../audio/sounds';
 import { PRODUCTS, priceLabel, type Product } from '../game/products';
 import { ProductArt } from './ProductArt';
+import { ItemIcon } from './ItemIcon';
+import { pictureOfProduct } from '../game/productPictures';
+import type { PreviewTarget } from '../game/itemPreview';
+import { skinById } from '../game/diceSkins';
+import { ARENAS, type ArenaId } from '../arena/arenas';
 import { seasonAt, seasonDaysLeft } from '../game/seasonPass';
 import {
   buy,
@@ -41,8 +46,11 @@ export function MoneyShelf({
   familyPreview = false,
   onGoldLayout,
   goldGlow = 0,
+  onPreview,
 }: {
   onBought?: () => void;
+  /** Open a die or battlefield the product includes on the real board. */
+  onPreview?: (target: PreviewTarget) => void;
   /** Family tester mode: also show what is not on sale yet. */
   familyPreview?: boolean;
   /** Where the Gold Pass card sits in the shelf, for the Store's glide. */
@@ -148,6 +156,15 @@ export function MoneyShelf({
         !(viewing.kind !== 'consumable' && hasEntitlement(viewing.id))
       }
       owned={viewing.kind !== 'consumable' && hasEntitlement(viewing.id)}
+      onPreview={
+        onPreview
+          ? (target) => {
+              playClick();
+              setViewing(null);
+              onPreview(target);
+            }
+          : undefined
+      }
       onBuy={() => {
         const product = viewing;
         playClick();
@@ -337,6 +354,7 @@ function ProductDetail({
   owned,
   onBuy,
   onClose,
+  onPreview,
 }: {
   product: Product;
   price: string | null;
@@ -344,8 +362,24 @@ function ProductDetail({
   owned: boolean;
   onBuy: () => void;
   onClose: () => void;
+  onPreview?: (target: PreviewTarget) => void;
 }) {
   const shown = priceLabel(product, price);
+  /*
+    The dice and battlefields the product includes, each a tap away from
+    the real board. David, 21 Oct 2026: "When you click on a money
+    purchase to view it and if it includes a dice or arena, it should
+    show you the preview of what that dice or arena looks like." The
+    list is the same one the card's picture is drawn from
+    (productPictures.ts), so nothing can be shown that is not included.
+  */
+  const included = onPreview
+    ? pictureOfProduct(product).items.map((item) =>
+        item.kind === 'die'
+          ? { ...item, name: `${skinById(item.id).name} dice`, target: { kind: 'die' as const, id: item.id, from: 'store' as const } }
+          : { ...item, name: ARENAS[item.id as ArenaId]?.name ?? item.id, target: { kind: 'arena' as const, id: item.id as ArenaId, from: 'store' as const } },
+      )
+    : [];
   return (
     <View style={styles.detailBackdrop}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
@@ -365,6 +399,26 @@ function ProductDetail({
                 : `${shown} · not on sale yet`}
           </Text>
           <Text style={styles.detailBody}>{product.details}</Text>
+          {included.length > 0 && (
+            <View style={styles.included}>
+              <Text style={styles.includedTitle}>
+                {included.length === 1 ? 'TAP TO SEE IT ON THE BOARD' : 'TAP ONE TO SEE IT ON THE BOARD'}
+              </Text>
+              {included.map((item) => (
+                <Pressable
+                  key={`${item.kind}-${item.id}`}
+                  style={styles.includedRow}
+                  accessibilityRole="button"
+                  accessibilityLabel={`See the ${item.name} on the board`}
+                  onPress={() => onPreview?.(item.target)}
+                >
+                  <ItemIcon picture={item.kind === 'die' ? { kind: 'die', id: item.id } : { kind: 'arena', id: item.id as ArenaId }} size={40} />
+                  <Text style={styles.includedName}>{item.name}</Text>
+                  <Text style={styles.includedGo}>See it</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
           {!product.available && product.blockedBy && (
             <Text style={styles.laterWhy}>Waiting on: {product.blockedBy}</Text>
           )}
@@ -498,6 +552,22 @@ const styles = StyleSheet.create({
   detailTitle: { ...TYPE.title, color: THEME.ink },
   detailPrice: { ...TYPE.cardTitle, color: THEME.accent },
   detailBody: { ...TYPE.body, color: THEME.ink, lineHeight: 21 },
+  included: { gap: 6, marginTop: 4 },
+  includedTitle: { ...TYPE.label, color: THEME.inkSoft, letterSpacing: 0.8 },
+  includedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: MIN_TAP,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: SHAPE.radiusSm,
+    backgroundColor: THEME.tile,
+    borderWidth: SHAPE.line,
+    borderColor: 'rgba(29,26,46,0.14)',
+  },
+  includedName: { ...TYPE.body, color: THEME.ink, fontWeight: '800', flex: 1 },
+  includedGo: { ...TYPE.small, color: THEME.accent, fontWeight: '800' },
   detailBuy: { alignSelf: 'stretch', marginTop: 14, minHeight: MIN_TAP },
   detailClose: { alignSelf: 'center', marginTop: 10, minHeight: MIN_TAP, justifyContent: 'center', paddingHorizontal: 20 },
   later: { marginTop: 22, gap: 10 },

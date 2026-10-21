@@ -13,6 +13,7 @@ import { playClick } from '../audio/sounds';
 import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
 import { MoneyShelf } from './MoneyShelf';
+import type { PreviewTarget } from '../game/itemPreview';
 import { easeInOutCubic, glideDuration, glideTarget } from './glide';
 
 /**
@@ -50,6 +51,8 @@ interface StoreScreenProps {
   onPreview: (skinId: string) => void;
   /** Opens the battlefield itself, standing in it — bought there too. */
   onPreviewArena: (arenaId: (typeof STORE_ARENAS)[number]) => void;
+  /** A die or battlefield included in a money purchase, on the real board. */
+  onPreviewItem: (target: PreviewTarget) => void;
   /**
    * Glide down to the Gold Pass. A counter rather than a flag, so every
    * tap of "Get the Gold Pass" on the Cups tab moves it on and is
@@ -64,6 +67,7 @@ export function StoreScreen({
   familyPreview = false,
   onPreview,
   onPreviewArena,
+  onPreviewItem,
   hidden = false,
   focusGold = 0,
 }: StoreScreenProps) {
@@ -319,6 +323,7 @@ export function StoreScreen({
               gold.current = { y, height };
             }}
             goldGlow={goldGlow}
+            onPreview={onPreviewItem}
           />
         </View>
       </ScrollView>

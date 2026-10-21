@@ -74,6 +74,7 @@ async function main(): Promise<void> {
   await import('./cupRotation.test');
   await import('./arenaSpeed.test');
   await import('./seasonRotation.test');
+  await import('./productPreview.test');
   process.exit(await runAll());
 }
 

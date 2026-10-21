@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.150.0 — 2026-10-21 · requested by David
+
+### Added
+- **A money purchase shows you what it includes, on the board.** David:
+  "When you click on a money purchase to view it and if it includes a
+  dice or arena, it should show you the preview of what that dice or
+  arena looks like." The full story of Neon dice, Dino Valley, the
+  Starter pack and the Gold Pass now lists each die and battlefield it
+  includes; tap one and it opens on the real board, the same way a die
+  or battlefield from the coin shelf does. Close the preview and you are
+  back on the Store.
+
 ## v1.149.0 — 2026-10-21 · requested by David
 
 ### Added

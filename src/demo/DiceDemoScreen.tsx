@@ -2872,6 +2872,9 @@ export function DiceDemoScreen() {
           }}
           onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })}
           onPreviewArena={(id) => showPreview({ kind: 'arena', id, from: 'store' })}
+          // A die or battlefield inside a money purchase: the same real
+          // board, so a $1.99 die is seen the way a 450-coin one is.
+          onPreviewItem={(target) => showPreview(target)}
           focusGold={goldFocus}
         />
       )}
