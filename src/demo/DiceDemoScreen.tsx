@@ -30,6 +30,7 @@ import {
   ARENA_ORDER,
   isArenaUnlocked,
   keepPassArenas,
+  keepRaisedRungs,
   isSkinUnlocked,
   getLoadout,
   loadLoadout,
@@ -79,7 +80,6 @@ import {
   TROPHY_CODE_MAX,
   COIN_CODE_MAX,
   getProgress,
-  isUnlocked,
   loadProgress,
   nextTier,
   setUnlockAll as persistUnlockAll,
@@ -309,6 +309,9 @@ export function DiceDemoScreen() {
           season pass. Whoever had already earned one keeps it — handed
           over here, once, now that the save and the wallet are both in.
         */
+        // Bubblegum Dice moved up the ladder; whoever had it keeps it.
+        // Quietly: nothing changes for them, so there is nothing to say.
+        if (keepRaisedRungs().length > 0) setWallet({ ...getWallet() });
         const kept = keepPassArenas();
         if (kept.length > 0) {
           setWallet({ ...getWallet() });
@@ -2491,7 +2494,6 @@ export function DiceDemoScreen() {
           diePatternInk={sceneSkin.ink}
           dieEffect={sceneSkin.effect}
           dieSymbols={colorblind}
-          showTreasure={isUnlocked('treasure', trophies)}
           controlsRef={controlsRef}
           onThrow={handleThrow}
           onSettled={handleSettled}

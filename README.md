@@ -140,10 +140,10 @@ battle zone is a second `DiceScene` with its own physics world.
 
 **Progression (in):** Clash-Royale-style trophy ladder — win/lose trophies
 (stakes scale with difficulty), persisted on device. The ladder alternates
-battlefields and dice so a reward is always close: Gold Dice (100 🏆),
-Sunset Castle (250), Mint Dice (325), Jungle Clearing (400), Bubblegum Dice
-(475), Courtyard Treasure (550), the Mystery Arena (700 — revealed as the
-Space Station only once earned), Midnight Dice (850).
+battlefields and dice so a reward is always close: Gold Dice (40 🏆),
+Sunset Castle (100), Mint Dice (180), Jungle Clearing (290), Bubblegum Dice
+(560), Space Station (850), Midnight Dice (1150), and on up to Moon Base at
+10,000. The full ladder is TIERS in `src/game/progress.ts`.
 
 Everything cosmetic is equipped in the **🎒 Inventory**
 (`src/demo/InventoryScreen.tsx`): battlefields and dice colours, with

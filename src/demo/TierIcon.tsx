@@ -53,11 +53,9 @@ export function TierIcon({ tier, size = TIER_ICON }: { tier: Tier; size?: number
     );
   }
   /*
-    Courtyard Treasure is the only rung that hands over no thing of its
-    own — it adds the pile of gold to the Castle Courtyard. It used to
-    keep its emoji for want of anything better; a drawn coin is what the
-    pile is made of, and it means there is no emoji left on either
-    screen.
+    No rung lands here since Courtyard Treasure left the ladder on 21
+    Oct 2026 — every one is a die or a battlefield. The coin stays as a
+    safe picture rather than an empty square, should one ever not be.
   */
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>

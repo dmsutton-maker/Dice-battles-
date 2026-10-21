@@ -19,6 +19,7 @@ import {
   hasUnlockAll,
   isUnlocked,
   markPassArenasKept,
+  markRaisedRungsKept,
   TIERS,
   UnlockId,
 } from './progress';
@@ -114,6 +115,34 @@ export function keepPassArenas(): ArenaId[] {
     }
   }
   markPassArenasKept();
+  return kept;
+}
+
+/**
+ * Ladder dice whose rung moved UP, and where it used to be: Bubblegum
+ * Dice, 430 to 560, on 21 Oct 2026 (see TIERS in progress.ts).
+ */
+export const RAISED_RUNGS: Record<string, number> = {
+  bubblegum: 430,
+};
+
+/**
+ * Anybody who had already earned a die whose rung then moved up keeps it.
+ *
+ * Runs ONCE per save, like keepPassArenas, and for the same reason:
+ * every launch would keep handing it to anybody who reached the old
+ * number later. Kept dice go on the wallet's shelf, which isSkinUnlocked
+ * reads for a ladder die as well as its rung. Returns the ids handed
+ * over, for the tests.
+ */
+export function keepRaisedRungs(): string[] {
+  const progress = getProgress();
+  if (progress.raisedRungsKept) return [];
+  const kept: string[] = [];
+  for (const [id, at] of Object.entries(RAISED_RUNGS)) {
+    if (progress.trophies >= at && grantItem(id)) kept.push(id);
+  }
+  markRaisedRungsKept();
   return kept;
 }
 
@@ -279,7 +308,8 @@ export function isSkinUnlocked(skinId: string, trophies: number): boolean {
   if (skin.paid) return hasUnlockAll() || hasEntitlement(skin.id);
   if (skin.price !== undefined) return hasUnlockAll() || owns(skin.id);
   if (skin.unlock === null || skin.unlock === undefined) return true;
-  return isUnlocked(skin.unlock, trophies);
+  // Or kept from before its rung moved up — see keepRaisedRungs.
+  return isUnlocked(skin.unlock, trophies) || owns(skin.id);
 }
 
 /**

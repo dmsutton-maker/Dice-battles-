@@ -33,13 +33,10 @@ export function tierItem(tier: Tier): TierItem {
   )?.[0];
   if (arena) return { kind: 'arena', arena };
 
-  /*
-    Courtyard Treasure is the only rung that is neither. It adds the pile
-    of gold to the Castle Courtyard rather than handing over a new thing
-    of its own, so it has no picture to show and keeps its emoji.
-  */
+  // Every rung is a die or a battlefield since Courtyard Treasure left
+  // the ladder (21 Oct 2026); this is only a safe answer for a typo.
   return { kind: 'none' };
 }
 
 /** The rungs with nothing of their own to show. Kept honest by a test. */
-export const TIERS_WITHOUT_A_PICTURE: UnlockId[] = ['treasure'];
+export const TIERS_WITHOUT_A_PICTURE: UnlockId[] = [];

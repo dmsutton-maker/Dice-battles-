@@ -93,6 +93,12 @@ export interface Progress {
    * handed Snowy Hollow by the old ladder through the back door.
    */
   passArenasKept?: true;
+  /**
+   * Bubblegum Dice moved up the ladder from 430 to 560 on 21 Oct 2026.
+   * Anybody already past 430 keeps it — handed over once, the first time
+   * this version loads a save, the same way as `passArenasKept`.
+   */
+  raisedRungsKept?: true;
 }
 
 /**
@@ -120,7 +126,6 @@ export type UnlockId =
   | 'mint-dice'
   | 'jungle'
   | 'bubblegum-dice'
-  | 'treasure'
   | 'space'
   | 'midnight-dice'
   // The long ladder, added 26 Aug 2026 — eight themed battlefields and
@@ -153,15 +158,30 @@ export const TIERS: Tier[] = [
   // The two you start with, so the ladder shows where you began.
   { at: 0, name: 'Castle Courtyard', id: 'castle' },
   { at: 0, name: 'Ivory Dice', id: 'ivory-dice' },
-  // Gaps widen the whole way up — 40, 60, 80, 110, 140, 180, 240, 300.
+  // Gaps widen the whole way up — 40, 60, 80, 110, 270, 290, 300, 350.
   // The first reward used to cost 100 trophies, several sessions before
   // anything at all happened.
   { at: 40, name: 'Gold Dice', id: 'golden-dice' },
   { at: 100, name: 'Sunset Castle', id: 'sunset-castle' },
   { at: 180, name: 'Mint Dice', id: 'mint-dice' },
   { at: 290, name: 'Jungle Clearing', id: 'jungle' },
-  { at: 430, name: 'Bubblegum Dice', id: 'bubblegum-dice' },
-  { at: 610, name: 'Courtyard Treasure', id: 'treasure' },
+  /*
+    Courtyard Treasure sat at 610 until 21 Oct 2026: a chest of gold added
+    beside the board, which on every current iPhone was drawn off the
+    bottom-right corner of the screen, so the reward could not be seen.
+    David: "Get rid of it and just adjust some trophy unlock amounts near
+    it to make it better."
+
+    Bubblegum Dice moved from 430 to 560 to close the hole it left. It is
+    the only rung that could: Sunset Castle (100), Jungle Clearing (290),
+    Space Station (850) and Midnight Dice (1150) each have a Game Center
+    achievement with the number in its id. Between 290 and 850 the steps
+    have to grow and stay under the 300 above, which only 551-569 does.
+    That is the one rung ever moved UP, and nobody loses it: anybody
+    already at 430 when this version first loads keeps it for good —
+    keepRaisedRungs() in loadout.ts.
+  */
+  { at: 560, name: 'Bubblegum Dice', id: 'bubblegum-dice' },
   { at: 850, name: 'Space Station', id: 'space' },
   { at: 1150, name: 'Midnight Dice', id: 'midnight-dice' },
   /*
@@ -425,6 +445,13 @@ export function setSeasonState(state: SeasonState): Progress {
   current = { ...current, season: state };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
   return current;
+}
+
+/** Record that the dice whose rung moved up have been handed over. */
+export function markRaisedRungsKept(): void {
+  if (current.raisedRungsKept) return;
+  current = { ...current, raisedRungsKept: true };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
 }
 
 /** Record that the two former ladder arenas have been handed over. */

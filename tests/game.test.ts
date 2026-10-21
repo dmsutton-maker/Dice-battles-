@@ -790,8 +790,8 @@ suite('the ladder', () => {
   });
 
   test('no rung carries an emoji at all', () => {
-    // Courtyard Treasure, the one rung with no item of its own, is drawn
-    // as the game's coin (TierIcon) — it needs no emoji either.
+    // Courtyard Treasure, the last rung with no item of its own, left the
+    // ladder on 21 Oct 2026; any rung like it would be drawn as a coin.
     for (const id of TIERS_WITHOUT_A_PICTURE) {
       assert(TIERS.some((t) => t.id === id), `${id} is not on the ladder at all`);
     }

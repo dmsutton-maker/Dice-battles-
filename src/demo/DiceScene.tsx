@@ -8,7 +8,6 @@ import { playClack, playThrow } from '../audio/sounds';
 import { MOAT, ObstacleLayout } from '../game/obstacles';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { obstacleLook } from '../arena/obstacleLooks';
-import { TreasureChest } from '../arena/TreasureChest';
 import { Mound, Pit } from '../arena/Hazards';
 import { BUMP_SECONDS, bumpSquash, gulpScale } from '../arena/hazardShapes';
 import { WaterClock } from '../arena/waterClock';
@@ -73,8 +72,6 @@ interface DiceSceneProps {
    * the physics or the settle rule.
    */
   dieEffect?: DieEffectId;
-  /** Trophy unlock that adds the courtyard treasure. */
-  showTreasure: boolean;
   /**
    * The board is otherwise asleep and only the water wants drawing — see
    * WaterClock. Passed down from the frameloop rule in DiceDemoScreen.
@@ -111,7 +108,6 @@ export function DiceScene({
   diePatternInk,
   dieSymbols = false,
   dieEffect,
-  showTreasure,
   throwsEnabled = true,
   waterIdle = false,
 }: DiceSceneProps) {
@@ -592,7 +588,6 @@ export function DiceScene({
       />
 
       <ArenaComponent padColors={padColors} />
-      {showTreasure && <TreasureChest />}
       <Prisoners units={units} symbols={dieSymbols} />
 
       {/*

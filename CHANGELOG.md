@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.144.0 — 2026-10-21 · requested by David
+
+### Removed
+- **Courtyard Treasure is off the trophy ladder.** David: "Get rid of it
+  and just adjust some trophy unlock amounts near it to make it better."
+  The reward at 610 trophies was a chest of gold added beside the board,
+  and on every current iPhone it was drawn off the bottom-right corner of
+  the screen, so nobody who earned it could see it. The chest is gone
+  from every battlefield.
+
+### Changed
+- **Bubblegum Dice now unlock at 560 trophies, not 430**, closing the
+  gap. The ladder now climbs in steps that get steadily bigger: 40, 60,
+  80, 110, 270, 290, 300, 350 and on up. It was the only rung that could
+  move: Sunset Castle (100), Jungle Clearing (290), Space Station (850)
+  and Midnight Dice (1,150) each have a Game Center achievement with the
+  number in its name.
+  - Nobody loses it: anybody already past 430 when this version first
+    opens keeps Bubblegum Dice for good. A test checks that, and that it
+    happens only once.
+
 ## v1.143.0 — 2026-10-20 · requested by David
 
 ### Changed
