@@ -26,7 +26,7 @@ export const FISH_FIN = rgb('#c2481a'); // tail, dorsal fin — darker, so they 
 const BELLY = rgb('#f7c98f');
 const EYE = rgb('#ffffff');
 const PUPIL = rgb('#26343d');
-const BUBBLE = rgb('#eef7fc');
+export const BUBBLE = rgb('#eef7fc');
 
 /** Where one fish swims: centre, direction (+1 nose toward +x), tilt. */
 export type FishPlace = readonly [number, number, 1 | -1, number];

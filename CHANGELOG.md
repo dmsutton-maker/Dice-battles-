@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.145.0 — 2026-10-21 · requested by David
+
+### Changed
+- **Every die's design now flows right round the die**, over every edge
+  and corner. David: "Make sure EVERY DICE has a continuous pattern that
+  flows on every side of it." v1.141.0 did this for the wallpaper-style
+  dice; about a third were still one picture stamped on each side (the
+  same pizza six times, the same compass six times, a highlight that
+  stopped dead at every edge). The last exemption list is gone and the
+  continuity test now measures all 58 designs across all twelve edges.
+  - Pizza is one pizza wrapped round the cube, pepperoni, olives and
+    basil lying across the edges. Lemon Slice, Blossom, Lavender, Donut
+    and Fish are strewn round the whole die with slices, flowers,
+    sprigs, sprinkles and goldfish crossing from side to side; on the
+    board the goldfish swim right round the Fish dice and circle on the
+    top and bottom.
+  - Chicken & Waffles is one waffle with drumsticks over the edges.
+    Watermelon's rind is one green band wound round the die.
+  - Basketball, Football, Volleyball and Bowling Ball are drawn as
+    balls: seams, laces, panels and finger holes run unbroken over the
+    edges. Circuit Board is wired from side to side with a chip at each
+    sticker.
+  - The Supporter's compass roses are joined by one gold rope along
+    every edge. Neon's pink and cyan tubes bend right round the die.
+    Fire burns from underneath and up all four sides.
+  - Gold, Silver, Ruby, Copper, Amethyst, Mint, Bubblegum, Midnight and
+    Ivory catch one sweep of light that turns every corner instead of a
+    separate glint per side.
+  - The six colour stickers, where they sit, and how the dice roll are
+    exactly as before.
+
 ## v1.144.0 — 2026-10-21 · requested by David
 
 ### Removed

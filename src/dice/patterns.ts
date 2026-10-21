@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { cachedTexture } from '../arena/textureCache';
-import { bubbleAt, goldfishAt, waterAt } from './goldfish';
+import { BUBBLE, FishPlace, goldfishAt, Rgb, waterAt } from './goldfish';
+export type { Rgb } from './goldfish';
 
 /**
  * Procedural patterns for dice shells. Built pixel by pixel because React
@@ -127,12 +128,13 @@ export const STICKER_FRACTION = 0.33;
 const STICKER_RADIUS = SIZE * STICKER_FRACTION;
 
 /**
- * A painter is asked for a SHEET position (x, y) and, for the few that
- * need to know, the position on the face itself (fx, fy) — light painted
- * onto one face, like ivory's sheen, belongs to the face and not to the
- * strip. Most painters ignore the second pair.
+ * A painter is asked for a SHEET position (x, y): a point of the strip
+ * that runs round the four sides, or of its continuation over the top and
+ * bottom edges. Every sheet position is a point on the die (sheetToCube),
+ * and since 21 Oct 2026 nothing is painted per face: light, motifs and
+ * materials alike are functions of where on the die they are.
  */
-type Painter = (x: number, y: number, fx: number, fy: number) => number;
+type Painter = (x: number, y: number) => number;
 
 /**
  * How dark a mask of -1 makes the shell. The dice are rendered UNLIT (see
@@ -370,24 +372,52 @@ const SEAM_E2 = norm3([1, 1, -2]);
 const SEAM_SWING = 0.09;
 
 /**
+ * A seam's frame: the body diagonal it winds round and two axes across
+ * it. The cube has four body diagonals, so four such curves exist, each
+ * crossing every side through a different corner; the basketball and
+ * the Neon die wind two of them round the die at once.
+ */
+type SeamFrame = { axis: readonly number[]; e1: readonly number[]; e2: readonly number[] };
+const SEAM_FRAME: SeamFrame = { axis: SEAM_AXIS, e1: SEAM_E1, e2: SEAM_E2 };
+/**
+ * The same curve round the (1, -1, 1) diagonal. `e1` is chosen so the
+ * swing still pushes the curve AWAY from every face's centre (the sign of
+ * sin 3phi at the centres is what decides it; see seamAt).
+ */
+const SEAM_FRAME_B: SeamFrame = (() => {
+  const axis = norm3([1, -1, 1]);
+  const e1 = norm3([-1, -1, 0]);
+  const e2 = norm3([
+    axis[1] * e1[2] - axis[2] * e1[1],
+    axis[2] * e1[0] - axis[0] * e1[2],
+    axis[0] * e1[1] - axis[1] * e1[0],
+  ]);
+  return { axis, e1, e2 };
+})();
+
+/**
  * Signed distance from the seam in texels across the face, and where
  * along it the point is (an angle round the die's diagonal, -PI..PI).
+ * The raw seam value `g` comes back too, for designs that want bands of
+ * it rather than one line (the volleyball's panels).
  */
-function seamAt(P: readonly number[]): { off: number; along: number } {
-  const a = dot3(P, SEAM_E1);
-  const b = dot3(P, SEAM_E2);
-  const h = dot3(P, SEAM_AXIS);
+function seamAt(
+  P: readonly number[],
+  swing = SEAM_SWING,
+  frame: SeamFrame = SEAM_FRAME,
+): { off: number; along: number; g: number } {
+  const a = dot3(P, frame.e1);
+  const b = dot3(P, frame.e2);
+  const h = dot3(P, frame.axis);
   const r2 = Math.max(1e-6, a * a + b * b);
   // f = r sin(3 phi), written in a and b so the gradient comes easily.
   const num = 3 * a * a * b - b * b * b;
   const f = num / r2;
   const fa = (6 * a * b * r2 - num * 2 * a) / (r2 * r2);
   const fb = ((3 * a * a - 3 * b * b) * r2 - num * 2 * b) / (r2 * r2);
-  const g = h + SEAM_SWING * f;
-  const grad = [0, 1, 2].map(
-    (i) => SEAM_AXIS[i] + SEAM_SWING * (fa * SEAM_E1[i] + fb * SEAM_E2[i]),
-  );
-  return { off: acrossFace(P, g, grad), along: Math.atan2(b, a) };
+  const g = h + swing * f;
+  const grad = [0, 1, 2].map((i) => frame.axis[i] + swing * (fa * frame.e1[i] + fb * frame.e2[i]));
+  return { off: acrossFace(P, g, grad), along: Math.atan2(b, a), g };
 }
 
 /*
@@ -463,6 +493,312 @@ function soccerPanelAt(P: readonly number[]): { pent: boolean; seam: number; cen
   };
 }
 
+/*
+  ── Painting on the cube itself ─────────────────────────────────────
+
+  David, 21 Oct 2026: "Make sure EVERY DICE has a continuous pattern that
+  flows on every side of it." Until now a third of the skins were one
+  picture stamped on each side — a pizza per side, a compass per side —
+  because their motif was drawn at particular positions on a square.
+  These helpers let a painter put a motif on the DIE instead: a sticker
+  stuck on one face can be folded over an edge onto the next, so a
+  pepperoni, a lemon slice or a goldfish can lie across an edge and
+  come out whole, and a design built from them is one design round the
+  whole die with no side blank and nothing copied.
+*/
+
+/** Each face's outward normal and its texture's u and v axes, in three.js face order. */
+const FACE_FRAMES: readonly { n: readonly number[]; u: readonly number[]; v: readonly number[] }[] = [
+  { n: [1, 0, 0], u: [0, 0, -1], v: [0, 1, 0] }, // +X
+  { n: [-1, 0, 0], u: [0, 0, 1], v: [0, 1, 0] }, // -X
+  { n: [0, 1, 0], u: [1, 0, 0], v: [0, 0, -1] }, // +Y
+  { n: [0, -1, 0], u: [1, 0, 0], v: [0, 0, 1] }, // -Y
+  { n: [0, 0, 1], u: [1, 0, 0], v: [0, 1, 0] }, // +Z
+  { n: [0, 0, -1], u: [-1, 0, 0], v: [0, 1, 0] }, // -Z
+];
+
+/** Which face a cube point is on: the axis it is furthest along. */
+export function cubeFace(P: readonly number[]): number {
+  const ax = Math.abs(P[0]);
+  const ay = Math.abs(P[1]);
+  const az = Math.abs(P[2]);
+  if (ax >= ay && ax >= az) return P[0] >= 0 ? 0 : 1;
+  if (ay >= az) return P[1] >= 0 ? 2 : 3;
+  return P[2] >= 0 ? 4 : 5;
+}
+
+/**
+ * Where a cube point lands on face `f`, laid flat: its (u, v) in that
+ * face's own texels from the face's centre. A point on the face itself
+ * is simply projected; a point on a neighbouring face is FOLDED over
+ * the edge the two share, the way the strip folds over the top and
+ * bottom edges — so a flat drawing centred on `f` carries on over its
+ * edges without a break. A point on the opposite face is out of reach
+ * and returns null.
+ */
+export function unfoldOnto(P: readonly number[], f: number): [number, number] | null {
+  const F = FACE_FRAMES[f];
+  const g = cubeFace(P);
+  const h = dot3(P, F.n);
+  let u = dot3(P, F.u);
+  let v = dot3(P, F.v);
+  if (g !== f) {
+    const G = FACE_FRAMES[g];
+    const gu = dot3(G.n, F.u);
+    const gv = dot3(G.n, F.v);
+    if (gu === 0 && gv === 0) return null; // the opposite face
+    const past = SIZE / 2 - h;
+    u += gu * past;
+    v += gv * past;
+  }
+  return [u, v];
+}
+
+/** A hash of a 3D lattice point, 0..1. */
+function hash3(ix: number, iy: number, iz: number): number {
+  return Math.abs((Math.sin(ix * 127.1 + iy * 311.7 + iz * 74.7) * 43758.5453) % 1);
+}
+
+/**
+ * Value noise in THREE dimensions, sampled at a point on the cube.
+ *
+ * The strip's noise (wrappedNoise) is continuous round the four sides
+ * and over the top and bottom edges, but the top and bottom are each
+ * painted from four sides' continuations that meet along the cap's
+ * diagonals, and there two different stretches of the strip meet. Noise
+ * of the point's place IN SPACE has no such join: the same point is
+ * the same point however the sheet reached it, so a swirl or a mottle
+ * built from this is seamless over every edge and every diagonal.
+ */
+export function cubeNoise(P: readonly number[], period: number): number {
+  const gx = Math.floor(P[0] / period);
+  const gy = Math.floor(P[1] / period);
+  const gz = Math.floor(P[2] / period);
+  const ease = (t: number) => t * t * (3 - 2 * t);
+  const sx = ease(P[0] / period - gx);
+  const sy = ease(P[1] / period - gy);
+  const sz = ease(P[2] / period - gz);
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const x00 = lerp(hash3(gx, gy, gz), hash3(gx + 1, gy, gz), sx);
+  const x10 = lerp(hash3(gx, gy + 1, gz), hash3(gx + 1, gy + 1, gz), sx);
+  const x01 = lerp(hash3(gx, gy, gz + 1), hash3(gx + 1, gy, gz + 1), sx);
+  const x11 = lerp(hash3(gx, gy + 1, gz + 1), hash3(gx + 1, gy + 1, gz + 1), sx);
+  return lerp(lerp(x00, x10, sy), lerp(x01, x11, sy), sz);
+}
+
+/** Octaves of cubeNoise, centred on zero, like fbm. */
+function cubeFbm(P: readonly number[], periods: number[], weights: number[]): number {
+  let sum = 0;
+  let total = 0;
+  for (let i = 0; i < periods.length; i++) {
+    sum += (cubeNoise(P, periods[i]) - 0.5) * 2 * weights[i];
+    total += weights[i];
+  }
+  return sum / total;
+}
+
+/** A per-texel speck that is the same speck from every side: hashed by the point's place in space. */
+function cubeSpeck(P: readonly number[]): number {
+  return hash3(Math.round(P[0] * 2), Math.round(P[1] * 2), Math.round(P[2] * 2));
+}
+
+/**
+ * A flat drawing stuck on one face of the die, which may hang over an
+ * edge onto a neighbour. `u, v` is its centre in that face's texels from
+ * the face's centre, `rot` turns it, `reach` is how far from its centre
+ * it can paint, and `h` is a hash of its own for size and colour.
+ */
+export interface Sticker {
+  face: number;
+  u: number;
+  v: number;
+  rot: number;
+  reach: number;
+  h: number;
+  /** Which of a painter's motifs this is, when it scatters more than one. */
+  kind: number;
+}
+
+/** A sticker and where a sample point falls on it, in the sticker's own frame. */
+type StickerHit = { s: Sticker; lx: number; ly: number };
+
+/**
+ * A set of stickers over the die, indexed by face so a sample only looks
+ * at the stickers that could reach it: those on its own face, and those
+ * on a neighbouring face that hang over the shared edge.
+ */
+export class StickerSheet {
+  private readonly byFace: Sticker[][] = [[], [], [], [], [], []];
+
+  constructor(stickers: readonly Sticker[]) {
+    const half = SIZE / 2;
+    for (const s of stickers) {
+      this.byFace[s.face].push(s);
+      const F = FACE_FRAMES[s.face];
+      for (let g = 0; g < 6; g++) {
+        if (g === s.face) continue;
+        const G = FACE_FRAMES[g];
+        const gu = dot3(G.n, F.u);
+        const gv = dot3(G.n, F.v);
+        if (gu === 0 && gv === 0) continue;
+        // Distance from the sticker's centre to the edge it shares with g.
+        const toEdge = half - (gu * s.u + gv * s.v);
+        if (toEdge < s.reach) this.byFace[g].push(s);
+      }
+    }
+  }
+
+  /** Every sticker under a cube point, nearest centre first. */
+  hits(P: readonly number[]): StickerHit[] {
+    const out: StickerHit[] = [];
+    for (const s of this.byFace[cubeFace(P)]) {
+      const uv = unfoldOnto(P, s.face);
+      if (!uv) continue;
+      const dx = uv[0] - s.u;
+      const dy = uv[1] - s.v;
+      if (Math.abs(dx) > s.reach || Math.abs(dy) > s.reach) continue;
+      const c = Math.cos(s.rot);
+      const n = Math.sin(s.rot);
+      out.push({ s, lx: dx * c + dy * n, ly: -dx * n + dy * c });
+    }
+    if (out.length > 1) out.sort((a, b) => Math.hypot(a.lx, a.ly) - Math.hypot(b.lx, b.ly));
+    return out;
+  }
+}
+
+/**
+ * Stickers scattered over the die, the same number on every face so no
+ * side is left bare, each kept clear of the colour sticker in the
+ * middle of its face and of every corner of the die — a round drawing
+ * folded over a corner would have nowhere to put its third quarter.
+ * They may hang over an edge, which is the point. Deterministic: the
+ * shelf and the table must show the same die.
+ */
+export function scatterStickers(
+  seed: number,
+  perFace: number,
+  reach: number,
+  /** The least distance between two centres, in texels. */
+  gap: number,
+  /** How far outside the colour sticker a centre must sit. */
+  clear = reach * 0.6,
+  /**
+   * How far from every corner of the die a centre must sit. A drawing
+   * folded over a corner loses the quarter that would lie beyond both
+   * edges, so a round motif keeps its whole reach clear; a long thin one
+   * can come closer.
+   */
+  cornerClear = reach,
+  /** The motifs to deal out, in turn, on each face: see Sticker.kind. */
+  kinds: readonly number[] = [0],
+): Sticker[] {
+  const out: Sticker[] = [];
+  const half = SIZE / 2;
+  const pos3 = stickerPoint;
+  for (let face = 0; face < 6; face++) {
+    let placed = 0;
+    for (let k = 0; k < 400 && placed < perFace; k++) {
+      const h1 = hashCell(seed + face * 97 + k * 3, seed * 7 + 1);
+      const h2 = hashCell(seed + face * 97 + k * 3, seed * 7 + 2);
+      const h3 = hashCell(seed + face * 97 + k * 3, seed * 7 + 3);
+      const s: Sticker = {
+        face,
+        u: (h1 - 0.5) * 2 * half,
+        v: (h2 - 0.5) * 2 * half,
+        rot: h3 * Math.PI * 2,
+        reach,
+        h: hashCell(seed + face * 97 + k * 3, seed * 7 + 4),
+        kind: kinds[placed % kinds.length],
+      };
+      if (Math.hypot(s.u, s.v) < STICKER_RADIUS + clear) continue;
+      if (Math.hypot(half - Math.abs(s.u), half - Math.abs(s.v)) < cornerClear) continue;
+      const p = pos3(s);
+      let crowded = false;
+      for (const o of out) {
+        const q = pos3(o);
+        if (Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < gap) {
+          crowded = true;
+          break;
+        }
+      }
+      if (crowded) continue;
+      out.push(s);
+      placed++;
+    }
+  }
+  return out;
+}
+
+/** A sticker's centre on the die, in texels from the die's centre. */
+export function stickerPoint(s: Sticker): number[] {
+  const F = FACE_FRAMES[s.face];
+  const half = SIZE / 2;
+  return [0, 1, 2].map((i) => F.n[i] * half + F.u[i] * s.u + F.v[i] * s.v);
+}
+
+/**
+ * Stickers on a staggered lattice over every side, each nudged by up to
+ * `jitter` texels so the rows do not read as a grid. Cells must divide
+ * the side; a centre pushed past an edge belongs to the next side and is
+ * dropped, since that side has its own lattice.
+ */
+function latticeStickers(seed: number, cell: number, jitter: number, reach: number): Sticker[] {
+  const out: Sticker[] = [];
+  const n = Math.round(SIZE / cell);
+  for (let face = 0; face < 6; face++) {
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const h1 = hashCell(seed + face * 53 + c, r * 7 + 1);
+        const h2 = hashCell(seed + face * 53 + c, r * 7 + 2);
+        const u = -SIZE / 2 + (c + 0.5 + (r % 2) * 0.5) * cell + (h1 - 0.5) * 2 * jitter;
+        const v = -SIZE / 2 + (r + 0.5) * cell + (h2 - 0.5) * 2 * jitter;
+        if (Math.abs(u) > SIZE / 2 || Math.abs(v) > SIZE / 2) continue;
+        if (Math.hypot(u, v) < STICKER_RADIUS - reach) continue;
+        out.push({ face, u, v, rot: 0, reach, h: hashCell(seed + face * 53 + c, r * 7 + 3), kind: 0 });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * The seam curve as a pair of light bands round the die — what gives
+ * gold, silver, copper, ruby, amethyst and the satin dice their shine.
+ *
+ * A polished die drawn unlit has to have its light painted in, and it
+ * used to be painted per side: one diagonal bar on each face, placed by
+ * the face's own coordinates, so the highlight stopped dead at every
+ * edge. Now the light is one sweep round the whole die: a band of it
+ * follows the seam curve (seamAt), which runs round the die through a
+ * corner of every side and never under a sticker, and a small second
+ * glint sits in the opposite corner — the ring near the far corners of
+ * the die's diagonal. Both are functions of the point IN SPACE, so the
+ * band turns the edges and corners unbroken, and every one of the six
+ * sides catches the light.
+ */
+function sweepOfLight(
+  P: readonly number[],
+  /** Width of the bright core and of the glow round it, in texels. */
+  core: number,
+  glow: number,
+  coreStrength: number,
+  glowStrength: number,
+  /** The second glint: its width and strength. */
+  second: number,
+  secondStrength: number,
+): number {
+  const { off } = seamAt(P);
+  const g = dot3(P, SEAM_AXIS);
+  // The far corners: 45 along the diagonal reaches the three faces round
+  // the +++ corner and the three round the --- corner, as a small
+  // triangle at each; every side gets one.
+  const far = Math.abs(g) - 45;
+  const main =
+    Math.exp(-Math.pow(off / core, 2)) * coreStrength + Math.exp(-Math.pow(off / glow, 2)) * glowStrength;
+  const corner = Math.exp(-Math.pow(far / second, 2)) * secondStrength;
+  return main + corner;
+}
+
 /** The thirty-two patterns painted in full colour rather than through a mask. */
 export type ColorPatternId =
   | 'volleyball' | 'watermelon' | 'pizza' | 'donut'
@@ -478,6 +814,8 @@ export type ColorPatternId =
     two-tone smudge until it got its own paint.
   */
   | 'shell' | 'peacock' | 'waffle' | 'strawberry' | 'chocolate' | 'denim'
+  // Lemon Slice, 21 Oct 2026: peel, pith and flesh are three tones.
+  | 'citrus'
   | 'slate' | 'ocean'
   /*
     The thirteen David named on 26 Aug 2026 — "make the golf ball, cow,
@@ -522,6 +860,73 @@ export type ColorPatternId =
   // blue in the cracks, white where they catch the light.
   | 'ice';
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
+
+/*
+  The circuit board's traces, laid on the die itself.
+
+  Each colour sticker is a chip, with eight pins round it; every pin's
+  trace jogs outward and runs to the nearest edge of the die, where it
+  meets the matching trace of the next side coming the other way — so
+  each of the twelve edges carries two traces across it, and the chips
+  are wired to one another. Round every corner of the die a third trace
+  turns the corner on each of its three sides. The layout is the same on
+  every side and mirror-symmetric about every edge, which is what lets
+  it meet itself across edges whose texture runs the other way.
+*/
+interface TraceSegment {
+  face: number;
+  a: readonly [number, number];
+  b: readonly [number, number];
+}
+const CIRCUIT_TRACES: readonly TraceSegment[] = (() => {
+  const out: TraceSegment[] = [];
+  const H = SIZE / 2;
+  for (let face = 0; face < 6; face++) {
+    const seg = (a: readonly [number, number], b: readonly [number, number]) => out.push({ face, a, b });
+    for (const su of [-1, 1]) {
+      for (const sv of [-1, 1]) {
+        // The pin at the top (or bottom) of the chip: out, jog outward, then to the edge.
+        seg([su * 9, sv * 23], [su * 9, sv * 26]);
+        seg([su * 9, sv * 26], [su * 13, sv * 26]);
+        seg([su * 13, sv * 26], [su * 13, sv * H]);
+        // The pin at the side of the chip, the same the other way round.
+        seg([su * 23, sv * 9], [su * 26, sv * 9]);
+        seg([su * 26, sv * 9], [su * 26, sv * 13]);
+        seg([su * 26, sv * 13], [su * H, sv * 13]);
+        // Round the corner: in from one edge, turn, out to the other.
+        seg([su * 24, sv * H], [su * 24, sv * 24]);
+        seg([su * 24, sv * 24], [su * H, sv * 24]);
+      }
+    }
+  }
+  return out;
+})();
+
+/** Pads at the pins, dots at the jogs and vias at the corner turns: (u, v, radius, hole). */
+const CIRCUIT_PADS: readonly (readonly [number, number, number, number])[] = (() => {
+  const out: [number, number, number, number][] = [];
+  for (const su of [-1, 1]) {
+    for (const sv of [-1, 1]) {
+      out.push([su * 9, sv * 23, 2.2, 0], [su * 23, sv * 9, 2.2, 0]);
+      out.push([su * 13, sv * 26, 1.5, 0], [su * 26, sv * 13, 1.5, 0]);
+      out.push([su * 24, sv * 24, 2.1, 0.8]);
+    }
+  }
+  return out;
+})();
+
+/** How far a cube point is from the nearest trace, in texels. */
+function traceDistance(P: readonly number[]): number {
+  const f = cubeFace(P);
+  let best = Infinity;
+  for (const t of CIRCUIT_TRACES) {
+    if (t.face !== f) continue;
+    const uv = unfoldOnto(P, f);
+    if (!uv) continue;
+    best = Math.min(best, segDist(uv[0], uv[1], t.a[0], t.a[1], t.b[0], t.b[1]));
+  }
+  return best;
+}
 
 const PAINTERS: Record<MaskPatternId, Painter> = {
   /**
@@ -920,95 +1325,52 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * This is the one pattern that exists purely because the dice are drawn
    * unlit. On a lit die, gold would catch a highlight as it turned; with
    * lighting off it is a flat yellow cube. So the highlight is painted in:
-   * a band of light rolling diagonally across the face, with the surface
-   * falling away to shadow on both sides of it, plus fine brush lines
-   * along the direction of the sheen.
+   * a band of light rolling across the die, with the surface falling away
+   * to shadow on both sides of it, plus fine brush lines.
+   *
+   * ONE SWEEP ROUND THE WHOLE DIE, since 21 Oct 2026. From 11 Sep 2026
+   * each face caught its own light — a diagonal bar placed by the face's
+   * own coordinates — because a sweep placed on the flat sheet fell on
+   * two faces and missed the rest. Painting the sweep on the die itself
+   * (sweepOfLight) gets both: the band follows the seam curve, which
+   * runs round the die through a corner of every side, so every side
+   * catches it AND it turns each edge unbroken. The small second glint
+   * sits in the opposite corner of each side.
+   *
+   * SHINY IS A NARROW HIGHLIGHT, NOT A BRIGHT ONE. David, 11 Sep 2026:
+   * "make the gold dice shinier." The first instinct is to turn the light
+   * up, and a peak above the mask's range threw a third of the face away
+   * as a flat stripe of cream — brushed satin, rendered and looked at.
+   * What makes a surface look polished is the SIZE of the hotspot
+   * relative to the falloff: a narrow core that only just reaches the top
+   * of the range inside a broad soft glow, with the metal falling further
+   * into shadow either side. Chrome has a small hard glint and dark
+   * surroundings; matte paint has a big soft one.
    */
   sheen: (x, y) => {
-    /*
-      EVERY FACE CATCHES THE LIGHT. This one is measured in face-local
-      coordinates rather than across the unwrapped sheet, and it is the
-      difference between a shiny die and a dull one.
-
-      Rendering all six sides side by side on 11 Sep 2026 showed FOUR of
-      them completely flat: the highlight was one sweep positioned in
-      sheet coordinates, so it fell on two faces and missed the rest.
-      Since you only ever see three faces at once, most of the time the
-      gold die was a plain yellow cube — which is exactly what David was
-      looking at when he asked for it to be shinier.
-
-      A sweep across a flattened net is not a physical thing anyway. A
-      cube in one light has a highlight on every face it turns toward the
-      light, so each face gets its own — shifted a little per face, the
-      way a real cube's faces sit at different angles, so it does not
-      read as one picture stamped six times.
-
-      This is the tenth skin whose sides are identical-ish rather than
-      continuous, and for the same reason as the other nine: for THIS
-      design that is what continuous means. See createDieFaceTextures.
-    */
-    const faceX = ((x % SIZE) + SIZE) % SIZE;
-    const faceY = ((y % SIZE) + SIZE) % SIZE;
-    // Which square of the net this is. Stable, so a face always catches
-    // the light in the same place however many times it is painted.
-    const cell = Math.floor(x / SIZE) * 2 + Math.floor(y / SIZE) * 5;
-    const lean = ((cell % 5) - 2) * 0.055;
-
-    // Diagonal position across the face, roughly 0..1.4.
-    const d = (faceX * 0.62 + faceY * 0.78) / SIZE;
-    const bar = (centre: number, width: number, strength: number) =>
-      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-
-    /*
-      SHINY IS A NARROW HIGHLIGHT, NOT A BRIGHT ONE.
-
-      David, 11 Sep 2026: "make the gold dice shinier." The first instinct
-      is to turn the light up, and that is what the old version did —
-      `bar(0.4, 0.19, 1.5)`, a peak of 1.5 against a mask that clamps at
-      1.0. Everything above 1.0 is thrown away, so a third of the face sat
-      at exactly the ink colour: not a glint, a wide flat stripe of cream
-      with no shape in it. Rendered and looked at; it read as brushed
-      satin.
-
-      What makes a surface look polished is the SIZE of the hotspot
-      relative to the falloff. So the same light is spent differently: a
-      narrow core that only just reaches the top of the range, sitting
-      inside a broad soft glow, with the metal falling further into
-      shadow either side. Chrome has a small hard glint and dark
-      surroundings; matte paint has a big soft one.
-    */
-    const core = bar(0.52 + lean, 0.052, 0.72);
-    const glow = bar(0.52 + lean, 0.23, 0.5);
-    /*
-      The far edge catching the light again — tighter and slightly
-      stronger than before, because a second small glint reads as another
-      reflection while a broad one reads as the paint being uneven.
-    */
-    const second = bar(1.16 + lean, 0.075, 0.34);
+    const P = sheetToCube(x, y);
+    const light = sweepOfLight(P, 3.3, 14.7, 0.72, 0.5, 4.8, 0.34);
     /*
       Warm bounce in the shadows. Real gold is never black in the dark
       parts: it picks up its own colour reflected off everything around
       it, which is the difference between metal and a yellow cube. A
-      shallow ripple across the shadow, always negative so it can only
-      deepen or lift the shell rather than tint it.
+      shallow ripple along the die's diagonal, always small, so it can
+      only deepen or lift the shell rather than tint it.
     */
-    const bounce = Math.sin(d * 7.3 + 1.1) * 0.06;
-    const light = core + glow + second - 0.46 + bounce;
-
+    const g = dot3(P, SEAM_AXIS);
+    const bounce = Math.sin((g / SIZE) * 7.3 + 1.1) * 0.06;
     /*
-      Brushing runs ALONG the highlight, so it uses the other diagonal.
-
-      The frequency was 1.1 radians per pixel — nearly two samples per
-      cycle, which is the Nyquist limit — so it aliased into visible
-      stair-steps rather than fine lines, and at 0.05 those steps were
-      the loudest thing on the face. Slower and fainter, and faded out
-      inside the hotspot: polishing marks disappear in a specular
-      highlight, they do not sit on top of it.
+      Brushing: fine polishing lines running along the band. Slow enough
+      not to alias at 64 texels (the old 1.1 radians a texel came out as
+      stair-steps), faint, and faded out inside the hotspot: polishing
+      marks disappear in a specular highlight, they do not sit on top of
+      it.
     */
-    const brush = Math.sin((faceX * 0.78 - faceY * 0.62) * 0.34) * 0.035 * (1 - core / 0.72);
-    return light + brush;
+    const { along } = seamAt(P);
+    const core = Math.exp(-Math.pow(seamAt(P).off / 3.3, 2)) * 0.72;
+    const brush = Math.sin(along * 15 + g * 0.11) * 0.035 * (1 - core / 0.72);
+    return light - 0.46 + bounce + brush;
   },
-
 
   /**
    * Ivory: the material, painted at a whisper.
@@ -1023,39 +1385,34 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * player reads their first roll on, so the face stickers must dominate.
    * At arm's length it should still say "plain pale die" — ceramic, not
    * vector fill.
+   *
+   * All of it is measured on the die itself since 21 Oct 2026: the
+   * sheen is satin's one sweep round the whole die (it used to be a
+   * band per face), and the grain runs along one axis of the block the
+   * way a tusk's does — down the four sides and across the top and
+   * bottom — bent by noise of the point in space, so it meets itself
+   * over every edge.
    */
-  ivory: (x, y, fx, fy) => {
-    // Gold's single sweep of light at roughly a quarter of its strength:
-    // one broad soft band brightening the upper-left diagonal, the body
-    // falling away only slightly either side of it.
-    //
-    // Measured on the FACE (fx, fy): every side of a polished die catches
-    // its own light. The grain below is measured on the strip, so it runs
-    // on over the edges — 18 Oct 2026, when ivory stopped being painted
-    // per face.
-    const d = (fx * 0.62 + fy * 0.78) / SIZE;
-    const bar = (centre: number, width: number, strength: number) =>
-      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-    const sheen = bar(0.38, 0.26, 0.55) + bar(1.05, 0.16, 0.16) - 0.1;
+  ivory: (x, y) => {
+    const P = sheetToCube(x, y);
+    const sheen = sweepOfLight(P, 16.6, 16.6, 0.55, 0, 10, 0.16) - 0.1;
 
-    // The grain: fine near-parallel lines running down the face, gently
-    // wavy via the tiling noise, each only a few percent darker than the
-    // body. The weight drifts along a line's length — fading out here,
-    // pressing in there — which is what separates grain from a comb. The
-    // first cut of this warped by ±2.5px, which at nine lines in 64px is
-    // invisible: it rendered as dead-straight pinstripe wallpaper. The
-    // slow octave carries the bend now, and the lines lean by exactly one
-    // period across the tile (y / lines · SIZE/lines... i.e. y/9) so the
-    // tilt keeps the wrap.
-    const warp = fbm(x + 11, y + 3, [32, 16], [1, 0.3]) * 5.5;
+    // The grain: fine near-parallel lines, gently wavy, each only a few
+    // percent darker than the body. The weight drifts along a line's
+    // length — fading out here, pressing in there — which is what
+    // separates grain from a comb. A slow octave carries the bend; the
+    // first cut of this warped by too little and rendered as dead-straight
+    // pinstripe wallpaper.
+    const warp = cubeFbm([P[0] + 11, P[1] + 3, P[2] + 7], [32, 16], [1, 0.3]) * 5.5;
     const lines = 9;
-    const phase = ((((x + y / lines + warp) * lines) / SIZE) % 1 + 1) % 1;
+    const s = (P[0] + P[2]) * 0.85 + P[1] * 0.08;
+    const phase = ((((s + warp) * lines) / SIZE) % 1 + 1) % 1;
     const core = smoothstep(0.34, 0.5, phase) * (1 - smoothstep(0.5, 0.66, phase));
-    const grain = -core * (0.05 + wrappedNoise(x + 40, y + 23, 32) * 0.11);
+    const grain = -core * (0.05 + cubeNoise([P[0] + 40, P[1] + 23, P[2]], 32) * 0.11);
 
     // The faintest cream mottle, so the ground is dentine rather than one
     // flat fill.
-    const mottle = fbm(x + 27, y + 31, [32, 16], [1, 0.5]) * 0.04;
+    const mottle = cubeFbm([P[0] + 27, P[1] + 31, P[2] + 5], [32, 16], [1, 0.5]) * 0.04;
 
     return sheen + grain + mottle;
   },
@@ -1072,13 +1429,13 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * ivory read as bone; these three are painted plastic, and the flat
    * ladder / patterned store split is deliberate. One broad sweep of
    * light is enough to say "this is a solid object" without taking any
-   * attention off the face stickers.
+   * attention off the face stickers — and since 21 Oct 2026 it is one
+   * sweep round the whole die (sweepOfLight) rather than a band stamped
+   * on each side.
    */
   satin: (x, y) => {
-    const d = (x * 0.62 + y * 0.78) / SIZE;
-    const bar = (centre: number, width: number, strength: number) =>
-      Math.exp(-Math.pow((d - centre) / width, 2)) * strength;
-    return bar(0.38, 0.26, 0.55) + bar(1.05, 0.16, 0.16) - 0.1;
+    const P = sheetToCube(x, y);
+    return sweepOfLight(P, 16.6, 16.6, 0.55, 0, 10, 0.16) - 0.1;
   },
 
   /*
@@ -1230,78 +1587,37 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
     return smoothstep(-0.15, 0.35, wave) * 0.96;
   },
 
-  /** Strawberry: seeds — small pale teardrops, each in a tiny hollow. */
-  citrus: (x, y) => {
-    /*
-      Cut slices in the corners of the face.
-
-      This was a single wheel of ten segments with its hub dead centre —
-      drawn, in other words, entirely inside the circle the colour
-      sticker covers, so a Lemon die was a plain yellow square. Anchoring
-      the fruit at the corners puts the whole slice, peel and all, in the
-      part of a face you can actually see. Two big and two small, so it
-      reads as a print rather than as four of the same stamp.
-    */
-    for (const [cx, cy, R] of [
-      [0, 0, 23],
-      [SIZE, SIZE, 23],
-      [SIZE, 0, 15],
-      [0, SIZE, 15],
-    ] as const) {
-      const dx = x - cx;
-      const dy = y - cy;
-      const r = Math.hypot(dx, dy);
-      if (r > R) continue;
-      if (r > R - 2) return 0.9;      // peel
-      if (r > R - 4) return -0.06;    // pith
-      if (r < R * 0.11) return 0.85;  // the hub the segments meet at
-      const a = Math.atan2(dy, dx);
-      // Segment walls, spread evenly across the quarter that shows.
-      if (Math.abs(Math.sin(a * 8)) > 0.93 && r > R * 0.18) return 0.85;
-      // Flesh: the faintest sparkle of juice sacs.
-      return (hashCell(x, y) - 0.5) * 0.12;
-    }
-    return (hashCell(x, y) - 0.5) * 0.06;
-  },
-
   circuit: (x, y) => {
-    const lane = Math.floor(y / 8);
-    const inY = y - lane * 8;
-    const h = hashCell(lane, 3);
-    // Turns spread across the whole width. They used to bunch in the
-    // middle third, which is the one part of a face nobody ever sees.
-    const turnAt = 3 + h * 52;
-    const padAt = turnAt + 5 + hashCell(lane, 7) * 8;
     /*
-      THE TURN IS A RIGHT ANGLE, which is the whole reason a circuit
-      board is recognisable as one.
-
-      It used to be a no-op in the code as well as visually: both
-      branches of `online` tested `Math.abs(inY - 4) < 1`, the same row,
-      so `turnAt` only punched a one-pixel gap in an otherwise dead
-      straight line. Every trace entered from the left and ran to the
-      right, nothing ever turned or ran up or down, and eight parallel
-      lines is all you saw — a striped teal die, not a board.
-
-      Now the stub after the turn sits on its own row, three pixels
-      above or below by the lane's own hash, joined to the run by a
-      vertical riser.
+      A circuit board. The traces used to run in lanes across each side
+      from its left edge, every side the same, each one stopping dead at
+      the edge; since 21 Oct 2026 the board is wired round the whole die
+      (CIRCUIT_TRACES): the colour stickers are the chips, each with
+      eight pins, and every pin's trace jogs out at a right angle and
+      runs to an edge of the die, where it meets the next chip's trace
+      coming the other way, so every edge has traces crossing it and the
+      six chips are wired together. A third trace turns each corner of
+      the die. Pads on the pins, dots at the jogs, vias at the turns.
     */
-    const dir = hashCell(lane, 11) > 0.5 ? 1 : -1;
-    const toY = 4 + dir * 3;
-    const onRun = Math.abs(inY - 4) < 1 && x < turnAt;
-    const onRiser =
-      Math.abs(x - turnAt) < 1 && (inY - 4) * dir >= -1 && (inY - 4) * dir <= 3.2;
-    const onStub = Math.abs(inY - toY) < 1 && x > turnAt && x < padAt;
-    if (Math.hypot(x - padAt, inY - toY) < 2.4) return 0.95;
-    if (Math.hypot(x - turnAt, inY - 4) < 1.6) return 0.95;
-    return onRun || onRiser || onStub ? 0.7 : (wrappedNoise(x, y, 16) - 0.5) * 0.08;
+    const P = sheetToCube(x, y);
+    const F = FACE_FRAMES[cubeFace(P)];
+    const u = dot3(P, F.u);
+    const v = dot3(P, F.v);
+    for (const [pu, pv, r, hole] of CIRCUIT_PADS) {
+      const d = Math.hypot(u - pu, v - pv);
+      if (d < hole) return 0.2;
+      if (d < r) return 0.95;
+    }
+    const d = traceDistance(P);
+    if (d < 0.9) return 0.7;
+    // The board itself: a faint weave in the laminate.
+    return (cubeNoise(P, 16) - 0.5) * 0.08 + smoothstep(1.6, 0.9, d) * 0.25;
   },
 
 };
 
 /** A colour painter returns the actual pixel, not a mask. */
-type ColorPainter = (x: number, y: number, fx: number, fy: number) => [number, number, number];
+type ColorPainter = (x: number, y: number) => [number, number, number];
 
 const rgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.slice(1), 16);
@@ -1329,11 +1645,58 @@ const mixRgb = (
  * and `ink` is unused — kept on the skin so the texture tests can treat
  * every patterned skin alike.
  */
-/** The pizza side at a sub-pixel point; `pizza` averages nine of these. */
+/**
+ * Lemon slices over the die: three to a side, two sizes, some lying
+ * across an edge.
+ */
+const LEMON_SLICES = new StickerSheet(scatterStickers(11, 3, 12.5, 19, 3, 12.5, [0, 1, 0]));
+
+/** Cherry flowers and loose petals, strewn over the whole die. */
+const BLOSSOMS = new StickerSheet(scatterStickers(13, 2, 11, 18, 4));
+const BLOSSOM_PETALS = new StickerSheet(scatterStickers(17, 2, 4.5, 9, 2));
+
+/** Fried drumsticks over the waffle: one or two to a side. */
+const DRUMSTICKS = new StickerSheet(scatterStickers(19, 2, 13.5, 22, 3, 7));
+
+/** The donut's sprinkles: a jittered lattice over every side. */
+const SPRINKLES = new StickerSheet(
+  latticeStickers(23, SIZE / 6, 3, 3.5).map((s) => ({ ...s, rot: s.h * Math.PI })),
+);
+
+/**
+ * The four corners of the die the donut's glaze did not reach: alternate
+ * ones, so every side has cake in two opposite corners.
+ */
+const BARE_CORNERS: readonly (readonly [number, number, number])[] = [
+  [32, 32, 32], [32, -32, -32], [-32, 32, -32], [-32, -32, 32],
+];
+
+/** The goldfish on the still picture of the Fish dice: two to a side, each headed its own way. */
+const GOLDFISH = new StickerSheet(scatterStickers(29, 2, 15.5, 20, 3, 10, [0, 1]));
+const FISH_BUBBLES = new StickerSheet(scatterStickers(37, 3, 2.2, 7, 1));
+
+/**
+ * The Fish dice's water at a point on the die: rippling blue with a few
+ * bubbles, no fish. Shared by the still picture (the `fish` painter) and
+ * the die on the board (fishSwim.ts), which paints the water alone and
+ * slides the fish over it — so the water under the swimming fish is the
+ * water on the card, and both run unbroken over every edge.
+ */
+export function fishWaterAt(P: readonly number[]): Rgb {
+  for (const { s, lx, ly } of FISH_BUBBLES.hits(P)) {
+    if (Math.hypot(lx, ly) < 1.1 + s.h * 0.8) return BUBBLE;
+  }
+  return waterAt(cubeNoise(P, 16));
+}
+
+/**
+ * The pizza's toppings, scattered over the die: on every side three
+ * pepperoni, an olive and a basil leaf, some lying across an edge.
+ */
+const PIZZA_TOPPINGS = new StickerSheet(scatterStickers(7, 5, 6.8, 12.5, 2.5, 6.8, [0, 0, 1, 0, 2]));
+
+/** The pizza at a sub-texel sheet point; `pizza` averages nine of these. */
 function pizzaAt(x: number, y: number): [number, number, number] {
-  const CRUST_OUT = rgb('#a9662a');
-  const CRUST = rgb('#dda257');
-  const CRUST_LIT = rgb('#ecc27c');
   const SAUCE = rgb('#b3342a');
   const CHEESE = rgb('#f4d27a');
   const CHEESE_BROWN = rgb('#d49a45');
@@ -1343,65 +1706,42 @@ function pizzaAt(x: number, y: number): [number, number, number] {
   const BASIL = rgb('#2f9a3a');
   const BASIL_VEIN = rgb('#8fd06a');
   const OLIVE = rgb('#22201f');
-  const c = SIZE / 2;
-  const dx = x - c;
-  const dy = y - c;
-  const edge = Math.min(x, SIZE - x, y, SIZE - y);
-  // The crust's inner line wanders a little, as a hand-pressed crust does.
-  const wobble = (wrappedNoise(x * 2, y * 2, 16) - 0.5) * 1.6;
-  const crustLine = 5.4 + wobble;
-  // Eight slices: cuts at 22.5 degrees off the axes, between toppings.
-  let cut = 1;
-  for (let k = 0; k < 4; k++) {
-    const a = Math.PI / 8 + (k * Math.PI) / 4;
-    const across = Math.abs(-dx * Math.sin(a) + dy * Math.cos(a));
-    if (across < 0.5) cut = Math.min(cut, 0.74 + across * 0.5);
-  }
-  if (edge < crustLine) {
-    // Crust: toasted at the very edge, golden toward the cheese, with a
-    // lit shoulder along its top and a few darker bake spots.
-    const t = edge / crustLine;
-    let px = mixRgb(CRUST_OUT, CRUST, smoothstep(0, 0.55, t));
-    px = mixRgb(px, CRUST_LIT, smoothstep(0.45, 0.75, t) * smoothstep(1, 0.8, t) * 0.8);
-    px = mixRgb(px, CRUST_OUT, smoothstep(0.7, 0.9, wrappedNoise(x * 3 + 7, y * 3 + 3, 8)) * 0.5);
-    return mixRgb([0, 0, 0], px, cut);
-  }
-  // Sauce peeking out from under the cheese, unevenly, along the crust.
-  const sauce = smoothstep(2.4, 0.6, edge - crustLine + (wrappedNoise(x * 2 + 30, y * 2 + 10, 16) - 0.5) * 2.4);
-  // Melted cheese, browned where it blistered.
-  let px = mixRgb(CHEESE, CHEESE_BROWN, smoothstep(0.55, 0.85, wrappedNoise(x + 13, y + 41, 16)) * 0.7);
-  const blister = wrappedNoise(x * 4 + 5, y * 4 + 9, 8);
+  const P = sheetToCube(x, y);
+  // Melted cheese, browned where it blistered, and the sauce showing
+  // through where the cheese ran thin.
+  let px = mixRgb(CHEESE, CHEESE_BROWN, smoothstep(0.55, 0.85, cubeNoise([P[0] + 13, P[1] + 41, P[2]], 16)) * 0.7);
+  const blister = cubeNoise([P[0] * 1 + 5, P[1] + 9, P[2] + 3], 2.4);
   px = mixRgb(px, CHEESE_BROWN, smoothstep(0.78, 0.9, blister) * 0.75);
-  px = mixRgb(px, SAUCE, sauce);
-  // Pepperoni: a big round in each corner, cupped — a dark rim, a
-  // lighter fleck of fat here and there, a glint on the far side.
-  for (const [px0, py0] of [[12, 12], [52, 12], [12, 52], [52, 52]] as const) {
-    const d = Math.hypot(x - px0, y - py0);
-    const R = 6.3;
-    if (d < R) {
-      let pep = d > R - 1.3 ? PEP_RIM : PEP;
-      if (hashCell(Math.floor(x * 1.5 + px0), Math.floor(y * 1.5 + py0)) > 0.86 && d < R - 1.6) pep = mixRgb(pep, PEP_FAT, 0.7);
-      const lit = Math.hypot(x - px0 + 2, y - py0 + 2);
-      if (lit < 1.4) pep = mixRgb(pep, rgb('#f2b8a8'), 0.6);
-      return mixRgb([0, 0, 0], pep, cut);
+  const thin = cubeNoise([P[0] + 30, P[1] + 10, P[2] + 21], 11);
+  px = mixRgb(px, SAUCE, smoothstep(0.6, 0.74, thin) * 0.95);
+  px = mixRgb(px, rgb('#8d2a22'), smoothstep(0.74, 0.86, thin) * 0.5);
+  let under: [number, number, number] | null = null;
+  for (const { s, lx, ly } of PIZZA_TOPPINGS.hits(P)) {
+    const d = Math.hypot(lx, ly);
+    if (s.kind === 0) {
+      // Pepperoni: a big round, cupped — a dark rim, a lighter fleck of
+      // fat here and there, a glint on the far side.
+      const R = 5.7 + s.h * 0.9;
+      if (d < R) {
+        let pep = d > R - 1.3 ? PEP_RIM : PEP;
+        if (hashCell(Math.floor(lx * 1.5 + s.h * 40), Math.floor(ly * 1.5 + s.h * 90)) > 0.86 && d < R - 1.6) pep = mixRgb(pep, PEP_FAT, 0.7);
+        if (Math.hypot(lx + 2, ly + 2) < 1.4) pep = mixRgb(pep, rgb('#f2b8a8'), 0.6);
+        if (!under) under = pep;
+      } else if (d < R + 0.8 && !under) {
+        // A soft shadow where the slice sits in the cheese.
+        px = mixRgb(px, CHEESE_BROWN, 0.6);
+      }
+    } else if (s.kind === 1) {
+      // A black olive: a ring with a hole, the cheese showing through it.
+      if (d < 3.3 && d > 1.3) return d < 1.8 ? rgb('#4a4541') : OLIVE;
+    } else {
+      // A basil leaf lying on the cheese, a pale vein down its middle.
+      const u = lx / 5.4;
+      const v = ly / 2.4;
+      if (u * u + v * v < 1 && Math.abs(v) < 1 - u * u * 0.5) return Math.abs(ly) < 0.35 ? BASIL_VEIN : BASIL;
     }
-    // A soft shadow where the slice sits in the cheese.
-    if (d < R + 0.8) px = mixRgb(px, CHEESE_BROWN, 0.6);
   }
-  // Basil leaves, top and bottom, lying along the crust.
-  for (const [lx, ly] of [[32, 8.4], [32, 55.6]] as const) {
-    const u = (x - lx) / 5.4;
-    const v = (y - ly) / 2.4;
-    const inLeaf = u * u + v * v < 1 && Math.abs(v) < 1 - u * u * 0.5;
-    if (inLeaf) return Math.abs(y - ly) < 0.35 ? BASIL_VEIN : BASIL;
-  }
-  // Black olives, left and right: rings with a hole.
-  for (const [ox, oy] of [[8.8, 30], [55.2, 34]] as const) {
-    const d = Math.hypot(x - ox, y - oy);
-    if (d < 3.3 && d > 1.3) return d < 1.8 ? rgb('#4a4541') : OLIVE;
-    if (d <= 1.3) return px;
-  }
-  return mixRgb([0, 0, 0], px, cut);
+  return under ?? px;
 }
 
 /** Distance from (x, y) to the segment a-b. */
@@ -1412,18 +1752,61 @@ function segDist(x: number, y: number, ax: number, ay: number, bx: number, by: n
   return Math.hypot(x - ax - vx * t, y - ay - vy * t);
 }
 
-/** Distance to a polyline. */
-function lineDist(x: number, y: number, pts: readonly (readonly [number, number])[]): number {
-  let d = Infinity;
-  for (let i = 0; i + 1 < pts.length; i++) {
-    d = Math.min(d, segDist(x, y, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]));
-  }
-  return d;
-}
+/**
+ * The bowling ball's finger holes: a tight triangle of three in a corner
+ * of the front, and two more sets on other sides, so a die at rest shows
+ * holes from almost any angle. Each triangle sits in a different corner
+ * of its side.
+ */
+const BOWLING_HOLES = new StickerSheet(
+  (
+    [
+      [4, -23, -23], [4, -13, -26], [4, -25, -12],
+      [2, 23, 22], [2, 13, 26], [2, 26, 12],
+      [1, 22, -23], [1, 12, -26], [1, 26, -13],
+    ] as const
+  ).map(([face, u, v]) => ({ face, u, v, rot: 0, reach: 4.6, h: 0, kind: 0 })),
+);
 
-const NEON_RING: readonly (readonly [number, number])[] = [
-  [6, 6], [58, 6], [58, 58], [6, 58], [6, 6],
-];
+/** A watermelon seed, from its middle to its tip, in texels. */
+const SEED_TIP = 1.7 * 1.45;
+
+/**
+ * The watermelon's seeds: a staggered lattice on every side, jittered,
+ * none in the rind, each turned to point at the rind the way a melon's
+ * seeds point outward.
+ *
+ * A seed near an edge of the die either lies clearly across it or keeps
+ * clear of it. One whose tip happened to fall within a texel of an edge
+ * looked cut off by the edge — and measured as a seam, the one edge of
+ * the whole set that failed tests/continuity.test.ts on 21 Oct 2026. So
+ * a centre within 0.8 of an edge stays, half the seed on each side, and
+ * one between that and a seed's length of the edge is dropped.
+ */
+const WATERMELON_SEEDS = new StickerSheet(
+  latticeStickers(31, 12.8, 2.4, 3.2)
+    .filter((s) => Math.abs(seamAt(stickerPoint(s)).off) > 12)
+    .filter((s) =>
+      [s.u, s.v].every((c) => {
+        const toEdge = SIZE / 2 - Math.abs(c);
+        return toEdge < 0.8 || toEdge >= SEED_TIP + 0.55;
+      }),
+    )
+    .map((s) => {
+      const F = FACE_FRAMES[s.face];
+      const Q = stickerPoint(s);
+      const e = 0.5;
+      const gu =
+        seamAt([Q[0] + F.u[0] * e, Q[1] + F.u[1] * e, Q[2] + F.u[2] * e]).g -
+        seamAt([Q[0] - F.u[0] * e, Q[1] - F.u[1] * e, Q[2] - F.u[2] * e]).g;
+      const gv =
+        seamAt([Q[0] + F.v[0] * e, Q[1] + F.v[1] * e, Q[2] + F.v[2] * e]).g -
+        seamAt([Q[0] - F.v[0] * e, Q[1] - F.v[1] * e, Q[2] - F.v[2] * e]).g;
+      // Toward the rind is toward the seam, which is where g crosses zero.
+      const sign = seamAt(Q).g > 0 ? -1 : 1;
+      return { ...s, rot: Math.atan2(gv * sign, gu * sign) - Math.PI / 2 + (s.h - 0.5) * 0.5 };
+    }),
+);
 
 /**
  * The cow's markings, over the whole strip: the four sides (y 0..64) and
@@ -1466,24 +1849,34 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     /*
       Neon, 20 Oct 2026. David asked for "a new cool dice that is worth
       one or two dollars" and picked this of three: an arcade at night.
-      Near-black glass with a faint purple grid, a glowing magenta tube
-      round the edge of every side and cyan corner marks. The glow is
-      painted, so the shelf picture has it too; the light trail it
-      leaves when it rolls is diceNeon.ts.
+      Near-black glass with a faint purple grid, glowing tubes of magenta
+      and cyan, and the light trail it leaves when it rolls (diceNeon.ts).
+
+      BENT ROUND THE DIE since 21 Oct 2026. It was a square pink tube and
+      four cyan corner marks stamped on every side. Now the tubes are
+      two closed curves of glass wound right round the die (seamAt, on
+      two of its body diagonals): the pink one through one corner of
+      every side, the cyan one through another, crossing each other
+      where they meet at the edges — a neon sign bent round a cube. The
+      grid is planes through the die eight texels apart, so its lines
+      meet themselves over every edge, and a faint cyan ring round each
+      colour sticker gives every side its glow.
     */
+    const P = sheetToCube(x, y);
     let px = rgb('#0c0a18');
-    const gx = Math.abs(((x % 8) + 8) % 8 - 4);
-    const gy = Math.abs(((y % 8) + 8) % 8 - 4);
-    px = mixRgb(px, rgb('#3a2470'), smoothstep(0.9, 0.2, Math.min(4 - gx, 4 - gy)) * 0.5);
-    const ring = lineDist(x, y, NEON_RING);
-    px = mixRgb(px, rgb('#ff2fb4'), Math.exp(-ring / 2.2) * 0.9);
-    px = mixRgb(px, rgb('#ffd0f0'), smoothstep(1.1, 0.3, ring));
-    let chev = Infinity;
-    for (const [cx, cy, sx, sy] of [[12, 12, 1, 1], [52, 12, -1, 1], [12, 52, 1, -1], [52, 52, -1, -1]] as const) {
-      chev = Math.min(chev, lineDist(x, y, [[cx, cy + sy * 6], [cx, cy], [cx + sx * 6, cy]]));
-    }
-    px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-chev / 1.8) * 0.85);
-    px = mixRgb(px, rgb('#d8fbff'), smoothstep(0.9, 0.2, chev));
+    const F = FACE_FRAMES[cubeFace(P)];
+    const gu = Math.abs(mod(dot3(P, F.u), 8) - 4);
+    const gv = Math.abs(mod(dot3(P, F.v), 8) - 4);
+    px = mixRgb(px, rgb('#3a2470'), smoothstep(0.9, 0.2, Math.min(4 - gu, 4 - gv)) * 0.5);
+    // A faint cyan ring round the sticker, like a sign's border.
+    const halo = Math.abs(Math.hypot(dot3(P, F.u), dot3(P, F.v)) - 24.5);
+    px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-halo / 1.6) * 0.45);
+    const pink = Math.abs(seamAt(P).off);
+    const cyan = Math.abs(seamAt(P, SEAM_SWING, SEAM_FRAME_B).off);
+    px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-cyan / 2.0) * 0.85);
+    px = mixRgb(px, rgb('#d8fbff'), smoothstep(1.0, 0.3, cyan));
+    px = mixRgb(px, rgb('#ff2fb4'), Math.exp(-pink / 2.2) * 0.9);
+    px = mixRgb(px, rgb('#ffd0f0'), smoothstep(1.1, 0.3, pink));
     return px;
   },
 
@@ -1493,33 +1886,62 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       look better or give me new ideas for how it should look", then of
       five compass variations, "I like the teal one, the first one."
 
-      It was sixteen tiny gold paper boats per side, which at die size
-      were yellow smudges. Now every side is a compass: a twisted gold
-      rope round the edge, a ring of gold ticks round the colour sticker,
-      and eight gold points radiating from it, the four cardinal ones
-      longest, each drawn as two facets, one lit and one in shade, the
-      way a chart's compass rose is. The sticker sits in the middle as
-      the compass's heart. Teal deepening toward the edge, so the gold
-      reads warm against it from across the table.
+      Every side is a compass rose with the colour sticker as its heart:
+      a ring of gold ticks round the sticker and eight gold points
+      radiating from it, the four cardinal ones longest, each drawn as
+      two facets, one lit and one in shade, the way a chart's compass
+      rose is. Teal deepening toward the edges, so the gold reads warm
+      against it from across the table.
+
+      ONE CHART since 21 Oct 2026. The twisted gold rope used to frame
+      each side; now it is one rope along every edge of the DIE, its
+      twist measured along the edge in space so it folds over each edge
+      unbroken. And every rose throws rhumb lines — the thin rays an old
+      chart's roses are joined by — that carry straight on over the edges
+      onto the neighbouring sides, each cardinal line running into the
+      next rose's cardinal point, so the six roses are one web.
     */
     const GOLD = rgb('#d6b25e');
     const GOLD_LIT = rgb('#f0d48a');
     const GOLD_SHADE = rgb('#9c7b36');
-    const c = SIZE / 2;
-    const dx = x - c;
-    const dy = y - c;
+    const P = sheetToCube(x, y);
+    const f = cubeFace(P);
+    const F = FACE_FRAMES[f];
+    const dx = dot3(P, F.u);
+    const dy = dot3(P, F.v);
     const r = Math.hypot(dx, dy);
     const a = Math.atan2(dy, dx);
     let px = mixRgb(rgb('#14555c'), rgb('#0e4248'), smoothstep(14, 32, r) * 0.6);
-    // The rope: two twisted strands, as a band of slanted gold dashes.
-    const edge = Math.min(x, SIZE - x, y, SIZE - y);
+    px = mixRgb(px, rgb('#1a6670'), (cubeNoise(P, 16) - 0.5) * 0.3);
+    // Rhumb lines: from this side's rose and from each neighbour's,
+    // unfolded over the shared edge, every 22.5 degrees, fading with
+    // distance. Only outside the ring of ticks.
+    let rhumb = 0;
+    for (let g = 0; g < 6; g++) {
+      const uv = g === f ? [dx, dy] : unfoldOnto(P, g);
+      if (!uv) continue;
+      const rr = Math.hypot(uv[0], uv[1]);
+      if (rr < 25.5) continue;
+      const sector = Math.PI / 8;
+      const ang = Math.atan2(uv[1], uv[0]);
+      const off = Math.abs((((ang % sector) + sector) % sector) - sector / 2);
+      const across = rr * Math.sin(off);
+      rhumb = Math.max(rhumb, smoothstep(0.9, 0.3, across) * smoothstep(78, 30, rr) * 0.5);
+    }
+    px = mixRgb(px, GOLD, rhumb);
+    // The rope along every edge of the die: two twisted strands, as a
+    // band of slanted gold dashes, its twist counted along the edge.
+    const edge = Math.min(SIZE / 2 - Math.abs(dx), SIZE / 2 - Math.abs(dy));
     if (edge > 1.2 && edge < 4.2) {
-      const along = edge === x || edge === SIZE - x ? y : x;
-      const twist = ((along + (edge - 2.7) * 2.2) % 5 + 5) % 5;
+      // The axis the edge runs along is the one that is neither the
+      // face's nor the border's.
+      const alongU = SIZE / 2 - Math.abs(dx) < SIZE / 2 - Math.abs(dy);
+      const along = alongU ? dy : dx;
+      const twist = mod(along + (edge - 2.7) * 2.2, 5);
       px = mixRgb(GOLD_SHADE, GOLD_LIT, smoothstep(0.5, 2.5, twist) * smoothstep(5, 3, twist));
     }
     // Ticks round the sticker, every fifteen degrees.
-    if (r > 22.5 && r < 25 && ((a / (Math.PI / 12)) % 1 + 1) % 1 < 0.22) px = mixRgb(px, GOLD, 0.8);
+    if (r > 22.5 && r < 25 && mod(a / (Math.PI / 12), 1) < 0.22) px = mixRgb(px, GOLD, 0.8);
     // Eight points: the cardinals reach the rope, the diagonals stop short.
     for (let k = 0; k < 8; k++) {
       const pa = (k * Math.PI) / 4;
@@ -1533,45 +1955,110 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return px;
   },
 
-  /** White leather in curved panels, every third panel blue or yellow. */
   watermelon: (x, y) => {
-    const d = Math.hypot(x - SIZE * 1.1, y - SIZE * 1.1);
+    /*
+      A watermelon, cut: pink-red flesh with black seeds, and the rind —
+      green stripes outside, white pith inside — where the flesh ends.
+
+      It was one wedge per side: the rind as an arc across one corner of
+      every face and the same seeds on every face. Since 21 Oct 2026 the
+      rind is ONE band wound right round the die along the seam curve
+      (seamAt), green on its outer face and white pith on its inner,
+      the flesh paling toward it as a melon's does; it crosses every side
+      once through a corner region and turns every edge unbroken. The
+      seeds are stickers on the die (StickerSheet), a staggered lattice
+      on every side with a few hanging over an edge, each pointed at the
+      rind the way a melon's seeds point outward — and none sits in the
+      rind.
+    */
+    const P = sheetToCube(x, y);
+    const { off, along } = seamAt(P);
+    const toRind = Math.abs(off);
     // Outer rind: two greens striped along the arc.
-    if (d > 62) {
-      const stripe = Math.sin(Math.atan2(y - SIZE * 1.1, x - SIZE * 1.1) * 26);
+    if (toRind < 3.6) {
+      const stripe = Math.sin(along * 26 + off * 0.4);
       return stripe > 0 ? rgb('#3f8f4a') : rgb('#2e6e38');
     }
-    if (d > 56) return rgb('#e8f0d8');
-    // Flesh, with staggered black seeds pointing at the rind.
-    const cell = 13;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const sx = ((x + offset) % cell) - cell / 2;
-    const sy = (y % cell) - cell / 2;
-    if (Math.hypot(sx / 0.75, sy / 1.4) < 1.7 && d < 50) return rgb('#2a2418');
+    if (toRind < 6.6) return mixRgb(rgb('#e8f0d8'), rgb('#f4f7ea'), smoothstep(3.6, 6.6, toRind));
     // The flesh pales slightly toward the pith, as the fruit does. Pinker
     // than a real melon on purpose: #e05a5a sat ΔLab 17.7 from the red
     // FACE sticker, and a shell that close swallows the face.
-    return mixRgb(rgb('#f08585'), rgb('#f7b8b8'), smoothstep(48, 60, d));
+    //
+    // #f78787, a shade lighter than the skin's nominal #f08585: that one
+    // has a red of exactly 240, the bottom of a 16-level band, so the
+    // faint mottle below tipped a texel into the next band or not
+    // depending on where the noise fell on each side — and
+    // tests/textures.test.ts, which counts colours in those bands, read
+    // two sides as having 62% of the design of the others, a whisker
+    // above its bar, over a difference no eye can see. The flesh now
+    // sits mid-band in every channel and the mottle travels less than
+    // half a band, so every side counts the same.
+    let px = mixRgb(rgb('#f78787'), rgb('#f7b8b8'), smoothstep(12, 6.6, toRind));
+    px = mixRgb(px, rgb('#ea7474'), cubeNoise(P, 16) * 0.3);
+    // The seeds are kept out of the rind by where they are placed, not
+    // by a test here: a cut-off of the paint at some distance from the
+    // rind, measured across whichever side the texel is on, would cut a
+    // seed that lies across an edge.
+    for (const { lx, ly } of WATERMELON_SEEDS.hits(P)) {
+      const seed = Math.hypot(lx / 0.78, ly / 1.45);
+      if (seed < 1.7) return mixRgb(rgb('#2a2418'), rgb('#4a4030'), smoothstep(1.2, 0.2, seed) * Math.max(0, -ly) * 0.3);
+    }
+    return px;
   },
 
-  /** Cheese, crust at one corner, pepperoni, herbs. */
+  citrus: (x, y) => {
+    /*
+      Lemon slices on a lemon.
+
+      This was a single wheel of ten segments with its hub dead centre —
+      under the colour sticker, so a Lemon die was a plain yellow square
+      — and then four quarter-slices in the corners of every side, the
+      same four six times. Since 21 Oct 2026 the slices are whole, and
+      stickers on the die (LEMON_SLICES): three to a side at two sizes,
+      several lying across an edge with half on each side, over a ground
+      of dimpled lemon peel. Full colour since the same day, because a
+      slice is peel, white pith and pale flesh with paler walls — three
+      tones from one ink was the old mask's whole trouble.
+    */
+    const P = sheetToCube(x, y);
+    // The peel: the skin's own yellow, pitted.
+    const pit = cubeNoise([P[0] + 3, P[1] + 7, P[2] + 11], 2.6);
+    let px = mixRgb(rgb('#f5e69a'), rgb('#e6cf74'), smoothstep(0.45, 0.8, pit) * 0.55);
+    px = mixRgb(px, rgb('#fbf1bd'), smoothstep(0.5, 0.25, pit) * 0.35);
+    for (const { s, lx, ly } of LEMON_SLICES.hits(P)) {
+      const R = s.kind === 0 ? 11 + s.h * 1.5 : 7.5 + s.h;
+      const r = Math.hypot(lx, ly);
+      if (r > R) continue;
+      if (r > R - 1.8) return rgb('#e0b43c'); // peel
+      if (r > R - 3.4) return rgb('#fbf6dc'); // pith
+      if (r < R * 0.12) return rgb('#fbf6dc'); // the hub the segments meet at
+      const a = Math.atan2(ly, lx) + s.h;
+      // Walls between ten segments.
+      if (Math.abs(Math.sin(a * 5)) > 0.9 && r > R * 0.16) return rgb('#fbf6dc');
+      // Flesh: pale juice, sparkling a little where the sacs catch light.
+      const sac = cubeNoise([P[0] * 1 + 17, P[1] + 23, P[2] + 5], 1.8);
+      return mixRgb(rgb('#f3d55e'), rgb('#fae99a'), smoothstep(0.4, 0.8, sac) * 0.7);
+    }
+    return px;
+  },
+
   pizza: (x, y) => {
     /*
-      Redrawn 20 Oct 2026. David: "make the pizza dice look better."
+      Redrawn 20 Oct 2026. David: "make the pizza dice look better." It
+      had been one corner of a round pizza per side, which read as a
+      cracker with stickers on it, and became a whole square pan pizza
+      on every side — the same pizza six times, with a crust framing
+      each face.
 
-      It was one corner of a round pizza per side: a flat brown band of
-      crust across the corner, four blocky pepperoni and green specks,
-      which read as a cracker with stickers on it. Now every side is a
-      WHOLE square pan pizza seen from above, because a cube has square
-      sides and a square pizza fills one edge to edge: toasted crust
-      round all four edges, a line of tomato sauce peeking out from
-      under the cheese, melted cheese with browned blisters, a big
-      cupped pepperoni in each corner — the most room between the
-      sticker and the crust — basil leaves top and bottom, black olives
-      at the sides, and the pan cut into eight between them.
-      Supersampled 3x3, so the toppings have clean round edges at shelf
-      size.
+      ONE PIZZA ROUND THE WHOLE DIE since 21 Oct 2026. The die is cut
+      from the middle of the pie: melted cheese everywhere, browned where
+      it blistered, tomato sauce showing through in patches, and the
+      toppings — big cupped pepperoni, black olives, basil leaves —
+      scattered over all six sides as stickers on the die
+      (PIZZA_TOPPINGS), a pepperoni that lies across an edge carrying on
+      whole onto the next side. The crust went with the frames: a cube
+      has no outside edge for one to sit on. Supersampled 3x3, so the
+      toppings have clean round edges at shelf size.
     */
     const N = 3;
     let r = 0;
@@ -1590,38 +2077,48 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   donut: (x, y) => {
     /*
-      The glaze covers the face except a scalloped lower-right margin.
+      Pink glaze with sprinkles, and the cake showing where the glaze
+      ran out.
 
-      The scallops used to be finer than the texture could resolve — a
-      5px swing on a 4px period across a 64px shell, so the teeth were
-      bigger than their spacing and aliased into a staircase of big
-      square steps you could count. It was the one obviously unfinished
-      thing across all the dice: it read as the picture having failed to
-      draw rather than as a scalloped edge. Longer and shallower gives
-      three or four readable scallops.
+      The scallops of that edge used to be finer than the texture could
+      resolve and aliased into a staircase of big square steps; and the
+      edge was a margin stamped on the lower right of every side. Since
+      21 Oct 2026 the die is one dipped cake: the glaze did not reach
+      four of its eight corners — alternate ones, so every side shows
+      cake in two opposite corners — and its lip round each bare corner
+      is one scalloped curve over the three sides that meet there,
+      measured from the corner itself so it turns the edges unbroken.
+      The sprinkles are stickers on the die (SPRINKLES), a jittered
+      lattice over every side, each a short capsule in one of five
+      colours turned its own way, and none on the bare cake.
     */
-    const dripEdge = 50 + tiling(x - y, 16) * 2.5;
-    // Blended across about two pixels rather than a hard boolean, so
-    // the icing has a lip instead of a cut.
-    const cake = smoothstep(dripEdge + 45, dripEdge + 47, x + y);
-    const cakePx = mixRgb(rgb('#d9a55c'), rgb('#c2882e'), wrappedNoise(x, y, 8) * 0.5);
+    const P = sheetToCube(x, y);
+    const cakePx = mixRgb(rgb('#d9a55c'), rgb('#c2882e'), cubeNoise([P[0] + 4, P[1] + 8, P[2] + 2], 3.2) * 0.5);
+    // How far this point is from the nearest bare corner, scalloped.
+    let bare = Infinity;
+    for (const [cx, cy, cz] of BARE_CORNERS) {
+      bare = Math.min(bare, Math.hypot(P[0] - cx, P[1] - cy, P[2] - cz));
+    }
+    const lip = 13 + (cubeNoise([P[0] + 11, P[1] + 3, P[2] + 7], 5) - 0.5) * 5;
+    // Blended across about two texels rather than a hard boolean, so the
+    // icing has a lip instead of a cut.
+    const cake = smoothstep(lip + 1, lip - 1, bare);
     if (cake >= 1) return cakePx;
-    // Sprinkles: short capsules in five colours, angled by their cell.
-    const cell = 11;
-    const row = Math.floor(y / cell);
-    const offset = row % 2 === 0 ? 0 : cell / 2;
-    const col = Math.floor((x + offset) / cell);
-    const h = hashCell(col, row);
-    const cx = ((x + offset) % cell) - cell / 2;
-    const cy = (y % cell) - cell / 2;
-    const a = h * Math.PI;
-    const along = cx * Math.cos(a) + cy * Math.sin(a);
-    const across = -cx * Math.sin(a) + cy * Math.cos(a);
+    let glaze = rgb('#e8a8b8');
+    // Poured icing: a little thicker and paler here and there, and one
+    // soft sweep of gloss round the whole die, the way a glaze shines.
+    glaze = mixRgb(glaze, rgb('#f6c9d6'), smoothstep(0.45, 0.9, cubeNoise([P[0] + 20, P[1] + 30, P[2] + 40], 14)) * 0.5);
+    glaze = mixRgb(glaze, rgb('#d9909f'), smoothstep(0.55, 0.9, cubeNoise([P[0] + 3, P[1] + 50, P[2] + 9], 9)) * 0.35);
+    glaze = mixRgb(glaze, rgb('#fdeaf0'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)));
     const jimmies = ['#e84a6e', '#3fa35c', '#3f7fd0', '#f0c020', '#ffffff'];
-    const glaze =
-      Math.abs(along) < 3 && Math.abs(across) < 1.1
-        ? rgb(jimmies[Math.floor(h * jimmies.length)])
-        : rgb('#e8a8b8');
+    for (const { s, lx, ly } of SPRINKLES.hits(P)) {
+      if (Math.abs(lx) < 3 && Math.abs(ly) < 1.1) {
+        glaze = rgb(jimmies[Math.floor(s.h * jimmies.length) % jimmies.length]);
+        // A sprinkle is a little rod: shaded along one side.
+        glaze = mixRgb(glaze, rgb('#000000'), smoothstep(0.3, 1.1, ly) * 0.25);
+        break;
+      }
+    }
     return mixRgb(glaze, cakePx, cake);
   },
 
@@ -1786,41 +2283,53 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   waffle: (x, y) => {
     /*
-      Chicken and waffles, and you can now tell which is which.
+      Chicken and waffles, and you can tell which is which.
 
-      The chicken was two round lumps painted in the waffle's own brown,
-      which read as two burnt patches. A drumstick needs a bone, and a
-      bone has to be PALER than the meat it sticks out of — exactly what
-      a single dark ink cannot do.
+      The chicken was once two round lumps painted in the waffle's own
+      brown, which read as two burnt patches. A drumstick needs a bone,
+      and a bone has to be PALER than the meat it sticks out of — exactly
+      what a single dark ink cannot do.
+
+      ONE WAFFLE since 21 Oct 2026. The pockets are cut by planes through
+      the die sixteen texels apart, so the waffle's walls run along its
+      edges and the grid meets itself over every one — it was a grid per
+      side, four pockets square, and only looked joined. The drumsticks
+      are stickers on the die (DRUMSTICKS): one or two to a side, every
+      side, some lying over an edge. The old two stood on the painter's
+      own canvas, which is what the Store card shows, and on no side of
+      the die at all — every card promised chicken and every die was a
+      plain waffle.
     */
+    const P = sheetToCube(x, y);
+    const F = FACE_FRAMES[cubeFace(P)];
     const cell = 16;
-    const inX = ((x % cell) + cell) % cell;
-    const inY = ((y % cell) + cell) % cell;
+    const inX = mod(dot3(P, F.u), cell);
+    const inY = mod(dot3(P, F.v), cell);
     const edge = Math.min(inX, cell - inX, inY, cell - inY);
-    const px = edge < 2
+    let px = edge < 2
       ? mixRgb(rgb('#f0c878'), rgb('#e8b45c'), 0.4)
       : mixRgb(rgb('#d9a04a'), rgb('#a8742a'), smoothstep(2, 8, edge));
-    for (const [dx0, dy0, rot] of [[15, 18, 0.6], [46, 45, -0.7]] as const) {
-      const dx = x - dx0;
-      const dy = y - dy0;
-      const ux = dx * Math.cos(rot) + dy * Math.sin(rot);
-      const uy = -dx * Math.sin(rot) + dy * Math.cos(rot);
+    // Baked unevenly: a little darker here and there.
+    px = mixRgb(px, rgb('#9a6424'), smoothstep(0.6, 0.85, cubeNoise(P, 12)) * 0.3);
+    for (const { s, lx, ly } of DRUMSTICKS.hits(P)) {
+      const ux = lx;
+      const uy = ly;
       // The bone and its knuckle, out of the narrow end.
-      if (
-        Math.hypot(ux - 10.6, uy - 0.4) < 2.8 ||
-        (Math.abs(uy) < 1.8 && ux > 3.2 && ux < 10.8)
-      ) {
+      if (Math.hypot(ux - 10.6, uy - 0.4) < 2.8 || (Math.abs(uy) < 1.8 && ux > 3.2 && ux < 10.8)) {
         return mixRgb(rgb('#f2e6c9'), rgb('#cbbb99'), smoothstep(-1, 2.2, uy));
       }
-      const lump = fbm(x + dy0, y + dx0, [16, 8], [1, 0.6]) * 1.7;
+      const lump = cubeFbm([P[0] + s.h * 30, P[1] + 7, P[2] + s.h * 50], [16, 8], [1, 0.6]) * 1.7;
       const meat = Math.hypot((ux + 3.2) / 8, uy / 6.4) + lump * 0.1;
-      if (meat < 1) {
-        // Crust: craggy fried skin, darkest at the rim.
-        return mixRgb(
-          mixRgb(rgb('#c9762e'), rgb('#9e5418'), wrappedNoise(x * 2, y * 2, 16)),
+      if (meat < 1.42) {
+        // Crust: craggy fried skin, darkest at the rim, which fades over
+        // a texel or two rather than stopping dead — a hard rim that
+        // happened to lie along an edge of the die read as a seam.
+        const crust = mixRgb(
+          mixRgb(rgb('#c9762e'), rgb('#9e5418'), cubeNoise([P[0] + 2, P[1] + 5, P[2] + 9], 2.2)),
           rgb('#6e360e'),
           smoothstep(0.55, 1, meat),
         );
+        return mixRgb(crust, px, smoothstep(1.0, 1.42, meat));
       }
     }
     return px;
@@ -1921,14 +2430,23 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   },
   embers: (x, y) => {
     /*
-      FIRE, on every side of the die.
+      FIRE, over the whole die.
 
       David, 30 Sep 2026: "Make the color of the fire dice more orange.
       Not just orange, I mean more fire colors." It was charred wood with
-      thin orange cracks — a die that had BEEN on fire. Now each side is
-      burning: tongues of flame rising from the bottom edge, pale gold at
-      their roots, then amber, orange and red toward the tips, over a deep
-      ember ground with sparks glowing in it.
+      thin orange cracks — a die that had BEEN on fire. Now it is burning:
+      tongues of flame, pale gold at their roots, then amber, orange and
+      red toward the tips, over a deep ember ground with sparks in it.
+
+      ONE FIRE since 21 Oct 2026, rather than flames rising from the
+      bottom of each side, which met the next side's embers at every
+      edge. The die burns from underneath: its bottom is the bed of the
+      fire, white-hot, and the flames flare out over the bottom edges,
+      up all four sides and over the top edges, their tips licking in
+      toward the middle of the top. Every point is given its height up
+      the fire and its place round it in space (bottom centre, out over
+      the rim, up the sides, in over the top), so the tongues run
+      unbroken over every edge.
 
       THE STICKER KEEPS A DARK RING. Fire is made of exactly the colours
       of three of the six faces — red, orange and yellow — and a flame
@@ -1938,37 +2456,73 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       burns around it. Every colour named below is also at least 15 ΔLab
       from every face colour (screen.test.ts checks the ones written here).
     */
-    const u = (x + 0.5) / SIZE;
-    const v = 1 - (y + 0.5) / SIZE; // 0 at the bottom edge of the side
-    // Tongues of flame: a wavy ridge of heights along the bottom edge.
-    const sway = Math.sin(v * 9 + u * 4) * 0.035;
+    const P = sheetToCube(x, y);
+    const f = cubeFace(P);
+    // Where this point is round the die (a strip position, 0..RING) and
+    // how far up the fire it is: 0 at the bottom's middle, 32 at the
+    // bottom rim, 96 at the top rim, 128 at the top's middle.
+    let theta: number;
+    let L: number;
+    if (f === 2 || f === 3) {
+      const rs = Math.max(Math.abs(P[0]), Math.abs(P[2]));
+      const sc = SIZE / 2 / Math.max(1e-6, rs);
+      const ex = P[0] * sc;
+      const ez = P[2] * sc;
+      // The rim point this point looks out through, as a strip position.
+      if (Math.abs(ez) >= Math.abs(ex)) theta = ez > 0 ? ex + 31.5 : 2 * SIZE - ex + 31.5;
+      else theta = ex > 0 ? SIZE - ez + 31.5 : 3 * SIZE + ez + 31.5;
+      L = f === 3 ? rs : 3 * SIZE / 2 + (SIZE / 2 - rs);
+    } else {
+      theta = mod(x, RING);
+      L = SIZE + P[1];
+    }
+    const sway = Math.sin(L * 0.14 + (theta * Math.PI * 2 * 3) / RING) * 0.5;
     const tongues =
       0.66 +
-      0.24 * Math.abs(Math.sin((u + sway) * Math.PI * 3.1)) +
-      0.1 * Math.sin((u + sway) * Math.PI * 7.3 + 1.1) +
-      fbm(x, y * 0.6, [16, 8], [1, 0.5]) * 0.08;
-    const t = v / Math.max(0.2, tongues); // 0 at the root, 1 at the tip
+      0.24 * Math.abs(Math.sin((theta * Math.PI * 2 * 6) / RING + sway)) +
+      0.1 * Math.sin((theta * Math.PI * 2 * 14.5) / RING + 1.1) +
+      cubeFbm(P, [16, 8], [1, 0.5]) * 0.08;
+    // The tips reach from the middle of a side to well over the top.
+    const tip = 30 + 90 * Math.max(0.2, tongues);
+    const t = L / tip; // 0 at the root, 1 at the tip
     // Glowing embers, not soot: deep red, brightening where it is hottest.
-    const ember = mixRgb(rgb('#5a1407'), rgb('#9e2a0a'), smoothstep(-0.3, 0.7, fbm(x + 7, y + 3, [32, 16], [1, 0.5])));
+    let ember = mixRgb(rgb('#5a1407'), rgb('#9e2a0a'), smoothstep(-0.3, 0.7, cubeFbm([P[0] + 7, P[1] + 3, P[2]], [32, 16], [1, 0.5])));
+    // Heat glowing in the cracks of the ember, orange and gold.
+    const vein = Math.abs(cubeFbm([P[0] + 21, P[1] + 9, P[2] + 33], [12, 6], [1, 0.5]));
+    const heat = smoothstep(0.09, 0.02, vein);
+    // Charred patches in the ember, and the ember warming toward each
+    // crack, then the crack itself glowing.
+    ember = mixRgb(ember, rgb('#3b0c05'), smoothstep(0.55, 0.8, cubeNoise([P[0] + 50, P[1] + 20, P[2] + 60], 9)) * 0.6);
+    ember = mixRgb(ember, rgb('#c43d0c'), smoothstep(0.22, 0.08, vein) * 0.6);
+    ember = mixRgb(ember, mixRgb(rgb('#ff6a14'), rgb('#ffa42e'), cubeNoise([P[0] + 2, P[1] + 44, P[2] + 8], 6)), heat * 0.85);
     let px: [number, number, number];
     if (t < 1) {
       px = mixRgb(rgb('#fff0b0'), rgb('#ffc75a'), smoothstep(0.0, 0.3, t));
       px = mixRgb(px, rgb('#ffa42e'), smoothstep(0.25, 0.5, t));
       px = mixRgb(px, rgb('#ff6a14'), smoothstep(0.45, 0.72, t));
       px = mixRgb(px, rgb('#c43d0c'), smoothstep(0.7, 0.95, t));
+      // Hotter and cooler patches within the flame, so the bed of the
+      // fire is not one flat pale wash.
+      const patch = cubeFbm([P[0] + 19, P[1] + 5, P[2] + 11], [16, 8], [1, 0.5]);
+      px = mixRgb(px, rgb('#ffa42e'), smoothstep(0.1, 0.5, patch) * (1 - t) * 0.7);
+      px = mixRgb(px, rgb('#fff0b0'), smoothstep(-0.1, -0.5, patch) * (1 - t) * 0.5);
+      // Deeper orange in the cracks of the bed, where the fire is fed.
+      px = mixRgb(px, rgb('#ff6a14'), heat * (1 - t) * 0.6);
       // A soft edge into the dark above, rather than a cut-out.
       px = mixRgb(px, ember, smoothstep(0.9, 1, t));
     } else {
       px = ember;
       // Sparks drifting up out of the fire.
-      if (hashCell(x, y) > 0.985) px = mixRgb(px, rgb('#ffa42e'), 0.85);
-      else if (hashCell(x + 3, y) > 0.975) px = mixRgb(px, rgb('#c43d0c'), 0.7);
+      const h = cubeSpeck(P);
+      if (h > 0.985) px = mixRgb(px, rgb('#ffa42e'), 0.85);
+      else if (hash3(Math.round(P[0] * 2) + 3, Math.round(P[1] * 2), Math.round(P[2] * 2)) > 0.975) px = mixRgb(px, rgb('#c43d0c'), 0.7);
     }
     // The dark ring round the sticker, feathered at its outer edge.
-    const r = STICKER_FRACTION * SIZE;
-    const d = Math.hypot(x + 0.5 - SIZE / 2, y + 0.5 - SIZE / 2);
     // Thin: just enough black for the sticker's edge to read, and the
     // fire right up to it everywhere else.
+    const F = FACE_FRAMES[f];
+    const d = Math.hypot(dot3(P, F.u), dot3(P, F.v));
+    const r = STICKER_FRACTION * SIZE;
     return mixRgb(px, rgb('#2a201c'), smoothstep(r * 1.3, r * 1.14, d));
   },
   ice: (x, y) => {
@@ -2246,39 +2800,34 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   basketball: (x, y) => {
     /*
       A basketball, redrawn 19 Oct 2026 — David: "make the basketball
-      dice look better." The last version was a brown box: the hide
-      started at a rust #a34a14, the pebble was heavy and dark, and the
-      curved seams were drawn so close to the face's edges that each
-      side wore a dark rounded frame rather than a ball's panels.
+      dice look better." The last version was a brown box: a rust hide
+      under a heavy pebble, with seams so close to the face's edges that
+      each side wore a dark rounded frame rather than a ball's panels.
 
       Now the hide is the bright orange a basketball actually is, the
-      pebble is fine and quiet, and the seams are the ones everybody
-      draws when they draw a basketball: a straight seam across and a
-      straight seam down, meeting under the colour sticker, and a
-      curved seam either side bowing in toward the middle. Each curve
-      runs from the top edge, hugs the sticker's rim, and comes out
-      again at the bottom — so the sticker sits in the ball the way a
-      logo does, and what shows round it is unmistakably a basketball.
+      pebble is fine and quiet, and the seams are a BALL'S seams since
+      21 Oct 2026: two of them, each one closed curve wound round a body
+      diagonal of the die (seamAt, the baseball's curve, on two of the
+      four diagonals), so each runs unbroken over every edge, crosses
+      every side once through a corner region, and never runs under a
+      colour sticker. From any side the sticker sits in the ball the way
+      a logo does, with a black seam bowing round it on each side — and
+      because the two curves take different corners on different sides,
+      no two sides are the same picture.
     */
-    const c = SIZE / 2;
-    // The cross, from the sticker's rim out to the edges.
-    const cross = Math.min(Math.abs(x - c), Math.abs(y - c));
-    // The curves: centred far out to either side, radius chosen so each
-    // crosses the top and bottom edges 8 in and meets the sticker's rim.
-    const bow = Math.min(
-      Math.abs(Math.hypot(x + 52, y - c) - 68),
-      Math.abs(Math.hypot(x - SIZE - 52, y - c) - 68),
-    );
-    const seamAt = Math.min(cross, bow);
-    // Pebble: a fine hex lattice of little domes, lit from the upper left.
-    const grain = hexCell(x, y, 1.9);
-    const lit = ((grain.cx - x) + (grain.cy - y)) / 1.9;
-    let px = mixRgb(rgb('#e0691f'), rgb('#f08a3c'), wrappedNoise(x, y, 32));
+    const P = sheetToCube(x, y);
+    const seam = Math.min(Math.abs(seamAt(P).off), Math.abs(seamAt(P, SEAM_SWING, SEAM_FRAME_B).off));
+    // Pebble: a fine bumpy grain of the point in space, lit from one
+    // direction, so it is the same pebble seen from every side.
+    const d = 0.9;
+    const lit =
+      (cubeNoise([P[0] - d, P[1] - d, P[2] - d], 2.6) - cubeNoise([P[0] + d, P[1] + d, P[2] + d], 2.6)) * 1.6;
+    let px = mixRgb(rgb('#e0691f'), rgb('#f08a3c'), cubeNoise(P, 32));
     px = mixRgb(px, rgb('#f7ab66'), Math.max(0, lit) * 0.32);
     px = mixRgb(px, rgb('#a84a14'), Math.max(0, -lit) * 0.3);
     // The seam: a black channel with the hide lipping over its edges.
-    px = mixRgb(px, rgb('#1a1418'), smoothstep(2.4, 1.2, seamAt));
-    px = mixRgb(px, rgb('#9a4514'), smoothstep(3.6, 2.4, seamAt) * 0.45);
+    px = mixRgb(px, rgb('#1a1418'), smoothstep(2.4, 1.2, seam));
+    px = mixRgb(px, rgb('#9a4514'), smoothstep(3.6, 2.4, seam) * 0.45);
     return px;
   },
   cookie: (x, y) => {
@@ -2378,75 +2927,76 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     /*
       A football, redrawn 19 Oct 2026 — David: "make the football dice
       look better", then of the first redo, "I don't like this football."
+      This is the football everybody draws: a warm chestnut hide, smooth
+      but for the faintest grain, one clean white spine with fat laces
+      across it, and two thin white stripes toward the ends.
 
-      The first redo was busy: a dark red-brown hide under a heavy grain,
-      a ladder of seven thin laces boxed in by two dark seam channels,
-      and two taped-on stripes with dark edges. Too much, and all of it
-      dark.
-
-      This one is the football everybody draws. A warm chestnut hide,
-      smooth but for the faintest grain, lit from the upper left. One
-      clean white spine with five fat laces across it, nothing boxing it
-      in. Two thin white stripes at the right-hand end. The ends fall
-      into a little shade so the face still reads as the curve of a
-      ball. The lace panel sits in the left third and the stripes on the
-      right, both clear of the colour sticker in the middle.
+      ON THE BALL since 21 Oct 2026, not once per side. The ball's long
+      axis is the die's long diagonal: the laced spine runs round the die
+      along the seam curve (seamAt), so it crosses every side once,
+      through a corner region, and turns every edge unbroken; the two
+      stripes are the rings near the two ends of that axis — a small
+      triangle of white round the +++ corner and another round the ---
+      corner — so each side carries laces in one corner and a stripe in
+      the opposite one, and the laces never run under a sticker.
     */
-    const c = SIZE / 2;
-    const grain = hexCell(x, y, 2.2);
-    const lit = ((grain.cx - x) + (grain.cy - y)) / 2.2;
-    let px = mixRgb(rgb('#b45a30'), rgb('#cd7343'), wrappedNoise(x, y, 32));
+    const P = sheetToCube(x, y);
+    const d = 0.8;
+    const lit =
+      (cubeNoise([P[0] - d, P[1] - d, P[2] - d], 2.2) - cubeNoise([P[0] + d, P[1] + d, P[2] + d], 2.2)) * 1.2;
+    let px = mixRgb(rgb('#b45a30'), rgb('#cd7343'), cubeNoise(P, 32));
     px = mixRgb(px, rgb('#e08a58'), Math.max(0, lit) * 0.14);
     px = mixRgb(px, rgb('#7e3a1a'), Math.max(0, -lit) * 0.14);
-    // Lit from the upper left, like everything on the table.
-    px = mixRgb(px, rgb('#e39560'), smoothstep(64, 0, x + y) * 0.22);
-    // The pointed ends fall away, hinting the ball's curve.
-    px = mixRgb(px, rgb('#4a2210'), smoothstep(23, 32, Math.abs(y - c)) * 0.3);
+    // Lit from one side of the die, so the hide reads as curved.
+    px = mixRgb(px, rgb('#e39560'), smoothstep(40, -40, P[0] + P[1] + P[2]) * 0.22);
 
     const WHITE = rgb('#f8f4ea');
     const CREAM = rgb('#d9cfb9');
-    const lx = 12;
-    // The spine.
-    let lace = smoothstep(2.0, 1.3, Math.abs(x - lx)) * smoothstep(26, 24, Math.abs(y - c));
-    // Five laces across it, each a rounded bar.
-    for (let i = -2; i <= 2; i++) {
-      const cy = c + i * 9;
-      const dx = Math.max(0, Math.abs(x - lx) - 4.2);
-      const d = Math.hypot(dx, y - cy);
-      lace = Math.max(lace, smoothstep(1.9, 1.1, d));
-    }
+    const { off, along, g } = seamAt(P);
+    // The spine, and laces across it in a steady rhythm along the seam:
+    // twenty-one right round the die, each a rounded bar.
+    const side = Math.abs(off);
+    let lace = smoothstep(2.0, 1.3, side);
+    const rhythm = (along / (Math.PI * 2)) * 21;
+    // Signed texels from the nearest lace along the seam: the seam is
+    // about 270 texels round, so the laces sit about 13 apart.
+    const s = (rhythm - Math.round(rhythm)) * 13;
+    const across = Math.max(0, side - 4.2);
+    lace = Math.max(lace, smoothstep(1.9, 1.1, Math.hypot(across, s)));
     if (lace > 0) {
       // A lace is a round cord: lit on top, a little shaded underneath.
-      const under = smoothstep(0.2, 1.2, (((y - c + 4.5) % 9) + 9) % 9 - 4.5);
+      const under = smoothstep(0.2, 1.2, s);
       px = mixRgb(px, mixRgb(WHITE, CREAM, under * 0.5), lace);
     }
-    // Two thin white stripes near the right end.
-    for (const sx of [50, 58]) {
-      px = mixRgb(px, mixRgb(WHITE, CREAM, 0.2), smoothstep(1.5, 0.8, Math.abs(x - sx)));
-    }
+    // The two stripes: rings round the ends of the ball's axis.
+    const stripe = Math.abs(Math.abs(g) - 40);
+    px = mixRgb(px, mixRgb(WHITE, CREAM, 0.2), smoothstep(1.6, 0.8, stripe));
     return px;
   },
 
   volleyball: (x, y) => {
     /*
       A volleyball, redrawn 19 Oct 2026 — David: "make the volleyball
-      dice look better."
+      dice look better." The old one split every face into four quarters
+      with their own diagonal stripes and read as a harlequin quilt. A
+      volleyball is a white ball with blue and yellow panels sweeping
+      round it in curved bands, and that sweep is what the eye wants.
 
-      The old one split every face into four quarters, each with its
-      own diagonal stripes, with grainy edges on everything. It read as
-      a harlequin quilt. A volleyball is a white ball with blue and
-      yellow panels sweeping round it in curved bands, and that sweep
-      is what the eye wants: every face now carries one curve of wide
-      panels — white, blue, yellow, white — bending across it, with a
-      clean dark seam between each pair and a soft dome of light on
-      every panel. The sticker sits in the middle like the ball's own
-      valve mark. Per face, so each side is the same clean picture.
+      ROUND THE WHOLE BALL since 21 Oct 2026. It was one curve of panels
+      per side, the same picture six times, stopping dead at every edge.
+      Now the bands are wound round the die's long diagonal — the seam
+      curve's own value (seamAt's `g`) cut into panels of equal width —
+      so each band bends across a side, turns the edge and carries on
+      round the next, with a clean dark seam between each pair and a soft
+      dome of light on every panel. Every side carries white, blue and
+      yellow, and no two sides show the same stretch of it.
     */
-    // Distance from a point well off the face: the panels are arcs of
-    // circles round it, which is what makes them bend like a ball's.
-    const r = Math.hypot(x + 28, y - 92);
-    const t = (r - 54) / 13;
-    const band = ((Math.floor(t) % 4) + 4) % 4;
+    const P = sheetToCube(x, y);
+    // A bigger swing than the seam's: the panels are meant to curve.
+    const { g } = seamAt(P, 0.16);
+    const W = 13.5;
+    const t = (g + 61) / W;
+    const band = ((Math.floor(t) % 3) + 3) % 3;
     const frac = t - Math.floor(t);
     const WHITE = rgb('#f4f1ea');
     const BLUE = rgb('#2b4f9e');
@@ -2457,38 +3007,40 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     px = mixRgb(px, rgb('#ffffff'), dome * 0.35);
     px = mixRgb(px, rgb('#000000'), smoothstep(0.3, 0.5, Math.abs(frac - 0.5)) * 0.12);
     // The seam: a dark channel, with the leather lipping over its edges.
-    const seam = Math.min(frac, 1 - frac) * 13;
+    // 0.816 is the band's slope across a face: every face sits at the
+    // same angle to the diagonal, so the panels are the same width on all.
+    const seam = (Math.min(frac, 1 - frac) * W) / 0.816;
     px = mixRgb(px, rgb('#4a4842'), smoothstep(1.2, 0.5, seam) * 0.85);
     px = mixRgb(px, rgb('#ffffff'), smoothstep(2.4, 1.2, seam) * smoothstep(0.5, 1.2, seam) * 0.25);
     // The faintest grain of synthetic leather.
-    return mixRgb(px, rgb('#000000'), (hashCell(x, y) - 0.5) * 0.04 + 0.02);
+    return mixRgb(px, rgb('#000000'), (cubeSpeck(P) - 0.5) * 0.04 + 0.02);
   },
   bowling: (x, y) => {
     /*
       Polished resin: a swirl marbled through it, a hard gloss highlight,
-      and three finger holes with depth. It was a flat dark cube with a
-      corner glow — the least visible pattern in the whole set at a local
-      contrast of seventeen.
-    */
-    let px = mixRgb(rgb('#221d30'), rgb('#463a66'), wrappedNoise(x, y, 32) * 0.9);
-    const swirl = Math.sin((x * 0.9 + y * 0.4) * 0.12 + fbm(x, y, [32, 16], [1, 0.5]) * 6);
-    px = mixRgb(px, rgb('#6b4da3'), smoothstep(0.25, 1, swirl) * 0.6);
-    const g = Math.hypot(x - SIZE * 0.9, y - SIZE * 0.84);
-    px = mixRgb(px, rgb('#bfb2e0'), smoothstep(22, 8, g) * 0.5);
-    // A tighter gloss dot rather than a white blob.
-    px = mixRgb(px, rgb('#ffffff'), smoothstep(6, 2.5, g) * 0.5);
-    /*
-      All three holes clear of the colour sticker.
+      and finger holes with depth. It was a flat dark cube with a corner
+      glow — the least visible pattern in the whole set.
 
-      The sticker is an opaque disc of radius 21 at the centre (32, 32),
-      and the third hole used to sit 21.95 from that centre — so its
-      inner side was covered and a player saw two holes and a nick,
-      which reads as a defect rather than as a ball. Every centre here
-      is at least 28 out, so the whole 4.3px hole clears it, and the
-      tight finger-hole triangle is kept, just nudged into the corner.
+      ONE BALL since 21 Oct 2026. The swirl was a wave of the sheet, the
+      gloss a dot placed on each side and the three holes stamped on
+      every side; now the swirl is noise of the point in space, so it
+      runs over every edge and diagonal without a kink, the gloss is one
+      sweep of light round the whole die (sweepOfLight, the metals'
+      highlight) so every side catches it, and the finger holes are
+      stickers on the die (StickerSheet) — three on the front, in the
+      corner, as a bowling ball has — with two more sets on other sides
+      so a resting die shows holes from almost any angle.
     */
-    for (const [hx, hy] of [[9, 9], [19, 6], [7, 20]] as const) {
-      const d = Math.hypot(x - hx, y - hy);
+    const P = sheetToCube(x, y);
+    let px = mixRgb(rgb('#221d30'), rgb('#463a66'), cubeNoise(P, 32) * 0.9);
+    const swirl = Math.sin((P[0] * 0.9 + P[1] * 0.4 + P[2] * 0.6) * 0.12 + cubeFbm(P, [32, 16], [1, 0.5]) * 6);
+    px = mixRgb(px, rgb('#6b4da3'), smoothstep(0.25, 1, swirl) * 0.6);
+    // The gloss: a soft sheet of light with a hard glint in it.
+    const gloss = sweepOfLight(P, 2.6, 11, 0.55, 0.5, 4.2, 0.4);
+    px = mixRgb(px, rgb('#bfb2e0'), Math.min(1, gloss) * 0.6);
+    px = mixRgb(px, rgb('#ffffff'), smoothstep(0.5, 0.95, gloss) * 0.55);
+    for (const { lx, ly } of BOWLING_HOLES.hits(P)) {
+      const d = Math.hypot(lx, ly);
       if (d < 4.3) {
         px = mixRgb(px, rgb('#8f86a8'), smoothstep(3.3, 4.3, d) * 0.55);
         if (d < 3.4) px = mixRgb(rgb('#0a0813'), rgb('#2a2440'), smoothstep(0, 3.4, d) * 0.55);
@@ -2697,46 +3249,25 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
    * Blossom: scattered five-petal cherry flowers and a few drifting
    * petals on the pink shell. Until 31 Aug 2026 this skin was `plain` —
    * the one skin whose name promised a picture and delivered a flat
-   * pink cube, and the nearest confusable neighbour to marble's
-   * near-blank white.
+   * pink cube.
    *
    * Built the way frost's snowflakes are: fixed, deterministic shapes
    * (no Math.random — the shelf and the table must show the same dice),
    * SUPERSAMPLED because a 1px petal rim on a 64px grid shreds into
-   * stair-steps at any rotation, and placed clear of the central disc
-   * the colour sticker covers — a flower drawn there is drawn for
-   * nobody. Unlike frost it mixes its own paint: white petal tips, a
-   * pink blush at their base, a deeper pink outline and a gold heart
-   * are four colours, and a mask only travels from the shell toward one
-   * ink.
+   * stair-steps at any rotation. It mixes its own paint: white petal
+   * tips, a pink blush at their base, a deeper pink outline and a gold
+   * heart are four colours, and a mask only travels toward one ink.
+   *
+   * The flowers are stickers on the die since 21 Oct 2026 (BLOSSOMS): it
+   * used to be the same four flowers and two half-flowers on every side,
+   * and now they are strewn over the whole die, two whole flowers and
+   * two loose petals to a side, some lying across an edge.
    */
   blossom: (x, y) => {
-    // cx, cy, petal reach, rotation. Four full flowers in the corners
-    // (sized like frost's flakes, so the two skins feel like siblings)
-    // and two smaller ones on the edges, every centre far enough out
-    // that the sticker at most grazes a petal tip.
-    const FLOWERS: [number, number, number, number][] = [
-      [9, 10, 9.5, 0.4],
-      [54, 9, 8.5, 1.3],
-      [55, 54, 9.5, 2.2],
-      [9, 54, 8, 0.9],
-      [33, 60, 6, 1.8],
-      [60, 31, 6, 2.8],
-    ];
-    // Loose petals adrift between the flowers: cx, cy, rotation.
-    const PETALS: [number, number, number][] = [
-      [30, 4, 0.7],
-      [5, 30, 2.1],
-      [21, 62, 1.4],
-      [47, 62, 2.6],
-      [62, 17, 0.3],
-    ];
-
     const flower = (
       dx: number,
       dy: number,
       R: number,
-      rot: number,
     ): [number, number, number] | null => {
       const r = Math.hypot(dx, dy);
       if (r > R * 1.15) return null;
@@ -2744,7 +3275,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       if (r < R * 0.22) return r > R * 0.15 ? rgb('#cd9033') : rgb('#f0c14d');
       // Fold into one of five sectors, exactly as frost folds into six.
       const sector = (Math.PI * 2) / 5;
-      const a = Math.atan2(dy, dx) + rot;
+      const a = Math.atan2(dy, dx);
       const folded = (((a % sector) + sector) % sector) - sector / 2;
       const along = (r * Math.cos(folded)) / R;
       const across = Math.abs(r * Math.sin(folded)) / R;
@@ -2761,9 +3292,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       return null;
     };
 
-    const petal = (dx: number, dy: number, rot: number): [number, number, number] | null => {
-      const u = dx * Math.cos(rot) + dy * Math.sin(rot);
-      const v = -dx * Math.sin(rot) + dy * Math.cos(rot);
+    const petal = (u: number, v: number): [number, number, number] | null => {
       const e = Math.hypot(u / 3.4, v / 2);
       // Deeper pink than the flowers' petals: a petal on its own has no
       // outline of neighbours to lift it off the shell.
@@ -2774,21 +3303,17 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
     // Flowers first, so a drifting petal that reaches one slides UNDER
     // it rather than across its face.
-    const sample = (px: number, py: number): [number, number, number] | null => {
-      for (const [cx, cy, R, rot] of FLOWERS) {
-        const hit = flower(px - cx, py - cy, R, rot);
+    const sample = (P: readonly number[]): [number, number, number] | null => {
+      for (const { s, lx, ly } of BLOSSOMS.hits(P)) {
+        const hit = flower(lx, ly, 8 + s.h * 1.5);
         if (hit) return hit;
       }
-      for (const [cx, cy, rot] of PETALS) {
-        const hit = petal(px - cx, py - cy, rot);
+      for (const { lx, ly } of BLOSSOM_PETALS.hits(P)) {
+        const hit = petal(lx, ly);
         if (hit) return hit;
       }
       return null;
     };
-
-    // The shell between the flowers: the skin's own pink, gently
-    // mottled so the ground reads as petal-strewn air, not plastic.
-    const ground = mixRgb(rgb('#f5d7e3'), rgb('#eec6d8'), wrappedNoise(x, y, 16) * 0.6);
 
     // Supersample 3x3 — frost's lesson: thin edges on a 64px grid only
     // survive rotation with partial coverage along every boundary.
@@ -2798,7 +3323,10 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     let sb = 0;
     for (let sy = 0; sy < N; sy++) {
       for (let sx = 0; sx < N; sx++) {
-        const c = sample(x + (sx + 0.5) / N, y + (sy + 0.5) / N) ?? ground;
+        const P = sheetToCube(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+        // The shell between the flowers: the skin's own pink, gently
+        // mottled so the ground reads as petal-strewn air, not plastic.
+        const c = sample(P) ?? mixRgb(rgb('#f5d7e3'), rgb('#eec6d8'), cubeNoise(P, 16) * 0.6);
         sr += c[0];
         sg += c[1];
         sb += c[2];
@@ -2809,130 +3337,71 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
   /**
    * Lavender: sprigs of the plant itself — a thin green stem curving up
-   * to a spike of purple buds, a pair of leaves at its foot — scattered
-   * round the rim of the lilac shell, with a few loose buds adrift
-   * between them. Until 31 Aug 2026 this skin was `plain`: next to
-   * frost's snowflakes it was a paint swatch, and the name promised a
-   * flower it never drew.
+   * to a spike of purple buds, a pair of leaves at its foot — strewn
+   * over the lilac shell, with a few loose buds adrift between them.
+   * Until 31 Aug 2026 this skin was `plain`: next to frost's snowflakes
+   * it was a paint swatch, and the name promised a flower it never drew.
    *
    * Built the way blossom was, and for the same reasons: fixed
-   * deterministic shapes (no Math.random — the shelf and the table must
-   * show the same dice), 3x3 supersampled because a 1px stem on a 64px
-   * grid shreds into stair-steps without partial coverage, and every
-   * sprig placed clear of the central disc the colour sticker covers.
-   * It mixes its own paint — green stems under purple buds is two hues
-   * on a lilac ground, one more than a mask's single ink can travel to.
+   * deterministic shapes (no Math.random), 3x3 supersampled because a
+   * 1px stem on a 64px grid shreds into stair-steps without partial
+   * coverage, and its own paint — green stems under purple buds is two
+   * hues on a lilac ground, one more than a mask's single ink.
    *
-   * The IIFE is so the sprig geometry (stems bent by their bow, bud
-   * ellipses staggered up each spike) is worked out ONCE, not once per
-   * subsample — blossom's flowers are bare literals, but a sprig's buds
-   * sit on a curve and pricing that curve 37k times would be silly.
+   * The sprigs are stickers on the die since 21 Oct 2026 (LAVENDER
+   * below): the same five sprigs used to stand on every side, and now
+   * they lie every which way over the whole die, two to a side, some
+   * bending over an edge. One sprig's geometry (stem bowed, buds
+   * staggered up the spike) is worked out once, in the sprig's own
+   * frame, and every sticker is that sprig turned and placed.
    */
   lavender: (() => {
-    type Ellipse = {
-      cx: number;
-      cy: number;
-      ca: number; // cos of the ellipse's rotation
-      sa: number; // sin of it
-      t: number; // where along the stem it sits, for colour ramps
+    type Ellipse = { cx: number; cy: number; ca: number; sa: number; t: number };
+    // The sprig stands in its own frame: the foot at (0, 9.5), the stem
+    // rising to the tip at the top, bowed a little to one side.
+    const LEN = 19;
+    const BOW = 1.6;
+    const FOOT = 9.5;
+    const pos = (t: number): [number, number] => [BOW * t * t, FOOT - LEN * t];
+    const tangentAngle = (t: number) => Math.atan2(-LEN, 2 * BOW * t);
+    const ellipse = (t: number, side: number, out: number, tilt: number): Ellipse => {
+      const [cx, cy] = pos(t);
+      const a = tangentAngle(t) + side * tilt;
+      return { cx: cx + side * out, cy, ca: Math.cos(a), sa: Math.sin(a), t };
     };
-    type Sprig = {
-      // Stem as base + unit direction + perpendicular bow, so distance
-      // to it is one projection per sample instead of a polyline walk.
-      bx: number;
-      by: number;
-      dx: number;
-      dy: number;
-      nx: number;
-      ny: number;
-      len: number;
-      bow: number;
-      buds: Ellipse[];
-      leaves: Ellipse[];
-      minX: number;
-      maxX: number;
-      minY: number;
-      maxY: number;
-    };
-
-    // Base x, base y, angle (radians — the y axis points down, so
-    // upward angles are negative), stem length, sideways bow. Four tall
-    // sprigs in the corners and a short one leaning off bottom-centre;
-    // every bud spike stays outside the sticker disc, at most grazing
-    // its rim the way blossom's petal tips do.
-    const DEFS: [number, number, number, number, number][] = [
-      [7, 63, -1.42, 20, 1.6],
-      [55, 62, -1.75, 19, -1.6],
-      [8, 25, -1.36, 19, 1.3],
-      [57, 24, -1.8, 18, -1.3],
-      [30, 63, -2.0, 12, -1.0],
+    // The spike: staggered pairs up the top half of the stem, tilted
+    // outward like the real plant's whorls, and one terminal bud.
+    const BUDS = [
+      ellipse(0.52, 1, 1.7, 0.55),
+      ellipse(0.64, -1, 1.7, 0.55),
+      ellipse(0.76, 1, 1.7, 0.55),
+      ellipse(0.88, -1, 1.7, 0.55),
+      ellipse(1.03, 0, 0, 0),
     ];
+    const LEAVES = [ellipse(0.18, 1, 2.2, 0.9), ellipse(0.34, -1, 2.2, 0.9)];
+    /*
+      Three to a side: at two, rendered on the table, the lilac shell
+      showed through more than the plant did.
 
-    const SPRIGS: Sprig[] = DEFS.map(([bx, by, angle, len, bow]) => {
-      const dx = Math.cos(angle);
-      const dy = Math.sin(angle);
-      const nx = -dy;
-      const ny = dx;
-      const pos = (t: number): [number, number] => [
-        bx + dx * len * t + nx * bow * t * t,
-        by + dy * len * t + ny * bow * t * t,
-      ];
-      const tangentAngle = (t: number) =>
-        Math.atan2(dy * len + ny * 2 * bow * t, dx * len + nx * 2 * bow * t);
-      const ellipse = (t: number, side: number, out: number, tilt: number): Ellipse => {
-        const [cx, cy] = pos(t);
-        const a = tangentAngle(t) + side * tilt;
-        return { cx: cx + nx * side * out, cy: cy + ny * side * out, ca: Math.cos(a), sa: Math.sin(a), t };
-      };
-      // The spike: staggered pairs up the top half of the stem, tilted
-      // outward like the real plant's whorls, and one terminal bud.
-      const buds = [
-        ellipse(0.52, 1, 1.7, 0.55),
-        ellipse(0.64, -1, 1.7, 0.55),
-        ellipse(0.76, 1, 1.7, 0.55),
-        ellipse(0.88, -1, 1.7, 0.55),
-        ellipse(1.03, 0, 0, 0),
-      ];
-      const leaves = [ellipse(0.18, 1, 2.2, 0.9), ellipse(0.34, -1, 2.2, 0.9)];
-      const xs = [...buds, ...leaves].map((e) => e.cx).concat([bx, pos(1)[0]]);
-      const ys = [...buds, ...leaves].map((e) => e.cy).concat([by, pos(1)[1]]);
-      return {
-        bx,
-        by,
-        dx,
-        dy,
-        nx,
-        ny,
-        len,
-        bow,
-        buds,
-        leaves,
-        minX: Math.min(...xs) - 4.5,
-        maxX: Math.max(...xs) + 4.5,
-        minY: Math.min(...ys) - 4.5,
-        maxY: Math.max(...ys) + 4.5,
-      };
-    });
-
-    // Loose buds adrift between the sprigs: cx, cy, rotation.
-    const LOOSE: Ellipse[] = [
-      [33, 3, 0.5],
-      [2, 43, 1.9],
-      [62, 41, 2.6],
-      [45, 61, 1.1],
-    ].map(([cx, cy, a]) => ({ cx, cy, ca: Math.cos(a), sa: Math.sin(a), t: 1 }));
+      Which three matters. A sprig is thin, and one lying over an edge
+      gives half its paint to the next side while one pointed at a
+      corner loses its spike past it — so with three a side, which
+      sides end up carrying the plant depends on where they fell. The
+      first scatter tried (seed 41, centres 7 from a corner) left the
+      front with half the sprig of the top, and tests/textures.test.ts
+      rightly called that a blank side. This one was picked by
+      measuring every seed up to 120: every side carries within a tenth
+      of the same amount, and keeping the centres a sprig's length from
+      the corners means no spike is ever lost round one.
+    */
+    const SPRIGS = new StickerSheet(scatterStickers(89, 3, 13.5, 15, 3, 13));
+    const LOOSE = new StickerSheet(scatterStickers(43, 2, 3, 8, 1));
 
     // A bud, shaded deep purple at its base toward a paler tip.
     const budPaint = (u: number): [number, number, number] =>
       mixRgb(rgb('#6a49b0'), rgb('#9a76dd'), smoothstep(-2.4, 2.4, u));
 
-    const inEllipse = (
-      px: number,
-      py: number,
-      e: Ellipse,
-      ra: number,
-      rb: number,
-    ): number | null => {
+    const inEllipse = (px: number, py: number, e: Ellipse, ra: number, rb: number): number | null => {
       const ox = px - e.cx;
       const oy = py - e.cy;
       const u = ox * e.ca + oy * e.sa;
@@ -2940,55 +3409,32 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       return Math.hypot(u / ra, v / rb) < 1 ? u : null;
     };
 
-    const sample = (px: number, py: number): [number, number, number] | null => {
-      for (const s of SPRIGS) {
-        if (px < s.minX || px > s.maxX || py < s.minY || py > s.maxY) continue;
+    const sample = (P: readonly number[]): [number, number, number] | null => {
+      for (const { lx, ly } of SPRIGS.hits(P)) {
         // Buds first: the spike sits over the stem's tip.
-        for (const b of s.buds) {
-          const u = inEllipse(px, py, b, 2.4, 1.4);
+        for (const b of BUDS) {
+          const u = inEllipse(lx, ly, b, 2.4, 1.4);
           if (u !== null) return budPaint(u);
         }
-        for (const l of s.leaves) {
-          const u = inEllipse(px, py, l, 3.0, 1.0);
+        for (const l of LEAVES) {
+          const u = inEllipse(lx, ly, l, 3.0, 1.0);
           if (u !== null) return mixRgb(rgb('#4f7345'), rgb('#6f9a60'), smoothstep(-3, 3, u));
         }
-        // The stem: project onto the straight axis, bend the expected
-        // point by the bow, and measure. The bow is small enough that
-        // the projection error is far under a pixel.
-        const ox = px - s.bx;
-        const oy = py - s.by;
-        const t = Math.max(0, Math.min(1, (ox * s.dx + oy * s.dy) / s.len));
-        const cx = s.bx + s.dx * s.len * t + s.nx * s.bow * t * t;
-        const cy = s.by + s.dy * s.len * t + s.ny * s.bow * t * t;
-        if (Math.hypot(px - cx, py - cy) < 0.8) {
-          return mixRgb(rgb('#46683c'), rgb('#5e8752'), t);
-        }
+        // The stem: how far up it this point is, then the distance to
+        // the bowed stem there. The bow is small enough that the
+        // projection error is far under a pixel.
+        const t = Math.max(0, Math.min(1, (FOOT - ly) / LEN));
+        const [cx, cy] = pos(t);
+        if (Math.hypot(lx - cx, ly - cy) < 0.8) return mixRgb(rgb('#46683c'), rgb('#5e8752'), t);
       }
-      for (const b of LOOSE) {
-        const u = inEllipse(px, py, b, 2.4, 1.4);
+      for (const { lx, ly } of LOOSE.hits(P)) {
+        const u = inEllipse(lx, ly, { cx: 0, cy: 0, ca: 1, sa: 0, t: 1 }, 2.4, 1.4);
         if (u !== null) return budPaint(u);
       }
       return null;
     };
 
     return (x: number, y: number): [number, number, number] => {
-      // The shell between the sprigs: the skin's own lilac given a soft
-      // vertical sheen — paler up top, deeper at the foot, meeting the
-      // body colour in the middle — a gentle mottle, and a sparse
-      // darker-purple speckle so the ground reads as a field of distant
-      // florets rather than plastic.
-      let ground = mixRgb(rgb('#c9bbf0'), rgb('#a793de'), y / 63);
-      ground = mixRgb(ground, rgb('#9d89d6'), wrappedNoise(x, y, 16) * 0.3);
-      const cell = 6;
-      const col = Math.floor(x / cell);
-      const row = Math.floor(y / cell);
-      if (hashCell(col, row) > 0.62) {
-        const sx = col * cell + 1 + hashCell(col + 31, row) * (cell - 2);
-        const sy = row * cell + 1 + hashCell(col, row + 57) * (cell - 2);
-        const d = Math.hypot(x - sx, y - sy);
-        ground = mixRgb(ground, rgb('#8f7ac9'), smoothstep(1.2, 0.4, d) * 0.6);
-      }
-
       // Supersample 3x3 — blossom's lesson, which was frost's lesson:
       // thin edges on a 64px grid only survive rotation with partial
       // coverage along every boundary.
@@ -2998,7 +3444,15 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       let sb = 0;
       for (let sy = 0; sy < N; sy++) {
         for (let sx = 0; sx < N; sx++) {
-          const c = sample(x + (sx + 0.5) / N, y + (sy + 0.5) / N) ?? ground;
+          const P = sheetToCube(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          let c = sample(P);
+          if (!c) {
+            // The shell between the sprigs: the skin's own lilac, gently
+            // mottled, with a sparse darker-purple speckle so the ground
+            // reads as a field of distant florets rather than plastic.
+            c = mixRgb(rgb('#c0b0ea'), rgb('#9d89d6'), cubeNoise(P, 16) * 0.4);
+            c = mixRgb(c, rgb('#8f7ac9'), smoothstep(0.8, 0.92, cubeNoise([P[0] + 9, P[1] + 4, P[2] + 2], 2.2)) * 0.6);
+          }
           sr += c[0];
           sg += c[1];
           sb += c[2];
@@ -3014,22 +3468,23 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
 
       David, 26 Aug 2026: "the fish should have fish on it" — and the
       first pass at that drew sixteen thumbnail fish in mid-blue on
-      light-blue water. Two problems, both fatal at the size a die is
-      actually seen: the fish were one shade off the water, so the skin
-      read as plain speckled blue, and each fish was a rounded block
-      with a notch, so even up close they read as little boats. Rebuilt
-      as FOUR big orange goldfish — the one hue no blue-shell mask could
-      mix, and the only orange-on-blue die in the set. Two swim right
-      along the top of the face, two swim left along the bottom, each
-      tilted its own small way so they school rather than march; the
-      middle stays water because the colour sticker covers it anyway.
+      light-blue water, which at die size read as plain speckled blue.
+      Rebuilt as big orange goldfish — the one hue no blue-shell mask
+      could mix, and the only orange-on-blue die in the set.
+
+      SWIMMING ROUND THE DIE since 21 Oct 2026. The same four fish used
+      to sit on every side; now the school is strewn over the whole die
+      as stickers (GOLDFISH), two to a side with some crossing an edge,
+      each headed its own way, over water whose ripple is noise of the
+      point in space, so nothing breaks at any edge.
 
       This is the STILL picture — the shop card. The die on the board
       paints the water and the fish apart so the fish can swim
       (fishSwim.ts); both take their shapes from goldfish.ts.
     */
+    const RIGHT: readonly FishPlace[] = [[0, 0, 1, 0]];
+    const LEFT: readonly FishPlace[] = [[0, 0, -1, 0]];
     return (x: number, y: number): [number, number, number] => {
-      const ground = waterAt(wrappedNoise(x, y, 16));
       // Supersample 3x3 — blossom's lesson: tilted edges on a 64px grid
       // only survive with partial coverage along every boundary.
       const N = 3;
@@ -3038,9 +3493,13 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       let sb = 0;
       for (let sy = 0; sy < N; sy++) {
         for (let sx = 0; sx < N; sx++) {
-          const fx = x + (sx + 0.5) / N;
-          const fy = y + (sy + 0.5) / N;
-          const c = goldfishAt(fx, fy) ?? bubbleAt(fx, fy) ?? ground;
+          const P = sheetToCube(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          let c: Rgb | null = null;
+          for (const { s, lx, ly } of GOLDFISH.hits(P)) {
+            c = goldfishAt(lx, ly, s.kind === 0 ? RIGHT : LEFT);
+            if (c) break;
+          }
+          c = c ?? fishWaterAt(P);
           sr += c[0];
           sg += c[1];
           sb += c[2];
@@ -3068,140 +3527,23 @@ export function isColorPattern(pattern: PatternId): boolean {
 }
 
 /**
- * Build the shell texture for a pattern. `base` is the skin's own colour
- * and `ink` is the pattern colour drawn over it.
+ * One shell colour at a sheet coordinate, unrounded.
  */
-/**
- * The designs that are ONE MOTIF, and belong once on every side.
- *
- * David, 11 Sep 2026: "a lot of skins don't have any of the designs on
- * some of their sides and it's just a blank one or two colors. I think
- * this is because I asked you to make each side unique but I also want
- * every side of the dice, if possible, to be a continuous pattern."
- *
- * He diagnosed it correctly. Since v1.76.0 each side takes its own
- * square of one continuous design laid out as a paper cube net, and a
- * painter that places its motif at particular SHEET coordinates — one
- * pizza, one baseball's seams, one bowling ball's finger holes — puts it
- * on the two or three squares it happens to cover and leaves the other
- * three or four empty. It looks perfect on the shelf thumbnail, because
- * that only ever shows the middle square of the net.
- *
- * THE TWO WISHES CANNOT BOTH BE HAD BY EVERY SKIN, and the right answer
- * depends on the design rather than on a preference:
- *
- *   - A design that TILES — stripes, marble, honeycomb, stars — really is
- *     continuous round the die, and its six sides are six different
- *     views of it. Those are untouched.
- *   - A design that is one OBJECT is not a wallpaper and never was. A
- *     pizza die has a pizza on each side; it does not have one pizza
- *     smeared across a flattened cube with four sides of bare cheese.
- *     For these, "continuous" means the motif repeats per face, which is
- *     also what a real die of pizzas looks like.
- *
- * So these are painted in FACE coordinates, and every side gets the
- * whole picture. The seam at each join is the edge of the die, where the
- * surface turns ninety degrees — the same argument that earned gold and
- * silver their exemption in tests/textures.test.ts.
- *
- * `sheen` is not in this list although it belongs to the same idea: it
- * wraps its own coordinates because it also needs to know WHICH face it
- * is on, to tilt the highlight a little differently on each.
- */
-const PER_FACE_MOTIFS: ReadonlySet<string> = new Set([
-  /*
-    Found in the first pass, 11 Sep 2026: a whole object each.
-
-    Baseball and tennis left this list on 18 Oct 2026: a ball's seam is
-    one curve round the whole ball, and it is drawn that way now — on the
-    cube itself, so it never breaks (see seamAt). Denim and ivory left it
-    the same day: cloth and bone are materials, and a material carries on
-    over an edge. Ivory keeps its sheen per face (see its painter).
-
-    The rest stay, and each for a reason that is about the design rather
-    than about convenience: a pizza, a lemon slice, a blossom sprig, a
-    donut, a watermelon wedge, a football's laces, a bowling ball's
-    finger holes, a drumstick and a sprig of lavender are each ONE thing,
-    placed round the sticker, and smearing one across the die would leave
-    most sides without it. A basketball's eight panels could be wrapped
-    the way the baseball's seam is, and has not been yet. Circuit's
-    traces enter each side from its left edge. The Fire die's flames rise
-    from the bottom of every side and ring each sticker. The fish die no
-    longer wears these sides on the board at all.
-  */
-  'pizza',
-  'circuit',
-  'citrus',
-  'blossom',
-  'donut',
-  'watermelon',
-  'laces',
-  'bowling',
-  /*
-    A SECOND PASS, same day, after rendering all fifty dice six sides
-    each and LOOKING at them — which is what should have happened the
-    first time. These hid from the first measure, which asked how much
-    LIGHT AND DARK a face has: every one of them has a busy background
-    that scores well while its actual subject is missing.
-
-    `fish` is the clearest. Its four orange goldfish sit at y=8..56 on
-    the painter's own canvas, and NOT ONE square of the cube net covers
-    that patch — so every side was plain rippling water, all six agreed
-    about it perfectly, and it measured as fine.
-
-    `waffle` came out of the third version of that test, the one that
-    compares each face with the SHELF PICTURE instead of with the other
-    faces. This skin is chicken AND waffles: two fried drumsticks at
-    (15,18) and (46,45). They land on the painter's own canvas, which is
-    what the Store card shows, and on no square of the net at all. Every
-    card in the game promised chicken and every die delivered a plain
-    waffle grid.
-  */
-  'fish',
-  'basketball',
-  // Volleyball, 19 Oct 2026: one clean sweep of curved panels per side.
-  'volleyball',
-  // The Supporter compass is drawn once per side, centred on the sticker.
-  'supporterCompass',
-  'neon',
-  // Ivory left this list on 20 Oct 2026: its grain runs round the strip
-  // and only its sheen is measured on the face, through (fx, fy).
-  'lavender',
-  'satin',
-  'waffle',
-  // The Fire dice, 30 Sep 2026: flames rise from the bottom of EVERY
-  // side, and the dark ring round each sticker has to be centred on it.
-  'embers',
-]);
-
-/**
- * Is this design painted per FACE rather than across the whole sheet?
- *
- * Exported because it is the honest definition of "this skin's joins are
- * edges of a die, not seams in a wallpaper" — tests/textures.test.ts
- * reads it rather than keeping a hand-written list that could disagree
- * with this one.
- *
- * `sheen` is included here and absent from the set above: it wraps its
- * own coordinates, because it also needs to know which face it is on to
- * tilt the highlight differently on each.
- */
-export function isPerFace(pattern: string): boolean {
-  return pattern === 'sheen' || PER_FACE_MOTIFS.has(pattern);
-}
-
-/** A sheet coordinate, wrapped back onto its own face. */
-const onFace = (v: number) => ((v % SIZE) + SIZE) % SIZE;
-
-/**
- * One shell colour at a sheet coordinate, unrounded. `fx` and `fy` are the
- * position on the face itself, for the light a face catches on its own
- * (see Painter); left out, they are the sheet position folded onto a face.
- */
-type Sampler = (sx: number, sy: number, fx?: number, fy?: number) => [number, number, number];
+type Sampler = (sx: number, sy: number) => [number, number, number];
 
 /**
  * The colour of a pattern at any SHEET coordinate, fractions included.
+ * `base` is the skin's own colour and `ink` is the pattern colour drawn
+ * over it; a colour painter ignores the ink and mixes its own paint.
+ *
+ * Every design is asked for its place on the whole sheet. Until 21 Oct
+ * 2026 a third of them — a pizza per side, a compass per side, a
+ * highlight per side — were asked for their place on their own face
+ * instead (PER_FACE_MOTIFS, now gone), which stamped one picture on each
+ * side and left a seam at every edge. David: "Make sure EVERY DICE has a
+ * continuous pattern that flows on every side of it." They are painted
+ * on the die now, like everything else; see "Painting on the cube
+ * itself" above.
  *
  * patternPixels asks it once per texel; edge texels are asked again at
  * sub-texel points (see SMOOTH_EDGES). Exported so the suite can check
@@ -3213,22 +3555,17 @@ export function shellSampler(
   base: string,
   ink: string,
 ): Sampler {
-  const perFace = PER_FACE_MOTIFS.has(pattern);
-  // A motif design is asked for its own face; everything else is asked
-  // for its place on the whole sheet. See PER_FACE_MOTIFS.
-  const wrap = (v: number) => (perFace ? onFace(v) : v);
-
   // The full-colour patterns paint their own pixels outright.
   if (COLOR_IDS.has(pattern)) {
     const paintColor = COLOR_PAINTERS[pattern as ColorPatternId];
-    return (sx, sy, fx = onFace(sx), fy = onFace(sy)) => paintColor(wrap(sx), wrap(sy), fx, fy);
+    return (sx, sy) => paintColor(sx, sy);
   }
 
   const [br, bg, bb] = rgb(base);
   const [ir, ig, ib] = rgb(ink);
   const paint = PAINTERS[pattern as MaskPatternId];
-  return (sx, sy, fx = onFace(sx), fy = onFace(sy)) => {
-    const mask = Math.max(-1, Math.min(1, paint(wrap(sx), wrap(sy), fx, fy)));
+  return (sx, sy) => {
+    const mask = Math.max(-1, Math.min(1, paint(sx, sy)));
     // Positive tints toward the ink, negative darkens the shell itself.
     const mix = (b: number, i: number) =>
       mask >= 0 ? b + (i - b) * mask : b * (1 + mask * SHADE_DEPTH);
@@ -3289,6 +3626,7 @@ export const SMOOTH_EDGES: ReadonlySet<string> = new Set([
   'honeycomb',
   'watermelon',
   'donut',
+  'waffle',
   // Materials and the rest.
   'bubbles',
   'stars',
@@ -3354,8 +3692,8 @@ function paintSquare(texel: TexelSampler, smooth: boolean): number[] {
       let g = px[i + 1];
       let b = px[i + 2];
       for (const [dx, dy] of SUBSAMPLES) {
-        // Kept on this square: a motif painted per face would otherwise
-        // wrap round and borrow a texel from the far side of the face.
+        // Kept on this square, so an edge texel is averaged over its own
+        // texel and not its neighbour's.
         const c = texel(
           Math.min(SIZE - 1, Math.max(0, x + dx)),
           Math.min(SIZE - 1, Math.max(0, y + dy)),
@@ -3434,21 +3772,6 @@ export const PATTERN_SIZE = SIZE;
 export const DIE_FACE_SLOTS: readonly (number | null)[] = [1, 3, null, null, 0, 2];
 
 /**
- * The cube net the per-face designs are still painted from. They ignore
- * where on the sheet they are — except gold's highlight, which leans a
- * little differently per face by its square — so this keeps those dice
- * exactly as they were.
- */
-const PER_FACE_CELLS: readonly (readonly [number, number])[] = [
-  [2, 1],
-  [0, 1],
-  [1, 0],
-  [1, 2],
-  [1, 1],
-  [3, 1],
-];
-
-/**
  * How far the top and bottom blend the two sides they carry on from, in
  * texels either side of the diagonal where they meet. Just enough to
  * draw that line smooth rather than as a staircase.
@@ -3496,7 +3819,7 @@ const BOTTOM_ROUTES: readonly CapRoute[] = [
  */
 export function dieFaceSampler(sample: Sampler, face: number): TexelSampler {
   const slot = DIE_FACE_SLOTS[face];
-  if (slot !== null) return (tx, ty) => sample(slot * SIZE + tx, ty, tx, ty);
+  if (slot !== null) return (tx, ty) => sample(slot * SIZE + tx, ty);
   const routes = face === 2 ? TOP_ROUTES : BOTTOM_ROUTES;
   return (tx, ty) => {
     // The nearest edge, and the next nearest.
@@ -3517,12 +3840,12 @@ export function dieFaceSampler(sample: Sampler, face: number): TexelSampler {
       }
     }
     const [ax, ay] = routes[near][1](tx, ty);
-    const a = sample(ax, ay, tx, ty);
+    const a = sample(ax, ay);
     const gap = dNext - dNear;
     if (gap >= MITRE) return a;
     // On the mitre: half and half exactly on the diagonal.
     const [bx, by] = routes[next][1](tx, ty);
-    const b = sample(bx, by, tx, ty);
+    const b = sample(bx, by);
     const w = 0.5 + 0.5 * smoothstep(0, MITRE, gap);
     return [b[0] + (a[0] - b[0]) * w, b[1] + (a[1] - b[1]) * w, b[2] + (a[2] - b[2]) * w];
   };
@@ -3535,13 +3858,7 @@ export function dieFacePixels(
   ink: string,
   face: number,
 ): number[] {
-  const sample = shellSampler(pattern, base, ink);
-  const smooth = SMOOTH_EDGES.has(pattern);
-  if (isPerFace(pattern)) {
-    const [cx, cy] = PER_FACE_CELLS[face];
-    return paintSquare((x, y) => sample(cx * SIZE + x, cy * SIZE + y), smooth);
-  }
-  return paintSquare(dieFaceSampler(sample, face), smooth);
+  return paintSquare(dieFaceSampler(shellSampler(pattern, base, ink), face), SMOOTH_EDGES.has(pattern));
 }
 
 /**

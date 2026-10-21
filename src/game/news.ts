@@ -90,6 +90,20 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-145-0-every-die-flows',
+    date: '21 October 2026',
+    version: 'v1.145.0',
+    title: 'Every die flows all the way round',
+    icon: 'dice',
+    body:
+      'Every die\'s design now runs right round the die, over every edge ' +
+      'and corner. The pizza is one pizza wrapped round the cube, the ' +
+      'goldfish swim from side to side, the football\'s laces and the ' +
+      'basketball\'s seams run unbroken, the Neon tubes bend round the ' +
+      'corners, and the gold and silver dice catch one sweep of light. ' +
+      'Nothing about how the dice roll has changed.',
+  },
+  {
     id: 'v1-142-0-shop-pictures',
     date: '20 October 2026',
     version: 'v1.142.0',

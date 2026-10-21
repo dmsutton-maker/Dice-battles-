@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import {
-  isPerFace,
   DIE_FACE_SLOTS,
   dieFacePixels,
   patternPixels,
@@ -329,11 +328,10 @@ suite('textures · a die is one object, not six copies of a picture', () => {
           cy,
         ).join(',');
       const sides = DIE_FACE_SLOTS.map((_, f) => face(skin, f).join(','));
-      // Every design painted as a strip must differ side to side: that
-      // is the whole point of the strip (20 Oct 2026).
-      if (!isPerFace(skin.pattern)) {
-        assert(new Set(sides).size > 1, `${skin.id} is painted as a strip but has the same picture on every side`);
-      }
+      // Every design is painted on the die and must differ side to side:
+      // that is the whole point (20 Oct 2026, and every skin since
+      // 21 Oct 2026 — nothing is stamped per side any more).
+      assert(new Set(sides).size > 1, `${skin.id} has the same picture on every side`);
       if (new Set(sides).size > 1) {
         unique++;
       } else {
@@ -376,26 +374,18 @@ suite('textures · a die is one object, not six copies of a picture', () => {
       exactly what they were before any of this.
     */
     /*
-      THE KIND OF SKIN THIS RULE DOES NOT APPLY TO, read from the code
-      rather than listed here.
-
-      A design painted per FACE is one object repeated on each side — a
-      pizza, a baseball's seams, a polished highlight. Its joins are not
-      seams in a wallpaper: they are the edges of the die, where the
-      surface turns ninety degrees and a pizza genuinely stops.
-
-      This used to be a hand-written list of two metals. It is now
-      `isPerFace` from patterns.ts, so the exemption cannot drift from
-      the thing it describes — which matters, because ten more designs
-      joined that set on 11 Sep 2026 when David reported "a lot of skins
-      don't have any of the designs on some of their sides".
+      No kind of skin is exempt. Until 21 Oct 2026 a design painted per
+      FACE — a pizza, a compass, a polished highlight — was let off here
+      on the argument that its joins were the edges of the die, where a
+      pizza genuinely stops. David asked for every die to flow over its
+      edges, so every one is measured; tests/continuity.test.ts is the
+      strict version, on all twelve edges.
     */
 
     const S = PATTERN_SIZE;
     let worst = 0;
     let worstId = '';
     for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
-      if (isPerFace(skin.pattern)) continue;
       // The front (+Z) and the side to its right (+X), as the die wears them.
       const front = face(skin, 4);
       const right = face(skin, 0);
@@ -425,11 +415,6 @@ suite('textures · a die is one object, not six copies of a picture', () => {
         'a hard line down the middle of an edge, not a corner turn',
     );
     note(`worst join: ${worstId} at ${worst.toFixed(1)}x its own within-face variation`);
-
-    note(
-      `${DICE_SKINS.filter((k) => isPerFace(k.pattern)).length} per-face skins are ` +
-        'exempt from the join rule',
-    );
   });
 
   /**
@@ -609,7 +594,6 @@ suite('textures · a die is one object, not six copies of a picture', () => {
     // What you buy is what you roll: the card is the +Z side, exactly.
     for (const skin of DICE_SKINS.filter((s) => s.pattern !== 'plain')) {
       const pattern = skin.pattern as Exclude<PatternId, 'plain'>;
-      if (isPerFace(pattern)) continue;
       const card = patternPixels(pattern, skin.body, skin.ink ?? skin.body).join(',');
       assert(card === face(skin, 4).join(','), `${skin.id}'s card is not the front of its die`);
     }

@@ -4,18 +4,17 @@ import {
   DIE_FACE_SLOTS,
   dieFacePixels,
   dieFaceSampler,
-  isPerFace,
   PATTERN_SIZE,
   PatternId,
   patternPixels,
   sheetToCube,
-  shellSampler,
 } from '../src/dice/patterns';
 import { DICE_SKINS } from '../src/game/diceSkins';
 import { assert, note, suite, test } from './harness';
 
 /**
- * The design flows over every edge of the die — 18 Oct 2026.
+ * The design flows over every edge of the die — 18 Oct 2026, and over
+ * every edge of EVERY die since 21 Oct 2026.
  *
  * David: "make all the dice have a continuous flowing design instead of
  * the same design copied and pasted to every side." The paper cube net
@@ -25,6 +24,12 @@ import { assert, note, suite, test } from './harness';
  * takes the orientation on trust. The face table below is checked
  * against RoundedBoxGeometry's own vertices first, and everything after
  * it is measured through that table.
+ *
+ * Then, 21 Oct 2026: "Make sure EVERY DICE has a continuous pattern that
+ * flows on every side of it." Until then a third of the skins — the
+ * pizza, the balls, the compass, Neon, the metals' highlight — were
+ * exempt as one picture stamped per side. No skin is exempt now, and the
+ * measure below runs on all of them.
  */
 
 const S = PATTERN_SIZE;
@@ -150,6 +155,14 @@ function paint(texel: (x: number, y: number) => [number, number, number]): numbe
   return out;
 }
 
+/** Every patterned skin, with the ink its die is built with. */
+const PATTERNED = DICE_SKINS.filter((s) => s.pattern !== 'plain').map((skin) => ({
+  id: skin.id,
+  pattern: skin.pattern as Exclude<PatternId, 'plain'>,
+  body: skin.body,
+  ink: skin.ink ?? skin.body,
+}));
+
 suite('continuity · the design runs over every edge of the die', () => {
   test('the face table agrees with the geometry the dice are built from', () => {
     const g = new RoundedBoxGeometry(1, 1, 1, 4, 0.12);
@@ -209,7 +222,7 @@ suite('continuity · the design runs over every edge of the die', () => {
     for (const [key, list] of EDGES) assert(list.length === S - 2, `edge ${key} has ${list.length} pairs`);
   });
 
-  test('across every edge, a continuous design changes no more than it does inside a face', () => {
+  test('across every edge, EVERY design changes no more than it does inside a face', () => {
     /*
       Each pair of texels either side of an edge is compared with each
       texel and its next neighbour inward. A seam is a step much bigger
@@ -218,34 +231,22 @@ suite('continuity · the design runs over every edge of the die', () => {
       ratio, not a fixed number, because granite's flecks change a lot
       from texel to texel by design and marble hardly at all.
 
-      The per-face skins are left out by definition — see isPerFace — and
-      listed in the note.
+      NO EXEMPTIONS. The per-face skins, and ivory's per-face sheen,
+      were left out of this until 21 Oct 2026. David: "Make sure EVERY
+      DICE has a continuous pattern that flows on every side of it."
+      Every patterned skin in the game is measured here, on all twelve
+      edges, and a new skin cannot opt out.
     */
-    /*
-      ONE exemption, with its reason. Ivory's grain flows over the edges
-      like every other material, but its sheen is light, and light is
-      painted per FACE on purpose — a polished cube catches a highlight on
-      each side, not one sweep across all of them. That steps by about
-      seven levels a channel at each crest, where the shade map darkens
-      the edge anyway. Its grain is checked in the next test.
-    */
-    const FACE_LIT: Record<string, string> = {
-      ivory: 'its sheen is per-face light; its grain is measured separately',
-    };
-    const perFace: string[] = [];
     let worst = 0;
     let worstAt = '';
     let checked = 0;
-    for (const skin of DICE_SKINS) {
-      if (skin.pattern === 'plain') continue;
-      const pattern = skin.pattern as Exclude<PatternId, 'plain'>;
-      if (isPerFace(pattern) || FACE_LIT[skin.id]) {
-        perFace.push(skin.id);
-        continue;
-      }
-      const faces = DIE_FACE_SLOTS.map((_, f) => dieFacePixels(pattern, skin.body, skin.ink ?? skin.body, f));
+    const perSkin: string[] = [];
+    for (const skin of PATTERNED) {
+      const faces = DIE_FACE_SLOTS.map((_, f) => dieFacePixels(skin.pattern, skin.body, skin.ink, f));
+      let skinWorst = 0;
       for (const { key, across, inside, ratio } of edgeSteps(faces)) {
         checked++;
+        skinWorst = Math.max(skinWorst, ratio);
         if (ratio > worst) {
           worst = ratio;
           worstAt = `${skin.id} on edge ${key} (${across.toFixed(1)} across, ${inside.toFixed(1)} inside)`;
@@ -256,23 +257,70 @@ suite('continuity · the design runs over every edge of the die', () => {
             `${inside.toFixed(1)} from one texel to the next inside`,
         );
       }
+      perSkin.push(`${skin.id} ${skinWorst.toFixed(2)}`);
     }
-    // Every strip design, twelve edges each: thirty-three designs today.
-    assert(checked >= 12 * 30, `only ${checked} edges were measured`);
-    note(`${checked} edges measured; the least smooth is ${worstAt}, at ${worst.toFixed(2)}x`);
-    note(`painted per face, and so exempt: ${perFace.join(', ')}`);
+    // Every patterned skin, twelve edges each: fifty-odd designs today.
+    assert(checked === 12 * PATTERNED.length, `only ${checked} edges were measured`);
+    assert(PATTERNED.length >= 50, `only ${PATTERNED.length} patterned skins were found`);
+    note(`${checked} edges measured on ${PATTERNED.length} skins; the least smooth is ${worstAt}, at ${worst.toFixed(2)}x`);
+    note(`worst edge per skin: ${perSkin.join(', ')}`);
   });
 
-  test("ivory's grain runs over every edge, with its per-face light held still", () => {
-    // The same measure, on ivory painted with every face told it is at
-    // the same spot of its own face — so the sheen is one constant and
-    // only the grain and the mottle, which are the material, are left.
-    const sample = shellSampler('ivory', '#f8f1e2', '#efe4cc');
-    const still = (sx: number, sy: number) => sample(sx, sy, 0, 0);
-    const faces = DIE_FACE_SLOTS.map((_, f) => paint(dieFaceSampler(still, f)));
-    for (const { key, across, inside, ratio } of edgeSteps(faces)) {
-      assert(ratio < LIMIT, `ivory's grain breaks on edge ${key}: ${across.toFixed(1)} vs ${inside.toFixed(1)}`);
+  test('the top and bottom carry the design over their diagonals too', () => {
+    /*
+      The twelve edges are not the only joins. The top and bottom are
+      painted as four sides' continuations meeting along the cap's two
+      diagonals (dieFaceSampler), and a design drawn from the strip
+      rather than from the point in space can still kink there. So the
+      same step measure is run along both diagonals of both caps,
+      against the design's own steps beside them.
+
+      The sticker covers the middle of each cap, so only the outer part
+      of each diagonal — the part a player can see — is measured. The
+      bar is looser than the edges' (3, not 2): a diagonal is a line of
+      texels compared with their neighbours ACROSS it, which sits a
+      half-texel off the join on each side, and on the strip designs
+      (marble, wood, the cow) the mitre has always been a visible but
+      quiet join that David accepted on 20 Oct 2026.
+    */
+    const DIAGONAL_LIMIT = 3;
+    const RIM = Math.round(S * 0.33) + 2;
+    let worst = 0;
+    let worstAt = '';
+    for (const skin of PATTERNED) {
+      for (const face of [2, 3]) {
+        const px = dieFacePixels(skin.pattern, skin.body, skin.ink, face);
+        const at = (x: number, y: number) => [px[(y * S + x) * 3], px[(y * S + x) * 3 + 1], px[(y * S + x) * 3 + 2]];
+        const diff = (a: number[], b: number[]) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+        for (const flip of [false, true]) {
+          let across = 0;
+          let inside = 0;
+          let n = 0;
+          for (let i = 2; i < S - 3; i++) {
+            const x = i;
+            const y = flip ? S - 1 - i : i;
+            if (Math.hypot(x + 0.5 - S / 2, y + 0.5 - S / 2) < RIM) continue;
+            // The texels just either side of the diagonal, and their next neighbours.
+            const a = at(x + 1, y);
+            const b = at(x, flip ? y + 1 : y - 1);
+            across += diff(a, b);
+            inside += (diff(a, at(x + 2, y)) + diff(b, at(x, flip ? y + 2 : y - 2))) / 2;
+            n++;
+          }
+          const ratio = across / n / (inside / n + 6);
+          if (ratio > worst) {
+            worst = ratio;
+            worstAt = `${skin.id} on the ${face === 2 ? 'top' : 'bottom'}`;
+          }
+          assert(
+            ratio < DIAGONAL_LIMIT,
+            `${skin.id} kinks along a diagonal of the ${face === 2 ? 'top' : 'bottom'}: ` +
+              `${(across / n).toFixed(1)} across it against ${(inside / n).toFixed(1)} beside it`,
+          );
+        }
+      }
     }
+    note(`the least smooth diagonal is ${worstAt}, at ${worst.toFixed(2)}x`);
   });
 
   test('the measure has teeth: the old paper net fails it', () => {
@@ -300,5 +348,25 @@ suite('continuity · the design runs over every edge of the die', () => {
     note(`edges of 12 that break on the old net: ${counts.join(', ')}`);
     const most = Math.max(...counts.map((c) => Number(c.split(' ')[1])));
     assert(most >= 6, `nothing breaks on the old net (${counts.join(', ')}) — the measure is too lax`);
+  });
+
+  test('the measure has teeth for a picture stamped per side, too', () => {
+    /*
+      The exemption this test used to carry was for designs drawn once
+      on every side. Rebuild that — the same front square on all six
+      sides — for a few of the designs that used to be painted that way,
+      and the measure must call it broken on most edges: a pepperoni
+      cut off at the edge of a side is a seam however it got there.
+    */
+    const counts: string[] = [];
+    for (const skin of PATTERNED.filter((s) => ['pizza', 'citrus', 'neon', 'supporterCompass', 'watermelon'].includes(s.pattern))) {
+      const front = patternPixels(skin.pattern, skin.body, skin.ink);
+      const faces = DIE_FACE_SLOTS.map(() => front);
+      const broken = edgeSteps(faces).filter((e) => e.ratio >= LIMIT).length;
+      counts.push(`${skin.id} ${broken}`);
+    }
+    note(`edges of 12 that break when one side is stamped six times: ${counts.join(', ')}`);
+    const most = Math.max(...counts.map((c) => Number(c.split(' ')[1])));
+    assert(most >= 6, `a stamped die passes the measure (${counts.join(', ')}) — it is too lax`);
   });
 });
