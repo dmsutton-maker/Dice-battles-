@@ -5,6 +5,13 @@ export const metadata: Metadata = {
   title: 'Paper Ship Studio',
   description:
     'Paper Ship Studio is an independent studio building simple, well-made games for players of any age — starting with Dice Battles: Color Rush.',
+  /*
+    Saved to a phone's home screen (David, 22 Oct 2026: "it should have a
+    little icon logo"): the paper ship, from apple-icon.png beside this
+    file for iPhones and manifest.ts for Android. The short title is
+    what fits under a home-screen icon.
+  */
+  appleWebApp: { title: 'Paper Ship' },
 };
 
 /**

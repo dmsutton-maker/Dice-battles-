@@ -291,8 +291,8 @@ reach Expo and TestFlight without him having to ask each time.
 
 ## Where the work comes from
 
-**Live at https://dice-battles-hq.vercel.app** — public site at `/`, the
-private board at `/hq`. Hosted on David's personal accounts: Vercel team
+**Live at https://papershipstudio.com** (also dice-battles-hq.vercel.app,
+the original domain) — public site at `/`, the private board at `/hq`. Hosted on David's personal accounts: Vercel team
 `suttonsteam` (project `dice-battles-hq`, Hobby) and Supabase project
 `eqdbvpnckriscvzalwix` in his personal "Dice Battles" org.
 
@@ -381,8 +381,8 @@ carry more than just this one game — David Sutton's studio, not
 incorporated yet. Use it wherever the game's website names who makes it
 (it already does, in the footer and the legal pages), and use it as the
 Organization name whenever the Apple account is converted from Individual
-and whenever a legal entity is formed. `papershipstudio.com` was free
-when checked (17 Aug 2026) but has not been purchased.
+and whenever a legal entity is formed. `papershipstudio.com` is bought
+and is the site's production domain (see STATE.md).
 
 ## The App Store record
 
