@@ -4,15 +4,16 @@ const path = require('path');
 /**
  * One PNG per screen per shape.
  *
- * The viewport IS the phone: set it to 474x696 and react-native-web's
- * useWindowDimensions reports 474x696, which is the number every layout
+ * The viewport IS the phone: set it to 466x678 and react-native-web's
+ * useWindowDimensions reports 466x678, which is the number every layout
  * rule in the game keys off. No scaling, no full-page capture — a
  * full-page shot would grow to fit the content and hide the very thing
  * being checked, which is what does and does not fit on one screen.
  */
 const SHAPES = {
-  folded: { w: 474, h: 696 },
-  unfolded: { w: 640, h: 904 },
+  // Apple's tech specs: 1398x2034 and 1878x2670 pixels, at @3x.
+  folded: { w: 466, h: 678 },
+  unfolded: { w: 626, h: 890 },
   // For comparison: the phone the family actually holds today.
   iphone: { w: 393, h: 852 },
 };

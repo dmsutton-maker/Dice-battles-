@@ -25,8 +25,8 @@ import { bottomInsetFor } from './safeAreaRules';
  *     "Read once: the game is portrait-locked and the home indicator does
  *      not come and go, so re-measuring every render would buy nothing."
  *
- * Apple's folding iPhone ended that. Unfolding one swaps a 474×696pt
- * screen for a 640×904pt one without relaunching the app, and a constant
+ * Apple's folding iPhone ended that. Unfolding one swaps a 466×678pt
+ * screen for a 626×890pt one without relaunching the app, and a constant
  * computed at startup keeps the old answer for ever. The same was already
  * quietly true of iPad Split View and Stage Manager; the fold just makes
  * it impossible to miss.

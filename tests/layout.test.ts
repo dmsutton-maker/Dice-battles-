@@ -90,7 +90,7 @@ suite('layout · the tab bar clears the home indicator', () => {
     /*
       Added 9 Sep 2026, the day Apple announced a folding iPhone.
 
-      Unfolding one swaps a 474x696pt screen for a 640x904pt one without
+      Unfolding one swaps a 466x678pt screen for a 626x890pt one without
       relaunching the app. Every number here used to be a module-scope
       constant worked out from the window size the first time the file was
       imported, so a phone opened after launch kept the folded screen's

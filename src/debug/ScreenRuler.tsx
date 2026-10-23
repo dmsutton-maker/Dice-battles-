@@ -16,7 +16,7 @@ import { bottomInsetFor } from '../game/safeAreaRules';
  *
  * On a Mac that means Xcode's resizable simulator, whose window you drag
  * to whatever size you want. Dragging is easy; knowing when you have hit
- * 474x696pt is not — the simulator reports pixels, in a menu, if at all.
+ * 466x678pt is not — the simulator reports pixels, in a menu, if at all.
  * So the app says its own size out loud, and names the shape when it
  * recognises one. Drag until it says "iPhone Duo (folded)".
  *
@@ -30,9 +30,10 @@ import { bottomInsetFor } from '../game/safeAreaRules';
 
 /** Screens worth recognising, as portrait width x height in points. */
 const KNOWN: readonly (readonly [number, number, string])[] = [
-  [474, 696, 'iPhone Duo (folded)'],
-  [640, 904, 'iPhone Duo (unfolded)'],
-  [320, 904, 'iPhone Duo, half of it (Split View)'],
+  // Apple's tech specs (1398x2034 and 1878x2670 pixels) at @3x.
+  [466, 678, 'iPhone Duo (folded)'],
+  [626, 890, 'iPhone Duo (unfolded)'],
+  [313, 890, 'iPhone Duo, half of it (Split View)'],
   [320, 568, 'iPhone SE (1st gen)'],
   [375, 667, 'iPhone SE (2nd/3rd gen)'],
   [414, 736, 'iPhone 8 Plus'],

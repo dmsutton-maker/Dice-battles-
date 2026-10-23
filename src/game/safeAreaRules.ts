@@ -35,10 +35,10 @@ export const SHORTEST_INDICATOR_IPHONE = 812;
  * started at 812pt, and nothing lived in the gap.
  *
  * A FOLDING iPHONE BREAKS IT. Apple announced the iPhone Duo on 9 Sep
- * 2026. Its folded screen is reported at 1422×2088 physical pixels, which
- * at @3x is 474×696pt — SHORTER than the 736pt iPhone 8 Plus. It plainly
- * has no home button; no phone shipped since 2022 does. The old rule would
- * have looked at 696pt, concluded "home button", returned an inset of
+ * 2026. Its folded screen is 1398×2034 pixels by Apple's tech specs,
+ * which at @3x is 466×678pt — SHORTER than the 736pt iPhone 8 Plus. It
+ * plainly has no home button; no phone shipped since 2022 does. The old
+ * rule would have looked at 678pt, concluded "home button", returned an inset of
  * ZERO, and drawn the navigation labels into the home-indicator strip —
  * the exact fault this file was written to fix, reappearing on new
  * hardware because its premise quietly expired.

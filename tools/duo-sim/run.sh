@@ -10,15 +10,16 @@
 # boots it, and tells you what to run next. It changes nothing in the repo
 # and nothing about your Xcode install.
 #
-# Why a script: the folded Duo is 474x696pt and the unfolded one 640x904pt,
+# Why a script: the folded Duo is 466x678pt and the unfolded one 626x890pt
+# (Apple's tech specs, 1398x2034 and 1878x2670 pixels at @3x),
 # and neither is a size the Simulator offers by name unless Xcode has
 # shipped the device. Working out whether it has, and what to do when it
 # has not, is fiddly to explain and quick to automate.
 
 set -u
 
-FOLDED_W=474; FOLDED_H=696
-UNFOLDED_W=640; UNFOLDED_H=904
+FOLDED_W=466; FOLDED_H=678
+UNFOLDED_W=626; UNFOLDED_H=890
 
 say() { printf '%s\n' "$*"; }
 rule() { printf '\n%s\n\n' "------------------------------------------------------------"; }

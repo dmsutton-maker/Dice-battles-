@@ -14,14 +14,21 @@ const src = (p: string) => readFileSync(join(root, p), 'utf8');
  * A phone that changes shape while the game is open.
  *
  * Apple announced the iPhone Duo on 9 Sep 2026: a book-style folding
- * iPhone with two screens, reported at 1422x2088 physical pixels folded
- * and 1920x2713 unfolded. At @3x that is 474x696pt and 640x904pt.
+ * iPhone with two screens. Apple's own tech specs page
+ * (apple.com/iphone-duo/specs, checked 23 Oct 2026) gives the outer,
+ * folded screen as 1398x2034 pixels at 460 ppi and the inner, unfolded
+ * one as 1878x2670 at 430 ppi; at @3x that is 466x678pt and 626x890pt.
+ * Until 23 Oct these were the day-one press figures, 1422x2088 and
+ * 1920x2713 (474x696pt, 640x904pt), which were wrong by 8 to 14pt a
+ * side. The page gives pixels, not points: @3x is the scale every iPhone
+ * at these densities uses, and what simulator and hardware report wins
+ * if it disagrees.
  *
  * Two assumptions in this codebase expired that morning, and both were
  * written down as if they were permanent:
  *
  *   1. "Every iPhone with a home indicator is at least 812pt tall...
- *      Nothing lives in the gap." The folded Duo is 696pt tall and has
+ *      Nothing lives in the gap." The folded Duo is 678pt tall and has
  *      no home button. The rule would have returned an inset of ZERO.
  *   2. "Read once: the game is portrait-locked and the home indicator
  *      does not come and go." Unfolding changes the window without
@@ -36,14 +43,14 @@ const src = (p: string) => readFileSync(join(root, p), 'utf8');
  * has to be seen on the hardware.
  */
 
-/** Reported, at @3x. Treated as approximate on purpose. */
-const DUO_FOLDED = { w: 474, h: 696 };
-const DUO_UNFOLDED = { w: 640, h: 904 };
+/** Apple's published pixels, at @3x. */
+const DUO_FOLDED = { w: 466, h: 678 };
+const DUO_UNFOLDED = { w: 626, h: 890 };
 
 suite('foldable · the home-indicator inset', () => {
   test('the folded screen is NOT mistaken for a home-button iPhone', () => {
     /*
-      The whole bug in one line. 696pt is shorter than the 736pt iPhone
+      The whole bug in one line. 678pt is shorter than the 736pt iPhone
       8 Plus, so a height threshold says "home button, no inset" with
       complete confidence, and the navigation labels land in the strip
       the system takes the swipe from.
@@ -101,7 +108,7 @@ suite('foldable · the home-indicator inset', () => {
     // 667pt tall but far too wide: matched on both sides, so it cannot
     // be confused with the phone that really does have a home button.
     assertEqual(
-      bottomInsetFor({ os: 'ios', isPad: false, longSide: 667, shortSide: 474 }),
+      bottomInsetFor({ os: 'ios', isPad: false, longSide: 667, shortSide: 466 }),
       IPHONE_INDICATOR,
       'height alone decided again',
     );
@@ -220,7 +227,7 @@ suite('foldable · the on-screen ruler', () => {
     The ruler exists to answer the one question the tests above admit
     they cannot: whether the folded shape LOOKS right. It reads the
     window size back out on screen so that dragging a resizable
-    simulator to 474x696pt is a thing you can see rather than guess.
+    simulator to 466x678pt is a thing you can see rather than guess.
 
     It is also the one piece of debug UI mounted in the real app, so
     what matters here is that a player can never see it.
@@ -263,7 +270,8 @@ suite('foldable · the on-screen ruler', () => {
 suite('foldable · the card grids use the extra width', () => {
   /*
     Found by looking rather than by reasoning, which is the whole point
-    of tools/duo-preview: at 640pt across, `width: '31%'` gave a 190pt
+    of tools/duo-preview: at 640pt across (the press figure then; 626pt
+    by Apple's specs), `width: '31%'` gave a 190pt
     card with a 58pt thumbnail marooned in it. Three columns is a fact
     about a 390pt phone, not a fact about the game.
   */
