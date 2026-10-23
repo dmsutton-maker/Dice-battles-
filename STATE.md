@@ -175,6 +175,12 @@ Associated Domains and Push Notifications. So
 from any session with EXPO_TOKEN set — no Apple login, no Node on
 David's side. The older certificate 53S59K9KFQ was left untouched.
 
+Build 17 (1.60.0, runtime 3.0.0, JS v1.151.0) was built the same way on
+23 Oct 2026: EAS build `aa12c880-c77c-4339-bcda-631342fa903d`. It carries
+the "Perfect Match" icon set and the smaller sound. Uploading it to App
+Store Connect (`eas submit`) was NOT done from the session; it needs
+running by a person.
+
 Still missing: an APNs push key on EAS. Pushes cannot be delivered until
 one is added; it does not need a new build.
 
