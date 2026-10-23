@@ -5,7 +5,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://papershipstudio.com';
   return [
     '',
-    '/apps',
+    '/games',
     '/apps/dice-battles-color-rush',
     '/support',
     '/privacy',

@@ -89,14 +89,14 @@ export default async function DiceBattlesAppPage() {
   const ctaTitle = text(content, 'dice_battles.cta_title', 'Report a problem, or just say hi');
 
   return (
-    <SitePage active="Apps">
+    <SitePage active="Games">
       <main>
         <section
           className="psg-wrap"
           style={{ padding: '20px 56px 8px', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <Link href="/apps" className={styles.link} style={{ font: `700 13px ${fonts.body}`, color: colors.yellowDeepText }}>
-            &larr; All apps
+          <Link href="/games" className={styles.link} style={{ font: `700 13px ${fonts.body}`, color: colors.yellowDeepText }}>
+            &larr; All games
           </Link>
         </section>
 

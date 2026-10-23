@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Deliberately bare: the public marketing pages (/, /apps, /support,
+ * Deliberately bare: the public marketing pages (/, /games, /support,
  * /privacy, /terms) bring their own header and footer via SitePage, and
  * the private board under /admin brings its own nav via admin/layout.tsx. This
  * root layout only owns the one thing every route needs — globals.css,

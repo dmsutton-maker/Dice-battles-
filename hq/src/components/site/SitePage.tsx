@@ -10,7 +10,7 @@ export function SitePage({
   active,
   children,
 }: {
-  active: 'Home' | 'Apps' | 'Support' | 'none';
+  active: 'Home' | 'Games' | 'Support' | 'none';
   children: ReactNode;
 }) {
   return (

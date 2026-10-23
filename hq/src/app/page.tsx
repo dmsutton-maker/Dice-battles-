@@ -32,8 +32,8 @@ export default async function HomePage() {
   );
   const appsCardTagline = text(content, 'home.apps_card_tagline', 'Colors, not numbers — learn it in a minute, at any age');
   const appsCardNote = text(content, 'home.apps_card_note', '');
-  const appsHeading = text(content, 'home.apps_heading', 'Our apps');
-  const ctaLabel = text(content, 'home.cta_label', 'See our apps →');
+  const appsHeading = text(content, 'home.apps_heading', 'Our games');
+  const ctaLabel = text(content, 'home.cta_label', 'See our games →');
 
   return (
     <SitePage active="Home">
@@ -110,7 +110,7 @@ export default async function HomePage() {
                 {heroSubhead}
               </p>
               <Link
-                href="/apps"
+                href="/games"
                 className={styles.pillButton}
                 style={{
                   display: 'inline-flex',

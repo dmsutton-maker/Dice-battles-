@@ -3,6 +3,15 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   /*
+    The Apps page became the Games page on 23 Oct 2026 (David: "change
+    the apps tab to say Games"). Old links to /apps land on it. Only the
+    page itself: Dice Battles keeps /apps/dice-battles-color-rush, which
+    the game and the App Store listing link to.
+  */
+  async redirects() {
+    return [{ source: '/apps', destination: '/games', permanent: true }];
+  },
+  /*
     The private half of the site — the admin, the sign-in page and the
     password page — kept out of search results and out of other people's
     frames.
@@ -13,7 +22,7 @@ const nextConfig: NextConfig = {
     them and the path that did receive them was a 404.
 
     The PUBLIC pages are deliberately not in this list: X-Robots-Tag
-    noindex on `/`, `/apps`, `/support`, `/privacy` or `/terms` would
+    noindex on `/`, `/games`, `/support`, `/privacy` or `/terms` would
     take the studio's own site out of Google.
   */
   async headers() {

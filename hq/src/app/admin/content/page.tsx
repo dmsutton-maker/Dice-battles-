@@ -3,7 +3,7 @@ import Link from 'next/link';
 /** Each public page gets its own editor, rather than one endless form. */
 const PAGES = [
   { href: '/admin/content/home', emoji: '🏠', name: 'Home', what: 'The headline, the studio blurb, and the Dice Battles card.' },
-  { href: '/admin/content/apps', emoji: '📱', name: 'Apps', what: 'The apps list and how the game is described there.' },
+  { href: '/admin/content/apps', emoji: '📱', name: 'Games', what: 'The games page and how Dice Battles is described there.' },
   { href: '/admin/content/dice-battles', emoji: '🎲', name: 'Dice Battles', what: 'Description, the claim badges, highlights, FAQ, and extra sections.' },
   { href: '/admin/content/support', emoji: '✉️', name: 'Support', what: 'The intro and the note under the contact form.' },
   { href: '/admin/content/privacy', emoji: '🔒', name: 'Privacy Policy', what: 'Every section of the policy.' },

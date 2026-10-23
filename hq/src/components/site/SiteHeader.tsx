@@ -5,11 +5,11 @@ import { colors, fonts } from './tokens';
 
 const NAV = [
   { href: '/', label: 'Home' },
-  { href: '/apps', label: 'Apps' },
+  { href: '/games', label: 'Games' },
   { href: '/support', label: 'Support' },
 ] as const;
 
-export function SiteHeader({ active }: { active: 'Home' | 'Apps' | 'Support' | 'none' }) {
+export function SiteHeader({ active }: { active: 'Home' | 'Games' | 'Support' | 'none' }) {
   return (
     <header
       className="psg-wrap"

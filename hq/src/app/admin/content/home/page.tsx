@@ -17,13 +17,13 @@ export default async function HomeContentPage() {
         <textarea id="hero_subhead" name="hero_subhead" defaultValue={c.text('home.hero_subhead')} />
 
         <label htmlFor="cta_label">THE BUTTON IN THE HEADLINE BOX</label>
-        <input id="cta_label" name="cta_label" defaultValue={c.text('home.cta_label')} placeholder="See our apps →" />
+        <input id="cta_label" name="cta_label" defaultValue={c.text('home.cta_label')} placeholder="See our games →" />
 
         <label htmlFor="about_body">WHO WE ARE</label>
         <textarea id="about_body" name="about_body" defaultValue={c.text('home.about_body')} style={{ minHeight: 120 }} />
 
         <label htmlFor="apps_heading">HEADING ABOVE THE APPS</label>
-        <input id="apps_heading" name="apps_heading" defaultValue={c.text('home.apps_heading')} placeholder="Our apps" />
+        <input id="apps_heading" name="apps_heading" defaultValue={c.text('home.apps_heading')} placeholder="Our games" />
 
         <label htmlFor="apps_card_tagline">DICE BATTLES CARD — TAGLINE</label>
         <input id="apps_card_tagline" name="apps_card_tagline" defaultValue={c.text('home.apps_card_tagline')} />

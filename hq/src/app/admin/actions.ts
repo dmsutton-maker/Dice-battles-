@@ -835,7 +835,7 @@ export async function updateAppsContent(
     setContent('apps.metaTitle', field(formData, 'metaTitle'), member.display_name),
     setContent('apps.metaDescription', field(formData, 'metaDescription'), member.display_name),
   ]);
-  revalidatePath('/apps');
+  revalidatePath('/games');
   revalidatePath('/admin/content/apps');
   return saved('The Apps page');
 }
