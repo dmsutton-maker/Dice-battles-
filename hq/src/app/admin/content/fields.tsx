@@ -1,4 +1,5 @@
 import { supabaseServer } from '@/lib/supabase/server';
+import { storedIsNewer, type LegalCopy } from '@/lib/legalCopy';
 
 /** Reading the stored copy, shaped for the editor forms. */
 
@@ -26,7 +27,7 @@ function padded<T>(rows: T[], total: number, blank: T): T[] {
 
 export async function loadContent() {
   const supabase = await supabaseServer();
-  const { data } = await supabase.from('site_content').select('key, value');
+  const { data } = await supabase.from('site_content').select('key, value, updated_at');
   const byKey = new Map((data ?? []).map((row) => [row.key, row.value]));
 
   return {
@@ -39,7 +40,32 @@ export async function loadContent() {
       padded((byKey.get(key) as Section[]) ?? [], slots, { heading: '', body: '' }),
     labels: (key: string, slots: number): Label[] =>
       padded((byKey.get(key) as Label[]) ?? [], slots, { label: '' }),
+    /** When anything under a key prefix was last saved, or null. */
+    savedAt: (prefix: string): Date | null => {
+      const times = (data ?? [])
+        .filter((row) => row.key.startsWith(prefix) && row.updated_at)
+        .map((row) => new Date(row.updated_at as string).getTime())
+        .filter((ms) => Number.isFinite(ms));
+      return times.length ? new Date(Math.max(...times)) : null;
+    },
   };
+}
+
+/**
+ * The legal pages' editor opens on whichever copy the public page is
+ * showing (lib/legalCopy.ts): the saved copy if it is newer than the
+ * code's, the code's otherwise. Saving then stores what was on screen,
+ * never an older policy than the live one.
+ */
+export function legalFormCopy(
+  c: Awaited<ReturnType<typeof loadContent>>,
+  prefix: 'privacy' | 'terms',
+  copy: LegalCopy,
+): { intro: string; sections: Section[]; fromCode: boolean } {
+  if (storedIsNewer(copy, c.savedAt(`${prefix}.`))) {
+    return { intro: c.text(`${prefix}.intro`), sections: c.sections(`${prefix}.sections`, 16), fromCode: false };
+  }
+  return { intro: copy.intro, sections: padded(copy.sections, 16, { heading: '', body: '' }), fromCode: true };
 }
 
 /** The note every list carries, so the add/remove rule is never a guess. */

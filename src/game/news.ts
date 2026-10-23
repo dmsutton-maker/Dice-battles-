@@ -90,6 +90,17 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-151-0-smaller-download',
+    date: '23 October 2026',
+    version: 'v1.151.0',
+    title: 'A smaller download',
+    icon: 'sound',
+    body:
+      'The music and the announcer now take up about 3 MB less, so the ' +
+      'game is quicker to download and to update. They are the same ' +
+      'tunes and the same voice, at the same loudness.',
+  },
+  {
     id: 'v1-149-0-season-2-sun-and-moon',
     date: '21 October 2026',
     version: 'v1.149.0',

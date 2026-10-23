@@ -196,9 +196,11 @@ one is added; it does not need a new build.
   - Auth's leaked-password protection is off (Supabase dashboard →
     Authentication → Passwords). A `wicked` schema shares this database;
     it is not Dice Battles and was left alone.
-  - Privacy policy and Terms do not yet mention push notifications,
-    online status / friend battles, or in-app purchases. Needs David's
-    wording sign-off; the live copy is in `site_content`.
+  - Privacy policy and Terms were rewritten on 23 Oct 2026 at David's
+    request to cover purchases, the Gold Pass, friend battles, update
+    notifications and Game Center. The copy lives in
+    `hq/src/lib/legalCopy.ts`; a `site_content` save only wins if it is
+    newer than that copy's `written` date.
   - `schema.sql` is missing `game_news`, `battles`, `battle_invites`
     and `player_profiles.last_seen`, which exist live.
   - Music (6 MB, 96 kHz AAC) and the WAV voice lines could be

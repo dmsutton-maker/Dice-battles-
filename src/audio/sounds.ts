@@ -25,7 +25,7 @@ const clackSources = [
   require('../../assets/sounds/clack2.wav'),
   require('../../assets/sounds/clack3.wav'),
 ];
-const cheerSource = require('../../assets/sounds/cheer.wav');
+const cheerSource = require('../../assets/sounds/cheer.m4a');
 /**
  * UI sounds, synthesised rather than recorded — a 55ms tick and a rising
  * fifth. Written by this project (see assets/sounds/CREDITS.md), so there
@@ -35,7 +35,7 @@ const clickSource = require('../../assets/sounds/click.wav');
 const equipSource = require('../../assets/sounds/equip.wav');
 /** Plays once on the title card. Synthesised, same as the UI sounds. */
 const startupSource = require('../../assets/sounds/startup.wav');
-const fanfareSource = require('../../assets/sounds/fanfare.wav');
+const fanfareSource = require('../../assets/sounds/fanfare.m4a');
 /**
  * Battle music rotation — Kevin MacLeod (incompetech.com), CC-BY 4.0.
  * A different track is picked each time music starts from silence.

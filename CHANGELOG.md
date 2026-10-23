@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.151.0 — 2026-10-23 · requested by David
+
+### Changed
+- **The game downloads about 3 MB smaller.** David: "Make the game
+  download smaller." The sound was the part that could shrink; React
+  Native, Hermes and the ad SDK are a fixed size in every build.
+  - The four music tracks are re-encoded to mono AAC at 64 kbps (they
+    were ~100 kbps stereo), with the loudness matched to the originals:
+    6.0 MB down to 4.0 MB.
+  - The sixteen announcer words, the fanfare and the cheer were
+    uncompressed WAV; they are AAC now: 1.2 MB down to 0.14 MB.
+  - The dice clacks, throws, taps and the start-up sound stay WAV.
+    They are tiny and have to play the instant a die lands.
+  - `tests/downloadSize.test.ts` keeps a long sound from coming back as
+    WAV and the music from creeping back up.
+- Website, the same day: the Privacy Policy and Terms of Use now cover
+  in-app purchases, the Gold Pass, battling a friend, update
+  notifications and Game Center. The legal pages now show whichever is
+  newer, the copy in code or the copy saved in the admin, so an old save
+  can no longer hide a new policy.
+
 ## v1.150.0 — 2026-10-21 · requested by David
 
 ### Added

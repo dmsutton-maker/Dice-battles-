@@ -1,57 +1,23 @@
 import { pageMetadata } from '@/lib/metadata';
 import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
-import { getContentUpdatedAt, getSiteContent, monthYear, sectionList, text } from '@/lib/content';
+import { getContentUpdatedAt, getSiteContent, monthYear } from '@/lib/content';
+import { legalPage, TERMS } from '@/lib/legalCopy';
 
-// Editable in the admin, with the copy below as the default.
+// Editable in the admin, with the copy in lib/legalCopy.ts as the default.
 export const generateMetadata = pageMetadata('terms', {
   title: 'Terms of Use — Paper Ship Studio',
-  description: 'The terms that cover your use of any app published by Paper Ship Studio.',
+  description: TERMS.metaDescription,
 });
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_INTRO =
-  'These terms cover your use of any app published by Paper Ship Studio, including Dice Battles: Color Rush. Paper Ship Studio is currently operated by its owner as an individual, trading under the Paper Ship Studio name, and is not yet a registered company. By downloading or using our apps, you agree to these terms.';
-
-const DEFAULT_SECTIONS = [
-  {
-    heading: 'Using our apps',
-    body: 'Our apps are provided for personal, non-commercial entertainment. You\'re welcome to play, and to let your family and friends play, for as long as you like.',
-  },
-  {
-    heading: 'No accounts, and where your things are kept',
-    body: 'Our apps don\'t require an account. Your progress, coins and unlocked items are stored on your own device and are yours to keep or delete. If you use Friends, the profile your friends can see is stored on our server instead — our Privacy Policy sets out exactly what that includes.',
-  },
-  {
-    heading: 'Being a good neighbour in Friends',
-    body: 'Friends works by sharing a code with someone you already know. Please do not use it to bother anyone. You can remove a friend at any time, and blocking someone is silent — they are not told, and they cannot ask again. We may remove a player from Friends if they use it to harass others.',
-  },
-  {
-    heading: 'Intellectual property',
-    body: 'The Paper Ship Studio name, logo, and the design, artwork, and code of our apps belong to Paper Ship Studio. You may not copy, redistribute, or resell any part of our apps without our permission.',
-  },
-  {
-    heading: 'No warranty',
-    body: 'We build our apps carefully, but they\'re provided "as is," without warranties of any kind. We\'re not liable for any issues arising from your use of them, to the extent permitted by law.',
-  },
-  {
-    heading: 'Changes',
-    body: 'We may update these terms as the studio grows — for example, if we incorporate or add new apps. We\'ll update the date at the top when we do.',
-  },
-  {
-    heading: 'Contact us',
-    body: 'Questions about these terms can go to hello@papershipstudio.com.',
-  },
-];
-
 export default async function TermsPage() {
   const content = await getSiteContent();
-  // The date the copy on THIS page was last edited, so an edit in the
-  // admin cannot leave the page claiming a policy older than it is.
-  const updated = monthYear(await getContentUpdatedAt('terms.'), 'August 2026');
-  const sections = sectionList(content, 'terms.sections', DEFAULT_SECTIONS);
-  const intro = text(content, 'terms.intro', DEFAULT_INTRO);
+  // The newer of the code copy and the admin's saved copy, and the date
+  // it dates from (lib/legalCopy.ts says why).
+  const { intro, sections, updated: when } = legalPage(TERMS, content, 'terms', await getContentUpdatedAt('terms.'));
+  const updated = monthYear(when, '');
 
   return (
     <SitePage active="none">

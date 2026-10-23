@@ -31,22 +31,22 @@ export type VoiceCue =
   | 'congrats';
 
 const CUE_SOURCES: Record<VoiceCue, number> = {
-  ready: require('../../assets/voice/ready.wav'),
-  set: require('../../assets/voice/set.wav'),
-  go: require('../../assets/voice/go.wav'),
-  count1: require('../../assets/voice/1.wav'),
-  count2: require('../../assets/voice/2.wav'),
-  count3: require('../../assets/voice/3.wav'),
-  count4: require('../../assets/voice/4.wav'),
-  count5: require('../../assets/voice/5.wav'),
-  lookout: require('../../assets/voice/war_look_out.wav'),
-  gogogo: require('../../assets/voice/war_go_go_go.wav'),
-  hurry: require('../../assets/voice/hurry_up.wav'),
-  win: require('../../assets/voice/you_win.wav'),
-  lose: require('../../assets/voice/you_lose.wav'),
-  tie: require('../../assets/voice/its_a_tie.wav'),
-  wrong: require('../../assets/voice/wrong.wav'),
-  congrats: require('../../assets/voice/congratulations.wav'),
+  ready: require('../../assets/voice/ready.m4a'),
+  set: require('../../assets/voice/set.m4a'),
+  go: require('../../assets/voice/go.m4a'),
+  count1: require('../../assets/voice/1.m4a'),
+  count2: require('../../assets/voice/2.m4a'),
+  count3: require('../../assets/voice/3.m4a'),
+  count4: require('../../assets/voice/4.m4a'),
+  count5: require('../../assets/voice/5.m4a'),
+  lookout: require('../../assets/voice/war_look_out.m4a'),
+  gogogo: require('../../assets/voice/war_go_go_go.m4a'),
+  hurry: require('../../assets/voice/hurry_up.m4a'),
+  win: require('../../assets/voice/you_win.m4a'),
+  lose: require('../../assets/voice/you_lose.m4a'),
+  tie: require('../../assets/voice/its_a_tie.m4a'),
+  wrong: require('../../assets/voice/wrong.m4a'),
+  congrats: require('../../assets/voice/congratulations.m4a'),
 };
 
 let players: Partial<Record<VoiceCue, AudioPlayer>> = {};
