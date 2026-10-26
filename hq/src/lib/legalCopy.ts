@@ -91,7 +91,7 @@ export const PRIVACY: LegalCopy = {
 };
 
 export const TERMS: LegalCopy = {
-  written: '2026-10-23',
+  written: '2026-10-26',
   metaDescription: 'The terms that cover your use of any app published by Paper Ship Studio, including purchases and the Gold Pass.',
   intro:
     'These terms cover your use of any app published by Paper Ship Studio, including Dice Battles: Color Rush. Paper Ship Studio is currently operated by its owner as an individual, trading under the Paper Ship Studio name, and is not yet a registered company. By downloading or using our apps, you agree to these terms.',
@@ -110,7 +110,7 @@ export const TERMS: LegalCopy = {
     },
     {
       heading: 'The Gold Pass',
-      body: 'A season runs for one calendar month, starting at midnight on the 1st, New York time. The Gold Pass opens the Gold rewards for the season it is bought in and ends when that month ends, so a pass bought on the 28th still ends on the 1st. It does not renew on its own and is never charged again unless you buy it again. Rewards you have earned stay yours after the season ends.',
+      body: 'A season normally runs for one calendar month, starting at midnight on the 1st, New York time; the game says when the current one ends. The Gold Pass opens the Gold rewards for the season it is bought in and ends when that season ends, so a pass bought on the 28th still ends on the 1st. It does not renew on its own and is never charged again unless you buy it again. Rewards you have earned stay yours after the season ends.',
     },
     {
       heading: 'Seasons, cups and prizes change',

@@ -1,5 +1,5 @@
 import type { AiDifficultyId } from './ai';
-import { monthsBetween, monthStamp, monthStartUtc, nextMonth } from './easternTime';
+import { addMonths, monthsBetween, monthStamp, monthStartUtc } from './easternTime';
 import { GOLD_PASS_ID } from './products';
 import type { PrizeItem, TournamentPrize } from './tournament';
 
@@ -35,7 +35,9 @@ import type { PrizeItem, TournamentPrize } from './tournament';
  * this one is fire and ice." The season turns at midnight on the first,
  * New York time (easternTime.ts), on every phone alike; experience and
  * the levels paid start again from nothing, and the old season's items
- * stay in the cupboard of whoever earned them.
+ * stay in the cupboard of whoever earned them. A season CAN run longer
+ * than a month (`months`); Fire & Ice runs two, by David's choice on
+ * 26 Oct 2026, and nothing resets until it ends.
  *
  * EVERY MONTH NEEDS ITS SEASON BUILT AND SHIPPED BEFORE THE FIRST: two
  * new dice, two new battlefields, a name. A month with no season here
@@ -49,9 +51,31 @@ export interface SeasonDef {
   number: number;
   id: string;
   name: string;
-  /** The New York month it runs, YYYY-MM. */
+  /** The New York month it starts, YYYY-MM. */
   month: string;
+  /**
+   * How many months it runs. Absent means one. Fire & Ice runs two:
+   * David, 26 Oct 2026, "make the Fire and Ice season go through
+   * November", so that the next six seasons could be built properly
+   * rather than Sun & Moon arriving in a week.
+   */
+  months?: number;
   items: readonly { level: number; item: PrizeItem; track: Track }[];
+}
+
+/** How many months a season runs: one unless it says otherwise. */
+export function seasonMonths(season: Pick<SeasonDef, 'months'>): number {
+  return season.months ?? 1;
+}
+
+/** The YYYY-MM a season ends (the first month it is NOT running). */
+export function seasonEndMonth(season: Pick<SeasonDef, 'month' | 'months'>): string {
+  return addMonths(season.month, seasonMonths(season));
+}
+
+/** Whether a New York month falls inside a season. */
+export function seasonCoversMonth(season: Pick<SeasonDef, 'month' | 'months'>, month: string): boolean {
+  return month >= season.month && month < seasonEndMonth(season);
 }
 
 export const SEASONS: readonly SeasonDef[] = [
@@ -60,6 +84,7 @@ export const SEASONS: readonly SeasonDef[] = [
     id: 'season-1',
     name: 'Fire & Ice',
     month: '2026-10',
+    months: 2,
     /*
       Three of the four on the Gold row, as David asked: "most of the
       good rewards only in the paid version". The Ice Dice stay on the
@@ -74,11 +99,19 @@ export const SEASONS: readonly SeasonDef[] = [
       { level: 30, item: { kind: 'arena', id: 'volcano' }, track: 'gold' },
     ],
   },
+  /*
+    Seasons 2 to 7 (December 2026 to May 2027: Sugar & Snow, Rumble &
+    Rain, Shield & Scale, Wind & Wings, Bamboo & Blossom, Big Top &
+    Boardwalk) are planned in docs/seasons-3-to-8.md and slot in here as
+    they are built. Sun & Moon was built as Season 2 for November; David
+    moved it to June on 26 Oct 2026 ("Change the November season to be
+    for June").
+  */
   {
-    number: 2,
-    id: 'season-2',
+    number: 8,
+    id: 'season-8',
     name: 'Sun & Moon',
-    month: '2026-11',
+    month: '2027-06',
     items: [
       { level: 6, item: { kind: 'arena', id: 'suntemple' }, track: 'gold' },
       { level: 12, item: { kind: 'dice', id: 'sun' }, track: 'gold' },
@@ -88,22 +121,32 @@ export const SEASONS: readonly SeasonDef[] = [
   },
 ];
 
-/** The season running at an instant. See SEASONS for the fallback. */
+/**
+ * The season running at an instant. See SEASONS for the fallback.
+ *
+ * A month no built season covers — between two seasons, or after the
+ * last — is a one-month stand-in: the latest season that had started,
+ * under the number the month would have had. Season 1 runs October and
+ * November and is number 1; December with nothing built would be
+ * "Season 2", and Sun & Moon in June is number 8 because six months lie
+ * between. tests/seasonRotation.test.ts holds the numbering to that.
+ */
 export function seasonAt(now: number = Date.now()): SeasonDef {
   const month = monthStamp(now);
-  const exact = SEASONS.find((s) => s.month === month);
-  if (exact) return exact;
-  // Before the first season: the first. After the last built: the last,
-  // renumbered for the month it is standing in for.
   if (month < SEASONS[0].month) return SEASONS[0];
-  const last = SEASONS[SEASONS.length - 1];
-  const number = SEASONS[0].number + monthsBetween(SEASONS[0].month, month);
-  return { ...last, number, id: `season-${number}`, name: `Season ${number}`, month };
+  let latest = SEASONS[0];
+  for (const s of SEASONS) {
+    if (s.month > month) break;
+    latest = s;
+  }
+  if (seasonCoversMonth(latest, month)) return latest;
+  const number = latest.number + 1 + monthsBetween(seasonEndMonth(latest), month);
+  return { ...latest, number, id: `season-${number}`, name: `Season ${number}`, month, months: 1 };
 }
 
 /** The instant the season running at `now` ends: midnight on the 1st, New York time. */
 export function seasonEndsAt(now: number = Date.now()): number {
-  return monthStartUtc(nextMonth(monthStamp(now)));
+  return monthStartUtc(seasonEndMonth(seasonAt(now)));
 }
 
 /** Whole days until the season turns, at least 1 on its last day. */
@@ -186,10 +229,11 @@ export type Track = 'free' | 'gold';
  * ONE PRODUCT, BOUGHT EACH MONTH, since 21 Oct 2026 (David chose it
  * over a product per season, which would have needed a new one created
  * in App Store Connect every month). `gold_pass` is a non-renewing
- * subscription in App Store Connect; the New York month it is bought in
- * is the season it unlocks — purchases.ts keeps the months, and Restore
- * brings them back on a new phone from the purchase dates. Season 1's
- * own product, `season_pass_1`, is still honoured for October 2026.
+ * subscription in App Store Connect; the season running in the New York
+ * month it is bought in is the season it unlocks, for all of that season
+ * — purchases.ts keeps the months, and Restore brings them back on a new
+ * phone from the purchase dates. Season 1's own product, `season_pass_1`,
+ * is still honoured for the whole of Season 1.
  */
 export const GOLD_PASS = {
   productId: GOLD_PASS_ID,

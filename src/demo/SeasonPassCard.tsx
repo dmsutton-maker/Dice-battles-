@@ -172,7 +172,7 @@ export function SeasonPassCard({
         SEASON {season.number} · {season.name.toUpperCase()}
       </Text>
       <Text style={styles.ends}>
-        {daysLeft === 1 ? 'Last day' : `${daysLeft} days left`} · a new season starts on the 1st
+        {daysLeft === 1 ? 'Last day' : `${daysLeft} days left`} · the next season starts on the 1st
       </Text>
       <View style={styles.headRow}>
         <Text style={styles.level}>Level {level}</Text>

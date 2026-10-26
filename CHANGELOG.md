@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.152.0 — 2026-10-26 · requested by David
+
+### Changed
+- **Fire & Ice runs through November; Sun & Moon moves to June.**
+  David: "Change the November season to be for June and make the Fire
+  and Ice season go through November." A season can now run more than
+  one month (`months` in `SEASONS`), and Season 1 runs two. Nobody's
+  level resets on 1 November; the pass card counts down to 1 December.
+  - Sun & Moon is Season 8, June 2027. Seasons 2 to 7 (December to May:
+    Sugar & Snow, Rumble & Rain, Shield & Scale, Wind & Wings, Bamboo &
+    Blossom, Big Top & Boardwalk) are specified in
+    `docs/seasons-3-to-8.md` and are being built.
+  - The Gold Pass is now for the SEASON it is bought in rather than the
+    calendar month, so a pass bought in October or November covers both
+    months of Fire & Ice. `season_pass_1` likewise.
+  - A season's number counts the months since the previous one, so a
+    month with nothing built and a built season agree on the numbering.
+- Website: the Terms say a season "normally" runs one month and the
+  Gold Pass ends when the season ends.
+
 ## v1.151.0 — 2026-10-23 · requested by David
 
 ### Changed

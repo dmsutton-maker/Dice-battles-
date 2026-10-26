@@ -1,13 +1,27 @@
-# Seasons 3 to 8: the plan
+# Seasons 2 to 8: the plan
 
 David, 23 Oct 2026: "Think of ideas for another 6 seasons and then give
-me full details of the 2 dice and 2 arenas for each of them."
+me full details of the 2 dice and 2 arenas for each of them." And on
+26 Oct 2026: "I like all those season ideas, but just change the season
+names to have a better ring to it. Change the November season to be for
+June and make the Fire and Ice season go through November."
 
-These are the ideas for December 2026 to May 2027, written in enough
-detail to build from. Nothing here is built yet. Each month is built
-around the 15th of the month before, shown to David, and shipped before
-the 1st (see "The season pass turns over on the 1st of every month" in
+So the calendar is: Season 1 Fire & Ice runs October AND November 2026;
+the six seasons below are Seasons 2 to 7, December 2026 to May 2027;
+and Sun & Moon, already built, is Season 8 in June 2027. Each season is
+built a fortnight before it starts, shown to David, and shipped before
+the 1st (see "The season pass turns over on the 1st of the month" in
 `AGENTS.md`).
+
+| Season | Month | Name | Was called |
+| --- | --- | --- | --- |
+| 2 | Dec 2026 | Sugar & Snow | Gingerbread & Glitter |
+| 3 | Jan 2027 | Rumble & Rain | Thunder & Rain |
+| 4 | Feb 2027 | Shield & Scale | Dragon & Knight |
+| 5 | Mar 2027 | Wind & Wings | (kept: it already rang) |
+| 6 | Apr 2027 | Bamboo & Blossom | Bamboo & Lotus |
+| 7 | May 2027 | Big Top & Boardwalk | Circus & Fair |
+| 8 | Jun 2027 | Sun & Moon | (built; moved from November) |
 
 ## The rules every season follows
 
@@ -50,10 +64,10 @@ These come from what Seasons 1 and 2 already do, and from the tests
 
 ---
 
-## Season 3 · December 2026 · Gingerbread & Glitter
+## Season 2 · December 2026 · Sugar & Snow
 
 Winter treats by day and twinkling lights by night. It starts at midnight
-on 1 December (New York time). Build it by 15 November.
+on 1 December (New York time), when Fire & Ice ends. Build it by 15 November.
 
 ### Gingerbread Village · battlefield · Gold, level 6
 
@@ -146,7 +160,7 @@ on 1 December (New York time). Build it by 15 November.
 
 ---
 
-## Season 4 · January 2027 · Thunder & Rain
+## Season 3 · January 2027 · Rumble & Rain
 
 A stormy month: lightning out at sea, rain in the jungle. It starts on
 1 January. Build it by 15 December.
@@ -233,7 +247,7 @@ A stormy month: lightning out at sea, rain in the jungle. It starts on
 
 ---
 
-## Season 5 · February 2027 · Dragon & Knight
+## Season 4 · February 2027 · Shield & Scale
 
 A storybook month: a tournament field and a dragon's mountain. The dragon
 is friendly and sleepy, not fierce. It starts on 1 February. Build it by
@@ -322,7 +336,7 @@ is friendly and sleepy, not fierce. It starts on 1 February. Build it by
 
 ---
 
-## Season 6 · March 2027 · Wind & Wings
+## Season 5 · March 2027 · Wind & Wings
 
 A breezy spring month: kites on a hill and butterflies in a glasshouse.
 It starts on 1 March. Build it by 15 February.
@@ -404,7 +418,7 @@ It starts on 1 March. Build it by 15 February.
 
 ---
 
-## Season 7 · April 2027 · Bamboo & Lotus
+## Season 6 · April 2027 · Bamboo & Blossom
 
 A calm, green month: pandas in a bamboo grove and koi in a lotus pond.
 It starts on 1 April. Build it by 15 March.
@@ -487,7 +501,7 @@ It starts on 1 April. Build it by 15 March.
 
 ---
 
-## Season 8 · May 2027 · Circus & Fair
+## Season 7 · May 2027 · Big Top & Boardwalk
 
 A loud, happy month: a big top and a seaside fairground. It starts on
 1 May. Build it by 15 April.
@@ -576,12 +590,14 @@ A loud, happy month: a big top and a seaside fairground. It starts on
 
 | Season | Month | Name | Lvl 6 (Gold) | Lvl 12 (Gold) | Lvl 20 (Free) | Lvl 30 (Gold) |
 | --- | --- | --- | --- | --- | --- | --- |
-| 3 | Dec 2026 | Gingerbread & Glitter | Gingerbread Village | Gingerbread dice | Bauble dice | Twinkle Market |
-| 4 | Jan 2027 | Thunder & Rain | Lighthouse Point | Thunder dice | Raindrop dice | Rainforest Falls |
-| 5 | Feb 2027 | Dragon & Knight | Jousting Field | Knight dice | Dragon dice | Dragon's Peak |
-| 6 | Mar 2027 | Wind & Wings | Kite Hill | Kite dice | Butterfly dice | Butterfly House |
-| 7 | Apr 2027 | Bamboo & Lotus | Panda Grove | Bamboo dice | Lotus dice | Lotus Pond |
-| 8 | May 2027 | Circus & Fair | Big Top | Big Top dice | Carousel dice | Seaside Fair |
+| 1 | Oct–Nov 2026 | Fire & Ice | Snowy Hollow | Fire dice | Ice dice | Volcano Rim |
+| 2 | Dec 2026 | Sugar & Snow | Gingerbread Village | Gingerbread dice | Bauble dice | Twinkle Market |
+| 3 | Jan 2027 | Rumble & Rain | Lighthouse Point | Thunder dice | Raindrop dice | Rainforest Falls |
+| 4 | Feb 2027 | Shield & Scale | Jousting Field | Knight dice | Dragon dice | Dragon's Peak |
+| 5 | Mar 2027 | Wind & Wings | Kite Hill | Kite dice | Butterfly dice | Butterfly House |
+| 6 | Apr 2027 | Bamboo & Blossom | Panda Grove | Bamboo dice | Lotus dice | Lotus Pond |
+| 7 | May 2027 | Big Top & Boardwalk | Big Top | Big Top dice | Carousel dice | Seaside Fair |
+| 8 | Jun 2027 | Sun & Moon | Sun Temple | Sun dice | Moon dice | Moon Garden |
 
 ### What to decide before building
 
@@ -593,4 +609,5 @@ A loud, happy month: a big top and a seaside fairground. It starts on
   existing sounds.
 - **The order of the months can change.** Each season stands alone.
   Seasons can be swapped round, for example Wind & Wings for April, as
-  long as each one is built before its month starts.
+  long as each one is built before its month starts and `SEASONS` is
+  renumbered to match.

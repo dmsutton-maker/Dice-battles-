@@ -288,10 +288,10 @@ export function MoneyShelf({
           title={`Buy ${asking.name}?`}
           body={
             `${asking.blurb}\n\n` +
-            // The Gold Pass is for this month only, so the question says
-            // how much of the month is left — three days is three days.
+            // The Gold Pass is for this season only, so the question says
+            // how much of the season is left — three days is three days.
             (asking.kind === 'season'
-              ? `It is for ${seasonAt().name} and lasts until the end of the month: ` +
+              ? `It is for ${seasonAt().name} and lasts until the season ends: ` +
                 `${seasonDaysLeft() === 1 ? 'today only' : `${seasonDaysLeft()} days`}.\n\n`
               : '') +
             `It costs ${priceLabel(asking, state.priceOf(asking.id))}. ` +

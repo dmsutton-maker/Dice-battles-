@@ -90,6 +90,18 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-152-0-fire-and-ice-runs-on',
+    date: '26 October 2026',
+    version: 'v1.152.0',
+    title: 'Fire & Ice runs through November',
+    icon: 'cups',
+    body:
+      'Season 1 now lasts until 1 December, so there is a whole extra ' +
+      'month to climb the pass. Your level and your Gold Pass carry on ' +
+      'exactly as they are. Season 2, Sugar & Snow, starts on 1 December, ' +
+      'and Sun & Moon moves to June.',
+  },
+  {
     id: 'v1-151-0-smaller-download',
     date: '23 October 2026',
     version: 'v1.151.0',

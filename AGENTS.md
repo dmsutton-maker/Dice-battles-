@@ -188,41 +188,54 @@ three of these wrong.
   something already owned pays its shelf price in coins instead, so
   reusing one costs nothing.
 
-## The season pass turns over on the 1st of every month
+## The season pass turns over on the 1st of the month
 
 David, 21 Oct 2026: "I want the gold pass to rotate on the first of
 every month according to EST", and "Make 2 new dice and 2 new arenas
 every month normally going on with a theme like how this one is fire
-and ice."
+and ice." Then on 26 Oct 2026: "Change the November season to be for
+June and make the Fire and Ice season go through November."
 
-- `SEASONS` in `src/game/seasonPass.ts` is the list: one entry per New
-  York month from October 2026, each with a name and four items, two
-  new dice and two new battlefields, three on the Gold row and one on
-  the free row. `seasonAt(now)` picks the month's season on every phone
-  alike (`src/game/easternTime.ts`), and experience starts again on the
-  1st. Nothing runs on a server.
-- **Every month's season has to be BUILT and SHIPPED before the 1st**:
-  two new dice (`pass: true` in diceSkins.ts, continuous like every
-  die, ideally with an effect like Fire and Ice), two new battlefields
+- `SEASONS` in `src/game/seasonPass.ts` is the list, from October
+  2026, each entry with a start month, a name and four items: two new
+  dice and two new battlefields, three on the Gold row and one on the
+  free row. A season normally runs one month; `months` makes it longer,
+  and Fire & Ice runs two (October and November 2026). `seasonAt(now)`
+  picks the season on every phone alike (`src/game/easternTime.ts`),
+  and experience starts again when a season ends, at midnight on the
+  1st, New York time. Nothing runs on a server.
+- **The calendar, settled 26 Oct 2026:** Season 1 Fire & Ice (Oct–Nov
+  2026), 2 Sugar & Snow (Dec), 3 Rumble & Rain (Jan 2027), 4 Shield &
+  Scale (Feb), 5 Wind & Wings (Mar), 6 Bamboo & Blossom (Apr), 7 Big
+  Top & Boardwalk (May), 8 Sun & Moon (Jun, already built). The six
+  between are specified in `docs/seasons-3-to-8.md`. A season's number
+  counts the months since the one before it, so a month with nothing
+  built (a stand-in, the previous season's items under the month's
+  number) and a built season never disagree about the numbering.
+- **Every season has to be BUILT and SHIPPED before it starts**: two
+  new dice (`pass: true` in diceSkins.ts, continuous like every die,
+  ideally with an effect like Fire and Ice), two new battlefields
   (`pass: true` in themeData.ts, with their own kit, jail, hazards, art
   and blurb like Dino Valley), and the entry in `SEASONS`.
-  `tests/seasonRotation.test.ts` fails from the 20th of any month whose
-  successor is missing. A month left unbuilt falls back to the last
-  season's items under the new number, which pays coins to anybody who
-  already has them: not broken, but a poor month. Aim to build each
-  month's season around the 15th and show David the pictures.
+  `tests/seasonRotation.test.ts` fails once the running season has 11
+  days left and the next is missing. A month left unbuilt falls back to
+  the latest season's items under the new number, which pays coins to
+  anybody who already has them: not broken, but a poor month. Aim to
+  build each season a fortnight before it starts and show David the
+  pictures.
 - **The Gold Pass is ONE product, `gold_pass`, bought again each
-  month** (David's choice over a product per season, which would have
+  season** (David's choice over a product per season, which would have
   needed a new App Store Connect product monthly). In App Store Connect
-  it is a NON-RENEWING SUBSCRIPTION, one month, $2.99. The New York
-  month it is bought in is the season it unlocks: `purchases.ts` keeps
-  the months (`hasGoldPass`) and Restore reads them back from the
-  purchase dates (`getAvailablePurchases` with
-  `onlyIncludeActiveItemsIOS: false`, because Apple leaves non-renewing
-  subscriptions out of the active list). Season 1's `season_pass_1` is
-  still honoured for October 2026. Never make the pass a non-consumable
-  (it would be every month's for ever) or a consumable (Apple refuses to
-  restore those).
+  it is a NON-RENEWING SUBSCRIPTION, one month, $2.99. The season
+  running in the New York month it is bought in is the season it
+  unlocks, for the whole of that season: `purchases.ts` keeps the
+  months (`hasGoldPass`) and Restore reads them back from the purchase
+  dates (`getAvailablePurchases` with `onlyIncludeActiveItemsIOS:
+  false`, because Apple leaves non-renewing subscriptions out of the
+  active list). Season 1's `season_pass_1` is still honoured for the
+  whole of Season 1. Never make the pass a non-consumable (it would be
+  every month's for ever) or a consumable (Apple refuses to restore
+  those).
 - An item from a finished season stays in the cupboard of whoever
   earned it and shows "Season N pass" on its locked card; it is not to
   be had again unless a later season or a cup offers it.

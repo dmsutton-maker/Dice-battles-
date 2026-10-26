@@ -60,12 +60,18 @@ export function monthStartUtc(stamp: string): number {
   return easternLocalToUtc(Date.UTC(y, m - 1, 1));
 }
 
+/** A YYYY-MM moved on by `n` whole months (`n` may be negative). */
+export function addMonths(stamp: string, n: number): string {
+  const [y, m] = stamp.split('-').map(Number);
+  const total = y * 12 + (m - 1) + n;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
+  return `${ny}-${String(nm).padStart(2, '0')}`;
+}
+
 /** The YYYY-MM after a given one. */
 export function nextMonth(stamp: string): string {
-  const [y, m] = stamp.split('-').map(Number);
-  const ny = m === 12 ? y + 1 : y;
-  const nm = m === 12 ? 1 : m + 1;
-  return `${ny}-${String(nm).padStart(2, '0')}`;
+  return addMonths(stamp, 1);
 }
 
 /** Whole months from one YYYY-MM to another; negative if `b` is earlier. */

@@ -4,6 +4,7 @@ import { loadStoreKit } from './storeKit';
 import { PRODUCTS, Product, REMOVE_ADS, productById, sellable } from './products';
 import { GOLD_PASS_ID, SEASON_1_PASS } from './products';
 import { monthStamp } from './easternTime';
+import { seasonAt, seasonCoversMonth } from './seasonPass';
 
 /**
  * Buying things with real money.
@@ -288,15 +289,17 @@ export function hasEntitlement(id: string): boolean {
 /**
  * Is this month's Gold Pass owned?
  *
- * Bought this New York month (or restored from a purchase made in it),
- * or Season 1's own product for its month. Nothing carries over: a pass
- * bought in October is October's, and on the first of November the
- * shelf offers November's.
+ * Bought in a New York month the running season covers (or restored
+ * from a purchase made in one), or Season 1's own product while Season 1
+ * runs. Nothing carries over between seasons: a pass bought in Season 1
+ * is Season 1's, and on the first of the next season the shelf offers
+ * that season's. A season that runs two months (Fire & Ice, October and
+ * November 2026) is one pass, whichever of its months it was bought in.
  */
 export function hasGoldPass(now: number = Date.now()): boolean {
-  const month = monthStamp(now);
-  if (passMonths.has(month)) return true;
-  return month === SEASON_1_PASS.month && owned.has(SEASON_1_PASS.id);
+  const season = seasonAt(now);
+  for (const month of passMonths) if (seasonCoversMonth(season, month)) return true;
+  return seasonCoversMonth(season, SEASON_1_PASS.month) && owned.has(SEASON_1_PASS.id);
 }
 
 /**
