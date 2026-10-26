@@ -56,7 +56,11 @@ export interface DieEffect {
   dispose(): void;
 }
 
-export type DieEffectId = 'fire' | 'ice' | 'neon' | 'sun' | 'moon';
+export type DieEffectId =
+  | 'fire' | 'ice' | 'neon' | 'sun' | 'moon'
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 /** Build the effect for a skin, told where this round's moat is. */
 export function createDieEffect(

@@ -40,7 +40,10 @@ export type MoundKind =
   | 'eggNest'
   // Season 2 of the pass (21 Oct 2026): the Sun Temple's altar and the
   // Moon Garden's stone lantern.
-  | 'sunAltar' | 'moonLantern';
+  | 'sunAltar' | 'moonLantern'
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 /**
  * What the pit IS on each board. The physics is the same square hole for
@@ -52,7 +55,10 @@ export type PitKind =
   | 'frozenPond' | 'lava' | 'mud' | 'tidePool' | 'chocolate'
   | 'spring' | 'cargoHatch' | 'whirlpool' | 'skylight' | 'toyBox'
   | 'tarPit'
-  | 'sunWell' | 'moonPond';
+  | 'sunWell' | 'moonPond'
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 export interface ObstacleLook {
   /** The bump the dice deflect off. */

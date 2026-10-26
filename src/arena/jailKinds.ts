@@ -43,7 +43,10 @@ export type JailKind =
   | 'toyChest'      // toy room: painted chest, flat lid, blocks and a ball
   | 'boneCage'      // dino valley: bars of bone with knobbed ends, a horned skull
   | 'sunShrine'     // sun temple: sandstone pillars, a carved lintel with a gold sun, braziers
-  | 'toriiGate';    // moon garden: a torii gate over a bamboo fence, paper lanterns swinging
+  | 'toriiGate'     // moon garden: a torii gate over a bamboo fence, paper lanterns swinging
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 /** Every board in the registry: the sixteen themed ones and the four originals. */
 export type JailArenaId = ThemedArenaId | 'castle' | 'castleSunset' | 'jungle' | 'space';

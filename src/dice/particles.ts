@@ -34,6 +34,10 @@ export const Kind = {
   Flash: 11,
   Halo: 12,
   Stardust: 13,
+  // Seasons 2 to 7 (26 Oct 2026) each own a range of numbers, so six
+  // seasons built side by side cannot hand two kinds the same number:
+  // Season 2 uses 20-29, Season 3 30-39, 4 40-49, 5 50-59, 6 60-69, 7 70-79.
+  // Add each season's kinds ABOVE this comment.
 } as const;
 export type Kind = (typeof Kind)[keyof typeof Kind];
 

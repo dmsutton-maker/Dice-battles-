@@ -84,7 +84,10 @@ export type PatternId =
   | 'ice'
   // Season 2, "Sun & Moon" (21 Oct 2026): the Sun dice and the Moon dice.
   | 'sunburst'
-  | 'moonlit';
+  | 'moonlit'
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 const SIZE = 64;
 
@@ -866,7 +869,10 @@ export type ColorPatternId =
   // corner with rays round the whole die; a crescent moon on one corner
   // over a starry night.
   | 'sunburst'
-  | 'moonlit';
+  | 'moonlit'
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 type MaskPatternId = Exclude<PatternId, 'plain' | ColorPatternId>;
 
 /*

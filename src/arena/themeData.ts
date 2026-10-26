@@ -78,7 +78,10 @@ export type PropKind =
   // Season 2 of the pass (21 Oct 2026): the Sun Temple's obelisks and
   // the Moon Garden's stone lanterns.
   | 'obelisk'       // a tall sandstone needle with a gold tip
-  | 'stoneLantern'; // a stone garden lantern, its window lit
+  | 'stoneLantern'  // a stone garden lantern, its window lit
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 export interface PropPlacement {
   kind: PropKind;
@@ -138,7 +141,10 @@ export type ArenaStructure =
   | 'blocks'       // toybox: alternating wooden bricks, block towers
   | 'fernRock'     // dino: mossy boulders and ferns, fossil ribs at the corners
   | 'sunstone'     // sun temple: courses of cut sandstone, sun medallions and braziers along them
-  | 'lanternWall'; // moon garden: a low wall of dark stone, paper lanterns on posts, bamboo
+  | 'lanternWall' // moon garden: a low wall of dark stone, paper lanterns on posts, bamboo
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 export interface ArenaTheme {
   /** What the walls and corners are made of. */
@@ -191,7 +197,10 @@ export type ThemedArenaId =
   | 'farm' | 'aurora' | 'reef' | 'cavern'
   | 'city' | 'sky' | 'moon' | 'toybox'
   | 'dino'
-  | 'suntemple' | 'moongarden';
+  | 'suntemple' | 'moongarden'
+  // New members go ABOVE this comment, one per line, so six seasons can
+  // be built side by side and merge cleanly. The ; stays on its own line.
+  ;
 
 /** Shared daylight, matching the rig the originals use. */
 const DAY: ArenaLighting | null = null;

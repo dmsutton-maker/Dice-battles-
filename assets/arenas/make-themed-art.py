@@ -33,7 +33,9 @@ SRC = open(f'{ROOT}/src/arena/themeData.ts').read()
 
 IDS = ['snow', 'desert', 'volcano', 'beach', 'candy', 'glade', 'autumn', 'cove',
        'farm', 'aurora', 'reef', 'cavern', 'city', 'sky', 'moon', 'toybox', 'dino',
-       'suntemple', 'moongarden']
+       'suntemple', 'moongarden',
+       # New battlefields go ABOVE this comment, one line per season.
+       ]
 
 
 def hx(h):

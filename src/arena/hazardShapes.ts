@@ -1310,7 +1310,10 @@ type PitLook = ObstacleLook['pit'];
  * drawn by the Pit component. Everything else is drawn by the pit
  * shader, here.
  */
-export const WATER_PITS: readonly PitKind[] = ['moat', 'candlePool', 'lake', 'tidePool', 'puddle', 'spring', 'iceHole', 'moonPond'];
+export const WATER_PITS: readonly PitKind[] = [
+  'moat', 'candlePool', 'lake', 'tidePool', 'puddle', 'spring', 'iceHole', 'moonPond',
+  // New water pits go ABOVE this comment, one line per season.
+];
 
 export function isWaterPit(kind: PitKind): boolean {
   return WATER_PITS.includes(kind);
