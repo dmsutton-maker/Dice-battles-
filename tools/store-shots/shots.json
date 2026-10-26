@@ -1,0 +1,126 @@
+[
+ {
+  "name": "sky",
+  "w": 1600,
+  "h": 1500,
+  "arena": "sky",
+  "skin": "ivory",
+  "dist": 14.2,
+  "pitch": 0.72,
+  "yaw": 0.3
+ },
+ {
+  "name": "candy",
+  "w": 1600,
+  "h": 1500,
+  "arena": "candy",
+  "skin": "ivory",
+  "dist": 15,
+  "pitch": 0.6,
+  "yaw": 0.4
+ },
+ {
+  "name": "cavern",
+  "w": 1600,
+  "h": 1500,
+  "arena": "cavern",
+  "skin": "ivory",
+  "dist": 16,
+  "pitch": 0.72,
+  "yaw": -0.34
+ },
+ {
+  "name": "volcano",
+  "w": 900,
+  "h": 900,
+  "arena": "volcano",
+  "skin": "ivory",
+  "dist": 18,
+  "pitch": 0.8,
+  "yaw": 0.3,
+  "dice": "0"
+ },
+ {
+  "name": "aurora",
+  "w": 900,
+  "h": 900,
+  "arena": "aurora",
+  "skin": "ivory",
+  "dist": 18,
+  "pitch": 0.8,
+  "yaw": 0.3,
+  "dice": "0"
+ },
+ {
+  "name": "reef",
+  "w": 900,
+  "h": 900,
+  "arena": "reef",
+  "skin": "ivory",
+  "dist": 18,
+  "pitch": 0.8,
+  "yaw": 0.3,
+  "dice": "0"
+ },
+ {
+  "name": "moon",
+  "w": 900,
+  "h": 900,
+  "arena": "moon",
+  "skin": "ivory",
+  "dist": 18,
+  "pitch": 0.8,
+  "yaw": 0.3,
+  "dice": "0"
+ },
+ {
+  "name": "duoA",
+  "w": 1500,
+  "h": 820,
+  "arena": "farm",
+  "skin": "ivory",
+  "dist": 15.5,
+  "pitch": 0.85,
+  "yaw": 0.22
+ },
+ {
+  "name": "duoB",
+  "w": 1500,
+  "h": 820,
+  "arena": "farm",
+  "skin": "midnight",
+  "dist": 15.5,
+  "pitch": 0.85,
+  "yaw": -0.2
+ },
+ {
+  "name": "skyW",
+  "w": 1900,
+  "h": 1250,
+  "arena": "sky",
+  "skin": "ivory",
+  "dist": 16.5,
+  "pitch": 0.72,
+  "yaw": 0.3
+ },
+ {
+  "name": "candyW",
+  "w": 1900,
+  "h": 1250,
+  "arena": "candy",
+  "skin": "ivory",
+  "dist": 15.5,
+  "pitch": 0.6,
+  "yaw": 0.4
+ },
+ {
+  "name": "cavernW",
+  "w": 1900,
+  "h": 1250,
+  "arena": "cavern",
+  "skin": "ivory",
+  "dist": 16.5,
+  "pitch": 0.72,
+  "yaw": -0.34
+ }
+]

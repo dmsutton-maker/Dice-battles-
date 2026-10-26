@@ -1,0 +1,82 @@
+import { runAll } from './harness';
+
+/**
+ * Test entry point: `npm test`.
+ *
+ * Suites are imported for their side effect of registering tests, then run
+ * in one pass so a single non-zero exit code reports the whole suite.
+ */
+async function main(): Promise<void> {
+  await import('./physics.test');
+  await import('./game.test');
+  await import('./screen.test');
+  await import('./persistence.test');
+  await import('./currency.test');
+  await import('./audio.test');
+  await import('./bugReport.test');
+  await import('./flight.test');
+  await import('./matchmaking.test');
+  await import('./colorblind.test');
+  await import('./splitRules.test');
+  await import('./aim.test');
+  await import('./tournament.test');
+  await import('./push.test');
+  await import('./fire.test');
+  await import('./neonDice.test');
+  await import('./dinoValley.test');
+  await import('./season2.test');
+  await import('./downloadSize.test');
+  await import('./effects.test');
+  await import('./seasonPass.test');
+  await import('./water.test');
+  await import('./hazards.test');
+  await import('./noEmoji.test');
+  await import('./itemPreview.test');
+  await import('./previewGesture.test');
+  await import('./itemPreviewContrast.test');
+  await import('./preview.test');
+  await import('./textures.test');
+  await import('./continuity.test');
+  await import('./tutorial.test');
+  await import('./friends.test');
+  await import('./invite.test');
+  await import('./friendsFast.test');
+  await import('./ads.test');
+  await import('./icons.test');
+  await import('./appIcon.test');
+  await import('./arena.test');
+  await import('./arenaShape.test');
+  await import('./bespokeArenas.test');
+  await import('./layout.test');
+  await import('./popupLayout.test');
+  await import('./coinLabelLayout.test');
+  await import('./achievements.test');
+  await import('./news.test');
+  await import('./crashGuard.test');
+  await import('./submission.test');
+  await import('./purchases.test');
+  await import('./purchasesRuntime.test');
+  await import('./website.test');
+  await import('./power.test');
+  await import('./reinstall.test');
+  await import('./foldable.test');
+  await import('./matchSearch.test');
+  await import('./warmup.test');
+  await import('./auditFixes.test');
+  await import('./glide.test');
+  await import('./starterPack.test');
+  await import('./shopPrices.test');
+  await import('./fishSwim.test');
+  await import('./rewardInfo.test');
+  await import('./productArt.test');
+  await import('./itemBlurbs.test');
+  await import('./ladder.test');
+  await import('./circuitPulse.test');
+  await import('./cupRotation.test');
+  await import('./arenaSpeed.test');
+  await import('./seasonRotation.test');
+  await import('./productPreview.test');
+  process.exit(await runAll());
+}
+
+main();

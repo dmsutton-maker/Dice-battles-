@@ -1,16 +1,49 @@
 import { useFrame } from '@react-three/fiber/native';
 import * as CANNON from 'cannon-es';
 import * as Haptics from 'expo-haptics';
+import { AppState } from 'react-native';
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { addTrayBodies, createPhysicsWorld } from '../physics/world';
-import { createDieBody, createDieMaterials, throwDie, topFaceColor } from '../dice/die';
+import { playClack, playThrow } from '../audio/sounds';
+import { MOAT, ObstacleLayout } from '../game/obstacles';
+import { ARENAS, ArenaId } from '../arena/arenas';
+import { obstacleLook } from '../arena/obstacleLooks';
+import { Mound, Pit } from '../arena/Hazards';
+import { BUMP_SECONDS, bumpSquash, gulpScale } from '../arena/hazardShapes';
+import { WaterClock } from '../arena/waterClock';
+import { createDieBody, throwDie } from '../dice/die';
+import {
+  dieSpeed,
+  freezeDice,
+  isOutOfBounds,
+  readFaces,
+  shouldCallRoll,
+} from '../dice/settle';
+import { DieMesh } from '../dice/DieMesh';
+import { createDieEffect, DieEffect, DieEffectId, DieSample } from '../dice/dieEffect';
+import { PatternId } from '../dice/patterns';
 import { ColorDef } from '../game/colors';
+import { laneColors, PrisonerUnit } from '../game/modes';
+import { Prisoners } from '../game/Prisoners';
+import { RETREAT_SLOTS } from '../game/stations';
 import { TUNING } from '../game/tuning';
+import { addTrayBodies, createPhysicsWorld } from '../physics/world';
+import { cameraBase } from './cameraFit';
+import { CameraRig } from './CameraRig';
+
+/** A flick in world space, from the player's gesture. */
+export interface Flick {
+  x: number;
+  z: number;
+}
 
 export interface SceneControls {
-  /** Throw both dice. Pass a flick velocity for directional throws. */
-  throwAll: (flick?: { x: number; z: number }) => void;
+  /**
+   * Throw both dice, carrying the player's flick if there was one. Reports
+   * whether the throw went out now or was queued behind a roll still in
+   * progress, since rolls are binding until the dice settle.
+   */
+  throwAll: (flick?: Flick) => 'launched' | 'queued';
 }
 
 interface DiceSceneProps {
@@ -18,49 +51,218 @@ interface DiceSceneProps {
   controlsRef: React.MutableRefObject<SceneControls | null>;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
+  /** A die just went under in the moat (Hard mode). */
+  onMoatSink?: () => void;
+  /** The prisoner lineup with current stations (drives the figures). */
+  units: PrisonerUnit[];
+  /** Increment to fire a celebratory camera shake (e.g. on each rescue). */
+  shakeSignal: number;
+  /** This round's obstacle placements. Remount the scene when it changes. */
+  layout: ObstacleLayout;
+  /** Which arena theme to draw (trophy unlocks switch this). */
+  arenaId: ArenaId;
+  /** Equipped dice skin's shell colour and pattern (src/game/diceSkins.ts). */
+  dieBodyColor: string;
+  diePattern?: PatternId;
+  diePatternInk?: string;
+  dieSymbols?: boolean;
+  /**
+   * Something the equipped skin does beyond its paint — the Fire and Ice
+   * dice. See src/dice/dieEffect.ts. Looks only: nothing here reaches
+   * the physics or the settle rule.
+   */
+  dieEffect?: DieEffectId;
+  /**
+   * The board is otherwise asleep and only the water wants drawing — see
+   * WaterClock. Passed down from the frameloop rule in DiceDemoScreen.
+   */
+  waterIdle?: boolean;
+  /**
+   * Whether throws are currently allowed (true during a live round). A tap
+   * queued mid-roll is discarded rather than fired if the round ended while
+   * the dice were still tumbling.
+   */
+  throwsEnabled?: boolean;
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
-  [-1.1, TUNING.dieSize / 2, 2.2],
-  [1.1, TUNING.dieSize / 2, 2.4],
+  [-0.9, TUNING.dieSize / 2, 2.2],
+  [0.9, TUNING.dieSize / 2, 2.4],
 ];
 
 /**
- * The full 3D demo scene: physics world, tray, two dice, blob shadows,
- * settle detection, and collision haptics. Lives inside the r3f Canvas.
+ * The full 3D scene: physics world, castle arena, two dice, prisoners,
+ * blob shadows, settle detection, collision haptics, and camera shake.
  */
-export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
+export function DiceScene({
+  controlsRef,
+  onThrow,
+  onSettled,
+  onMoatSink,
+  units,
+  shakeSignal,
+  layout,
+  arenaId,
+  dieBodyColor,
+  diePattern = 'plain',
+  diePatternInk,
+  dieSymbols = false,
+  dieEffect,
+  throwsEnabled = true,
+  waterIdle = false,
+}: DiceSceneProps) {
+  const ArenaComponent = ARENAS[arenaId].Component;
+  /*
+    The colour of each retreat pad, handed to the scenery.
+
+    Built from the prisoners rather than from the mode, so the pads
+    cannot disagree with where the figures are actually sent — one list,
+    read by the arena that paints the row and by the board that walks
+    soldiers onto it. See laneColors() and David's request of 20 Sep
+    2026.
+  */
+  const padColors = useMemo(() => laneColors(units, RETREAT_SLOTS.length), [units]);
+  // How this battlefield dresses its hazards. See obstacleLooks.ts.
+  const look = obstacleLook(arenaId);
+  const lighting = ARENAS[arenaId].lighting;
+  // The parent remounts this scene (key includes the round) whenever the
+  // layout changes, so building the world once per mount is correct.
+  const obstacles = layout;
   const physics = useMemo(() => {
     const p = createPhysicsWorld();
-    addTrayBodies(p);
+    addTrayBodies(p, obstacles);
     return p;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const diceBodies = useMemo(
-    () => DIE_START_POSITIONS.map((pos) => {
-      const body = createDieBody(physics.dieMaterial, pos);
-      physics.world.addBody(body);
-      return body;
-    }),
+    () =>
+      DIE_START_POSITIONS.map((pos) => {
+        const body = createDieBody(physics.dieMaterial, pos);
+        physics.world.addBody(body);
+        return body;
+      }),
     [physics],
   );
 
-  const dieMaterials = useMemo(
-    () => DIE_START_POSITIONS.map(() => createDieMaterials()),
+  const dieMeshRefs = useRef<(THREE.Group | null)[]>([]);
+
+  /*
+    The Fire or Ice dice's effect, built only while that skin is on the
+    table (or in its Store preview), and thrown away the moment it is
+    not. Read through a ref inside the throw and the frame loop, so
+    swapping skins never re-creates the throw controls. The layout is
+    fixed for the life of this scene (it is remounted when it changes),
+    so the effect is told where the moat is once.
+  */
+  const fire = useMemo<DieEffect | null>(
+    () =>
+      dieEffect !== undefined
+        ? createDieEffect(dieEffect, DIE_START_POSITIONS.length, obstacles.moat)
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dieEffect],
+  );
+  useEffect(() => () => fire?.dispose(), [fire]);
+  const fireRef = useRef<DieEffect | null>(fire);
+  fireRef.current = fire;
+  // Where each die is, handed to the fire every frame. Built once and
+  // written in place: nothing in the frame loop allocates.
+  const fireSamples = useMemo<DieSample[]>(
+    () =>
+      DIE_START_POSITIONS.map(([x, y, z]) => ({
+        x, y, z, vx: 0, vy: 0, vz: 0,
+        quaternion: new THREE.Quaternion(),
+        moving: false,
+      })),
     [],
   );
-
-  const dieMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
   const shadowRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   // Settle tracking (mutable, not state — updated every frame).
   const stillFrames = useRef(0);
   const awaitingSettle = useRef(false);
+  const throwStartedAt = useRef(0);
+  /**
+   * A tap made while the dice are still rolling is REMEMBERED and fired the
+   * moment they settle, instead of being swallowed. Frantic tapping is the
+   * whole feel of the game, but a roll must still be binding (you can't
+   * cancel a bad roll mid-air), so the queued throw always lands after the
+   * previous roll has been counted.
+   */
+  const queuedThrow = useRef<{ flick?: Flick } | null>(null);
+  /**
+   * Set when a tap arrives mid-roll. It does not cancel the roll — it asks
+   * for it to be CALLED as soon as there is a real face to read, instead
+   * of when the dice have come to a complete stop. Cleared on every launch.
+   */
+  const hurried = useRef(false);
+  const queuedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const launchRef = useRef<((flick?: Flick) => void) | null>(null);
+  /** Mirrors the `throwsEnabled` prop for use inside the frame loop. */
+  const throwsEnabledRef = useRef(true);
+  throwsEnabledRef.current = throwsEnabled;
+
+  // Moat sinking: timestamp until which each die stays underwater before
+  // being fished out; 0 = not sinking. Splash ring animation progress.
+  const sinkUntil = useRef<number[]>([0, 0]);
+  /**
+   * A die can be swallowed by the moat at most once per roll. Without this
+   * the same die can be knocked back in again and again, and each capture
+   * restarts the settle clock — a roll that drags on for many seconds and
+   * is tedious rather than dramatic.
+   */
+  const sankThisRoll = useRef<boolean[]>([false, false]);
+  const splashRef = useRef<THREE.Mesh | null>(null);
+  const splashT = useRef(1); // >= 1 means idle
+  /*
+    The traps answer back (docs/board-redesign.md, "haptics and
+    micro-animation"): the pit gives a quick gulp when it swallows a die,
+    timed off the splash above, and the bump squashes a little when a die
+    glances off it. Looks only — the physics bodies never move.
+  */
+  const pitSpringRef = useRef<THREE.Group | null>(null);
+  const moundSpringRef = useRef<THREE.Group | null>(null);
+  const moundT = useRef(BUMP_SECONDS); // >= BUMP_SECONDS means idle
+
+  // Camera shake amount, decays every frame.
+  const shake = useRef(0);
+  const lastShakeSignal = useRef(shakeSignal);
+  useEffect(() => {
+    if (shakeSignal !== lastShakeSignal.current) {
+      lastShakeSignal.current = shakeSignal;
+      shake.current = 1;
+    }
+  }, [shakeSignal]);
+
+  /*
+    Coming back from the background does not decide the roll.
+
+    The 3200 ms backstop in src/dice/settle.ts is the one settle path
+    with no motion, sleep or grounded test — it fires purely on elapsed
+    time, and elapsed is wall-clock while the render loop stops the
+    moment the app goes away. So backgrounding mid-roll for four seconds
+    used to mean the very first resumed frame hit the backstop, teleported
+    a still-airborne die to the floor on whatever face happened to be
+    nearest up, and counted it.
+
+    Restarting the clock on return is the same fix the moat respawn
+    already uses further down: measuring from the original throw charges
+    the roll for time it did not spend rolling.
+  */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && awaitingSettle.current) {
+        throwStartedAt.current = Date.now();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Collision haptics: light tick on hard impacts, throttled.
   useEffect(() => {
     const lastTick = { t: 0 };
-    const onCollide = (event: { contact: CANNON.ContactEquation }) => {
+    const onCollide = (event: { body: CANNON.Body; contact: CANNON.ContactEquation }) => {
       const impact = event.contact.getImpactVelocityAlongNormal();
       const now = Date.now();
       if (
@@ -69,6 +271,18 @@ export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
       ) {
         lastTick.t = now;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        playClack();
+      } else if (
+        // A die glancing off the bump: a softer tap than a hard hit, and
+        // the bump's own squash. Shares the cooldown, so a die rolling
+        // over the top does not buzz.
+        event.body.material?.name === 'mound' &&
+        impact > TUNING.haptics.moundMinImpact &&
+        now - lastTick.t > TUNING.haptics.collisionCooldownMs
+      ) {
+        lastTick.t = now;
+        moundT.current = 0;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
       }
     };
     diceBodies.forEach((body) => body.addEventListener('collide', onCollide));
@@ -78,32 +292,74 @@ export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
   }, [diceBodies]);
 
   useEffect(() => {
+    const launch = (flick?: Flick) => {
+      awaitingSettle.current = true;
+      hurried.current = false;
+      stillFrames.current = 0;
+      throwStartedAt.current = Date.now();
+      sankThisRoll.current = [false, false];
+      diceBodies.forEach((body) => throwDie(body, { flick }));
+      fireRef.current?.thrown(fireSamples);
+      playThrow();
+      onThrow();
+    };
+
     controlsRef.current = {
       throwAll: (flick) => {
-        awaitingSettle.current = true;
-        stillFrames.current = 0;
-        diceBodies.forEach((body) =>
-          throwDie(body, flick ? { flickVelocity: flick } : {}),
-        );
-        onThrow();
+        // Every roll is binding: no re-throwing while dice are still
+        // tumbling, or players could cancel bad rolls mid-air (which
+        // guts Ultimate's prisoner-exchange rule entirely).
+        //
+        // The tap is REMEMBERED, not obeyed. It no longer tells the settle
+        // rule anything — that reach-back is what let a player spam the
+        // board clear, because ending the roll early is the same thing as
+        // deciding its colour with a clock. All `hurried` does now is make
+        // the pause AFTER the dice land a short one, since somebody who
+        // has already tapped has seen the result and is waiting on it.
+        if (awaitingSettle.current) {
+          queuedThrow.current = { flick };
+          hurried.current = true;
+          return 'queued';
+        }
+        launch(flick);
+        return 'launched';
       },
     };
+    launchRef.current = launch;
     return () => {
       controlsRef.current = null;
+      launchRef.current = null;
     };
-  }, [controlsRef, diceBodies, onThrow]);
+  }, [controlsRef, diceBodies, fireSamples, onThrow]);
 
-  useFrame((_state, delta) => {
+  // Cancel any pending queued throw on unmount (round change, arena swap).
+  useEffect(
+    () => () => {
+      if (queuedTimer.current) clearTimeout(queuedTimer.current);
+      queuedThrow.current = null;
+    },
+    [],
+  );
+
+  useFrame((state, delta) => {
     physics.world.step(
       TUNING.physics.timeStep,
       Math.min(delta, 0.05),
       TUNING.physics.maxSubSteps,
     );
 
-    let allStill = true;
+    let stillNow = true;
     diceBodies.forEach((body, i) => {
       const mesh = dieMeshRefs.current[i];
-      if (mesh) {
+      /*
+        Frozen into the pond (the Ice dice): the PICTURE stays where it
+        was caught, stuck half out of the ice, while the body sinks and
+        is fished out on the usual clock. Only the mesh is held.
+      */
+      const held = sinkUntil.current[i] > 0 ? fireRef.current?.heldAt(i) ?? null : null;
+      if (mesh && held !== null) {
+        mesh.position.y = held;
+      } else if (mesh) {
         mesh.position.set(body.position.x, body.position.y, body.position.z);
         mesh.quaternion.set(
           body.quaternion.x,
@@ -124,83 +380,265 @@ export function DiceScene({ controlsRef, onThrow, onSettled }: DiceSceneProps) {
         material.opacity = 0.28 * Math.max(1 - height * 0.18, 0.25);
       }
 
-      const speed =
-        body.velocity.length() + body.angularVelocity.length() * 0.5;
-      if (speed > TUNING.settle.speedThreshold) allStill = false;
+      // Moat sinking: when a die dips under the surface it is marked as
+      // sinking and left to fall VISIBLY through the translucent water for
+      // ~0.9s before being fished back out — so the player sees it drown.
+      const now = Date.now();
+      const inMoatZone =
+        obstacles.moat !== null &&
+        Math.abs(body.position.x - obstacles.moat.x) < MOAT.size / 2 + 0.15 &&
+        Math.abs(body.position.z - obstacles.moat.z) < MOAT.size / 2 + 0.15;
+      const sinking = sinkUntil.current[i] > 0;
+      if (!sinking && !sankThisRoll.current[i] && inMoatZone && body.position.y < 0.12) {
+        sinkUntil.current[i] = now + 900;
+        splashT.current = 0; // kick off the splash ring
+        fireRef.current?.sank(i, body.position.x, body.position.z);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+        onMoatSink?.();
+      }
+      const respawn = () => {
+        const [startX, startY, startZ] = DIE_START_POSITIONS[i];
+        // Placed back on the board rather than dropped: a die fished out
+        // of the moat has already cost the player the sinking animation, so
+        // it settles almost at once instead of bouncing around again.
+        body.position.set(startX, startY + 0.15, startZ);
+        body.velocity.set(0, 0, 0);
+        body.angularVelocity.set(0, 0, 0);
+        body.wakeUp();
+        sinkUntil.current[i] = 0;
+        sankThisRoll.current[i] = true;
+        // A die fished out of the moat is dropped back in and rolls again,
+        // so the settle deadline restarts here. Measuring from the original
+        // throw charged it for the time it spent underwater and left it
+        // being snapped still mid-bounce when the backstop fired.
+        throwStartedAt.current = Date.now();
+      };
+      if (sinking) {
+        // Slow the fall so the die lingers visibly under the water.
+        body.velocity.y = Math.max(body.velocity.y, -1.6);
+        if (now >= sinkUntil.current[i] || body.position.y < -3) {
+          fireRef.current?.fishedOut(i);
+          respawn();
+        }
+      } else if (isOutOfBounds(body)) {
+        respawn();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      }
+
+      if (dieSpeed(body) > TUNING.settle.speedThreshold) stillNow = false;
     });
 
-    if (awaitingSettle.current) {
-      stillFrames.current = allStill ? stillFrames.current + 1 : 0;
-      if (stillFrames.current >= TUNING.settle.stillFrames) {
-        awaitingSettle.current = false;
-        const faces = diceBodies.map((body) =>
-          topFaceColor(
-            new THREE.Quaternion(
-              body.quaternion.x,
-              body.quaternion.y,
-              body.quaternion.z,
-              body.quaternion.w,
-            ),
-          ),
+    if (fire) {
+      diceBodies.forEach((body, i) => {
+        const sample = fireSamples[i];
+        sample.x = body.position.x;
+        sample.y = body.position.y;
+        sample.z = body.position.z;
+        sample.vx = body.velocity.x;
+        sample.vy = body.velocity.y;
+        sample.vz = body.velocity.z;
+        sample.quaternion.set(
+          body.quaternion.x,
+          body.quaternion.y,
+          body.quaternion.z,
+          body.quaternion.w,
         );
-        onSettled(faces);
+        sample.moving = dieSpeed(body) > TUNING.settle.speedThreshold;
+      });
+      // A sprite's size in world units, turned into pixels at one unit
+      // from the camera.
+      const camera = state.camera as THREE.PerspectiveCamera;
+      const pointScale =
+        (state.size.height * state.viewport.dpr) /
+        (2 * Math.tan(((camera.fov ?? 45) * Math.PI) / 360));
+      fire.update(Math.min(delta, 0.05), state.clock.elapsedTime, fireSamples, pointScale);
+    }
+
+    // Splash ring animation over the moat.
+    if (splashRef.current && splashT.current < 1) {
+      splashT.current = Math.min(splashT.current + delta / 0.7, 1);
+      const t = splashT.current;
+      splashRef.current.visible = true;
+      splashRef.current.scale.setScalar(0.4 + t * 1.5);
+      (splashRef.current.material as THREE.MeshBasicMaterial).opacity =
+        0.85 * (1 - t);
+    } else if (splashRef.current) {
+      splashRef.current.visible = false;
+    }
+
+    // The trap springs. Written in place every frame: nothing allocates.
+    if (pitSpringRef.current) {
+      const s = gulpScale(splashT.current * 0.7);
+      pitSpringRef.current.scale.set(s, 1, s);
+    }
+    if (moundSpringRef.current) {
+      if (moundT.current < BUMP_SECONDS) moundT.current += delta;
+      const sy = bumpSquash(moundT.current);
+      const sxz = 1 + (1 - sy) * 0.5;
+      moundSpringRef.current.scale.set(sxz, sy, sxz);
+    }
+
+    // Camera shake with decay, offset from the auto-fitted base position.
+    if (shake.current > 0.01) {
+      state.camera.position.set(
+        cameraBase.x + (Math.random() - 0.5) * 0.18 * shake.current,
+        cameraBase.y + (Math.random() - 0.5) * 0.12 * shake.current,
+        cameraBase.z + (Math.random() - 0.5) * 0.18 * shake.current,
+      );
+      shake.current *= 0.88;
+    } else if (shake.current !== 0) {
+      shake.current = 0;
+      state.camera.position.copy(cameraBase);
+    }
+
+    if (awaitingSettle.current) {
+      // The settle rule itself lives in src/dice/settle.ts so the headless
+      // test suite can exercise exactly this logic (see tests/physics).
+      const elapsed = Date.now() - throwStartedAt.current;
+      stillFrames.current = stillNow ? stillFrames.current + 1 : 0;
+
+      if (shouldCallRoll(diceBodies, elapsed, stillFrames.current)) {
+        awaitingSettle.current = false;
+        /*
+          THE DIE IS LEFT EXACTLY WHERE IT LANDED.
+
+          There used to be a righting step here. A die that came to rest
+          cocked — perched on an obstacle, or leaning on a wall — was
+          turned square and dropped flat before the result was shown, on
+          the reasoning that the player should see the colour the game
+          counted rather than a die at an angle.
+
+          David, 10 Sep 2026: "when a dice lands too close to the wall
+          and doesn't land flat, it teleports down to be flat, but don't
+          make it do that, just make it count whatever's on top like what
+          it used to do." Watching a die you have just thrown jump to a
+          new position is worse than reading it at an angle — it looks
+          like the game moved your dice, because it did.
+
+          NOTHING ABOUT THE RESULT CHANGES. That was true of the righting
+          step too, and it is the reason removing it is safe:
+          `topFaceColor` reports the nearest-up face, which is the same
+          face the snap used to turn upward. The colour counted is the
+          colour on top, before and after — the only difference is that
+          the die is no longer moved to make it obvious.
+
+          What it costs: a die wedged at an angle can have two faces
+          nearly equally up, and then the one the game counts is not
+          obviously the one on top. That is the trade David asked for,
+          knowingly, and it is one line to put back.
+
+          `snapDieToNearestFace` is kept, and still tested, for exactly
+          that reason.
+        */
+        freezeDice(diceBodies);
+        onSettled(readFaces(diceBodies));
+
+        // Fire a tap that arrived mid-roll, just after the result lands so
+        // the player sees what they rolled. Dropped if the round ended.
+        const queued = queuedThrow.current;
+        const wasHurried = hurried.current;
+        queuedThrow.current = null;
+        hurried.current = false;
+        if (queued) {
+          if (queuedTimer.current) clearTimeout(queuedTimer.current);
+          // The pause exists so the result registers before the dice go
+          // out again. Somebody who has already tapped has seen it and is
+          // waiting, so they get the short one.
+          const delay = wasHurried
+            ? TUNING.settle.hurriedThrowDelayMs
+            : TUNING.settle.queuedThrowDelayMs;
+          queuedTimer.current = setTimeout(() => {
+            if (throwsEnabledRef.current && !awaitingSettle.current) {
+              launchRef.current?.(queued.flick);
+            }
+          }, delay);
+        }
       }
     }
   });
 
-  const { innerWidth, innerDepth, wallHeight, wallThickness } = TUNING.tray;
-
   return (
     <>
-      <ambientLight intensity={1.1} />
-      <directionalLight position={[4, 10, 6]} intensity={2.6} />
-      <directionalLight position={[-6, 8, -4]} intensity={0.8} color="#bcd4ff" />
+      <CameraRig />
+      <WaterClock idle={waterIdle} />
+      {/*
+        Lighting belongs to the ARENA, not to the scene. It used to be
+        these three fixed lights for every arena, which is why Sunset
+        Castle looked like the day castle repainted: a high white sun was
+        still overhead. Because the lights are global they also fall on
+        the dice and the prisoners, so the hour changes for everything on
+        the table rather than for the scenery alone.
+      */}
+      <hemisphereLight
+        args={[
+          lighting.hemisphere.sky,
+          lighting.hemisphere.ground,
+          lighting.hemisphere.intensity,
+        ]}
+      />
+      <directionalLight
+        position={lighting.key.position}
+        intensity={lighting.key.intensity}
+        color={lighting.key.color}
+      />
+      <directionalLight
+        position={lighting.fill.position}
+        intensity={lighting.fill.intensity}
+        color={lighting.fill.color}
+      />
 
-      {/* Tray floor */}
-      <mesh position={[0, -0.25, 0]}>
-        <boxGeometry
-          args={[innerWidth + wallThickness * 2, 0.5, innerDepth + wallThickness * 2]}
+      <ArenaComponent padColors={padColors} />
+      <Prisoners units={units} symbols={dieSymbols} />
+
+      {/*
+        Difficulty obstacles, dressed for the battlefield they are on.
+        The physics is identical everywhere — same sphere, same hole — so
+        Hard is Hard whichever arena you pick. Only the look changes.
+      */}
+      {obstacles.mound && (
+        <Mound
+          look={look}
+          position={[obstacles.mound.x, 0, obstacles.mound.z]}
+          springRef={moundSpringRef}
         />
-        <meshStandardMaterial color="#caa96e" roughness={0.9} />
-      </mesh>
-
-      {/* Tray walls */}
-      {(
-        [
-          [-(innerWidth / 2 + wallThickness / 2), 0, innerDepth + wallThickness * 2, wallThickness],
-          [innerWidth / 2 + wallThickness / 2, 0, innerDepth + wallThickness * 2, wallThickness],
-        ] as const
-      ).map(([x, z, depth, width], i) => (
-        <mesh key={`side-${i}`} position={[x, wallHeight / 2, z]}>
-          <boxGeometry args={[width, wallHeight, depth]} />
-          <meshStandardMaterial color="#8a6a3b" roughness={0.85} />
-        </mesh>
-      ))}
-      {(
-        [
-          [-(innerDepth / 2 + wallThickness / 2)],
-          [innerDepth / 2 + wallThickness / 2],
-        ] as const
-      ).map(([z], i) => (
-        <mesh key={`end-${i}`} position={[0, wallHeight / 2, z]}>
-          <boxGeometry args={[innerWidth, wallHeight, wallThickness]} />
-          <meshStandardMaterial color="#8a6a3b" roughness={0.85} />
-        </mesh>
-      ))}
+      )}
+      {obstacles.moat && (
+        <group position={[obstacles.moat.x, 0, obstacles.moat.z]}>
+          {/*
+            Each board's own pit: water, lava, a hatch onto the stars
+            (src/arena/Hazards.tsx). Always the same square hole beneath.
+          */}
+          <Pit look={look} springRef={pitSpringRef} />
+          {/* Splash ring (animated on sink) */}
+          <mesh
+            ref={(m) => {
+              splashRef.current = m;
+            }}
+            visible={false}
+            position={[0, 0.06, 0]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <ringGeometry args={[0.42, 0.55, 24]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0} />
+          </mesh>
+        </group>
+      )}
 
       {/* Dice */}
-      {DIE_START_POSITIONS.map((pos, i) => (
-        <mesh
+      {DIE_START_POSITIONS.map((_pos, i) => (
+        <DieMesh
           key={`die-${i}`}
-          ref={(mesh) => {
+          bodyColor={dieBodyColor}
+            pattern={diePattern}
+            patternInk={diePatternInk}
+            symbols={dieSymbols}
+          ref={(mesh: THREE.Group | null) => {
             dieMeshRefs.current[i] = mesh;
           }}
-          position={pos}
-          material={dieMaterials[i]}
-        >
-          <boxGeometry args={[TUNING.dieSize, TUNING.dieSize, TUNING.dieSize]} />
-        </mesh>
+        />
       ))}
+
+      {fire && <primitive object={fire.group} />}
 
       {/* Blob shadows */}
       {DIE_START_POSITIONS.map((_pos, i) => (
