@@ -223,6 +223,17 @@ in the conversation and the session's upload folder.
 - **Build 17 uploaded** from the session (EAS Submit, Apple key in a
   temporary `eas.json` edit that was reverted), processed `VALID`, and
   is now the build on version 1.60.0, with encryption answered "no".
+- **The eight purchases are in a DRAFT review submission** (Apple's
+  newer flow: "Add for Review" on each purchase; the version page has no
+  purchases section). Not sent. Version 1.60.0 is not in it yet; adding
+  it and pressing Submit to App Review is the last step, after the gate.
+- **AdMob, checked 1 Nov:** iOS app and interstitial `…/5594525845` (the
+  one `ads.ts` uses) present; a second unused unit with the same name,
+  `…/2079998267`. "Requires review / Limited ad serving" until the App
+  Store page is linked after launch. app-ads.txt: no requests yet
+  (expected before launch). Payments: W-9 and address on file, no payment
+  method yet (Google asks at the threshold). **Account max ad content
+  rating changed from MA to G**, matching the per-request G cap in code.
 
 ## iOS builds can run from a session again (9 Oct 2026)
 
