@@ -12,6 +12,7 @@ import { initPurchases } from '../../src/game/purchases';
 import { Text } from 'react-native';
 import { todayStamp, TOURNAMENTS, TournamentDef } from '../../src/game/tournament';
 import { withRotation } from '../../src/game/cupRotation';
+import { offersAt, questDayStamp, questTarget } from '../../src/game/quests';
 
 /**
  * A real screen, drawn through react-native-web.
@@ -185,6 +186,19 @@ if (params.get('screen') === 'dots') {
         // Part-way up the season pass, past Snowy Hollow at level 6, so
         // reached, next and still-to-come tiles all show at once.
         season={{ season: 'season-1', xp: 1460, paid: 7 }}
+        // Today's quests (quests.ts). ?quest=chosen draws the medium one
+        // part-way done; ?quest=done draws it finished; nothing, unpicked.
+        quest={
+          params.get('quest')
+            ? {
+                day: questDayStamp(Date.now()),
+                chosen: offersAt(Date.now())[1].id,
+                progress: params.get('quest') === 'done' ? questTarget(offersAt(Date.now())[1]) : 1,
+                done: params.get('quest') === 'done',
+              }
+            : undefined
+        }
+        onChooseQuest={() => {}}
         // ?gold=1 draws it as a Gold Pass holder sees it.
         gold={params.get('gold') === '1'}
         onGetGold={() => {}}

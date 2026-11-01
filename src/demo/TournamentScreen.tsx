@@ -23,6 +23,7 @@ import { ItemIcon, pictureOfItem } from './ItemIcon';
 import { SeasonPassCard } from './SeasonPassCard';
 import type { PreviewTarget } from '../game/itemPreview';
 import type { SeasonState } from '../game/seasonPass';
+import type { QuestState } from '../game/quests';
 
 /**
  * The Cups tab: the tournaments running right now.
@@ -49,6 +50,8 @@ export function TournamentScreen({
   today,
   onPlay,
   season,
+  quest,
+  onChooseQuest,
   gold,
   onGetGold,
   onPreview,
@@ -57,6 +60,10 @@ export function TournamentScreen({
   states: Record<string, TournamentState>;
   /** The season pass, drawn above the cups. See SeasonPassCard. */
   season: SeasonState | undefined;
+  /** Today's quest for the pass, if one is chosen (quests.ts). */
+  quest: QuestState | undefined;
+  /** Choose one of today's three quests. */
+  onChooseQuest: (id: string) => void;
   /** Does this phone own the Gold Pass? */
   gold: boolean;
   /** Take the player to the Store, where the Gold Pass is sold. */
@@ -78,7 +85,7 @@ export function TournamentScreen({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <SeasonPassCard state={season} gold={gold} onGetGold={onGetGold} onPreview={onPreview} />
+        <SeasonPassCard state={season} quest={quest} onChooseQuest={onChooseQuest} gold={gold} onGetGold={onGetGold} onPreview={onPreview} />
         <Text style={styles.note}>
           A cup is a run of wins in one way of playing, and they are meant to
           be hard. Win them in a row and the prize is yours — coins, trophies,

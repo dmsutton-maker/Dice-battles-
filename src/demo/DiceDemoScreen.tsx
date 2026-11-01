@@ -92,7 +92,9 @@ import {
   TROPHY_STAKES,
   setTournamentState,
   setSeasonState,
+  setQuestState,
 } from '../game/progress';
+import { chooseQuest, countQuestBattle, questDoneWords, QuestState } from '../game/quests';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
   laneOf,
@@ -307,6 +309,7 @@ export function DiceDemoScreen() {
         */
         setCupStates(progress.tournaments ?? {});
         setSeason(progress.season);
+        setQuest(progress.quest);
         /*
           Snowy Hollow and Volcano Rim left the trophy ladder for the
           season pass. Whoever had already earned one keeps it — handed
@@ -798,6 +801,8 @@ export function DiceDemoScreen() {
    */
   const [season, setSeason] = useState<SeasonState | undefined>(undefined);
   const [lastXp, setLastXp] = useState(0);
+  /** Today's quest for the pass (src/game/quests.ts), once one is chosen. */
+  const [quest, setQuest] = useState<QuestState | undefined>(undefined);
   /** Whether this phone owns this season's Gold Pass (seasonPass.ts). */
   /** Moves on each time Cups' "Get the Gold Pass" sends the player to the Store. */
   const [goldFocus, setGoldFocus] = useState(0);
@@ -896,6 +901,8 @@ export function DiceDemoScreen() {
   const startPendingRef = useRef(false);
   const startEpochRef = useRef(0);
   const lastSplash = useRef(0);
+  /** A die of yours fell in this battle, for the "no splash" quest (quests.ts). */
+  const splashedRef = useRef(false);
 
   // Whether the start screen's content is taller than the screen itself.
   const pickHeights = useRef({ viewport: 0, content: 0 });
@@ -981,6 +988,7 @@ export function DiceDemoScreen() {
     setUnits(fresh);
     aiFreedRef.current = [];
     setAiFreed([]);
+    splashedRef.current = false;
     setRolledFaces(null);
     setAiLastRoll(null);
     setRolling(false);
@@ -1148,6 +1156,7 @@ export function DiceDemoScreen() {
 
   const handleMoatSink = useCallback(() => {
     const now = Date.now();
+    if (phaseRef.current === 'battle') splashedRef.current = true;
     if (now - lastSplash.current < 2500 || phaseRef.current !== 'battle') return;
     lastSplash.current = now;
     // In the words of the battlefield: a pond at the castle, a lake in
@@ -1337,7 +1346,28 @@ export function DiceDemoScreen() {
         against your brother fills nobody's pass.
       */
       const xp = battleXp(outcome, difficultyRef.current);
-      const climbed = addXp(getProgress().season, xp);
+      /*
+        TODAY'S QUEST (quests.ts), counted here for the same reason: below
+        the friendly-battle return, so a friendly never moves one. A
+        quest this battle finishes adds its experience to the same
+        `addXp`, so its levels are paid by the loop below like any other.
+      */
+      const quested = countQuestBattle(getProgress().quest, {
+        outcome,
+        difficulty: difficultyRef.current,
+        mode: modeRef.current,
+        freed: warRef.current ? warRetreatCount(warRef.current.player.id) : retreatCount(),
+        splashed: splashedRef.current,
+      });
+      if (quested.state && quested.state !== getProgress().quest) {
+        setQuestState(quested.state);
+        setQuest(quested.state);
+      }
+      if (quested.finished) {
+        const words = questDoneWords(quested.finished);
+        setRewards((queue) => [...queue, { picture: { kind: 'trophy' as const }, kicker: "TODAY'S QUEST", ...words }]);
+      }
+      const climbed = addXp(getProgress().season, xp + quested.xp);
       setSeasonState(climbed.state);
       setSeason(climbed.state);
       setLastXp(xp);
@@ -2950,6 +2980,14 @@ export function DiceDemoScreen() {
           today={todayStamp()}
           onPlay={playCup}
           season={season}
+          quest={quest}
+          onChooseQuest={(id) => {
+            const chosen = chooseQuest(getProgress().quest, id);
+            if (!chosen || chosen === getProgress().quest) return;
+            playClick();
+            setQuestState(chosen);
+            setQuest(chosen);
+          }}
           gold={goldOwned}
           onGetGold={() => {
             playClick();

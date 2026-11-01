@@ -4,6 +4,7 @@ import { ModeId } from './modes';
 import type { TournamentState } from './tournament';
 import { RewardRange, rollReward } from './rewards';
 import type { SeasonState } from './seasonPass';
+import type { QuestState } from './quests';
 
 /**
  * Trophy progression, Clash Royale style: win trophies on victory, lose
@@ -84,6 +85,13 @@ export interface Progress {
    * replaced, not added to.
    */
   season?: SeasonState;
+  /**
+   * Today's quest for the season pass (src/game/quests.ts): the New York
+   * day it was chosen on, which one, and how far along it is. Absent
+   * until a quest is first chosen; a save from another day is simply
+   * read as "nothing chosen yet today".
+   */
+  quest?: QuestState;
   /**
    * Snowy Hollow and Volcano Rim moved from the trophy ladder to the
    * season pass on 30 Sep 2026, and anybody who had already climbed
@@ -443,6 +451,13 @@ export function setTournamentState(id: string, state: TournamentState): Progress
 /** Remember where this player stands in the season pass. */
 export function setSeasonState(state: SeasonState): Progress {
   current = { ...current, season: state };
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  return current;
+}
+
+/** Remember today's quest, the same way as the season pass. */
+export function setQuestState(state: QuestState): Progress {
+  current = { ...current, quest: state };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
   return current;
 }
