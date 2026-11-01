@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AI_DIFFICULTIES } from '../game/ai';
 import { playClick } from '../audio/sounds';
 import { MODES } from '../game/modes';
@@ -22,6 +22,7 @@ import { GoldCoin } from './GoldCoin';
 import { ItemIcon, pictureOfItem } from './ItemIcon';
 import { SeasonPassCard } from './SeasonPassCard';
 import type { PreviewTarget } from '../game/itemPreview';
+import type { ArenaId } from '../arena/arenas';
 import type { SeasonState } from '../game/seasonPass';
 import type { QuestState } from '../game/quests';
 
@@ -121,6 +122,7 @@ export function TournamentScreen({
             state={stateOf(states, t.id)}
             today={today}
             onPlay={onPlay}
+            onPreview={onPreview}
           />
         ))}
       </ScrollView>
@@ -133,11 +135,13 @@ function TournamentCard({
   state,
   today,
   onPlay,
+  onPreview,
 }: {
   tournament: TournamentDef;
   state: TournamentState;
   today: string;
   onPlay: (tournament: TournamentDef) => void;
+  onPreview: (target: PreviewTarget) => void;
 }) {
   const Icon = MODE_ICONS[t.mode];
   const coming = isComing(t, today);
@@ -178,10 +182,28 @@ function TournamentCard({
           <Text style={styles.prizeText}>{t.prize.trophies}</Text>
         </View>
         {item && (
-          <View style={[styles.prizeChip, styles.prizeChipItem]}>
+          /*
+            Tap to see it on the board. Since 1 Nov 2026 a cup's prize is
+            not in the Inventory until it is won (David: "anything not
+            owned by a player out of their inventory so they can only view
+            it ... wherever they're from"), so this chip is where it is seen.
+          */
+          <Pressable
+            onPress={() => {
+              playClick();
+              onPreview(
+                item.kind === 'dice'
+                  ? { kind: 'die', id: item.id, from: 'inventory' }
+                  : { kind: 'arena', id: item.id as ArenaId, from: 'inventory' },
+              );
+            }}
+            accessibilityRole="button"
+            accessibilityHint="Shows it on the battlefield"
+            style={[styles.prizeChip, styles.prizeChipItem]}
+          >
             <ItemIcon picture={pictureOfItem(item)} size={16} />
             <Text style={styles.prizeText}>{item.name}</Text>
-          </View>
+          </Pressable>
         )}
       </View>
 

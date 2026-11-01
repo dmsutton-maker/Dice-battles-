@@ -30,6 +30,7 @@ async function main(): Promise<void> {
   await import('./secretCodes.test');
   await import('./testerPurchases.test');
   await import('./quests.test');
+  await import('./inventory.test');
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');

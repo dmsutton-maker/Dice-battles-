@@ -155,10 +155,16 @@ suite('coin price tag · the drawn coin still fits the card', () => {
 
 suite('coin price tag · no doubled margin, no drift', () => {
   test('the row carries exactly one marginTop (on the row, not the text)', async () => {
-    // Mirrors the actual style split: priceTagRow / priceRow gets
-    // marginTop: 3, the Text style inside (priceTagText / priceText) gets
-    // none. This test protects against a future edit re-adding it to the
-    // text and doubling the gap under the card.
+    // Mirrors the actual style split: priceRow gets marginTop: 3, the
+    // Text style inside (priceText) gets none. This test protects against
+    // a future edit re-adding it to the text and doubling the gap under
+    // the card.
+    //
+    // The Store only, since 1 Nov 2026. The Inventory had the same split
+    // (priceTagRow / priceTagText) until David asked for it to hold only
+    // what the player owns — "Take the future season stuff and anything
+    // not owned by a player out of their inventory" — and an owned card
+    // has no price to show. It must not grow a price tag back either.
     const fs = require('node:fs') as typeof import('node:fs');
     const path = require('node:path') as typeof import('node:path');
     const inv = fs.readFileSync(
@@ -169,10 +175,11 @@ suite('coin price tag · no doubled margin, no drift', () => {
       path.join(__dirname, '..', 'src/demo/StoreScreen.tsx'),
       'utf8',
     );
-    for (const [src, textStyle] of [
-      [inv, 'priceTagText'],
-      [store, 'priceText'],
-    ] as const) {
+    assert(
+      !/CoinLabel|priceTag/.test(inv),
+      'the Inventory shows a price again, so it is listing something the player does not own',
+    );
+    for (const [src, textStyle] of [[store, 'priceText']] as const) {
       // These are flat style objects (no nested braces), so match up to
       // the first closing brace rather than the next "\n  }," — the latter
       // can walk past this block into an unrelated later style.
