@@ -2888,6 +2888,7 @@ export function DiceDemoScreen() {
           modeWins={modeWins}
           played={played}
           modePlayed={modePlayed}
+          onPreview={showPreview}
         />
       )}
       {/*
