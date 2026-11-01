@@ -1,5 +1,59 @@
 # Changelog
 
+## v1.154.0 — 2026-11-01 · requested by David
+
+Eight changes David asked for on 1 Nov 2026, built side by side and
+merged (branches feature/timer, quests, codes, inventory, shark,
+phoenix, neon, dino).
+
+### Added
+- **A 2:30 battle clock** ("Add a two minute thirty second timer and if
+  the game doesn't finish by then it is a tie if the score is tied, or a
+  win for whoever is winning at that moment"). On the scoreboard
+  between the scores; red and ticking in the last ten seconds; "Time's
+  up!" then the ordinary finish, so a win on time is a win everywhere
+  (coins, trophies, pass, cups, stats). Pauses with the computer when
+  the app is backgrounded. Split screen has it too. Friend battles end
+  on the SERVER's clock (`hq/src/lib/battleClock.ts`, a 4 s lead and
+  3 s grace), a tie written as `winner = 'tie'`; migration
+  `hq/supabase/migrations/20261101_battle_clock.sql`. `battleTimer.ts`,
+  `BattleClock.tsx`, `BATTLE_TIME_MS` in tuning.ts.
+- **Daily quests on the season pass** ("Make it where you can choose out
+  of three quests for the pass"). Three offers a New York day (quick,
+  medium, longer; 15 in the pool; never the same quest two days
+  running), pick one, finish it for 300/450/600 pass XP through the
+  pass's own `addXp`. `quests.ts`, `DailyQuests.tsx`, `QUEST_XP` in
+  seasonPass.ts. Friend battles and the tutorial do not count.
+
+### Changed
+- **Secret codes are random hashed 10-character codes.** FAMILY, LOCK,
+  RESET and "<n> COIN/TROPHY" no longer work. 18 codes: admin, lock,
+  reset, seven that set coins (0 to 100,000) and eight that set
+  trophies (0 to 10,000). Only SHA-256 hashes are in the source
+  (`secretCodes.ts`); the codes themselves were given to David in chat.
+- **The admin code makes everything sold for real money free**: Gold
+  Pass, Remove Ads, Neon, Dino Valley, the Starter pack, coin packs. A
+  tester OVERRIDE, no fake purchase records; the lock code puts it all
+  back. Ads are simply off in admin mode; the child-directed flags are
+  untouched.
+- **Ghost rolls removed**: the two colour squares that flashed the
+  computer's last roll beside its score are gone.
+- **The Inventory is the player's cupboard**: only owned dice and
+  battlefields. Unowned items are seen where they come from (Store,
+  Gold Pass and cup cards, the ladder in Records, every rung now
+  tappable); future seasons' items are shown nowhere until their month
+  (`inventoryRules.ts`).
+- **Neon dice: $0.99**, and alive: light chasing round each tube, a slow
+  breath and colour drift, a real-sign stutter, sparkle at the bends, a
+  flare on landing (`neonGlow.ts`, numbers in `TUNING.neon`). The App
+  Store Connect price is David's to change.
+- **The Sun Temple's ibises are one phoenix** with a fire aura
+  (`phoenix.ts`, 9 draw calls).
+- **The Pirate Cove shark swims under the boats** (`coveShark.ts`),
+  hidden for under half a second per boat.
+- **Dino Valley's dinosaurs rebuilt** (`dinoParts.ts`): painted hides,
+  walking legs, swaying tails, cartoon eyes, proper silhouettes.
+
 ## v1.153.0 — 2026-11-01 · requested by David
 
 ### Changed

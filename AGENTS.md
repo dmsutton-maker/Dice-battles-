@@ -240,6 +240,33 @@ June and make the Fire and Ice season go through November."
   earned it and shows "Season N pass" on its locked card; it is not to
   be had again unless a later season or a cup offers it.
 
+## Secret codes, admin mode and the battle clock
+
+Settled with David on 1 Nov 2026.
+
+- **The secret codes in Settings are random 10-character codes, and
+  only their SHA-256 hashes are in the source** (`src/game/secretCodes.ts`).
+  The repo is public, so the codes themselves live nowhere in it: David
+  has them, in chat. FAMILY, LOCK, RESET and "<n> COIN / TROPHY" are
+  gone. There are 18: admin, lock, reset, seven that SET coins and
+  eight that SET trophies. `tests/secretCodes.test.ts` fails if any
+  file under `src/` or `tests/` contains a run of characters that
+  hashes to one of them. To add or change a code: generate it outside
+  the repo, put only the hash in the table, hand the code to David.
+- **Admin mode (the admin code) makes everything sold for real money
+  free** as an OVERRIDE in `purchases.ts` (`testerUnlocksPurchases`),
+  never by writing purchase records: the lock code puts everything
+  back. Ads are simply off in admin mode; the child-directed,
+  non-personalised, G-rated flags are never touched by it.
+- **Every battle has a 2:30 clock** (`BATTLE_TIME_MS`, `battleTimer.ts`).
+  At 0:00 whoever is ahead wins, level is a tie, through the ordinary
+  finish. A friend battle is ended by the SERVER (`hq/src/lib/battleClock.ts`),
+  with a tie written as `winner = 'tie'`; keep the website deployed
+  with or before any game update that touches it.
+- **Daily quests** (`src/game/quests.ts`): three offers a New York day,
+  one chosen, paid through the pass's `addXp`. `QUEST_XP` is in
+  seasonPass.ts; retuning it is an OTA release.
+
 ## Push notifications — built, and OFF until somebody can build
 
 David asked for them on 25 Sep 2026: "make push notifications for when
