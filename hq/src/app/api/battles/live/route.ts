@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { authenticatePlayer, touchSeen } from '@/lib/playerAuth';
-import { battleMsLeft, timeoutWinner } from '@/lib/battleClock';
+import {
+  BATTLE_TIME_MS,
+  battleMsLeft,
+  hasArrived,
+  joinWindowOver,
+  timeoutWinner,
+} from '@/lib/battleClock';
 
 /**
  * The battle itself, while two people are playing it.
@@ -41,6 +47,26 @@ import { battleMsLeft, timeoutWinner } from '@/lib/battleClock';
  * what ends a battle on an app from before the clock, which never stops
  * on its own. Every answer carries `msLeft` so both phones show the same
  * clock.
+ *
+ * THE WAITING ROOM COMES BEFORE ALL OF THAT. David, 1 Nov 2026: "Fix the
+ * versus against friends because it doesn't connect and it's not
+ * actually against each other." The phone that accepted used to be
+ * racing before the other phone even knew there was a battle. Now a row
+ * is born 'waiting' (../route.ts) and a beat on it is a phone saying "I
+ * am here": it stamps that phone's `*_seen` and nothing more. The beat
+ * that finds the OTHER phone already arrived turns the row 'playing' and
+ * restarts `started_at`, so the clock starts at that moment for both of
+ * them. That beat is answered `started: true` at once and the other
+ * phone hears it on its next beat — about a second apart, instead of up
+ * to eight.
+ *
+ * "Arrived" is their `*_seen` strictly LATER than `started_at`
+ * (hasArrived in ../../../../lib/battleClock.ts). The accept writes all
+ * three as one instant, and any real beat is a moment later, which is
+ * how this works with no new column. A room the other phone never walks
+ * into is closed after JOIN_WAIT_MS with no winner, and the phone that
+ * waited is told `over` with nobody having won, which the game reads as
+ * "your friend did not make it".
  */
 
 export const dynamic = 'force-dynamic';
@@ -87,10 +113,22 @@ export async function POST(request: NextRequest) {
 
   const now = new Date();
   const freed = colours(body.freed);
-  const patch: Record<string, unknown> = iAmA
+  // What every beat writes, whatever else happens: my colours, and that
+  // my phone is here.
+  const stamp: Record<string, unknown> = iAmA
     ? { a_freed: freed, a_seen: now.toISOString() }
     : { b_freed: freed, b_seen: now.toISOString() };
+  const patch: Record<string, unknown> = { ...stamp };
   const startedAtMs = new Date(String(battle.started_at)).getTime();
+  const theirSeenMs = new Date(String(iAmA ? battle.b_seen : battle.a_seen)).getTime();
+  const waiting = battle.state === 'waiting';
+  /*
+    Set when this beat moves a WAITING room on — to playing, or closed —
+    so the write below only lands if the room is still waiting. Two
+    phones can each find the other arrived in the same instant; only one
+    of them may restart the clock.
+  */
+  let onlyIfWaiting = false;
 
   /*
     Time up comes FIRST. Past the clock and its grace, the score decides
@@ -116,11 +154,26 @@ export async function POST(request: NextRequest) {
     patch.winner = onTime;
     patch.state = 'over';
     patch.ended_at = now.toISOString();
-  } else if (body.leave === true && battle.state === 'playing') {
+  } else if (waiting && joinWindowOver(startedAtMs, now.getTime())) {
+    /*
+      The friend never walked in. Closed with NO winner, even if this
+      beat is a leave: there was never a battle to hand to anybody, and
+      the phone that waited reads `over` with no winner as "your friend
+      did not make it", which is the truth.
+    */
+    patch.state = 'over';
+    patch.ended_at = now.toISOString();
+    onlyIfWaiting = true;
+  } else if (body.leave === true && (battle.state === 'playing' || waiting)) {
     /*
       Leaving is a real move, not a disconnection. A player who backs out
       of a friendly battle hands it to the other one rather than leaving
       them staring at a board that has stopped moving.
+
+      The same from the waiting room: backing out of it closes the room
+      and the friend who is still in it is told they won, rather than
+      being left waiting the full thirty seconds for somebody who has
+      already gone.
     */
     patch.state = 'over';
     patch.ended_at = now.toISOString();
@@ -131,6 +184,15 @@ export async function POST(request: NextRequest) {
     patch.winner = auth.playerId;
     patch.state = 'over';
     patch.ended_at = now.toISOString();
+  } else if (waiting && hasArrived(theirSeenMs, startedAtMs)) {
+    /*
+      They are already here, and now so am I: the battle starts. The
+      clock is restarted from THIS moment, not the accept, so neither
+      child loses the seconds the other phone took to walk in.
+    */
+    patch.state = 'playing';
+    patch.started_at = now.toISOString();
+    onlyIfWaiting = true;
   }
 
   let saved = battle;
@@ -158,6 +220,31 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
       if (already) saved = already;
     }
+  } else if (onlyIfWaiting) {
+    const { data: moved } = await supabase
+      .from('battles')
+      .update(patch)
+      .eq('id', battleId)
+      .eq('state', 'waiting')
+      .select(COLUMNS)
+      .maybeSingle();
+    if (moved) {
+      saved = moved;
+    } else {
+      /*
+        Lost the race: the other phone's beat moved the room on first.
+        Still write that I am here, then answer with the row as it now
+        stands — which says `playing`, with the clock the other beat
+        started, so both phones agree when it began.
+      */
+      const { data: reread } = await supabase
+        .from('battles')
+        .update(stamp)
+        .eq('id', battleId)
+        .select(COLUMNS)
+        .maybeSingle();
+      if (reread) saved = reread;
+    }
   } else {
     const { data: updated } = await supabase
       .from('battles')
@@ -169,6 +256,7 @@ export async function POST(request: NextRequest) {
   }
 
   const theirSeen = iAmA ? saved.b_seen : saved.a_seen;
+  const savedStartMs = new Date(String(saved.started_at)).getTime();
   return NextResponse.json({
     theirs: iAmA ? saved.b_freed : saved.a_freed,
     mine: iAmA ? saved.a_freed : saved.b_freed,
@@ -177,8 +265,18 @@ export async function POST(request: NextRequest) {
     winner: saved.winner ?? null,
     // The clock both phones show, worked out here so a phone whose own
     // clock is set wrong still shows the same time as its friend's.
-    msLeft: battleMsLeft(startedAtMs, Date.now()),
-    over: saved.state !== 'playing',
+    // While the room is still waiting nothing has started, so the whole
+    // clock is left; after that it counts from the `started_at` the
+    // second phone's arrival wrote.
+    msLeft: saved.state === 'waiting' ? BATTLE_TIME_MS : battleMsLeft(savedStartMs, Date.now()),
+    // False while the room is waiting for the other phone; the game
+    // holds at "Waiting for…" until this turns true. A room closed
+    // because the friend never came is `over` and so counts as started,
+    // which is why the game looks at `over` first.
+    started: saved.state === 'playing' || saved.state === 'over',
+    // Only 'over' is over. `!== 'playing'` would read a waiting room as
+    // finished and end the battle before it began.
+    over: saved.state === 'over',
     // True when their phone has stopped talking to us. The game says so
     // rather than leaving somebody racing an opponent who has gone.
     theyDropped:

@@ -26,11 +26,12 @@ export const BATTLE_TIME_MS = 150_000;
 /**
  * Between the battle row being written and the dice being live.
  *
- * `started_at` is stamped when the challenge is accepted, but the phones
- * then show the opponent reveal (2.2 s, MATCH_TOTAL_MS in
+ * `started_at` is stamped again at the moment BOTH phones have arrived in
+ * the waiting room (since 1 Nov 2026 — see JOIN_WAIT_MS below), and the
+ * phones then show the opponent reveal (2.2 s, MATCH_TOTAL_MS in
  * src/game/matchmaking.ts) and the "ARM YOUR DICE! / BATTLE!" countdown
  * (1.8 s, beginCountdown in DiceDemoScreen) before anybody can roll.
- * Starting the clock at the accept would quietly take four seconds off
+ * Starting the clock at that moment would quietly take four seconds off
  * every friendly battle.
  */
 export const BATTLE_LEAD_MS = 4_000;
@@ -95,4 +96,44 @@ export function timeoutWinner(battle: {
   if (a > b) return battle.aId;
   if (b > a) return battle.bId;
   return TIE_WINNER;
+}
+
+/**
+ * How long a battle room waits for the second phone before giving up.
+ * Must equal JOIN_WAIT_MS in src/game/friendlyBattle.ts.
+ *
+ * David, 1 Nov 2026: "Fix the versus against friends because it doesn't
+ * connect and it's not actually against each other." A battle row is now
+ * born 'waiting' and only turns 'playing' once BOTH phones have said "I
+ * am here" (../app/api/battles/live). A friend who never turns up — the
+ * phone was put down, the app was closed between Accept and the room —
+ * must not leave the other child staring at "Waiting for Marc…" for
+ * ever, so after this long the room is closed with no winner.
+ */
+export const JOIN_WAIT_MS = 30_000;
+
+/**
+ * Has this phone arrived in the room? Their `*_seen` strictly later
+ * than the row's `started_at`.
+ *
+ * That is how the waiting room works without a new column. The accept
+ * writes `started_at`, `a_seen` and `b_seen` as one and the same instant,
+ * and every real beat stamps its own `*_seen` at least a moment later —
+ * so "later than the start" means "has beaten at least once", and equal
+ * means "has never spoken". Anything unreadable has not arrived.
+ */
+export function hasArrived(seenMs: number, startedAtMs: number): boolean {
+  return Number.isFinite(seenMs) && Number.isFinite(startedAtMs) && seenMs > startedAtMs;
+}
+
+/**
+ * Has a waiting room been waiting longer than JOIN_WAIT_MS?
+ *
+ * Unlike the battle clock, a room with no readable start is treated as
+ * over: it can never be started either (hasArrived needs the start), so
+ * closing it is the only way it stops being handed to the game.
+ */
+export function joinWindowOver(startedAtMs: number, nowMs: number): boolean {
+  if (!Number.isFinite(startedAtMs)) return true;
+  return nowMs - startedAtMs > JOIN_WAIT_MS;
 }

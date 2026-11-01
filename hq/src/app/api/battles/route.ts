@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { authenticatePlayer, isOnline, touchSeen } from '@/lib/playerAuth';
-import { timeoutWinner } from '@/lib/battleClock';
+import { JOIN_WAIT_MS, timeoutWinner } from '@/lib/battleClock';
 
 /**
  * Friendly battles: the challenge, and nothing else.
@@ -24,6 +24,19 @@ import { timeoutWinner } from '@/lib/battleClock';
  * game already polls this server every few seconds while the friends
  * panel is open, and a challenge riding along on that poll arrives in
  * about the time it takes to look up.
+ *
+ * THE WAITING ROOM, since 1 Nov 2026. David: "Fix the versus against
+ * friends because it doesn't connect and it's not actually against each
+ * other." Until then accepting a challenge started the battle there and
+ * then: the accepter's phone was racing at once, while the challenger's
+ * phone only heard on its next poll, up to eight seconds later, with the
+ * clock already running down for both. Now the accept writes the battle
+ * row `waiting`, and GET hands a waiting row to BOTH players, so the
+ * challenger walks into the same room. Neither phone rolls yet. The
+ * battle turns `playing`, and its clock starts, only when the second
+ * phone's first beat arrives (./live) — and a room the friend
+ * never walks into is closed after JOIN_WAIT_MS with no winner, by that
+ * route and by sweep() below, whichever hears of it first.
  *
  * Authentication is the device secret, exactly as everywhere else here —
  * see the note at the top of ../players.
@@ -94,6 +107,26 @@ async function sweep(playerId: string) {
       .update({ state: 'expired', decided_at: now })
       .eq('state', 'waiting')
       .lt('expires_at', now)
+      .eq(side, playerId);
+  }
+
+  /*
+    A waiting room the friend never walked into is closed, with no
+    winner: nobody played, so nobody won. Without this, a room left
+    'waiting' (both phones put down between Accept and the room) would be
+    handed back by GET below and the game would drop the player into it
+    the next time they opened the menu. `started_at` of a waiting row is
+    still the moment of the accept, so "older than JOIN_WAIT_MS" is
+    "waited the whole join window" — the same rule as the live route's
+    joinWindowOver, written as one guarded update like the invites above.
+  */
+  const joinCutoff = new Date(nowMs - JOIN_WAIT_MS).toISOString();
+  for (const side of ['a_id', 'b_id'] as const) {
+    await supabase
+      .from('battles')
+      .update({ state: 'over', ended_at: now })
+      .eq('state', 'waiting')
+      .lt('started_at', joinCutoff)
       .eq(side, playerId);
   }
 
@@ -256,13 +289,20 @@ export async function GET(request: NextRequest) {
     : { data: [] };
   const byId = new Map((people ?? []).map((p) => [p.player_id, p]));
 
-  // A battle in progress, if there is one. Either side of it.
+  /*
+    A battle in progress, if there is one. Either side of it.
+
+    WAITING counts as well as playing (1 Nov 2026). That is how the
+    challenger joins: they never tap Accept, so the only way their phone
+    learns the room exists is finding it here while it is still waiting
+    for them. A list of values, not an "or" string — see the note above.
+  */
   const liveSides = await Promise.all(
     (['a_id', 'b_id'] as const).map((side) =>
       supabase
         .from('battles')
         .select('id, a_id, b_id, mode, difficulty, state, started_at')
-        .eq('state', 'playing')
+        .in('state', ['waiting', 'playing'])
         .eq(side, auth.playerId)
         .order('started_at', { ascending: false })
         .limit(1)
@@ -474,13 +514,25 @@ export async function POST(request: NextRequest) {
       The battle takes the CHALLENGE'S id. So both phones already know
       what the room will be called before either has seen it exist, and
       accepting twice cannot make two battles.
+
+      Born WAITING, not playing (1 Nov 2026 — see the note at the top).
+      `started_at`, `a_seen` and `b_seen` are written as ONE instant from
+      this server's clock rather than left to the database's now(): the
+      live route reads "their seen is later than the start" as "they have
+      arrived", and the beats that stamp `*_seen` use this server's clock,
+      so the start they are compared against must come from the same one.
     */
+    const bornAt = new Date().toISOString();
     const { error } = await supabase.from('battles').insert({
       id: invite.id,
       a_id: invite.from_id,
       b_id: invite.to_id,
       mode: invite.mode,
       difficulty: invite.difficulty,
+      state: 'waiting',
+      started_at: bornAt,
+      a_seen: bornAt,
+      b_seen: bornAt,
     });
     if (error && !String(error.message).includes('duplicate')) {
       return NextResponse.json({ error: 'could not start that' }, { status: 500 });
