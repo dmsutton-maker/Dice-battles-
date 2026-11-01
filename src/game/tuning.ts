@@ -347,3 +347,33 @@ export const TUNING = {
     glowOpacity: 0.22,
   },
 } as const;
+
+/**
+ * HOW LONG A BATTLE LASTS: two and a half minutes.
+ *
+ * David, 1 Nov 2026: "Add a two minute thirty second timer and if the
+ * game doesn't finish by then it is a tie if the score is tied, or a win
+ * for whoever is winning at that moment."
+ *
+ * The clock starts when the round does (after "BATTLE!"), not when Play
+ * is pressed, so the matchmaking reveal and the countdown cost nobody
+ * any time. The rules that read it are in src/game/battleTimer.ts. The
+ * friendly-battle server keeps its own copy of this number
+ * (hq/src/lib/battleClock.ts, which cannot import from the game), and
+ * tests/battleTimer.test.ts fails if the two ever disagree.
+ */
+export const BATTLE_TIME_MS = 150_000;
+
+/**
+ * The last stretch of the clock, which turns red and ticks once a second
+ * so nobody is surprised when it runs out. Ten seconds: long enough to
+ * notice and roll once or twice more, short enough not to nag.
+ */
+export const BATTLE_FINAL_MS = 10_000;
+
+/**
+ * How long "Time's up!" stays on its own before the result replaces it.
+ * Long enough to read and to understand why the battle stopped; short
+ * enough that nobody wonders whether the game has frozen.
+ */
+export const TIME_UP_PAUSE_MS = 1_600;

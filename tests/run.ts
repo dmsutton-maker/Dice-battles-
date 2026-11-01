@@ -32,6 +32,7 @@ async function main(): Promise<void> {
   await import('./quests.test');
   await import('./inventory.test');
   await import('./coveShark.test');
+  await import('./battleTimer.test');
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');
