@@ -1,5 +1,5 @@
 import { DiceSkin } from '../game/diceSkins';
-import { patternPixels, PatternId } from './patterns';
+import { neonTubesAt, patternPixels, PatternId, sheetToCube } from './patterns';
 
 /**
  * A picture of a dice skin for the Store and the Inventory.
@@ -130,6 +130,7 @@ export function shellPreviewUri(skin: DiceSkin): string | null {
   if (skin.effect === 'ice') paintIce(rgb);
   if (skin.effect === 'sun') paintSun(rgb);
   if (skin.effect === 'moon') paintMoon(rgb);
+  if (skin.effect === 'neon') paintNeon(rgb);
   const uri = encodePng(rgb, SIZE, SIZE);
   cache.set(skin.id, uri);
   return uri;
@@ -353,6 +354,49 @@ export function paintMoon(rgb: number[]): void {
         const arm = (ax < 0.7 && ay < 4.5) || (ay < 0.7 && ax < 4.5);
         if (arm) mixInto(rgb, i, MOON_WHITE, 1 - Math.max(ax, ay) / 5.5);
       }
+    }
+  }
+}
+
+/*
+  The light on the shelf picture of the Neon dice, 1 Nov 2026.
+
+  On the table a head of light chases round each tube (neonGlow.ts) and
+  the bends sparkle; the shell painter only knows the tubes themselves,
+  and a card is a still. So the card gets one moment of it: the pink
+  head a third of the way round, the cyan head going the other way, a
+  tail fading behind each, and a glint where a tube leaves the picture.
+  Drawn from the same tubes as the paint and the glow map (neonTubesAt),
+  so it cannot sit beside the tube. Deterministic, like the rest.
+*/
+const NEON_PINK_HEAD = [255, 236, 250];
+const NEON_CYAN_HEAD = [236, 255, 255];
+/**
+ * Where round the die each head is caught, 0..1. The front of the die
+ * shows 0.67..0.83 of the pink tube and 0.17..0.33 of the cyan, so each
+ * head sits near the end of its run across the card with its tail
+ * trailing back across the picture.
+ */
+const NEON_PINK_HEAD_AT = 0.78;
+const NEON_CYAN_HEAD_AT = 0.28;
+/** How quickly the tail fades behind the head; a long one paled the whole tube. */
+const NEON_CARD_TAIL = 16;
+
+export function paintNeon(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const t = neonTubesAt(sheetToCube(x, y));
+      const i = (y * SIZE + x) * 3;
+      const pinkOn = Math.max(0, 1 - Math.max(0, t.pinkOff - 1) / 3);
+      const cyanOn = Math.max(0, 1 - Math.max(0, t.cyanOff - 1) / 3);
+      const pinkBehind = ((NEON_PINK_HEAD_AT - t.pinkAlong) % 1 + 1) % 1;
+      const cyanBehind = ((NEON_CYAN_HEAD_AT - t.cyanAlong) % 1 + 1) % 1;
+      mixInto(rgb, i, NEON_PINK_HEAD, pinkOn * Math.exp(-pinkBehind * NEON_CARD_TAIL) * 0.8);
+      mixInto(rgb, i, NEON_CYAN_HEAD, cyanOn * Math.exp(-cyanBehind * NEON_CARD_TAIL) * 0.8);
+      // The glint where a tube bends over the edge of the die.
+      const toEdge = Math.min(x, SIZE - 1 - x, y, SIZE - 1 - y) / SIZE;
+      const bend = Math.max(0, 1 - toEdge / 0.05) * Math.max(pinkOn, cyanOn);
+      mixInto(rgb, i, [255, 250, 255], bend * 0.5);
     }
   }
 }

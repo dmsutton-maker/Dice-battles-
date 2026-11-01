@@ -69,7 +69,7 @@ export type PreviewAction =
   | { kind: 'pass'; level: number; gold?: boolean; current?: boolean; season?: string }
   /**
    * Bought with real money: in the Starter pack, or on its own in the
-   * money shop (Neon, $1.99). Its own kind for the reason the others
+   * money shop (Neon, $0.99). Its own kind for the reason the others
    * have one: "keep saving coins" or "keep playing" would both send a
    * player looking in the wrong place. `where` is products.ts's
    * paidSkinWhere; missing means the Starter pack, the only one there

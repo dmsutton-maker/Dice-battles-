@@ -149,7 +149,7 @@ export function InventoryScreen({
                   <Text style={styles.priceTag}>Win it in a cup</Text>
                 ) : skin.paid ? (
                   // Real money only, so not a coin tag and not a trophy
-                  // tag: "Starter pack" for the Supporter die, "$1.99"
+                  // tag: "Starter pack" for the Supporter die, "$0.99"
                   // for Neon (products.ts paidSkinWhere).
                   <Text style={styles.priceTag}>{paidSkinWhere(skin.id)}</Text>
                 ) : skin.pass ? (
