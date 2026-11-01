@@ -90,6 +90,27 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-155-0-friend-battles',
+    date: '1 November 2026',
+    version: 'v1.155.0',
+    title: 'Battling a friend is really against your friend',
+    icon: 'news',
+    body:
+      'Friend battles are fixed. Your friend\'s name is on the "your ' +
+      'opponent" card, the scoreboard and the result, instead of a ' +
+      'made-up computer player.\n\n' +
+      'Both phones now wait in a little room ("Waiting for your friend...") ' +
+      'until you are both there, then count down together, and the 2:30 ' +
+      'clock starts at that moment for both of you. If your friend does ' +
+      'not turn up within 30 seconds, the room closes and nobody wins or ' +
+      'loses.\n\n' +
+      'You can feel your friend playing: a buzz, a flash and "Sam freed ' +
+      'Red!" when they score, and "needs only ONE more" when they are ' +
+      'close.\n\n' +
+      'The Friends list shows who is on right now, so you know who to ' +
+      'challenge.',
+  },
+  {
     id: 'v1-154-0-clock-quests-cupboard',
     date: '1 November 2026',
     version: 'v1.154.0',

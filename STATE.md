@@ -186,6 +186,13 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **1 Nov 2026 (v1.155.0):** friend battles were rebuilt (waiting
+  room, the friend kept as the opponent, live progress callouts, "On
+  now" in the Friends list). Verified against the live API with two
+  test players by script, not on two phones: the first family
+  two-phone run is the real test. If something is off, the server
+  side is `hq/src/app/api/battles/*` and the game side
+  `FriendlyWaitOverlay.tsx` and the live beat in DiceDemoScreen.tsx.
 - **1 Nov 2026 (v1.154.0):** the migration
   `hq/supabase/migrations/20261101_battle_clock.sql` (a check that a
   battle's winner is a player or 'tie') has NOT been applied: the

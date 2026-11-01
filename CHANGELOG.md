@@ -1,5 +1,65 @@
 # Changelog
 
+## v1.155.0 — 2026-11-01 · requested by David
+
+David: "Fix the versus against friends because it doesn't connect and
+it's not actually against each other." Built as two branches
+(feature/friendly-server, feature/friendly-client) off v1.154.0 plus a
+shared API contract (`ed24d22`); website deployed first.
+
+### Fixed
+- **A friend battle showed a bot, not the friend.** `startFriendly`
+  set the opponent to the friend, then `startCountdown` drew a random
+  AI rival over it, so the "your opponent" reveal, the scoreboard,
+  every callout and the result named "Lady Luckabelle". The friend is
+  now kept (`opponentRef` as well as state; no `pickOpponent` for a
+  friendly), and a friendly shows `FriendlyWaitOverlay` instead of the
+  bot search in `MatchmakingOverlay`.
+- **The two phones started separately.** The accepter raced from the
+  tap; the challenger joined on its next 5 s poll, up to ~8 s later
+  with the clock already running. A battle row is now born `waiting`;
+  each phone's first beat on `/api/battles/live` says "I am here", and
+  the beat that finds the other already there (its `*_seen` later than
+  `started_at`) turns the row `playing` and restarts `started_at`, so
+  the 2:30 clock starts for both at that moment. Both phones hold at
+  "Waiting for Marc…" until the beat answers `started: true`, then
+  "MARC IS HERE!" and the countdown together. A room nobody joins in
+  `JOIN_WAIT_MS` (30 s) closes with no winner, both in the beat and in
+  the sweep; the phone that waited says "Marc didn't make it" and goes
+  back to the menu, no result. Backing out of the room sends `leave`
+  and hands it to the friend. No schema change: `battles.state` is
+  plain text.
+- **The friend's progress was silent.** A beat whose `theirs` changed
+  only moved the score. Now, compared by content: haptic ping, flash
+  and the same callouts as the computer rival by the friend's name
+  ("Marc freed Red!", "ties it up", "falling behind", "needs only ONE
+  more — hurry!", "Ha! Marc's Red was captured again!"),
+  `rivalProgressCallout` in friendlyBattle.ts. A friend who leaves
+  mid-battle now ends it ("Marc has gone — you win!") instead of
+  leaving the other racing alone.
+- **Nobody could see who was on.** `GET /api/friends` now returns
+  `online` (yes/no only, never the time) and touches `last_seen`, so
+  sitting on the Friends screen counts as being on; the list shows "On
+  now" or "Not playing right now". The Battle button stays enabled for
+  everyone; the server's "not playing right now" still decides.
+- A challenge arriving while the Friends popup was open was drawn
+  underneath it; the banner is now rendered after the popup.
+
+### Changed
+- While my challenge is out, the home poll asks every 1.5 s
+  (`OUTGOING_POLL_MS`) instead of 5, so the challenger drops into the
+  room within a couple of seconds of the accept.
+- `BattlePulse.started` (missing = started, for an older server);
+  `PublicProfile.online?`; `JOIN_WAIT_MS`, `HERE_MS`, `JOIN_SAFETY_MS`
+  in friendlyBattle.ts; `hasArrived`, `joinWindowOver`, `JOIN_WAIT_MS`
+  in `hq/src/lib/battleClock.ts`. Presence is not kept in the friends
+  cache. Tests: `tests/friendlyBattle.test.ts`,
+  `tests/friendlyServer.test.ts`; `tests/battleTimer.test.ts` loosened
+  one regex to allow the waiting-room `msLeft` line.
+- Players still on v1.154.0 meet in the room and start, because their
+  beats do the same thing; only "the friend never came" reaches them
+  through their own clock rather than a message, until they update.
+
 ## v1.154.0 — 2026-11-01 · requested by David
 
 Eight changes David asked for on 1 Nov 2026, built side by side and
