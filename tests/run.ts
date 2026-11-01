@@ -34,6 +34,7 @@ async function main(): Promise<void> {
   await import('./coveShark.test');
   await import('./battleTimer.test');
   await import('./neonGlow.test');
+  await import('./phoenix.test');
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');
