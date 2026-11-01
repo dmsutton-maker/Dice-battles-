@@ -39,6 +39,15 @@ export interface PublicProfile {
   favouriteArena: string;
   /** Epoch millis, for "last played" — never a precise location or time zone. */
   lastPlayed: number;
+  /**
+   * In the app right now: their phone spoke to the server in the last
+   * half minute (hq/src/lib/playerAuth.ts, ONLINE_WINDOW_MS). Only a
+   * friend gets this, and only as yes or no, never the time itself.
+   * Missing from a server that predates it, which reads as "unknown",
+   * not as "off". David, 1 Nov 2026: friend battles "don't connect" —
+   * one reason was that nobody could see who was on to challenge.
+   */
+  online?: boolean;
 }
 
 /**

@@ -188,6 +188,15 @@ export interface BattlePulse {
    * same time whatever their own clocks say.
    */
   msLeft: number | null;
+  /**
+   * Both phones are in the room and the clock is running (the row is
+   * `playing` or already `over`). False while the other phone has not
+   * yet sent its first beat — the game holds at "Waiting for Marc…"
+   * (friendlyBattle.ts, JOIN_WAIT_MS). A server from before this says
+   * nothing, which is read as started, so nobody waits for an answer
+   * that will never come.
+   */
+  started: boolean;
 }
 
 /**
@@ -230,5 +239,6 @@ export async function pulseBattle(
       typeof result.data.msLeft === 'number' && Number.isFinite(result.data.msLeft)
         ? result.data.msLeft
         : null,
+    started: result.data.started !== false,
   };
 }

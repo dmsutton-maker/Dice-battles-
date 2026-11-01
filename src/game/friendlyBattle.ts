@@ -71,6 +71,35 @@ export const CHALLENGE_POLL_MS = 5_000;
 export const BATTLE_SYNC_MS = 1_000;
 
 /**
+ * HOW A FRIENDLY BATTLE STARTS, since 1 Nov 2026.
+ *
+ * David: "Fix the versus against friends because it doesn't connect and
+ * it's not actually against each other." Until then the accepter's phone
+ * started racing the moment they tapped Accept, while the challenger's
+ * phone only found out on its next five-second poll — so one child was
+ * rolling for up to eight seconds before the other had seen "BATTLE!",
+ * and the clock had already run down for both.
+ *
+ * Now a battle row is born `waiting`. Each phone's first beat on
+ * /api/battles/live says "I am here"; the beat that finds the OTHER
+ * phone already there turns the row `playing`, restarts the clock, and
+ * answers `started: true`. Both phones hold at "Waiting for Marc…" until
+ * they hear that, then count down together — the same one-and-a-bit
+ * seconds apart as any two polls, instead of up to eight.
+ */
+
+/** How long the first phone waits in the room before giving up on the other. */
+export const JOIN_WAIT_MS = 30_000;
+
+/**
+ * While MY challenge is out, or I have just accepted one, the answer can
+ * change any second — so ask that often. The ordinary five-second poll is
+ * for a home screen where nothing is expected.
+ */
+export const OUTGOING_POLL_MS = 1_500;
+
+
+/**
  * Seconds left on a challenge, never negative and never a fraction.
  *
  * Shown counting down on the popup, because a challenge that is about to
