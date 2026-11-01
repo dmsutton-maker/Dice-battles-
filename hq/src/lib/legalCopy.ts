@@ -25,7 +25,7 @@ export interface LegalCopy {
 }
 
 export const PRIVACY: LegalCopy = {
-  written: '2026-10-23',
+  written: '2026-11-01',
   metaDescription:
     'No accounts and no tracking. Friends, friend battles, notifications and bug reports send a little information. This page says exactly what, and why.',
   intro:
@@ -61,7 +61,7 @@ export const PRIVACY: LegalCopy = {
     },
     {
       heading: 'Advertising',
-      body: 'Dice Battles: Color Rush is free, and ads are what pay for it: one full-screen ad after every third finished game, and nothing else. There are no banners, no video rewards and nothing during a game, and buying Remove Ads switches them off. They come from Google AdMob, and every single request is marked as child-directed and non-personalised and capped at a G rating. In plain terms, AdMob is told not to build a profile of whoever is holding the phone and not to use anything about them to choose the ad. That is why the game never asks permission to track you.',
+      body: 'Dice Battles: Color Rush is free, and ads are what pay for it: one full-screen ad after every third finished game, and nothing else. There are no banners, no video rewards and nothing during a game, and buying Remove Ads switches them off. They come from Google AdMob, and every single request is marked as child-directed and non-personalised and capped at a G rating. In plain terms, AdMob is told not to build a profile of whoever is holding the phone and not to use anything about them to choose the ad. That is why the game never asks permission to track you. To show an ad at all, AdMob still receives what every ad request carries: the phone\'s IP address (which gives a rough idea of the country or city), a device identifier, basic details about the phone and the game, whether an ad was shown or tapped, and crash and performance information about the ad itself. Google uses that to deliver and count ads and to stop fraud, under its own privacy policy at policies.google.com/privacy.',
     },
     {
       heading: 'Game Center',
