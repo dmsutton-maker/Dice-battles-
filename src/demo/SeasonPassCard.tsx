@@ -20,6 +20,8 @@ import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
 import { ItemIcon, pictureOfItem } from './ItemIcon';
+import { DailyQuests } from './DailyQuests';
+import type { QuestState } from '../game/quests';
 
 /**
  * The season pass, at the top of the Cups tab.
@@ -50,11 +52,16 @@ type Level = { n: number; reward: SeasonReward; item: ReturnType<typeof resolveI
 
 export function SeasonPassCard({
   state,
+  quest,
+  onChooseQuest,
   gold,
   onGetGold,
   onPreview,
 }: {
   state: SeasonState | undefined;
+  /** Today's quest, if one is chosen (quests.ts), and how to choose one. */
+  quest: QuestState | undefined;
+  onChooseQuest: (id: string) => void;
   /** Does this phone own the Gold Pass? */
   gold: boolean;
   /** Take the player to the Store, where the Gold Pass is sold. */
@@ -199,6 +206,12 @@ export function SeasonPassCard({
       <Text style={styles.how}>
         Every battle earns XP — a win more than a loss, Hard most of all.
       </Text>
+
+      {/*
+        Today's quests, right under the bar they fill (David, 1 Nov 2026:
+        "Make it were you can choose out of three quests for the pass").
+      */}
+      <DailyQuests quest={quest} onChoose={onChooseQuest} />
 
       {gold ? (
         <Text style={styles.goldOwned}>
