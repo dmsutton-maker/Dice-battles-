@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.153.0 — 2026-11-01 · requested by David
+
+### Changed
+- **The top of the screen follows the phone's real safe area (iPhone
+  Duo).** David sent Apple's "Designing for iPhone Duo" guidance: "make
+  sure the game design matches iphone duo design when needed."
+  - Every screen assumed a status bar across the top: the trophy and
+    coin pills at a fixed y52, every menu page from y100. On the Duo's
+    outer screen the status bar and camera run down the SIDE, so that
+    band was wasted on the shortest screen the game runs on.
+  - The game now measures the system's own safe area (React Native's
+    built-in SafeAreaView, so no build is needed) and places the pills,
+    Settings row, quit button, scoreboard, callouts, menu pages,
+    challenge banner and preview bar from it. The bottom inset is
+    measured too, instead of looked up in a table of iPhones.
+  - **Every iPhone with a status bar across the top is unchanged:** the
+    pills stay at y52 for every top inset from 20 to 62pt.
+  - Not done, and why: the fold. Apple reports it through
+    `ReservedRegion`, a native API React Native and Expo SDK 54 do not
+    expose yet, so the game cannot tell the phone is half-open. It
+    keeps its layout and stays playable, as Apple asks of games.
+  - `tests/duoDesign.test.ts`; the dev-only screen ruler now shows the
+    measured insets.
+
 ## v1.152.0 — 2026-10-26 · requested by David
 
 ### Changed

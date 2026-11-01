@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useBottomInset } from '../game/safeArea';
+import { useBottomInset, useHudFrame } from '../game/safeArea';
 import { CloseIcon } from '../ui/Icon';
 import { SHAPE, THEME } from '../ui/theme';
 import { CoinLabel } from './GoldCoin';
@@ -38,6 +38,7 @@ export function ItemPreviewBar({
   onClose: () => void;
 }) {
   const inset = useBottomInset();
+  const hud = useHudFrame();
   // In with the board rather than a frame ahead of it: the screen only
   // mounts this once the previewed item has drawn, and a quick fade
   // keeps the words from snapping on over it.
@@ -56,7 +57,7 @@ export function ItemPreviewBar({
     // Not a backdrop: the board behind is the whole point, so only the
     // two bars catch touches. Everything between them is see-through.
     <Animated.View style={[styles.layer, { opacity: shown }]} pointerEvents="box-none">
-      <View style={styles.top}>
+      <View style={[styles.top, { marginTop: 46 + hud.shift }]}>
         <Pressable style={styles.back} onPress={onClose} hitSlop={14}>
           <CloseIcon size={15} />
         </Pressable>

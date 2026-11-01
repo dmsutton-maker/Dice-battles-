@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useHudFrame } from '../game/safeArea';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
@@ -24,8 +25,12 @@ export function StatsHud({
   trophies: number;
   coins: number;
 }) {
+  // Where the system leaves room (safeArea.ts): y52 on every iPhone with a
+  // status bar across the top, higher where there is none, and clear of
+  // anything the system has down the side.
+  const hud = useHudFrame();
   return (
-    <View style={styles.row} pointerEvents="none">
+    <View style={[styles.row, { top: hud.top, left: hud.left }]} pointerEvents="none">
       <View style={styles.pill}>
         <TrophyIcon size={15} />
         <Text style={styles.value}>{trophies}</Text>

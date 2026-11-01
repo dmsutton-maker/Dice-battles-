@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Dimensions, Platform, useWindowDimensions } from 'react-native';
-import { bottomInsetFor } from './safeAreaRules';
+import { bottomInsetFor, bottomInsetWith, hudFrame } from './safeAreaRules';
+import { useSafeInsets } from './safeInsets';
 
 /**
  * How much room to leave at the bottom of the screen.
@@ -42,16 +43,30 @@ import { bottomInsetFor } from './safeAreaRules';
  */
 export function useBottomInset(): number {
   const { width, height } = useWindowDimensions();
+  // The system's own figure once it has been measured (safeInsets.tsx);
+  // the table below until then. Since 1 Nov 2026: on the iPhone Duo
+  // the table can only guess, and the measurement knows.
+  const measured = useSafeInsets();
   return useMemo(
     () =>
-      bottomInsetFor({
+      bottomInsetWith(measured, {
         os: Platform.OS,
         isPad: Platform.OS === 'ios' && Platform.isPad,
         longSide: Math.max(width, height),
         shortSide: Math.min(width, height),
       }),
-    [width, height],
+    [width, height, measured],
   );
+}
+
+/**
+ * Where the top-of-screen furniture goes, from the measured safe area:
+ * see hudFrame in safeAreaRules.ts. `shift` is 0 on every iPhone with a
+ * status bar across the top, so those screens are exactly as they were.
+ */
+export function useHudFrame(): { top: number; shift: number; left: number; right: number } {
+  const measured = useSafeInsets();
+  return useMemo(() => hudFrame(measured), [measured]);
 }
 
 /**

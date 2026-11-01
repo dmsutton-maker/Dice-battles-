@@ -156,7 +156,7 @@ import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
 import { BottomNav, useBottomNavHeight, Tab } from './BottomNav';
-import { useBottomInset } from '../game/safeArea';
+import { useBottomInset, useHudFrame } from '../game/safeArea';
 import { NewsScreen } from './NewsScreen';
 import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
@@ -266,6 +266,9 @@ export function DiceDemoScreen() {
   // Both live: a folding phone changes the home-indicator inset, and
   // therefore the bar's height, without the app relaunching.
   const bottomInset = useBottomInset();
+  // The top band, from the measured safe area (safeArea.ts). `shift` is 0
+  // on every iPhone with a status bar across the top.
+  const hud = useHudFrame();
   const navHeight = useBottomNavHeight();
 
   useEffect(() => {
@@ -2567,7 +2570,7 @@ export function DiceDemoScreen() {
 
       {/* Scoreboard */}
       {(phase === 'battle' || phase === 'won' || phase === 'lost' || phase === 'tie') && (
-        <View pointerEvents="none" style={styles.scoreboard}>
+        <View pointerEvents="none" style={[styles.scoreboard, { top: 54 + hud.shift }]}>
           <View style={[styles.scoreSide, playerFlash && styles.scoreFlashYou]}>
             <Text style={styles.scoreLabel}>YOU</Text>
             {warColors && (
@@ -2619,14 +2622,14 @@ export function DiceDemoScreen() {
 
       {/* Restart (quit to menu) during a round */}
       {(phase === 'battle' || phase === 'arm' || phase === 'go') && (
-        <Pressable style={styles.quitButton} onPress={quitToMenu}>
+        <Pressable style={[styles.quitButton, { top: hud.top, left: hud.left }]} onPress={quitToMenu}>
           <Text style={styles.quitText}>↺</Text>
         </Pressable>
       )}
 
       {/* Announcer callout banner */}
       {callout && (
-        <View pointerEvents="none" style={styles.calloutWrap} key={callout.key}>
+        <View pointerEvents="none" style={[styles.calloutWrap, { top: 150 + hud.shift }]} key={callout.key}>
           <Text style={styles.calloutText}>{callout.text}</Text>
         </View>
       )}
@@ -2692,7 +2695,7 @@ export function DiceDemoScreen() {
             (iPhone SE) still has to be able to reach the START button.
           */}
           <ScrollView
-            contentContainerStyle={[styles.pickScroll, { paddingBottom: 64 + navHeight }]}
+            contentContainerStyle={[styles.pickScroll, { paddingTop: 100 + hud.shift, paddingBottom: 64 + navHeight }]}
             showsVerticalScrollIndicator={false}
             bounces={false}
             scrollEnabled={pickOverflows}

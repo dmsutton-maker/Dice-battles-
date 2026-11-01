@@ -86,3 +86,105 @@ export function bottomInsetFor({ os, isPad, longSide, shortSide }: ScreenFacts):
   if (isPad) return IPAD_INDICATOR;
   return hasHomeButton(longSide, shortSide) ? 0 : IPHONE_INDICATOR;
 }
+
+/*
+ * ── The rest of the screen's edges, measured rather than assumed ──
+ *
+ * David, 1 Nov 2026, with Apple's "Designing for iPhone Duo" guidance:
+ * "make sure the game design matches iphone duo design when needed."
+ *
+ * Until then the top of every screen assumed what every iPhone since the
+ * X had: a status bar drawn ACROSS THE TOP, so the trophy and coin pills
+ * sat at a fixed y52 and every menu page started at y100. The Duo breaks
+ * that on its outer screen. Apple: "the system places toolbars and tab
+ * bars on the side ... Controls on the side include both system and app
+ * elements: the Dynamic Island, the status bar". The status bar and the
+ * camera run down one SIDE there, the top is free, and a fixed 52pt band
+ * wastes the top of the shortest screen the game runs on (678pt). The
+ * inner screen hides its camera behind the display until it is in use.
+ *
+ * Apple's rule is "use safe area insets ... avoid fixed widths and
+ * display-specific dependencies", so the four edges now come from the
+ * system's own safe area (safeInsets.tsx measures it), and these rules
+ * turn them into where the furniture goes.
+ *
+ * NO PHONE THE FAMILY HAS TODAY MOVES. Every iPhone in portrait reports a
+ * top inset of at least 20pt (a status bar across the top), and for all
+ * of them the pills stay at y52, exactly where they were. Only a screen
+ * whose system bars are NOT across the top (the Duo's outer screen, or an
+ * app built so the system keeps it out from under the bar) has the band
+ * given back.
+ */
+
+/** The four safe edges, in points. */
+export interface Insets {
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+}
+
+/** Where the pills have always sat: clear of any status bar across the top. */
+export const HUD_TOP = 52;
+/** The pills' distance from the side of the screen. */
+export const HUD_SIDE = 18;
+/** A status bar across the top is at least this tall on every iPhone. */
+export const TOP_BAR_MIN = 20;
+/** How far below a measured edge the furniture sits when there is no top bar. */
+export const EDGE_GAP = 14;
+
+/**
+ * Where the top-of-screen furniture goes: the trophy and coin pills, the
+ * Settings row, the battle's quit button and scoreboard, and the first
+ * line of every menu page.
+ *
+ * `shift` is how far everything in that band moves from where it was
+ * designed (0 on every iPhone with a status bar across the top; negative
+ * when the screen gives the band back). `left` and `right` keep the pills
+ * clear of anything the system has down either side.
+ */
+export function hudFrame(measured: Insets | null): { top: number; shift: number; left: number; right: number } {
+  if (!measured) return { top: HUD_TOP, shift: 0, left: HUD_SIDE, right: HUD_SIDE };
+  const top =
+    measured.top >= TOP_BAR_MIN
+      ? // A status bar across the top. 52 has always cleared it beside
+        // the Dynamic Island (inset 59-62); only a taller one than any
+        // iPhone has pushes the pills down.
+        Math.max(HUD_TOP, measured.top - 10)
+      : // No bar across the top: the band is free.
+        Math.max(0, measured.top) + EDGE_GAP;
+  return {
+    top,
+    shift: top - HUD_TOP,
+    left: Math.max(HUD_SIDE, measured.left + 12),
+    right: Math.max(HUD_SIDE, measured.right + 12),
+  };
+}
+
+/**
+ * The bottom inset: the system's own figure when it has been measured on
+ * iOS, the table above until then (and on Android, where the measuring
+ * view pads nothing).
+ */
+export function bottomInsetWith(measured: Insets | null, facts: ScreenFacts): number {
+  if (measured && facts.os === 'ios') return Math.max(0, measured.bottom);
+  return bottomInsetFor(facts);
+}
+
+/**
+ * The four insets from where a view padded by the safe area landed
+ * inside a window of this size (safeInsets.tsx). Rounded to whole points,
+ * and never negative.
+ */
+export function insetsFromLayout(
+  inner: { x: number; y: number; width: number; height: number },
+  window: { width: number; height: number },
+): Insets {
+  const clamp = (n: number) => Math.max(0, Math.round(n));
+  return {
+    top: clamp(inner.y),
+    left: clamp(inner.x),
+    right: clamp(window.width - inner.x - inner.width),
+    bottom: clamp(window.height - inner.y - inner.height),
+  };
+}

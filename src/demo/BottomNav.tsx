@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
-import { useBottomInset } from '../game/safeArea';
+import { useBottomInset, useHudFrame } from '../game/safeArea';
 import { BagIcon, BracketIcon, CrateIcon, RanksIcon } from '../ui/Icon';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 
@@ -210,9 +210,15 @@ export const MENU_PAGE_EDGES = {
  *
  *     <View style={[styles.page, useMenuPageArea()]}>
  */
-export function useMenuPageArea(): { bottom: number } {
-  return { bottom: useBottomNavHeight() };
+export function useMenuPageArea(): { bottom: number; paddingTop: number } {
+  // The page's first line sits under the trophy and coin pills, so it
+  // moves with them (useHudFrame: 0 on every iPhone with a status bar
+  // across the top; the band is given back where there is none).
+  return { bottom: useBottomNavHeight(), paddingTop: MENU_PAGE_TOP + useHudFrame().shift };
 }
+
+/** Where every menu page's first line starts on an iPhone with a status bar across the top. */
+export const MENU_PAGE_TOP = 100;
 
 const styles = StyleSheet.create({
   bar: {
