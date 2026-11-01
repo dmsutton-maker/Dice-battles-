@@ -1,12 +1,14 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { loop, track } from './boardLife';
+import { track } from './boardLife';
+import { PhoenixBird } from './phoenix';
 import { useSceneryTick } from './sceneryClock';
 
 /**
  * The Sun Temple's life, season 2 of the pass (21 Oct 2026): a
  * procession of three priests carrying the sun round the temple, and
- * two ibises circling overhead.
+ * a phoenix circling overhead (two ibises until 1 Nov 2026, when David
+ * asked for "one Phoenix" with "a fire aura coming off it").
  *
  * The priests walk the rounded loop outside the tray that Dino Valley's
  * walkers use — down one side, behind the jail, up the other and across
@@ -14,8 +16,8 @@ import { useSceneryTick } from './sceneryClock';
  * step, the leader holding a tall standard with a gold sun disc on it.
  * Built to be read from above: the gold headdresses and the sun disc
  * are the bright things. Moved on a scenery tick that allocates nothing
- * (sceneryClock.ts), and never over the tray except the ibises, which
- * fly far above it.
+ * (sceneryClock.ts), and never over the tray: the phoenix keeps above
+ * the side walls and turns beyond the two ends (phoenix.ts).
  */
 
 /**
@@ -36,8 +38,7 @@ export function TempleLife() {
       <Priest offset={0} robe="#f4e6c4" sash="#d1402a" standard />
       <Priest offset={-0.55 / LAP} robe="#e8d0a0" sash={GOLD} />
       <Priest offset={-1.1 / LAP} robe="#f4e6c4" sash="#d1402a" />
-      <Ibis offset={0} height={2.3} />
-      <Ibis offset={0.5} height={2.7} />
+      <Phoenix />
     </group>
   );
 }
@@ -105,54 +106,17 @@ function Priest({ offset, robe, sash, standard }: { offset: number; robe: string
   );
 }
 
-/** An ibis circling high over the temple, white with black wingtips. */
-function Ibis({ offset, height }: { offset: number; height: number }) {
-  const body = useRef<THREE.Group | null>(null);
-  const wingL = useRef<THREE.Group | null>(null);
-  const wingR = useRef<THREE.Group | null>(null);
-  const tick = useMemo(
-    () => (t: number) => {
-      const g = body.current;
-      if (!g) return;
-      const heading = loop(t * 0.032 + offset, 2.9, -8.2, 2.6, P);
-      g.position.set(P.x, height + Math.sin(t * 0.8 + offset * 6) * 0.12, P.z);
-      g.rotation.set(0, heading, Math.sin(t * 0.6 + offset) * 0.15);
-      // A few beats, then a glide, the way a big bird flies.
-      const flap = Math.sin(t * 6 + offset * 10) * 0.6 * (0.55 + 0.45 * Math.sin(t * 0.7 + offset));
-      if (wingL.current) wingL.current.rotation.z = flap;
-      if (wingR.current) wingR.current.rotation.z = -flap;
-    },
-    [offset, height],
-  );
-  useSceneryTick(tick);
-  return (
-    <group ref={body} scale={1.2}>
-      <mesh scale={[0.07, 0.06, 0.24]}>
-        <sphereGeometry args={[1, 8, 6]} />
-        <meshStandardMaterial color="#f7f3ea" roughness={0.8} />
-      </mesh>
-      {/* The neck out ahead, and the long curved bill. */}
-      <mesh position={[0, 0.02, 0.3]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.03, 0.04, 0.18, 6]} />
-        <meshStandardMaterial color="#f7f3ea" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, -0.02, 0.46]} rotation={[Math.PI / 2 + 0.5, 0, 0]}>
-        <coneGeometry args={[0.018, 0.16, 5]} />
-        <meshStandardMaterial color="#2a2a2a" roughness={0.6} />
-      </mesh>
-      {/* Wings lying in the ground plane, hinged at the shoulder, black at the tips. */}
-      {([[wingL, -1], [wingR, 1]] as const).map(([ref, side]) => (
-        <group key={side} ref={ref} position={[side * 0.05, 0, 0.02]}>
-          <mesh position={[side * 0.26, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[0.52, 0.2]} />
-            <meshStandardMaterial color="#f7f3ea" roughness={0.8} side={THREE.DoubleSide} />
-          </mesh>
-          <mesh position={[side * 0.5, 0.001, -0.02]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[0.1, 0.14]} />
-            <meshStandardMaterial color="#2a2a2a" roughness={0.8} side={THREE.DoubleSide} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
+/**
+ * The phoenix circling high over the temple, wreathed in its own fire.
+ *
+ * David, 1 Nov 2026: "Change the birds in the sun arena to one Phoenix
+ * and make it look like it has a fire aura coming off it." The bird and
+ * its aura are a plain three.js object built once (phoenix.ts); this
+ * mounts it and puts its tick on the scenery clock.
+ */
+export function Phoenix() {
+  const phoenix = useMemo(() => new PhoenixBird(), []);
+  useEffect(() => () => phoenix.dispose(), [phoenix]);
+  useSceneryTick(phoenix.tick);
+  return <primitive object={phoenix.group} />;
 }
