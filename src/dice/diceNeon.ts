@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
 import { Kind, ParticlePool, rand, WATER_Y } from './particles';
 import type { DieEffect, DieSample } from './dieEffect';
+import { neonLanded } from './neonGlow';
 
 /**
  * The Neon die's light: a glowing trail behind it as it rolls, and a
@@ -20,6 +21,10 @@ import type { DieEffect, DieSample } from './dieEffect';
  * LOOKS ONLY, like Fire and Ice: nothing here has a body in the physics
  * world. In the moat the die fizzes a few cyan sparks and sinks as any
  * die does, on the same clock.
+ *
+ * Since 1 Nov 2026 the tubes on the die itself move too (neonGlow.ts);
+ * the one thing this file tells them is the moment a die lands, so
+ * they can flare with the ring.
  *
  * Pure JavaScript and three.js, so it ships over the air.
  */
@@ -144,6 +149,8 @@ export class DiceNeon implements DieEffect {
 
   /** A ring of light that spreads out across the floor from a die at rest. */
   private land(d: DieSample): void {
+    // The tubes on the die flare at the same moment (neonGlow.ts).
+    neonLanded();
     for (let n = 0; n < N.landingRing; n++) {
       const a = (n / N.landingRing) * Math.PI * 2;
       const pink = n % 2 === 0;

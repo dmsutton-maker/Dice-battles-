@@ -4,6 +4,7 @@ import { createDieFaceTextures, PatternId } from './patterns';
 import { warmDieShading } from './dieShading';
 import { fishCapTexture, fishSchoolTexture, fishWaterTexture } from './fishSwim';
 import { circuitPulseTexture } from './circuitPulse';
+import { neonGlowTexture } from './neonGlow';
 import type { DiceSkin } from '../game/diceSkins';
 
 /**
@@ -211,6 +212,10 @@ export function warmDieFaces(skin: DiceSkin | undefined): void {
     // (circuitPulse.ts), on top of its six painted sides.
     if (skin.pattern === 'circuit') {
       for (let face = 0; face < 6; face++) circuitPulseTexture(face);
+    }
+    // The Neon die's glow map, which the light runs round (neonGlow.ts).
+    if (skin.pattern === 'neon') {
+      for (let face = 0; face < 6; face++) neonGlowTexture(face);
     }
     createDieFaceTextures(
       skin.pattern as Exclude<PatternId, 'plain'>,

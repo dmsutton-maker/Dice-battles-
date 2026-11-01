@@ -184,6 +184,11 @@ suite('fire dice · it never hides the roll', () => {
       // Season 2 (21 Oct 2026): the Sun and Moon dice, checked the same way.
       './diceSun',
       './diceMoon',
+      // The Neon die's tubes glow on the die itself since 1 Nov 2026
+      // (David: "make it more interactive with moving details and
+      // stuff"); the effect tells them the moment a die lands. neonGlow
+      // reads only the painter and the texture cache: looks, no physics.
+      './neonGlow',
     ]);
     for (const file of ['diceFire', 'diceIce', 'diceNeon', 'diceSun', 'diceMoon', 'dieEffect', 'groundMarks', 'particles']) {
       const source = readFileSync(`src/dice/${file}.ts`, 'utf8');

@@ -1882,6 +1882,39 @@ const COW_PATCHES: readonly (readonly [number, number, number, number, number, n
   Math.max(rx, ry) * 1.7,
 ]);
 
+/**
+ * The Neon die's two tubes at a point on the cube: how far the point is
+ * from each, in texels across the face, and how far ALONG each tube it
+ * is, 0..1 once round the die.
+ *
+ * Shared by the painter below, the glow map the GPU lights the tubes
+ * from (neonGlow.ts) and the shelf card (preview.ts), so the light can
+ * only ever run along the tube that is painted. Each tube is one closed
+ * curve (seamAt), so `along` wraps from 1 back to 0 at one point on it.
+ * That point falls where the tube folds over an edge of the die (each
+ * seam frame's e1 points at the middle of an edge, so the angle's zero
+ * is an edge crossing; tests/neonGlow.test.ts checks it), where the
+ * bend sparkles anyway, so nothing shows where the count restarts.
+ */
+export interface NeonTubes {
+  pinkOff: number;
+  pinkAlong: number;
+  cyanOff: number;
+  cyanAlong: number;
+}
+
+export function neonTubesAt(P: readonly number[]): NeonTubes {
+  const pink = seamAt(P);
+  const cyan = seamAt(P, SEAM_SWING, SEAM_FRAME_B);
+  return {
+    pinkOff: Math.abs(pink.off),
+    pinkAlong: mod(pink.along / (2 * Math.PI), 1),
+    cyanOff: Math.abs(cyan.off),
+    // The cyan light runs the other way round, so the two cross.
+    cyanAlong: mod(-cyan.along / (2 * Math.PI), 1),
+  };
+}
+
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   neon: (x, y) => {
     /*
@@ -1909,8 +1942,9 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     // A faint cyan ring round the sticker, like a sign's border.
     const halo = Math.abs(Math.hypot(dot3(P, F.u), dot3(P, F.v)) - 24.5);
     px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-halo / 1.6) * 0.45);
-    const pink = Math.abs(seamAt(P).off);
-    const cyan = Math.abs(seamAt(P, SEAM_SWING, SEAM_FRAME_B).off);
+    // Since 1 Nov 2026 the same two tubes feed the glow map the GPU
+    // runs light along (neonGlow.ts), so the light and the paint agree.
+    const { pinkOff: pink, cyanOff: cyan } = neonTubesAt(P);
     px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-cyan / 2.0) * 0.85);
     px = mixRgb(px, rgb('#d8fbff'), smoothstep(1.0, 0.3, cyan));
     px = mixRgb(px, rgb('#ff2fb4'), Math.exp(-pink / 2.2) * 0.9);

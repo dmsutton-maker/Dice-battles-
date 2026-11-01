@@ -180,18 +180,23 @@ export const PRODUCTS: Product[] = [
     Add it to the game in the store and write the $1.99 price tag." The
     die is `neon` in diceSkins.ts (`paid: true`), owned through the
     purchase record so Restore brings it back. Needs its own product in
-    App Store Connect: neon_dice, Non-Consumable, $1.99. Until that
-    exists the button shows $1.99 and Apple's sheet cannot open; family
-    tester mode lends the die regardless, like every paid die.
+    App Store Connect: neon_dice, Non-Consumable. Until that exists the
+    button shows the catalogue price and Apple's sheet cannot open;
+    family tester mode lends the die regardless, like every paid die.
+
+    $0.99 since 1 Nov 2026. David: "Change the neon dice to $0.99 and
+    make it more interactive with moving details and stuff." The price
+    in App Store Connect is changed by hand to match; this number is
+    only the stand-in the shelf shows before the store answers.
   */
   {
     id: 'neon_dice',
     kind: 'once',
     name: 'Neon dice',
     details:
-      "Black dice that glow pink and leave a trail of light. Yours to keep.",
+      "Black dice with light chasing round their glowing tubes, and a trail of light behind them. Yours to keep.",
     blurb: 'Glowing dice with a light trail.',
-    usd: 1.99,
+    usd: 0.99,
     grants: ['neon'],
     available: true,
   },
@@ -324,7 +329,7 @@ export function productById(id: string): Product | undefined {
 /**
  * Where a money-only die or battlefield is got, in a few words for its
  * locked card and its preview: "Starter pack" for the Supporter die, the
- * price for one sold on its own (Neon: "$1.99", Dino Valley: "$2.99"). The phone's localised price is not
+ * price for one sold on its own (Neon: "$0.99", Dino Valley: "$2.99"). The phone's localised price is not
  * to hand on those screens, so this is the catalogue's US price, the
  * same stand-in the shelf shows before the store answers.
  */

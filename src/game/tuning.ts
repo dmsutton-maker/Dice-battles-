@@ -309,6 +309,48 @@ export const TUNING = {
     landingRing: 36,
     /** How fast that ring spreads across the floor, units a second. */
     landingSpeed: 2.6,
+    /*
+      THE TUBES THEMSELVES move since 1 Nov 2026 (neonGlow.ts). David:
+      "make it more interactive with moving details and stuff." A head
+      of light chases round each tube, the whole tube breathes, its
+      colour drifts, it stutters now and then like a real sign, the
+      bends sparkle and the tube flares the moment the die lands. All of
+      it on the GPU from one map painted once; none of it on the stickers.
+    */
+    /** Seconds the head of light takes to go once round the die. */
+    pulseLapSeconds: 2.4,
+    /** How sharply the light fades behind the head: bigger is a shorter tail (16 is about a third of a side). */
+    pulseTail: 16,
+    /**
+     * How much light the head adds on top of the painted tube. Added in
+     * linear light, where a little goes a long way: 1.4 turned the whole
+     * tube white in the preview.
+     */
+    pulseGain: 0.9,
+    /** How far out from the middle of a tube the light reaches, in texels. */
+    pulseReach: 4,
+    /** Seconds of one slow breath, and how far the tube dims and brightens (0.15 is 85% to 115%). */
+    breathSeconds: 3.2,
+    breathDepth: 0.15,
+    /**
+     * A real sign's stutter: every `flickerEvery` seconds there is a
+     * `flickerChance` chance of one, lasting `flickerSeconds`, dipping
+     * the tube to (1 - flickerDepth) three times. Never off, never a
+     * strobe: the game is for five-year-olds.
+     */
+    flickerEvery: 4,
+    flickerChance: 0.35,
+    flickerSeconds: 0.36,
+    flickerDepth: 0.42,
+    /** Seconds for the pink to drift toward violet and the cyan toward blue and back, and how far. */
+    driftSeconds: 11,
+    driftAmount: 0.6,
+    /** How near an edge of the die (share of a side) the tube sparkles, and how bright. */
+    bendReach: 0.05,
+    bendGain: 0.45,
+    /** The flare when a die lands: how bright, and seconds to fade. */
+    flareGain: 0.8,
+    flareSeconds: 0.5,
   },
   /**
    * The Sun dice (diceSun.ts), season 2 of the pass, 21 Oct 2026: motes
