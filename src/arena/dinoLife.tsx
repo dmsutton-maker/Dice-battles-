@@ -1,10 +1,19 @@
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { loop, track } from './boardLife';
+import {
+  dinoGeometries,
+  dinoMaterials,
+  gait,
+  LONG_NECK_GAIT,
+  newPose,
+  RAPTOR_GAIT,
+  TRICERATOPS_GAIT,
+} from './dinoParts';
 import { useSceneryTick } from './sceneryClock';
 
 /**
- * Dino Valley's dinosaurs, a concept, 20 Oct 2026.
+ * Dino Valley's dinosaurs, a concept, 20 Oct 2026; rebuilt 1 Nov 2026.
  *
  * They ROAM, right round the board (David, 20 Oct 2026: "make the
  * dinosaurs move around the surroundings"). Every walker follows the
@@ -16,6 +25,17 @@ import { useSceneryTick } from './sceneryClock';
  * from above, moved on a scenery tick that allocates nothing
  * (sceneryClock.ts), and never over the tray except the pterodactyls,
  * which fly far above it.
+ *
+ * David, 1 Nov 2026: "Make the dinosaurs in Dino valley look much
+ * better." The first ones were blobs: a sphere, a cone, one flat colour,
+ * legs that did not move. These are built from the shared parts in
+ * dinoParts.ts — the silhouettes a child knows (the long-neck's arched
+ * neck and whip tail, the triceratops's frill, three horns and beak,
+ * the raptors' sickle claws, stiff tails and feathered crests, the
+ * pterodactyls' head crests and bat wings), hides painted with a pale
+ * belly and spots or stripes, cartoon eyes with whites and pupils, and
+ * legs that swing in step with how far they have walked. Friendly, not
+ * fierce: round snouts, big eyes, no teeth (ages 5+).
  */
 
 /** The two lanes round the board: rounded rectangles outside the tray. */
@@ -29,114 +49,103 @@ const INNER_LAP = lapOf(INNER);
 
 const P = new THREE.Vector3();
 
-/**
- * One pterodactyl wing in its own plane, x out to the tip and y toward
- * the nose: leading edge from the shoulder out to a point, trailing edge
- * swept back in a curve to the hip. Built once for every pterodactyl.
- */
-function wing(side: 1 | -1): THREE.ShapeGeometry {
-  const s = new THREE.Shape();
-  s.moveTo(0, 0.12);
-  s.lineTo(side * 0.55, 0.16);
-  s.lineTo(side * 1.0, -0.02);
-  s.quadraticCurveTo(side * 0.55, -0.12, side * 0.3, -0.3);
-  s.lineTo(0, -0.18);
-  s.closePath();
-  return new THREE.ShapeGeometry(s);
-}
-const WING_L = wing(-1);
-const WING_R = wing(1);
-
 export function DinoLife() {
   return (
     <group>
       <LongNeck />
       <Triceratops />
-      <Raptor offset={0.15} tone="#d9823a" stripe="#7a3a1a" />
-      <Raptor offset={0.19} tone="#3a9a8a" stripe="#1f5a50" />
-      <Pterodactyl offset={0} height={2.2} tone="#c0784a" />
-      <Pterodactyl offset={0.5} height={2.6} tone="#9a6a8a" />
+      <Raptor offset={0.15} size={1.15} />
+      <Raptor offset={0.19} size={1.02} />
+      <Pterodactyl offset={0} height={2.2} size={1.3} />
+      <Pterodactyl offset={0.5} height={2.6} size={1.1} />
     </group>
   );
 }
 
-const NECK_SKIN = '#8aa070';
-const NECK_BELLY = '#c4cfa8';
-const NECK_SPOT = '#6a8456';
+/** A pair of cartoon eyes, at the upper sides of a head. */
+function Eyes({ whites, pupils, position }: { whites: THREE.BufferGeometry; pupils: THREE.BufferGeometry; position: [number, number, number] }) {
+  const M = dinoMaterials();
+  return (
+    <group position={position}>
+      <mesh geometry={whites} material={M.eye} />
+      <mesh geometry={pupils} material={M.pupil} />
+    </group>
+  );
+}
+
+/** Where a quadruped's four hips are: front-left, front-right, back-left, back-right. */
+const hips = (x: number, y: number, z: number): [number, number, number][] => [
+  [-x, y, z],
+  [x, y, z],
+  [-x, y, -z],
+  [x, y, -z],
+];
+
+/** How far forward of vertical the long-neck's neck leans, at the shoulder and again at the middle. */
+const NECK_LEAN = 0.45;
+const NECK_BEND = 0.5;
 
 /** A brachiosaurus-shaped walker, nose toward +z in its own frame. */
 function LongNeck() {
   const body = useRef<THREE.Group | null>(null);
   const neck = useRef<THREE.Group | null>(null);
+  const head = useRef<THREE.Group | null>(null);
   const tail = useRef<THREE.Group | null>(null);
+  const tailTip = useRef<THREE.Group | null>(null);
   const legs = useRef<(THREE.Group | null)[]>([]);
-  const tick = useMemo(
-    () => (t: number) => {
+  const tick = useMemo(() => {
+    const pose = newPose();
+    return (t: number) => {
       const g = body.current;
       if (!g) return;
-      const heading = track((t * 0.3) / OUTER_LAP, OUTER.half, OUTER.far, OUTER.near, OUTER.r, P);
-      const step = t * 2.2;
-      g.position.set(P.x, Math.abs(Math.sin(step)) * 0.03, P.z);
-      g.rotation.set(0, heading, Math.sin(step) * 0.03);
-      if (neck.current) neck.current.rotation.set(0.55 + Math.sin(step * 0.5) * 0.08, Math.sin(t * 0.4) * 0.25, 0);
-      if (tail.current) tail.current.rotation.y = Math.sin(step * 0.5) * 0.3;
+      const walked = t * LONG_NECK_GAIT.pace;
+      const heading = track(walked / OUTER_LAP, OUTER.half, OUTER.far, OUTER.near, OUTER.r, P);
+      gait(LONG_NECK_GAIT, walked, pose);
+      g.position.set(P.x, pose.bob, P.z);
+      g.rotation.set(0, heading, pose.roll);
+      // The neck nods with each step and swings slowly side to side,
+      // looking about; the head keeps roughly level as it does.
+      if (neck.current) neck.current.rotation.set(NECK_LEAN + pose.nod, Math.sin(t * 0.4) * 0.25, 0);
+      if (head.current) head.current.rotation.x = -(NECK_LEAN + NECK_BEND) + 0.15 - pose.nod;
+      if (tail.current) tail.current.rotation.y = pose.tail;
+      if (tailTip.current) tailTip.current.rotation.y = pose.tailTip;
       for (let k = 0; k < 4; k++) {
         const leg = legs.current[k];
-        if (leg) leg.rotation.x = Math.sin(step + (k === 0 || k === 3 ? 0 : Math.PI)) * 0.35;
+        if (leg) leg.rotation.x = pose.legs[k];
       }
-    },
-    [],
-  );
+    };
+  }, []);
   useSceneryTick(tick);
+  const G = dinoGeometries().longNeck;
+  const M = dinoMaterials();
   return (
     <group ref={body} scale={0.62}>
-      <mesh position={[0, 1.0, 0]} scale={[0.5, 0.45, 0.95]}>
-        <sphereGeometry args={[1, 16, 12]} />
-        <meshStandardMaterial color={NECK_SKIN} roughness={0.8} />
-      </mesh>
-      {/* Spots along the back, where the camera sees them. */}
-      {[[-0.15, 0.3], [0.18, 0], [-0.1, -0.35], [0.12, 0.5]].map(([sx, sz], k) => (
-        <mesh key={k} position={[sx, 1.43, sz]} rotation={[-Math.PI / 2, 0, 0]} scale={[1, 1.3, 1]}>
-          <circleGeometry args={[0.1, 10]} />
-          <meshStandardMaterial color={NECK_SPOT} roughness={0.8} />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.72, 0]} scale={[0.42, 0.2, 0.8]}>
-        <sphereGeometry args={[1, 12, 8]} />
-        <meshStandardMaterial color={NECK_BELLY} roughness={0.8} />
-      </mesh>
-      {/* The neck, rising and leaning forward, and the little head. */}
-      <group ref={neck} position={[0, 1.25, 0.75]} rotation={[0.55, 0, 0]}>
-        <mesh position={[0, 0.75, 0]}>
-          <cylinderGeometry args={[0.1, 0.17, 1.5, 10]} />
-          <meshStandardMaterial color={NECK_SKIN} roughness={0.8} />
-        </mesh>
-        <group position={[0, 1.55, 0.06]}>
-          <mesh scale={[0.15, 0.13, 0.26]}>
-            <sphereGeometry args={[1, 10, 8]} />
-            <meshStandardMaterial color={NECK_SKIN} roughness={0.8} />
-          </mesh>
-          {[-0.09, 0.09].map((ex) => (
-            <mesh key={ex} position={[ex, 0.07, 0.06]}>
-              <sphereGeometry args={[0.03, 6, 5]} />
-              <meshStandardMaterial color="#1b1b1b" roughness={0.5} />
-            </mesh>
-          ))}
+      <mesh geometry={G.body} material={M.skin.longNeck} position={[0, 1.0, 0]} />
+      {/* The neck rises from the shoulders and bends forward again
+          halfway up, the arch a child draws; the head hangs off the end. */}
+      <group ref={neck} position={[0, 1.2, 0.72]} rotation={[NECK_LEAN, 0, 0]}>
+        <mesh geometry={G.neckLow} material={M.skin.longNeck} />
+        <group position={[0, 1.0, 0]} rotation={[NECK_BEND, 0, 0]}>
+          <mesh geometry={G.neckHigh} material={M.skin.longNeck} />
+          <group ref={head} position={[0, 0.78, 0]} rotation={[-(NECK_LEAN + NECK_BEND) + 0.15, 0, 0]}>
+            <mesh geometry={G.head} material={M.skin.longNeck} position={[0, 0.02, 0.12]} />
+            <Eyes whites={G.whites} pupils={G.pupils} position={[0, 0.12, 0.18]} />
+          </group>
         </group>
       </group>
-      {/* The tail, long and tapering, swinging. */}
-      <group ref={tail} position={[0, 0.95, -0.85]}>
-        <mesh position={[0, -0.15, -0.6]} rotation={[-Math.PI / 2 - 0.25, 0, 0]}>
-          <coneGeometry args={[0.2, 1.4, 10]} />
-          <meshStandardMaterial color={NECK_SKIN} roughness={0.8} />
-        </mesh>
+      {/* The tail: thick at the hips, lifted a little, then a whip that
+          droops to its tip, swinging behind with the tip a beat later. */}
+      <group ref={tail} position={[0, 1.05, -0.82]} rotation={[0.25, 0, 0]}>
+        <mesh geometry={G.tailBase} material={M.skin.longNeck} />
+        <group ref={tailTip} position={[0, 0, -1.0]} rotation={[-0.45, 0, 0]}>
+          <mesh geometry={G.tailTip} material={M.skin.longNeck} />
+        </group>
       </group>
-      {[[-0.28, 0.45], [0.28, 0.45], [-0.28, -0.45], [0.28, -0.45]].map(([lx, lz], k) => (
-        <group key={k} ref={(g) => { legs.current[k] = g; }} position={[lx, 0.8, lz]}>
-          <mesh position={[0, -0.4, 0]}>
-            <cylinderGeometry args={[0.13, 0.14, 0.8, 8]} />
-            <meshStandardMaterial color={NECK_SKIN} roughness={0.8} />
-          </mesh>
+      {/* Hips set wide and the feet out past the belly, so the walk
+          shows from overhead, where legs tucked under a body vanish. */}
+      {hips(0.37, 0.8, 0.6).map((at, k) => (
+        <group key={k} ref={(g) => { legs.current[k] = g; }} position={at}>
+          <mesh geometry={G.leg} material={M.hide.longNeck} />
         </group>
       ))}
     </group>
@@ -147,8 +156,11 @@ function LongNeck() {
 function Triceratops() {
   const body = useRef<THREE.Group | null>(null);
   const head = useRef<THREE.Group | null>(null);
-  const tick = useMemo(
-    () => (t: number) => {
+  const tail = useRef<THREE.Group | null>(null);
+  const legs = useRef<(THREE.Group | null)[]>([]);
+  const tick = useMemo(() => {
+    const pose = newPose();
+    return (t: number) => {
       const g = body.current;
       if (!g) return;
       // Plods round behind the long-neck, a third of a lap on, and
@@ -156,59 +168,57 @@ function Triceratops() {
       // Fourteen seconds a cycle: walks ten, stands and grazes four.
       const cycle = Math.floor(t / 14);
       const within = t - cycle * 14;
-      const walked = (cycle * 10 + Math.min(within, 10)) * 0.3;
+      const walked = (cycle * 10 + Math.min(within, 10)) * TRICERATOPS_GAIT.pace;
       const grazing = within > 10;
       const graze = grazing ? Math.min(1, (within - 10) * 2, (14 - within) * 2) : 0;
       const heading = track(walked / OUTER_LAP + 0.33, OUTER.half, OUTER.far, OUTER.near, OUTER.r, P);
-      const step = t * 5;
-      g.position.set(P.x, grazing ? 0 : Math.abs(Math.sin(step)) * 0.02, P.z);
-      g.rotation.set(0, heading, 0);
-      if (head.current) head.current.rotation.x = graze * 0.6;
-    },
-    [],
-  );
+      // The gait is a function of distance, so the legs stop when it does.
+      gait(TRICERATOPS_GAIT, walked, pose);
+      g.position.set(P.x, pose.bob, P.z);
+      g.rotation.set(0, heading, pose.roll);
+      if (head.current) head.current.rotation.x = graze * 0.6 + pose.nod;
+      if (tail.current) tail.current.rotation.y = pose.tail;
+      for (let k = 0; k < 4; k++) {
+        const leg = legs.current[k];
+        if (leg) leg.rotation.x = pose.legs[k];
+      }
+    };
+  }, []);
   useSceneryTick(tick);
+  const G = dinoGeometries().triceratops;
+  const M = dinoMaterials();
   return (
     <group ref={body} scale={1.1}>
-      <mesh position={[0, 0.3, 0]} scale={[0.26, 0.22, 0.4]}>
-        <sphereGeometry args={[1, 12, 10]} />
-        <meshStandardMaterial color="#7a9a4a" roughness={0.85} />
-      </mesh>
-      <group ref={head} position={[0, 0.32, 0.38]}>
-        {/* The frill: a shield standing up behind the head. */}
-        <mesh position={[0, 0.12, 0]} rotation={[-0.4, 0, 0]}>
-          <circleGeometry args={[0.26, 14]} />
-          <meshStandardMaterial color="#e09a4a" roughness={0.8} side={THREE.DoubleSide} />
-        </mesh>
-        <mesh position={[0, 0.02, 0.12]} scale={[0.15, 0.13, 0.2]}>
-          <sphereGeometry args={[1, 10, 8]} />
-          <meshStandardMaterial color="#7a9a4a" roughness={0.85} />
-        </mesh>
-        {/* Three horns. */}
-        {[[-0.08, 0.1, 0.18], [0.08, 0.1, 0.18], [0, 0.0, 0.3]].map(([hx, hy, hz], k) => (
-          <mesh key={k} position={[hx, hy, hz]} rotation={[Math.PI / 2 - 0.5, 0, 0]}>
-            <coneGeometry args={[0.025, k === 2 ? 0.1 : 0.16, 6]} />
-            <meshStandardMaterial color="#f2ead2" roughness={0.6} />
-          </mesh>
-        ))}
+      <mesh geometry={G.body} material={M.skin.triceratops} position={[0, 0.34, 0]} />
+      <group ref={head} position={[0, 0.38, 0.4]}>
+        {/* The frill: a scalloped shield behind the head, orange round
+            the rim with a green plate inside. It lies well back over the
+            shoulders, because the camera is nearly overhead and a frill
+            standing upright is a line from there. */}
+        <mesh geometry={G.frill} material={M.frill} position={[0, -0.05, -0.02]} rotation={[-0.95, 0, 0]} />
+        <mesh geometry={G.plate} material={M.hide.triceratops} position={[0, -0.05, -0.02]} rotation={[-0.95, 0, 0]} />
+        <mesh geometry={G.head} material={M.skin.triceratops} position={[0, 0, 0.1]} />
+        {/* A parrot's beak, pointing forward and down, and three horns. */}
+        <mesh geometry={G.beak} material={M.bone} position={[0, -0.04, 0.3]} rotation={[Math.PI / 2 + 0.35, 0, 0]} />
+        <mesh geometry={G.horns} material={M.bone} />
+        <Eyes whites={G.whites} pupils={G.pupils} position={[0, 0.05, 0.17]} />
       </group>
-      <mesh position={[0, 0.3, -0.42]} rotation={[-Math.PI / 2 - 0.3, 0, 0]}>
-        <coneGeometry args={[0.1, 0.35, 8]} />
-        <meshStandardMaterial color="#7a9a4a" roughness={0.85} />
-      </mesh>
-      {[[-0.14, 0.2], [0.14, 0.2], [-0.14, -0.2], [0.14, -0.2]].map(([lx, lz], k) => (
-        <mesh key={k} position={[lx, 0.1, lz]}>
-          <cylinderGeometry args={[0.06, 0.07, 0.2, 6]} />
-          <meshStandardMaterial color="#6a8a40" roughness={0.85} />
-        </mesh>
+      <group ref={tail} position={[0, 0.32, -0.44]} rotation={[-0.15, 0, 0]}>
+        <mesh geometry={G.tail} material={M.skin.triceratops} />
+      </group>
+      {hips(0.25, 0.26, 0.31).map((at, k) => (
+        <group key={k} ref={(g) => { legs.current[k] = g; }} position={at}>
+          <mesh geometry={G.leg} material={M.hide.triceratops} />
+        </group>
       ))}
     </group>
   );
 }
 
 /** A pterodactyl circling high over the valley, wings flapping. */
-function Pterodactyl({ offset, height, tone }: { offset: number; height: number; tone: string }) {
+function Pterodactyl({ offset, height, size }: { offset: number; height: number; size: number }) {
   const body = useRef<THREE.Group | null>(null);
+  const head = useRef<THREE.Group | null>(null);
   const wingL = useRef<THREE.Group | null>(null);
   const wingR = useRef<THREE.Group | null>(null);
   const tick = useMemo(
@@ -222,99 +232,92 @@ function Pterodactyl({ offset, height, tone }: { offset: number; height: number;
       const flap = Math.sin(t * 5 + offset * 10) * 0.55 * (0.6 + 0.4 * Math.sin(t * 0.8 + offset));
       if (wingL.current) wingL.current.rotation.z = flap;
       if (wingR.current) wingR.current.rotation.z = -flap;
+      // The head dips with each downstroke and looks about between them.
+      if (head.current) head.current.rotation.set(0.15 + flap * 0.1, Math.sin(t * 0.5 + offset) * 0.3, 0);
     },
     [offset, height],
   );
   useSceneryTick(tick);
+  const G = dinoGeometries().pterodactyl;
+  const M = dinoMaterials();
   return (
-    <group ref={body} scale={1.3}>
-      <mesh scale={[0.08, 0.07, 0.3]}>
-        <sphereGeometry args={[1, 8, 6]} />
-        <meshStandardMaterial color={tone} roughness={0.8} />
-      </mesh>
-      {/* Head: a long beak forward and a crest back. */}
-      <mesh position={[0, 0.03, 0.42]} rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.04, 0.28, 6]} />
-        <meshStandardMaterial color="#e8c070" roughness={0.7} />
-      </mesh>
-      <mesh position={[0, 0.07, 0.22]} rotation={[-Math.PI / 2 - 0.3, 0, 0]}>
-        <coneGeometry args={[0.035, 0.26, 4]} />
-        <meshStandardMaterial color={tone} roughness={0.8} />
-      </mesh>
+    <group ref={body} scale={size}>
+      <mesh geometry={G.body} material={M.skin.pterodactyl} />
+      {/* Head: a long beak forward, a blade of a crest sweeping back. */}
+      <group ref={head} position={[0, 0.03, 0.3]} rotation={[0.15, 0, 0]}>
+        <mesh geometry={G.head} material={M.skin.pterodactyl} />
+        <mesh geometry={G.beak} material={M.bone} position={[0, -0.01, 0.07]} />
+        <mesh geometry={G.crest} material={M.mark.pterodactyl} position={[0, 0.02, -0.04]} />
+        <Eyes whites={G.whites} pupils={G.pupils} position={[0, 0.03, 0.03]} />
+      </group>
       {/* Wings: flat, bat-like, hinged at the shoulder, lying in the
           ground plane so the camera above sees their whole spread. */}
-      {([[wingL, -1], [wingR, 1]] as const).map(([ref, side]) => (
-        <group key={side} ref={ref} position={[side * 0.05, 0, 0.05]}>
-          <mesh geometry={side < 0 ? WING_L : WING_R} rotation={[-Math.PI / 2, 0, 0]}>
-            <meshStandardMaterial color={tone} roughness={0.8} side={THREE.DoubleSide} />
-          </mesh>
-        </group>
-      ))}
+      <group ref={wingL} position={[-0.05, 0, 0.05]}>
+        <mesh geometry={G.wingL} material={M.wing} />
+      </group>
+      <group ref={wingR} position={[0.05, 0, 0.05]}>
+        <mesh geometry={G.wingR} material={M.wing} />
+      </group>
+      <mesh geometry={G.legs} material={M.hide.pterodactyl} position={[0, -0.02, -0.26]} />
     </group>
   );
 }
 
+/** How far forward of vertical a raptor's neck leans. */
+const RAPTOR_NECK = 0.55;
+
 /** A little raptor: runs upright on two legs, tail out straight behind. */
-function Raptor({ offset, tone, stripe }: { offset: number; tone: string; stripe: string }) {
+function Raptor({ offset, size }: { offset: number; size: number }) {
   const body = useRef<THREE.Group | null>(null);
+  const head = useRef<THREE.Group | null>(null);
+  const tail = useRef<THREE.Group | null>(null);
   const legL = useRef<THREE.Group | null>(null);
   const legR = useRef<THREE.Group | null>(null);
-  const tick = useMemo(
-    () => (t: number) => {
+  const tick = useMemo(() => {
+    const pose = newPose();
+    return (t: number) => {
       const g = body.current;
       if (!g) return;
       // Dashes round the inner lane three times as fast as the walkers,
       // with a little burst and ease in its pace.
-      const pace = 1.1 * t + Math.sin(t * 0.7 + offset * 20) * 0.6;
-      const heading = track(pace / INNER_LAP + offset, INNER.half, INNER.far, INNER.near, INNER.r, P);
-      const stride = t * 14 + offset * 30;
-      g.position.set(P.x, Math.abs(Math.sin(stride)) * 0.04, P.z);
+      const walked = RAPTOR_GAIT.pace * t + Math.sin(t * 0.7 + offset * 20) * 0.6;
+      const heading = track(walked / INNER_LAP + offset, INNER.half, INNER.far, INNER.near, INNER.r, P);
+      gait(RAPTOR_GAIT, walked, pose);
+      g.position.set(P.x, pose.bob, P.z);
       g.rotation.set(0, heading, 0);
-      if (legL.current) legL.current.rotation.x = Math.sin(stride) * 0.8;
-      if (legR.current) legR.current.rotation.x = -Math.sin(stride) * 0.8;
-    },
-    [offset],
-  );
+      if (head.current) head.current.rotation.x = -RAPTOR_NECK + 0.05 + pose.nod;
+      if (tail.current) tail.current.rotation.set(0.1, pose.tail, 0);
+      if (legL.current) legL.current.rotation.x = pose.legs[0];
+      if (legR.current) legR.current.rotation.x = pose.legs[1];
+    };
+  }, [offset]);
   useSceneryTick(tick);
+  const G = dinoGeometries().raptor;
+  const M = dinoMaterials();
   return (
-    <group ref={body} scale={1.15}>
-      <mesh position={[0, 0.32, 0]} rotation={[0.2, 0, 0]} scale={[0.11, 0.11, 0.24]}>
-        <sphereGeometry args={[1, 10, 8]} />
-        <meshStandardMaterial color={tone} roughness={0.8} />
-      </mesh>
-      {/* Stripes across the back. */}
-      {[-0.08, 0, 0.08].map((sz) => (
-        <mesh key={sz} position={[0, 0.425, sz]}>
-          <boxGeometry args={[0.16, 0.012, 0.025]} />
-          <meshStandardMaterial color={stripe} roughness={0.8} />
-        </mesh>
-      ))}
-      {/* Neck up, head forward. */}
-      <mesh position={[0, 0.45, 0.2]} rotation={[0.5, 0, 0]}>
-        <cylinderGeometry args={[0.04, 0.055, 0.2, 6]} />
-        <meshStandardMaterial color={tone} roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.55, 0.3]} scale={[0.065, 0.06, 0.13]}>
-        <sphereGeometry args={[1, 8, 6]} />
-        <meshStandardMaterial color={tone} roughness={0.8} />
-      </mesh>
-      {[-0.035, 0.035].map((ex) => (
-        <mesh key={ex} position={[ex, 0.585, 0.33]}>
-          <sphereGeometry args={[0.014, 5, 4]} />
-          <meshStandardMaterial color="#141414" roughness={0.5} />
-        </mesh>
-      ))}
-      {/* Tail out straight behind, for balance. */}
-      <mesh position={[0, 0.34, -0.38]} rotation={[-Math.PI / 2 - 0.1, 0, 0]}>
-        <coneGeometry args={[0.06, 0.4, 6]} />
-        <meshStandardMaterial color={tone} roughness={0.8} />
-      </mesh>
-      {([[legL, -0.06], [legR, 0.06]] as const).map(([ref, lx]) => (
-        <group key={lx} ref={ref} position={[lx, 0.26, 0]}>
-          <mesh position={[0, -0.12, 0]}>
-            <cylinderGeometry args={[0.025, 0.03, 0.25, 5]} />
-            <meshStandardMaterial color={stripe} roughness={0.8} />
-          </mesh>
+    <group ref={body} scale={size}>
+      <mesh geometry={G.body} material={M.skin.raptor} position={[0, 0.34, 0]} rotation={[-0.15, 0, 0]} />
+      {/* Little arms tucked in at the chest. */}
+      <mesh geometry={G.arms} material={M.hide.raptor} position={[0, 0.31, 0.14]} />
+      {/* Neck up, head forward, a fan of feathers off the back of it. */}
+      <group position={[0, 0.4, 0.17]} rotation={[RAPTOR_NECK, 0, 0]}>
+        <mesh geometry={G.neck} material={M.skin.raptor} />
+        <group ref={head} position={[0, 0.2, 0]} rotation={[-RAPTOR_NECK + 0.05, 0, 0]}>
+          <mesh geometry={G.head} material={M.skin.raptor} position={[0, 0.01, 0.06]} />
+          <mesh geometry={G.crest} material={M.mark.raptor} position={[0, 0.03, -0.02]} />
+          <Eyes whites={G.whites} pupils={G.pupils} position={[0, 0.04, 0.09]} />
+        </group>
+      </group>
+      {/* Tail out stiff behind, for balance, with only a little sway. */}
+      <group ref={tail} position={[0, 0.35, -0.22]} rotation={[0.1, 0, 0]}>
+        <mesh geometry={G.tail} material={M.skin.raptor} />
+      </group>
+      {/* Legs bent like a bird's, swung at the hip, a sickle claw held
+          up off the inner toe of each foot. */}
+      {([[legL, -1], [legR, 1]] as const).map(([ref, side]) => (
+        <group key={side} ref={ref} position={[side * 0.07, 0.27, -0.01]}>
+          <mesh geometry={G.leg} material={M.hide.raptor} />
+          <mesh geometry={G.claw} material={M.bone} position={[-side * 0.022, -0.245, 0.055]} />
         </group>
       ))}
     </group>
