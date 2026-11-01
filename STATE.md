@@ -234,6 +234,22 @@ in the conversation and the session's upload folder.
   (expected before launch). Payments: W-9 and address on file, no payment
   method yet (Google asks at the threshold). **Account max ad content
   rating changed from MA to G**, matching the per-request G cap in code.
+- **Push notifications WORK (1 Nov).** APNs key `TH96G837ND` (team
+  K3N9FG8NKD) made and uploaded to EAS for com.dmsutton.dicebattles. A
+  test through `/api/push/announce` reached David's phone; two phones
+  were registered. The game only asks when someone taps "Tell me about
+  updates" in its Settings (builds 16 and 17), never at launch.
+- **Support emails WORK (1 Nov).** Resend account with
+  papershipstudio.com verified; `RESEND_API_KEY` saved in Vercel as
+  Sensitive (Production). A test reply from /admin/support reached
+  David's Gmail from support@papershipstudio.com.
+- **Website deployed twice on 1 Nov** from this branch (privacy wording,
+  then the Resend key). Before deploying, the live source was compared
+  file by file: identical apart from the privacy sentence. Earlier
+  deploys titled "Add software factory" came from commits that are not
+  on GitHub. Vercel flags `HQ_API_TOKEN` and `SUPABASE_SERVICE_ROLE_KEY`
+  "Needs Attention" (not yet Sensitive); lock them after launch, saving
+  the HQ token first.
 
 ## iOS builds can run from a session again (9 Oct 2026)
 
