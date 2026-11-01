@@ -291,10 +291,24 @@ suite('purchases · nothing is granted that was not paid for', () => {
     const inRestore = (
       code.slice(code.indexOf('export async function restore')).match(/owned\.add\(/g) ?? []
     ).length;
+    // David, 1 Nov 2026: tester mode (the admin code) makes coin packs add
+    // their coins without the App Store. That is the one other place, it
+    // is a function of its own, and it is only reachable behind the tester
+    // check; it writes no entitlement (owned.add is not in it).
+    const testerBuy = code.slice(
+      code.indexOf('function testerBuy('),
+      code.indexOf('/** Long enough for a slow Face ID'),
+    );
+    const inTesterBuy = (testerBuy.match(/grantCoins\(|owned\.add\(/g) ?? []).length;
+    assert(!/owned\.add\(|passMonths\.add\(/.test(testerBuy), 'tester mode wrote a purchase record');
+    assert(
+      /if \(testerUnlocksPurchases\(\)\) return testerBuy\(product\);/.test(code),
+      'testerBuy is reachable without tester mode',
+    );
     assertEqual(
       grants,
-      inGrant + inRestore,
-      'something outside grant() and restore() hands out coins or entitlements',
+      inGrant + inRestore + inTesterBuy,
+      'something outside grant(), restore() and the tester override hands out coins or entitlements',
     );
   });
 
@@ -457,6 +471,12 @@ suite('purchases · tap any of them for the whole story', () => {
     assert(/viewing\.available &&/.test(shelf), 'the description offers to buy something not on sale');
     // Buying from the description still asks "are you sure" first.
     const detail = shelf.slice(shelf.indexOf('const detail ='), shelf.indexOf('onClose={() => {', shelf.indexOf('const detail =')));
-    assert(/setAsking\(product\)/.test(detail), 'buying from the description skips the question');
+    // Tester mode (1 Nov 2026) takes it free instead of asking about a price
+    // that is not being charged; everybody else still gets the question.
+    assert(/askOrTake\(product\)/.test(detail), 'buying from the description skips the question');
+    assert(
+      /if \(testerUnlocksPurchases\(\)\) void purchase\(product\);\s*else setAsking\(product\);/.test(shelf),
+      'outside tester mode the shelf no longer asks first',
+    );
   });
 });

@@ -116,10 +116,10 @@ export function grantCoins(amount: number): number {
 }
 
 /**
- * The "500 COIN" code in Settings. Sets the balance outright rather than
- * topping it up, so the Store can be looked at from any budget — including
- * a smaller one than you already had, which is how you check that a price
- * you cannot afford still reads as unaffordable.
+ * The coin codes in Settings (secretCodes.ts). They set the balance
+ * outright rather than topping it up, so the Store can be looked at from
+ * any budget — including a smaller one than you already had, which is how
+ * you check that a price you cannot afford still reads as unaffordable.
  *
  * Nothing already bought is taken away: `owned` is a record of what was
  * bought, and rewriting it would make the Inventory lie.

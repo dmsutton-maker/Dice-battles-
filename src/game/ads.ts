@@ -150,11 +150,17 @@ export function hasRealAdUnit(): boolean {
  * which is the entire point. It is Google's own recommended route for
  * development, not a workaround.
  *
- * WHO GETS IT: anyone in family tester mode — the `FAMILY` code in
- * Settings that David, Marc and AJ already type on a fresh install to
- * open every arena. That code now means "I am a tester" in both senses,
- * so registering a phone is typing a word into it rather than plugging it
- * into a laptop. `LOCK` turns it off again, and real ads come back.
+ * WHO GETS IT: anyone in family tester mode — the admin secret code in
+ * Settings (secretCodes.ts) that David, Marc and AJ type on a fresh
+ * install to open every arena. That code means "I am a tester" in both
+ * senses, so registering a phone is typing a code rather than plugging
+ * it into a laptop. The lock code turns it off again.
+ *
+ * SINCE 1 NOV 2026 tester mode also counts as "ads removed" (purchases.ts
+ * `adsRemoved`: Remove Ads is free with the admin code), so a tester is
+ * normally shown no ad at all and this test unit is the second line of
+ * defence rather than the first. It is left exactly as it was on purpose:
+ * the request flags below are the same for everybody.
  *
  * The check is deliberately made at REQUEST time rather than remembered,
  * so switching tester mode changes the very next ad.

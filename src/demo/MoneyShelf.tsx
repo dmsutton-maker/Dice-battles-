@@ -15,9 +15,11 @@ import { seasonAt, seasonDaysLeft } from '../game/seasonPass';
 import {
   buy,
   hasEntitlement,
+  hasPurchaseAccess,
   onPurchasesChanged,
   restore,
   storeState,
+  testerUnlocksPurchases,
 } from '../game/purchases';
 
 /**
@@ -96,9 +98,9 @@ export function MoneyShelf({
     if (result.ok) {
       onBought?.();
       setTold({
-        title: 'Thank you!',
+        title: result.tester ? 'Tester mode' : 'Thank you!',
         body: product.coins
-          ? `${product.coins.toLocaleString()} coins are in your purse.`
+          ? `${product.coins.toLocaleString()} coins are in your purse${result.tester ? ', free' : ''}.`
           : `${product.name} is yours.`,
       });
       return;
@@ -137,6 +139,23 @@ export function MoneyShelf({
     );
   };
 
+  /*
+    TESTER MODE LENDS EVERYTHING THAT COSTS MONEY. David, 1 Nov 2026:
+    "All the things that cost real money like the gold pass are for free
+    with the admin code." So no price is shown and no "are you sure it
+    costs..." question is asked (purchases.ts, testerUnlocksPurchases).
+    A coin pack is the one card that still does something when tapped:
+    it adds its coins, free.
+  */
+  const tester = testerUnlocksPurchases();
+  const owns = (product: Product) =>
+    product.kind !== 'consumable' && hasPurchaseAccess(product.id);
+  /** Ask first in the real shop; straight through in tester mode. */
+  const askOrTake = (product: Product) => {
+    if (testerUnlocksPurchases()) void purchase(product);
+    else setAsking(product);
+  };
+
   const comingLater = familyPreview ? <ComingLater onView={setViewing} /> : null;
 
   /*
@@ -150,12 +169,9 @@ export function MoneyShelf({
     <ProductDetail
       product={viewing}
       price={state.priceOf(viewing.id)}
-      canBuy={
-        viewing.available &&
-        state.available &&
-        !(viewing.kind !== 'consumable' && hasEntitlement(viewing.id))
-      }
-      owned={viewing.kind !== 'consumable' && hasEntitlement(viewing.id)}
+      tester={tester}
+      canBuy={viewing.available && state.available && !owns(viewing)}
+      owned={owns(viewing)}
       onPreview={
         onPreview
           ? (target) => {
@@ -169,7 +185,7 @@ export function MoneyShelf({
         const product = viewing;
         playClick();
         setViewing(null);
-        setAsking(product);
+        askOrTake(product);
       }}
       onClose={() => {
         playClick();
@@ -202,8 +218,11 @@ export function MoneyShelf({
       </Text>
 
       {state.products.map((product) => {
-        const bought = product.kind !== 'consumable' && hasEntitlement(product.id);
-        const price = priceLabel(product, state.priceOf(product.id));
+        const bought = owns(product);
+        // Lent by tester mode rather than really bought: say so, and never
+        // show the "yours" a real purchase earns.
+        const lent = bought && tester && !hasEntitlement(product.id);
+        const price = tester ? 'FREE' : priceLabel(product, state.priceOf(product.id));
         const isGold = product.kind === 'season';
         return (
           <View
@@ -231,20 +250,27 @@ export function MoneyShelf({
                     First two days only
                   </Text>
                 )}
+                {tester && (lent || product.kind === 'consumable') && (
+                  <Text style={styles.starter}>
+                    {lent ? 'Unlocked by tester mode' : 'Free in tester mode'}
+                  </Text>
+                )}
               </View>
               {bought ? (
                 <View style={styles.owned}>
-                  <Text style={styles.ownedText}>{product.kind === 'season' ? 'THIS MONTH' : 'YOURS'}</Text>
+                  <Text style={styles.ownedText}>
+                    {lent ? 'UNLOCKED' : product.kind === 'season' ? 'THIS MONTH' : 'YOURS'}
+                  </Text>
                 </View>
               ) : (
                 <Pressable
                   style={styles.buy}
                   disabled={busy}
                   accessibilityRole="button"
-                  accessibilityLabel={`Buy ${product.name}`}
+                  accessibilityLabel={tester ? `Get ${product.name} free` : `Buy ${product.name}`}
                   onPress={() => {
                     playClick();
-                    setAsking(product);
+                    askOrTake(product);
                   }}
                 >
                   <Text style={styles.buyText}>{price}</Text>
@@ -352,6 +378,7 @@ function ProductDetail({
   price,
   canBuy,
   owned,
+  tester,
   onBuy,
   onClose,
   onPreview,
@@ -359,6 +386,8 @@ function ProductDetail({
   product: Product;
   price: string | null;
   canBuy: boolean;
+  /** Tester mode is on: nothing is charged, so no price is shown. */
+  tester: boolean;
   owned: boolean;
   onBuy: () => void;
   onClose: () => void;
@@ -391,12 +420,16 @@ function ProductDetail({
           <Text style={styles.detailTitle}>{product.name}</Text>
           <Text style={styles.detailPrice}>
             {owned
-              ? product.kind === 'season'
-                ? 'Yours for this month'
-                : 'Yours already'
-              : product.available
-                ? shown
-                : `${shown} · not on sale yet`}
+              ? tester && !hasEntitlement(product.id)
+                ? 'Unlocked by tester mode'
+                : product.kind === 'season'
+                  ? 'Yours for this month'
+                  : 'Yours already'
+              : tester && product.available
+                ? 'Free in tester mode'
+                : product.available
+                  ? shown
+                  : `${shown} · not on sale yet`}
           </Text>
           <Text style={styles.detailBody}>{product.details}</Text>
           {included.length > 0 && (
@@ -427,10 +460,10 @@ function ProductDetail({
           <Pressable
             style={[styles.buy, styles.detailBuy]}
             accessibilityRole="button"
-            accessibilityLabel={`Buy ${product.name} for ${shown}`}
+            accessibilityLabel={tester ? `Get ${product.name} free` : `Buy ${product.name} for ${shown}`}
             onPress={onBuy}
           >
-            <Text style={styles.buyText}>Buy for {shown}</Text>
+            <Text style={styles.buyText}>{tester ? 'Take it, free' : `Buy for ${shown}`}</Text>
           </Pressable>
         )}
         <Pressable style={styles.detailClose} accessibilityRole="button" onPress={onClose}>

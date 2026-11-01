@@ -75,18 +75,12 @@ import { sync as syncGameCenter } from '../game/gameCenter';
 import {
   applyMatchResult,
   notePlayed,
-  parseTrophyCode,
-  parseCoinCode,
   setTrophies as writeTrophies,
-  TROPHY_CODE_MAX,
-  COIN_CODE_MAX,
   getProgress,
+  markCheated,
   loadProgress,
   nextTier,
   setUnlockAll as persistUnlockAll,
-  TESTER_CODE,
-  RESET_CODE,
-  TESTER_LOCK_CODE,
   TIERS,
   tierLabel,
   TROPHY_STAKES,
@@ -107,7 +101,8 @@ import {
 import { TUNING } from '../game/tuning';
 import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { hasEntitlement,
-  hasGoldPass, initPurchases, onPurchasesChanged } from '../game/purchases';
+  goldPassUnlocked, hasGoldPass, initPurchases, noteTesterModeChanged, onPurchasesChanged } from '../game/purchases';
+import { lookupCode } from '../game/secretCodes';
 import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
 import { warmAllArenaTextures } from '../arena/warmArenas';
 import { useAppActive } from '../game/useAppActive';
@@ -238,7 +233,7 @@ function AdStatusLine() {
   const status = adStatus();
   const WHY: Record<ReturnType<typeof adStatus>['stage'], string> = {
     'not-started': 'not started yet',
-    'bought-out': 'switched off — ads bought away',
+    'bought-out': 'switched off — ads removed (bought, or tester mode)',
     'no-sdk': 'not in this build — needs a new build from Apple',
     'no-consent': 'consent not granted, so no ad may be asked for',
     'init-failed': 'the ad service would not start (often no connection)',
@@ -758,7 +753,6 @@ export function DiceDemoScreen() {
   );
   const [warColors, setWarColors] = useState<{ player: ColorDef; ai: ColorDef } | null>(null);
   const [aiFreed, setAiFreed] = useState<PrisonerColorId[]>([]);
-  const [aiLastRoll, setAiLastRoll] = useState<[ColorDef, ColorDef] | null>(null);
   const [shakeSignal, setShakeSignal] = useState(0);
   const [callout, setCallout] = useState<{ key: number; text: string } | null>(null);
   /*
@@ -812,11 +806,17 @@ export function DiceDemoScreen() {
    * paid, so calling it again is always safe.
    */
   const claimGoldLevels = () => {
-    const owned = hasGoldPass();
+    // Tester mode lends the Gold Pass (purchases.ts), so the row pays
+    // without a purchase on record.
+    const owned = goldPassUnlocked();
     setGoldOwned(owned);
     if (!owned) return;
     const claimed = claimGold(getProgress().season);
     if (claimed.reached.length === 0) return;
+    // Coins and dice the Gold row hands to somebody who did not buy it are
+    // free items like the coin codes, so they take the save off the shared
+    // board the same way (and out of the Collector count they would feed).
+    if (!hasGoldPass()) markCheated();
     setSeasonState(claimed.state);
     setSeason(claimed.state);
     for (const level of claimed.reached) {
@@ -982,7 +982,6 @@ export function DiceDemoScreen() {
     aiFreedRef.current = [];
     setAiFreed([]);
     setRolledFaces(null);
-    setAiLastRoll(null);
     setRolling(false);
   }, []);
 
@@ -1073,32 +1072,29 @@ export function DiceDemoScreen() {
   }, []);
 
   const submitCode = useCallback(() => {
-    const code = codeInput.trim().toUpperCase();
+    const typed = codeInput;
     setCodeInput('');
-    // Parsed once, up front: "500 TROPHY" and "500 COIN" carry a value, so
-    // they cannot be matched by comparison like the others.
-    const trophyCode = parseTrophyCode(code);
-    const coinCode = parseCoinCode(code);
-    if (code === TESTER_CODE) {
+    // The codes are ten random characters kept only as hashes, so nothing
+    // is compared with a word here: secretCodes.ts hashes what was typed
+    // and says what, if anything, it does (David, 1 Nov 2026).
+    const action = lookupCode(typed);
+    if (action?.kind === 'admin') {
       persistUnlockAll(true);
       setUnlockAll(true);
+      // Tester mode also lends everything that costs money: tell the shelf
+      // and the Gold card to look again (purchases.ts).
+      noteTesterModeChanged();
       setCodeFeedback('Everything unlocked — have fun testing!');
       playFanfare();
-    } else if (coinCode) {
-      // Checked before the catch-all, so "500 COIN" is never met with
-      // "that's not the secret code".
-      const coins = writeCoins(coinCode.coins);
+    } else if (action?.kind === 'coins') {
+      const coins = writeCoins(action.amount);
       setWallet({ ...getWallet() });
-      setCodeFeedback(
-        coinCode.clamped
-          // No coin emoji here: the game draws its own gold coin now, and
-          // this line sitting one tap away from the HUD was the last place
-          // still showing the other one.
-          ? `That is more coins than the game holds — set to ${COIN_CODE_MAX.toLocaleString()}.`
-          : `Coins set to ${coins.toLocaleString()}.`,
-      );
+      // No coin emoji here: the game draws its own gold coin now, and
+      // this line sitting one tap away from the HUD was the last place
+      // still showing the other one.
+      setCodeFeedback(`Coins set to ${coins.toLocaleString()}.`);
       playFanfare();
-    } else if (code === RESET_CODE) {
+    } else if (action?.kind === 'reset') {
       const removed = clearPurchases(coinShopItemIds());
       setWallet({ ...getWallet() });
       // A wiped skin may still be the equipped one. activeDieBody already
@@ -1111,10 +1107,8 @@ export function DiceDemoScreen() {
           : `${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
       );
       playClick();
-    } else if (trophyCode) {
-      // Checked before the catch-all, so "500 TROPHY" is never met with
-      // "that's not the secret code".
-      const result = writeTrophies(trophyCode.trophies);
+    } else if (action?.kind === 'trophies') {
+      const result = writeTrophies(action.amount);
       setTrophies(result.trophies);
       // Going down relocks things, so the equipped skin may no longer be
       // owned. activeDieBody falls back on its own, but the Inventory would
@@ -1131,17 +1125,15 @@ export function DiceDemoScreen() {
           })),
         ]);
       }
-      setCodeFeedback(
-        trophyCode.clamped
-          ? `That is more trophies than the game holds — set to ${TROPHY_CODE_MAX.toLocaleString()}.`
-          : `Trophies set to ${result.trophies.toLocaleString()}.`,
-      );
+      setCodeFeedback(`Trophies set to ${result.trophies.toLocaleString()}.`);
       playFanfare();
-    } else if (code === TESTER_LOCK_CODE) {
+    } else if (action?.kind === 'lock') {
       persistUnlockAll(false);
       setUnlockAll(false);
+      // Back to the real record of what was bought (purchases.ts).
+      noteTesterModeChanged();
       setCodeFeedback('Tester mode off — back to earning unlocks.');
-    } else if (code) {
+    } else if (typed.trim()) {
       setCodeFeedback("Hmm, that's not the secret code…");
     }
   }, [codeInput]);
@@ -1690,7 +1682,6 @@ export function DiceDemoScreen() {
       // on rolling after the game is over. Same guard as handleSettled.
       if (phaseRef.current !== 'battle') return;
       const roll = rollAiDice();
-      setAiLastRoll(roll);
       const [a, b] = roll;
       if (a.id !== b.id) return;
       const m = modeRef.current;
@@ -2606,16 +2597,6 @@ export function DiceDemoScreen() {
               beside the scores.
             */}
             {opponentHas !== null && <OpponentDots taken={opponentHas} />}
-            {aiLastRoll && (
-              <View style={styles.aiRoll}>
-                {aiLastRoll.map((c, i) => (
-                  <View
-                    key={i}
-                    style={[styles.aiRollSwatch, { backgroundColor: c.hex }]}
-                  />
-                ))}
-              </View>
-            )}
           </View>
         </View>
       )}
@@ -3209,7 +3190,7 @@ export function DiceDemoScreen() {
               failure in ads.ts is swallowed on purpose, which is right
               for a player and useless for finding out why, and there is
               no Mac here to read a device log with. So the state says
-              itself, on the phone, to the people who typed FAMILY.
+              itself, on the phone, to the people who turned tester mode on.
 
               Read at render rather than held in state: it is only ever
               looked at by somebody who has just opened Settings, and a
@@ -3550,10 +3531,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 6,
   },
-  aiRoll: {
-    flexDirection: 'row',
-    gap: 3,
-  },
+  // The Color War scoreboard's two colour squares (the opponent's last
+  // roll used to flash here too; David, 1 Nov 2026: "Get rid of ghost
+  // rolls." — see the scoreboard).
   aiRollSwatch: {
     width: 13,
     height: 13,
