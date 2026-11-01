@@ -189,6 +189,19 @@ in the conversation and the session's upload folder.
     from Apple every time.
   Both still need setting, by hand on each product or by the API once
   the cause is found. Not yet attached to the version.
+- **Build 16 is attached to version 1.60.0** (swap to 17 is possible
+  until submission). Its export-compliance answer is already "no
+  non-exempt encryption".
+- **App Review notes written** (no login; child-directed,
+  non-personalised ads; what each purchase is; Game Center only, no
+  free text). Contact details were already set.
+- **Checked and already right:** age rating 4+ with advertising yes,
+  user-generated content no, messaging no; Game Center enabled on the
+  version; app price Free; available in new territories; content rights
+  "does not use third-party content"; release set to automatic after
+  approval.
+- **Still only on David's screen:** App Privacy (no API), Business →
+  Agreements, AdMob.
 
 ## iOS builds can run from a session again (9 Oct 2026)
 
