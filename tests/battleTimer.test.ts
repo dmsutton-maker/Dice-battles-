@@ -291,7 +291,14 @@ suite('battle timer · a friendly battle, ended by the server', () => {
     const claim = route.indexOf('body.claimWin === true');
     assert(onTime > 0, 'the live route no longer ends a battle on time');
     assert(onTime < leave && onTime < claim, 'a claim or leave is looked at before the clock');
-    assert(/msLeft: battleMsLeft\(/.test(route), 'the phones are no longer sent the clock');
+    /*
+      Loosened from `msLeft: battleMsLeft(` on purpose. David, 1 Nov 2026:
+      "Fix the versus against friends because it doesn't connect" — a
+      battle now waits for both phones first, and while it waits the full
+      clock is sent instead (tests/friendlyServer.test.ts checks that
+      half). Once it is playing, the clock is still battleMsLeft.
+    */
+    assert(/msLeft:[^\n]*battleMsLeft\(/.test(route), 'the phones are no longer sent the clock');
     const sweep = read('hq/src/app/api/battles/route.ts');
     assert(/timeoutWinner\(/.test(sweep), 'a battle nobody is beating is not ended on time');
   });
