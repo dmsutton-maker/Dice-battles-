@@ -164,6 +164,32 @@ and the same day the listing was brought up to date:
   - The submission itself still sits behind the full-test-on-Fable gate
     in AGENTS.md.
 
+## App Store Connect, as seen live on 1 Nov 2026
+
+Read and written through the API with a new Admin key David made that
+day. Neither its ids nor its `.p8` are in this repo; they were only ever
+in the conversation and the session's upload folder.
+
+- **Version record is now `1.60.0`** (was `1.0`), still
+  `PREPARE_FOR_SUBMISSION`. David chose this over renumbering the build.
+- **Builds in App Store Connect: 16, 9, 6, 5, 3, 2.** Build 16 (1.60.0,
+  13 Oct) is VALID and attachable. **Build 17 was never uploaded**: it
+  exists only on EAS (`aa12c880-…`) and needs `eas submit` or the
+  expo.dev Submit button, which needs an Expo login.
+- **All eight in-app purchases now exist**, each with an en-US name,
+  description, review note and review screenshot: `remove_ads`,
+  `coins_pouch`, `coins_chest`, `coins_vault`, `starter_pack`,
+  `neon_dice`, `dino_valley` (all as in `products.ts`) and `gold_pass`
+  (NON_RENEWING_SUBSCRIPTION). All show `MISSING_METADATA`, because
+  two steps were refused:
+  - **Price:** `POST /v1/inAppPurchasePriceSchedules` returns 403 "The
+    API key in use does not allow this request", with Apple's
+    documented body, even though the same key can list users.
+  - **Countries:** `POST /v1/inAppPurchaseAvailabilities` returns 500
+    from Apple every time.
+  Both still need setting, by hand on each product or by the API once
+  the cause is found. Not yet attached to the version.
+
 ## iOS builds can run from a session again (9 Oct 2026)
 
 Build 16 (1.60.0, runtime 3.0.0 — purchases and push on) was built from
