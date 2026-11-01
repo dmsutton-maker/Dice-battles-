@@ -172,7 +172,7 @@ in the conversation and the session's upload folder.
 
 - **Version record is now `1.60.0`** (was `1.0`), still
   `PREPARE_FOR_SUBMISSION`. David chose this over renumbering the build.
-- **Builds in App Store Connect: 16, 9, 6, 5, 3, 2.** Build 16 (1.60.0,
+- **Builds in App Store Connect (morning): 16, 9, 6, 5, 3, 2.** Build 16 (1.60.0,
   13 Oct) is VALID and attachable. **Build 17 was never uploaded**: it
   exists only on EAS (`aa12c880-…`) and needs `eas submit` or the
   expo.dev Submit button, which needs an Expo login.
@@ -202,6 +202,27 @@ in the conversation and the session's upload folder.
   approval.
 - **Still only on David's screen:** App Privacy (no API), Business →
   Agreements, AdMob.
+- **Later the same day (via Claude in Chrome, on David's screen):**
+  - **Paid Apps Agreement: Active**, effective 1 Nov 2026, nothing pending.
+  - **All eight purchases priced and in all 175 countries**, US base:
+    remove_ads $3.99, coins_pouch $0.99, coins_chest $4.99, coins_vault
+    $9.99, starter_pack $4.99, neon_dice $1.99, dino_valley $2.99,
+    gold_pass $2.99. The API reads every one as `READY_TO_SUBMIT`
+    (the website labels that "Prepare for Submission"). The key is
+    still refused on prices even with the agreement active.
+  - **App Privacy PUBLISHED**: data collected, 11 types, NONE used for
+    tracking. Name, User ID, Gameplay Content, Other User Content,
+    Other Diagnostic Data, Device ID (App Functionality; Device ID also
+    Third-Party Advertising and Analytics), and from Google's AdMob
+    disclosure page Coarse Location, Product Interaction, Advertising
+    Data, Performance Data, Crash Data. All linked to the user except
+    Crash Data. These answers stay true only while the child-directed,
+    non-personalised ad flags are on (AGENTS.md).
+  - The version page has no "In-App Purchases and Subscriptions"
+    section; the purchases have not yet been put in a submission.
+- **Build 17 uploaded** from the session (EAS Submit, Apple key in a
+  temporary `eas.json` edit that was reverted), processed `VALID`, and
+  is now the build on version 1.60.0, with encryption answered "no".
 
 ## iOS builds can run from a session again (9 Oct 2026)
 
