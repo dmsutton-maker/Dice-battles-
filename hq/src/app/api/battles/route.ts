@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { authenticatePlayer, isOnline, touchSeen } from '@/lib/playerAuth';
+import { timeoutWinner } from '@/lib/battleClock';
 
 /**
  * Friendly battles: the challenge, and nothing else.
@@ -97,15 +98,36 @@ async function sweep(playerId: string) {
   }
 
   const stuck: string[] = [];
+  /*
+    A battle whose clock has run out is OVER, with a result, even when
+    nobody's phone was there to send the beat that would have closed it
+    (../live). David, 1 Nov 2026: a battle that does not finish in two
+    and a half minutes is "a tie if the score is tied, or a win for
+    whoever is winning at that moment" — so it is closed here by the
+    same rule, not swept away with no winner like a stuck one.
+  */
+  const timedOut: { id: string; winner: string }[] = [];
   for (const side of ['a_id', 'b_id'] as const) {
     const { data } = await supabase
       .from('battles')
-      .select('id, a_seen, b_seen, started_at')
+      .select('id, a_id, b_id, a_freed, b_freed, a_seen, b_seen, started_at')
       .eq('state', 'playing')
       .eq(side, playerId);
     for (const b of data ?? []) {
       const ms = (v: unknown) => (v ? new Date(String(v)).getTime() : NaN);
       const started = ms(b.started_at);
+      const winner = timeoutWinner({
+        startedAtMs: started,
+        nowMs,
+        aId: String(b.a_id),
+        bId: String(b.b_id),
+        aFreed: b.a_freed,
+        bFreed: b.b_freed,
+      });
+      if (winner) {
+        timedOut.push({ id: String(b.id), winner });
+        continue;
+      }
       // A phone that has never spoken counts as silent, but only once the
       // battle itself is old enough to have heard from it.
       const silent = (seen: unknown) => {
@@ -117,6 +139,15 @@ async function sweep(playerId: string) {
       const tooOld = Number.isFinite(started) && nowMs - started > BATTLE_MAX_MS;
       if (tooOld || (silent(b.a_seen) && silent(b.b_seen))) stuck.push(String(b.id));
     }
+  }
+  for (const { id, winner } of timedOut) {
+    // Same guards as a beat: only a battle still playing, still unwon.
+    await supabase
+      .from('battles')
+      .update({ state: 'over', ended_at: now, winner })
+      .eq('id', id)
+      .eq('state', 'playing')
+      .is('winner', null);
   }
   if (stuck.length) {
     // No winner: nobody finished. The state guard means a battle that

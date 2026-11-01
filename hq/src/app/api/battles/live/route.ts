@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { authenticatePlayer, touchSeen } from '@/lib/playerAuth';
+import { battleMsLeft, timeoutWinner } from '@/lib/battleClock';
 
 /**
  * The battle itself, while two people are playing it.
@@ -28,12 +29,28 @@ import { authenticatePlayer, touchSeen } from '@/lib/playerAuth';
  * own family. Arbitrating four different game modes on the server, for a
  * game with nothing at stake, would be a great deal of machinery
  * defending an empty room.
+ *
+ * WHEN THE CLOCK RUNS OUT, THIS ROUTE DECIDES, not the phones. David,
+ * 1 Nov 2026: "Add a two minute thirty second timer and if the game
+ * doesn't finish by then it is a tie if the score is tied, or a win for
+ * whoever is winning at that moment." The first beat to arrive after the
+ * clock and its grace (../../../../lib/battleClock.ts) closes the battle
+ * by the colours each side has stored, before any claim or leave in that
+ * same beat is looked at — a battle that is over on time cannot be won
+ * or handed away afterwards. That is what makes both phones agree, and
+ * what ends a battle on an app from before the clock, which never stops
+ * on its own. Every answer carries `msLeft` so both phones show the same
+ * clock.
  */
 
 export const dynamic = 'force-dynamic';
 
 /** Nothing heard from a phone in this long: they have gone. */
 const DROPPED_MS = 20_000;
+
+/** Every column a beat reads back. `started_at` is the start of the clock. */
+const COLUMNS =
+  'id, a_id, b_id, a_freed, b_freed, a_seen, b_seen, winner, state, mode, difficulty, started_at';
 
 const colours = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -59,7 +76,7 @@ export async function POST(request: NextRequest) {
   const supabase = supabaseAdmin();
   const { data: battle } = await supabase
     .from('battles')
-    .select('id, a_id, b_id, a_freed, b_freed, a_seen, b_seen, winner, state, mode, difficulty')
+    .select(COLUMNS)
     .eq('id', battleId)
     .maybeSingle();
   if (!battle) return NextResponse.json({ error: 'no such battle' }, { status: 404 });
@@ -69,16 +86,42 @@ export async function POST(request: NextRequest) {
   if (!iAmA && !iAmB) return NextResponse.json({ error: 'not your battle' }, { status: 403 });
 
   const now = new Date();
+  const freed = colours(body.freed);
   const patch: Record<string, unknown> = iAmA
-    ? { a_freed: colours(body.freed), a_seen: now.toISOString() }
-    : { b_freed: colours(body.freed), b_seen: now.toISOString() };
+    ? { a_freed: freed, a_seen: now.toISOString() }
+    : { b_freed: freed, b_seen: now.toISOString() };
+  const startedAtMs = new Date(String(battle.started_at)).getTime();
 
   /*
-    Leaving is a real move, not a disconnection. A player who backs out
-    of a friendly battle hands it to the other one rather than leaving
-    them staring at a board that has stopped moving.
+    Time up comes FIRST. Past the clock and its grace, the score decides
+    — the colours just reported by this phone and the last ones stored
+    for the other — and a claim or a leave arriving in the same beat
+    changes nothing: the battle was already over. A tie is written as
+    TIE_WINNER rather than left null, because null means "still on" to
+    every app ever shipped and would leave both of them racing.
   */
-  if (body.leave === true && battle.state === 'playing') {
+  const onTime =
+    battle.state === 'playing' && !battle.winner
+      ? timeoutWinner({
+          startedAtMs,
+          nowMs: now.getTime(),
+          aId: battle.a_id,
+          bId: battle.b_id,
+          aFreed: iAmA ? freed : battle.a_freed,
+          bFreed: iAmA ? battle.b_freed : freed,
+        })
+      : null;
+
+  if (onTime) {
+    patch.winner = onTime;
+    patch.state = 'over';
+    patch.ended_at = now.toISOString();
+  } else if (body.leave === true && battle.state === 'playing') {
+    /*
+      Leaving is a real move, not a disconnection. A player who backs out
+      of a friendly battle hands it to the other one rather than leaving
+      them staring at a board that has stopped moving.
+    */
     patch.state = 'over';
     patch.ended_at = now.toISOString();
     if (!battle.winner) patch.winner = iAmA ? battle.b_id : battle.a_id;
@@ -103,14 +146,14 @@ export async function POST(request: NextRequest) {
       .update(patch)
       .eq('id', battleId)
       .is('winner', null)
-      .select('id, a_id, b_id, a_freed, b_freed, a_seen, b_seen, winner, state, mode, difficulty')
+      .select(COLUMNS)
       .maybeSingle();
     if (won) {
       saved = won;
     } else {
       const { data: already } = await supabase
         .from('battles')
-        .select('id, a_id, b_id, a_freed, b_freed, a_seen, b_seen, winner, state, mode, difficulty')
+        .select(COLUMNS)
         .eq('id', battleId)
         .maybeSingle();
       if (already) saved = already;
@@ -120,7 +163,7 @@ export async function POST(request: NextRequest) {
       .from('battles')
       .update(patch)
       .eq('id', battleId)
-      .select('id, a_id, b_id, a_freed, b_freed, a_seen, b_seen, winner, state, mode, difficulty')
+      .select(COLUMNS)
       .maybeSingle();
     if (updated) saved = updated;
   }
@@ -129,8 +172,12 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     theirs: iAmA ? saved.b_freed : saved.a_freed,
     mine: iAmA ? saved.a_freed : saved.b_freed,
-    // Null while nobody has won, then the player_id of whoever did.
+    // Null while nobody has won, then the player_id of whoever did, or
+    // TIE_WINNER when time ran out level.
     winner: saved.winner ?? null,
+    // The clock both phones show, worked out here so a phone whose own
+    // clock is set wrong still shows the same time as its friend's.
+    msLeft: battleMsLeft(startedAtMs, Date.now()),
     over: saved.state !== 'playing',
     // True when their phone has stopped talking to us. The game says so
     // rather than leaving somebody racing an opponent who has gone.

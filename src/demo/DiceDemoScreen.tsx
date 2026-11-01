@@ -166,6 +166,21 @@ import { MODE_ICONS } from '../ui/modeIcons';
 import { askToBeTold, pushState, refreshToken, type PushState } from '../game/push';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
+import { BattleClock } from './BattleClock';
+import {
+  battleScores,
+  clockLeft,
+  FRIENDLY_VERDICT_WAIT_MS,
+  friendlyVerdict,
+  newClock,
+  pauseClock,
+  runClock,
+  syncClock,
+  timeUpOutcome,
+  type BattleOutcome,
+  type ClockState,
+} from '../game/battleTimer';
+import { TIME_UP_PAUSE_MS } from '../game/tuning';
 import { TierIcon } from './TierIcon';
 import { FirstFrame } from './FirstFrame';
 import {
@@ -223,6 +238,14 @@ type Phase =
   | 'arm'
   | 'go'
   | 'battle'
+  /*
+    The clock has run out: "Time's up!" is on screen, nothing more can be
+    rolled or rescued, and the result follows (battleTimer.ts). Its own
+    phase so every guard that already says "only during 'battle'" — the
+    opponent's rolls, the player's settles, the throw itself — stops
+    everything at 0:00 without being told about the clock.
+  */
+  | 'timeup'
   | 'won'
   | 'lost'
   | 'tie';
@@ -896,6 +919,17 @@ export function DiceDemoScreen() {
   const startPendingRef = useRef(false);
   const startEpochRef = useRef(0);
   const lastSplash = useRef(0);
+  /*
+    THE BATTLE CLOCK (battleTimer.ts). A ref rather than state: the clock
+    on the scoreboard reads it four times a second by itself
+    (BattleClock.tsx), and state would re-render this whole screen and
+    its board every time. `clockEpoch` moves only when a friendly
+    battle's server puts the clock right, so the time-up is rescheduled.
+  */
+  const clockRef = useRef<ClockState>(newClock());
+  const [clockEpoch, setClockEpoch] = useState(0);
+  const readClock = useCallback(() => clockLeft(clockRef.current, Date.now()), []);
+  const timeUpAtRef = useRef(0);
 
   // Whether the start screen's content is taller than the screen itself.
   const pickHeights = useRef({ viewport: 0, content: 0 });
@@ -1617,6 +1651,14 @@ export function DiceDemoScreen() {
       opponentRef.current = rival;
       setOpponent(rival);
       resetRace();
+      /*
+        A full clock for every battle. It stays stopped through the
+        reveal and the countdown and only runs from "BATTLE!" (see the
+        clock's effect), so they cost nobody any time. Set here rather
+        than at "BATTLE!" because a friendly battle's server may already
+        have put it right by then.
+      */
+      clockRef.current = newClock();
       // Fresh obstacle spots every battle.
       setLayout(generateObstacleLayout(difficultyRef.current));
       setRound((r) => r + 1);
@@ -1772,6 +1814,93 @@ export function DiceDemoScreen() {
     }, rollIntervalMs);
     return () => clearInterval(id);
   }, [phase, appActive, difficulty, finishRound, moveUnit, showCallout]);
+
+  /*
+    TIME UP. David, 1 Nov 2026: "Add a two minute thirty second timer and
+    if the game doesn't finish by then it is a tie if the score is tied,
+    or a win for whoever is winning at that moment."
+
+    "Time's up!" first, on its own, so nobody wonders why the battle
+    stopped; then the ordinary finishRound, so a win on time is a win
+    everywhere a win counts — trophies, coins, the pass, the cups, the
+    records — and a tie on time is a tie. The score is taken at the
+    moment the clock stops, from the same function the scoreboard
+    draws with, so the result is the numbers the player was looking at.
+  */
+  const enterTimeUp = useCallback(() => {
+    timeUpAtRef.current = Date.now();
+    setPhaseBoth('timeup');
+    showCallout("Time's up!");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+  }, [setPhaseBoth, showCallout]);
+
+  /** The result, once "Time's up!" has had its moment. */
+  const finishAfterTimeUp = useCallback(
+    (outcome: BattleOutcome) => {
+      const wait = Math.max(0, timeUpAtRef.current + TIME_UP_PAUSE_MS - Date.now());
+      flashTimers.current.push(
+        setTimeout(() => {
+          if (phaseRef.current === 'timeup') finishRound(outcome);
+        }, wait),
+      );
+    },
+    [finishRound],
+  );
+
+  const endOnTime = useCallback(() => {
+    if (phaseRef.current !== 'battle') return;
+    enterTimeUp();
+    // A friendly battle is ended by the SERVER, so both phones agree —
+    // its verdict arrives on the live beat below.
+    if (friendlyRef.current) return;
+    const score = battleScores(
+      modeRef.current,
+      unitsRef.current,
+      aiFreedRef.current,
+      warRef.current,
+    );
+    finishAfterTimeUp(timeUpOutcome(score.player, score.ai));
+  }, [enterTimeUp, finishAfterTimeUp]);
+
+  /*
+    THE CLOCK RUNS EXACTLY WHEN THE OPPONENT DOES: during 'battle', with
+    the game on screen. The computer's rolls stop when the phone goes in
+    a pocket (the effect above, and useAppActive), so the clock stops
+    with them — otherwise a player who took a phone call would come back
+    to find the battle decided by a clock that ran while their rival sat
+    frozen, and the other way round a clock that stopped while the rival
+    kept rolling would hand the rival free time. Paused and resumed
+    together, the two always agree.
+
+    In a friendly battle the opponent is a person whose phone keeps
+    going, so the server's clock is the real one and it does not stop
+    for anybody's pocket; this phone's count is only its estimate
+    between beats, and the first beat back puts it right (syncClock).
+  */
+  useEffect(() => {
+    if (phase !== 'battle' || !appActive) return;
+    clockRef.current = runClock(clockRef.current, Date.now());
+    const id = setTimeout(endOnTime, clockLeft(clockRef.current, Date.now()));
+    return () => {
+      clearTimeout(id);
+      clockRef.current = pauseClock(clockRef.current, Date.now());
+    };
+  }, [phase, appActive, clockEpoch, endOnTime]);
+
+  /*
+    A friendly battle whose verdict never comes — the connection dropped
+    at the wrong moment — is decided here from the score this phone can
+    see, by the same rule, rather than left on "Time's up!" for ever.
+    Only counts while the game is on screen and beating.
+  */
+  useEffect(() => {
+    if (phase !== 'timeup' || !friendly || !appActive) return;
+    const id = setTimeout(() => {
+      if (phaseRef.current !== 'timeup') return;
+      finishRound(timeUpOutcome(retreatColorIds().length, aiFreedRef.current.length));
+    }, FRIENDLY_VERDICT_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [phase, friendly, appActive, finishRound]);
 
   const handleThrow = useCallback(() => {
     markBoardBusy();
@@ -2163,6 +2292,28 @@ export function DiceDemoScreen() {
           aiFreedRef.current = theirs;
           setAiFreed(theirs);
         }
+        // The server is the clock in a friendly battle (battleTimer.ts).
+        if (pulse.msLeft !== null) {
+          const synced = syncClock(clockRef.current, pulse.msLeft, Date.now());
+          if (synced !== clockRef.current) {
+            clockRef.current = synced;
+            setClockEpoch((n) => n + 1);
+          }
+        }
+        /*
+          Ended ON TIME, by the server, the same way on both phones: a win
+          for whoever was ahead, or a tie. "Time's up!" first if this
+          phone's own clock had not quite got there, then the result.
+        */
+        if (
+          pulse.winner &&
+          pulse.msLeft === 0 &&
+          (phaseRef.current === 'battle' || phaseRef.current === 'timeup')
+        ) {
+          if (phaseRef.current === 'battle') enterTimeUp();
+          finishAfterTimeUp(friendlyVerdict(pulse.winner, me.playerId));
+          return;
+        }
         if (pulse.theyDropped && phaseRef.current === 'battle') {
           showCallout(`${friendly.opponentName} has gone — you win!`, 'congrats');
           finishRound('won');
@@ -2180,7 +2331,7 @@ export function DiceDemoScreen() {
       alive = false;
       clearTimeout(timer);
     };
-  }, [friendly, me, appActive, finishRound, showCallout]);
+  }, [friendly, me, appActive, finishRound, showCallout, enterTimeUp, finishAfterTimeUp]);
 
   const previewView = (() => {
     if (!preview) return null;
@@ -2293,22 +2444,10 @@ export function DiceDemoScreen() {
     );
   };
   // In Color War both sides stand in the retreat row, so each side's
-  // score is its own colour rather than everyone standing there.
-  const inRetreat = (colorId: PrisonerColorId) =>
-    units.filter((u) => u.station.kind === 'retreat' && u.colorId === colorId)
-      .length;
-  const playerScore =
-    mode === 'colorwar' && warColors
-      ? inRetreat(warColors.player.id)
-      : units.filter((u) => u.station.kind === 'retreat').length;
-  const aiScore =
-    mode === 'colorwar'
-      ? warColors
-        ? inRetreat(warColors.ai.id)
-        : 0
-      : mode === 'skirmish'
-        ? units.filter((u) => u.station.kind === 'wall').length
-        : aiFreed.length;
+  // score is its own colour rather than everyone standing there. Worked
+  // out in battleTimer.ts, which the time-up decision also uses, so the
+  // result at 0:00 is always the score on this board.
+  const { player: playerScore, ai: aiScore } = battleScores(mode, units, aiFreed, warColors);
   // Which colours wear a cross. Per mode, and in modes.ts because
   // getting it wrong marks a colour still sitting in the jail.
   const opponentHas = opponentColors(mode, units, aiFreed);
@@ -2569,7 +2708,11 @@ export function DiceDemoScreen() {
       */}
 
       {/* Scoreboard */}
-      {(phase === 'battle' || phase === 'won' || phase === 'lost' || phase === 'tie') && (
+      {(phase === 'battle' ||
+        phase === 'timeup' ||
+        phase === 'won' ||
+        phase === 'lost' ||
+        phase === 'tie') && (
         <View pointerEvents="none" style={[styles.scoreboard, { top: 54 + hud.shift }]}>
           <View style={[styles.scoreSide, playerFlash && styles.scoreFlashYou]}>
             <Text style={styles.scoreLabel}>YOU</Text>
@@ -2578,7 +2721,16 @@ export function DiceDemoScreen() {
             )}
             <Text style={styles.scoreNumber}>{playerScore}</Text>
           </View>
-          <Text style={styles.scoreVs}>vs</Text>
+          {/*
+            The clock sits where "vs" does, between the two scores, for
+            the length of the battle: the row is already as wide as a
+            375pt phone allows, and the space under it is the jail.
+          */}
+          {phase === 'battle' || phase === 'timeup' ? (
+            <BattleClock read={readClock} />
+          ) : (
+            <Text style={styles.scoreVs}>vs</Text>
+          )}
           <View style={[styles.scoreSide, aiFlash && styles.scoreFlashAi]}>
             <Text style={styles.scoreNumber}>{aiScore}</Text>
             {warColors && (
@@ -3375,16 +3527,20 @@ const styles = StyleSheet.create({
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
     borderRadius: SHAPE.radius,
-    paddingHorizontal: 14,
+    // Tightened from 14 / 10 / 8 on 1 Nov 2026 to make room for the
+    // battle clock where "vs" was, so the row is barely wider than
+    // before on a 375pt phone (measured in react-native-web with the
+    // longest opponent name: 336pt with the clock, 332pt before it).
+    paddingHorizontal: 10,
     paddingVertical: 7,
-    gap: 10,
+    gap: 6,
   },
   scoreSide: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     borderRadius: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 2,
   },
   scoreFlashYou: {
