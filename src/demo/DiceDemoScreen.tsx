@@ -140,7 +140,13 @@ import {
 import {
   BATTLE_SYNC_MS,
   CHALLENGE_POLL_MS,
+  OUTGOING_POLL_MS,
   POPUP_MS,
+  coloursAdded,
+  localWaitOver,
+  noShowLine,
+  rivalProgressCallout,
+  sameColours,
   secondsLeft,
   topChallenge,
 } from '../game/friendlyBattle';
@@ -150,6 +156,7 @@ import { TwoPlayerScreen } from './TwoPlayerScreen';
 import { VolumeSlider } from './VolumeSlider';
 import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
+import { FriendlyWaitOverlay } from './FriendlyWaitOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
 import { BottomNav, useBottomNavHeight, Tab } from './BottomNav';
@@ -576,11 +583,29 @@ export function DiceDemoScreen() {
     outgoing: null,
     battle: null,
   });
+  /*
+    My challenge is out, so the answer can come any second: the poll
+    reads this when it schedules its next ask (OUTGOING_POLL_MS), rather
+    than restarting itself every time the challenge state changes.
+  */
+  const outgoingRef = useRef<ChallengeState['outgoing']>(null);
+  outgoingRef.current = challenges.outgoing;
   const [friendly, setFriendly] = useState<
     { battleId: string; opponentId: string; opponentName: string } | null
   >(null);
   const friendlyRef = useRef<typeof friendly>(null);
   friendlyRef.current = friendly;
+  /*
+    THE WAITING ROOM (friendlyBattle.ts, JOIN_WAIT_MS). David, 1 Nov
+    2026: "Fix the versus against friends because it doesn't connect".
+    `friendReady` is the server's `started`, first seen on the live beat
+    while the friend's card is up; the waiting overlay reads it and only
+    then starts the countdown, so both phones go together.
+    `friendWaitSinceRef` is when this phone began waiting, for its own
+    safety net if the server's "they never came" cannot get through.
+  */
+  const [friendReady, setFriendReady] = useState(false);
+  const friendWaitSinceRef = useRef(0);
   /** The challenge the banner is showing, and when to slide it away. */
   const [banner, setBanner] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -670,7 +695,14 @@ export function DiceDemoScreen() {
         bannerSeen.current.add(top.id);
         setBanner(top.id);
       }
-      timer = setTimeout(ask, CHALLENGE_POLL_MS);
+      /*
+        Every second and a half while my challenge is out, since 1 Nov
+        2026: the friend who sent it used to find out on the next
+        five-second ask, arriving up to eight seconds after the friend
+        who accepted (David: "it doesn't connect").
+      */
+      const waitingOnThem = state.outgoing !== null || outgoingRef.current !== null;
+      timer = setTimeout(ask, waitingOnThem ? OUTGOING_POLL_MS : CHALLENGE_POLL_MS);
     };
     timer = setTimeout(ask, 0);
     return () => {
@@ -1222,6 +1254,7 @@ export function DiceDemoScreen() {
       setFriendly(null);
       friendlyRef.current = null;
     }
+    setFriendReady(false);
     stopAnnouncer();
     resetRace();
     setCallout(null);
@@ -1239,6 +1272,32 @@ export function DiceDemoScreen() {
     */
     void showAdIfDue({ wait: false });
   }, [resetRace, setPhaseBoth]);
+
+  /*
+    THE FRIEND NEVER CAME. The server closes a waiting room nobody joined
+    within JOIN_WAIT_MS (or that the friend left), and this phone's own
+    safety net does the same if that word cannot get through. Straight
+    back to the menu with a line saying so — no result screen, because
+    there was no battle — and no `leave`, because the room is already
+    closed. A friendly pays nothing and owes no ad, so none is offered.
+  */
+  const friendNoShow = useCallback(() => {
+    const gone = friendlyRef.current;
+    if (!gone) return;
+    countdownTimers.current.forEach(clearTimeout);
+    flashTimers.current.forEach(clearTimeout);
+    flashTimers.current = [];
+    startEpochRef.current += 1;
+    startPendingRef.current = false;
+    setFriendly(null);
+    friendlyRef.current = null;
+    setFriendReady(false);
+    stopAnnouncer();
+    resetRace();
+    setMatchNote(null);
+    setPhaseBoth('pick');
+    showCallout(noShowLine(gone.opponentName), 'lookout');
+  }, [resetRace, setPhaseBoth, showCallout]);
 
   const finishRound = useCallback(
     (outcome: 'won' | 'lost' | 'tie') => {
@@ -1669,9 +1728,12 @@ export function DiceDemoScreen() {
       startPendingRef.current = false;
       // The player has left the screen this start came from.
       if (phaseRef.current !== startedFrom) return;
-      const rival = pickOpponent(opponentRef.current ?? undefined);
-      opponentRef.current = rival;
-      setOpponent(rival);
+      // A friendly's opponent is the friend (startFriendly), never a bot.
+      if (origin !== 'friendly') {
+        const rival = pickOpponent(opponentRef.current ?? undefined);
+        opponentRef.current = rival;
+        setOpponent(rival);
+      }
       resetRace();
       /*
         A full clock for every battle. It stays stopped through the
@@ -2245,7 +2307,21 @@ export function DiceDemoScreen() {
       modeRef.current = battle.mode;
       setDifficulty(battle.difficulty);
       difficultyRef.current = battle.difficulty;
-      setOpponent({ name: opponentName, short: opponentName.slice(0, 7).toUpperCase() });
+      /*
+        The REF as well as the state, since 1 Nov 2026. Only the state was
+        set, and startCountdown then drew a random bot over it, so the
+        reveal, every callout and the result named "Lady Luckabelle" —
+        David: "it's not actually against each other". The ref is what
+        the callouts and "Oh no — Marc wins!" read.
+      */
+      const friend: AiOpponent = {
+        name: opponentName,
+        short: opponentName.slice(0, 7).toUpperCase(),
+      };
+      opponentRef.current = friend;
+      setOpponent(friend);
+      setFriendReady(false);
+      friendWaitSinceRef.current = Date.now();
       setFriendly({
         battleId: battle.id,
         opponentId: battle.opponentId ?? '',
@@ -2308,10 +2384,47 @@ export function DiceDemoScreen() {
       const pulse = await pulseBattle(me, friendly.battleId, retreatColorIds());
       if (!alive) return;
       if (pulse) {
+        /*
+          THE WAITING ROOM. Nothing has started until the server says both
+          phones are here; then the overlay says "MARC IS HERE!" and starts
+          the countdown. A room that closed while we waited — nobody came
+          inside JOIN_WAIT_MS (`over` with no winner), or the friend
+          cancelled (`over`, and the room handed to us) — goes back to
+          the menu with no result, since no battle was ever played.
+        */
+        if (phaseRef.current === 'matching') {
+          if (pulse.over) {
+            friendNoShow();
+            return;
+          }
+          if (pulse.started) setFriendReady(true);
+        }
+        /*
+          THE FRIEND IS FELT, since 1 Nov 2026: the same ping, flash and
+          "Marc freed Red!" as the computer rival, by the friend's name.
+          Compared by content, not by count — in Ultimate a capture and a
+          rescue between two beats leave the count unchanged.
+        */
         const theirs = pulse.theirs as PrisonerColorId[];
-        if (theirs.length !== aiFreedRef.current.length) {
+        const before = aiFreedRef.current;
+        if (!sameColours(before, theirs)) {
           aiFreedRef.current = theirs;
           setAiFreed(theirs);
+          if (phaseRef.current === 'battle') {
+            if (coloursAdded(before, theirs).length > 0) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setAiFlash(true);
+              flashTimers.current.push(setTimeout(() => setAiFlash(false), 650));
+            }
+            const said = rivalProgressCallout(
+              friendly.opponentName,
+              before,
+              theirs,
+              retreatColorIds().length,
+              PRISONER_COLORS.length,
+            );
+            if (said) showCallout(said.text, said.kind);
+          }
         }
         // The server is the clock in a friendly battle (battleTimer.ts).
         if (pulse.msLeft !== null) {
@@ -2335,7 +2448,15 @@ export function DiceDemoScreen() {
           finishAfterTimeUp(friendlyVerdict(pulse.winner, me.playerId));
           return;
         }
-        if (pulse.theyDropped && phaseRef.current === 'battle') {
+        /*
+          Or they LEFT, which the server records as the battle handed to
+          this player. Nothing here used to read that, so the one left
+          behind raced on alone until their own clock ran out.
+        */
+        if (
+          (pulse.theyDropped || (pulse.over && pulse.winner === me.playerId)) &&
+          phaseRef.current === 'battle'
+        ) {
           showCallout(`${friendly.opponentName} has gone — you win!`, 'congrats');
           finishRound('won');
           return;
@@ -2352,7 +2473,21 @@ export function DiceDemoScreen() {
       alive = false;
       clearTimeout(timer);
     };
-  }, [friendly, me, appActive, finishRound, showCallout, enterTimeUp, finishAfterTimeUp]);
+  }, [friendly, me, appActive, finishRound, showCallout, enterTimeUp, finishAfterTimeUp, friendNoShow]);
+
+  /*
+    The waiting room's own safety net: if nothing has said "started" well
+    past the server's own limit, this phone's beats are not getting
+    through, and waiting on is waiting for ever. Same way out as the
+    server's "they never came".
+  */
+  useEffect(() => {
+    if (phase !== 'matching' || !friendly || friendReady) return;
+    const id = setInterval(() => {
+      if (localWaitOver(friendWaitSinceRef.current, Date.now())) friendNoShow();
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase, friendly, friendReady, friendNoShow]);
 
   const previewView = (() => {
     if (!preview) return null;
@@ -2698,26 +2833,6 @@ export function DiceDemoScreen() {
         />
       )}
 
-      {/*
-        "Marc wants a battle!" — across the top of whatever you were
-        doing, for a few seconds. Rendered before the gesture layer and
-        with its own zIndex so it sits over the board, the menus and the
-        tab bar alike: it is the one thing in this game that interrupts.
-      */}
-      {banner && me && (() => {
-        const c = challenges.incoming.find((x) => x.id === banner);
-        if (!c) return null;
-        return (
-          <ChallengeBanner
-            key={c.id}
-            challenge={c}
-            secondsLeft={secondsLeft(c.expiresAt, now)}
-            onAccept={() => void answerBattle(c.id, 'accept')}
-            onDecline={() => void answerBattle(c.id, 'decline')}
-          />
-        );
-      })()}
-
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
@@ -2942,7 +3057,20 @@ export function DiceDemoScreen() {
           </ScrollView>
         </View>
       )}
-      {phase === 'matching' && (
+      {/*
+        A friendly shows the FRIEND and waits for their phone (David,
+        1 Nov 2026: "it's not actually against each other"); the bot
+        reveal and its search for a stranger belong to every other start.
+      */}
+      {phase === 'matching' && friendly && (
+        <FriendlyWaitOverlay
+          opponent={opponent}
+          ready={friendReady}
+          onDone={beginCountdown}
+          onCancel={quitToMenu}
+        />
+      )}
+      {phase === 'matching' && !friendly && (
         <MatchmakingOverlay
           opponent={opponent}
           trophies={trophies}
@@ -3098,6 +3226,32 @@ export function DiceDemoScreen() {
           onClose={() => setShowFriends(false)}
         />
       )}
+      {/*
+        "Marc wants a battle!" — across the top of whatever you were
+        doing, for a few seconds, with its own zIndex so it sits over the
+        board, the menus and the tab bar alike: it is the one thing in
+        this game that interrupts.
+
+        Drawn AFTER the Friends popup since 1 Nov 2026, not before the
+        gesture layer where it used to be. A challenge arriving while
+        Friends was open was drawn underneath the popup, so the one
+        person looking at their friends list never saw it slide in.
+        Later in the tree and the higher zIndex: on top either way.
+      */}
+      {banner && me && (() => {
+        const c = challenges.incoming.find((x) => x.id === banner);
+        if (!c) return null;
+        return (
+          <ChallengeBanner
+            key={c.id}
+            challenge={c}
+            secondsLeft={secondsLeft(c.expiresAt, now)}
+            onAccept={() => void answerBattle(c.id, 'accept')}
+            onDecline={() => void answerBattle(c.id, 'decline')}
+          />
+        );
+      })()}
+
       {heavyTabUp('inventory') && (
         <InventoryScreen
           hidden={menuTab !== 'inventory' || (preview !== null && !holdShelf)}

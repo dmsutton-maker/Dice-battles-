@@ -35,7 +35,16 @@ let held: { playerId: string; list: FriendList } | null = null;
 /** Keep this list, so the next opening of the tab starts with it. */
 export function rememberFriends(playerId: string, list: FriendList): void {
   if (!playerId) return;
-  held = { playerId, list };
+  /*
+    Who is ON is not kept (1 Nov 2026). It is true for half a minute,
+    and this cache can be minutes old by the next opening: "On now" for
+    somebody who left would be a challenge sent to nobody. The screen
+    re-reads the moment it opens, so the marker is back within a second.
+  */
+  const fresh = list.friends.some((f) => f.online !== undefined)
+    ? { ...list, friends: list.friends.map(({ online: _online, ...f }) => f) }
+    : list;
+  held = { playerId, list: fresh };
 }
 
 /**

@@ -34,6 +34,8 @@ import {
   canBattleFriend,
   FRIENDLY_MODES,
   MODE_NOT_READY,
+  PRESENCE_TEXT,
+  presenceOf,
   secondsLeft,
 } from '../game/friendlyBattle';
 import { AI_DIFFICULTIES, AiDifficultyId } from '../game/ai';
@@ -963,6 +965,7 @@ export function FriendsScreen({
                     <TrophyIcon size={12} color={THEME.inkFaint} />
                     <Text style={styles.trophyText}>{friend.trophies}</Text>
                   </View>
+                  <Presence online={friend.online} />
                 </View>
                 {/*
                   On the row as well as on their profile page (David,
@@ -1258,7 +1261,33 @@ function Stat({ label, value, text }: { label: string; value?: number; text?: st
   );
 }
 
+/**
+ * WHO IS ON. David, 1 Nov 2026: friend battles "don't connect" — and one
+ * reason was that a challenge was a guess, often answered "X is not
+ * playing right now". A green dot and "On now" for a friend whose phone
+ * spoke to the server in the last half minute; "Not playing right now"
+ * in grey when it has not. Nothing at all from a server too old to say
+ * (presenceOf), and the Battle button stays live whatever this shows,
+ * because a stale list must never be the thing that stops a challenge.
+ */
+function Presence({ online }: { online: boolean | undefined }) {
+  const state = presenceOf(online);
+  if (state === null) return null;
+  return (
+    <View style={styles.presenceRow}>
+      {state === 'on' && <View style={styles.presenceDot} />}
+      <Text style={state === 'on' ? styles.presenceOn : styles.presenceOff}>
+        {PRESENCE_TEXT[state]}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  presenceRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  presenceDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: THEME.good },
+  presenceOn: { ...TYPE.small, color: THEME.good, fontWeight: '800' },
+  presenceOff: { ...TYPE.small, color: THEME.inkFaint },
   scroll: { paddingHorizontal: 18, paddingBottom: 40 },
   profileBattle: { marginTop: 4, marginBottom: 8 },
   profileBattleText: { ...TYPE.cardTitle, color: THEME.ink, fontWeight: '900' },

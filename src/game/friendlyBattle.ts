@@ -1,5 +1,7 @@
 import type { ModeId } from './modes';
 import type { AiDifficultyId } from './ai';
+import { PRISONER_COLORS } from './colors';
+import { dotsAt } from './matchmaking';
 
 /**
  * Battling a friend, live — the rules, with no React and no network.
@@ -97,6 +99,122 @@ export const JOIN_WAIT_MS = 30_000;
  * for a home screen where nothing is expected.
  */
 export const OUTGOING_POLL_MS = 1_500;
+
+/**
+ * THE WAITING ROOM, in words. David, 1 Nov 2026: "Fix the versus against
+ * friends because it doesn't connect and it's not actually against each
+ * other."
+ *
+ * Both phones sit on the friend's own name, not a bot's, until the
+ * server says the other one has arrived (`started` on the beat). Then
+ * "MARC IS HERE!" for a moment, and both count down together.
+ */
+export type JoinState = 'waiting' | 'here';
+
+/** How long "MARC IS HERE!" stays up before the countdown. */
+export const HERE_MS = 1_000;
+
+/**
+ * How much longer than the server this phone waits before giving up by
+ * itself. The server closes a room nobody joined after JOIN_WAIT_MS and
+ * says so on the next beat; this is only for a phone whose beats have
+ * stopped getting through, which would otherwise wait for ever.
+ */
+export const JOIN_SAFETY_MS = 5_000;
+
+/** The line under the friend's card while waiting, then when they arrive. */
+export function joinLine(name: string, state: JoinState, elapsedMs: number): string {
+  if (state === 'here') return `${name.toUpperCase()} IS HERE!`;
+  return `Waiting for ${name}${dotsAt(elapsedMs)}`;
+}
+
+/** Said on the way back to the menu when the friend never came. */
+export function noShowLine(name: string): string {
+  return `${name} didn't make it`;
+}
+
+/** Has this phone waited longer than the server ever would? */
+export function localWaitOver(waitingSince: number, now: number = Date.now()): boolean {
+  if (!Number.isFinite(waitingSince) || waitingSince <= 0) return false;
+  return now - waitingSince >= JOIN_WAIT_MS + JOIN_SAFETY_MS;
+}
+
+/** How far through the server's wait we are, 0 to 1, for the bar. */
+export function joinProgress(elapsedMs: number): number {
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 0;
+  return Math.min(1, elapsedMs / JOIN_WAIT_MS);
+}
+
+/**
+ * WHO IS ON, for the Friends list. `online` is missing from a server
+ * that predates it, which is "unknown" and shows nothing — never "off",
+ * because saying somebody is away when nobody asked is a lie.
+ */
+export function presenceOf(online: boolean | undefined): 'on' | 'off' | null {
+  if (online === true) return 'on';
+  if (online === false) return 'off';
+  return null;
+}
+
+export const PRESENCE_TEXT = { on: 'On now', off: 'Not playing right now' } as const;
+
+/** Colours in `after` that were not in `before` — compared by content. */
+export function coloursAdded(before: readonly string[], after: readonly string[]): string[] {
+  return after.filter((c) => !before.includes(c));
+}
+
+/** The same set, in any order? */
+export function sameColours(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && coloursAdded(a, b).length === 0;
+}
+
+const labelOf = (id: string): string =>
+  PRISONER_COLORS.find((c) => c.id === id)?.label ?? 'a colour';
+
+/**
+ * WHAT TO SAY WHEN THE FRIEND MOVES, so a person is felt as much as a bot.
+ *
+ * Until 1 Nov 2026 a friend's rescue only moved a dot: none of the
+ * computer rival's ping, flash or "Marc freed Red!" fired, and the other
+ * player seemed not to be there. These are the AI path's own lines
+ * (DiceDemoScreen's roll timer), by the friend's name.
+ *
+ * Compared by CONTENT, not by count: in Ultimate one colour can be
+ * captured back and another freed between two beats, which leaves the
+ * count the same and is still two things that happened. A gain is
+ * reported before a loss, since it is the one the player has to answer.
+ *
+ * `mine` is my own count right now and `total` the colours in the race.
+ * Null when there is nothing to say — including the friend's last
+ * colour, because the server's verdict is about to say it for us.
+ */
+export function rivalProgressCallout(
+  name: string,
+  before: readonly string[],
+  after: readonly string[],
+  mine: number,
+  total: number,
+): { text: string; kind: 'lookout' | 'hurry' | null } | null {
+  const added = coloursAdded(before, after);
+  if (added.length > 0) {
+    const label = labelOf(added[added.length - 1]);
+    const theirs = after.length;
+    if (theirs >= total) return null;
+    if (theirs === total - 1) return { text: `${name} needs only ONE more — hurry!`, kind: 'hurry' };
+    if (theirs === mine && mine > 0) return { text: `${name} ties it up ${theirs}–${mine}!`, kind: 'lookout' };
+    if (theirs === mine + 1) {
+      return { text: `${name} freed ${label} — you're falling behind!`, kind: 'lookout' };
+    }
+    return { text: `${name} freed ${label}!`, kind: 'lookout' };
+  }
+  const removed = coloursAdded(after, before);
+  if (removed.length > 0) {
+    // No voice cue: the computer rival's capture has none either, and
+    // "Look out!" over good news for this player would be the wrong word.
+    return { text: `Ha! ${name}'s ${labelOf(removed[removed.length - 1])} was captured again!`, kind: null };
+  }
+  return null;
+}
 
 
 /**

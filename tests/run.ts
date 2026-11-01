@@ -27,6 +27,7 @@ async function main(): Promise<void> {
   await import('./season2.test');
   await import('./downloadSize.test');
   await import('./duoDesign.test');
+  await import('./friendlyBattle.test');
   await import('./secretCodes.test');
   await import('./testerPurchases.test');
   await import('./quests.test');
