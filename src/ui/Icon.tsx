@@ -1502,3 +1502,33 @@ export function CrossIcon({
     </View>
   );
 }
+
+/**
+ * Three lines — the battle menu.
+ *
+ * Marc, 2 Nov 2026: "it should be a button that's three lines". Three
+ * bars drawn as Views rather than ☰ or ≡, which are different widths and
+ * weights in every font and missing from some. Ink, because it is a
+ * control, like the cross and the chevron.
+ */
+export function MenuIcon({ size = 22, color = THEME.ink }: IconProps) {
+  const s = Math.max(2, Math.round(size * 0.12));
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Math.round(size * 0.16),
+      }}
+    >
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          style={{ width: size * 0.8, height: s, borderRadius: s / 2, backgroundColor: color }}
+        />
+      ))}
+    </View>
+  );
+}

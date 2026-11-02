@@ -16,6 +16,7 @@ import {
   volumeLevel,
 } from '../audio/slider';
 import { SpeakerIcon } from '../ui/Icon';
+import { AudioLevelKey, AudioSettings, setAudioVolume } from '../audio/settings';
 
 /**
  * A volume slider, drawn and driven in plain React Native.
@@ -127,6 +128,46 @@ export function VolumeSlider({
         />
       </View>
     </View>
+  );
+}
+
+/**
+ * The four volume sliders, as Settings has always shown them.
+ *
+ * One list for both places that show them — Settings, and the battle
+ * menu (Marc, 2 Nov 2026: "it should have the volume lines") — so the
+ * labels, the order and the way a change is saved cannot drift apart.
+ * A change goes through `setAudioVolume`, which stores it and tells the
+ * music loop, so moving Music in the middle of a battle changes the
+ * music there and then.
+ */
+export const VOLUME_ROWS: [AudioLevelKey, string, boolean][] = [
+  ['master', 'Everything', true],
+  ['sfx', 'Sound effects', false],
+  ['music', 'Music', false],
+  ['voice', 'Announcer', false],
+];
+
+export function VolumeSliders({
+  value,
+  onChange,
+}: {
+  value: AudioSettings;
+  /** The settings after the change, already saved. */
+  onChange: (next: AudioSettings) => void;
+}) {
+  return (
+    <>
+      {VOLUME_ROWS.map(([key, label, emphasis]) => (
+        <VolumeSlider
+          key={key}
+          label={label}
+          emphasis={emphasis}
+          value={value[key]}
+          onChange={(level) => onChange({ ...setAudioVolume(key, level) })}
+        />
+      ))}
+    </>
   );
 }
 

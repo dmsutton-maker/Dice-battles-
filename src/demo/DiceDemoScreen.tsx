@@ -42,11 +42,9 @@ import {
 } from '../game/loadout';
 import { countCue, initAnnouncer, playCue, stopAnnouncer, VoiceCue } from '../audio/announcer';
 import {
-  AudioLevelKey,
   AudioSettings,
   getAudioSettings,
   loadAudioSettings,
-  setAudioVolume,
 } from '../audio/settings';
 import {
   initSounds,
@@ -153,7 +151,19 @@ import {
 import { ChallengeBanner } from './ChallengeBanner';
 import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
-import { VolumeSlider } from './VolumeSlider';
+import { VolumeSliders } from './VolumeSlider';
+import { BattleMenu } from './BattleMenu';
+import { MenuIcon } from '../ui/Icon';
+import {
+  BattleMenuKind,
+  leaveWords,
+  menuNote,
+  menuShowsIn,
+  menuTitle,
+  pausesBattle,
+  runsALossEnds,
+  whereLine,
+} from '../game/battleMenu';
 import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
 import { FriendlyWaitOverlay } from './FriendlyWaitOverlay';
@@ -597,6 +607,23 @@ export function DiceDemoScreen() {
   >(null);
   const friendlyRef = useRef<typeof friendly>(null);
   friendlyRef.current = friendly;
+  /*
+    THE BATTLE MENU (BattleMenu.tsx, battleMenu.ts). Marc, 2 Nov 2026:
+    "when you're in a battle and want to exit a game it should be a
+    button that's three lines and it should take you to a small menu
+    overlayed on the game playing."
+
+    Open against the computer, it pauses the battle EXACTLY the way the
+    phone going in a pocket does: `battleLive` stands in for `appActive`
+    in the two places that pause for a pocket — the rival's rolls and the
+    clock — so the two pauses cannot differ. Against a friend nothing
+    pauses (pausesBattle), because the other phone does not.
+  */
+  const [battleMenu, setBattleMenu] = useState(false);
+  const battleMenuRef = useRef(false);
+  battleMenuRef.current = battleMenu;
+  const menuKind: BattleMenuKind = friendly ? 'friend' : 'computer';
+  const battleLive = appActive && !(battleMenu && pausesBattle(menuKind));
   /*
     THE WAITING ROOM (friendlyBattle.ts, JOIN_WAIT_MS). David, 1 Nov
     2026: "Fix the versus against friends because it doesn't connect".
@@ -1815,8 +1842,10 @@ export function DiceDemoScreen() {
       with haptics, sound and React state — for a battle nobody was
       watching, until the player came back to find they had lost. It
       resumes on return, which is also the fair thing.
+
+      Nor while the battle menu is open (battleLive): the same pause.
     */
-    if (!appActive) return;
+    if (!battleLive) return;
     /*
       AND NOT WHEN THE OPPONENT IS A PERSON.
 
@@ -1915,7 +1944,7 @@ export function DiceDemoScreen() {
       }
     }, rollIntervalMs);
     return () => clearInterval(id);
-  }, [phase, appActive, difficulty, finishRound, moveUnit, showCallout]);
+  }, [phase, battleLive, difficulty, finishRound, moveUnit, showCallout]);
 
   /*
     TIME UP. David, 1 Nov 2026: "Add a two minute thirty second timer and
@@ -1978,16 +2007,64 @@ export function DiceDemoScreen() {
     going, so the server's clock is the real one and it does not stop
     for anybody's pocket; this phone's count is only its estimate
     between beats, and the first beat back puts it right (syncClock).
+
+    The battle menu stops it too, against the computer, through the same
+    `battleLive` that stops the rival — so a paused battle is paused on
+    both counts and Resume carries on from the same second.
   */
   useEffect(() => {
-    if (phase !== 'battle' || !appActive) return;
+    if (phase !== 'battle' || !battleLive) return;
     clockRef.current = runClock(clockRef.current, Date.now());
     const id = setTimeout(endOnTime, clockLeft(clockRef.current, Date.now()));
     return () => {
       clearTimeout(id);
       clockRef.current = pauseClock(clockRef.current, Date.now());
     };
-  }, [phase, appActive, clockEpoch, endOnTime]);
+  }, [phase, battleLive, clockEpoch, endOnTime]);
+
+  /*
+    THE MENU CLOSES WHEN THE BATTLE ENDS UNDER IT — a friend winning, the
+    clock running out, or the player's own last throw landing — so the
+    result comes up instead of sitting hidden behind a menu for a battle
+    that is over. How to play, if it was opened from the menu, goes too.
+  */
+  useEffect(() => {
+    if (menuShowsIn(phase) || !battleMenuRef.current) return;
+    setBattleMenu(false);
+    setPopup((open) => (open === 'howto' ? null : open));
+  }, [phase]);
+
+  /*
+    LEAVING, once the menu has asked and been told yes. Marc: "when you
+    click leave it should warn you that forfeiting counts as a loss".
+
+    Against the computer it is the ORDINARY LOSS: finishRound('lost'),
+    and then the ordinary result screen. Deliberately not a second,
+    quieter road to the menu with the loss "applied": finishRound is the
+    one place every loss passes through exactly once — trophies, coins,
+    the season pass, today's quest, the cups, the records, Game Center
+    and the ad count — and the result screen is where the trophies lost
+    are shown and where leaving offers the ad. A copy would drift.
+    Leaving in the countdown counts too: the rival has been revealed by
+    then, and the countdown's own timers are stopped first so they cannot
+    start a battle on top of the result.
+
+    Against a friend it is what the old ↺ always did (quitToMenu): the
+    server is told this phone left, the friend is given the win, and a
+    friendly never moves trophies.
+  */
+  const leaveBattle = useCallback(() => {
+    setBattleMenu(false);
+    if (friendlyRef.current) {
+      quitToMenu();
+      return;
+    }
+    // The battle ended on its own while the question was up.
+    if (!menuShowsIn(phaseRef.current)) return;
+    countdownTimers.current.forEach(clearTimeout);
+    countdownTimers.current = [];
+    finishRound('lost');
+  }, [quitToMenu, finishRound]);
 
   /*
     A friendly battle whose verdict never comes — the connection dropped
@@ -2185,7 +2262,8 @@ export function DiceDemoScreen() {
       onPanResponderMove: sample,
       onPanResponderRelease: (event, gesture) => {
         sample(event);
-        if (phaseRef.current !== 'battle') return;
+        // Not through the battle menu, which is drawn over the board.
+        if (phaseRef.current !== 'battle' || battleMenuRef.current) return;
         const velocity = velocityFromSamples(samples.current);
         controlsRef.current?.throwAll(
           flickFromGesture(gesture, { velocity }) ?? undefined,
@@ -2917,10 +2995,22 @@ export function DiceDemoScreen() {
         </View>
       )}
 
-      {/* Restart (quit to menu) during a round */}
-      {(phase === 'battle' || phase === 'arm' || phase === 'go') && (
-        <Pressable style={[styles.quitButton, { top: hud.top, left: hud.left }]} onPress={quitToMenu}>
-          <Text style={styles.quitText}>↺</Text>
+      {/*
+        The battle menu, during a round: three lines (Marc, 2 Nov 2026),
+        where the ↺ that left without a word used to be.
+      */}
+      {menuShowsIn(phase) && (
+        <Pressable
+          style={[styles.quitButton, { top: hud.top, left: hud.left }]}
+          onPress={() => {
+            playClick();
+            setBattleMenu(true);
+          }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Battle menu"
+        >
+          <MenuIcon size={20} />
         </Pressable>
       )}
 
@@ -3371,6 +3461,35 @@ export function DiceDemoScreen() {
         />
       )}
 
+      {battleMenu && menuShowsIn(phase) && (
+        <BattleMenu
+          title={menuTitle(menuKind)}
+          note={menuNote(menuKind)}
+          audio={audioPrefs}
+          onAudio={setAudioPrefs}
+          onResume={() => setBattleMenu(false)}
+          onHowTo={() => setPopup('howto')}
+          leave={leaveWords(
+            friendly
+              ? { kind: 'friend', friendName: friendly.opponentName }
+              : {
+                  kind: 'computer',
+                  trophies: getProgress().trophies,
+                  difficulty: difficultyRef.current,
+                  // The cups finishRound scores against, asked the same way.
+                  runs: runsALossEnds(
+                    scorableTournaments(withRotation(cups, Date.now()), todayStamp()),
+                    cupStates,
+                    { mode: modeRef.current, difficulty: difficultyRef.current },
+                  ),
+                },
+          )}
+          onLeave={leaveBattle}
+          where={whereLine(menuKind, modeRef.current, difficultyRef.current, friendly?.opponentName)}
+          readClock={readClock}
+        />
+      )}
+
       {popup === 'howto' && (
         <Popup
           title="How to play"
@@ -3438,24 +3557,8 @@ export function DiceDemoScreen() {
               keyboardShouldPersistTaps="handled"
             >
             <Text style={styles.settingsSectionTitle}>VOLUME</Text>
-            {(
-              [
-                ['master', 'Everything', true],
-                ['sfx', 'Sound effects', false],
-                ['music', 'Music', false],
-                ['voice', 'Announcer', false],
-              ] as [AudioLevelKey, string, boolean][]
-            ).map(([key, label, emphasis]) => (
-              <VolumeSlider
-                key={key}
-                label={label}
-                emphasis={emphasis}
-                value={audioPrefs[key]}
-                onChange={(value) =>
-                  setAudioPrefs({ ...setAudioVolume(key, value) })
-                }
-              />
-            ))}
+            {/* The same four sliders the battle menu shows (VolumeSliders). */}
+            <VolumeSliders value={audioPrefs} onChange={setAudioPrefs} />
             <View style={styles.settingsDividerLine} />
             {/*
               Colourblind mode. The palette does not change — it is already
@@ -3838,12 +3941,6 @@ const styles = StyleSheet.create({
     borderColor: THEME.ink,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  quitText: {
-    color: THEME.ink,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: -2,
   },
   twoPlayerButton: {
     marginTop: 12,

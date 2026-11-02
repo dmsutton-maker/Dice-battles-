@@ -86,15 +86,26 @@ suite('power · the board only draws when there is something to see', () => {
       carried on rolling — with haptics and sound — through a battle
       nobody was in, and a player came back having lost.
     */
+    /*
+      Marc, 2 Nov 2026, asked for a battle menu that pauses the game:
+      "a small menu overlayed on the game playing ... it should have the
+      volume lines". `battleLive` is `appActive` with that menu's pause
+      added (const battleLive = appActive && !(battleMenu && ...)), so
+      the pocket still stops it — through battleLive.
+    */
     const screen = code('src/demo/DiceDemoScreen.tsx');
+    assert(
+      /const battleLive = appActive && /.test(screen),
+      'battleLive no longer starts from appActive, so a pocket does not stop the opponent',
+    );
     const effect = screen.slice(screen.indexOf("if (phase !== 'battle') return;"));
     const interval = effect.indexOf('setInterval');
-    const guard = effect.indexOf('if (!appActive) return;');
+    const guard = effect.indexOf('if (!battleLive) return;');
     assert(guard >= 0, 'the opponent’s timer has no app-state guard');
     assert(guard < interval, 'the guard is after the timer is created, so it never stops it');
     assert(
-      /\[phase, appActive,/.test(screen),
-      'appActive is not a dependency, so the timer is never restarted or torn down',
+      /\[phase, battleLive,/.test(screen),
+      'battleLive is not a dependency, so the timer is never restarted or torn down',
     );
   });
 });

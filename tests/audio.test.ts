@@ -223,15 +223,24 @@ suite('audio · wiring', () => {
   });
 
   test('every channel with a sound has a slider on the settings screen', () => {
+    /*
+      The list of sliders moved into VolumeSlider.tsx (VOLUME_ROWS,
+      drawn by VolumeSliders) when Marc asked on 2 Nov 2026 for the same
+      sliders in the battle menu — "it should have the volume lines" — so
+      the two places cannot drift. Settings must still draw that list.
+    */
     const screen = read('src/demo/DiceDemoScreen.tsx');
+    const slider = read('src/demo/VolumeSlider.tsx');
     for (const key of ['master', ...CHANNELS]) {
       assert(
-        new RegExp(`\\['${key}',`).test(screen),
+        new RegExp(`\\['${key}',`).test(slider),
         `there is no ${key} slider in Settings`,
       );
     }
+    const settings = screen.slice(screen.indexOf("popup === 'settings'"));
+    assert(/<VolumeSliders value=\{audioPrefs\}/.test(settings), 'Settings does not draw the sliders');
     assert(
-      screen.includes('setAudioVolume'),
+      /VolumeSliders[\s\S]*setAudioVolume\(key, level\)/.test(slider),
       'the settings screen does not save the levels it shows',
     );
   });

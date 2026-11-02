@@ -197,14 +197,23 @@ suite('battle timer · a pocket stops it the way it stops the opponent', () => {
   });
 
   test('the screen pauses the clock exactly when it pauses the opponent', () => {
+    /*
+      Marc, 2 Nov 2026, asked for a battle menu that pauses the game:
+      "a small menu overlayed on the game playing ... it should have the
+      volume lines". `battleLive` is `appActive` with that menu's pause
+      added (const battleLive = appActive && !(battleMenu && ...)), so
+      the pocket still stops it — through battleLive.
+      Both read the same battleLive, so they still pause together.
+    */
     const screen = read('src/demo/DiceDemoScreen.tsx');
+    assert(/const battleLive = appActive && /.test(screen), 'battleLive no longer includes the pocket');
     assert(
-      /if \(phase !== 'battle' \|\| !appActive\) return;\s*clockRef\.current = runClock/.test(screen),
+      /if \(phase !== 'battle' \|\| !battleLive\) return;\s*clockRef\.current = runClock/.test(screen),
       'the clock should run only during the battle with the game on screen',
     );
     // The computer's own roll timer, for comparison.
     assert(
-      /if \(phase !== 'battle'\) return;[\s\S]{0,700}if \(!appActive\) return;/.test(screen),
+      /if \(phase !== 'battle'\) return;[\s\S]{0,900}if \(!battleLive\) return;/.test(screen),
       'the opponent\'s roll timer no longer stops with the phone',
     );
   });
