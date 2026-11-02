@@ -164,6 +164,24 @@ and the same day the listing was brought up to date:
   - The submission itself still sits behind the full-test-on-Fable gate
     in AGENTS.md.
 
+## Build 18, runtime 4.0.0 (2 Nov 2026)
+
+v1.156.0 adds Apple's star prompt (`expo-store-review`, behind
+`src/game/storeReviewSdk.ts`) and Google's 50 SKAdNetwork IDs, so
+`runtimeVersion` went 3.0.0 -> 4.0.0. EAS build
+`62a8cdc9-3590-46b0-996b-0cd2faf77d40` (1.60.0, build 18) was built and
+submitted from a session, processed VALID, and **is now the build on App
+Store version 1.60.0** (build 17 is no longer attached).
+
+- From v1.156.0 on, every `eas update` reaches build 18 only. Builds 16
+  and 17 stay on the last 3.0.0 update. Marc was emailed on 2 Nov to
+  merge PR #2 before publishing again; his next version is v1.157.0.
+- TestFlight: the internal "Family" group has every build (18 included).
+  The external "Family & Friends" group only has builds 3 and 5; adding
+  18 needs Beta App Review.
+- Neon dice is $0.99 in the game since v1.154.0; App Store Connect still
+  said $1.99 on 2 Nov and is being changed by hand.
+
 ## Credentials a session can use (set 1 Nov 2026)
 
 David saved these in the Claude Code cloud environment's variables, so
