@@ -61,6 +61,9 @@ export function BattleMenu({
   readClock: () => number;
 }) {
   const [asking, setAsking] = useState(false);
+  // Whether the list has more below the fold (see styles.moreBelow).
+  const [seen, setSeen] = useState({ view: 0, content: 0, y: 0 });
+  const moreBelow = seen.content - seen.view - seen.y > 8;
 
   const tap = (then: () => void) => () => {
     playClick();
@@ -113,19 +116,49 @@ export function BattleMenu({
                 </Text>
                 {note && <Text style={styles.note}>{note}</Text>}
               </View>
-              <ScrollView
-                style={styles.scroll}
-                contentContainerStyle={styles.body}
-                bounces
-                showsVerticalScrollIndicator={false}
-              >
-                <PrimaryButton onPress={tap(onResume)}>
-                  <Text style={styles.resumeText}>Resume</Text>
-                </PrimaryButton>
+              <View style={styles.scrollWrap}>
+                <ScrollView
+                  style={styles.scroll}
+                  contentContainerStyle={styles.body}
+                  bounces
+                  showsVerticalScrollIndicator
+                  scrollEventThrottle={32}
+                  onLayout={(e) => {
+                    const view = e.nativeEvent.layout.height;
+                    setSeen((s) => ({ ...s, view }));
+                  }}
+                  onContentSizeChange={(_w, content) => setSeen((s) => ({ ...s, content }))}
+                  onScroll={(e) => {
+                    const y = e.nativeEvent.contentOffset.y;
+                    setSeen((s) => ({ ...s, y }));
+                  }}
+                >
+                  <PrimaryButton onPress={tap(onResume)}>
+                    <Text style={styles.resumeText}>Resume</Text>
+                  </PrimaryButton>
 
-                <Text style={styles.section}>VOLUME</Text>
-                <VolumeSliders value={audio} onChange={onAudio} />
-
+                  <Text style={styles.section}>VOLUME</Text>
+                  <VolumeSliders value={audio} onChange={onAudio} />
+                </ScrollView>
+                {/*
+                  On the smallest phone the four sliders do not all fit,
+                  and a cut that happens to land in the gap between two
+                  of them looks like the end of the list. This says there
+                  is more, and goes once there is not.
+                */}
+                {moreBelow && (
+                  <View pointerEvents="none" style={styles.moreBelow}>
+                    <View style={styles.chevron} />
+                  </View>
+                )}
+              </View>
+              {/*
+                Outside the scroll on purpose: on the smallest phone the four
+                sliders push these two off the bottom, and a Leave button that
+                has to be scrolled to, with nothing to say it is there, is
+                worse than a list that scrolls a little.
+              */}
+              <View style={styles.actions}>
                 <SecondaryButton style={styles.row} onPress={tap(onHowTo)}>
                   <View style={styles.rowInner}>
                     <HelpIcon size={20} />
@@ -135,7 +168,7 @@ export function BattleMenu({
                 <SecondaryButton style={styles.row} onPress={tap(() => setAsking(true))}>
                   <Text style={styles.leaveText}>Leave battle</Text>
                 </SecondaryButton>
-              </ScrollView>
+              </View>
             </>
           )}
           <View style={styles.footer}>
@@ -228,10 +261,39 @@ const styles = StyleSheet.create({
     ...TYPE.small,
     textAlign: 'center',
   },
+  scrollWrap: {
+    flexShrink: 1,
+  },
   scroll: {
     flexGrow: 0,
   },
+  moreBelow: {
+    position: 'absolute',
+    bottom: 2,
+    alignSelf: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: THEME.surface,
+    borderWidth: 2,
+    borderColor: THEME.inkFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevron: {
+    width: 9,
+    height: 9,
+    marginTop: -3,
+    borderRightWidth: 2.5,
+    borderBottomWidth: 2.5,
+    borderColor: THEME.inkFaint,
+    transform: [{ rotate: '45deg' }],
+  },
   body: {
+    paddingHorizontal: 18,
+    paddingBottom: 4,
+  },
+  actions: {
     paddingHorizontal: 18,
     paddingBottom: 14,
   },
