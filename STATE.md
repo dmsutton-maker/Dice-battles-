@@ -164,6 +164,22 @@ and the same day the listing was brought up to date:
   - The submission itself still sits behind the full-test-on-Fable gate
     in AGENTS.md.
 
+## Credentials a session can use (set 1 Nov 2026)
+
+David saved these in the Claude Code cloud environment's variables, so
+every new session has them. NAMES ONLY here; this repo is public.
+
+- `EXPO_TOKEN`: Expo access token (EAS builds, submits, OTA updates).
+- `VERCEL_TOKEN`: Vercel token, no expiry, scope suttonsteam
+  (`npx vercel deploy --prod` from `hq/`, after `vercel link`).
+- `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_B64`: the App Store
+  Connect API key (Admin). The private key is the `.p8` file
+  base64-encoded onto one line; decode it to a file outside the repo
+  before use, e.g.
+  `echo "$ASC_PRIVATE_KEY_B64" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8`.
+  This key cannot set in-app purchase prices (403); prices are set on
+  screen.
+
 ## App Store Connect, as seen live on 1 Nov 2026
 
 Read and written through the API with a new Admin key David made that
