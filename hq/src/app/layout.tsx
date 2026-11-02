@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { smartAppBanner } from '@/lib/appStore';
 
 export const metadata: Metadata = {
   title: 'Paper Ship Studio',
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
     what fits under a home-screen icon.
   */
   appleWebApp: { title: 'Paper Ship' },
+  // Apple's Smart App Banner, switched on by APP_STORE_LIVE in lib/appStore.ts.
+  other: smartAppBanner,
 };
 
 /**

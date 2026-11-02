@@ -164,6 +164,7 @@ import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
 import { askToBeTold, pushState, refreshToken, type PushState } from '../game/push';
+import { REVIEW_URL } from '../game/review';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
 import { TierIcon } from './TierIcon';
@@ -3194,6 +3195,29 @@ export function DiceDemoScreen() {
                 </Pressable>
               </>
             )}
+            {/*
+              RATE DICE BATTLES. A row the player chooses, opening the App
+              Store's own review page. Never a pop-up: Apple's guideline
+              5.6.1 bans home-made review prompts (see src/game/review.ts).
+            */}
+            <View style={styles.settingsDividerLine} />
+            <Pressable
+              style={styles.toggleRow}
+              accessibilityRole="link"
+              onPress={() => {
+                playClick();
+                void Linking.openURL(REVIEW_URL).catch(() => {});
+              }}
+            >
+              <View style={styles.toggleText}>
+                <View style={styles.toggleLabelRow}>
+                  <Text style={styles.toggleLabel}>Rate Dice Battles</Text>
+                </View>
+                <Text style={styles.toggleNote}>
+                  Enjoying it? A rating on the App Store helps other families find the game.
+                </Text>
+              </View>
+            </Pressable>
             <View style={styles.settingsDividerLine} />
             <Text style={styles.settingsStats}>
               {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×
