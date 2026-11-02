@@ -169,6 +169,7 @@ import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
 import { askToBeTold, pushState, refreshToken, type PushState } from '../game/push';
 import { REVIEW_URL } from '../game/review';
+import { maybeAskForReview } from '../game/askForReview';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
 import { BattleClock } from './BattleClock';
@@ -1523,6 +1524,23 @@ export function DiceDemoScreen() {
       if (outcome === 'won') {
         playFanfare();
         showCallout('Victory!', 'win');
+        /*
+          Apple's own star sheet, a few seconds after a win, while the
+          player is looking at their result (src/game/review.ts decides
+          whether; askForReview.ts never throws). Not when a reward pop-up
+          is queued, so two things never fight for the screen. A flash
+          timer on purpose: "play again" clears these, so it can never
+          land on a battle that has started.
+        */
+        if (result.newUnlocks.length === 0) {
+          const won = getProgress().wins;
+          const totalWins = won.easy + won.medium + won.hard;
+          flashTimers.current.push(
+            setTimeout(() => {
+              void maybeAskForReview(totalWins);
+            }, 3500),
+          );
+        }
         if (result.newUnlocks.length > 0) {
           const unlock = result.newUnlocks[result.newUnlocks.length - 1];
           flashTimers.current.push(

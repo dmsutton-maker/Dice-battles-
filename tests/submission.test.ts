@@ -256,4 +256,29 @@ suite('submission · the ad configuration is per-platform', () => {
     // prompt is Apple's own, which needs expo-store-review and a new build.
     assert(!/Rate us!|Enjoying the game\?/.test(screen), 'a home-made review pop-up has appeared');
   });
+
+  test("Apple's star sheet: after the third win, then at most once every four months", () => {
+    const { shouldAskForReview, WINS_BEFORE_FIRST_ASK, DAYS_BETWEEN_ASKS } =
+      require('../src/game/review') as typeof import('../src/game/review');
+    const day = 24 * 60 * 60 * 1000;
+    const now = Date.UTC(2026, 11, 1);
+    assertEqual(shouldAskForReview(WINS_BEFORE_FIRST_ASK - 1, null, now), false, 'asked before the third win');
+    assertEqual(shouldAskForReview(WINS_BEFORE_FIRST_ASK, null, now), true, 'never asked, three wins: should ask');
+    assertEqual(shouldAskForReview(50, now - (DAYS_BETWEEN_ASKS - 1) * day, now), false, 'asked again too soon');
+    assertEqual(shouldAskForReview(50, now - DAYS_BETWEEN_ASKS * day, now), true, 'four months on: should ask');
+    assertEqual(shouldAskForReview(50, now + day, now), false, 'a clock set backwards made it ask');
+    assertEqual(shouldAskForReview(Number.NaN, null, now), false, 'a broken win count made it ask');
+    assert(365 / DAYS_BETWEEN_ASKS <= 3.05, "more asks a year than Apple's limit of three");
+  });
+
+  test('build 18: Google\'s SKAdNetwork IDs are in the app, so advertisers can bid on our ad slots', () => {
+    const gma = (app.plugins as unknown[]).find(
+      (p): p is [string, { skAdNetworkItems?: string[] }] => Array.isArray(p) && p[0] === 'react-native-google-mobile-ads',
+    );
+    const ids = gma?.[1].skAdNetworkItems ?? [];
+    assert(ids.includes('cstr6suwn9.skadnetwork'), "Google's own SKAdNetwork ID is missing");
+    assert(ids.length >= 40, `only ${ids.length} SKAdNetwork IDs; Google's AdMob list has about 50`);
+    assert(ids.every((id) => /^[a-z0-9]{10}\.skadnetwork$/.test(id)), 'a SKAdNetwork ID is malformed');
+    assertEqual(new Set(ids).size, ids.length, 'a SKAdNetwork ID is listed twice');
+  });
 });

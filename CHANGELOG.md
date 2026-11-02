@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.156.0 — 2026-11-02 · requested by David
+
+David: "build in the in game rate us", then "build 18 with SKAN and the
+star prompt". **Needs build 18**: `runtimeVersion` goes from 3.0.0 to
+4.0.0 in this change, so this update reaches only build 18 and later.
+Builds 16 and 17 stay on the last 3.0.0 update, which is correct:
+this JavaScript names a native package they do not contain.
+
+### Added
+- **"Rate Dice Battles" in Settings** opens the App Store's own
+  write-a-review page (`src/game/review.ts`). Works on every build.
+- **Apple's star sheet after a win** (`expo-store-review`, behind
+  `storeReviewSdk.ts` like the ad and push switches): 3.5 s after a
+  win, from the third win on, at most once every 120 days, never when a
+  reward pop-up is queued, and cleared by "play again" so it can never
+  land on a started battle. Never a home-made rating pop-up: Apple's
+  guideline 5.6.1 bans those.
+- **Google's 50 SKAdNetwork IDs** in the ad SDK's plugin config, so
+  advertisers can measure ads shown in the game and bid for its ad
+  slots. Builds 16 and 17 listed none, which meant lower ad revenue.
+  The list is Google's own, from
+  developers.google.com/admob/ios/privacy/strategies.
+
 ## v1.155.0 — 2026-11-01 · requested by David
 
 David: "Fix the versus against friends because it doesn't connect and
