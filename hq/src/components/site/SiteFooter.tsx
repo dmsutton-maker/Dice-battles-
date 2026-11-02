@@ -26,7 +26,7 @@ export function SiteFooter() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Logo size={20} />
         <span style={{ font: `600 13px ${fonts.body}`, color: colors.secondary2 }}>
-          &copy; {new Date().getFullYear()} Paper Ship Studio&trade;
+          &copy; {new Date().getFullYear()} Paper Ship Studio&trade;. All rights reserved.
         </span>
       </div>
       <div style={{ display: 'flex', gap: 24, font: `700 13px ${fonts.body}` }}>
