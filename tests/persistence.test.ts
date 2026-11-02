@@ -14,8 +14,6 @@ import {
   isUnlocked,
   loadProgress,
   notePlayed,
-  parseCoinCode,
-  parseTrophyCode,
   resetProgressForTests,
   setTrophies,
   COIN_CODE_MAX,
@@ -23,6 +21,8 @@ import {
   TROPHY_CODE_MAX,
   TROPHY_STAKES,
 } from '../src/game/progress';
+import { getWallet, resetWalletForTests, setCoins } from '../src/game/currency';
+import { CODE_TABLE } from '../src/game/secretCodes';
 import type { AiDifficultyId } from '../src/game/ai';
 import { MODE_ORDER } from '../src/game/modes';
 import { assert, assertEqual, note, suite, test } from './harness';
@@ -93,30 +93,41 @@ suite('persistence · loadout', () => {
   });
 });
 
-suite('codes · "500 TROPHY" sets the trophy count', () => {
-  test('reads the number, either side of the word', () => {
-    assertEqual(parseTrophyCode('500 TROPHY')?.trophies, 500, '500 TROPHY');
-    assertEqual(parseTrophyCode('137 TROPHY')?.trophies, 137, '137 TROPHY');
-    assertEqual(parseTrophyCode('TROPHY 42')?.trophies, 42, 'word first');
-    assertEqual(parseTrophyCode('0 TROPHY')?.trophies, 0, 'zero is a real answer');
-    // Typed by a child, so be forgiving about spacing and case.
-    assertEqual(parseTrophyCode('  250trophy  ')?.trophies, 250, 'no space, padded');
-    assertEqual(parseTrophyCode('250 trophy')?.trophies, 250, 'lower case');
+/*
+  David, 1 Nov 2026: "Change all the secret codes to be set randomized 10
+  number and letter codes, with the codes for coins and trophies having
+  set amounts but there being multiple amounts so they'll have multiple
+  codes." The words that used to carry a number ("500 TROPHY") are gone;
+  the table in secretCodes.ts holds a hash per amount, and the plaintext
+  codes are never in the repo, so these tests go through the table's
+  amounts rather than typing a code.
+*/
+const TROPHY_AMOUNTS = CODE_TABLE.flatMap((e) =>
+  e.action.kind === 'trophies' ? [e.action.amount] : [],
+);
+const COIN_AMOUNTS = CODE_TABLE.flatMap((e) =>
+  e.action.kind === 'coins' ? [e.action.amount] : [],
+);
+
+suite('codes · the trophy codes set the trophy count', () => {
+  test('there are several amounts, and each sets exactly that count', () => {
+    assert(TROPHY_AMOUNTS.length >= 2, 'one code per amount, and more than one amount');
+    for (const amount of TROPHY_AMOUNTS) {
+      store.clear();
+      assertEqual(setTrophies(amount).trophies, amount, `${amount} trophies`);
+      assertEqual(getProgress().trophies, amount, `${amount} trophies in the save`);
+    }
   });
 
-  test('anything that is not a trophy code returns null', () => {
-    // Must be null rather than 0, or the caller cannot fall through to the
-    // other codes and every wrong entry would wipe the player's trophies.
-    for (const input of ['TROPHY', 'COIN', '500 COIN', 'RESET', '', 'FIVE TROPHY', 'TROPHY TROPHY', '-5 TROPHY', '1.5 TROPHY', '500 TROPHIES']) {
-      assertEqual(parseTrophyCode(input), null, `"${input}" should not parse`);
+  test('every amount is inside the ceiling, so nothing is ever clamped', () => {
+    for (const amount of TROPHY_AMOUNTS) {
+      assert(amount >= 0 && amount <= TROPHY_CODE_MAX, `${amount} is past the ceiling`);
     }
   });
 
   test('an absurd number is capped rather than accepted', () => {
-    const huge = parseTrophyCode('999999999999 TROPHY');
-    assertEqual(huge?.trophies, TROPHY_CODE_MAX, 'capped value');
-    assertEqual(huge?.clamped, true, 'reports that it capped');
-    assertEqual(parseTrophyCode('500 TROPHY')?.clamped, false, 'a sane number is not capped');
+    store.clear();
+    assertEqual(setTrophies(999_999_999_999).trophies, TROPHY_CODE_MAX, 'capped value');
   });
 
   test('setting the count reports the tiers it crosses', () => {
@@ -154,36 +165,26 @@ suite('codes · "500 TROPHY" sets the trophy count', () => {
   });
 });
 
-suite('codes · "500 COIN" sets the coin balance', () => {
-  test('reads the number, either side of the word', () => {
-    assertEqual(parseCoinCode('500 COIN')?.coins, 500, '500 COIN');
-    assertEqual(parseCoinCode('137 COIN')?.coins, 137, '137 COIN');
-    assertEqual(parseCoinCode('COIN 42')?.coins, 42, 'word first');
-    assertEqual(parseCoinCode('0 COIN')?.coins, 0, 'zero is a real answer');
-    // Typed by a child, so be forgiving about spacing and case.
-    assertEqual(parseCoinCode('  250coin  ')?.coins, 250, 'no space, padded');
-    assertEqual(parseCoinCode('250 coin')?.coins, 250, 'lower case');
-  });
-
-  test('anything that is not a coin code returns null', () => {
-    // Must be null rather than 0, or the caller cannot fall through to the
-    // other codes and every wrong entry would empty the player's wallet.
-    for (const input of ['COIN', 'TROPHY', '500 TROPHY', 'RESET', '', 'FIVE COIN', 'COIN COIN', '-5 COIN', '1.5 COIN', '500 COINS']) {
-      assertEqual(parseCoinCode(input), null, `"${input}" should not parse`);
+suite('codes · the coin codes set the coin balance', () => {
+  test('there are several amounts, and each sets exactly that balance', () => {
+    assert(COIN_AMOUNTS.length >= 2, 'one code per amount, and more than one amount');
+    for (const amount of COIN_AMOUNTS) {
+      resetWalletForTests();
+      assertEqual(setCoins(amount), amount, `${amount} coins`);
+      assertEqual(getWallet().coins, amount, `${amount} coins in the purse`);
     }
   });
 
-  test('MONEY is no longer a code at all', () => {
-    // It was replaced by "X COIN"; nothing should quietly still answer to it.
-    assertEqual(parseCoinCode('MONEY'), null, 'MONEY does not parse');
-    assertEqual(parseTrophyCode('MONEY'), null, 'MONEY is not a trophy code either');
+  test('they set rather than add, so a smaller balance is reachable', () => {
+    resetWalletForTests();
+    setCoins(100_000);
+    assertEqual(setCoins(0), 0, 'zero is a real answer');
   });
 
   test('an absurd number is capped rather than accepted', () => {
-    const huge = parseCoinCode('999999999999 COIN');
-    assertEqual(huge?.coins, COIN_CODE_MAX, 'capped value');
-    assertEqual(huge?.clamped, true, 'reports that it capped');
-    assertEqual(parseCoinCode('500 COIN')?.clamped, false, 'a sane number is not capped');
+    resetWalletForTests();
+    assertEqual(setCoins(999_999_999_999), COIN_CODE_MAX, 'capped value');
+    resetWalletForTests(); // never leak a typed balance into a later suite
   });
 });
 

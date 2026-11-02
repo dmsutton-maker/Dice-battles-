@@ -309,6 +309,48 @@ export const TUNING = {
     landingRing: 36,
     /** How fast that ring spreads across the floor, units a second. */
     landingSpeed: 2.6,
+    /*
+      THE TUBES THEMSELVES move since 1 Nov 2026 (neonGlow.ts). David:
+      "make it more interactive with moving details and stuff." A head
+      of light chases round each tube, the whole tube breathes, its
+      colour drifts, it stutters now and then like a real sign, the
+      bends sparkle and the tube flares the moment the die lands. All of
+      it on the GPU from one map painted once; none of it on the stickers.
+    */
+    /** Seconds the head of light takes to go once round the die. */
+    pulseLapSeconds: 2.4,
+    /** How sharply the light fades behind the head: bigger is a shorter tail (16 is about a third of a side). */
+    pulseTail: 16,
+    /**
+     * How much light the head adds on top of the painted tube. Added in
+     * linear light, where a little goes a long way: 1.4 turned the whole
+     * tube white in the preview.
+     */
+    pulseGain: 0.9,
+    /** How far out from the middle of a tube the light reaches, in texels. */
+    pulseReach: 4,
+    /** Seconds of one slow breath, and how far the tube dims and brightens (0.15 is 85% to 115%). */
+    breathSeconds: 3.2,
+    breathDepth: 0.15,
+    /**
+     * A real sign's stutter: every `flickerEvery` seconds there is a
+     * `flickerChance` chance of one, lasting `flickerSeconds`, dipping
+     * the tube to (1 - flickerDepth) three times. Never off, never a
+     * strobe: the game is for five-year-olds.
+     */
+    flickerEvery: 4,
+    flickerChance: 0.35,
+    flickerSeconds: 0.36,
+    flickerDepth: 0.42,
+    /** Seconds for the pink to drift toward violet and the cyan toward blue and back, and how far. */
+    driftSeconds: 11,
+    driftAmount: 0.6,
+    /** How near an edge of the die (share of a side) the tube sparkles, and how bright. */
+    bendReach: 0.05,
+    bendGain: 0.45,
+    /** The flare when a die lands: how bright, and seconds to fade. */
+    flareGain: 0.8,
+    flareSeconds: 0.5,
   },
   /**
    * The Sun dice (diceSun.ts), season 2 of the pass, 21 Oct 2026: motes
@@ -347,3 +389,33 @@ export const TUNING = {
     glowOpacity: 0.22,
   },
 } as const;
+
+/**
+ * HOW LONG A BATTLE LASTS: two and a half minutes.
+ *
+ * David, 1 Nov 2026: "Add a two minute thirty second timer and if the
+ * game doesn't finish by then it is a tie if the score is tied, or a win
+ * for whoever is winning at that moment."
+ *
+ * The clock starts when the round does (after "BATTLE!"), not when Play
+ * is pressed, so the matchmaking reveal and the countdown cost nobody
+ * any time. The rules that read it are in src/game/battleTimer.ts. The
+ * friendly-battle server keeps its own copy of this number
+ * (hq/src/lib/battleClock.ts, which cannot import from the game), and
+ * tests/battleTimer.test.ts fails if the two ever disagree.
+ */
+export const BATTLE_TIME_MS = 150_000;
+
+/**
+ * The last stretch of the clock, which turns red and ticks once a second
+ * so nobody is surprised when it runs out. Ten seconds: long enough to
+ * notice and roll once or twice more, short enough not to nag.
+ */
+export const BATTLE_FINAL_MS = 10_000;
+
+/**
+ * How long "Time's up!" stays on its own before the result replaces it.
+ * Long enough to read and to understand why the battle stopped; short
+ * enough that nobody wonders whether the game has frozen.
+ */
+export const TIME_UP_PAUSE_MS = 1_600;

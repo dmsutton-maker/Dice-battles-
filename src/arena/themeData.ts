@@ -1280,7 +1280,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
       medallions and braziers along them, a stepped shrine at each far
       corner, obelisks and palms round about, a well of sunlit water,
       and a procession of priests carrying the sun round the temple
-      while ibises circle overhead (templeLife.tsx).
+      while a phoenix circles overhead (templeLife.tsx).
 
       Few props on the strips beside the walls: that is where the
       procession walks. The ones there stand against the wall, at

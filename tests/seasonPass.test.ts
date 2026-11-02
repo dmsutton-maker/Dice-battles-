@@ -257,7 +257,11 @@ suite('season pass · the Gold Pass', () => {
 
   test('the game pays the Gold row after battles, purchases and launch', () => {
     const screen = readFileSync('src/demo/DiceDemoScreen.tsx', 'utf8');
-    assert(/const owned = hasGoldPass\(\);/.test(screen), 'the Gold row is paid without checking this month\'s pass is owned');
+    // David, 1 Nov 2026: "All the things that cost real money like the gold
+    // pass are for free with the admin code." The row now asks
+    // goldPassUnlocked(), which is hasGoldPass() or tester mode; it must
+    // still ask one of them and never pay unconditionally.
+    assert(/const owned = (goldPassUnlocked|hasGoldPass)\(\);/.test(screen), 'the Gold row is paid without checking this month\'s pass is owned');
     assertEqual((screen.match(/claimGoldLevels\(\)/g) ?? []).length >= 3, true, 'the Gold row is not claimed after battles, purchases and launch');
     assert(/kicker: 'GOLD PASS'/.test(screen), 'a Gold level reached is never announced');
   });

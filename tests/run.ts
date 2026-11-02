@@ -26,6 +26,17 @@ async function main(): Promise<void> {
   await import('./dinoValley.test');
   await import('./season2.test');
   await import('./downloadSize.test');
+  await import('./duoDesign.test');
+  await import('./friendlyBattle.test');
+  await import('./friendlyServer.test');
+  await import('./secretCodes.test');
+  await import('./testerPurchases.test');
+  await import('./quests.test');
+  await import('./inventory.test');
+  await import('./coveShark.test');
+  await import('./battleTimer.test');
+  await import('./neonGlow.test');
+  await import('./phoenix.test');
   await import('./effects.test');
   await import('./seasonPass.test');
   await import('./water.test');

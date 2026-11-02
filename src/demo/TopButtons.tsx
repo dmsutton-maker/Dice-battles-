@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useHudFrame } from '../game/safeArea';
 import { playClick } from '../audio/sounds';
 import { FriendsIcon, GearIcon, NewsIcon } from '../ui/Icon';
 import { SHAPE, THEME } from '../ui/theme';
@@ -60,8 +61,10 @@ export function TopButtons({
     { Icon: GearIcon, label: 'Settings', press: onSettings },
   ];
 
+  // Level with the pills opposite, wherever the system leaves room.
+  const hud = useHudFrame();
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, { top: hud.top, right: hud.right }]}>
       {buttons.map((b) => (
         <Pressable
           key={b.label}

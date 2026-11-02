@@ -75,24 +75,20 @@ import { sync as syncGameCenter } from '../game/gameCenter';
 import {
   applyMatchResult,
   notePlayed,
-  parseTrophyCode,
-  parseCoinCode,
   setTrophies as writeTrophies,
-  TROPHY_CODE_MAX,
-  COIN_CODE_MAX,
   getProgress,
+  markCheated,
   loadProgress,
   nextTier,
   setUnlockAll as persistUnlockAll,
-  TESTER_CODE,
-  RESET_CODE,
-  TESTER_LOCK_CODE,
   TIERS,
   tierLabel,
   TROPHY_STAKES,
   setTournamentState,
   setSeasonState,
+  setQuestState,
 } from '../game/progress';
+import { chooseQuest, countQuestBattle, questDoneWords, QuestState } from '../game/quests';
 import { ColorDef, PRISONER_COLORS, PrisonerColorId } from '../game/colors';
 import {
   laneOf,
@@ -107,7 +103,8 @@ import {
 import { TUNING } from '../game/tuning';
 import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { hasEntitlement,
-  hasGoldPass, initPurchases, onPurchasesChanged } from '../game/purchases';
+  goldPassUnlocked, hasGoldPass, initPurchases, noteTesterModeChanged, onPurchasesChanged } from '../game/purchases';
+import { lookupCode } from '../game/secretCodes';
 import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
 import { warmAllArenaTextures } from '../arena/warmArenas';
 import { useAppActive } from '../game/useAppActive';
@@ -143,7 +140,13 @@ import {
 import {
   BATTLE_SYNC_MS,
   CHALLENGE_POLL_MS,
+  OUTGOING_POLL_MS,
   POPUP_MS,
+  coloursAdded,
+  localWaitOver,
+  noShowLine,
+  rivalProgressCallout,
+  sameColours,
   secondsLeft,
   topChallenge,
 } from '../game/friendlyBattle';
@@ -153,10 +156,11 @@ import { TwoPlayerScreen } from './TwoPlayerScreen';
 import { VolumeSlider } from './VolumeSlider';
 import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
+import { FriendlyWaitOverlay } from './FriendlyWaitOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
 import { BottomNav, useBottomNavHeight, Tab } from './BottomNav';
-import { useBottomInset } from '../game/safeArea';
+import { useBottomInset, useHudFrame } from '../game/safeArea';
 import { NewsScreen } from './NewsScreen';
 import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
@@ -167,6 +171,21 @@ import { askToBeTold, pushState, refreshToken, type PushState } from '../game/pu
 import { REVIEW_URL } from '../game/review';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
+import { BattleClock } from './BattleClock';
+import {
+  battleScores,
+  clockLeft,
+  FRIENDLY_VERDICT_WAIT_MS,
+  friendlyVerdict,
+  newClock,
+  pauseClock,
+  runClock,
+  syncClock,
+  timeUpOutcome,
+  type BattleOutcome,
+  type ClockState,
+} from '../game/battleTimer';
+import { TIME_UP_PAUSE_MS } from '../game/tuning';
 import { TierIcon } from './TierIcon';
 import { FirstFrame } from './FirstFrame';
 import {
@@ -224,6 +243,14 @@ type Phase =
   | 'arm'
   | 'go'
   | 'battle'
+  /*
+    The clock has run out: "Time's up!" is on screen, nothing more can be
+    rolled or rescued, and the result follows (battleTimer.ts). Its own
+    phase so every guard that already says "only during 'battle'" — the
+    opponent's rolls, the player's settles, the throw itself — stops
+    everything at 0:00 without being told about the clock.
+  */
+  | 'timeup'
   | 'won'
   | 'lost'
   | 'tie';
@@ -239,7 +266,7 @@ function AdStatusLine() {
   const status = adStatus();
   const WHY: Record<ReturnType<typeof adStatus>['stage'], string> = {
     'not-started': 'not started yet',
-    'bought-out': 'switched off — ads bought away',
+    'bought-out': 'switched off — ads removed (bought, or tester mode)',
     'no-sdk': 'not in this build — needs a new build from Apple',
     'no-consent': 'consent not granted, so no ad may be asked for',
     'init-failed': 'the ad service would not start (often no connection)',
@@ -267,6 +294,9 @@ export function DiceDemoScreen() {
   // Both live: a folding phone changes the home-indicator inset, and
   // therefore the bar's height, without the app relaunching.
   const bottomInset = useBottomInset();
+  // The top band, from the measured safe area (safeArea.ts). `shift` is 0
+  // on every iPhone with a status bar across the top.
+  const hud = useHudFrame();
   const navHeight = useBottomNavHeight();
 
   useEffect(() => {
@@ -305,6 +335,7 @@ export function DiceDemoScreen() {
         */
         setCupStates(progress.tournaments ?? {});
         setSeason(progress.season);
+        setQuest(progress.quest);
         /*
           Snowy Hollow and Volcano Rim left the trophy ladder for the
           season pass. Whoever had already earned one keeps it — handed
@@ -553,11 +584,29 @@ export function DiceDemoScreen() {
     outgoing: null,
     battle: null,
   });
+  /*
+    My challenge is out, so the answer can come any second: the poll
+    reads this when it schedules its next ask (OUTGOING_POLL_MS), rather
+    than restarting itself every time the challenge state changes.
+  */
+  const outgoingRef = useRef<ChallengeState['outgoing']>(null);
+  outgoingRef.current = challenges.outgoing;
   const [friendly, setFriendly] = useState<
     { battleId: string; opponentId: string; opponentName: string } | null
   >(null);
   const friendlyRef = useRef<typeof friendly>(null);
   friendlyRef.current = friendly;
+  /*
+    THE WAITING ROOM (friendlyBattle.ts, JOIN_WAIT_MS). David, 1 Nov
+    2026: "Fix the versus against friends because it doesn't connect".
+    `friendReady` is the server's `started`, first seen on the live beat
+    while the friend's card is up; the waiting overlay reads it and only
+    then starts the countdown, so both phones go together.
+    `friendWaitSinceRef` is when this phone began waiting, for its own
+    safety net if the server's "they never came" cannot get through.
+  */
+  const [friendReady, setFriendReady] = useState(false);
+  const friendWaitSinceRef = useRef(0);
   /** The challenge the banner is showing, and when to slide it away. */
   const [banner, setBanner] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -647,7 +696,14 @@ export function DiceDemoScreen() {
         bannerSeen.current.add(top.id);
         setBanner(top.id);
       }
-      timer = setTimeout(ask, CHALLENGE_POLL_MS);
+      /*
+        Every second and a half while my challenge is out, since 1 Nov
+        2026: the friend who sent it used to find out on the next
+        five-second ask, arriving up to eight seconds after the friend
+        who accepted (David: "it doesn't connect").
+      */
+      const waitingOnThem = state.outgoing !== null || outgoingRef.current !== null;
+      timer = setTimeout(ask, waitingOnThem ? OUTGOING_POLL_MS : CHALLENGE_POLL_MS);
     };
     timer = setTimeout(ask, 0);
     return () => {
@@ -756,7 +812,6 @@ export function DiceDemoScreen() {
   );
   const [warColors, setWarColors] = useState<{ player: ColorDef; ai: ColorDef } | null>(null);
   const [aiFreed, setAiFreed] = useState<PrisonerColorId[]>([]);
-  const [aiLastRoll, setAiLastRoll] = useState<[ColorDef, ColorDef] | null>(null);
   const [shakeSignal, setShakeSignal] = useState(0);
   const [callout, setCallout] = useState<{ key: number; text: string } | null>(null);
   /*
@@ -796,6 +851,8 @@ export function DiceDemoScreen() {
    */
   const [season, setSeason] = useState<SeasonState | undefined>(undefined);
   const [lastXp, setLastXp] = useState(0);
+  /** Today's quest for the pass (src/game/quests.ts), once one is chosen. */
+  const [quest, setQuest] = useState<QuestState | undefined>(undefined);
   /** Whether this phone owns this season's Gold Pass (seasonPass.ts). */
   /** Moves on each time Cups' "Get the Gold Pass" sends the player to the Store. */
   const [goldFocus, setGoldFocus] = useState(0);
@@ -810,11 +867,17 @@ export function DiceDemoScreen() {
    * paid, so calling it again is always safe.
    */
   const claimGoldLevels = () => {
-    const owned = hasGoldPass();
+    // Tester mode lends the Gold Pass (purchases.ts), so the row pays
+    // without a purchase on record.
+    const owned = goldPassUnlocked();
     setGoldOwned(owned);
     if (!owned) return;
     const claimed = claimGold(getProgress().season);
     if (claimed.reached.length === 0) return;
+    // Coins and dice the Gold row hands to somebody who did not buy it are
+    // free items like the coin codes, so they take the save off the shared
+    // board the same way (and out of the Collector count they would feed).
+    if (!hasGoldPass()) markCheated();
     setSeasonState(claimed.state);
     setSeason(claimed.state);
     for (const level of claimed.reached) {
@@ -894,6 +957,19 @@ export function DiceDemoScreen() {
   const startPendingRef = useRef(false);
   const startEpochRef = useRef(0);
   const lastSplash = useRef(0);
+  /** A die of yours fell in this battle, for the "no splash" quest (quests.ts). */
+  const splashedRef = useRef(false);
+  /*
+    THE BATTLE CLOCK (battleTimer.ts). A ref rather than state: the clock
+    on the scoreboard reads it four times a second by itself
+    (BattleClock.tsx), and state would re-render this whole screen and
+    its board every time. `clockEpoch` moves only when a friendly
+    battle's server puts the clock right, so the time-up is rescheduled.
+  */
+  const clockRef = useRef<ClockState>(newClock());
+  const [clockEpoch, setClockEpoch] = useState(0);
+  const readClock = useCallback(() => clockLeft(clockRef.current, Date.now()), []);
+  const timeUpAtRef = useRef(0);
 
   // Whether the start screen's content is taller than the screen itself.
   const pickHeights = useRef({ viewport: 0, content: 0 });
@@ -979,8 +1055,8 @@ export function DiceDemoScreen() {
     setUnits(fresh);
     aiFreedRef.current = [];
     setAiFreed([]);
+    splashedRef.current = false;
     setRolledFaces(null);
-    setAiLastRoll(null);
     setRolling(false);
   }, []);
 
@@ -1071,32 +1147,29 @@ export function DiceDemoScreen() {
   }, []);
 
   const submitCode = useCallback(() => {
-    const code = codeInput.trim().toUpperCase();
+    const typed = codeInput;
     setCodeInput('');
-    // Parsed once, up front: "500 TROPHY" and "500 COIN" carry a value, so
-    // they cannot be matched by comparison like the others.
-    const trophyCode = parseTrophyCode(code);
-    const coinCode = parseCoinCode(code);
-    if (code === TESTER_CODE) {
+    // The codes are ten random characters kept only as hashes, so nothing
+    // is compared with a word here: secretCodes.ts hashes what was typed
+    // and says what, if anything, it does (David, 1 Nov 2026).
+    const action = lookupCode(typed);
+    if (action?.kind === 'admin') {
       persistUnlockAll(true);
       setUnlockAll(true);
+      // Tester mode also lends everything that costs money: tell the shelf
+      // and the Gold card to look again (purchases.ts).
+      noteTesterModeChanged();
       setCodeFeedback('Everything unlocked — have fun testing!');
       playFanfare();
-    } else if (coinCode) {
-      // Checked before the catch-all, so "500 COIN" is never met with
-      // "that's not the secret code".
-      const coins = writeCoins(coinCode.coins);
+    } else if (action?.kind === 'coins') {
+      const coins = writeCoins(action.amount);
       setWallet({ ...getWallet() });
-      setCodeFeedback(
-        coinCode.clamped
-          // No coin emoji here: the game draws its own gold coin now, and
-          // this line sitting one tap away from the HUD was the last place
-          // still showing the other one.
-          ? `That is more coins than the game holds — set to ${COIN_CODE_MAX.toLocaleString()}.`
-          : `Coins set to ${coins.toLocaleString()}.`,
-      );
+      // No coin emoji here: the game draws its own gold coin now, and
+      // this line sitting one tap away from the HUD was the last place
+      // still showing the other one.
+      setCodeFeedback(`Coins set to ${coins.toLocaleString()}.`);
       playFanfare();
-    } else if (code === RESET_CODE) {
+    } else if (action?.kind === 'reset') {
       const removed = clearPurchases(coinShopItemIds());
       setWallet({ ...getWallet() });
       // A wiped skin may still be the equipped one. activeDieBody already
@@ -1109,10 +1182,8 @@ export function DiceDemoScreen() {
           : `${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
       );
       playClick();
-    } else if (trophyCode) {
-      // Checked before the catch-all, so "500 TROPHY" is never met with
-      // "that's not the secret code".
-      const result = writeTrophies(trophyCode.trophies);
+    } else if (action?.kind === 'trophies') {
+      const result = writeTrophies(action.amount);
       setTrophies(result.trophies);
       // Going down relocks things, so the equipped skin may no longer be
       // owned. activeDieBody falls back on its own, but the Inventory would
@@ -1129,23 +1200,22 @@ export function DiceDemoScreen() {
           })),
         ]);
       }
-      setCodeFeedback(
-        trophyCode.clamped
-          ? `That is more trophies than the game holds — set to ${TROPHY_CODE_MAX.toLocaleString()}.`
-          : `Trophies set to ${result.trophies.toLocaleString()}.`,
-      );
+      setCodeFeedback(`Trophies set to ${result.trophies.toLocaleString()}.`);
       playFanfare();
-    } else if (code === TESTER_LOCK_CODE) {
+    } else if (action?.kind === 'lock') {
       persistUnlockAll(false);
       setUnlockAll(false);
+      // Back to the real record of what was bought (purchases.ts).
+      noteTesterModeChanged();
       setCodeFeedback('Tester mode off — back to earning unlocks.');
-    } else if (code) {
+    } else if (typed.trim()) {
       setCodeFeedback("Hmm, that's not the secret code…");
     }
   }, [codeInput]);
 
   const handleMoatSink = useCallback(() => {
     const now = Date.now();
+    if (phaseRef.current === 'battle') splashedRef.current = true;
     if (now - lastSplash.current < 2500 || phaseRef.current !== 'battle') return;
     lastSplash.current = now;
     // In the words of the battlefield: a pond at the castle, a lake in
@@ -1185,6 +1255,7 @@ export function DiceDemoScreen() {
       setFriendly(null);
       friendlyRef.current = null;
     }
+    setFriendReady(false);
     stopAnnouncer();
     resetRace();
     setCallout(null);
@@ -1202,6 +1273,32 @@ export function DiceDemoScreen() {
     */
     void showAdIfDue({ wait: false });
   }, [resetRace, setPhaseBoth]);
+
+  /*
+    THE FRIEND NEVER CAME. The server closes a waiting room nobody joined
+    within JOIN_WAIT_MS (or that the friend left), and this phone's own
+    safety net does the same if that word cannot get through. Straight
+    back to the menu with a line saying so — no result screen, because
+    there was no battle — and no `leave`, because the room is already
+    closed. A friendly pays nothing and owes no ad, so none is offered.
+  */
+  const friendNoShow = useCallback(() => {
+    const gone = friendlyRef.current;
+    if (!gone) return;
+    countdownTimers.current.forEach(clearTimeout);
+    flashTimers.current.forEach(clearTimeout);
+    flashTimers.current = [];
+    startEpochRef.current += 1;
+    startPendingRef.current = false;
+    setFriendly(null);
+    friendlyRef.current = null;
+    setFriendReady(false);
+    stopAnnouncer();
+    resetRace();
+    setMatchNote(null);
+    setPhaseBoth('pick');
+    showCallout(noShowLine(gone.opponentName), 'lookout');
+  }, [resetRace, setPhaseBoth, showCallout]);
 
   const finishRound = useCallback(
     (outcome: 'won' | 'lost' | 'tie') => {
@@ -1335,7 +1432,28 @@ export function DiceDemoScreen() {
         against your brother fills nobody's pass.
       */
       const xp = battleXp(outcome, difficultyRef.current);
-      const climbed = addXp(getProgress().season, xp);
+      /*
+        TODAY'S QUEST (quests.ts), counted here for the same reason: below
+        the friendly-battle return, so a friendly never moves one. A
+        quest this battle finishes adds its experience to the same
+        `addXp`, so its levels are paid by the loop below like any other.
+      */
+      const quested = countQuestBattle(getProgress().quest, {
+        outcome,
+        difficulty: difficultyRef.current,
+        mode: modeRef.current,
+        freed: warRef.current ? warRetreatCount(warRef.current.player.id) : retreatCount(),
+        splashed: splashedRef.current,
+      });
+      if (quested.state && quested.state !== getProgress().quest) {
+        setQuestState(quested.state);
+        setQuest(quested.state);
+      }
+      if (quested.finished) {
+        const words = questDoneWords(quested.finished);
+        setRewards((queue) => [...queue, { picture: { kind: 'trophy' as const }, kicker: "TODAY'S QUEST", ...words }]);
+      }
+      const climbed = addXp(getProgress().season, xp + quested.xp);
       setSeasonState(climbed.state);
       setSeason(climbed.state);
       setLastXp(xp);
@@ -1611,10 +1729,21 @@ export function DiceDemoScreen() {
       startPendingRef.current = false;
       // The player has left the screen this start came from.
       if (phaseRef.current !== startedFrom) return;
-      const rival = pickOpponent(opponentRef.current ?? undefined);
-      opponentRef.current = rival;
-      setOpponent(rival);
+      // A friendly's opponent is the friend (startFriendly), never a bot.
+      if (origin !== 'friendly') {
+        const rival = pickOpponent(opponentRef.current ?? undefined);
+        opponentRef.current = rival;
+        setOpponent(rival);
+      }
       resetRace();
+      /*
+        A full clock for every battle. It stays stopped through the
+        reveal and the countdown and only runs from "BATTLE!" (see the
+        clock's effect), so they cost nobody any time. Set here rather
+        than at "BATTLE!" because a friendly battle's server may already
+        have put it right by then.
+      */
+      clockRef.current = newClock();
       // Fresh obstacle spots every battle.
       setLayout(generateObstacleLayout(difficultyRef.current));
       setRound((r) => r + 1);
@@ -1688,7 +1817,6 @@ export function DiceDemoScreen() {
       // on rolling after the game is over. Same guard as handleSettled.
       if (phaseRef.current !== 'battle') return;
       const roll = rollAiDice();
-      setAiLastRoll(roll);
       const [a, b] = roll;
       if (a.id !== b.id) return;
       const m = modeRef.current;
@@ -1770,6 +1898,93 @@ export function DiceDemoScreen() {
     }, rollIntervalMs);
     return () => clearInterval(id);
   }, [phase, appActive, difficulty, finishRound, moveUnit, showCallout]);
+
+  /*
+    TIME UP. David, 1 Nov 2026: "Add a two minute thirty second timer and
+    if the game doesn't finish by then it is a tie if the score is tied,
+    or a win for whoever is winning at that moment."
+
+    "Time's up!" first, on its own, so nobody wonders why the battle
+    stopped; then the ordinary finishRound, so a win on time is a win
+    everywhere a win counts — trophies, coins, the pass, the cups, the
+    records — and a tie on time is a tie. The score is taken at the
+    moment the clock stops, from the same function the scoreboard
+    draws with, so the result is the numbers the player was looking at.
+  */
+  const enterTimeUp = useCallback(() => {
+    timeUpAtRef.current = Date.now();
+    setPhaseBoth('timeup');
+    showCallout("Time's up!");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+  }, [setPhaseBoth, showCallout]);
+
+  /** The result, once "Time's up!" has had its moment. */
+  const finishAfterTimeUp = useCallback(
+    (outcome: BattleOutcome) => {
+      const wait = Math.max(0, timeUpAtRef.current + TIME_UP_PAUSE_MS - Date.now());
+      flashTimers.current.push(
+        setTimeout(() => {
+          if (phaseRef.current === 'timeup') finishRound(outcome);
+        }, wait),
+      );
+    },
+    [finishRound],
+  );
+
+  const endOnTime = useCallback(() => {
+    if (phaseRef.current !== 'battle') return;
+    enterTimeUp();
+    // A friendly battle is ended by the SERVER, so both phones agree —
+    // its verdict arrives on the live beat below.
+    if (friendlyRef.current) return;
+    const score = battleScores(
+      modeRef.current,
+      unitsRef.current,
+      aiFreedRef.current,
+      warRef.current,
+    );
+    finishAfterTimeUp(timeUpOutcome(score.player, score.ai));
+  }, [enterTimeUp, finishAfterTimeUp]);
+
+  /*
+    THE CLOCK RUNS EXACTLY WHEN THE OPPONENT DOES: during 'battle', with
+    the game on screen. The computer's rolls stop when the phone goes in
+    a pocket (the effect above, and useAppActive), so the clock stops
+    with them — otherwise a player who took a phone call would come back
+    to find the battle decided by a clock that ran while their rival sat
+    frozen, and the other way round a clock that stopped while the rival
+    kept rolling would hand the rival free time. Paused and resumed
+    together, the two always agree.
+
+    In a friendly battle the opponent is a person whose phone keeps
+    going, so the server's clock is the real one and it does not stop
+    for anybody's pocket; this phone's count is only its estimate
+    between beats, and the first beat back puts it right (syncClock).
+  */
+  useEffect(() => {
+    if (phase !== 'battle' || !appActive) return;
+    clockRef.current = runClock(clockRef.current, Date.now());
+    const id = setTimeout(endOnTime, clockLeft(clockRef.current, Date.now()));
+    return () => {
+      clearTimeout(id);
+      clockRef.current = pauseClock(clockRef.current, Date.now());
+    };
+  }, [phase, appActive, clockEpoch, endOnTime]);
+
+  /*
+    A friendly battle whose verdict never comes — the connection dropped
+    at the wrong moment — is decided here from the score this phone can
+    see, by the same rule, rather than left on "Time's up!" for ever.
+    Only counts while the game is on screen and beating.
+  */
+  useEffect(() => {
+    if (phase !== 'timeup' || !friendly || !appActive) return;
+    const id = setTimeout(() => {
+      if (phaseRef.current !== 'timeup') return;
+      finishRound(timeUpOutcome(retreatColorIds().length, aiFreedRef.current.length));
+    }, FRIENDLY_VERDICT_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [phase, friendly, appActive, finishRound]);
 
   const handleThrow = useCallback(() => {
     markBoardBusy();
@@ -2093,7 +2308,21 @@ export function DiceDemoScreen() {
       modeRef.current = battle.mode;
       setDifficulty(battle.difficulty);
       difficultyRef.current = battle.difficulty;
-      setOpponent({ name: opponentName, short: opponentName.slice(0, 7).toUpperCase() });
+      /*
+        The REF as well as the state, since 1 Nov 2026. Only the state was
+        set, and startCountdown then drew a random bot over it, so the
+        reveal, every callout and the result named "Lady Luckabelle" —
+        David: "it's not actually against each other". The ref is what
+        the callouts and "Oh no — Marc wins!" read.
+      */
+      const friend: AiOpponent = {
+        name: opponentName,
+        short: opponentName.slice(0, 7).toUpperCase(),
+      };
+      opponentRef.current = friend;
+      setOpponent(friend);
+      setFriendReady(false);
+      friendWaitSinceRef.current = Date.now();
       setFriendly({
         battleId: battle.id,
         opponentId: battle.opponentId ?? '',
@@ -2156,12 +2385,79 @@ export function DiceDemoScreen() {
       const pulse = await pulseBattle(me, friendly.battleId, retreatColorIds());
       if (!alive) return;
       if (pulse) {
+        /*
+          THE WAITING ROOM. Nothing has started until the server says both
+          phones are here; then the overlay says "MARC IS HERE!" and starts
+          the countdown. A room that closed while we waited — nobody came
+          inside JOIN_WAIT_MS (`over` with no winner), or the friend
+          cancelled (`over`, and the room handed to us) — goes back to
+          the menu with no result, since no battle was ever played.
+        */
+        if (phaseRef.current === 'matching') {
+          if (pulse.over) {
+            friendNoShow();
+            return;
+          }
+          if (pulse.started) setFriendReady(true);
+        }
+        /*
+          THE FRIEND IS FELT, since 1 Nov 2026: the same ping, flash and
+          "Marc freed Red!" as the computer rival, by the friend's name.
+          Compared by content, not by count — in Ultimate a capture and a
+          rescue between two beats leave the count unchanged.
+        */
         const theirs = pulse.theirs as PrisonerColorId[];
-        if (theirs.length !== aiFreedRef.current.length) {
+        const before = aiFreedRef.current;
+        if (!sameColours(before, theirs)) {
           aiFreedRef.current = theirs;
           setAiFreed(theirs);
+          if (phaseRef.current === 'battle') {
+            if (coloursAdded(before, theirs).length > 0) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setAiFlash(true);
+              flashTimers.current.push(setTimeout(() => setAiFlash(false), 650));
+            }
+            const said = rivalProgressCallout(
+              friendly.opponentName,
+              before,
+              theirs,
+              retreatColorIds().length,
+              PRISONER_COLORS.length,
+            );
+            if (said) showCallout(said.text, said.kind);
+          }
         }
-        if (pulse.theyDropped && phaseRef.current === 'battle') {
+        // The server is the clock in a friendly battle (battleTimer.ts).
+        if (pulse.msLeft !== null) {
+          const synced = syncClock(clockRef.current, pulse.msLeft, Date.now());
+          if (synced !== clockRef.current) {
+            clockRef.current = synced;
+            setClockEpoch((n) => n + 1);
+          }
+        }
+        /*
+          Ended ON TIME, by the server, the same way on both phones: a win
+          for whoever was ahead, or a tie. "Time's up!" first if this
+          phone's own clock had not quite got there, then the result.
+        */
+        if (
+          pulse.winner &&
+          pulse.msLeft === 0 &&
+          (phaseRef.current === 'battle' || phaseRef.current === 'timeup')
+        ) {
+          if (phaseRef.current === 'battle') enterTimeUp();
+          finishAfterTimeUp(friendlyVerdict(pulse.winner, me.playerId));
+          return;
+        }
+        /*
+          Or they LEFT, which the server records as the battle handed to
+          this player. Nothing here used to read that, so the one left
+          behind raced on alone until their own clock ran out.
+        */
+        if (
+          (pulse.theyDropped || (pulse.over && pulse.winner === me.playerId)) &&
+          phaseRef.current === 'battle'
+        ) {
           showCallout(`${friendly.opponentName} has gone — you win!`, 'congrats');
           finishRound('won');
           return;
@@ -2178,7 +2474,21 @@ export function DiceDemoScreen() {
       alive = false;
       clearTimeout(timer);
     };
-  }, [friendly, me, appActive, finishRound, showCallout]);
+  }, [friendly, me, appActive, finishRound, showCallout, enterTimeUp, finishAfterTimeUp, friendNoShow]);
+
+  /*
+    The waiting room's own safety net: if nothing has said "started" well
+    past the server's own limit, this phone's beats are not getting
+    through, and waiting on is waiting for ever. Same way out as the
+    server's "they never came".
+  */
+  useEffect(() => {
+    if (phase !== 'matching' || !friendly || friendReady) return;
+    const id = setInterval(() => {
+      if (localWaitOver(friendWaitSinceRef.current, Date.now())) friendNoShow();
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase, friendly, friendReady, friendNoShow]);
 
   const previewView = (() => {
     if (!preview) return null;
@@ -2291,22 +2601,10 @@ export function DiceDemoScreen() {
     );
   };
   // In Color War both sides stand in the retreat row, so each side's
-  // score is its own colour rather than everyone standing there.
-  const inRetreat = (colorId: PrisonerColorId) =>
-    units.filter((u) => u.station.kind === 'retreat' && u.colorId === colorId)
-      .length;
-  const playerScore =
-    mode === 'colorwar' && warColors
-      ? inRetreat(warColors.player.id)
-      : units.filter((u) => u.station.kind === 'retreat').length;
-  const aiScore =
-    mode === 'colorwar'
-      ? warColors
-        ? inRetreat(warColors.ai.id)
-        : 0
-      : mode === 'skirmish'
-        ? units.filter((u) => u.station.kind === 'wall').length
-        : aiFreed.length;
+  // score is its own colour rather than everyone standing there. Worked
+  // out in battleTimer.ts, which the time-up decision also uses, so the
+  // result at 0:00 is always the score on this board.
+  const { player: playerScore, ai: aiScore } = battleScores(mode, units, aiFreed, warColors);
   // Which colours wear a cross. Per mode, and in modes.ts because
   // getting it wrong marks a colour still sitting in the jail.
   const opponentHas = opponentColors(mode, units, aiFreed);
@@ -2536,26 +2834,6 @@ export function DiceDemoScreen() {
         />
       )}
 
-      {/*
-        "Marc wants a battle!" — across the top of whatever you were
-        doing, for a few seconds. Rendered before the gesture layer and
-        with its own zIndex so it sits over the board, the menus and the
-        tab bar alike: it is the one thing in this game that interrupts.
-      */}
-      {banner && me && (() => {
-        const c = challenges.incoming.find((x) => x.id === banner);
-        if (!c) return null;
-        return (
-          <ChallengeBanner
-            key={c.id}
-            challenge={c}
-            secondsLeft={secondsLeft(c.expiresAt, now)}
-            onAccept={() => void answerBattle(c.id, 'accept')}
-            onDecline={() => void answerBattle(c.id, 'decline')}
-          />
-        );
-      })()}
-
       {/* Gesture layer (transparent, above the canvas). */}
       <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
 
@@ -2567,8 +2845,12 @@ export function DiceDemoScreen() {
       */}
 
       {/* Scoreboard */}
-      {(phase === 'battle' || phase === 'won' || phase === 'lost' || phase === 'tie') && (
-        <View pointerEvents="none" style={styles.scoreboard}>
+      {(phase === 'battle' ||
+        phase === 'timeup' ||
+        phase === 'won' ||
+        phase === 'lost' ||
+        phase === 'tie') && (
+        <View pointerEvents="none" style={[styles.scoreboard, { top: 54 + hud.shift }]}>
           <View style={[styles.scoreSide, playerFlash && styles.scoreFlashYou]}>
             <Text style={styles.scoreLabel}>YOU</Text>
             {warColors && (
@@ -2576,7 +2858,16 @@ export function DiceDemoScreen() {
             )}
             <Text style={styles.scoreNumber}>{playerScore}</Text>
           </View>
-          <Text style={styles.scoreVs}>vs</Text>
+          {/*
+            The clock sits where "vs" does, between the two scores, for
+            the length of the battle: the row is already as wide as a
+            375pt phone allows, and the space under it is the jail.
+          */}
+          {phase === 'battle' || phase === 'timeup' ? (
+            <BattleClock read={readClock} />
+          ) : (
+            <Text style={styles.scoreVs}>vs</Text>
+          )}
           <View style={[styles.scoreSide, aiFlash && styles.scoreFlashAi]}>
             <Text style={styles.scoreNumber}>{aiScore}</Text>
             {warColors && (
@@ -2604,30 +2895,20 @@ export function DiceDemoScreen() {
               beside the scores.
             */}
             {opponentHas !== null && <OpponentDots taken={opponentHas} />}
-            {aiLastRoll && (
-              <View style={styles.aiRoll}>
-                {aiLastRoll.map((c, i) => (
-                  <View
-                    key={i}
-                    style={[styles.aiRollSwatch, { backgroundColor: c.hex }]}
-                  />
-                ))}
-              </View>
-            )}
           </View>
         </View>
       )}
 
       {/* Restart (quit to menu) during a round */}
       {(phase === 'battle' || phase === 'arm' || phase === 'go') && (
-        <Pressable style={styles.quitButton} onPress={quitToMenu}>
+        <Pressable style={[styles.quitButton, { top: hud.top, left: hud.left }]} onPress={quitToMenu}>
           <Text style={styles.quitText}>↺</Text>
         </Pressable>
       )}
 
       {/* Announcer callout banner */}
       {callout && (
-        <View pointerEvents="none" style={styles.calloutWrap} key={callout.key}>
+        <View pointerEvents="none" style={[styles.calloutWrap, { top: 150 + hud.shift }]} key={callout.key}>
           <Text style={styles.calloutText}>{callout.text}</Text>
         </View>
       )}
@@ -2693,7 +2974,7 @@ export function DiceDemoScreen() {
             (iPhone SE) still has to be able to reach the START button.
           */}
           <ScrollView
-            contentContainerStyle={[styles.pickScroll, { paddingBottom: 64 + navHeight }]}
+            contentContainerStyle={[styles.pickScroll, { paddingTop: 100 + hud.shift, paddingBottom: 64 + navHeight }]}
             showsVerticalScrollIndicator={false}
             bounces={false}
             scrollEnabled={pickOverflows}
@@ -2777,7 +3058,20 @@ export function DiceDemoScreen() {
           </ScrollView>
         </View>
       )}
-      {phase === 'matching' && (
+      {/*
+        A friendly shows the FRIEND and waits for their phone (David,
+        1 Nov 2026: "it's not actually against each other"); the bot
+        reveal and its search for a stranger belong to every other start.
+      */}
+      {phase === 'matching' && friendly && (
+        <FriendlyWaitOverlay
+          opponent={opponent}
+          ready={friendReady}
+          onDone={beginCountdown}
+          onCancel={quitToMenu}
+        />
+      )}
+      {phase === 'matching' && !friendly && (
         <MatchmakingOverlay
           opponent={opponent}
           trophies={trophies}
@@ -2874,7 +3168,7 @@ export function DiceDemoScreen() {
           onPreview={(id) => showPreview({ kind: 'die', id, from: 'store' })}
           onPreviewArena={(id) => showPreview({ kind: 'arena', id, from: 'store' })}
           // A die or battlefield inside a money purchase: the same real
-          // board, so a $1.99 die is seen the way a 450-coin one is.
+          // board, so a $0.99 die is seen the way a 450-coin one is.
           onPreviewItem={(target) => showPreview(target)}
           focusGold={goldFocus}
         />
@@ -2886,6 +3180,7 @@ export function DiceDemoScreen() {
           modeWins={modeWins}
           played={played}
           modePlayed={modePlayed}
+          onPreview={showPreview}
         />
       )}
       {/*
@@ -2932,6 +3227,32 @@ export function DiceDemoScreen() {
           onClose={() => setShowFriends(false)}
         />
       )}
+      {/*
+        "Marc wants a battle!" — across the top of whatever you were
+        doing, for a few seconds, with its own zIndex so it sits over the
+        board, the menus and the tab bar alike: it is the one thing in
+        this game that interrupts.
+
+        Drawn AFTER the Friends popup since 1 Nov 2026, not before the
+        gesture layer where it used to be. A challenge arriving while
+        Friends was open was drawn underneath the popup, so the one
+        person looking at their friends list never saw it slide in.
+        Later in the tree and the higher zIndex: on top either way.
+      */}
+      {banner && me && (() => {
+        const c = challenges.incoming.find((x) => x.id === banner);
+        if (!c) return null;
+        return (
+          <ChallengeBanner
+            key={c.id}
+            challenge={c}
+            secondsLeft={secondsLeft(c.expiresAt, now)}
+            onAccept={() => void answerBattle(c.id, 'accept')}
+            onDecline={() => void answerBattle(c.id, 'decline')}
+          />
+        );
+      })()}
+
       {heavyTabUp('inventory') && (
         <InventoryScreen
           hidden={menuTab !== 'inventory' || (preview !== null && !holdShelf)}
@@ -2948,6 +3269,14 @@ export function DiceDemoScreen() {
           today={todayStamp()}
           onPlay={playCup}
           season={season}
+          quest={quest}
+          onChooseQuest={(id) => {
+            const chosen = chooseQuest(getProgress().quest, id);
+            if (!chosen || chosen === getProgress().quest) return;
+            playClick();
+            setQuestState(chosen);
+            setQuest(chosen);
+          }}
           gold={goldOwned}
           onGetGold={() => {
             playClick();
@@ -3230,7 +3559,7 @@ export function DiceDemoScreen() {
               failure in ads.ts is swallowed on purpose, which is right
               for a player and useless for finding out why, and there is
               no Mac here to read a device log with. So the state says
-              itself, on the phone, to the people who typed FAMILY.
+              itself, on the phone, to the people who turned tester mode on.
 
               Read at render rather than held in state: it is only ever
               looked at by somebody who has just opened Settings, and a
@@ -3396,16 +3725,20 @@ const styles = StyleSheet.create({
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
     borderRadius: SHAPE.radius,
-    paddingHorizontal: 14,
+    // Tightened from 14 / 10 / 8 on 1 Nov 2026 to make room for the
+    // battle clock where "vs" was, so the row is barely wider than
+    // before on a 375pt phone (measured in react-native-web with the
+    // longest opponent name: 336pt with the clock, 332pt before it).
+    paddingHorizontal: 10,
     paddingVertical: 7,
-    gap: 10,
+    gap: 6,
   },
   scoreSide: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     borderRadius: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 2,
   },
   scoreFlashYou: {
@@ -3571,10 +3904,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 6,
   },
-  aiRoll: {
-    flexDirection: 'row',
-    gap: 3,
-  },
+  // The Color War scoreboard's two colour squares (the opponent's last
+  // roll used to flash here too; David, 1 Nov 2026: "Get rid of ghost
+  // rolls." — see the scoreboard).
   aiRollSwatch: {
     width: 13,
     height: 13,

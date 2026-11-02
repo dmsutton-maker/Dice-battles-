@@ -181,6 +181,22 @@ export interface BattlePulse {
   over: boolean;
   /** Their phone has stopped talking to the server. */
   theyDropped: boolean;
+  /**
+   * What is left on the battle clock, by the SERVER's reckoning, or null
+   * from a server that predates the clock. The server is the clock in a
+   * friendly battle (hq/src/lib/battleClock.ts), so both phones show the
+   * same time whatever their own clocks say.
+   */
+  msLeft: number | null;
+  /**
+   * Both phones are in the room and the clock is running (the row is
+   * `playing` or already `over`). False while the other phone has not
+   * yet sent its first beat — the game holds at "Waiting for Marc…"
+   * (friendlyBattle.ts, JOIN_WAIT_MS). A server from before this says
+   * nothing, which is read as started, so nobody waits for an answer
+   * that will never come.
+   */
+  started: boolean;
 }
 
 /**
@@ -202,7 +218,7 @@ export async function pulseBattle(
   freed: string[],
   options: { claimWin?: boolean; leave?: boolean } = {},
 ): Promise<BattlePulse | null> {
-  const result = await call<BattlePulse>('/battles/live', {
+  const result = await call<Partial<BattlePulse>>('/battles/live', {
     method: 'POST',
     body: JSON.stringify({
       playerId: me.playerId,
@@ -219,5 +235,10 @@ export async function pulseBattle(
     winner: result.data.winner ?? null,
     over: result.data.over === true,
     theyDropped: result.data.theyDropped === true,
+    msLeft:
+      typeof result.data.msLeft === 'number' && Number.isFinite(result.data.msLeft)
+        ? result.data.msLeft
+        : null,
+    started: result.data.started !== false,
   };
 }

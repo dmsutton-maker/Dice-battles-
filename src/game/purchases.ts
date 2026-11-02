@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { grantCoins } from './currency';
+import { hasUnlockAll, markCheated } from './progress';
 import { loadStoreKit } from './storeKit';
 import { PRODUCTS, Product, REMOVE_ADS, productById, sellable } from './products';
 import { GOLD_PASS_ID, SEASON_1_PASS } from './products';
@@ -32,6 +33,22 @@ import { seasonAt, seasonCoversMonth } from './seasonPass';
  * It will not grant anything StoreKit did not confirm. There is no
  * "assume it worked" path, because the failure mode of one is a player
  * charged for something they did not receive.
+ *
+ * ── THE ONE EXCEPTION: TESTER MODE ────────────────────────────────────
+ *
+ * David, 1 Nov 2026: "All the things that cost real money like the gold
+ * pass are for free with the admin code." While tester (admin) mode is
+ * on, everything sold here is unlocked without paying, and a coin pack
+ * adds its coins without going near the App Store.
+ *
+ * It is an OVERRIDE, not a purchase. Nothing is written to `owned`,
+ * `passMonths` or the AsyncStorage keys above, so the real record of
+ * what Apple confirmed is exactly what it was, and turning tester mode
+ * off (the lock code) puts every question below back to its real answer.
+ * That is why `hasEntitlement` and `hasGoldPass` still tell the truth
+ * about the device, and the shelf asks the `...Access` / `...Unlocked`
+ * versions instead. Collector-style counts keep asking the truthful ones
+ * (achievements.ts), the way they never counted borrowed dice.
  */
 
 /** Where the device remembers what has been bought. */
@@ -271,16 +288,53 @@ async function refreshPrices(): Promise<void> {
   }
 }
 
+/**
+ * Is tester (admin) mode lending out everything that costs money?
+ *
+ * Read off the saved progress every time rather than remembered, so the
+ * very next question after the code is typed already has the new answer.
+ * Never throws: an unreadable save is simply "no".
+ */
+export function testerUnlocksPurchases(): boolean {
+  try {
+    return hasUnlockAll();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Tell the screens that tester mode was switched on or off. The shelf and
+ * the Gold card read purchases, not progress, so they listen here.
+ */
+export function noteTesterModeChanged(): void {
+  notifyChanged();
+}
+
+/** Is this id something the game sells for money (a product, or what one grants)? */
+export function isSoldForMoney(id: string): boolean {
+  return (
+    id === GOLD_PASS_ID ||
+    PRODUCTS.some((p) => p.available && (p.id === id || (p.grants ?? []).includes(id)))
+  );
+}
+
 /** What the Store screen needs to draw itself. */
 export function storeState(now: number = Date.now(), family = false): StoreState {
   return {
-    available: ready,
+    // A phone with no store can still show the shelf to a tester: every
+    // card says "unlocked by tester mode" and no price is asked of anyone.
+    available: ready || testerUnlocksPurchases(),
     products: sellable(installedAt, now, family),
     priceOf: (id: string) => priceById.get(id) ?? null,
   };
 }
 
-/** Does this device own that entitlement? The Gold Pass: for this month. */
+/**
+ * Does this device REALLY own that entitlement? The Gold Pass: for this month.
+ *
+ * The truthful answer, with no tester override — see the note at the top.
+ */
 export function hasEntitlement(id: string): boolean {
   if (id === GOLD_PASS_ID) return hasGoldPass();
   return owned.has(id);
@@ -303,14 +357,40 @@ export function hasGoldPass(now: number = Date.now()): boolean {
 }
 
 /**
+ * May this thing, sold for money, be used right now?
+ *
+ * Really owned, or lent by tester mode (which lends exactly what is on
+ * sale and nothing else). The Store shelf asks this to decide whether a
+ * card says "yours" or offers a price.
+ */
+export function hasPurchaseAccess(id: string): boolean {
+  if (testerUnlocksPurchases() && isSoldForMoney(id)) return true;
+  return hasEntitlement(id);
+}
+
+/**
+ * Does the Gold row pay right now? Bought for the running season, or
+ * lent by tester mode. `hasGoldPass` stays the real answer.
+ */
+export function goldPassUnlocked(now: number = Date.now()): boolean {
+  return testerUnlocksPurchases() || hasGoldPass(now);
+}
+
+/**
  * Have adverts been bought away?
  *
  * `ads.ts` asks this before showing anything, so a player who paid never
  * sees another one — including on a build where purchasing itself is
  * switched off, because what they bought is remembered locally.
+ *
+ * Tester mode counts as bought away (David, 1 Nov 2026: Remove Ads is
+ * free with the admin code). That only ever turns adverts OFF: it
+ * changes none of the child-directed / non-personalised / G-rated flags
+ * on the requests that are made for everybody else, and the moment
+ * tester mode ends the next question is answered by the real record.
  */
 export function adsRemoved(): boolean {
-  return owned.has(REMOVE_ADS);
+  return owned.has(REMOVE_ADS) || testerUnlocksPurchases();
 }
 
 async function persistHandled(): Promise<void> {
@@ -355,7 +435,12 @@ async function grant(product: Product, boughtAt: number = Date.now()): Promise<v
 }
 
 export type BuyResult =
-  | { ok: true; product: Product }
+  | {
+      ok: true;
+      product: Product;
+      /** True when tester mode handed it over and nothing was charged. */
+      tester?: true;
+    }
   | {
       ok: false;
       reason: 'unavailable' | 'cancelled' | 'failed' | 'pending';
@@ -473,6 +558,23 @@ async function settle(mod: Record<string, unknown>, purchase: StorePurchase): Pr
   }
 }
 
+/**
+ * "Buying" in tester mode: free, instant, and no record of a purchase.
+ *
+ * Only a coin pack has anything to hand over, because everything else on
+ * sale is already lent by the override and its card never offers a Buy
+ * button. Typed-in coins buy real dice and count towards Collector, so
+ * they take the save off the shared board exactly as the coin codes do.
+ */
+function testerBuy(product: Product): BuyResult {
+  if (product.kind === 'consumable' && product.coins) {
+    grantCoins(product.coins);
+    markCheated();
+    notifyChanged();
+  }
+  return { ok: true, product, tester: true };
+}
+
 /** Long enough for a slow Face ID and a parent's thumb; not for ever. */
 const SHEET_TIMEOUT_MS = 10 * 60_000;
 
@@ -487,6 +589,10 @@ export async function buy(productId: string): Promise<BuyResult> {
   if (!product || !product.available) {
     return { ok: false, reason: 'unavailable', message: 'That is not for sale.' };
   }
+
+  // Tester mode never reaches the App Store: coins are added, everything
+  // else is already lent (see the note at the top of this file).
+  if (testerUnlocksPurchases()) return testerBuy(product);
 
   const mod = moduleOrNull();
   const request = mod?.requestPurchase as ((args: unknown) => Promise<unknown>) | undefined;

@@ -1,42 +1,44 @@
-import { passTag, seasonLevelOf } from '../game/seasonPass';
-import { paidSkinWhere } from '../game/products';
 import React, { useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { TIERS } from '../game/progress';
 import { useGridCardWidth } from './grid';
 import { playClick } from '../audio/sounds';
 import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
 import { recallScroll, rememberScroll } from './menuScroll';
-import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { PreviewTarget } from '../game/itemPreview';
-import { CoinLabel } from './GoldCoin';
 import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
 import { ARENA_ART } from '../arena/arenaArt';
 import {
-  ARENA_ORDER,
-  ARENA_UNLOCKS,
-  INVENTORY_SKIN_ORDER,
-  isArenaUnlocked,
-  isSkinUnlocked,
-  ARENA_PRICES,
-  PAID_ARENAS,
-} from '../game/loadout';
+  inventoryArenas,
+  inventoryDice,
+  onlyStarters,
+  STARTING_ARENAS,
+  STARTING_DICE,
+} from '../game/inventoryRules';
 
 /**
- * The Inventory: everything cosmetic the player has earned, in one place.
- * Battlefields and dice are chosen here rather than on the start screen, so
- * the pre-battle screen stays about the battle.
+ * The Inventory: the player's cupboard. Everything cosmetic they OWN, in
+ * one place, and nothing else. Battlefields and dice are chosen here
+ * rather than on the start screen, so the pre-battle screen stays about
+ * the battle.
  *
- * Locked items are shown, not hidden — seeing the next reward and its price
- * is the point of a trophy ladder.
+ * ONLY WHAT IS OWNED, since 1 Nov 2026. David: "Take the future season
+ * stuff and anything not owned by a player out of their inventory so
+ * they can only view it in the store or gold pass, wherever they're
+ * from." It used to list every die and battlefield in the game with a
+ * locked card and a tag for where it came from — including Sun & Moon,
+ * whose season is not until June 2027. Now an unowned thing is seen on
+ * the shelf it comes from (the Store, the Gold Pass and cup cards in
+ * Cups, the ladder in Records), a future season's nowhere at all. Which
+ * items qualify is decided in game/inventoryRules.ts, where the tests can
+ * read it.
  */
 interface InventoryScreenProps {
   /**
    * Kept mounted but out of sight.
    *
-   * This screen builds ~70 cards, and rebuilding them cost about a
+   * This screen used to build ~70 cards, and rebuilding them cost about a
    * second every time the tab was opened (David, 10 Sep 2026). Hiding
    * rather than unmounting pays that once. `display: 'none'` takes it
    * out of layout as well as out of sight, so a hidden screen costs
@@ -55,10 +57,6 @@ interface InventoryScreenProps {
   onPreview: (target: PreviewTarget) => void;
 }
 
-function priceFor(unlockId: string): number {
-  return TIERS.find((t) => t.id === unlockId)?.at ?? 0;
-}
-
 export function InventoryScreen({
   trophies,
   arenaId,
@@ -74,6 +72,14 @@ export function InventoryScreen({
     const y = recallScroll('inventory');
     if (y > 0) scrollRef.current?.scrollTo({ y, animated: false });
   }, []);
+
+  // Asked on every draw, not remembered: the cupboard changes the moment
+  // something is bought, won or earned, and the screen above re-renders
+  // this one each time it does. The clock is read here so a phone left
+  // open across the first of the month moves on with it.
+  const now = Date.now();
+  const dice = inventoryDice(trophies, now);
+  const arenas = inventoryArenas(trophies, now);
 
   return (
     <View style={[styles.overlay, useMenuPageArea(), hidden && styles.hidden]}>
@@ -99,14 +105,12 @@ export function InventoryScreen({
       >
         <Text style={styles.sectionTitle}>DICE</Text>
         <Text style={styles.sectionNote}>
-          Tap a set to see it out on the board, and use it from there. Only
-          the shell changes — the six face colours always stay the same, so a
-          match is always a match. Plain colours are earned with trophies;
-          patterned ones are bought in the Store with coins.
+          Every set you own. Tap one to see it on the board and use it. Only
+          the shell changes — the six face colours always stay the same, so
+          a match is always a match.
         </Text>
         <View style={styles.grid}>
-          {INVENTORY_SKIN_ORDER.map((skin) => {
-            const unlocked = isSkinUnlocked(skin.id, trophies);
+          {dice.map((skin) => {
             const equipped = skinId === skin.id;
             return (
               <Pressable
@@ -115,91 +119,47 @@ export function InventoryScreen({
                   playClick();
                   onPreview({ kind: 'die', id: skin.id, from: 'inventory' });
                 }}
-                style={[
-                  styles.card,
-                  { width: cardWidth },
-                  equipped && styles.cardEquipped,
-                  !unlocked && styles.cardLocked,
-                ]}
+                style={[styles.card, { width: cardWidth }, equipped && styles.cardEquipped]}
               >
                 {/* The real shell, same painter as the dice in play. */}
                 <DiceSwatch skin={skin} size={58} />
-                <Text style={[styles.cardName, !unlocked && styles.lockedText]}>
-                  {skin.name}
-                </Text>
+                <Text style={styles.cardName}>{skin.name}</Text>
                 {equipped ? (
                   <Text style={styles.equippedTag}>EQUIPPED</Text>
-                ) : unlocked ? (
-                  <Text style={styles.tapTag}>Tap to see</Text>
-                ) : skin.price !== undefined ? (
-                  <CoinLabel
-                    coinFirst={false}
-                    size={12}
-                    style={styles.priceTagText}
-                    containerStyle={styles.priceTagRow}
-                  >
-                    {skin.price}
-                  </CoinLabel>
-                ) : skin.prize ? (
-                  /*
-                    A cup prize has no price and no tier. Without this it
-                    fell through to the trophy tag below and read "🏆 0",
-                    which says the die is already earned.
-                  */
-                  <Text style={styles.priceTag}>Win it in a cup</Text>
-                ) : skin.paid ? (
-                  // Real money only, so not a coin tag and not a trophy
-                  // tag: "Starter pack" for the Supporter die, "$1.99"
-                  // for Neon (products.ts paidSkinWhere).
-                  <Text style={styles.priceTag}>{paidSkinWhere(skin.id)}</Text>
-                ) : skin.pass ? (
-                  // Season pass only — same reason as the cup prize above.
-                  <Text style={styles.priceTag}>
-                    {passTag('dice', skin.id)}
-                  </Text>
                 ) : (
-                  <View style={styles.priceTagRow}>
-                    <TrophyIcon size={11} color={THEME.inkFaint} />
-                    <Text style={styles.priceTag}>
-                      {priceFor(skin.unlock!)}
-                    </Text>
-                  </View>
+                  <Text style={styles.tapTag}>Tap to see</Text>
                 )}
               </Pressable>
             );
           })}
         </View>
+        {onlyStarters(dice.map((s) => s.id), STARTING_DICE) && (
+          // Where more come from, in the words of the tabs a child can see
+          // along the bottom — not a list of what they are missing.
+          <Text style={styles.moreNote}>
+            More dice are won on the trophy ladder in Records, bought in the
+            Store, and earned on the season pass in Cups.
+          </Text>
+        )}
 
         <Text style={styles.sectionTitle}>BATTLEFIELDS</Text>
         <Text style={styles.sectionNote}>
-          Tap one to stand on it and look around before you choose. Every
-          battlefield plays exactly the same — only the view changes. Hills
-          and moats come from the difficulty you pick, not from the arena.
+          Every battlefield you own. Tap one to stand on it and use it. They
+          all play exactly the same — only the view changes. Hills and moats
+          come from the difficulty you pick, not from the battlefield.
         </Text>
         <View style={styles.grid}>
-          {ARENA_ORDER.map((id) => {
+          {arenas.map((id) => {
             const arena = ARENAS[id];
-            const unlocked = isArenaUnlocked(id, trophies);
             const equipped = arenaId === id;
-            // Every arena shows its real name and its picture, locked or
-            // not — you cannot want what you cannot see.
-            const label = { name: arena.name };
-
             return (
               <Pressable
                 key={id}
-                // Locked items open too: seeing the battlefield you are
-                // saving for is the reason a locked card is shown at all.
                 onPress={() => {
                   playClick();
                   onPreview({ kind: 'arena', id, from: 'inventory' });
                 }}
-                style={[
-                  styles.card,
-                  { width: cardWidth },
-                  equipped && styles.cardEquipped,
-                  !unlocked && styles.cardLocked,
-                ]}
+                style={[styles.card, { width: cardWidth }, equipped && styles.cardEquipped]}
               >
                 <Image
                   source={ARENA_ART[id]}
@@ -209,43 +169,22 @@ export function InventoryScreen({
                   style={[styles.swatch, { backgroundColor: arena.skyColor }]}
                   accessibilityIgnoresInvertColors
                 />
-                <Text style={[styles.cardName, !unlocked && styles.lockedText]}>
-                  {label.name}
-                </Text>
+                <Text style={styles.cardName}>{arena.name}</Text>
                 {equipped ? (
                   <Text style={styles.equippedTag}>EQUIPPED</Text>
-                ) : unlocked ? (
-                  <Text style={styles.tapTag}>Tap to see</Text>
-                ) : ARENA_PRICES[id] !== undefined ? (
-                  // Sold in the Store, so the tag is a coin price. The
-                  // preview it opens says "In the Store for N" — coins
-                  // are only ever spent there, same as for dice.
-                  <CoinLabel
-                    size={11}
-                    style={styles.priceTag}
-                    containerStyle={styles.priceTagRow}
-                  >
-                    {ARENA_PRICES[id]}
-                  </CoinLabel>
-                ) : PAID_ARENAS.includes(id) ? (
-                  // Real money only, like the Neon die: the price, "$2.99".
-                  <Text style={styles.priceTag}>{paidSkinWhere(id)}</Text>
-                ) : seasonLevelOf('arena', id) !== null ? (
-                  <Text style={styles.priceTag}>
-                    {passTag('arena', id)}
-                  </Text>
                 ) : (
-                  <View style={styles.priceTagRow}>
-                    <TrophyIcon size={11} color={THEME.inkFaint} />
-                    <Text style={styles.priceTag}>
-                      {priceFor(ARENA_UNLOCKS[id]!)}
-                    </Text>
-                  </View>
+                  <Text style={styles.tapTag}>Tap to see</Text>
                 )}
               </Pressable>
             );
           })}
         </View>
+        {onlyStarters(arenas, STARTING_ARENAS) && (
+          <Text style={styles.moreNote}>
+            More battlefields are won on the trophy ladder in Records, bought
+            in the Store, and earned on the season pass in Cups.
+          </Text>
+        )}
       </ScrollView>
 
       {/*
@@ -336,15 +275,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,210,31,0.30)',
   },
   /*
-   * Sunk into the table rather than dimmed with opacity: fading the whole
-   * card dragged its name under the 4.5:1 floor on paper. The price is
-   * the thing a locked card exists to say.
-   */
-  cardLocked: {
-    backgroundColor: THEME.sunk,
-    borderColor: 'rgba(29,26,46,0.35)',
-  },
-  /*
     The battlefield's picture. `overflow: hidden` matters: the art is a
     square and this corner radius is what makes it sit in the card rather
     than on top of it.
@@ -373,9 +303,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
-  lockedText: {
-    color: THEME.inkSoft,
-  },
   equippedTag: {
     color: THEME.ink,
     fontSize: 10,
@@ -389,22 +316,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 3,
   },
-  priceTagText: {
-    color: THEME.inkFaint,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  priceTag: {
-    color: THEME.inkFaint,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  // The drawn coin or trophy sits beside the text rather than inside it,
-  // so the gap under the card belongs to the row, not to the number.
-  priceTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 3,
+  // Under a section holding only what everybody starts with: where more
+  // come from. Quieter than the note above it — a pointer, not a nag.
+  moreNote: {
+    color: THEME.inkSoft,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    marginTop: 10,
+    marginLeft: 4,
   },
 });

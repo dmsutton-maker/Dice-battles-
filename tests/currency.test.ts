@@ -385,11 +385,16 @@ suite('currency · tester mode reaches the Store', () => {
 });
 
 /**
- * The "500 COIN" code. It SETS the balance, the same way "500 TROPHY" sets
+ * The coin codes. They SET the balance, the same way the trophy codes set
  * the trophy count — so it has to be able to go down as readily as up, and
  * it must not touch anything except the number of coins.
+ *
+ * David, 1 Nov 2026: the codes became random ten-character codes kept as
+ * hashes (secretCodes.ts), with several amounts. What each one does is
+ * still `setCoins(amount)`, which is what this pins; the lookup is
+ * tested in secretCodes.test.ts.
  */
-suite('currency · the "500 COIN" code', () => {
+suite('currency · what a coin code does', () => {
   test('sets the balance outright, up or down', () => {
     resetWalletForTests({ coins: 0, owned: [] });
     assertEqual(setCoins(500), 500, 'up from nothing');

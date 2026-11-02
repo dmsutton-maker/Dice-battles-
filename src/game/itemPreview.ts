@@ -25,8 +25,14 @@ import { ArenaId } from '../arena/arenas';
  * Store and nowhere else — the Inventory is the cupboard, and a cupboard
  * that quietly charges you is how a child spends 450 coins meaning to
  * look at something.
+ *
+ * `ladder` is the trophy ladder on the Records tab (1 Nov 2026). Once the
+ * Inventory stopped showing what is not yet owned (David: "Take the
+ * future season stuff and anything not owned by a player out of their
+ * inventory"), the ladder became where a trophy item is looked at before
+ * it is earned. It can no more take coins than the Inventory can.
  */
-export type PreviewSource = 'store' | 'inventory';
+export type PreviewSource = 'store' | 'inventory' | 'ladder';
 
 /** What is being looked at. Ids stay strings — the screens resolve them. */
 export type PreviewTarget =
@@ -69,7 +75,7 @@ export type PreviewAction =
   | { kind: 'pass'; level: number; gold?: boolean; current?: boolean; season?: string }
   /**
    * Bought with real money: in the Starter pack, or on its own in the
-   * money shop (Neon, $1.99). Its own kind for the reason the others
+   * money shop (Neon, $0.99). Its own kind for the reason the others
    * have one: "keep saving coins" or "keep playing" would both send a
    * player looking in the wrong place. `where` is products.ts's
    * paidSkinWhere; missing means the Starter pack, the only one there

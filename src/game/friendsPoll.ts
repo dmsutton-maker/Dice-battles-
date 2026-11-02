@@ -56,7 +56,9 @@ export function nextPollDelay(failures: number): number {
 export function sameList(a: FriendList, b: FriendList): boolean {
   const key = (list: FriendList) =>
     JSON.stringify([
-      list.friends.map((f) => [f.playerId, f.name, f.trophies]),
+      // `online` too (1 Nov 2026): "On now" that never turned off because
+      // nothing else on the row had changed would be its own kind of lie.
+      list.friends.map((f) => [f.playerId, f.name, f.trophies, f.online ?? null]),
       list.requests.map((r) => [r.playerId, r.name, r.trophies, r.incoming]),
       list.blocked.map((p) => [p.playerId, p.name]),
     ]);

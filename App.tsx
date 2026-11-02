@@ -5,6 +5,7 @@ import { getLastFatal, onFatal, reportFatal } from './src/debug/crashGuard';
 import { ScreenRuler } from './src/debug/ScreenRuler';
 import { DiceDemoScreen } from './src/demo/DiceDemoScreen';
 import { BootSplash } from './src/demo/BootSplash';
+import { SafeInsetsProbe } from './src/game/safeInsets';
 
 /**
  * The app, wrapped so a failure shows a message instead of vanishing.
@@ -98,6 +99,10 @@ export default class App extends React.Component<Record<string, never>, State> {
     if (this.state.error) return <CrashScreen error={this.state.error} />;
     return (
       <>
+        {/* Measures the screen's real safe edges, under everything, drawing
+            nothing (safeInsets.tsx). First, so it has a figure before the
+            game mounts. */}
+        <SafeInsetsProbe />
         {this.state.loading && <DiceDemoScreen />}
         {this.state.booting && <BootSplash onDone={this.onCardDone} />}
         {/* Never in a release bundle: __DEV__ is false in every OTA update. */}

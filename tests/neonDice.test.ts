@@ -14,13 +14,17 @@ import { Kind } from '../src/dice/particles';
   David, 20 Oct 2026: "I like the neon. Add it to the game in the store
   and write the $1.99 price tag and make sure it's available with admin
   mode." Admin mode is family tester mode (the FAMILY code).
+
+  $0.99 since 1 Nov 2026. David: "Change the neon dice to $0.99 and
+  make it more interactive with moving details and stuff." The moving
+  details are tests/neonGlow.test.ts.
 */
 
-suite('neon dice · $1.99 on the money shelf', () => {
-  test('the product is on sale at $1.99 and grants the die', () => {
+suite('neon dice · $0.99 on the money shelf', () => {
+  test('the product is on sale at $0.99 and grants the die', () => {
     const product = productById('neon_dice');
     assert(product !== undefined, 'there is no neon_dice product');
-    assertEqual(product!.usd, 1.99, 'the Neon dice are not $1.99');
+    assertEqual(product!.usd, 0.99, 'the Neon dice are not $0.99');
     assertEqual(product!.kind, 'once', 'the Neon dice are not a one-off purchase');
     assertEqual(product!.available, true, 'the Neon dice are not on sale');
     assert((product!.grants ?? []).includes('neon'), 'buying it does not grant the die');
@@ -37,7 +41,7 @@ suite('neon dice · $1.99 on the money shelf', () => {
   });
 
   test('its locked card and preview show the price, not the Starter pack', () => {
-    assertEqual(paidSkinWhere('neon'), '$1.99', 'the locked card shows the wrong tag');
+    assertEqual(paidSkinWhere('neon'), '$0.99', 'the locked card shows the wrong tag');
     assertEqual(paidSkinWhere('supporter'), 'Starter pack', 'the Supporter die lost its tag');
     const action = previewAction({
       unlocked: false,
@@ -50,7 +54,7 @@ suite('neon dice · $1.99 on the money shelf', () => {
       paidWhere: paidSkinWhere('neon'),
       canBuy: true,
     } as Parameters<typeof previewAction>[0]);
-    assertEqual(actionLabel(action), '$1.99 in the money shop', 'the preview button says the wrong thing');
+    assertEqual(actionLabel(action), '$0.99 in the money shop', 'the preview button says the wrong thing');
   });
 
   test('locked until bought, and open in family tester mode', () => {

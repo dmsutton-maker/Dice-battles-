@@ -76,7 +76,7 @@ export const DIE_BLURBS: Record<string, string> = {
   moon: 'A silver moon and stars in the night.',
   amethyst: 'A deep purple gem.',
   supporter: 'A gold compass on teal.',
-  neon: 'Glows pink and leaves a trail of light.',
+  neon: 'Light chases round it and it leaves a trail.',
 };
 
 export const ARENA_BLURBS: Record<ArenaId, string> = {

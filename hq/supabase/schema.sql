@@ -996,7 +996,11 @@ create table if not exists public.battles (
   winner      text,
   state       text not null default 'playing',
   started_at  timestamptz not null default now(),
-  ended_at    timestamptz
+  ended_at    timestamptz,
+  -- Null while playing; the winner's player_id; or 'tie' when the
+  -- two-and-a-half-minute clock ran out level (migrations/20261101_battle_clock.sql).
+  constraint battles_winner_is_a_player_or_tie
+    check (winner is null or winner = 'tie' or winner = a_id or winner = b_id)
 );
 create index if not exists battles_players_idx
   on public.battles (a_id, b_id, state);

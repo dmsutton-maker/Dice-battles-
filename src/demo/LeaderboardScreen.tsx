@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiDifficultyId } from '../game/ai';
 import { MENU_PAGE_EDGES, useMenuPageArea } from './BottomNav';
@@ -7,11 +7,19 @@ import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { getWallet } from '../game/currency';
 import { CoinLabel } from './GoldCoin';
 import { nextTier, TIERS, tierLabel } from '../game/progress';
-import { ARENA_ORDER, isArenaUnlocked, isSkinUnlocked } from '../game/loadout';
-import { DICE_SKINS } from '../game/diceSkins';
 import { MODES, MODE_ORDER, ModeId } from '../game/modes';
 import { Tier } from '../game/progress';
 import { TierIcon } from './TierIcon';
+import { playClick } from '../audio/sounds';
+import { recallScroll, rememberScroll } from './menuScroll';
+import type { PreviewTarget } from '../game/itemPreview';
+import {
+  inventoryArenas,
+  inventoryDice,
+  ladderPreview,
+  obtainableArenaCount,
+  obtainableDiceCount,
+} from '../game/inventoryRules';
 import {
   isAvailable as gameCenterAvailable,
   mayPost,
@@ -41,6 +49,16 @@ interface LeaderboardScreenProps {
   /** Battles finished, won or not — see Progress.played. */
   played: Record<AiDifficultyId, number>;
   modePlayed: Record<ModeId, number>;
+  /**
+   * Opens a rung's die or battlefield on the real board.
+   *
+   * David, 1 Nov 2026: "Take the future season stuff and anything not
+   * owned by a player out of their inventory so they can only view it in
+   * the store or gold pass, wherever they're from." The Inventory showed
+   * every ladder item, earned or not; now it shows only what is owned,
+   * so the ladder is where a trophy item is looked at before it is won.
+   */
+  onPreview: (target: PreviewTarget) => void;
 }
 
 const DIFFICULTIES: { id: AiDifficultyId; label: string }[] = [
@@ -93,7 +111,19 @@ export function LeaderboardScreen({
   modeWins,
   played,
   modePlayed,
+  onPreview,
 }: LeaderboardScreenProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  /*
+    Opening a rung's preview unmounts this page, and the ladder is a
+    long way down it. Kept where it was the way the Store and the
+    Inventory keep theirs (menuScroll.ts), so coming back from a look at
+    Moon Base does not drop you at the top again.
+  */
+  useEffect(() => {
+    const y = recallScroll('records');
+    if (y > 0) scrollRef.current?.scrollTo({ y, animated: false });
+  }, []);
   const wallet = getWallet();
   const totalWins = DIFFICULTIES.reduce((sum, d) => sum + wins[d.id], 0);
   const totalPlayed = DIFFICULTIES.reduce((sum, d) => sum + played[d.id], 0);
@@ -111,8 +141,19 @@ export function LeaderboardScreen({
     2026 and for these two instead: everything you have, however you came
     by it.
   */
-  const boards = ARENA_ORDER.filter((id) => isArenaUnlocked(id, trophies)).length;
-  const dice = DICE_SKINS.filter((s) => isSkinUnlocked(s.id, trophies)).length;
+  /*
+    Counted by the Inventory's own rule (inventoryRules.ts), so the two
+    screens never disagree about what is in the cupboard — and "of" what
+    there is to own today, not of everything in the code. A season still
+    to come is shown nowhere (David, 1 Nov 2026: "Take the future season
+    stuff ... out"), and a total that counted June's dice would be
+    counting them here.
+  */
+  const now = Date.now();
+  const boards = inventoryArenas(trophies, now).length;
+  const dice = inventoryDice(trophies, now).length;
+  const boardsOf = obtainableArenaCount(now);
+  const diceOf = obtainableDiceCount(now);
 
   // Your league is the highest rung of the ladder you have reached.
   const reached = TIERS.filter((t) => trophies >= t.at);
@@ -128,8 +169,11 @@ export function LeaderboardScreen({
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => rememberScroll('records', e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={64}
       >
         {/* Where you stand right now */}
         <View style={styles.leagueCard}>
@@ -204,15 +248,15 @@ export function LeaderboardScreen({
           <StatCard
             value={boards}
             label="Battlefields"
-            outOf={`of ${ARENA_ORDER.length}`}
+            outOf={`of ${boardsOf}`}
           />
-          <StatCard value={dice} label="Dice" outOf={`of ${DICE_SKINS.length}`} />
+          <StatCard value={dice} label="Dice" outOf={`of ${diceOf}`} />
         </View>
 
         <Text style={styles.sectionTitle}>THE LADDER</Text>
         <Text style={styles.sectionNote}>
           Every rung, and where you are on it. It starts where you started
-          and climbs as you read down.
+          and climbs as you read down. Tap one to see it on the board.
         </Text>
         {/*
           Read DOWN, cheapest first. Marc, 27 Aug 2026: "flip the ladder
@@ -235,10 +279,28 @@ export function LeaderboardScreen({
             something still to earn, when they own both.
           */
           const isCurrent = tier.at === league.at;
+          const target = ladderPreview(tier);
           return (
-            <View
+            <Pressable
               key={tier.id}
-              style={[styles.rung, isCurrent && styles.rungCurrent]}
+              // Every rung opens, reached or not: this is the one place a
+              // trophy item can be seen before it is earned (1 Nov 2026).
+              onPress={
+                target
+                  ? () => {
+                      playClick();
+                      onPreview(target);
+                    }
+                  : undefined
+              }
+              accessibilityRole="button"
+              accessibilityLabel={`${label.name}, ${reachedThis ? 'yours' : `${tier.at} trophies`}`}
+              accessibilityHint="Shows it on the battlefield"
+              style={({ pressed }) => [
+                styles.rung,
+                isCurrent && styles.rungCurrent,
+                pressed && styles.rungPressed,
+              ]}
             >
               <TierIcon tier={tier} />
               <Text
@@ -254,7 +316,7 @@ export function LeaderboardScreen({
                   <Text style={styles.rungAt}>{tier.at}</Text>
                 </View>
               )}
-            </View>
+            </Pressable>
           );
         })}
 
@@ -459,6 +521,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,210,31,0.30)',
     borderColor: THEME.ink,
   },
+  // The press, so a tap visibly lands before the board takes over.
+  rungPressed: { backgroundColor: THEME.sunk },
   rungName: { color: THEME.ink, fontSize: 14, fontWeight: '700', flex: 1 },
   rungNameLocked: { color: THEME.inkFaint },
   rungPrice: { flexDirection: 'row', alignItems: 'center', gap: 4 },

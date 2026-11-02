@@ -456,12 +456,14 @@ export const DICE_SKINS: DiceSkin[] = [
     paid: true,
   },
   /*
-    NEON. The first die sold on its own for real money, $1.99 (the
-    `neon_dice` product). David, 20 Oct 2026: "make a new cool dice that
-    is worth one or two dollars", then of three designs, "I like the
-    neon." Black glass with a glowing pink tube round every side and cyan
-    corner marks, and it leaves a trail of light as it rolls (diceNeon.ts).
-    The near-black shell keeps it clear of all six face colours.
+    NEON. The first die sold on its own for real money, $0.99 since
+    1 Nov 2026 (the `neon_dice` product; it was $1.99). David, 20 Oct
+    2026: "make a new cool dice that is worth one or two dollars", then
+    of three designs, "I like the neon." Black glass with glowing pink
+    and cyan tubes bent round the die, light chasing round them
+    (neonGlow.ts), and it leaves a trail of light as it rolls
+    (diceNeon.ts). The near-black shell keeps it clear of all six face
+    colours.
   */
   {
     id: 'neon',

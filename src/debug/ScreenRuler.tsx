@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { bottomInsetFor } from '../game/safeAreaRules';
+import { bottomInsetFor, hudFrame } from '../game/safeAreaRules';
+import { useSafeInsets } from '../game/safeInsets';
 
 /**
  * A live readout of the window size, for looking at the game on a screen
@@ -59,6 +60,11 @@ export function ScreenRuler() {
   const { width, height } = useWindowDimensions();
   const longSide = Math.max(width, height);
   const shortSide = Math.min(width, height);
+  // What the system itself reports (safeInsets.tsx), and where that puts
+  // the pills. On the Duo's outer screen the status bar and camera run
+  // down a side, so expect a side inset and a small top one there.
+  const measured = useSafeInsets();
+  const hud = hudFrame(measured);
   const inset = bottomInsetFor({
     os: Platform.OS,
     isPad: Platform.OS === 'ios' && Platform.isPad,
@@ -81,7 +87,13 @@ export function ScreenRuler() {
           {Math.round(width)} x {Math.round(height)} pt
         </Text>
         <Text style={styles.text}>{nameFor(shortSide, longSide)}</Text>
-        <Text style={styles.text}>bottom inset {inset}pt</Text>
+        <Text style={styles.text}>bottom inset {inset}pt (table)</Text>
+        <Text style={styles.text}>
+          {measured
+            ? `safe area t${measured.top} l${measured.left} r${measured.right} b${measured.bottom}`
+            : 'safe area not measured'}
+        </Text>
+        <Text style={styles.text}>pills at y{hud.top}</Text>
       </View>
     </Pressable>
   );

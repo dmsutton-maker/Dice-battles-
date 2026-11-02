@@ -160,12 +160,20 @@ suite('screen · arenas', () => {
       if (price !== undefined) {
         assert(price > 0 && Number.isInteger(price), `arena ${id} has a nonsense price`);
       }
-      assert(ARENA_ORDER.includes(id), `arena ${id} is missing from the Inventory`);
+      /*
+        ARENA_ORDER is the cupboard's ORDER, holding every battlefield so
+        that any one of them has its place once it is owned. It is no
+        longer what the Inventory lists: since 1 Nov 2026 that is only
+        what the player owns (David: "Take the future season stuff and
+        anything not owned by a player out of their inventory"), decided
+        by inventoryRules.ts and tested in tests/inventory.test.ts.
+      */
+      assert(ARENA_ORDER.includes(id), `arena ${id} has no place in the cupboard's order`);
     }
     assertEqual(
       ARENA_ORDER.length,
       Object.keys(ARENAS).length,
-      'Inventory lists a different number of arenas than exist',
+      "the cupboard's order holds a different number of arenas than exist",
     );
   });
 

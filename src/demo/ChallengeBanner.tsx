@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useHudFrame } from '../game/safeArea';
 import { MODES } from '../game/modes';
 import { AI_DIFFICULTIES } from '../game/ai';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -35,6 +36,8 @@ export function ChallengeBanner({
   onDecline: () => void;
 }) {
   const slide = useRef(new Animated.Value(-120)).current;
+  // Clear of the status bar wherever the system puts it (safeArea.ts).
+  const hud = useHudFrame();
 
   useEffect(() => {
     Animated.spring(slide, {
@@ -49,7 +52,7 @@ export function ChallengeBanner({
 
   const who = challenge.who?.name ?? 'A friend';
   return (
-    <Animated.View style={[styles.wrap, { transform: [{ translateY: slide }] }]}>
+    <Animated.View style={[styles.wrap, { paddingTop: 54 + hud.shift, transform: [{ translateY: slide }] }]}>
       <View style={styles.card}>
         <View style={styles.head}>
           <FriendsIcon size={20} />
@@ -94,9 +97,10 @@ const styles = StyleSheet.create({
     */
     zIndex: 45,
     paddingHorizontal: 10,
-    // Clear of the status bar and the notch. Deliberately a plain number
-    // rather than the safe-area helper: that one answers for the BOTTOM
-    // of the screen, and a wrong top inset here would hide the buttons.
+    // Clear of the status bar and the notch: 54 under a status bar across
+    // the top, moved with the pills where there is none (useHudFrame,
+    // applied at render). The measured figure falls back to these fixed
+    // ones until it arrives, so a wrong top inset cannot hide the buttons.
     paddingTop: 54,
   },
   card: {

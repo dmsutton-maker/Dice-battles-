@@ -166,7 +166,7 @@ export function MatchmakingOverlay({
  * badge is, it cannot render differently on another phone, and the
  * colour comes from the name so a rival always wears the same one.
  */
-function RivalBadge({ name }: { name: string }) {
+export function RivalBadge({ name }: { name: string }) {
   let hash = 0;
   for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   const hex = PRISONER_COLORS[hash % PRISONER_COLORS.length].hex;
@@ -254,3 +254,9 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.gold,
   },
 });
+
+/**
+ * Shared with FriendlyWaitOverlay, the friend-battle waiting room, so the
+ * two reveals look like one game rather than two.
+ */
+export { styles as matchOverlayStyles };

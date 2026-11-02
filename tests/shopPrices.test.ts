@@ -25,7 +25,8 @@ suite('money shop · every item shows a price', () => {
   test('the buy button and the question both use it, and no dash is left', () => {
     assert(!/\?\? '—'/.test(shelf), 'a buy button can still show a dash');
     assert(
-      /const price = priceLabel\(product, state\.priceOf\(product\.id\)\)/.test(shelf),
+      // Tester mode (1 Nov 2026) shows FREE instead; everybody else the price.
+      /const price = tester \? 'FREE' : priceLabel\(product, state\.priceOf\(product\.id\)\)/.test(shelf),
       'the buy button does not use the fallback price',
     );
     assert(

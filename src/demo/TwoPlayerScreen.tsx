@@ -33,6 +33,15 @@ import {
 } from '../game/aim';
 import { DiceScene, SceneControls } from './DiceScene';
 import { useAppActive } from '../game/useAppActive';
+import {
+  clockLeft,
+  newClock,
+  pauseClock,
+  runClock,
+  timeUpOutcome,
+  type ClockState,
+} from '../game/battleTimer';
+import { BattleClock } from './BattleClock';
 import { SHAPE, THEME } from '../ui/theme';
 
 /**
@@ -73,8 +82,12 @@ interface ZoneViewProps {
   phase: Phase;
   /** False while the phone is not showing the game — see useAppActive. */
   appActive: boolean;
-  /** true won, false lost, null a draw (Skirmish can end level). */
+  /** true won, false lost, null a draw (Skirmish, or level when time ran out). */
   won: boolean | null;
+  /** Milliseconds left on the battle clock — see battleTimer.ts. */
+  readClock: () => number;
+  /** The clock ran out, rather than somebody finishing. */
+  endedOnTime: boolean;
   score: number;
   oppScore: number;
   target: number;
@@ -107,6 +120,8 @@ function ZoneView({
   phase,
   appActive,
   won,
+  readClock,
+  endedOnTime,
   score,
   oppScore,
   target,
@@ -281,11 +296,23 @@ function ZoneView({
 
       {/* Zone score strip */}
       <View pointerEvents="none" style={styles.zoneHud}>
+        {/*
+          The battle clock, one per half so each player reads it the
+          right way up. Only the bottom one ticks in the last ten
+          seconds: two clicks a second from one phone sounds like a fault.
+        */}
+        {phase === 'battle' && <BattleClock read={readClock} ticks={!rotated} />}
         {myColor && (
           <View style={[styles.mySwatch, { backgroundColor: myColor.hex }]} />
         )}
+        {/*
+          During the battle the clock takes the difficulty's place in the
+          strip: with both, the longest strip ran into the exit button.
+          The difficulty is back the moment the battle ends.
+        */}
         <Text style={styles.zoneScore}>
-          {myColor ? `Rescue ${myColor.label}` : modeName} · {difficultyName} ·{' '}
+          {myColor ? `Rescue ${myColor.label}` : modeName} ·{' '}
+          {phase === 'battle' ? '' : `${difficultyName} · `}
           {score} / {target}
           {oppScore > score ? '  — catch up!' : ''}
         </Text>
@@ -301,6 +328,7 @@ function ZoneView({
       )}
       {phase === 'over' && (
         <View style={styles.zoneOverlay}>
+          {endedOnTime && <Text style={styles.zoneTimeUp}>Time's up!</Text>}
           <Text style={styles.zoneBig}>
             {won === null ? "It's a draw" : won ? 'You win!' : 'Defeat'}
           </Text>
@@ -373,6 +401,18 @@ export function TwoPlayerScreen({
   const phaseRef = useRef<Phase>('ready');
   const [winner, setWinner] = useState<0 | 1 | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  /*
+    The same two-and-a-half-minute clock as a battle against the
+    computer (battleTimer.ts) — David, 1 Nov 2026: "if the game doesn't
+    finish by then it is a tie if the score is tied, or a win for
+    whoever is winning at that moment." Both players are at this one
+    phone, so it stops with the phone: when the game leaves the screen
+    both boards freeze, and neither player can roll, so nor does the
+    clock run.
+  */
+  const clockRef = useRef<ClockState>(newClock());
+  const readClock = useCallback(() => clockLeft(clockRef.current, Date.now()), []);
+  const [endedOnTime, setEndedOnTime] = useState(false);
 
   const [unitsA, setUnitsA] = useState<PrisonerUnit[]>(
     () => buildBoards().a,
@@ -421,6 +461,7 @@ export function TwoPlayerScreen({
     setUnitsA(fresh.a);
     setUnitsB(fresh.b);
     setWinner(null);
+    setEndedOnTime(false);
     setPhaseBoth('arm');
     playCue('ready');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -432,9 +473,36 @@ export function TwoPlayerScreen({
         playThrow();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       }, 1100),
-      setTimeout(() => setPhaseBoth('battle'), 1800),
+      setTimeout(() => {
+        clockRef.current = newClock();
+        setPhaseBoth('battle');
+      }, 1800),
     ];
   }, [setPhaseBoth, buildBoards, difficulty]);
+
+  /*
+    Time up: whoever has rescued more wins, level is a draw. The scores
+    are the ones on the two strips (scoreOf), taken as the clock stops.
+  */
+  const endOnTime = useCallback(() => {
+    if (phaseRef.current !== 'battle') return;
+    const outcome = timeUpOutcome(scoreOf(unitsRefA.current), scoreOf(unitsRefB.current));
+    setWinner(outcome === 'won' ? 0 : outcome === 'lost' ? 1 : null);
+    setEndedOnTime(true);
+    setPhaseBoth('over');
+    playFanfare();
+    playCue(outcome === 'tie' ? 'tie' : 'win');
+  }, [setPhaseBoth]);
+
+  useEffect(() => {
+    if (phase !== 'battle' || !appActive) return;
+    clockRef.current = runClock(clockRef.current, Date.now());
+    const id = setTimeout(endOnTime, clockLeft(clockRef.current, Date.now()));
+    return () => {
+      clearTimeout(id);
+      clockRef.current = pauseClock(clockRef.current, Date.now());
+    };
+  }, [phase, appActive, endOnTime]);
 
   const makeSettleHandler = useCallback(
     (zone: Zone) => (faces: ColorDef[]) => {
@@ -514,6 +582,8 @@ export function TwoPlayerScreen({
         phase={phase}
         appActive={appActive}
         won={winner === null ? null : winner === 1}
+        readClock={readClock}
+        endedOnTime={endedOnTime}
         score={scoreB}
         oppScore={scoreA}
         target={targetFor(mode)}
@@ -540,6 +610,8 @@ export function TwoPlayerScreen({
         phase={phase}
         appActive={appActive}
         won={winner === null ? null : winner === 0}
+        readClock={readClock}
+        endedOnTime={endedOnTime}
         score={scoreA}
         oppScore={scoreB}
         target={targetFor(mode)}
@@ -607,7 +679,10 @@ const styles = StyleSheet.create({
   },
   zoneHud: {
     position: 'absolute',
-    top: 10,
+    // 20, not 10: clear of the exit button, which straddles the centre
+    // line by 18pt. With the battle clock in it (1 Nov 2026) the longest
+    // strip — Color War, behind — reaches the left edge of the screen.
+    top: 20,
     right: 14,
     backgroundColor: THEME.surface,
     borderWidth: SHAPE.line,
@@ -642,6 +717,12 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '900',
     textAlign: 'center',
+  },
+  zoneTimeUp: {
+    color: THEME.bad,
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 6,
   },
   zoneSmall: {
     color: THEME.inkSoft,

@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useSceneryTick } from './sceneryClock';
+import { sharkPath, sharkPose, SHARK_LAP, SHARK_SPEED, type SharkPose } from './coveShark';
 
 /**
  * Creatures that live on the store boards, 19 Oct 2026.
@@ -160,9 +161,13 @@ export function ReefFish() {
 /*
  * One shark circling the bow of the pirate ship. Up one side, round the
  * bow, down the other side to about mid-ship, a U-turn, and back the way
- * it came on an outer lane. It used to dive under the hull at the stern and vanish for the
- * crossing, which read as the shark disappearing (David, 20 Oct 2026);
- * it never goes under the ship now. Every few seconds it rears its head
+ * it came on an outer lane. It used to dive under the hull at the stern
+ * and vanish for the crossing, which read as the shark disappearing
+ * (David, 20 Oct 2026), so for a while it never went under anything.
+ * Then, 1 Nov 2026: "the shark goes over the boats and overlaps with
+ * them, make it swim under them." So it dives again, but only where a
+ * boat is (the path and the dive are in coveShark.ts), and comes up on
+ * the far side within a second. Every few seconds it rears its head
  * and snaps a hinged jaw full of teeth.
  */
 
@@ -176,80 +181,10 @@ const LOWER_TEETH: readonly (readonly [number, number])[] = Array.from({ length:
   return [Math.sin(a) * 0.19, 0.18 + Math.cos(a) * 0.26] as const;
 });
 
-/**
- * The shark's lanes: inner going round the bow, outer coming back. The
- * strip of sea between the hull and the edge of an iPhone 15's screen is
- * only about 0.6 wide, and narrowest toward the player, so the lanes are
- * close together (one shark, never on both at once) and the U-turns come
- * at about the middle of the ship, where the strip is still wide enough
- * to see the whole shark.
- */
-const SHARK_IN = 3.6;
-const SHARK_OUT = 3.78;
-const SHARK_FAR = -6.4;
-const SHARK_NEAR = -2.2;
-/** How far past SHARK_NEAR the U-turns swing, so they are wide, not a spin. */
-const SHARK_DIP = 1.3;
-const SHARK_TURN = (SHARK_OUT - SHARK_IN) / 2;
-/** Half the perimeter of the U-turn's half-ellipse (Ramanujan). */
-const SHARK_UTURN =
-  (Math.PI * (3 * (SHARK_TURN + SHARK_DIP) - Math.sqrt((3 * SHARK_TURN + SHARK_DIP) * (SHARK_TURN + 3 * SHARK_DIP)))) / 2;
-const SHARK_STRAIGHT = SHARK_NEAR - SHARK_FAR;
-const SHARK_LAP = 4 * SHARK_STRAIGHT + Math.PI * SHARK_IN + Math.PI * SHARK_OUT + 2 * SHARK_UTURN;
-/** World units a second. */
-const SHARK_SPEED = 1.6;
-
-/**
- * A point on the shark's lap, `u` 0..1, written into `out`; returns the
- * heading for a thing built nose toward +z. Up the left side on the
- * inner lane, round behind the bow, down the right side, a U-turn out to
- * the outer lane, back up the right side, round the bow the other way,
- * down the left side, and a U-turn back in to where it started.
- */
-function sharkPath(u: number, out: THREE.Vector3): number {
-  let d = (((u % 1) + 1) % 1) * SHARK_LAP;
-  const a = SHARK_IN;
-  const b = SHARK_OUT;
-  const zF = SHARK_FAR;
-  const zN = SHARK_NEAR;
-  const uturn = (cx: number, f: number) => {
-    // A half-ellipse bulging toward the player, f 0..1.
-    const phi = f * Math.PI;
-    out.set(cx - SHARK_TURN * Math.cos(phi), 0, zN + SHARK_DIP * Math.sin(phi));
-    return Math.atan2(SHARK_TURN * Math.sin(phi), SHARK_DIP * Math.cos(phi));
-  };
-  // 1. Left side, inner lane, swimming away from the player.
-  if (d < SHARK_STRAIGHT) { out.set(-a, 0, zN - d); return Math.PI; }
-  d -= SHARK_STRAIGHT;
-  // 2. Round behind the bow, inner lane, left to right.
-  if (d < Math.PI * a) {
-    const phi = d / a;
-    out.set(-a * Math.cos(phi), 0, zF - a * Math.sin(phi));
-    return Math.atan2(Math.sin(phi), -Math.cos(phi));
-  }
-  d -= Math.PI * a;
-  // 3. Right side, inner lane, toward the player.
-  if (d < SHARK_STRAIGHT) { out.set(a, 0, zF + d); return 0; }
-  d -= SHARK_STRAIGHT;
-  // 4. The U-turn out to the right's outer lane.
-  if (d < SHARK_UTURN) return uturn((a + b) / 2, d / SHARK_UTURN);
-  d -= SHARK_UTURN;
-  // 5. Right side, outer lane, away from the player.
-  if (d < SHARK_STRAIGHT) { out.set(b, 0, zN - d); return Math.PI; }
-  d -= SHARK_STRAIGHT;
-  // 6. Round behind the bow, outer lane, right to left.
-  if (d < Math.PI * b) {
-    const phi = d / b;
-    out.set(b * Math.cos(phi), 0, zF - b * Math.sin(phi));
-    return Math.atan2(-Math.sin(phi), -Math.cos(phi));
-  }
-  d -= Math.PI * b;
-  // 7. Left side, outer lane, toward the player.
-  if (d < SHARK_STRAIGHT) { out.set(-b, 0, zF + d); return 0; }
-  d -= SHARK_STRAIGHT;
-  // 8. The U-turn back in to the left's inner lane.
-  return uturn(-(a + b) / 2, Math.min(1, d / SHARK_UTURN));
-}
+/** Reused every frame; a tick must not allocate. */
+const POSE: SharkPose = { dive: 0, pitch: 0 };
+/** Below this the whole shark is under the ground and need not be drawn. */
+const HIDDEN_BELOW = 0.55;
 
 /** How often the shark bites, and for how long, in seconds. */
 const BITE_EVERY = 5;
@@ -268,16 +203,23 @@ export function CoveShark() {
       // U-turn at the bottom and back the way it came on the outside.
       // David, 20 Oct 2026: "when it swims around and reaches the
       // bottom of the board it disappears and then reappears a couple
-      // seconds later at the start." It used to dive under the ship
-      // mid-ship and stay hidden for the whole crossing; now it never
-      // goes under the hull at all, so it is always in view.
+      // seconds later at the start." It must stay in view everywhere
+      // except under a boat; there (David, 1 Nov 2026: "make it swim
+      // under them") it dips its nose, slides below the painted sea
+      // and comes back up, fin first, on the far side.
       const heading = sharkPath((t * SHARK_SPEED) / SHARK_LAP, P);
+      sharkPose(P.x, P.z, heading, POSE);
       // The cove's sea is painted on the ground at y = 0, so the shark
-      // rides just above it, not in a water sheet below it.
-      g.position.set(P.x, 0.02, P.z);
+      // rides just above it, not in a water sheet below it. Below the
+      // ground it is hidden; once it is wholly under, stop drawing it.
+      g.position.set(P.x, 0.02 + POSE.dive, P.z);
+      g.visible = POSE.dive > -HIDDEN_BELOW;
       g.scale.setScalar(0.8);
-      // Swims with a slow roll; the tail sweeps side to side.
-      g.rotation.set(0, heading, Math.sin(t * 1.3) * 0.08);
+      // Swims with a slow roll; the tail sweeps side to side. Heading
+      // first, then the dive's pitch about the shark's own side-to-side
+      // axis, so 'YXZ'.
+      g.rotation.order = 'YXZ';
+      g.rotation.set(POSE.pitch, heading, Math.sin(t * 1.3) * 0.08);
       if (tail.current) tail.current.rotation.y = Math.sin(t * 3.2) * 0.35;
       // Every few seconds it rears its head out of the water and
       // snaps its jaws: the head pitches up so the open mouth faces

@@ -90,6 +90,49 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-155-0-friend-battles',
+    date: '1 November 2026',
+    version: 'v1.155.0',
+    title: 'Battling a friend is really against your friend',
+    icon: 'news',
+    body:
+      'Friend battles are fixed. Your friend\'s name is on the "your ' +
+      'opponent" card, the scoreboard and the result, instead of a ' +
+      'made-up computer player.\n\n' +
+      'Both phones now wait in a little room ("Waiting for your friend...") ' +
+      'until you are both there, then count down together, and the 2:30 ' +
+      'clock starts at that moment for both of you. If your friend does ' +
+      'not turn up within 30 seconds, the room closes and nobody wins or ' +
+      'loses.\n\n' +
+      'You can feel your friend playing: a buzz, a flash and "Sam freed ' +
+      'Red!" when they score, and "needs only ONE more" when they are ' +
+      'close.\n\n' +
+      'The Friends list shows who is on right now, so you know who to ' +
+      'challenge.',
+  },
+  {
+    id: 'v1-154-0-clock-quests-cupboard',
+    date: '1 November 2026',
+    version: 'v1.154.0',
+    title: 'A battle clock, daily quests and more',
+    icon: 'news',
+    body:
+      'Battles now have a 2:30 clock. If nobody has finished when it runs ' +
+      'out, whoever is ahead wins, and a level score is a tie.\n\n' +
+      'Every day the Cups tab offers three quests for the season pass: ' +
+      'pick one, finish it before midnight (New York time) and earn a ' +
+      'big chunk of pass XP.\n\n' +
+      'The Inventory is now your cupboard: it shows what you own. Things ' +
+      'you do not have yet are seen where they come from: the Store, the ' +
+      'Gold Pass and cups in Cups, and the trophy ladder in Records, where ' +
+      'every rung can now be tapped to see it on the board.\n\n' +
+      'The Neon dice are now $0.99, and they are alive: a head of light ' +
+      'chases round each tube, the tubes breathe and shift colour, and ' +
+      'they flash when a die lands. The Sun Temple has a phoenix with a ' +
+      'fire aura, the Pirate Cove shark swims under the boats, and the ' +
+      'Dino Valley dinosaurs have had a proper makeover.',
+  },
+  {
     id: 'v1-152-0-fire-and-ice-runs-on',
     date: '26 October 2026',
     version: 'v1.152.0',

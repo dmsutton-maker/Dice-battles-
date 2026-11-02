@@ -180,6 +180,30 @@ export function battleXp(outcome: 'won' | 'lost' | 'tie', difficulty: AiDifficul
   return BATTLE_XP[difficulty][outcome];
 }
 
+/** How big a daily quest is (quests.ts): one of each is offered every day. */
+export type QuestSize = 'quick' | 'medium' | 'long';
+
+/**
+ * Experience for finishing the day's quest (quests.ts), by its size.
+ *
+ * David, 1 Nov 2026: "Make it were you can choose out of three quests
+ * for the pass." Every day offers one quick, one medium and one longer
+ * quest; you pick one, and finishing it pays this on top of what the
+ * battles themselves earned.
+ *
+ * Here, beside BATTLE_XP, so the two kinds of experience are weighed in
+ * one place. A quest is worth five to ten Medium wins (60 each): 300 for
+ * the quick one, 450 for the medium, 600 for the long. That is a real
+ * lift without letting quests carry the pass on their own — a month of
+ * the quick one alone (about 9,300) stays short of the 10,125 the
+ * thirty levels take, and tests/quests.test.ts holds that.
+ */
+export const QUEST_XP: Record<QuestSize, number> = {
+  quick: 300,
+  medium: 450,
+  long: 600,
+};
+
 /**
  * Experience needed to go from level `n - 1` to level `n`.
  *

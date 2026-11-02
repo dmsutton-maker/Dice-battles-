@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { isOnline, touchSeen } from '@/lib/playerAuth';
 
 /**
  * The friend list, and the moves either player can make.
@@ -69,6 +70,12 @@ export async function GET(request: NextRequest) {
     request.headers.get('x-player-secret') ?? params.get('secret'),
   );
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 401 });
+  /*
+    Sitting on the Friends screen counts as being ON (1 Nov 2026). It is
+    the screen a challenge is sent from, so somebody looking at it is
+    exactly somebody a friend could battle right now.
+  */
+  touchSeen(auth.playerId);
 
   const supabase = supabaseAdmin();
   const { data: links } = await supabase
@@ -87,11 +94,11 @@ export async function GET(request: NextRequest) {
     caller here reads. Nothing was ever serialised out, but the safest
     place for a secret is not in the request at all.
 
-    These ten are exactly what full() and peek() below use.
+    These eleven are exactly what full() and peek() below use.
   */
   const { data: profiles } = await supabase
     .from('player_profiles')
-    .select('player_id, name, trophies, wins, mode_wins, dice_owned, arenas_owned, favourite_die, favourite_arena, last_played')
+    .select('player_id, name, trophies, wins, mode_wins, dice_owned, arenas_owned, favourite_die, favourite_arena, last_played, last_seen')
     .in('player_id', rows.map((r) => r.other_id));
 
   const byId = new Map((profiles ?? []).map((p) => [p.player_id, p]));
@@ -114,6 +121,16 @@ export async function GET(request: NextRequest) {
     favouriteDie: p.favourite_die,
     favouriteArena: p.favourite_arena,
     lastPlayed: new Date(String(p.last_played)).getTime(),
+    /*
+      Who is on right now, so a challenge is not a guess. David, 1 Nov
+      2026: "Fix the versus against friends because it doesn't connect"
+      — too often the answer to a challenge was "X is not playing right
+      now", with nothing on the screen to say so beforehand. The same
+      test the challenge itself is refused by (../battles). A yes or a
+      no, never the timestamp: when somebody was last on is more than a
+      friend needs to know.
+    */
+    online: isOnline(p.last_seen as string | null | undefined),
   });
   const peek = (p: Record<string, unknown>) => ({
     playerId: p.player_id,

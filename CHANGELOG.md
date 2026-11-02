@@ -1,5 +1,143 @@
 # Changelog
 
+## v1.155.0 — 2026-11-01 · requested by David
+
+David: "Fix the versus against friends because it doesn't connect and
+it's not actually against each other." Built as two branches
+(feature/friendly-server, feature/friendly-client) off v1.154.0 plus a
+shared API contract (`ed24d22`); website deployed first.
+
+### Fixed
+- **A friend battle showed a bot, not the friend.** `startFriendly`
+  set the opponent to the friend, then `startCountdown` drew a random
+  AI rival over it, so the "your opponent" reveal, the scoreboard,
+  every callout and the result named "Lady Luckabelle". The friend is
+  now kept (`opponentRef` as well as state; no `pickOpponent` for a
+  friendly), and a friendly shows `FriendlyWaitOverlay` instead of the
+  bot search in `MatchmakingOverlay`.
+- **The two phones started separately.** The accepter raced from the
+  tap; the challenger joined on its next 5 s poll, up to ~8 s later
+  with the clock already running. A battle row is now born `waiting`;
+  each phone's first beat on `/api/battles/live` says "I am here", and
+  the beat that finds the other already there (its `*_seen` later than
+  `started_at`) turns the row `playing` and restarts `started_at`, so
+  the 2:30 clock starts for both at that moment. Both phones hold at
+  "Waiting for Marc…" until the beat answers `started: true`, then
+  "MARC IS HERE!" and the countdown together. A room nobody joins in
+  `JOIN_WAIT_MS` (30 s) closes with no winner, both in the beat and in
+  the sweep; the phone that waited says "Marc didn't make it" and goes
+  back to the menu, no result. Backing out of the room sends `leave`
+  and hands it to the friend. No schema change: `battles.state` is
+  plain text.
+- **The friend's progress was silent.** A beat whose `theirs` changed
+  only moved the score. Now, compared by content: haptic ping, flash
+  and the same callouts as the computer rival by the friend's name
+  ("Marc freed Red!", "ties it up", "falling behind", "needs only ONE
+  more — hurry!", "Ha! Marc's Red was captured again!"),
+  `rivalProgressCallout` in friendlyBattle.ts. A friend who leaves
+  mid-battle now ends it ("Marc has gone — you win!") instead of
+  leaving the other racing alone.
+- **Nobody could see who was on.** `GET /api/friends` now returns
+  `online` (yes/no only, never the time) and touches `last_seen`, so
+  sitting on the Friends screen counts as being on; the list shows "On
+  now" or "Not playing right now". The Battle button stays enabled for
+  everyone; the server's "not playing right now" still decides.
+- A challenge arriving while the Friends popup was open was drawn
+  underneath it; the banner is now rendered after the popup.
+
+### Changed
+- While my challenge is out, the home poll asks every 1.5 s
+  (`OUTGOING_POLL_MS`) instead of 5, so the challenger drops into the
+  room within a couple of seconds of the accept.
+- `BattlePulse.started` (missing = started, for an older server);
+  `PublicProfile.online?`; `JOIN_WAIT_MS`, `HERE_MS`, `JOIN_SAFETY_MS`
+  in friendlyBattle.ts; `hasArrived`, `joinWindowOver`, `JOIN_WAIT_MS`
+  in `hq/src/lib/battleClock.ts`. Presence is not kept in the friends
+  cache. Tests: `tests/friendlyBattle.test.ts`,
+  `tests/friendlyServer.test.ts`; `tests/battleTimer.test.ts` loosened
+  one regex to allow the waiting-room `msLeft` line.
+- Players still on v1.154.0 meet in the room and start, because their
+  beats do the same thing; only "the friend never came" reaches them
+  through their own clock rather than a message, until they update.
+
+## v1.154.0 — 2026-11-01 · requested by David
+
+Eight changes David asked for on 1 Nov 2026, built side by side and
+merged (branches feature/timer, quests, codes, inventory, shark,
+phoenix, neon, dino).
+
+### Added
+- **A 2:30 battle clock** ("Add a two minute thirty second timer and if
+  the game doesn't finish by then it is a tie if the score is tied, or a
+  win for whoever is winning at that moment"). On the scoreboard
+  between the scores; red and ticking in the last ten seconds; "Time's
+  up!" then the ordinary finish, so a win on time is a win everywhere
+  (coins, trophies, pass, cups, stats). Pauses with the computer when
+  the app is backgrounded. Split screen has it too. Friend battles end
+  on the SERVER's clock (`hq/src/lib/battleClock.ts`, a 4 s lead and
+  3 s grace), a tie written as `winner = 'tie'`; migration
+  `hq/supabase/migrations/20261101_battle_clock.sql`. `battleTimer.ts`,
+  `BattleClock.tsx`, `BATTLE_TIME_MS` in tuning.ts.
+- **Daily quests on the season pass** ("Make it where you can choose out
+  of three quests for the pass"). Three offers a New York day (quick,
+  medium, longer; 15 in the pool; never the same quest two days
+  running), pick one, finish it for 300/450/600 pass XP through the
+  pass's own `addXp`. `quests.ts`, `DailyQuests.tsx`, `QUEST_XP` in
+  seasonPass.ts. Friend battles and the tutorial do not count.
+
+### Changed
+- **Secret codes are random hashed 10-character codes.** FAMILY, LOCK,
+  RESET and "<n> COIN/TROPHY" no longer work. 18 codes: admin, lock,
+  reset, seven that set coins (0 to 100,000) and eight that set
+  trophies (0 to 10,000). Only SHA-256 hashes are in the source
+  (`secretCodes.ts`); the codes themselves were given to David in chat.
+- **The admin code makes everything sold for real money free**: Gold
+  Pass, Remove Ads, Neon, Dino Valley, the Starter pack, coin packs. A
+  tester OVERRIDE, no fake purchase records; the lock code puts it all
+  back. Ads are simply off in admin mode; the child-directed flags are
+  untouched.
+- **Ghost rolls removed**: the two colour squares that flashed the
+  computer's last roll beside its score are gone.
+- **The Inventory is the player's cupboard**: only owned dice and
+  battlefields. Unowned items are seen where they come from (Store,
+  Gold Pass and cup cards, the ladder in Records, every rung now
+  tappable); future seasons' items are shown nowhere until their month
+  (`inventoryRules.ts`).
+- **Neon dice: $0.99**, and alive: light chasing round each tube, a slow
+  breath and colour drift, a real-sign stutter, sparkle at the bends, a
+  flare on landing (`neonGlow.ts`, numbers in `TUNING.neon`). The App
+  Store Connect price is David's to change.
+- **The Sun Temple's ibises are one phoenix** with a fire aura
+  (`phoenix.ts`, 9 draw calls).
+- **The Pirate Cove shark swims under the boats** (`coveShark.ts`),
+  hidden for under half a second per boat.
+- **Dino Valley's dinosaurs rebuilt** (`dinoParts.ts`): painted hides,
+  walking legs, swaying tails, cartoon eyes, proper silhouettes.
+
+## v1.153.0 — 2026-11-01 · requested by David
+
+### Changed
+- **The top of the screen follows the phone's real safe area (iPhone
+  Duo).** David sent Apple's "Designing for iPhone Duo" guidance: "make
+  sure the game design matches iphone duo design when needed."
+  - Every screen assumed a status bar across the top: the trophy and
+    coin pills at a fixed y52, every menu page from y100. On the Duo's
+    outer screen the status bar and camera run down the SIDE, so that
+    band was wasted on the shortest screen the game runs on.
+  - The game now measures the system's own safe area (React Native's
+    built-in SafeAreaView, so no build is needed) and places the pills,
+    Settings row, quit button, scoreboard, callouts, menu pages,
+    challenge banner and preview bar from it. The bottom inset is
+    measured too, instead of looked up in a table of iPhones.
+  - **Every iPhone with a status bar across the top is unchanged:** the
+    pills stay at y52 for every top inset from 20 to 62pt.
+  - Not done, and why: the fold. Apple reports it through
+    `ReservedRegion`, a native API React Native and Expo SDK 54 do not
+    expose yet, so the game cannot tell the phone is half-open. It
+    keeps its layout and stays playable, as Apple asks of games.
+  - `tests/duoDesign.test.ts`; the dev-only screen ruler now shows the
+    measured insets.
+
 ## v1.152.0 — 2026-10-26 · requested by David
 
 ### Changed
