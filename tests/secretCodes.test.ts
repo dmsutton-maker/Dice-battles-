@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { assert, assertEqual, suite, test } from './harness';
 import {
   actionForHash,
+  CODE_ALPHABET,
+  CODE_LENGTH,
   CODE_TABLE,
   lookupCode,
   normaliseCode,
@@ -14,13 +16,16 @@ import {
  * number and letter codes, with the codes for coins and trophies having
  * set amounts but there being multiple amounts so they'll have multiple
  * codes", and "For now just add ones for testing that set the counts to
- * a specific amount."
+ * a specific amount." Marc, 3 Nov 2026: "change every code to 14
+ * characters, because its much harder to crack" — every code was
+ * replaced with a fourteen-character one, and the scan below looks for
+ * runs of that length.
  *
  * The repository is public and the bundle is readable, so the codes are
  * kept ONLY as SHA-256 hashes (secretCodes.ts). That also means these
  * tests cannot type a real code: they check the hash function against
  * the published vectors, the shape of the table, that every old code is
- * dead, and — the one that matters most — that no ten-character code
+ * dead, and — the one that matters most — that no code of CODE_LENGTH characters
  * has leaked into the source in plain text.
  */
 
@@ -142,9 +147,11 @@ suite('secret codes · the old codes are dead', () => {
     }
   });
 
-  test('a code is ten characters, so no short word can ever match', () => {
-    // The table was generated from ten characters of A-Z and 0-9. A hash of
-    // a shorter word is not in it, whatever the word.
+  test('a code is fourteen characters, so no short word can ever match', () => {
+    // The table was generated from CODE_LENGTH characters of CODE_ALPHABET.
+    // A hash of a shorter word is not in it, whatever the word.
+    assertEqual(CODE_LENGTH, 14, 'Marc, 3 Nov 2026: fourteen characters');
+    assert(/^[A-Z2-9]+$/.test(CODE_ALPHABET) && !/[01OIL]/.test(CODE_ALPHABET), 'no 0/O or 1/I/L');
     for (const word of ['FAMILY', 'LOCK', 'RESET', 'TROPHY', 'COIN', 'ADMIN', 'PASSWORD']) {
       assertEqual(lookupCode(word), null, `${word}`);
     }
@@ -170,15 +177,15 @@ suite('secret codes · what was typed is made comparable', () => {
   test('lookupCode hashes the NORMALISED text', () => {
     // Prove the path end to end without knowing a real code: swap the
     // table entry's hash for one we can make, and look it up three ways.
-    const stand = 'Q1W2E3R4T5';
+    const stand = 'Q1W2E3R4T5Y6U7';
     const entry = CODE_TABLE[0] as { sha256: string };
     const real = entry.sha256;
     try {
       entry.sha256 = sha256Hex(stand);
-      for (const typed of ['q1w2e3r4t5', ' Q1W2E-3R4T5 ', 'q1w2e 3r4t5']) {
+      for (const typed of ['q1w2e3r4t5y6u7', ' Q1W2E-3R4T5-Y6U7 ', 'q1w2e 3r4t5 y6u7']) {
         assertEqual(lookupCode(typed)?.kind, 'admin', `"${typed}"`);
       }
-      assertEqual(lookupCode('Q1W2E3R4T6'), null, 'one character off');
+      assertEqual(lookupCode('Q1W2E3R4T5Y6U8'), null, 'one character off');
     } finally {
       entry.sha256 = real;
     }
@@ -186,18 +193,19 @@ suite('secret codes · what was typed is made comparable', () => {
   });
 });
 
-/** Every 10-character window of every alphanumeric run, upper-cased. */
-function tenCharacterRuns(text: string): Set<string> {
+/** Every CODE_LENGTH-character window of every alphanumeric run, upper-cased. */
+function codeLengthRuns(text: string): Set<string> {
   const found = new Set<string>();
-  for (const run of text.toUpperCase().match(/[A-Z0-9]{10,}/g) ?? []) {
-    for (let i = 0; i + 10 <= run.length; i++) found.add(run.slice(i, i + 10));
+  const atLeast = new RegExp(`[A-Z0-9]{${CODE_LENGTH},}`, 'g');
+  for (const run of text.toUpperCase().match(atLeast) ?? []) {
+    for (let i = 0; i + CODE_LENGTH <= run.length; i++) found.add(run.slice(i, i + CODE_LENGTH));
   }
   return found;
 }
 
-/** Which of these hashes does some ten-character run in the text hash to? */
+/** Which of these hashes does some code-length run in the text hash to? */
 function leaksIn(text: string, hashes: ReadonlySet<string>): string[] {
-  return [...tenCharacterRuns(text)].filter((run) => hashes.has(sha256Hex(run)));
+  return [...codeLengthRuns(text)].filter((run) => hashes.has(sha256Hex(run)));
 }
 
 function filesUnder(dir: string, out: string[] = []): string[] {
@@ -214,7 +222,7 @@ suite('secret codes · no code has leaked into the source', () => {
   const hashes: ReadonlySet<string> = new Set(CODE_TABLE.map((e) => e.sha256));
 
   test('the leak check itself catches a planted code', () => {
-    const planted = 'K7Q2M9X4ZB';
+    const planted = 'K7Q2M9X4ZBW3R8';
     const table = new Set([sha256Hex(planted)]);
     assertEqual(leaksIn(`const code = '${planted}'; // oops`, table).length, 1, 'plain');
     assertEqual(leaksIn(`const code = '${planted.toLowerCase()}';`, table).length, 1, 'lower case');
@@ -222,7 +230,7 @@ suite('secret codes · no code has leaked into the source', () => {
     assertEqual(leaksIn('const code = "nothing to see here 0123456789";', table).length, 0, 'clean');
   });
 
-  test('no ten-character run in src/ hashes to a table entry', () => {
+  test('no code-length run in src/ hashes to a table entry', () => {
     const files = filesUnder(join(root, 'src'));
     assert(files.length > 50, 'the scan found the source files');
     const leaks: string[] = [];

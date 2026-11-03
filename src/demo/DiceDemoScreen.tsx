@@ -1177,7 +1177,7 @@ export function DiceDemoScreen() {
   const submitCode = useCallback(() => {
     const typed = codeInput;
     setCodeInput('');
-    // The codes are ten random characters kept only as hashes, so nothing
+    // The codes are fourteen random characters kept only as hashes, so nothing
     // is compared with a word here: secretCodes.ts hashes what was typed
     // and says what, if anything, it does (David, 1 Nov 2026).
     const action = lookupCode(typed);
