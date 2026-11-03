@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.157.0 — 2026-11-03 · requested by Marc
+
+Two changes Marc asked for, shipped straight away at his request rather
+than after the App Store submission (so the pre-submission test pass is
+re-run on this version). Runtime 4.0.0: reaches build 18 only.
+
+### Added
+- **A battle menu** (Marc, 2 Nov 2026: "when you're in a battle and want
+  to exit a game it should be a button that's three lines and it should
+  take you to a small menu overlayed on the game playing ... when you
+  click leave it should warn you that forfeiting counts as a loss, and it
+  should have the volume lines"). The ↺ is now a three-line button that
+  opens a panel over the game: Resume, the four volume sliders (shared
+  with Settings), How to play, Leave battle, and the mode and time left.
+  Against the computer it PAUSES the battle (the rival's rolls and the
+  2:30 clock stop, through the same `battleLive` gate as backgrounding).
+  Leave asks first: "Leaving now counts as a loss", with the real trophy
+  range and any cup run it ends; confirming runs the ordinary
+  `finishRound('lost')`, so a forfeit pays the small loss consolation
+  like any loss (Marc chose to keep it). In a friend battle nothing
+  pauses and leaving gives the friend the win. On the smallest iPhone
+  the sliders scroll and Leave stays on screen. `BattleMenu.tsx`,
+  `battleMenu.ts`, `VolumeSliders`, `MenuIcon`.
+
+### Changed
+- **Secret codes are fourteen characters** (Marc, 3 Nov 2026: "change
+  every code to 14 characters, because its much harder to crack"). All
+  eighteen were drawn again from A-Z and 2-9 without 0/O and 1/I/L; the
+  ten-character codes no longer do anything. Only SHA-256 hashes are in
+  the source; the codes were given to the family in chat. The leak scan
+  looks for runs of `CODE_LENGTH`.
+- Tests: `tests/battleMenu.test.ts` (new); `power`, `battleTimer` and
+  `audio` tests follow the menu's `battleLive` gate and shared sliders;
+  `secretCodes` follows the new length.
+
 ## v1.156.0 — 2026-11-02 · requested by David
 
 David: "build in the in game rate us", then "build 18 with SKAN and the

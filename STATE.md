@@ -307,6 +307,11 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **3 Nov 2026 (v1.157.0):** shipped to build 18 BEFORE the App Store
+  submission, at Marc's request, so the pre-submission pass on 87adf8e
+  no longer counts; it is re-run on the final state. The secret codes
+  are fourteen characters from this version; the ten-character ones are
+  dead. A speed/loading-screen change (branch feature/fast-start) follows.
 - **1 Nov 2026 (v1.155.0):** friend battles were rebuilt (waiting
   room, the friend kept as the opponent, live progress callouts, "On
   now" in the Friends list). Verified against the live API with two

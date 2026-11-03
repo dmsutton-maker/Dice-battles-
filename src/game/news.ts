@@ -90,6 +90,21 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-157-0-battle-menu',
+    date: '3 November 2026',
+    version: 'v1.157.0',
+    title: 'A battle menu',
+    icon: 'news',
+    body:
+      'The button in the corner of a battle is now a menu (the three ' +
+      'lines). It pauses a battle against the computer, and has the ' +
+      'volume sliders, How to play, and a way to leave.\n\n' +
+      'Leaving asks first, because it counts as a loss: the menu tells ' +
+      'you how many trophies it would cost. In a battle with a friend ' +
+      'nothing pauses, since they are still playing, and leaving hands ' +
+      'them the win.',
+  },
+  {
     id: 'v1-155-0-friend-battles',
     date: '1 November 2026',
     version: 'v1.155.0',
