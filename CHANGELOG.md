@@ -34,6 +34,9 @@ re-run on this version). Runtime 4.0.0: reaches build 18 only.
 - Tests: `tests/battleMenu.test.ts` (new); `power`, `battleTimer` and
   `audio` tests follow the menu's `battleLive` gate and shared sliders;
   `secretCodes` follows the new length.
+- Rides along from PR #3 (David): ™ after the game's and the studio's
+  names in Settings, and the repository's licence is now all rights
+  reserved rather than the Expo template's MIT.
 
 ## v1.156.0 — 2026-11-02 · requested by David
 
