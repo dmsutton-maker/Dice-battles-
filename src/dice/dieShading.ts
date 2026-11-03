@@ -120,8 +120,11 @@ export function shadeAt(u: number, v: number): number {
  * MeshBasicMaterial multiplies into its colour without ever consulting
  * a light — see DieMesh.
  */
+/** The shade map's cache key. */
+export const DIE_SHADE_KEY = `die-shade:${BEVEL_FRACTION}:${STICKER_FRACTION}`;
+
 export function dieShadeTexture(): THREE.DataTexture {
-  return cachedTexture(`die-shade:${BEVEL_FRACTION}:${STICKER_FRACTION}`, () => {
+  return cachedTexture(DIE_SHADE_KEY, () => {
     const data = new Uint8Array(SHADE_SIZE * SHADE_SIZE * 4);
     for (let y = 0; y < SHADE_SIZE; y++) {
       for (let x = 0; x < SHADE_SIZE; x++) {
@@ -206,7 +209,7 @@ export function stickerTexture(hex: string, symbol: SymbolId | null): THREE.Data
   ) as THREE.DataTexture;
 }
 
-const stickerKey = (hex: string, symbol: SymbolId | null) => `die-sticker:${hex}:${symbol ?? 'none'}`;
+export const stickerKey = (hex: string, symbol: SymbolId | null) => `die-sticker:${hex}:${symbol ?? 'none'}`;
 
 /** The same sticker a row at a time, for the warm-up (warmPreviews.ts). */
 export function stickerJob(hex: string, symbol: SymbolId | null): { step(): boolean } | null {

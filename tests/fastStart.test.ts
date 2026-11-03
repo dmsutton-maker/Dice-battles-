@@ -28,6 +28,15 @@ import {
   saveShelfPictures,
 } from '../src/dice/shelfStore';
 import { GAME_VERSION } from '../src/game/version';
+import {
+  fromBase64,
+  loadKeptTextures,
+  resetKeptTexturesForTests,
+  saveKeptTextures,
+  toBase64,
+} from '../src/dice/keptTextures';
+import { equippedDieKeys } from '../src/dice/warmPreviews';
+import { cachedTextureCount, peekCachedTexture } from '../src/arena/textureCache';
 
 /**
  * Opening the game fast.
@@ -386,5 +395,62 @@ suite('fast start · the shelf pictures are painted once per version', () => {
     store.delete(key);
     clearShelfPicturesForTests();
     resetShelfStoreForTests();
+  });
+});
+
+suite('fast start · the die in hand is painted once per version', () => {
+  test('the keys kept are exactly what the die paints', () => {
+    for (const id of ['ivory', 'pizza', 'fish', 'circuit', 'neon']) {
+      clearTextureCacheForTests();
+      const skin = skinById(id);
+      for (const job of equippedDieJobs(skin)) while (!job.step());
+      const keys = equippedDieKeys(skin);
+      assertEqual(cachedTextureCount(), keys.length, `${id}: the kept keys and the painted pictures differ in number`);
+      for (const key of keys) assert(hasCachedTexture(key), `${id}: ${key} is kept but never painted`);
+    }
+  });
+
+  test('kept textures come back byte for byte, settings and all, and only for this version', async () => {
+    const key = 'dice-battles/kept-textures';
+    const bytes = new Uint8Array(1000).map((_, i) => (i * 37) % 256);
+    for (const n of [0, 1, 2, 3, 998, 999, 1000]) {
+      const part = bytes.slice(0, n);
+      assert(fromBase64(toBase64(part)).join(',') === part.join(','), `base64 round trip failed at ${n} bytes`);
+    }
+    clearTextureCacheForTests();
+    resetKeptTexturesForTests();
+    store.delete(key);
+    const skin = skinById('pizza');
+    for (const job of equippedDieJobs(skin)) while (!job.step());
+    const keys = equippedDieKeys(skin);
+    const before = keys.map((k) => peekCachedTexture(k)!);
+    await saveKeptTextures(keys);
+    assert(store.has(key), 'nothing was kept');
+    note(`the Pizza die kept in ${(store.get(key)!.length / 1024).toFixed(0)} KB`);
+
+    clearTextureCacheForTests();
+    assertEqual(await loadKeptTextures(), keys.length, 'not every kept picture came back');
+    keys.forEach((k, i) => {
+      const a = before[i] as import('three').DataTexture;
+      const b = peekCachedTexture(k) as import('three').DataTexture;
+      assert(
+        Buffer.from(a.image.data as Uint8Array).equals(Buffer.from(b.image.data as Uint8Array)),
+        `${k} came back with different pixels`,
+      );
+      for (const field of ['colorSpace', 'wrapS', 'wrapT', 'magFilter', 'minFilter', 'generateMipmaps', 'flipY'] as const) {
+        assertEqual(String(b[field]), String(a[field]), `${k}: ${field}`);
+      }
+    });
+    assertEqual(equippedDieJobs(skin).length, 0, 'a kept die is painted again');
+
+    const kept = JSON.parse(store.get(key)!);
+    store.set(key, JSON.stringify({ ...kept, version: GAME_VERSION + '-older' }));
+    clearTextureCacheForTests();
+    assertEqual(await loadKeptTextures(), 0, "an older version's pictures were taken");
+    store.set(key, 'not json');
+    assertEqual(await loadKeptTextures(), 0, 'a broken store was not ignored');
+    store.delete(key);
+    clearTextureCacheForTests();
+    resetKeptTexturesForTests();
   });
 });

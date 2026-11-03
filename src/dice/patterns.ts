@@ -4212,7 +4212,7 @@ export function createDieFaceTextures(
  * The cache key of one side of a die — the one createDieFaceTextures
  * uses. tests/fastStart.test.ts checks the two agree.
  */
-function dieFaceKey(pattern: string, base: string, ink: string, face: number): string {
+export function dieFaceKey(pattern: string, base: string, ink: string, face: number): string {
   return `die:${pattern}:${base}:${ink}:face${face}`;
 }
 

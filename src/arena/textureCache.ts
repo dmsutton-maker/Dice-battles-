@@ -38,6 +38,11 @@ export function cachedTexture(key: string, make: () => THREE.Texture): THREE.Tex
   return built;
 }
 
+/** The texture under `key` if it has been built, without building it. */
+export function peekCachedTexture(key: string): THREE.Texture | undefined {
+  return cache.get(key);
+}
+
 /** Whether `key` has been built — so a warm-up can skip what is done. */
 export function hasCachedTexture(key: string): boolean {
   return cache.has(key);

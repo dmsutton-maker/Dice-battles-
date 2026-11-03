@@ -1,8 +1,9 @@
 import { DICE_SKINS, skinById } from '../game/diceSkins';
 import { DIE_FACE_COLORS } from '../game/colors';
 import { cachedShellPreviewUri, shelfPictureJob } from './preview';
-import { dieFaceJobs, PatternId } from './patterns';
-import { dieShadeTexture, stickerJob } from './dieShading';
+import { dieFaceJobs, dieFaceKey, PatternId } from './patterns';
+import { DIE_SHADE_KEY, dieShadeTexture, stickerJob, stickerKey } from './dieShading';
+import { hasCachedTexture } from '../arena/textureCache';
 import { fromList, MENU_SLICE_MS, once, PaintStep, runSliced, SlicedRun } from './slicedPaint';
 import { fishSchoolJobs, fishWaterJob } from './fishSwim';
 import { circuitPulseJob } from './circuitPulse';
@@ -221,6 +222,28 @@ export function warmEquippedDie(
   return runSliced(fromList(equippedDieJobs(skin)), options);
 }
 
+/**
+ * The cache keys of everything equippedDieJobs paints, for keeping them
+ * between launches (keptTextures.ts).
+ */
+export function equippedDieKeys(skin: DiceSkin | undefined): string[] {
+  const keys = [DIE_SHADE_KEY, ...DIE_FACE_COLORS.map((c) => stickerKey(c.hex, null))];
+  if (!skin || skin.pattern === 'plain') return keys;
+  const faces = [0, 1, 2, 3, 4, 5];
+  if (skin.pattern === 'fish') {
+    keys.push(
+      ...faces.map((f) => `die:fish-swim:water:${f}`),
+      'die:fish-swim:school:1',
+      'die:fish-swim:school:-1',
+      'die:fish-swim:cap',
+    );
+  }
+  if (skin.pattern === 'circuit') keys.push(...faces.map((f) => `die:circuit-pulse:${f}`));
+  if (skin.pattern === 'neon') keys.push(...faces.map((f) => `die:neon-glow:${f}`));
+  keys.push(...faces.map((f) => dieFaceKey(skin.pattern, skin.body, skin.ink ?? skin.body, f)));
+  return keys;
+}
+
 /** The jobs warmEquippedDie runs, for a caller that counts them. */
 export function equippedDieJobs(skin: DiceSkin | undefined): PaintStep[] {
   return [...shadingJobs(), ...(skin ? dieJobs(skin) : [])];
@@ -229,7 +252,7 @@ export function equippedDieJobs(skin: DiceSkin | undefined): PaintStep[] {
 /** The shade map and the six plain stickers every die wears. */
 function shadingJobs(): PaintStep[] {
   return present([
-    once(dieShadeTexture),
+    hasCachedTexture(DIE_SHADE_KEY) ? null : once(dieShadeTexture),
     ...DIE_FACE_COLORS.map((c) => stickerJob(c.hex, null)),
   ]);
 }

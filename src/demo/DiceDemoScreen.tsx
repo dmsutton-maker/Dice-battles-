@@ -105,9 +105,10 @@ import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { hasEntitlement,
   goldPassUnlocked, hasGoldPass, initPurchases, noteTesterModeChanged, onPurchasesChanged } from '../game/purchases';
 import { lookupCode } from '../game/secretCodes';
-import { warmAllDieFaces, warmDicePreviews } from '../dice/warmPreviews';
+import { equippedDieKeys, warmAllDieFaces, warmDicePreviews } from '../dice/warmPreviews';
 import { runLaunchWarm } from '../dice/launchWarm';
 import { loadShelfPictures, saveShelfPictures } from '../dice/shelfStore';
+import { loadKeptTextures, saveKeptTextures } from '../dice/keptTextures';
 import { LOAD_SLICE_MS, MENU_SLICE_MS } from '../dice/slicedPaint';
 import { launchSettled, onLaunchChange, reportStep } from '../game/launchReady';
 import { inventoryDice } from '../game/inventoryRules';
@@ -327,9 +328,11 @@ export function DiceDemoScreen() {
       loadWallet(),
       loadColorblindMode(),
       loadTutorialSeen(),
-      // The shelf pictures kept from the last launch of this version
-      // (shelfStore.ts), so the loading screen need not paint them.
+      // The shelf pictures and the equipped die kept from the last
+      // launch of this version (shelfStore.ts, keptTextures.ts), so the
+      // loading screen need not paint them again.
       loadShelfPictures(),
+      loadKeptTextures(),
     ])
       .then(([audio, saved, progress, purse, cb, tutorialSeen]) => {
         setAudioPrefs(audio);
@@ -816,7 +819,12 @@ export function DiceDemoScreen() {
     does, start them if the shelf is already done.
   */
   useEffect(() => {
-    if (!launched || !facesWarmableRef.current) return;
+    if (!launched) return;
+    // The die in hand, kept for the next launch (keptTextures.ts) — after
+    // the card has lifted, never while it waits. Written only if it was
+    // painted this time.
+    setTimeout(() => void saveKeptTextures(equippedDieKeys(activeSkin(getProgress().trophies))), 0);
+    if (!facesWarmableRef.current) return;
     shelfDone();
   }, [launched]); // eslint-disable-line react-hooks/exhaustive-deps
   const [unlockAll, setUnlockAll] = useState(false);
