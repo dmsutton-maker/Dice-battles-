@@ -7,28 +7,35 @@
  * codes", and "For now just add ones for testing that set the counts to
  * a specific amount."
  *
+ * Marc, 3 Nov 2026: "change every code to 14 characters, because its
+ * much harder to crack". Every code was replaced, not lengthened: the
+ * ten-character ones are dead. Fourteen characters from a 31-letter
+ * alphabet (A-Z and 2-9 without 0/O and 1/I/L, which are easy to mix up
+ * when read off a note) is about 2^69 guesses, against 2^52 for ten of
+ * 36: some hundred thousand times longer to search.
+ *
  * ── WHY HASHES ────────────────────────────────────────────────────────
  *
  * This repository is PUBLIC and the JavaScript bundle is readable by
  * anybody who unzips the app. The old codes were plain words in the
  * source (FAMILY, RESET, "500 COIN"), so anyone could type them. These
- * are ten random letters and digits, and only the SHA-256 of each is
+ * are fourteen random letters and digits, and only the SHA-256 of each is
  * written down here. The code box hashes what is typed and looks the
  * answer up; nothing in the app, or in git, can be read back into a code.
  *
- * A hash is not a lock a determined person cannot pick (ten characters
- * of 36 is a big search, but not an impossible one for a GPU), and it is
- * not trying to be. The aim is that a code cannot be read off the page,
+ * A hash is not a lock a determined person cannot pick, and it is not
+ * trying to be; fourteen characters makes the search far longer than
+ * the ten it replaced (above). The aim is that a code cannot be read off the page,
  * which is all the old ones lacked. Nothing here protects money: the
  * codes only change what a family tester sees on their own phone.
  *
  * ── ADDING OR CHANGING A CODE ─────────────────────────────────────────
  *
- * Generate ten random characters of A-Z and 0-9 OUTSIDE the repository,
+ * Generate CODE_LENGTH random characters of CODE_ALPHABET OUTSIDE the repository,
  * keep them somewhere private, and add only `sha256(code)` to the table
  * below. Never paste the code itself into a file, a comment, a test or a
  * commit message: `tests/secretCodes.test.ts` scans `src/` and `tests/`
- * for any ten-character run that hashes to a table entry, and fails if
+ * for any CODE_LENGTH-character run that hashes to a table entry, and fails if
  * it finds one.
  *
  * ── PURE JAVASCRIPT ON PURPOSE ────────────────────────────────────────
@@ -38,6 +45,12 @@
  * out in plain JavaScript below, and the tests check it against the
  * published test vectors.
  */
+
+/** How long every code is. Marc, 3 Nov 2026: fourteen, "much harder to crack". */
+export const CODE_LENGTH = 14;
+
+/** The letters codes are drawn from: no 0/O or 1/I/L, so a code read off a note is typed right. */
+export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 // ── SHA-256 ──────────────────────────────────────────────────────────
 
@@ -184,26 +197,26 @@ interface CodeEntry {
  * rung or the budget they want to look at.
  */
 export const CODE_TABLE: readonly CodeEntry[] = [
-  { action: { kind: 'admin' }, sha256: 'cf2e8a72d8a2929b3e54089067134d9d758d2befe06120c4153ef0c9a35a6762' },
-  { action: { kind: 'lock' }, sha256: '2f828c9f2167c2d2dd43b3a4ce588ab40202750e7e57f1f0caf56fcb123b425f' },
-  { action: { kind: 'reset' }, sha256: 'd8d753f3b4b4573f3480603752d21755679bc39b5f773288156b3b0c7accb8b0' },
+  { action: { kind: 'admin' }, sha256: 'fe11ff5602cdd2c147d4ec8858d498083250ce9aa613c3930ddd88b3f67ccb10' },
+  { action: { kind: 'lock' }, sha256: '490334070a1b44606c6af34bfc35d72d3224fbb4aef54abd99bc4eab3ac564b8' },
+  { action: { kind: 'reset' }, sha256: '9e49f1f2a2366e56751174398e657c954baea9095971c6e71758d1db4c41a01b' },
 
-  { action: { kind: 'coins', amount: 0 }, sha256: 'b53db0ec372086d90d3255f60f466e9c3cb57e63cad4c8db6f441f89b3106673' },
-  { action: { kind: 'coins', amount: 500 }, sha256: '5010453f6bfcd5ccfc055cc663a6111c33bf1cba3a7a82c165219203d242c501' },
-  { action: { kind: 'coins', amount: 1000 }, sha256: '81cc7dfd197c907811dfb21ce28ec0b604e1faf164eda8a532adaddb76d241d7' },
-  { action: { kind: 'coins', amount: 5000 }, sha256: 'e729df66ee7835f1d1c5cffedfaf4262a661c38cd7e9d13e68cbd211fd748b38' },
-  { action: { kind: 'coins', amount: 10000 }, sha256: '9844cb1a6feed6d70454bfa2001f5713233414f039c43f42143f1bfc64b0e003' },
-  { action: { kind: 'coins', amount: 50000 }, sha256: 'af9bca7c9ee49ff03b73fbd7456b94194d6fe6300e5d79e6c21612eeacf96cf8' },
-  { action: { kind: 'coins', amount: 100000 }, sha256: '99ff87d64b64f4820c0c9ccf706209e9d485f40c87bfa57763daa97ee7db0bbf' },
+  { action: { kind: 'coins', amount: 0 }, sha256: '46fc6600f943a51cc410e8d07d5c48741d1b92f6def1d9d21267aa98473aadff' },
+  { action: { kind: 'coins', amount: 500 }, sha256: '57e2fd897daad01cc9f562a0896b88f29541b43878d49f9b5ded407abef495ed' },
+  { action: { kind: 'coins', amount: 1000 }, sha256: '888f7f6e7179e3e870639c5971891527ba8c1696afae2400bd862d5b860b7e3d' },
+  { action: { kind: 'coins', amount: 5000 }, sha256: '30cd19ef1f9047646040f849700b5b2af1c5eab1494071ce3a9e05b712d2817c' },
+  { action: { kind: 'coins', amount: 10000 }, sha256: '8fc041f6c75cdb8573a712274ae03b7961a2e40eb0abdd5863168aa1eacb1fe3' },
+  { action: { kind: 'coins', amount: 50000 }, sha256: 'c53ed2b8cf7a1d244c1254e71d2e87b442f8f8dbbc9e98b8b6c910d7b9821233' },
+  { action: { kind: 'coins', amount: 100000 }, sha256: '90d6491756625d6d906ae60761e783c54345fed553a3b2e683fb3ed64afd50c7' },
 
-  { action: { kind: 'trophies', amount: 0 }, sha256: 'a9a8b04b6233597c4517b3b16f48c38200726e0b99f1c90c3c58e16c83e81e35' },
-  { action: { kind: 'trophies', amount: 100 }, sha256: '1451f80808565a08916b6a602a2edb5f29a2c172ead38728198f83d77b1a501e' },
-  { action: { kind: 'trophies', amount: 250 }, sha256: '4a4538d3211be0ca20aa3130d1116613fb1116c6f06689f144e02475327ce6aa' },
-  { action: { kind: 'trophies', amount: 500 }, sha256: '8d2c8499a64e12863ab9be595b35d03e63c30f19b4abb5d995170fa2adb328ae' },
-  { action: { kind: 'trophies', amount: 1000 }, sha256: '2f3f54bc6364ee838078dea70e5af2c663286bdbb15e99c31e1e413f66631460' },
-  { action: { kind: 'trophies', amount: 2000 }, sha256: '214b4e4b903824353a22ae615928e265b58bcbabbb27537ae4962323a40aecbd' },
-  { action: { kind: 'trophies', amount: 5000 }, sha256: 'db26865cff7151b942cf9e3f940cbd56261205d4134055858a0bd6a3eb199464' },
-  { action: { kind: 'trophies', amount: 10000 }, sha256: '18bc666d4a97427f00bb8e5c64c67fe39dabac88642e68499953df946e81ab88' },
+  { action: { kind: 'trophies', amount: 0 }, sha256: 'b2713e6be7eed841b1183e8d856e22505b49691b161e70b8c3c32c7193ec6c0d' },
+  { action: { kind: 'trophies', amount: 100 }, sha256: 'd3a0e8e56771ab2edf9ac223107a62feaa78c4979b5e6ab6091daa9322633a56' },
+  { action: { kind: 'trophies', amount: 250 }, sha256: 'fda6e415bd9788b3f3f45b3180f2db5ced7642961b6c70d7b31cce8cddb42eef' },
+  { action: { kind: 'trophies', amount: 500 }, sha256: '228d49c0a2f6c22a67f648dc1434b065e4e0f1c355e3527176c91709610f8c9d' },
+  { action: { kind: 'trophies', amount: 1000 }, sha256: '687a701c457256b46be7035159fd26538763de941a08018c98cb8092ce0db211' },
+  { action: { kind: 'trophies', amount: 2000 }, sha256: '24f7041e5aeb8066b70bdc63434e3b217352804d35ae3ca2169a40c66eff5e10' },
+  { action: { kind: 'trophies', amount: 5000 }, sha256: 'b942900cae68f2df47661350848fb9cb40f35eb26136729ed616e2b14bd22832' },
+  { action: { kind: 'trophies', amount: 10000 }, sha256: '9f4c17c0cffa70957d49d67391acdc9a45dbac975ca69d4c06220d3890eb0dff' },
 ];
 
 /**
