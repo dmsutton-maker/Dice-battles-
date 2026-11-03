@@ -116,6 +116,8 @@ export default async function DiceBattlesAppPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 220 }}>
               <h1 style={{ font: `800 34px/1.15 ${fonts.heading}`, margin: 0, color: colors.ink }}>
                 Dice Battles: Color Rush
+                {/* ™, not ®: claimed, not yet registered. */}
+                <sup style={{ fontSize: '0.45em', marginLeft: 2 }}>™</sup>
               </h1>
               <p
                 style={{

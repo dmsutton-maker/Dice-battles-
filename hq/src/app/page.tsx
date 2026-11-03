@@ -216,6 +216,7 @@ export default async function HomePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 220 }}>
                 <span style={{ font: `800 24px ${fonts.heading}`, color: colors.ink }}>
                   Dice Battles: Color Rush
+                  <sup style={{ fontSize: '0.45em', marginLeft: 2 }}>™</sup>
                 </span>
                 <span style={{ font: `700 14.5px ${fonts.body}`, color: colors.yellowDeepText }}>
                   {appsCardTagline}

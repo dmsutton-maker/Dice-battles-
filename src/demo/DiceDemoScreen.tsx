@@ -3673,6 +3673,10 @@ export function DiceDemoScreen() {
               {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×
               {wins.medium}   Hard ×{wins.hard}
             </Text>
+            {/* Copyright notice (David, 2 Nov 2026: "add copyrights"). */}
+            <Text style={styles.copyrightLine}>
+              © {new Date().getFullYear()} Paper Ship Studio™. All rights reserved.
+            </Text>
             {/*
               WHERE THE ADS GOT TO — testers only.
 
@@ -4250,6 +4254,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  copyrightLine: {
+    color: THEME.inkSoft,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 6,
   },
   bugReportButton: {
     marginTop: 4,

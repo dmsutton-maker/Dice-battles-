@@ -271,6 +271,17 @@ suite('submission · the ad configuration is per-platform', () => {
     assert(365 / DAYS_BETWEEN_ASKS <= 3.05, "more asks a year than Apple's limit of three");
   });
 
+  test('the repo says "all rights reserved", never the Expo template\'s MIT licence', () => {
+    // The repo is public. Until 2 Nov 2026 LICENSE was Expo's MIT licence
+    // from the project template, which reads as permission for anyone to
+    // copy, change and sell the game. It must never come back.
+    const licence = readFileSync(join(root, 'LICENSE'), 'utf8');
+    assert(/All rights reserved/.test(licence), 'LICENSE no longer says "All rights reserved"');
+    assert(!/MIT License|Permission is hereby granted/i.test(licence), 'LICENSE is an open-source licence again');
+    const screen = readFileSync(join(root, 'src', 'demo', 'DiceDemoScreen.tsx'), 'utf8');
+    assert(/© \{new Date\(\)\.getFullYear\(\)\} Paper Ship Studio/.test(screen), 'the in-game copyright line is gone');
+  });
+
   test('build 18: Google\'s SKAdNetwork IDs are in the app, so advertisers can bid on our ad slots', () => {
     const gma = (app.plugins as unknown[]).find(
       (p): p is [string, { skAdNetworkItems?: string[] }] => Array.isArray(p) && p[0] === 'react-native-google-mobile-ads',
