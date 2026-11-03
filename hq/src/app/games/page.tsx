@@ -122,7 +122,9 @@ export default async function GamesPage() {
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 220 }}>
                 <span style={kickerStyle}>{cardKicker}</span>
-                <span style={{ font: `800 26px ${fonts.heading}`, color: '#fff' }}>Dice Battles: Color Rush</span>
+                <span style={{ font: `800 26px ${fonts.heading}`, color: '#fff' }}>
+                  Dice Battles: Color Rush<sup style={{ fontSize: '0.45em', marginLeft: 2 }}>™</sup>
+                </span>
                 <span style={{ font: `600 14.5px/1.5 ${fonts.body}`, color: 'rgba(255,255,255,0.9)' }}>
                   {cardDescription}
                 </span>

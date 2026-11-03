@@ -34,6 +34,8 @@ export function SiteHeader({ active }: { active: 'Home' | 'Games' | 'Support' | 
         <Logo size={30} />
         <span style={{ font: `800 18px ${fonts.heading}`, color: colors.ink }}>
           Paper Ship Studio
+          {/* ™ claims the name as ours before it is registered (David, 2 Nov 2026). Switch to ® only once the USPTO registers it. */}
+          <sup style={{ fontSize: '0.5em', marginLeft: 1 }}>™</sup>
         </span>
       </Link>
       <nav
