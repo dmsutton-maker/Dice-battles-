@@ -25,7 +25,17 @@ suite('money shop · a purchase shows what it includes, on the board', () => {
 
   test('the Store hands the board to the shelf, and the screen hands it to the Store', () => {
     const store = read('src/demo/StoreScreen.tsx');
-    assert(/onPreview=\{onPreviewItem\}/.test(store), 'the Store does not pass the board to the money shelf');
+    /*
+      Through a stable `previewItem` since 3 Nov 2026, which calls
+      onPreviewItem — so the memoised shelf is not redrawn on every draw
+      of the screen above (David's family: "it all has to be lightning
+      fast").
+    */
+    assert(
+      /onPreview=\{onPreviewItem\}/.test(store) ||
+        (/onPreview=\{previewItem\}/.test(store) && /opens\.current\.onPreviewItem\(target\)/.test(store)),
+      'the Store does not pass the board to the money shelf',
+    );
     const screen = read('src/demo/DiceDemoScreen.tsx');
     assert(/onPreviewItem=\{\(target\) => showPreview\(target\)\}/.test(screen), 'the screen does not open money items on the board');
   });

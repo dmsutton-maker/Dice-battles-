@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cachedTexture } from '../arena/textureCache';
+import { cachedTexture, paintNow, RowPainting, rowJob } from '../arena/textureCache';
 import type { SceneryTick } from '../arena/sceneryClock';
 import { TUNING } from '../game/tuning';
 import { createDieFaceTextures, dieFaceSampler, neonTubesAt, sheetToCube } from './patterns';
@@ -124,11 +124,21 @@ export function neonMaskAt(off: number): number {
  * (dieFaceSampler), so it lines up with the paint texel for texel.
  */
 export function neonGlowTexture(face: number): THREE.Texture {
-  return cachedTexture(`die:neon-glow:${face}`, () => {
-    const data = new Uint8Array(SIZE * SIZE * 4);
-    const at = dieFaceSampler((sx, sy) => sheetToCube(sx, sy), face);
-    const SS = 2;
-    for (let y = 0; y < SIZE; y++) {
+  return cachedTexture(`die:neon-glow:${face}`, () => paintNow(neonGlowPainting(face)));
+}
+
+/** The same map a row at a time, for the warm-up (warmPreviews.ts). */
+export function neonGlowJob(face: number): { step(): boolean } | null {
+  return rowJob(`die:neon-glow:${face}`, () => neonGlowPainting(face));
+}
+
+function neonGlowPainting(face: number): RowPainting {
+  const data = new Uint8Array(SIZE * SIZE * 4);
+  const at = dieFaceSampler((sx, sy) => sheetToCube(sx, sy), face);
+  const SS = 2;
+  return {
+    rows: SIZE,
+    row(y) {
       for (let x = 0; x < SIZE; x++) {
         const centre = neonTubesAt(at(x, y));
         // The edge of the light is supersampled so it is soft; "how far
@@ -148,19 +158,21 @@ export function neonGlowTexture(face: number): THREE.Texture {
         data[i + 2] = Math.round((pink / (SS * SS)) * 255);
         data[i + 3] = Math.round((cyan / (SS * SS)) * 255);
       }
-    }
-    const texture = new THREE.DataTexture(data, SIZE, SIZE);
-    // Data, not colour: read back exactly as written. No mipmaps, which
-    // would average "how far round" across texels that are not on a tube.
-    texture.colorSpace = THREE.NoColorSpace;
-    texture.wrapS = THREE.ClampToEdgeWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
-    texture.generateMipmaps = false;
-    texture.needsUpdate = true;
-    return texture;
-  });
+    },
+    done: () => {
+      const texture = new THREE.DataTexture(data, SIZE, SIZE);
+      // Data, not colour: read back exactly as written. No mipmaps, which
+      // would average "how far round" across texels that are not on a tube.
+      texture.colorSpace = THREE.NoColorSpace;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearFilter;
+      texture.generateMipmaps = false;
+      texture.needsUpdate = true;
+      return texture;
+    },
+  };
 }
 
 const DECLARE = `uniform float uNeonPulse;

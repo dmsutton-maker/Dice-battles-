@@ -115,7 +115,9 @@ suite('circuit dice · the pulses', () => {
     assert(/pattern === 'circuit'\) return pulsingCircuitMaterials\(/.test(mesh), 'the Circuit die does not pulse');
     assert(/pattern === 'circuit' \? PULSE_TICK/.test(mesh), 'nothing moves the pulses');
     const warm = readFileSync(join(root, 'src/dice/warmPreviews.ts'), 'utf8');
-    assert(/circuitPulseTexture\(face\)/.test(warm), 'the wiring map is not warmed with the rest');
+    // circuitPulseJob since 3 Nov 2026: the same map, painted a row per
+    // step (David's family: "it all has to be lightning fast").
+    assert(/circuitPulseJob\b/.test(warm), 'the wiring map is not warmed with the rest');
     const preview = readFileSync(join(root, 'src/dice/preview.ts'), 'utf8');
     assert(!/circuitPulse/.test(preview), 'the shop card has started pulsing');
   });

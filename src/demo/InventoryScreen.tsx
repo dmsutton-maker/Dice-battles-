@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useGridCardWidth } from './grid';
 import { playClick } from '../audio/sounds';
@@ -8,6 +8,7 @@ import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { PreviewTarget } from '../game/itemPreview';
 import { DiceSwatch } from './DiceSwatch';
 import { ARENAS, ArenaId } from '../arena/arenas';
+import type { DiceSkin } from '../game/diceSkins';
 import { ARENA_ART } from '../arena/arenaArt';
 import {
   inventoryArenas,
@@ -80,6 +81,24 @@ export function InventoryScreen({
   const now = Date.now();
   const dice = inventoryDice(trophies, now);
   const arenas = inventoryArenas(trophies, now);
+  /*
+    One opener for every card, the same function on every draw, so a card
+    whose die, tag and width have not changed is not drawn again.
+
+    David, 3 Nov 2026: "The game runs very slow when you open it,
+    especially if I have everything unlocked." This page stays mounted,
+    hidden, once built, and the game screen above it redraws on every
+    change of its state — a coin, a timer, a roll in a battle. With
+    everything unlocked that redrew some eighty cards each time, about 8ms
+    on a desktop (several times that on a phone) for a page nobody could
+    see. Memoised cards cost a comparison each instead.
+  */
+  const previewRef = useRef(onPreview);
+  previewRef.current = onPreview;
+  const open = useCallback((target: PreviewTarget) => {
+    playClick();
+    previewRef.current(target);
+  }, []);
 
   return (
     <View style={[styles.overlay, useMenuPageArea(), hidden && styles.hidden]}>
@@ -110,28 +129,15 @@ export function InventoryScreen({
           a match is always a match.
         </Text>
         <View style={styles.grid}>
-          {dice.map((skin) => {
-            const equipped = skinId === skin.id;
-            return (
-              <Pressable
-                key={skin.id}
-                onPress={() => {
-                  playClick();
-                  onPreview({ kind: 'die', id: skin.id, from: 'inventory' });
-                }}
-                style={[styles.card, { width: cardWidth }, equipped && styles.cardEquipped]}
-              >
-                {/* The real shell, same painter as the dice in play. */}
-                <DiceSwatch skin={skin} size={58} />
-                <Text style={styles.cardName}>{skin.name}</Text>
-                {equipped ? (
-                  <Text style={styles.equippedTag}>EQUIPPED</Text>
-                ) : (
-                  <Text style={styles.tapTag}>Tap to see</Text>
-                )}
-              </Pressable>
-            );
-          })}
+          {dice.map((skin) => (
+            <DieCard
+              key={skin.id}
+              skin={skin}
+              equipped={skinId === skin.id}
+              width={cardWidth}
+              onOpen={open}
+            />
+          ))}
         </View>
         {onlyStarters(dice.map((s) => s.id), STARTING_DICE) && (
           // Where more come from, in the words of the tabs a child can see
@@ -149,35 +155,9 @@ export function InventoryScreen({
           come from the difficulty you pick, not from the battlefield.
         </Text>
         <View style={styles.grid}>
-          {arenas.map((id) => {
-            const arena = ARENAS[id];
-            const equipped = arenaId === id;
-            return (
-              <Pressable
-                key={id}
-                onPress={() => {
-                  playClick();
-                  onPreview({ kind: 'arena', id, from: 'inventory' });
-                }}
-                style={[styles.card, { width: cardWidth }, equipped && styles.cardEquipped]}
-              >
-                <Image
-                  source={ARENA_ART[id]}
-                  // The sky sits underneath as the colour the picture
-                  // opens on, so a card is never a white hole for the
-                  // frame it takes the image to decode.
-                  style={[styles.swatch, { backgroundColor: arena.skyColor }]}
-                  accessibilityIgnoresInvertColors
-                />
-                <Text style={styles.cardName}>{arena.name}</Text>
-                {equipped ? (
-                  <Text style={styles.equippedTag}>EQUIPPED</Text>
-                ) : (
-                  <Text style={styles.tapTag}>Tap to see</Text>
-                )}
-              </Pressable>
-            );
-          })}
+          {arenas.map((id) => (
+            <ArenaCard key={id} id={id} equipped={arenaId === id} width={cardWidth} onOpen={open} />
+          ))}
         </View>
         {onlyStarters(arenas, STARTING_ARENAS) && (
           <Text style={styles.moreNote}>
@@ -198,6 +178,71 @@ export function InventoryScreen({
     </View>
   );
 }
+
+/** One die in the cupboard. Redrawn only when what it shows changes. */
+const DieCard = memo(function DieCard({
+  skin,
+  equipped,
+  width,
+  onOpen,
+}: {
+  skin: DiceSkin;
+  equipped: boolean;
+  width: number;
+  onOpen: (target: PreviewTarget) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onOpen({ kind: 'die', id: skin.id, from: 'inventory' })}
+      style={[styles.card, { width }, equipped && styles.cardEquipped]}
+    >
+      {/* The real shell, same painter as the dice in play. */}
+      <DiceSwatch skin={skin} size={58} />
+      <Text style={styles.cardName}>{skin.name}</Text>
+      {equipped ? (
+        <Text style={styles.equippedTag}>EQUIPPED</Text>
+      ) : (
+        <Text style={styles.tapTag}>Tap to see</Text>
+      )}
+    </Pressable>
+  );
+});
+
+/** One battlefield in the cupboard, the same way. */
+const ArenaCard = memo(function ArenaCard({
+  id,
+  equipped,
+  width,
+  onOpen,
+}: {
+  id: ArenaId;
+  equipped: boolean;
+  width: number;
+  onOpen: (target: PreviewTarget) => void;
+}) {
+  const arena = ARENAS[id];
+  return (
+    <Pressable
+      onPress={() => onOpen({ kind: 'arena', id, from: 'inventory' })}
+      style={[styles.card, { width }, equipped && styles.cardEquipped]}
+    >
+      <Image
+        source={ARENA_ART[id]}
+        // The sky sits underneath as the colour the picture
+        // opens on, so a card is never a white hole for the
+        // frame it takes the image to decode.
+        style={[styles.swatch, { backgroundColor: arena.skyColor }]}
+        accessibilityIgnoresInvertColors
+      />
+      <Text style={styles.cardName}>{arena.name}</Text>
+      {equipped ? (
+        <Text style={styles.equippedTag}>EQUIPPED</Text>
+      ) : (
+        <Text style={styles.tapTag}>Tap to see</Text>
+      )}
+    </Pressable>
+  );
+});
 
 const styles = StyleSheet.create({
   // Out of sight AND out of layout — see the `hidden` prop.

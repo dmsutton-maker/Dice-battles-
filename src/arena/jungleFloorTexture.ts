@@ -80,10 +80,38 @@ const LEAF_COLORS = [
 let pixelCache: number[] | null = null;
 
 export function jungleFloorPixels(): number[] {
+  if (pixelCache) return pixelCache;
+  const rows = jungleFloorRows();
+  for (;;) {
+    const next = rows.next();
+    if (next.done) return (pixelCache = next.value);
+  }
+}
+
+/**
+ * The same painting a row per step, for the loading screen and the
+ * warm-up — David, 3 Nov 2026: "it all has to be lightning fast". Null
+ * once it is painted.
+ */
+export function jungleFloorJob(): { step(): boolean } | null {
+  if (pixelCache) return null;
+  let rows: Generator<void, number[], unknown> | null = null;
+  return {
+    step() {
+      if (pixelCache) return true;
+      rows ??= jungleFloorRows();
+      const next = rows.next();
+      if (!next.done) return false;
+      pixelCache = next.value;
+      return true;
+    },
+  };
+}
+
+function* jungleFloorRows(): Generator<void, number[], unknown> {
   // Painted once per app run. Two textures are built from these bytes (the
   // tray floor and the clearing around it, at different repeats), and the
   // painting is 65-120ms of pure JavaScript — worth doing exactly once.
-  if (pixelCache) return pixelCache;
   const out: number[] = [];
 
   for (let y = 0; y < SIZE; y++) {
@@ -168,8 +196,8 @@ export function jungleFloorPixels(): number[] {
         Math.round(Math.min(255, b * grain)),
       );
     }
+    yield;
   }
-  pixelCache = out;
   return out;
 }
 

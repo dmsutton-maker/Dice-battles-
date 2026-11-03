@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { STORE_SKINS } from '../game/diceSkins';
+import { DiceSkin, STORE_SKINS } from '../game/diceSkins';
 import { ARENA_PRICES, STORE_ARENAS, arenaKey } from '../game/loadout';
 import { ARENAS } from '../arena/arenas';
 import { ARENA_ART } from '../arena/arenaArt';
@@ -93,6 +93,31 @@ export function StoreScreen({
   const [goldGlow, setGoldGlow] = useState(0);
   // Live: a fold changes how many cards fit across.
   const cardWidth = useGridCardWidth();
+  /*
+    The same openers on every draw, so a card whose price, tag and width
+    have not changed is not drawn again. David, 3 Nov 2026: "The game runs
+    very slow when you open it, especially if I have everything
+    unlocked." This page stays mounted, hidden, once built, and the game
+    screen above redraws on every change of its state; that redrew some
+    hundred cards each time — 15ms on a desktop, several times that on a
+    phone — for a page nobody could see, through every battle.
+  */
+  const opens = useRef({ onPreview, onPreviewArena, onPreviewItem, onBought });
+  opens.current = { onPreview, onPreviewArena, onPreviewItem, onBought };
+  // The money shelf's, the same way.
+  const bought = useCallback(() => opens.current.onBought?.(), []);
+  const previewItem = useCallback((target: PreviewTarget) => opens.current.onPreviewItem(target), []);
+  const goldLayout = useCallback((y: number, height: number) => {
+    gold.current = { y, height };
+  }, []);
+  const openDie = useCallback((id: string) => {
+    playClick();
+    opens.current.onPreview(id);
+  }, []);
+  const openArena = useCallback((id: (typeof STORE_ARENAS)[number]) => {
+    playClick();
+    opens.current.onPreviewArena(id);
+  }, []);
   // Restore before the first paint the player sees.
   useEffect(() => {
     const y = recallScroll('store');
@@ -226,41 +251,16 @@ export function StoreScreen({
         */}
 
         <View style={styles.grid}>
-          {STORE_SKINS.map((skin) => {
-            const bought = wallet.owned.includes(skin.id);
-            const affordable = wallet.coins >= skin.price!;
-            return (
-              <Pressable
-                key={skin.id}
-                // Owned dice are still tappable now: the preview is where
-                // you put them on, so a card you cannot open is a dead end.
-                onPress={() => {
-                  playClick();
-                  onPreview(skin.id);
-                }}
-                style={[
-                  styles.card,
-                  { width: cardWidth },
-                  bought && styles.cardOwned,
-                  !bought && !affordable && styles.cardLocked,
-                ]}
-              >
-                <DiceSwatch skin={skin} size={58} />
-                <Text style={styles.cardName}>{skin.name}</Text>
-                {bought ? (
-                  <Text style={styles.ownedTag}>OWNED</Text>
-                ) : (
-                  <CoinLabel
-                    size={13}
-                    style={[styles.priceText, !affordable && styles.priceShort]}
-                    containerStyle={styles.priceRow}
-                  >
-                    {skin.price}
-                  </CoinLabel>
-                )}
-              </Pressable>
-            );
-          })}
+          {STORE_SKINS.map((skin) => (
+            <StoreDieCard
+              key={skin.id}
+              skin={skin}
+              bought={wallet.owned.includes(skin.id)}
+              affordable={wallet.coins >= skin.price!}
+              width={cardWidth}
+              onOpen={openDie}
+            />
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>BATTLEFIELDS</Text>
@@ -270,44 +270,16 @@ export function StoreScreen({
           exactly the same, only the view changes.
         </Text>
         <View style={styles.grid}>
-          {STORE_ARENAS.map((id) => {
-            const arena = ARENAS[id];
-            const bought = wallet.owned.includes(arenaKey(id));
-            const affordable = wallet.coins >= ARENA_PRICES[id]!;
-            return (
-              <Pressable
-                key={id}
-                onPress={() => {
-                  playClick();
-                  onPreviewArena(id);
-                }}
-                style={[
-                  styles.card,
-                  { width: cardWidth },
-                  bought && styles.cardOwned,
-                  !bought && !affordable && styles.cardLocked,
-                ]}
-              >
-                <Image
-                  source={ARENA_ART[id]}
-                  style={[styles.arenaArt, { backgroundColor: arena.skyColor }]}
-                  accessibilityIgnoresInvertColors
-                />
-                <Text style={styles.cardName}>{arena.name}</Text>
-                {bought ? (
-                  <Text style={styles.ownedTag}>OWNED</Text>
-                ) : (
-                  <CoinLabel
-                    size={13}
-                    style={[styles.priceText, !affordable && styles.priceShort]}
-                    containerStyle={styles.priceRow}
-                  >
-                    {ARENA_PRICES[id]}
-                  </CoinLabel>
-                )}
-              </Pressable>
-            );
-          })}
+          {STORE_ARENAS.map((id) => (
+            <StoreArenaCard
+              key={id}
+              id={id}
+              bought={wallet.owned.includes(arenaKey(id))}
+              affordable={wallet.coins >= ARENA_PRICES[id]!}
+              width={cardWidth}
+              onOpen={openArena}
+            />
+          ))}
         </View>
 
         <Text style={styles.sectionTitle}>WITH REAL MONEY</Text>
@@ -316,14 +288,12 @@ export function StoreScreen({
             shelfY.current = e.nativeEvent.layout.y;
           }}
         >
-          <MoneyShelf
-            onBought={onBought}
+          <QuietShelf
+            onBought={bought}
             familyPreview={familyPreview}
-            onGoldLayout={(y, height) => {
-              gold.current = { y, height };
-            }}
+            onGoldLayout={goldLayout}
             goldGlow={goldGlow}
-            onPreview={onPreviewItem}
+            onPreview={previewItem}
           />
         </View>
       </ScrollView>
@@ -339,6 +309,102 @@ export function StoreScreen({
     </View>
   );
 }
+
+/**
+ * The money shelf, redrawn only when what it is given changes. It hears
+ * about purchases itself (onPurchasesChanged), so nothing it shows waits
+ * on the screen above.
+ */
+const QuietShelf = memo(MoneyShelf);
+
+/** A die on the shelf. Redrawn only when what it shows changes. */
+const StoreDieCard = memo(function StoreDieCard({
+  skin,
+  bought,
+  affordable,
+  width,
+  onOpen,
+}: {
+  skin: DiceSkin;
+  bought: boolean;
+  affordable: boolean;
+  width: number;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <Pressable
+      // Owned dice are still tappable now: the preview is where
+      // you put them on, so a card you cannot open is a dead end.
+      onPress={() => onOpen(skin.id)}
+      style={[
+        styles.card,
+        { width },
+        bought && styles.cardOwned,
+        !bought && !affordable && styles.cardLocked,
+      ]}
+    >
+      <DiceSwatch skin={skin} size={58} />
+      <Text style={styles.cardName}>{skin.name}</Text>
+      {bought ? (
+        <Text style={styles.ownedTag}>OWNED</Text>
+      ) : (
+        <CoinLabel
+          size={13}
+          style={[styles.priceText, !affordable && styles.priceShort]}
+          containerStyle={styles.priceRow}
+        >
+          {skin.price}
+        </CoinLabel>
+      )}
+    </Pressable>
+  );
+});
+
+/** A battlefield on the shelf, the same way. */
+const StoreArenaCard = memo(function StoreArenaCard({
+  id,
+  bought,
+  affordable,
+  width,
+  onOpen,
+}: {
+  id: (typeof STORE_ARENAS)[number];
+  bought: boolean;
+  affordable: boolean;
+  width: number;
+  onOpen: (id: (typeof STORE_ARENAS)[number]) => void;
+}) {
+  const arena = ARENAS[id];
+  return (
+    <Pressable
+      onPress={() => onOpen(id)}
+      style={[
+        styles.card,
+        { width },
+        bought && styles.cardOwned,
+        !bought && !affordable && styles.cardLocked,
+      ]}
+    >
+      <Image
+        source={ARENA_ART[id]}
+        style={[styles.arenaArt, { backgroundColor: arena.skyColor }]}
+        accessibilityIgnoresInvertColors
+      />
+      <Text style={styles.cardName}>{arena.name}</Text>
+      {bought ? (
+        <Text style={styles.ownedTag}>OWNED</Text>
+      ) : (
+        <CoinLabel
+          size={13}
+          style={[styles.priceText, !affordable && styles.priceShort]}
+          containerStyle={styles.priceRow}
+        >
+          {ARENA_PRICES[id]}
+        </CoinLabel>
+      )}
+    </Pressable>
+  );
+});
 
 const styles = StyleSheet.create({
   // Out of sight AND out of layout — see the `hidden` prop.

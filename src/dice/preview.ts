@@ -1,5 +1,5 @@
 import { DiceSkin } from '../game/diceSkins';
-import { neonTubesAt, patternPixels, PatternId, sheetToCube } from './patterns';
+import { neonTubesAt, PatternId, sheetToCube, shellSampler, SMOOTH_EDGES, squareJob } from './patterns';
 
 /**
  * A picture of a dice skin for the Store and the Inventory.
@@ -107,33 +107,127 @@ function encodePng(rgb: number[], width: number, height: number): string {
 }
 
 const cache = new Map<string, string>();
+/** Told whenever a picture lands in the cache, with the skin's id. */
+const listeners = new Set<(skinId: string) => void>();
 
 /**
  * The shell of this skin as a data URI, or null for a plain skin — those
  * are one flat colour and a plain View draws them without any of this.
+ *
+ * Paints it NOW if it is not cached yet. The shelves no longer call this
+ * (they read cachedShellPreviewUri and wait for the warm-up): it is for
+ * the tests and the tools, which want the picture whatever it costs.
  */
 export function shellPreviewUri(skin: DiceSkin): string | null {
-  // Only a PLAIN skin has no picture. A missing `ink` used to stand in
-  // for that, which silently gave every colour-painted skin a blank card
-  // the moment one arrived without a dummy ink to satisfy the check.
   if (skin.pattern === 'plain') return null;
   const hit = cache.get(skin.id);
   if (hit) return hit;
+  const job = shelfPictureJob(skin);
+  while (job && !job.step());
+  return cache.get(skin.id) ?? null;
+}
 
-  const rgb = patternPixels(
-    skin.pattern as Exclude<PatternId, 'plain'>,
-    skin.body,
-    // A colour painter ignores this; a mask painter cannot do without it.
-    skin.ink ?? skin.body,
+/**
+ * The picture if it is already painted, and null otherwise — never paints.
+ *
+ * David, 3 Nov 2026: "The game runs very slow when you open it ... it all
+ * has to be lightning fast." A shelf card used to paint its own picture
+ * in the frame it was drawn, so a Store built before the warm-up had
+ * finished paid for every missing picture at once. A card now shows its
+ * shell colour until the picture is ready (DiceSwatch), which the
+ * warm-up paints a few texels at a time.
+ */
+export function cachedShellPreviewUri(skin: DiceSkin): string | null {
+  return skin.pattern === 'plain' ? null : cache.get(skin.id) ?? null;
+}
+
+/**
+ * Every painted picture, by skin id — for shelfStore.ts to keep between
+ * launches.
+ */
+export function paintedShelfPictures(): Record<string, string> {
+  return Object.fromEntries(cache);
+}
+
+/**
+ * Take a picture kept from an earlier launch (shelfStore.ts). Only for a
+ * skin with nothing painted yet; the listeners hear it like a painting.
+ */
+export function adoptShelfPicture(skinId: string, uri: string): void {
+  if (cache.has(skinId)) return;
+  cache.set(skinId, uri);
+  for (const listener of listeners) {
+    try {
+      listener(skinId);
+    } catch {
+      // As above.
+    }
+  }
+}
+
+/** Test-only: forget every painted picture, so a suite can paint from cold. */
+export function clearShelfPicturesForTests(): void {
+  cache.clear();
+}
+
+/** Call `listener` with a skin's id each time its picture is painted. */
+export function onShelfPicture(listener: (skinId: string) => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/**
+ * The shelf picture of `skin`, as a job a few texels at a time, or null
+ * if there is nothing to paint (plain, or already cached).
+ *
+ * The same painting shellPreviewUri always did — the front square, the
+ * effect painted over it, then the PNG — cut into steps so the warm-up
+ * and the loading screen can stop between any two (slicedPaint.ts).
+ */
+export function shelfPictureJob(skin: DiceSkin): { step(): boolean } | null {
+  // Only a PLAIN skin has no picture. A missing `ink` used to stand in
+  // for that, which silently gave every colour-painted skin a blank card
+  // the moment one arrived without a dummy ink to satisfy the check.
+  if (skin.pattern === 'plain' || cache.has(skin.id)) return null;
+  const square = squareJob(
+    shellSampler(
+      skin.pattern as Exclude<PatternId, 'plain'>,
+      skin.body,
+      // A colour painter ignores this; a mask painter cannot do without it.
+      skin.ink ?? skin.body,
+    ),
+    SMOOTH_EDGES.has(skin.pattern),
   );
-  if (skin.effect === 'fire') paintFlames(rgb);
-  if (skin.effect === 'ice') paintIce(rgb);
-  if (skin.effect === 'sun') paintSun(rgb);
-  if (skin.effect === 'moon') paintMoon(rgb);
-  if (skin.effect === 'neon') paintNeon(rgb);
-  const uri = encodePng(rgb, SIZE, SIZE);
-  cache.set(skin.id, uri);
-  return uri;
+  // The square, then the effect painted over it, then the PNG: three
+  // steps, since the effect alone is 10-20ms on a desktop.
+  let rgb: number[] | null = null;
+  return {
+    step() {
+      if (cache.has(skin.id)) return true;
+      if (!rgb) {
+        if (!square.step()) return false;
+        rgb = square.pixels();
+        if (skin.effect !== undefined) return false;
+      } else {
+        if (skin.effect === 'fire') paintFlames(rgb);
+        if (skin.effect === 'ice') paintIce(rgb);
+        if (skin.effect === 'sun') paintSun(rgb);
+        if (skin.effect === 'moon') paintMoon(rgb);
+        if (skin.effect === 'neon') paintNeon(rgb);
+      }
+      cache.set(skin.id, encodePng(rgb, SIZE, SIZE));
+      for (const listener of listeners) {
+        try {
+          listener(skin.id);
+        } catch {
+          // One card failing to redraw must not stop the rest hearing.
+        }
+      }
+      return true;
+    },
+  };
 }
 
 /*

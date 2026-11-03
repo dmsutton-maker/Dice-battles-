@@ -247,7 +247,9 @@ suite('neon dice · the light runs round the tubes', () => {
     assert(/pattern === 'neon'\) return glowingNeonMaterials\(/.test(mesh), 'the Neon die does not glow');
     assert(/pattern === 'neon' \? NEON_TICK/.test(mesh), 'nothing moves the light');
     const warm = readFileSync(join(root, 'src/dice/warmPreviews.ts'), 'utf8');
-    assert(/neonGlowTexture\(face\)/.test(warm), 'the glow map is not warmed with the rest');
+    // neonGlowJob since 3 Nov 2026: the same map, painted a row per step
+    // (David's family: "it all has to be lightning fast").
+    assert(/neonGlowJob\b/.test(warm), 'the glow map is not warmed with the rest');
     const preview = readFileSync(join(root, 'src/dice/preview.ts'), 'utf8');
     assert(/paintNeon\(rgb\)/.test(preview), 'the shop card does not show the light');
     assert(!/from '\.\/neonGlow'/.test(preview), 'the shop card imports the GPU side');

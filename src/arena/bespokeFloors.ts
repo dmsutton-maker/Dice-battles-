@@ -88,10 +88,33 @@ function wallFoot(wx: number, wz: number): number {
 }
 
 const caches = new Map<string, Painting>();
-function cached(key: string, paint: () => Painting): Painting {
+
+/**
+ * A painter written a row at a time: it yields after every row and
+ * returns the finished painting.
+ *
+ * David, 3 Nov 2026: "The game runs very slow when you open it ... it all
+ * has to be lightning fast." These floors are 70-200ms of painting each
+ * on a desktop, several times that on a phone, and they were painted in
+ * one block — at the board's first mount, or by the warm-up on the menu.
+ * Written as rows, the same painter runs to the end on the spot (cached)
+ * or a row per step for the loading screen and the warm-up
+ * (bespokeFloorJob), and both paint exactly the same picture.
+ */
+type PaintRows = Generator<void, Painting, unknown>;
+
+/** Run a row painter to the end. */
+function finishRows<T>(rows: Generator<void, T, unknown>): T {
+  for (;;) {
+    const next = rows.next();
+    if (next.done) return next.value;
+  }
+}
+
+function cached(key: string, paint: () => PaintRows): Painting {
   const found = caches.get(key);
   if (found) return found;
-  const p = paint();
+  const p = finishRows(paint());
   caches.set(key, p);
   return p;
 }
@@ -138,75 +161,78 @@ function courtyardLayout(): { z0: number; z1: number; edges: number[] }[] {
 }
 
 export function courtyardFloorPixels(): Painting {
-  return cached('courtyard', () => {
-    const p = blank(FLOOR_TX, FLOOR_TY);
-    const rows = courtyardLayout();
-    const [lx, lz] = DAY_LIGHT;
-    const c: Rgb = [0, 0, 0];
-    for (let y = 0; y < FLOOR_TY; y++) {
-      const wz = worldZ(y);
-      let ri = 0;
-      while (ri < rows.length - 1 && wz >= rows[ri].z1) ri++;
-      const row = rows[ri];
-      for (let x = 0; x < FLOOR_TX; x++) {
-        const wx = worldX(x);
-        let si = 0;
-        while (si < row.edges.length - 2 && wx >= row.edges[si + 1]) si++;
-        const x0 = row.edges[si];
-        const x1 = row.edges[si + 1];
-        // Nearest edge of this slab, and the way that edge faces.
-        const dl = wx - x0;
-        const dr = x1 - wx;
-        const dn = row.z1 - wz; // toward +z, the near side
-        const df = wz - row.z0;
-        let d = dl;
-        let nx = -1;
-        let nz = 0;
-        if (dr < d) { d = dr; nx = 1; nz = 0; }
-        if (dn < d) { d = dn; nx = 0; nz = 1; }
-        if (df < d) { d = df; nx = 0; nz = -1; }
-        // Worn, chipped arrises rather than sawn ones.
-        d -= (noise(wx * 11, wz * 11) - 0.5) * 0.045;
+  return cached('courtyard', courtyardRows);
+}
 
-        const id = ri * 31 + si;
-        const base = SLAB_STONES[Math.floor(hash(id, 2.9) * SLAB_STONES.length)];
-        const tone = 0.93 + hash(id, 5.3) * 0.12;
-        const wear = fbm(wx * 1.6 + id, wz * 1.6);
-        c[0] = base[0] * tone;
-        c[1] = base[1] * tone;
-        c[2] = base[2] * tone;
-        // Foot-worn: the middle of a slab polished a shade paler.
-        const centre = Math.min(dl, dr, dn, df);
-        const polish = clamp01(centre * 3) * 0.06 * wear;
-        let shade = 1 + polish + (wear - 0.5) * 0.1;
+function* courtyardRows(): PaintRows {
+  const p = blank(FLOOR_TX, FLOOR_TY);
+  const rows = courtyardLayout();
+  const [lx, lz] = DAY_LIGHT;
+  const c: Rgb = [0, 0, 0];
+  for (let y = 0; y < FLOOR_TY; y++) {
+    const wz = worldZ(y);
+    let ri = 0;
+    while (ri < rows.length - 1 && wz >= rows[ri].z1) ri++;
+    const row = rows[ri];
+    for (let x = 0; x < FLOOR_TX; x++) {
+      const wx = worldX(x);
+      let si = 0;
+      while (si < row.edges.length - 2 && wx >= row.edges[si + 1]) si++;
+      const x0 = row.edges[si];
+      const x1 = row.edges[si + 1];
+      // Nearest edge of this slab, and the way that edge faces.
+      const dl = wx - x0;
+      const dr = x1 - wx;
+      const dn = row.z1 - wz; // toward +z, the near side
+      const df = wz - row.z0;
+      let d = dl;
+      let nx = -1;
+      let nz = 0;
+      if (dr < d) { d = dr; nx = 1; nz = 0; }
+      if (dn < d) { d = dn; nx = 0; nz = 1; }
+      if (df < d) { d = df; nx = 0; nz = -1; }
+      // Worn, chipped arrises rather than sawn ones.
+      d -= (noise(wx * 11, wz * 11) - 0.5) * 0.045;
 
-        const GROUT = 0.026;
-        const BEVEL = 0.095;
-        if (d < GROUT) {
-          c[0] = SLAB_GROUT[0];
-          c[1] = SLAB_GROUT[1];
-          c[2] = SLAB_GROUT[2];
-          // Moss in the joints, where the feet do not go.
-          mixInto(c, SLAB_MOSS, clamp01((fbm(wx * 0.9, wz * 0.9) - 0.52) * 3) * 0.7);
-          shade = 0.92 + hash(x, y) * 0.12;
-        } else if (d < BEVEL) {
-          // The bevel: edges facing the light catch it, edges facing away
-          // drop into shade. This is the relief.
-          const t = 1 - (d - GROUT) / (BEVEL - GROUT);
-          shade *= 1 + (nx * lx + nz * lz) * 0.5 * t - 0.08 * t;
-        }
-        // No cracks. There used to be a hairline crack across one slab in
-        // four; David, 18 Oct 2026: "get rid of the cracks in the bricks in
-        // castle courtyard."
-        const grain = 0.965 + hash(x * 1.31, y * 0.77) * 0.07;
-        // Contact shade at the foot of the walls, so they stand ON the floor.
-        shade *= wallFoot(wx, wz);
-        shade *= grain;
-        put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
+      const id = ri * 31 + si;
+      const base = SLAB_STONES[Math.floor(hash(id, 2.9) * SLAB_STONES.length)];
+      const tone = 0.93 + hash(id, 5.3) * 0.12;
+      const wear = fbm(wx * 1.6 + id, wz * 1.6);
+      c[0] = base[0] * tone;
+      c[1] = base[1] * tone;
+      c[2] = base[2] * tone;
+      // Foot-worn: the middle of a slab polished a shade paler.
+      const centre = Math.min(dl, dr, dn, df);
+      const polish = clamp01(centre * 3) * 0.06 * wear;
+      let shade = 1 + polish + (wear - 0.5) * 0.1;
+
+      const GROUT = 0.026;
+      const BEVEL = 0.095;
+      if (d < GROUT) {
+        c[0] = SLAB_GROUT[0];
+        c[1] = SLAB_GROUT[1];
+        c[2] = SLAB_GROUT[2];
+        // Moss in the joints, where the feet do not go.
+        mixInto(c, SLAB_MOSS, clamp01((fbm(wx * 0.9, wz * 0.9) - 0.52) * 3) * 0.7);
+        shade = 0.92 + hash(x, y) * 0.12;
+      } else if (d < BEVEL) {
+        // The bevel: edges facing the light catch it, edges facing away
+        // drop into shade. This is the relief.
+        const t = 1 - (d - GROUT) / (BEVEL - GROUT);
+        shade *= 1 + (nx * lx + nz * lz) * 0.5 * t - 0.08 * t;
       }
+      // No cracks. There used to be a hairline crack across one slab in
+      // four; David, 18 Oct 2026: "get rid of the cracks in the bricks in
+      // castle courtyard."
+      const grain = 0.965 + hash(x * 1.31, y * 0.77) * 0.07;
+      // Contact shade at the foot of the walls, so they stand ON the floor.
+      shade *= wallFoot(wx, wz);
+      shade *= grain;
+      put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
     }
-    return p;
-  });
+    yield;
+  }
+  return p;
 }
 
 export function createCourtyardFloorTexture(): THREE.DataTexture {
@@ -289,120 +315,123 @@ function duskShadow(
 }
 
 export function sunsetFloorPixels(): Painting {
-  return cached('sunset', () => {
-    const p = blank(FLOOR_TX, FLOOR_TY);
-    const [lx, lz] = DUSK_LIGHT;
-    const CELL = 0.3;
-    const pools = brazierSpots().map((b) => {
-      // The pool lies on the floor just inside the wall the brazier is on.
-      const x = (b.side === 'left' ? -1 : 1) * (innerWidth / 2 - 0.55);
-      return [x, b.along] as [number, number];
-    });
-    const leftHeight = profile('left');
-    const farHeight = profile('far');
-    // One stone centre per cell of a jittered grid, worked out once.
-    const gx0 = Math.floor(-FLOOR_W / 2 / CELL) - 2;
-    const gz0 = Math.floor(-FLOOR_D / 2 / CELL) - 2;
-    const gw = Math.ceil(FLOOR_W / CELL) + 5;
-    const gh = Math.ceil(FLOOR_D / CELL) + 5;
-    const ptX = new Float32Array(gw * gh);
-    const ptZ = new Float32Array(gw * gh);
-    for (let j = 0; j < gh; j++) {
-      for (let i = 0; i < gw; i++) {
-        const ix = gx0 + i;
-        const iz = gz0 + j;
-        ptX[j * gw + i] = (ix + 0.5 + (hash(ix, iz) - 0.5) * 0.7) * CELL;
-        ptZ[j * gw + i] = (iz + 0.5 + (hash(iz + 3.3, ix) - 0.5) * 0.7) * CELL;
-      }
+  return cached('sunset', sunsetRows);
+}
+
+function* sunsetRows(): PaintRows {
+  const p = blank(FLOOR_TX, FLOOR_TY);
+  const [lx, lz] = DUSK_LIGHT;
+  const CELL = 0.3;
+  const pools = brazierSpots().map((b) => {
+    // The pool lies on the floor just inside the wall the brazier is on.
+    const x = (b.side === 'left' ? -1 : 1) * (innerWidth / 2 - 0.55);
+    return [x, b.along] as [number, number];
+  });
+  const leftHeight = profile('left');
+  const farHeight = profile('far');
+  // One stone centre per cell of a jittered grid, worked out once.
+  const gx0 = Math.floor(-FLOOR_W / 2 / CELL) - 2;
+  const gz0 = Math.floor(-FLOOR_D / 2 / CELL) - 2;
+  const gw = Math.ceil(FLOOR_W / CELL) + 5;
+  const gh = Math.ceil(FLOOR_D / CELL) + 5;
+  const ptX = new Float32Array(gw * gh);
+  const ptZ = new Float32Array(gw * gh);
+  for (let j = 0; j < gh; j++) {
+    for (let i = 0; i < gw; i++) {
+      const ix = gx0 + i;
+      const iz = gz0 + j;
+      ptX[j * gw + i] = (ix + 0.5 + (hash(ix, iz) - 0.5) * 0.7) * CELL;
+      ptZ[j * gw + i] = (iz + 0.5 + (hash(iz + 3.3, ix) - 0.5) * 0.7) * CELL;
     }
-    const c: Rgb = [0, 0, 0];
-    for (let y = 0; y < FLOOR_TY; y++) {
-      const wz = worldZ(y);
-      for (let x = 0; x < FLOOR_TX; x++) {
-        const wx = worldX(x);
-        // Cobbles: the nearest stone centre, and the second nearest, whose
-        // difference is the joint between them.
-        const gi = Math.floor(wx / CELL) - gx0;
-        const gj = Math.floor(wz / CELL) - gz0;
-        let f1 = 9;
-        let f2 = 9;
-        let cx = 0;
-        let cz = 0;
-        let id = 0;
-        for (let oj = -1; oj <= 1; oj++) {
-          for (let oi = -1; oi <= 1; oi++) {
-            const k = (gj + oj) * gw + gi + oi;
-            const dx = wx - ptX[k];
-            const dz = (wz - ptZ[k]) * 1.12;
-            const dd = Math.sqrt(dx * dx + dz * dz);
-            if (dd < f1) {
-              f2 = f1;
-              f1 = dd;
-              cx = ptX[k];
-              cz = ptZ[k];
-              id = k;
-            } else if (dd < f2) {
-              f2 = dd;
-            }
+  }
+  const c: Rgb = [0, 0, 0];
+  for (let y = 0; y < FLOOR_TY; y++) {
+    const wz = worldZ(y);
+    for (let x = 0; x < FLOOR_TX; x++) {
+      const wx = worldX(x);
+      // Cobbles: the nearest stone centre, and the second nearest, whose
+      // difference is the joint between them.
+      const gi = Math.floor(wx / CELL) - gx0;
+      const gj = Math.floor(wz / CELL) - gz0;
+      let f1 = 9;
+      let f2 = 9;
+      let cx = 0;
+      let cz = 0;
+      let id = 0;
+      for (let oj = -1; oj <= 1; oj++) {
+        for (let oi = -1; oi <= 1; oi++) {
+          const k = (gj + oj) * gw + gi + oi;
+          const dx = wx - ptX[k];
+          const dz = (wz - ptZ[k]) * 1.12;
+          const dd = Math.sqrt(dx * dx + dz * dz);
+          if (dd < f1) {
+            f2 = f1;
+            f1 = dd;
+            cx = ptX[k];
+            cz = ptZ[k];
+            id = k;
+          } else if (dd < f2) {
+            f2 = dd;
           }
         }
-        const edge = f2 - f1;
-        const base = COBBLES[Math.floor(hash(id, 1.1) * COBBLES.length)];
-        const tone = 0.92 + hash(id, 6.6) * 0.14;
-        c[0] = base[0] * tone;
-        c[1] = base[1] * tone;
-        c[2] = base[2] * tone;
-        let shade = 1;
-        // Where cobbles have been lost, packed earth shows through.
-        const lost = clamp01((fbm(wx * 0.7 + 4, wz * 0.7) - 0.64) * 6);
-        if (edge < 0.035) {
-          c[0] = COBBLE_JOINT[0];
-          c[1] = COBBLE_JOINT[1];
-          c[2] = COBBLE_JOINT[2];
-          mixInto(c, COBBLE_WEED, clamp01((fbm(wx * 1.4, wz * 1.4 + 9) - 0.5) * 3));
-          shade = 0.9 + hash(x, y) * 0.15;
-        } else {
-          // A domed stone: lit on the sun's side, falling off at the rim.
-          const rim = clamp01(1 - edge / 0.13);
-          const dx = wx - cx;
-          const dz = wz - cz;
-          const dl = Math.sqrt(dx * dx + dz * dz) || 1;
-          shade = 1 + ((dx / dl) * lx + (dz / dl) * lz) * 0.3 * rim - 0.1 * rim * rim;
-        }
-        if (lost > 0) {
-          const e: Rgb = [COBBLE_EARTH[0], COBBLE_EARTH[1], COBBLE_EARTH[2]];
-          mixInto(c, e, lost * 0.85);
-          shade = shade + (1 - shade) * lost * 0.8;
-        }
-        shade *= (0.96 + hash(x * 0.71, y * 1.33) * 0.08) * wallFoot(wx, wz);
-        let r = c[0] * shade;
-        let g = c[1] * shade;
-        let b = c[2] * shade;
-        // Long shadows from the ruin, cool where the sun cannot reach.
-        const s = duskShadow(wx, wz, leftHeight, farHeight);
-        if (s > 0) {
-          const k = 1 - s * 0.22;
-          r *= k * (1 - s * (1 - SHADE_TINT[0]));
-          g *= k * (1 - s * (1 - SHADE_TINT[1]));
-          b *= k * (1 - s * (1 - SHADE_TINT[2]));
-        }
-        // Lantern pools under the braziers: warm, soft, brightest at the foot.
-        let pool = 0;
-        for (const [px, pz] of pools) {
-          const d2 = (wx - px) * (wx - px) + (wz - pz) * (wz - pz);
-          pool += Math.exp(-d2 / 0.9);
-        }
-        if (pool > 0.01) {
-          const k = Math.min(1, pool) * 0.5;
-          r = r * (1 + k * 0.5) + POOL[0] * k * 0.22;
-          g = g * (1 + k * 0.25) + POOL[1] * k * 0.12;
-          b = b * (1 - k * 0.1) + POOL[2] * k * 0.02;
-        }
-        put(p, x, y, r, g, b);
       }
+      const edge = f2 - f1;
+      const base = COBBLES[Math.floor(hash(id, 1.1) * COBBLES.length)];
+      const tone = 0.92 + hash(id, 6.6) * 0.14;
+      c[0] = base[0] * tone;
+      c[1] = base[1] * tone;
+      c[2] = base[2] * tone;
+      let shade = 1;
+      // Where cobbles have been lost, packed earth shows through.
+      const lost = clamp01((fbm(wx * 0.7 + 4, wz * 0.7) - 0.64) * 6);
+      if (edge < 0.035) {
+        c[0] = COBBLE_JOINT[0];
+        c[1] = COBBLE_JOINT[1];
+        c[2] = COBBLE_JOINT[2];
+        mixInto(c, COBBLE_WEED, clamp01((fbm(wx * 1.4, wz * 1.4 + 9) - 0.5) * 3));
+        shade = 0.9 + hash(x, y) * 0.15;
+      } else {
+        // A domed stone: lit on the sun's side, falling off at the rim.
+        const rim = clamp01(1 - edge / 0.13);
+        const dx = wx - cx;
+        const dz = wz - cz;
+        const dl = Math.sqrt(dx * dx + dz * dz) || 1;
+        shade = 1 + ((dx / dl) * lx + (dz / dl) * lz) * 0.3 * rim - 0.1 * rim * rim;
+      }
+      if (lost > 0) {
+        const e: Rgb = [COBBLE_EARTH[0], COBBLE_EARTH[1], COBBLE_EARTH[2]];
+        mixInto(c, e, lost * 0.85);
+        shade = shade + (1 - shade) * lost * 0.8;
+      }
+      shade *= (0.96 + hash(x * 0.71, y * 1.33) * 0.08) * wallFoot(wx, wz);
+      let r = c[0] * shade;
+      let g = c[1] * shade;
+      let b = c[2] * shade;
+      // Long shadows from the ruin, cool where the sun cannot reach.
+      const s = duskShadow(wx, wz, leftHeight, farHeight);
+      if (s > 0) {
+        const k = 1 - s * 0.22;
+        r *= k * (1 - s * (1 - SHADE_TINT[0]));
+        g *= k * (1 - s * (1 - SHADE_TINT[1]));
+        b *= k * (1 - s * (1 - SHADE_TINT[2]));
+      }
+      // Lantern pools under the braziers: warm, soft, brightest at the foot.
+      let pool = 0;
+      for (const [px, pz] of pools) {
+        const d2 = (wx - px) * (wx - px) + (wz - pz) * (wz - pz);
+        pool += Math.exp(-d2 / 0.9);
+      }
+      if (pool > 0.01) {
+        const k = Math.min(1, pool) * 0.5;
+        r = r * (1 + k * 0.5) + POOL[0] * k * 0.22;
+        g = g * (1 + k * 0.25) + POOL[1] * k * 0.12;
+        b = b * (1 - k * 0.1) + POOL[2] * k * 0.02;
+      }
+      put(p, x, y, r, g, b);
     }
-    return p;
-  });
+    yield;
+  }
+  return p;
 }
 
 export function createSunsetFloorTexture(): THREE.DataTexture {
@@ -476,170 +505,173 @@ function jungleRoots(): { pts: [number, number][]; w0: number; w1: number }[] {
 }
 
 export function jungleTrayPixels(): Painting {
-  return cached('jungle-tray', () => {
-    const W = FLOOR_TX;
-    const H = FLOOR_TY;
-    const p = blank(W, H);
-    const [lx, lz] = DAY_LIGHT;
-    const texelX = FLOOR_W / W;
-    const texelZ = FLOOR_D / H;
+  return cached('jungle-tray', jungleTrayRows);
+}
 
-    // Roots are stamped into a height field first, then shaded from its
-    // slope — so a root is rounded, lit on one flank and shadowed on the
-    // other, and darkens the ground beside it.
-    const height = new Float32Array(W * H);
-    const nearRoot = new Float32Array(W * H);
-    for (const root of jungleRoots()) {
-      const n = root.pts.length - 1;
-      for (let s = 0; s < n; s++) {
-        const [ax, az] = root.pts[s];
-        const [bx, bz] = root.pts[s + 1];
-        const w = root.w0 + (root.w1 - root.w0) * (s / n);
-        const reach = w * 2.4;
-        const minX = Math.max(0, Math.floor((Math.min(ax, bx) - reach + FLOOR_W / 2) / texelX));
-        const maxX = Math.min(W - 1, Math.ceil((Math.max(ax, bx) + reach + FLOOR_W / 2) / texelX));
-        const minY = Math.max(0, Math.floor((FLOOR_D / 2 - Math.max(az, bz) - reach) / texelZ));
-        const maxY = Math.min(H - 1, Math.ceil((FLOOR_D / 2 - Math.min(az, bz) + reach) / texelZ));
-        const ex = bx - ax;
-        const ez = bz - az;
-        const len2 = ex * ex + ez * ez || 1;
-        for (let y = minY; y <= maxY; y++) {
-          const wz = worldZ(y);
-          for (let x = minX; x <= maxX; x++) {
-            const wx = worldX(x);
-            const t = clamp01(((wx - ax) * ex + (wz - az) * ez) / len2);
-            const dx = wx - (ax + ex * t);
-            const dz = wz - (az + ez * t);
-            const d = Math.sqrt(dx * dx + dz * dz);
-            const i = y * W + x;
-            if (d < w) height[i] = Math.max(height[i], Math.sqrt(1 - (d / w) * (d / w)) * w);
-            else if (d < reach) nearRoot[i] = Math.max(nearRoot[i], 1 - (d - w) / (reach - w));
+function* jungleTrayRows(): PaintRows {
+  const W = FLOOR_TX;
+  const H = FLOOR_TY;
+  const p = blank(W, H);
+  const [lx, lz] = DAY_LIGHT;
+  const texelX = FLOOR_W / W;
+  const texelZ = FLOOR_D / H;
+
+  // Roots are stamped into a height field first, then shaded from its
+  // slope — so a root is rounded, lit on one flank and shadowed on the
+  // other, and darkens the ground beside it.
+  const height = new Float32Array(W * H);
+  const nearRoot = new Float32Array(W * H);
+  for (const root of jungleRoots()) {
+    const n = root.pts.length - 1;
+    for (let s = 0; s < n; s++) {
+      const [ax, az] = root.pts[s];
+      const [bx, bz] = root.pts[s + 1];
+      const w = root.w0 + (root.w1 - root.w0) * (s / n);
+      const reach = w * 2.4;
+      const minX = Math.max(0, Math.floor((Math.min(ax, bx) - reach + FLOOR_W / 2) / texelX));
+      const maxX = Math.min(W - 1, Math.ceil((Math.max(ax, bx) + reach + FLOOR_W / 2) / texelX));
+      const minY = Math.max(0, Math.floor((FLOOR_D / 2 - Math.max(az, bz) - reach) / texelZ));
+      const maxY = Math.min(H - 1, Math.ceil((FLOOR_D / 2 - Math.min(az, bz) + reach) / texelZ));
+      const ex = bx - ax;
+      const ez = bz - az;
+      const len2 = ex * ex + ez * ez || 1;
+      for (let y = minY; y <= maxY; y++) {
+        const wz = worldZ(y);
+        for (let x = minX; x <= maxX; x++) {
+          const wx = worldX(x);
+          const t = clamp01(((wx - ax) * ex + (wz - az) * ez) / len2);
+          const dx = wx - (ax + ex * t);
+          const dz = wz - (az + ez * t);
+          const d = Math.sqrt(dx * dx + dz * dz);
+          const i = y * W + x;
+          if (d < w) height[i] = Math.max(height[i], Math.sqrt(1 - (d / w) * (d / w)) * w);
+          else if (d < reach) nearRoot[i] = Math.max(nearRoot[i], 1 - (d - w) / (reach - w));
+        }
+      }
+    }
+  }
+
+  // The litter, decided once per cell: whether a leaf fell there, where,
+  // at what angle, how big and what colour. Thicker toward the walls,
+  // where it drifts.
+  const LEAF_CELL = 0.2;
+  const lx0 = Math.floor(-FLOOR_W / 2 / LEAF_CELL) - 2;
+  const lz0 = Math.floor(-FLOOR_D / 2 / LEAF_CELL) - 2;
+  const lw = Math.ceil(FLOOR_W / LEAF_CELL) + 5;
+  const lh = Math.ceil(FLOOR_D / LEAF_CELL) + 5;
+  const leafOn = new Uint8Array(lw * lh);
+  const leafX = new Float32Array(lw * lh);
+  const leafZ = new Float32Array(lw * lh);
+  const leafCos = new Float32Array(lw * lh);
+  const leafSin = new Float32Array(lw * lh);
+  const leafLen = new Float32Array(lw * lh);
+  const leafWide = new Float32Array(lw * lh);
+  const leafTone = new Float32Array(lw * lh);
+  const leafColor = new Uint8Array(lw * lh);
+  for (let j = 0; j < lh; j++) {
+    for (let i = 0; i < lw; i++) {
+      const ix = lx0 + i;
+      const iz = lz0 + j;
+      const k = j * lw + i;
+      const px = (ix + 0.2 + hash(ix, iz + 5) * 0.6) * LEAF_CELL;
+      const pz = (iz + 0.2 + hash(iz, ix + 8) * 0.6) * LEAF_CELL;
+      const wall = Math.min(innerWidth / 2 - Math.abs(px), innerDepth / 2 - Math.abs(pz));
+      const drift = 0.13 + clamp01((0.9 - wall) * 0.5);
+      if (hash(ix * 1.3, iz * 2.7) > drift) continue;
+      const a = hash(ix + 2, iz) * Math.PI;
+      const len = 0.06 + hash(ix, iz * 3) * 0.05;
+      leafOn[k] = 1;
+      leafX[k] = px;
+      leafZ[k] = pz;
+      leafCos[k] = Math.cos(a);
+      leafSin[k] = Math.sin(a);
+      leafLen[k] = len;
+      leafWide[k] = len * (0.38 + hash(iz, ix * 3) * 0.16);
+      leafTone[k] = 0.95 + hash(ix, iz * 7) * 0.12;
+      leafColor[k] = Math.floor(hash(ix * 5.1, iz) * LEAVES.length) % LEAVES.length;
+    }
+  }
+  const sx = lx * 0.018;
+  const sz = lz * 0.018;
+
+  const c: Rgb = [0, 0, 0];
+  for (let y = 0; y < H; y++) {
+    const wz = worldZ(y);
+    for (let x = 0; x < W; x++) {
+      const wx = worldX(x);
+      const i = y * W + x;
+      // Moss, deeper in the hollows.
+      const m = fbm(wx * 1.1, wz * 1.1);
+      c[0] = MOSS[0] + (MOSS_DEEP[0] - MOSS[0]) * m;
+      c[1] = MOSS[1] + (MOSS_DEEP[1] - MOSS[1]) * m;
+      c[2] = MOSS[2] + (MOSS_DEEP[2] - MOSS[2]) * m;
+      // Earth, worn through in soft patches and at the foot of the walls.
+      const wall = Math.min(innerWidth / 2 - Math.abs(wx), innerDepth / 2 - Math.abs(wz));
+      const worn = clamp01((fbm(wx * 0.8 + 21, wz * 0.8 + 7) - 0.56) * 3.2) + clamp01((0.35 - wall) * 2) * 0.5;
+      mixInto(c, EARTH, Math.min(0.75, worn));
+      let shade = 0.94 + noise(wx * 9, wz * 9) * 0.1;
+
+      // Leaf litter: crisp single leaves, each with a midrib and a soft
+      // shadow under it on the side away from the light.
+      const gi = Math.floor(wx / LEAF_CELL) - lx0;
+      const gj = Math.floor(wz / LEAF_CELL) - lz0;
+      let leafHit = false;
+      let leafShadow = false;
+      for (let oj = -1; oj <= 1 && !leafHit; oj++) {
+        for (let oi = -1; oi <= 1; oi++) {
+          const k = (gj + oj) * lw + gi + oi;
+          if (!leafOn[k]) continue;
+          const len = leafLen[k];
+          const wide = leafWide[k];
+          const co = leafCos[k];
+          const si = leafSin[k];
+          const dx = wx - leafX[k];
+          const dz = wz - leafZ[k];
+          const u = dx * co + dz * si;
+          const v = -dx * si + dz * co;
+          if ((u * u) / (len * len) + (v * v) / (wide * wide) <= 1) {
+            const leaf = LEAVES[leafColor[k]];
+            c[0] = leaf[0];
+            c[1] = leaf[1];
+            c[2] = leaf[2];
+            shade = (Math.abs(v) < wide * 0.12 ? 0.82 : 1) * leafTone[k];
+            // Lit on the side facing the light, like everything else.
+            shade *= 1 + (v / wide) * 0.08;
+            leafHit = true;
+            break;
           }
+          const su = (dx + sx) * co + (dz + sz) * si;
+          const sv = -(dx + sx) * si + (dz + sz) * co;
+          if ((su * su) / (len * len) + (sv * sv) / (wide * wide) <= 1) leafShadow = true;
         }
       }
-    }
+      if (!leafHit && leafShadow) shade *= 0.8;
 
-    // The litter, decided once per cell: whether a leaf fell there, where,
-    // at what angle, how big and what colour. Thicker toward the walls,
-    // where it drifts.
-    const LEAF_CELL = 0.2;
-    const lx0 = Math.floor(-FLOOR_W / 2 / LEAF_CELL) - 2;
-    const lz0 = Math.floor(-FLOOR_D / 2 / LEAF_CELL) - 2;
-    const lw = Math.ceil(FLOOR_W / LEAF_CELL) + 5;
-    const lh = Math.ceil(FLOOR_D / LEAF_CELL) + 5;
-    const leafOn = new Uint8Array(lw * lh);
-    const leafX = new Float32Array(lw * lh);
-    const leafZ = new Float32Array(lw * lh);
-    const leafCos = new Float32Array(lw * lh);
-    const leafSin = new Float32Array(lw * lh);
-    const leafLen = new Float32Array(lw * lh);
-    const leafWide = new Float32Array(lw * lh);
-    const leafTone = new Float32Array(lw * lh);
-    const leafColor = new Uint8Array(lw * lh);
-    for (let j = 0; j < lh; j++) {
-      for (let i = 0; i < lw; i++) {
-        const ix = lx0 + i;
-        const iz = lz0 + j;
-        const k = j * lw + i;
-        const px = (ix + 0.2 + hash(ix, iz + 5) * 0.6) * LEAF_CELL;
-        const pz = (iz + 0.2 + hash(iz, ix + 8) * 0.6) * LEAF_CELL;
-        const wall = Math.min(innerWidth / 2 - Math.abs(px), innerDepth / 2 - Math.abs(pz));
-        const drift = 0.13 + clamp01((0.9 - wall) * 0.5);
-        if (hash(ix * 1.3, iz * 2.7) > drift) continue;
-        const a = hash(ix + 2, iz) * Math.PI;
-        const len = 0.06 + hash(ix, iz * 3) * 0.05;
-        leafOn[k] = 1;
-        leafX[k] = px;
-        leafZ[k] = pz;
-        leafCos[k] = Math.cos(a);
-        leafSin[k] = Math.sin(a);
-        leafLen[k] = len;
-        leafWide[k] = len * (0.38 + hash(iz, ix * 3) * 0.16);
-        leafTone[k] = 0.95 + hash(ix, iz * 7) * 0.12;
-        leafColor[k] = Math.floor(hash(ix * 5.1, iz) * LEAVES.length) % LEAVES.length;
+      // Roots on top of everything.
+      const hgt = height[i];
+      if (hgt > 0) {
+        const up = y > 0 ? height[i - W] : hgt;
+        const down = y < H - 1 ? height[i + W] : hgt;
+        const left = x > 0 ? height[i - 1] : hgt;
+        const right = x < W - 1 ? height[i + 1] : hgt;
+        // Slope in world x and z (rows run toward -z).
+        const gxs = (right - left) / (2 * texelX);
+        const gzs = (up - down) / (2 * texelZ);
+        const facing = -(gxs * lx + gzs * lz);
+        c[0] = ROOT[0];
+        c[1] = ROOT[1];
+        c[2] = ROOT[2];
+        mixInto(c, ROOT_LIT, clamp01(facing * 0.9 + 0.3));
+        shade = 0.9 + facing * 0.25 + noise(wx * 30, wz * 4) * 0.12;
+      } else if (nearRoot[i] > 0) {
+        shade *= 1 - nearRoot[i] * 0.3;
       }
+      shade *= 0.97 + hash(x * 1.7, y * 0.9) * 0.06;
+      put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
     }
-    const sx = lx * 0.018;
-    const sz = lz * 0.018;
-
-    const c: Rgb = [0, 0, 0];
-    for (let y = 0; y < H; y++) {
-      const wz = worldZ(y);
-      for (let x = 0; x < W; x++) {
-        const wx = worldX(x);
-        const i = y * W + x;
-        // Moss, deeper in the hollows.
-        const m = fbm(wx * 1.1, wz * 1.1);
-        c[0] = MOSS[0] + (MOSS_DEEP[0] - MOSS[0]) * m;
-        c[1] = MOSS[1] + (MOSS_DEEP[1] - MOSS[1]) * m;
-        c[2] = MOSS[2] + (MOSS_DEEP[2] - MOSS[2]) * m;
-        // Earth, worn through in soft patches and at the foot of the walls.
-        const wall = Math.min(innerWidth / 2 - Math.abs(wx), innerDepth / 2 - Math.abs(wz));
-        const worn = clamp01((fbm(wx * 0.8 + 21, wz * 0.8 + 7) - 0.56) * 3.2) + clamp01((0.35 - wall) * 2) * 0.5;
-        mixInto(c, EARTH, Math.min(0.75, worn));
-        let shade = 0.94 + noise(wx * 9, wz * 9) * 0.1;
-
-        // Leaf litter: crisp single leaves, each with a midrib and a soft
-        // shadow under it on the side away from the light.
-        const gi = Math.floor(wx / LEAF_CELL) - lx0;
-        const gj = Math.floor(wz / LEAF_CELL) - lz0;
-        let leafHit = false;
-        let leafShadow = false;
-        for (let oj = -1; oj <= 1 && !leafHit; oj++) {
-          for (let oi = -1; oi <= 1; oi++) {
-            const k = (gj + oj) * lw + gi + oi;
-            if (!leafOn[k]) continue;
-            const len = leafLen[k];
-            const wide = leafWide[k];
-            const co = leafCos[k];
-            const si = leafSin[k];
-            const dx = wx - leafX[k];
-            const dz = wz - leafZ[k];
-            const u = dx * co + dz * si;
-            const v = -dx * si + dz * co;
-            if ((u * u) / (len * len) + (v * v) / (wide * wide) <= 1) {
-              const leaf = LEAVES[leafColor[k]];
-              c[0] = leaf[0];
-              c[1] = leaf[1];
-              c[2] = leaf[2];
-              shade = (Math.abs(v) < wide * 0.12 ? 0.82 : 1) * leafTone[k];
-              // Lit on the side facing the light, like everything else.
-              shade *= 1 + (v / wide) * 0.08;
-              leafHit = true;
-              break;
-            }
-            const su = (dx + sx) * co + (dz + sz) * si;
-            const sv = -(dx + sx) * si + (dz + sz) * co;
-            if ((su * su) / (len * len) + (sv * sv) / (wide * wide) <= 1) leafShadow = true;
-          }
-        }
-        if (!leafHit && leafShadow) shade *= 0.8;
-
-        // Roots on top of everything.
-        const hgt = height[i];
-        if (hgt > 0) {
-          const up = y > 0 ? height[i - W] : hgt;
-          const down = y < H - 1 ? height[i + W] : hgt;
-          const left = x > 0 ? height[i - 1] : hgt;
-          const right = x < W - 1 ? height[i + 1] : hgt;
-          // Slope in world x and z (rows run toward -z).
-          const gxs = (right - left) / (2 * texelX);
-          const gzs = (up - down) / (2 * texelZ);
-          const facing = -(gxs * lx + gzs * lz);
-          c[0] = ROOT[0];
-          c[1] = ROOT[1];
-          c[2] = ROOT[2];
-          mixInto(c, ROOT_LIT, clamp01(facing * 0.9 + 0.3));
-          shade = 0.9 + facing * 0.25 + noise(wx * 30, wz * 4) * 0.12;
-        } else if (nearRoot[i] > 0) {
-          shade *= 1 - nearRoot[i] * 0.3;
-        }
-        shade *= 0.97 + hash(x * 1.7, y * 0.9) * 0.06;
-        put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
-      }
-    }
-    return p;
-  });
+    yield;
+  }
+  return p;
 }
 
 export function createJungleTrayTexture(): THREE.DataTexture {
@@ -668,7 +700,7 @@ const HAZARD_BAND = 0.2;
  * light strip in the emissive map has to sit exactly in the slot painted
  * for it in the colour map.
  */
-function deckPaint(): { color: Painting; glow: Painting } {
+function* deckPaint(): Generator<void, { color: Painting; glow: Painting }, unknown> {
   const color = blank(FLOOR_TX, FLOOR_TY);
   const glow = blank(FLOOR_TX, FLOOR_TY);
   const [lx, lz] = DAY_LIGHT;
@@ -808,13 +840,14 @@ function deckPaint(): { color: Painting; glow: Painting } {
       put(color, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
       put(glow, x, y, gr, gg, gb);
     }
+    yield;
   }
   return { color, glow };
 }
 
 let deckCache: { color: Painting; glow: Painting } | null = null;
 export function deckPixels(): { color: Painting; glow: Painting } {
-  if (!deckCache) deckCache = deckPaint();
+  if (!deckCache) deckCache = finishRows(deckPaint());
   return deckCache;
 }
 
@@ -838,42 +871,45 @@ export function createDeckGlowTexture(): THREE.DataTexture {
  * and a kept lawn is order you can see from the air.
  */
 export function meadowPixels(): Painting {
-  return cached('meadow', () => {
-    const S = 128;
-    const p = blank(S, S);
-    const light = rgb('#7aa65a');
-    const dark = rgb('#678f4b');
-    const clover = rgb('#5b8443');
-    const c: Rgb = [0, 0, 0];
-    for (let y = 0; y < S; y++) {
-      // Two stripes per tile, soft-edged.
-      const stripe = 0.5 + 0.5 * Math.sin((y / S) * Math.PI * 4);
-      for (let x = 0; x < S; x++) {
-        c[0] = dark[0];
-        c[1] = dark[1];
-        c[2] = dark[2];
-        mixInto(c, light, 0.25 + stripe * 0.55);
-        const n = noiseWrap(x / 8, y / 8, 16) * 0.6 + noiseWrap(x / 4, y / 4, 32) * 0.4;
-        mixInto(c, clover, clamp01((n - 0.55) * 3) * 0.6);
-        let shade = 0.9 + hash(x * 2.1, y * 1.3) * 0.16;
-        // Daisies: one in a few hundred texels, a white dot with a gold eye.
-        const d = hash(Math.floor(x / 4) * 7.1, Math.floor(y / 4) * 3.3);
-        if (d > 0.985 && (x % 4) > 0 && (x % 4) < 3 && (y % 4) > 0 && (y % 4) < 3) {
-          c[0] = 236;
-          c[1] = 232;
-          c[2] = 214;
-          if ((x % 4) === 1 && (y % 4) === 1) {
-            c[0] = 226;
-            c[1] = 186;
-            c[2] = 80;
-          }
-          shade = 1;
+  return cached('meadow', meadowRows);
+}
+
+function* meadowRows(): PaintRows {
+  const S = 128;
+  const p = blank(S, S);
+  const light = rgb('#7aa65a');
+  const dark = rgb('#678f4b');
+  const clover = rgb('#5b8443');
+  const c: Rgb = [0, 0, 0];
+  for (let y = 0; y < S; y++) {
+    // Two stripes per tile, soft-edged.
+    const stripe = 0.5 + 0.5 * Math.sin((y / S) * Math.PI * 4);
+    for (let x = 0; x < S; x++) {
+      c[0] = dark[0];
+      c[1] = dark[1];
+      c[2] = dark[2];
+      mixInto(c, light, 0.25 + stripe * 0.55);
+      const n = noiseWrap(x / 8, y / 8, 16) * 0.6 + noiseWrap(x / 4, y / 4, 32) * 0.4;
+      mixInto(c, clover, clamp01((n - 0.55) * 3) * 0.6);
+      let shade = 0.9 + hash(x * 2.1, y * 1.3) * 0.16;
+      // Daisies: one in a few hundred texels, a white dot with a gold eye.
+      const d = hash(Math.floor(x / 4) * 7.1, Math.floor(y / 4) * 3.3);
+      if (d > 0.985 && (x % 4) > 0 && (x % 4) < 3 && (y % 4) > 0 && (y % 4) < 3) {
+        c[0] = 236;
+        c[1] = 232;
+        c[2] = 214;
+        if ((x % 4) === 1 && (y % 4) === 1) {
+          c[0] = 226;
+          c[1] = 186;
+          c[2] = 80;
         }
-        put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
+        shade = 1;
       }
+      put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
     }
-    return p;
-  });
+    yield;
+  }
+  return p;
 }
 
 export function createMeadowTexture(): THREE.DataTexture {
@@ -896,57 +932,60 @@ export const DUSK_GROUND = { width: 10.4, depth: 20.8, centerZ: -1.4 };
  * the light.
  */
 export function duskGroundPixels(): Painting {
-  return cached('dusk-ground', () => {
-    const stones = fallenStones();
-    const towers = DUSK_SILHOUETTES;
-    const W = 128;
-    const H = 256;
-    const p = blank(W, H);
-    const stops = ['#3d2c46', '#5a3a4c', '#8a4f4a', '#c77a4e', '#e8a062'].map(rgb);
-    const c: Rgb = [0, 0, 0];
-    const { width, depth, centerZ } = DUSK_GROUND;
-    for (let y = 0; y < H; y++) {
-      // Row 0 is the NEAR end (+z), like every painter here.
-      const v = (y + 0.5) / H;
-      const wz = centerZ + depth / 2 - v * depth;
-      // Gradient across the part of the ground the camera sees, z 7.8 to
-      // -10.5, rather than across the whole plane.
-      const g = clamp01((7.8 - wz) / 18.3) * (stops.length - 1);
-      const i0 = Math.min(stops.length - 2, Math.floor(g));
-      const t = g - i0;
-      for (let x = 0; x < W; x++) {
-        const wx = -width / 2 + ((x + 0.5) / W) * width;
-        c[0] = stops[i0][0] + (stops[i0 + 1][0] - stops[i0][0]) * t;
-        c[1] = stops[i0][1] + (stops[i0 + 1][1] - stops[i0][1]) * t;
-        c[2] = stops[i0][2] + (stops[i0 + 1][2] - stops[i0][2]) * t;
-        // Rough turf.
-        let shade = 0.88 + fbm(wx * 1.6, wz * 1.6) * 0.18 + (hash(x, y) - 0.5) * 0.06;
-        // The ruin's shadow, thrown away from the sun across the right strip.
-        const outer = innerWidth / 2 + wallThickness;
-        if (wx > outer) {
-          const reach = ruinHeightAt('right', wz) * 0.9;
-          shade *= 1 - clamp01((reach - (wx - outer)) / 0.25) * 0.3;
-        }
-        // Footings.
-        for (const s of stones) {
-          const dx = wx - s.position[0] - 0.06;
-          const dz = wz - s.position[2];
-          const r = s.size * 1.1;
-          const d2 = (dx * dx + dz * dz) / (r * r);
-          if (d2 < 1) shade *= 0.55 + d2 * 0.45;
-        }
-        for (const tw of towers) {
-          const dx = wx - tw.x - 0.15;
-          const dz = wz - tw.z;
-          const r = tw.r * 1.35;
-          const d2 = (dx * dx + dz * dz) / (r * r);
-          if (d2 < 1) shade *= 0.5 + d2 * 0.5;
-        }
-        put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
+  return cached('dusk-ground', duskGroundRows);
+}
+
+function* duskGroundRows(): PaintRows {
+  const stones = fallenStones();
+  const towers = DUSK_SILHOUETTES;
+  const W = 128;
+  const H = 256;
+  const p = blank(W, H);
+  const stops = ['#3d2c46', '#5a3a4c', '#8a4f4a', '#c77a4e', '#e8a062'].map(rgb);
+  const c: Rgb = [0, 0, 0];
+  const { width, depth, centerZ } = DUSK_GROUND;
+  for (let y = 0; y < H; y++) {
+    // Row 0 is the NEAR end (+z), like every painter here.
+    const v = (y + 0.5) / H;
+    const wz = centerZ + depth / 2 - v * depth;
+    // Gradient across the part of the ground the camera sees, z 7.8 to
+    // -10.5, rather than across the whole plane.
+    const g = clamp01((7.8 - wz) / 18.3) * (stops.length - 1);
+    const i0 = Math.min(stops.length - 2, Math.floor(g));
+    const t = g - i0;
+    for (let x = 0; x < W; x++) {
+      const wx = -width / 2 + ((x + 0.5) / W) * width;
+      c[0] = stops[i0][0] + (stops[i0 + 1][0] - stops[i0][0]) * t;
+      c[1] = stops[i0][1] + (stops[i0 + 1][1] - stops[i0][1]) * t;
+      c[2] = stops[i0][2] + (stops[i0 + 1][2] - stops[i0][2]) * t;
+      // Rough turf.
+      let shade = 0.88 + fbm(wx * 1.6, wz * 1.6) * 0.18 + (hash(x, y) - 0.5) * 0.06;
+      // The ruin's shadow, thrown away from the sun across the right strip.
+      const outer = innerWidth / 2 + wallThickness;
+      if (wx > outer) {
+        const reach = ruinHeightAt('right', wz) * 0.9;
+        shade *= 1 - clamp01((reach - (wx - outer)) / 0.25) * 0.3;
       }
+      // Footings.
+      for (const s of stones) {
+        const dx = wx - s.position[0] - 0.06;
+        const dz = wz - s.position[2];
+        const r = s.size * 1.1;
+        const d2 = (dx * dx + dz * dz) / (r * r);
+        if (d2 < 1) shade *= 0.55 + d2 * 0.45;
+      }
+      for (const tw of towers) {
+        const dx = wx - tw.x - 0.15;
+        const dz = wz - tw.z;
+        const r = tw.r * 1.35;
+        const d2 = (dx * dx + dz * dz) / (r * r);
+        if (d2 < 1) shade *= 0.5 + d2 * 0.5;
+      }
+      put(p, x, y, c[0] * shade, c[1] * shade, c[2] * shade);
     }
-    return p;
-  });
+    yield;
+  }
+  return p;
 }
 
 export function createDuskGroundTexture(): THREE.DataTexture {
@@ -959,25 +998,28 @@ export function createDuskGroundTexture(): THREE.DataTexture {
  * floor on screen.
  */
 export function hullPlatePixels(): Painting {
-  return cached('hull-plate', () => {
-    const S = 64;
-    const p = blank(S, S);
-    const base = rgb('#3d4456');
-    for (let y = 0; y < S; y++) {
-      for (let x = 0; x < S; x++) {
-        let shade = 0.94 + noiseWrap(x / 16, y / 2, 4) * 0.1;
-        if (x === 0 || y === 0) shade = 0.55;
-        else if (x === 1 || y === 1) shade *= 1.15;
-        else if (x === S - 1 || y === S - 1) shade *= 0.85;
-        const rx = x < S / 2 ? 5 : S - 5;
-        const ry = y < S / 2 ? 5 : S - 5;
-        if ((x - rx) * (x - rx) + (y - ry) * (y - ry) < 3) shade *= 1.3;
-        if (y > 26 && y < 38 && x > 10 && x < 54 && y % 3 === 0) shade *= 0.7;
-        put(p, x, y, base[0] * shade, base[1] * shade, base[2] * shade);
-      }
+  return cached('hull-plate', hullPlateRows);
+}
+
+function* hullPlateRows(): PaintRows {
+  const S = 64;
+  const p = blank(S, S);
+  const base = rgb('#3d4456');
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      let shade = 0.94 + noiseWrap(x / 16, y / 2, 4) * 0.1;
+      if (x === 0 || y === 0) shade = 0.55;
+      else if (x === 1 || y === 1) shade *= 1.15;
+      else if (x === S - 1 || y === S - 1) shade *= 0.85;
+      const rx = x < S / 2 ? 5 : S - 5;
+      const ry = y < S / 2 ? 5 : S - 5;
+      if ((x - rx) * (x - rx) + (y - ry) * (y - ry) < 3) shade *= 1.3;
+      if (y > 26 && y < 38 && x > 10 && x < 54 && y % 3 === 0) shade *= 0.7;
+      put(p, x, y, base[0] * shade, base[1] * shade, base[2] * shade);
     }
-    return p;
-  });
+    yield;
+  }
+  return p;
 }
 
 export function createHullPlateTexture(): THREE.DataTexture {
@@ -994,33 +1036,36 @@ export function createHullPlateTexture(): THREE.DataTexture {
  * with `worldUvBox`, so a block is the same size on every face.
  */
 export function stoneBlockPixels(): Painting {
-  return cached('stone-blocks', () => {
-    const S = 64;
-    const p = blank(S, S);
-    const stones = [rgb('#a7a39a'), rgb('#9d9a93'), rgb('#aeaa9f'), rgb('#96938c')];
-    for (let y = 0; y < S; y++) {
-      const course = Math.floor(y / 16);
-      const fy = y % 16;
-      for (let x = 0; x < S; x++) {
-        const xs = (x + (course % 2 ? 16 : 0)) % S;
-        const block = Math.floor(xs / 32);
-        const fx = xs % 32;
-        const id = course * 2 + block;
-        const base = stones[Math.floor(hash(id, 3.3) * stones.length)];
-        let shade = 0.94 + hash(id, 8.8) * 0.1 + (noise(x * 0.4, y * 0.4) - 0.5) * 0.08;
-        // Mortar along the bottom and left of each block; a lit top lip
-        // and a shaded underside — light on a wall comes from above.
-        if (fy === 0 || fx === 0) shade = 0.6;
-        else if (fy === 1) shade *= 0.85;
-        else if (fy === 15) shade *= 1.12;
-        else if (fx === 1) shade *= 1.05;
-        else if (fx === 31) shade *= 0.9;
-        shade *= 0.96 + hash(x * 1.9, y * 2.3) * 0.08;
-        put(p, x, y, base[0] * shade, base[1] * shade, base[2] * shade);
-      }
+  return cached('stone-blocks', stoneBlocksRows);
+}
+
+function* stoneBlocksRows(): PaintRows {
+  const S = 64;
+  const p = blank(S, S);
+  const stones = [rgb('#a7a39a'), rgb('#9d9a93'), rgb('#aeaa9f'), rgb('#96938c')];
+  for (let y = 0; y < S; y++) {
+    const course = Math.floor(y / 16);
+    const fy = y % 16;
+    for (let x = 0; x < S; x++) {
+      const xs = (x + (course % 2 ? 16 : 0)) % S;
+      const block = Math.floor(xs / 32);
+      const fx = xs % 32;
+      const id = course * 2 + block;
+      const base = stones[Math.floor(hash(id, 3.3) * stones.length)];
+      let shade = 0.94 + hash(id, 8.8) * 0.1 + (noise(x * 0.4, y * 0.4) - 0.5) * 0.08;
+      // Mortar along the bottom and left of each block; a lit top lip
+      // and a shaded underside — light on a wall comes from above.
+      if (fy === 0 || fx === 0) shade = 0.6;
+      else if (fy === 1) shade *= 0.85;
+      else if (fy === 15) shade *= 1.12;
+      else if (fx === 1) shade *= 1.05;
+      else if (fx === 31) shade *= 0.9;
+      shade *= 0.96 + hash(x * 1.9, y * 2.3) * 0.08;
+      put(p, x, y, base[0] * shade, base[1] * shade, base[2] * shade);
     }
-    return p;
-  });
+    yield;
+  }
+  return p;
 }
 
 export function createStoneBlockTexture(): THREE.DataTexture {
@@ -1084,3 +1129,49 @@ export function createFieldTexture(): THREE.DataTexture {
   tex.needsUpdate = true;
   return tex;
 }
+
+/**
+ * The paintings behind the four bespoke boards' floors and grounds, by
+ * name, for the loading screen and the warm-up.
+ */
+export type BespokePainting =
+  | 'courtyard'
+  | 'sunset'
+  | 'jungle-tray'
+  | 'meadow'
+  | 'dusk-ground'
+  | 'hull-plate'
+  | 'stone-blocks'
+  | 'deck';
+
+/**
+ * One of those paintings as a job a row per step, or null if it is
+ * already painted. Once finished it is in the same cache the board reads
+ * from, so the board's own texture is then a copy of bytes, not a paint.
+ */
+export function bespokeFloorJob(name: BespokePainting): { step(): boolean } | null {
+  const painted = () => (name === 'deck' ? deckCache !== null : caches.has(name));
+  if (painted()) return null;
+  let rows: Generator<void, unknown, unknown> | null = null;
+  return {
+    step() {
+      if (painted()) return true;
+      rows ??= name === 'deck' ? deckPaint() : ROWS[name]();
+      const next = rows.next();
+      if (!next.done) return false;
+      if (name === 'deck') deckCache = next.value as { color: Painting; glow: Painting };
+      else caches.set(name, next.value as Painting);
+      return true;
+    },
+  };
+}
+
+const ROWS: Record<Exclude<BespokePainting, 'deck'>, () => PaintRows> = {
+  'courtyard': courtyardRows,
+  'sunset': sunsetRows,
+  'jungle-tray': jungleTrayRows,
+  'meadow': meadowRows,
+  'dusk-ground': duskGroundRows,
+  'hull-plate': hullPlateRows,
+  'stone-blocks': stoneBlocksRows,
+};

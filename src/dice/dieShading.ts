@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cachedTexture } from '../arena/textureCache';
+import { cachedTexture, paintNow, RowPainting, rowJob } from '../arena/textureCache';
 import { DIE_FACE_COLORS, inkOn } from '../game/colors';
 import { SymbolId } from '../game/colorblind';
 import { symbolCovers } from './symbols';
@@ -201,11 +201,25 @@ function stickerAt(
  * cache stays bounded.
  */
 export function stickerTexture(hex: string, symbol: SymbolId | null): THREE.DataTexture {
-  return cachedTexture(`die-sticker:${hex}:${symbol ?? 'none'}`, () => {
-    const face = parseHex(hex);
-    const ink = parseHex(inkOn(hex));
-    const data = new Uint8Array(STICKER_SIZE * STICKER_SIZE * 4);
-    for (let py = 0; py < STICKER_SIZE; py++) {
+  return cachedTexture(stickerKey(hex, symbol), () =>
+    paintNow(stickerPainting(hex, symbol)),
+  ) as THREE.DataTexture;
+}
+
+const stickerKey = (hex: string, symbol: SymbolId | null) => `die-sticker:${hex}:${symbol ?? 'none'}`;
+
+/** The same sticker a row at a time, for the warm-up (warmPreviews.ts). */
+export function stickerJob(hex: string, symbol: SymbolId | null): { step(): boolean } | null {
+  return rowJob(stickerKey(hex, symbol), () => stickerPainting(hex, symbol));
+}
+
+function stickerPainting(hex: string, symbol: SymbolId | null): RowPainting {
+  const face = parseHex(hex);
+  const ink = parseHex(inkOn(hex));
+  const data = new Uint8Array(STICKER_SIZE * STICKER_SIZE * 4);
+  return {
+    rows: STICKER_SIZE,
+    row(py) {
       for (let px = 0; px < STICKER_SIZE; px++) {
         // -ny throughout: the same flip createSymbolTexture makes, so a
         // shape stands the same way up on both kinds of sticker.
@@ -249,9 +263,9 @@ export function stickerTexture(hex: string, symbol: SymbolId | null): THREE.Data
         data[i + 2] = Math.round(b / n);
         data[i + 3] = 255;
       }
-    }
-    return dataTexture(data, STICKER_SIZE, THREE.SRGBColorSpace);
-  }) as THREE.DataTexture;
+    },
+    done: () => dataTexture(data, STICKER_SIZE, THREE.SRGBColorSpace),
+  };
 }
 
 /**
