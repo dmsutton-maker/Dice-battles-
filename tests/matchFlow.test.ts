@@ -49,11 +49,11 @@ function run(
   return { state, effects };
 }
 
-const asking = (): MatchFlowState => startFlow(500, 'classic', true);
+const asking = (): MatchFlowState => startFlow('classic', true);
 
 suite('match flow · the states', () => {
   test('a search starts by asking, and is shown once the server says it is looking', () => {
-    assertEqual(asking().kind, 'asking', 'a 500-trophy Color Rush start does not ask');
+    assertEqual(asking().kind, 'asking', 'a Color Rush start does not ask');
     const { state } = run(asking(), [{ type: 'answer', pairing: null }]);
     assertEqual(state.kind, 'searching', '"still looking" did not start the search');
   });
@@ -119,24 +119,17 @@ suite('match flow · the states', () => {
     assertEqual(state.kind, 'bot', 'off did not settle a bot');
     assertEqual(state.kind === 'bot' ? state.reason : '', 'no-service', 'reason');
     // And with the switch already off, before the first frame.
-    assertEqual(startFlow(500, 'classic', false).kind, 'bot', 'a known-off service still asks');
+    assertEqual(startFlow('classic', false).kind, 'bot', 'a known-off service still asks');
   });
 
-  test('below 100 trophies, or Skirmish and Color War, means an immediate bot', () => {
-    for (const [trophies, mode] of [
-      [99, 'classic'],
-      [0, 'ultimate'],
-      [500, 'skirmish'],
-      [500, 'colorwar'],
-    ] as const) {
-      const first = startFlow(trophies, mode, true);
-      assertEqual(first.kind, 'bot', `${trophies} trophies in ${mode} searched`);
-    }
-    assertEqual(startFlow(100, 'ultimate', true).kind, 'asking', 'Ultimate at 100 does not search');
+  test('Skirmish and Color War mean an immediate bot; any trophies search', () => {
+    assertEqual(startFlow('skirmish', true).kind, 'bot', 'Skirmish searched');
+    assertEqual(startFlow('colorwar', true).kind, 'bot', 'Color War searched');
+    assertEqual(startFlow('ultimate', true).kind, 'asking', 'Ultimate does not search');
   });
 
   test('a settled state does not move again', () => {
-    const bot = startFlow(50, 'classic', true);
+    const bot = startFlow('skirmish', true);
     for (const event of [
       { type: 'tick', elapsedMs: 99_000 },
       { type: 'answer', pairing: null },
@@ -241,8 +234,8 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('two phones pair into the same battle, each by the other\'s name', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let a = startFlow(REQ.trophies, REQ.mode, true);
-      let b = startFlow(REQ.trophies, REQ.mode, true);
+      let a = startFlow(REQ.mode, true);
+      let b = startFlow(REQ.mode, true);
       a = stepFlow(a, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
       assertEqual(a.kind, 'searching', 'the first phone in found somebody who was not there');
       b = stepFlow(b, { type: 'answer', pairing: await findWaitingPlayer(phone('p-b'), REQ, STATS) }).state;
@@ -264,7 +257,7 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('one phone alone gets the bot at 15 s', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let state = startFlow(REQ.trophies, REQ.mode, true);
+      let state = startFlow(REQ.mode, true);
       for (let t = 0; t < SEARCH_DEADLINE_MS; t += 900) {
         state = stepFlow(state, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
         state = stepFlow(state, { type: 'tick', elapsedMs: t }).state;
@@ -281,7 +274,7 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('a pairing just before the deadline is joined, not abandoned', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let a = startFlow(REQ.trophies, REQ.mode, true);
+      let a = startFlow(REQ.mode, true);
       a = stepFlow(a, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
       // B arrives at 14.9 s and is paired with A before A hears of it.
       const b = await findWaitingPlayer(phone('p-b'), REQ, STATS);
@@ -300,7 +293,7 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('cancel leaves the queue and returns to the menu', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let a = startFlow(REQ.trophies, REQ.mode, true);
+      let a = startFlow(REQ.mode, true);
       a = stepFlow(a, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
       const step = stepFlow(a, { type: 'cancel' });
       assertEqual(step.state.kind, 'cancelled', 'cancel did not cancel');
@@ -322,35 +315,5 @@ suite('match flow · two phones through a stubbed fetch', () => {
       await cancelSearch(phone('p-a'));
       assertEqual(server.left.join(), 'p-a:battle-1', 'B is left waiting for somebody who cancelled');
     });
-  });
-});
-
-suite('match flow · what an online battle pays', () => {
-  /*
-    Plan Q3's default until Marc and David answer: an online win or loss
-    pays like a battle against the computer at that difficulty, moves no
-    cup, and (like a friendly) does not count toward the ad.
-  */
-  const screen = src('src/demo/DiceDemoScreen.tsx');
-  const finish = screen.slice(screen.indexOf('const finishRound = useCallback'), screen.indexOf('const startCountdown'));
-
-  test('a friend battle still pays nothing; a match goes on to the paid path', () => {
-    assert(
-      /if \(playing && playing\.kind === 'friend'\) \{\s*setLastDelta\(0\);\s*setLastCoins\(0\);\s*setLastXp\(0\);\s*return;/.test(finish),
-      'only friend battles should return before the paid path',
-    );
-    assert(finish.includes("const online = playing?.kind === 'match';"), 'the paid path does not know it is online');
-    assert(finish.includes('applyMatchResult('), 'trophies are not paid');
-  });
-
-  test('no cup progress and no ad count for a match', () => {
-    assert(finish.includes('if (!online) noteGameFinished();'), 'an online battle counts toward the ad');
-    assert(/scoreBattle\(online \? \[\] : /.test(finish), 'an online battle moves the cups');
-  });
-
-  test('leaving a match is the ordinary loss, not a free exit', () => {
-    const leave = screen.slice(screen.indexOf('const leaveBattle = useCallback'), screen.indexOf('}, [quitToMenu, finishRound]);'));
-    assert(/friendlyRef\.current\.kind === 'friend'\) \{\s*quitToMenu\(\);/.test(leave), 'a match is left without a loss');
-    assert(leave.includes("finishRound('lost')"), 'leaving is not a loss');
   });
 });

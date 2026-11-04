@@ -60,12 +60,13 @@ export interface MatchFlowStep {
 }
 
 /**
- * Where a start begins. Below the trophy floor, in a mode that cannot be
- * played live, or with the service known to be off, the bot is settled
- * before the first frame — no wait, as it always was.
+ * Where a start begins. In a mode that cannot be played live (Skirmish,
+ * Color War), or with the service known to be off, the bot is settled
+ * before the first frame — no wait. Everything else searches, whatever
+ * the trophies (Marc, 4 Nov 2026).
  */
-export function startFlow(trophies: number, mode: ModeId, serviceOn: boolean): MatchFlowState {
-  if (!searchesForPlayers(trophies, mode)) return { kind: 'bot', reason: 'below-threshold' };
+export function startFlow(mode: ModeId, serviceOn: boolean): MatchFlowState {
+  if (!searchesForPlayers(mode)) return { kind: 'bot', reason: 'not-live' };
   if (!serviceOn) return { kind: 'bot', reason: 'no-service' };
   return { kind: 'asking' };
 }

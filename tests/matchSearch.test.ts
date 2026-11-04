@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assert, assertEqual, note, suite, test } from './harness';
 import {
-  BOT_ONLY_BELOW_TROPHIES,
   SEARCH_DEADLINE_MS,
   isSearchOver,
   searchProgress,
@@ -22,9 +21,9 @@ const src = (p: string) => readFileSync(join(root, p), 'utf8');
 /**
  * Who you get paired against.
  *
- * David, 9 Sep 2026: every game below 100 trophies against a bot, and
- * above that roughly fifteen seconds looking for a real player before
- * settling for one. Marc, 4 Nov 2026, made the looking real: "it should
+ * David, 9 Sep 2026: roughly fifteen seconds looking for a real player
+ * before settling for a bot. Marc, 4 Nov 2026, made the looking real,
+ * and for everybody, whatever their trophies: "it should
  * search for a player for 15 seconds and it should say 'searching for
  * opponent' or something".
  *
@@ -34,49 +33,41 @@ const src = (p: string) => readFileSync(join(root, p), 'utf8');
  * The order of a search is tested in matchFlow.test.ts.
  */
 
-suite('matchmaking · the trophy floor', () => {
-  test('every game below 100 trophies is against a bot', () => {
-    for (const t of [0, 1, 42, 99]) {
-      assertEqual(searchesForPlayers(t), false, `${t} trophies should not search`);
-    }
-    assertEqual(BOT_ONLY_BELOW_TROPHIES, 100, 'the floor David asked for');
-  });
-
-  test('at 100 the search begins', () => {
-    for (const t of [100, 101, 5000]) {
-      assertEqual(searchesForPlayers(t), true, `${t} trophies should search`);
-    }
-  });
-
-  test('a beginner is never made to wait', () => {
+suite('matchmaking · everybody searches', () => {
+  test('there is no trophy floor any more', () => {
     /*
-      The floor is not only about fairness, it is about the first hour.
-      A new player pressing Start should be in a battle, not watching a
-      timer — so below the floor the overlay settles the pairing before
-      its first frame rather than searching and giving up.
+      David asked on 9 Sep 2026 for every game below 100 trophies to be
+      against a bot. Marc, 4 Nov 2026, superseded it: "the online battle
+      should be the dominant way to play ... the only way to play a bot
+      should be if no real player is found in 15 seconds".
     */
-    for (const t of [0, 42, 99]) {
-      const first = startFlow(t, 'classic', true);
-      assertEqual(first.kind, 'bot', `${t} trophies starts a search`);
-      assertEqual(first.kind === 'bot' ? first.reason : '', 'below-threshold', 'reason');
+    for (const mode of ['classic', 'ultimate'] as const) {
+      assertEqual(searchesForPlayers(mode), true, `${mode} should search`);
+      assertEqual(startFlow(mode, true).kind, 'asking', `${mode} does not ask the server`);
     }
+    const source = src('src/game/matchSearch.ts');
+    assert(!/export const BOT_ONLY_BELOW_TROPHIES/.test(source), 'the 100-trophy floor is back');
+    assert(source.includes('supersedes'), 'matchSearch.ts does not say the floor was superseded');
+  });
+
+  test('Skirmish and Color War go to a bot at once', () => {
+    // They cannot be played over a connection today (friendlyBattle.ts,
+    // MODE_NOT_READY), so there is nobody to search for.
+    for (const mode of ['skirmish', 'colorwar'] as const) {
+      assertEqual(searchesForPlayers(mode), false, `${mode} searched`);
+      const first = startFlow(mode, true);
+      assertEqual(first.kind === 'bot' ? first.reason : '', 'not-live', `${mode} reason`);
+    }
+  });
+
+  test('the overlay settles its first state before the first frame', () => {
     const overlay = src('src/demo/MatchmakingOverlay.tsx');
     assert(
-      /useState<MatchFlowState>\(\(\) =>[\s\S]{0,120}startFlow\(trophies, mode, hasMatchmakingService\(\)\)/.test(
+      /useState<MatchFlowState>\(\(\) =>[\s\S]{0,160}startFlow\(mode, hasMatchmakingService\(\)\)/.test(
         overlay,
       ),
       'the overlay does not settle its first state before the first frame',
     );
-  });
-
-  test('only modes that can be played live search', () => {
-    // Skirmish and Color War cannot be played over a connection
-    // (friendlyBattle.ts, FRIENDLY_MODES), so they go straight to a bot.
-    assertEqual(searchesForPlayers(500, 'classic'), true, 'Color Rush');
-    assertEqual(searchesForPlayers(500, 'ultimate'), true, 'Ultimate');
-    assertEqual(searchesForPlayers(500, 'skirmish'), false, 'Skirmish');
-    assertEqual(searchesForPlayers(500, 'colorwar'), false, 'Color War');
-    assertEqual(searchesForPlayers(50, 'classic'), false, 'the floor still applies');
   });
 });
 
@@ -205,7 +196,7 @@ suite('matchmaking · it does not pretend', () => {
       assert(first.calls[0].endsWith('/api/match'), `asked ${first.calls[0]}`);
       assertEqual(hasMatchmakingService(), false, 'the switch stayed on');
 
-      const next = startFlow(REQUEST.trophies, REQUEST.mode, hasMatchmakingService());
+      const next = startFlow(REQUEST.mode, hasMatchmakingService());
       assertEqual(next.kind, 'bot', 'the next start searches again');
       const again = await withFetch(server, () => findWaitingPlayer(ME, REQUEST, STATS));
       assertEqual(again.calls.length, 0, 'the next start asked the server again');

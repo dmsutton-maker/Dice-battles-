@@ -17,6 +17,7 @@ import {
   stageAt,
 } from '../game/matchmaking';
 import { searchProgress, secondsLeft, SEARCH_POLL_MS } from '../game/matchSearch';
+import { PRACTICE_RESULT_LINE } from '../game/stakes';
 import {
   isLooking,
   showsSearch,
@@ -38,6 +39,7 @@ import {
 function botFooter(state: MatchFlowState): string {
   if (state.kind === 'bot' && state.reason === 'nobody-found') return "Nobody free right now — here's a rival.";
   if (state.kind === 'bot' && state.reason === 'no-show') return "Your opponent didn't make it — here's a rival.";
+  if (state.kind === 'bot' && state.reason === 'practice') return PRACTICE_RESULT_LINE;
   return 'Get ready to battle!';
 }
 
@@ -67,34 +69,38 @@ export function MatchmakingOverlay({
   mode,
   difficulty,
   stats,
-  skipSearch,
+  botOnly,
   onDone,
   onPlayer,
   onCancel,
 }: {
   opponent: AiOpponent;
-  /** Decides whether a search for a real player happens at all. */
+  /** Sent with the search, so the server pairs people near each other. */
   trophies: number;
   me: Identity | null;
   mode: ModeId;
   difficulty: AiDifficultyId;
   /** Published once if the server does not know this phone yet. */
   stats: ProfileStats;
-  /** The opponent we were matched with never came: straight to a rival. */
-  skipSearch: boolean;
+  /**
+   * Straight to a rival with no search: the opponent we were matched
+   * with never came (`no-show`), or practice from Settings (`practice`).
+   */
+  botOnly: 'no-show' | 'practice' | null;
   onDone: () => void;
   onPlayer: (battle: BattleHandle, name: string) => void;
   onCancel: () => void;
 }) {
   /*
-    Below the trophy floor, in a mode that cannot be played live, or with
-    the service known to be off, the bot is settled before the first
-    frame (startFlow). Otherwise the first ask goes out, and the search is
-    only SHOWN once the server says it is looking — an `off` answer goes
-    straight to the reveal, as it always did.
+    In a mode that cannot be played live, with the service known to be
+    off, or for practice, the bot is settled before the first frame
+    (startFlow). There is no trophy floor (Marc, 4 Nov 2026). Otherwise
+    the first ask goes out, and the search is only SHOWN once the server
+    says it is looking — an `off` answer goes straight to the reveal, as
+    it always did.
   */
   const [flow, setFlow] = useState<MatchFlowState>(() =>
-    skipSearch ? { kind: 'bot', reason: 'no-show' } : startFlow(trophies, mode, hasMatchmakingService()),
+    botOnly ? { kind: 'bot', reason: botOnly } : startFlow(mode, hasMatchmakingService()),
   );
   const flowRef = useRef(flow);
   const mounted = useRef(true);
@@ -252,6 +258,7 @@ export function MatchmakingOverlay({
         <Text style={[styles.name, !scanning && styles.nameFound]}>
           {shown.name}
         </Text>
+        {botOnly === 'practice' && <Text style={styles.tag}>Practice</Text>}
       </View>
 
       <Text style={styles.footer}>{scanning ? ' ' : botFooter(flow)}</Text>
@@ -371,6 +378,7 @@ const styles = StyleSheet.create({
     minWidth: 90,
     textAlign: 'center',
   },
+  tag: { ...TYPE.small, color: THEME.inkSoft, marginTop: 6, fontWeight: '700' },
   cancel: { marginTop: 26, minWidth: 160, minHeight: MIN_TAP, paddingVertical: 12 },
   cancelText: { ...TYPE.body, color: THEME.ink, fontWeight: '800' },
 });

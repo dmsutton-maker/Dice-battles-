@@ -36,8 +36,11 @@ import { scoreBattle, TournamentDef, TournamentState } from './tournament';
  *   asks for it. It is here so the day a guided first battle exists, it
  *   has its own words and costs nothing without anybody having to
  *   remember to make it so.
+ * - `practice`: a computer battle started from Settings (Marc, 4 Nov
+ *   2026), which counts for nothing (stakes.ts). It pauses like any
+ *   computer battle, and leaving it costs nothing.
  */
-export type BattleMenuKind = 'computer' | 'friend' | 'tutorial';
+export type BattleMenuKind = 'computer' | 'friend' | 'tutorial' | 'practice';
 
 /** The phases the menu button is on screen in: the countdown and the battle. */
 export type BattleMenuPhase = 'arm' | 'go' | 'battle';
@@ -192,6 +195,14 @@ export function leaveWords(ctx: LeaveContext): LeaveWords {
       leaveLabel: 'Leave',
     };
   }
+  if (ctx.kind === 'practice') {
+    return {
+      title: 'Leave practice?',
+      lines: ['Practice battles never move trophies.'],
+      stayLabel: 'Keep playing',
+      leaveLabel: 'Leave',
+    };
+  }
   if (ctx.kind === 'friend') {
     const who = ctx.friendName?.trim() || 'Your friend';
     return {
@@ -233,6 +244,6 @@ export function whereLine(
 ): string {
   const name = MODES[mode].name;
   if (kind === 'friend') return `${name} · with ${friendName?.trim() || 'your friend'}`;
-  if (kind === 'tutorial') return `${name} · practice`;
+  if (kind === 'tutorial' || kind === 'practice') return `${name} · practice`;
   return `${name} · ${AI_DIFFICULTIES[difficulty].label}`;
 }

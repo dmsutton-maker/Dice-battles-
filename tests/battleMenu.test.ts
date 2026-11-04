@@ -173,7 +173,8 @@ suite('battle menu · the screen', () => {
       /const battleLive = appActive && !\(battleMenu && pausesBattle\(menuKind\)\)/.test(screen),
       'battleLive is not appActive plus the menu',
     );
-    assert(/const menuKind: BattleMenuKind = friendly \? 'friend' : 'computer'/.test(screen), 'menu kind');
+    // Practice from Settings is a computer battle too, and pauses like one.
+    assert(/const menuKind: BattleMenuKind = friendly \? 'friend' : practice \? 'practice' : 'computer'/.test(screen), 'menu kind');
     assert(
       /if \(phase !== 'battle'\) return;\s*if \(!battleLive\) return;\s*if \(friendlyRef\.current\) return;\s*const \{ rollIntervalMs \}/.test(screen),
       'the rival keeps rolling under the menu',
