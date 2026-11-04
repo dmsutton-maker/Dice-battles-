@@ -87,7 +87,7 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
     title: 'Trophies and coins',
     lines: [
       'Win and you earn trophies. They are your rank, and they go down when you lose.',
-      'You earn coins too, and losing never takes those away. Spend them in the Store.',
+      'You earn coins too, and losing never takes those away. Spend them in the Shop.',
       'Trophies unlock new battlefields and dice as you climb.',
     ],
     art: { kind: 'rewards' },

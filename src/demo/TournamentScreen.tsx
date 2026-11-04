@@ -93,18 +93,6 @@ export function TournamentScreen({
           and sometimes something for the cupboard. Lose one and you start the
           run again; a draw leaves it where it is.
         </Text>
-        {/*
-          Said plainly, because the alternative is letting a child believe
-          they beat five strangers. David's own words were "against AI for
-          now", and the game has a standing rule against inventing other
-          players (see AGENTS.md).
-        */}
-        <Text style={styles.noteQuiet}>
-          A new cup every week, from midnight on Sunday night (New York
-          time), picked from ten so the order is never the same twice. Now
-          and then a second one comes from the Dice Battles website. You
-          play them all against the game&rsquo;s own rivals.
-        </Text>
 
         {showing.length === 0 && (
           <View style={styles.empty}>
@@ -284,14 +272,6 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
     lineHeight: 19,
-  },
-  noteQuiet: {
-    color: THEME.inkFaint,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 17,
-    marginTop: 8,
-    marginBottom: 16,
   },
   empty: {
     backgroundColor: THEME.tile,

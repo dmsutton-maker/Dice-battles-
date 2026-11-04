@@ -90,6 +90,7 @@ async function main(): Promise<void> {
   await import('./arenaSpeed.test');
   await import('./seasonRotation.test');
   await import('./productPreview.test');
+  await import('./shopName.test');
   process.exit(await runAll());
 }
 

@@ -1315,7 +1315,7 @@ export function DiceDemoScreen() {
       setLoadout({ ...equipSkin(DEFAULT_SKIN_ID) });
       setCodeFeedback(
         removed === 0
-          ? 'Nothing bought yet — the Store is already untouched.'
+          ? 'Nothing bought yet — the Shop is already untouched.'
           : `${removed} bought ${removed === 1 ? 'item' : 'items'} cleared. Coins kept.`,
       );
       playClick();

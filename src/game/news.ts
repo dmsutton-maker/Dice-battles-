@@ -154,7 +154,7 @@ export const NEWS: NewsItem[] = [
       'pick one, finish it before midnight (New York time) and earn a ' +
       'big chunk of pass XP.\n\n' +
       'The Inventory is now your cupboard: it shows what you own. Things ' +
-      'you do not have yet are seen where they come from: the Store, the ' +
+      'you do not have yet are seen where they come from: the Shop, the ' +
       'Gold Pass and cups in Cups, and the trophy ladder in Records, where ' +
       'every rung can now be tapped to see it on the board.\n\n' +
       'The Neon dice are now $0.99, and they are alive: a head of light ' +
@@ -378,7 +378,7 @@ export const NEWS: NewsItem[] = [
     title: 'The Gold Pass',
     icon: 'cups',
     body:
-      'The season pass has a second row now: the Gold Pass, in the Store. ' +
+      'The season pass has a second row now: the Gold Pass, in the Shop. ' +
       'Everybody still climbs the top row for free, and it still pays ' +
       'something at every level, with the Ice dice waiting at level 20.\n\n' +
       'The Gold row sits underneath, on the same levels. It holds Snowy ' +
@@ -432,7 +432,7 @@ export const NEWS: NewsItem[] = [
     title: 'Fire dice and Ice dice',
     icon: 'dice',
     body:
-      'Two new dice in the Store, and they are the first ones that do ' +
+      'Two new dice in the Shop, and they are the first ones that do ' +
       'something rather than just look like something.\n\n' +
       'The Fire dice burn. Flames trail behind them through the air, ' +
       'and wherever they land they scorch the ground black for a few ' +
@@ -443,7 +443,7 @@ export const NEWS: NewsItem[] = [
       'ground frosts over wherever they touch down. Throw one into the ' +
       'moat and the whole pond freezes, with the die stuck half out of ' +
       'the ice.\n\n' +
-      'Tap either one in the Store to watch it on the battlefield ' +
+      'Tap either one in the Shop to watch it on the battlefield ' +
       'before you buy. They only change how things look: the moat ' +
       'still catches a die exactly as it always has, frozen or not.',
   },
@@ -468,7 +468,7 @@ export const NEWS: NewsItem[] = [
       'before it does.\n\n' +
       'The Gauntlet is the one that never closes: six Ultimate wins in ' +
       'a row on Hard, the hardest thing in the game. It is the only ' +
-      'way to get the Amethyst dice, which is not in the Store and is ' +
+      'way to get the Amethyst dice, which is not in the Shop and is ' +
       'not on the trophy ladder. Winning it is the only way it ' +
       'exists.\n\n' +
       'The week\u2019s cups come from the Dice Battles website rather ' +
@@ -693,9 +693,9 @@ export const NEWS: NewsItem[] = [
       'speaker emoji were different widths from each other, so the word ' +
       'next to the slider slid sideways as you dragged it. It stays put ' +
       'now.\n\n' +
-      'Also gone: the paragraph in the Store explaining where coins come ' +
+      'Also gone: the paragraph in the Shop explaining where coins come ' +
       'from. It was pushing the dice off the bottom of the screen, and ' +
-      'the Store is for looking at dice.\n\n' +
+      'the Shop is for looking at dice.\n\n' +
       'And tapping an item no longer flashes a blank sheet of colour ' +
       'before it opens \u2014 the shelf now stays put until the ' +
       'battlefield behind it is really ready.',
@@ -738,7 +738,7 @@ export const NEWS: NewsItem[] = [
     id: 'v1-75-0-faster-tabs',
     date: '10 September 2026',
     version: 'v1.75.0',
-    title: 'Items and Store open straight away',
+    title: 'Items and Shop open straight away',
     icon: 'speed',
     body:
       'The Items tab took two or three seconds the first time you opened ' +
@@ -1032,7 +1032,7 @@ export const NEWS: NewsItem[] = [
     body:
       'Every rung of the ladder used to have a little emoji next to it. ' +
       'It now shows the actual thing you get — the real dice, the real ' +
-      'picture of the battlefield — the same as the Store and your ' +
+      'picture of the battlefield — the same as the Shop and your ' +
       'Inventory do.\n\n' +
       'The list also reads the right way round now: it starts where you ' +
       'started and climbs as you read down it.\n\n' +
@@ -1222,7 +1222,7 @@ export const NEWS: NewsItem[] = [
       'basalt columns, stacked logs, a polar station, cave dripstone, ' +
       'hull plating, driftwood, piped icing, mossy stones, a ship rail, ' +
       'a picket fence, coral, a rooftop parapet and wooden bricks.\n\n' +
-      'And the Store makes more sense: everything has its own price ' +
+      'And the Shop makes more sense: everything has its own price ' +
       'instead of six dice all costing the same, and both shelves climb ' +
       'steadily from cheap to rare.',
   },
@@ -1288,7 +1288,7 @@ export const NEWS: NewsItem[] = [
       'And forty new dice: animals from leopard to bumblebee, sports ' +
       'balls from soccer to bowling, foods from watermelon to chicken ' +
       'and waffles, and stranger things — a galaxy, a rainbow, a ' +
-      'circuit board. Tap anything in the Store or your Items to stand ' +
+      'circuit board. Tap anything in the Shop or your Items to stand ' +
       'in it or hold it before you spend a single coin.',
   },
   {
@@ -1526,10 +1526,10 @@ export const NEWS: NewsItem[] = [
     title: 'See an item before you buy it',
     icon: 'shop',
     body:
-      'Tap anything in the Store or the Inventory and you see it on the real ' +
+      'Tap anything in the Shop or the Inventory and you see it on the real ' +
       'board — the actual dice, the actual battlefield — rather than a small ' +
       'picture of it. Buying happens right there, and the Inventory now points ' +
-      'you at the Store instead of letting you buy from the wrong place.',
+      'you at the Shop instead of letting you buy from the wrong place.',
   },
   {
     id: 'v1-11-0',

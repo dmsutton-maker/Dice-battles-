@@ -34,7 +34,7 @@ suite('season pass · every reward has a description', () => {
   test('coins and trophies say what they are for', () => {
     const coins = rewardInfo({ level: 1, track: 'free', reward: { coins: 20, trophies: 0 }, xp: 0, gold: false });
     assertEqual(coins.title, '20 coins', 'the coin title is wrong');
-    assert(/Store/.test(coins.body), 'coins do not say they are spent in the Store');
+    assert(/Shop/.test(coins.body), 'coins do not say they are spent in the Shop');
     const trophies = rewardInfo({ level: 2, track: 'free', reward: { coins: 0, trophies: 4 }, xp: 0, gold: false });
     assertEqual(trophies.title, '4 trophies', 'the trophy title is wrong');
     assert(/ladder/.test(trophies.body), 'trophies do not mention the ladder');

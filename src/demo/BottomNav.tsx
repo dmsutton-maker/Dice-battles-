@@ -59,7 +59,7 @@ function LogoIcon({ size = 22 }: { size?: number; color?: string }) {
  * so the game could not be sure what its own navigation looked like.
  */
 const TABS: { id: Tab; label: string; Icon: IconFn }[] = [
-  { id: 'store', label: 'Store', Icon: BagIcon },
+  { id: 'store', label: 'Shop', Icon: BagIcon },
   { id: 'inventory', label: 'Inventory', Icon: CrateIcon },
   { id: 'play', label: 'Battle', Icon: LogoIcon },
   { id: 'cups', label: 'Cups', Icon: BracketIcon },

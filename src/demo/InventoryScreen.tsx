@@ -144,7 +144,7 @@ export function InventoryScreen({
           // along the bottom — not a list of what they are missing.
           <Text style={styles.moreNote}>
             More dice are won on the trophy ladder in Records, bought in the
-            Store, and earned on the season pass in Cups.
+            Shop, and earned on the season pass in Cups.
           </Text>
         )}
 
@@ -162,7 +162,7 @@ export function InventoryScreen({
         {onlyStarters(arenas, STARTING_ARENAS) && (
           <Text style={styles.moreNote}>
             More battlefields are won on the trophy ladder in Records, bought
-            in the Store, and earned on the season pass in Cups.
+            in the Shop, and earned on the season pass in Cups.
           </Text>
         )}
       </ScrollView>
