@@ -25,23 +25,27 @@ export interface LegalCopy {
 }
 
 export const PRIVACY: LegalCopy = {
-  written: '2026-11-01',
+  written: '2026-11-04',
   metaDescription:
-    'No accounts and no tracking. Friends, friend battles, notifications and bug reports send a little information. This page says exactly what, and why.',
+    'No accounts and no tracking. Friends, online battles, notifications and bug reports send a little information. This page says exactly what, and why.',
   intro:
     'Paper Ship Studio ("we," "us," or "the studio") is a small, independent game studio, currently operated by its owner as an individual and trading under the Paper Ship Studio name. This policy covers every app we publish, including Dice Battles: Color Rush.',
   sections: [
     {
       heading: 'The short version',
-      body: 'There are no accounts to sign up for, no analytics, and nothing that tracks you around the internet. Most of the game never talks to us at all: your progress, coins, purchases and unlocked items live on your device. A few things do send us something: adding a friend, battling a friend, turning on update notifications, sending a bug report, and writing to us through the contact form. Each is explained below, and each only happens if you choose it.',
+      body: 'There are no accounts to sign up for, no analytics, and nothing that tracks you around the internet. Most of the game never talks to us at all: your progress, coins, purchases and unlocked items live on your device. A few things do send us something: adding a friend, battling a friend, playing online against other players once you reach 100 trophies, turning on update notifications, sending a bug report, and writing to us through the contact form. Each is explained below.',
     },
     {
       heading: 'Friends',
-      body: 'Friends is optional, and nothing is sent unless you open it. When you do, the game stores a profile on our server so the people you add can see it: the name Game Center gives you (or “New Player” if you are not signed in), a random player id, your friend code, your trophy count, how many battles you have won at each difficulty and in each game mode, how many dice sets and battlefields you own, your chosen die and battlefield, and when you last played. Your friend list is stored too, including requests and anyone you have blocked. Blocks are private, and the other person is never told. There is nowhere in Friends to type a message or a profile description, on purpose.',
+      body: 'Friends is optional, and nothing is sent unless you open it or play online (see Online battles, below). When you do, the game stores a profile on our server so the people you add can see it: the name Game Center gives you (or “New Player” if you are not signed in), a random player id, your friend code, your trophy count, how many battles you have won at each difficulty and in each game mode, how many dice sets and battlefields you own, your chosen die and battlefield, and when you last played. Your friend list is stored too, including requests and anyone you have blocked. Blocks are private, and the other person is never told. There is nowhere in Friends to type a message or a profile description, on purpose.',
     },
     {
       heading: 'Battling a friend',
       body: 'You can only challenge someone who is already your friend. While a challenge or a battle is going on, our server keeps what both phones need to play it: who is playing whom, the game mode and difficulty, which prisoners each of you has freed, when each phone last checked in (so the game can tell you if your friend has gone quiet), and who won. Nothing typed, spoken or filmed is ever sent, because there is nowhere to type, speak or film.',
+    },
+    {
+      heading: 'Online battles',
+      body: 'Once you have 100 trophies, a Color Rush or Ultimate battle looks for a real player for up to 15 seconds, and plays the computer instead if it finds nobody. Below 100 trophies, in the other game modes, and in Practice (in Settings) you always play the computer. To look for someone, the game stores the same profile described under Friends. While it looks, our server also keeps your player id, the game mode and difficulty, your trophy count (so you are paired with someone near your level), when you started looking and last checked in, and who you were paired with. That search record is deleted once you have stopped searching for ten minutes, the next time anyone searches. Once you are paired, the battle works exactly like a friend battle, described above. The other player sees only your Game Center name (or just “Player”) and how your game is going: never your friend code, your player id or anything else from your profile. Players who have blocked each other are never paired, and there is no chat of any kind.',
     },
     {
       heading: 'Purchases',
@@ -73,7 +77,7 @@ export const PRIVACY: LegalCopy = {
     },
     {
       heading: 'Children\'s privacy',
-      body: 'The game is made for families and is rated for ages 4 and up. It asks no one their age, their name or their email. Friends is built on Apple\'s Game Center precisely so that we do not have to: Apple already holds the account, already has a parent\'s consent where one is needed, and moderates the nickname that other players see. Purchases go through Apple too, so a parent\'s Ask to Buy and Screen Time settings apply. We collect no other personal details from anyone, at any age. If you have a question about a younger player, write to us at the address below.',
+      body: 'The game is made for families and is rated for ages 4 and up. It asks no one their age, their name or their email. Friends and online battles are built on Apple\'s Game Center precisely so that we do not have to: Apple already holds the account, already has a parent\'s consent where one is needed, and moderates the nickname that other players see. Purchases go through Apple too, so a parent\'s Ask to Buy and Screen Time settings apply. We collect no other personal details from anyone, at any age. If you have a question about a younger player, write to us at the address below.',
     },
     {
       heading: 'App Store and platform data',
@@ -91,7 +95,7 @@ export const PRIVACY: LegalCopy = {
 };
 
 export const TERMS: LegalCopy = {
-  written: '2026-10-26',
+  written: '2026-11-04',
   metaDescription: 'The terms that cover your use of any app published by Paper Ship Studio, including purchases and the Gold Pass.',
   intro:
     'These terms cover your use of any app published by Paper Ship Studio, including Dice Battles: Color Rush. Paper Ship Studio is currently operated by its owner as an individual, trading under the Paper Ship Studio name, and is not yet a registered company. By downloading or using our apps, you agree to these terms.',
@@ -102,7 +106,7 @@ export const TERMS: LegalCopy = {
     },
     {
       heading: 'No accounts, and where your things are kept',
-      body: 'Our apps don\'t require an account. Your progress, coins, purchases and unlocked items are stored on your own device and are yours to keep or delete. If you use Friends or battle a friend, what your friends can see is stored on our server instead. Our Privacy Policy sets out exactly what that includes.',
+      body: 'Our apps don\'t require an account. Your progress, coins, purchases and unlocked items are stored on your own device and are yours to keep or delete. If you use Friends, battle a friend or play online, what other players can see is stored on our server instead. Our Privacy Policy sets out exactly what that includes.',
     },
     {
       heading: 'Purchases',
@@ -117,8 +121,8 @@ export const TERMS: LegalCopy = {
       body: 'Cups change every week and seasons change every month. We may retune a cup, change a prize, or change how the game works, to keep it fair and fun. Anything you have already bought or earned stays yours.',
     },
     {
-      heading: 'Being a good neighbour in Friends',
-      body: 'Friends works by sharing a code with someone you already know. Please do not use it, or friend battles, to bother anyone. You can remove a friend at any time, and blocking someone is silent: they are not told, and they cannot ask again. We may remove a player from Friends if they use it to harass others.',
+      heading: 'Being a good neighbour in Friends and online',
+      body: 'Friends works by sharing a code with someone you already know. Please do not use it, or friend battles, to bother anyone. You can remove a friend at any time, and blocking someone is silent: they are not told, and they cannot ask again. Online battles pair you with players you may not know, so play fair: no tampering with the game to win. We may remove a player from Friends or from online battles if they cheat or use either to harass others.',
     },
     {
       heading: 'Intellectual property',
