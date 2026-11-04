@@ -307,6 +307,16 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **4 Nov 2026 (v1.158.0):** the title card is a LOADING screen
+  (`src/game/launchReady.ts`: min 0.8 s, cap 12 s) and every picture is
+  painted in slices. Shelf pictures and the equipped die are kept
+  between launches per `GAME_VERSION`, so every update MUST bump
+  `GAME_VERSION` (the release rule already) or players see stale
+  pictures. Measured only in node: Marc should try a cold launch twice,
+  with everything unlocked and the Pizza or Fish die, and backgrounding
+  during loading. The six ball dice are retired (admin mode only; old
+  price refunded once). Shipped before the App Store submission at
+  Marc's request: the pre-submission pass is re-run on this state.
 - **3 Nov 2026 (v1.157.0):** shipped to build 18 BEFORE the App Store
   submission, at Marc's request, so the pre-submission pass on 87adf8e
   no longer counts; it is re-run on the final state. The secret codes

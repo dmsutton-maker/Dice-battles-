@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.158.0 — 2026-11-04 · requested by Marc
+
+Marc, 3 Nov 2026: "The game runs very slow when you open it, especially
+if I have everything unlocked. It cannot be slow, it all has to be
+lightning fast" and "make sure the game is fully loaded before showing
+the home screen"; then on 4 Nov the six ball dice. Branches
+feature/fast-start and feature/retire-baseball. Runtime 4.0.0 (build 18).
+
+### Changed
+- **The title card is a loading screen.** It shows a progress bar and
+  stays up until the home screen is genuinely ready — saved data,
+  sounds, the equipped die's sides, the equipped battlefield's floor,
+  the first shelf pictures, the Store and Inventory pages built, and
+  the board's first frames — then hands over. At least 0.8 s, at most
+  12 s (`src/game/launchReady.ts`). The fixed 1.9 s hold is gone.
+- **Nothing paints in long blocks any more.** Dice pictures, die sides,
+  floors and the extra maps (fish, circuit, neon) are painted in slices
+  on a time budget (`src/dice/slicedPaint.ts`: 40 ms under the card,
+  6 ms on the menu). Before, single blocks of up to 1.4 s on a desktop
+  (several seconds on a phone) landed on the menu for the first minute.
+- **Pictures are kept between launches of the same version**
+  (`shelfStore.ts`, `keptTextures.ts`, keyed on `GAME_VERSION`), so the
+  first launch after an update pays the painting once and every later
+  launch is near the 0.8 s minimum. **Every update must bump
+  GAME_VERSION** or players see stale pictures — already the rule.
+- The hidden Store and Inventory pages no longer redraw every card on
+  every state change (memoised cards; the MoneyShelf wrapped in
+  `memo`). With everything unlocked this was 23 ms per change.
+- The Pizza painter parses its colours once (1.8 s → 1.1 s desktop).
+- **The six ball dice are retired** (Baseball, Soccer Ball, Basketball,
+  Football, Bowling Ball, Volleyball): off the shelf, off the ladder,
+  out of the "of N" and the Collector count, seen only in admin mode
+  (`retired` in diceSkins.ts). Anyone who had bought one gets the old
+  price back the next time the game opens, with a note
+  (`refundRetiredDice`). Marc: "none of them look good".
+- Tests: `fastStart.test.ts` (16), `retiredDice.test.ts` (4); `warmup`,
+  `neonGlow`, `circuitPulse`, `productPreview`, `currency`, `screen` and
+  `inventory` tests follow the sliced painting and the retired list.
+  Measured in node; the first two-phone run on real hardware is the
+  real test.
+
 ## v1.157.0 — 2026-11-03 · requested by Marc
 
 Two changes Marc asked for, shipped straight away at his request rather

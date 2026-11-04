@@ -90,6 +90,22 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-158-0-fast-start',
+    date: '4 November 2026',
+    version: 'v1.158.0',
+    title: 'Opens fast, and ready when it opens',
+    icon: 'news',
+    body:
+      'The title card is now a loading screen with a progress bar. When ' +
+      'the home screen appears it is ready: tabs open at once and nothing ' +
+      'freezes while you tap. The first launch after an update takes a ' +
+      'few seconds longer while the dice pictures are painted; every ' +
+      'launch after that is quick.\n\n' +
+      'The six ball dice (Baseball, Soccer Ball, Basketball, Football, ' +
+      'Bowling Ball and Volleyball) have been retired. If you had bought ' +
+      'one, the coins you paid are back in your wallet.',
+  },
+  {
     id: 'v1-157-0-battle-menu',
     date: '3 November 2026',
     version: 'v1.157.0',

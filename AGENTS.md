@@ -324,6 +324,10 @@ reach Expo and TestFlight without him having to ask each time.
 
 - Every published update gets a version in `CHANGELOG.md`, recording
   **who requested it**, so any change can be traced and rolled back.
+  Since v1.158.0 the version also keys the pictures the game keeps
+  between launches (`src/dice/shelfStore.ts`, `keptTextures.ts`): an
+  update published without bumping `GAME_VERSION` shows players the
+  previous version's dice pictures.
 - Put the version in the EAS update message too:
   `eas update --message "v1.5.0 — what changed"`.
 - Marc (David's son) is directing the work from v1.5.0 onward; David owns
