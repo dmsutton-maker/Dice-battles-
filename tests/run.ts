@@ -32,6 +32,7 @@ async function main(): Promise<void> {
   await import('./fastStart.test');
   await import('./friendlyBattle.test');
   await import('./friendlyServer.test');
+  await import('./matchServer.test');
   await import('./secretCodes.test');
   await import('./testerPurchases.test');
   await import('./quests.test');
