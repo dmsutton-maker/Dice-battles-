@@ -247,7 +247,7 @@ export function MoneyShelf({
                 <Text style={styles.more}>Tap to see more</Text>
                 {product.starterOnly && (
                   <Text style={styles.starter}>
-                    First two days only
+                    First 48 hours only
                   </Text>
                 )}
                 {tester && (lent || product.kind === 'consumable') && (

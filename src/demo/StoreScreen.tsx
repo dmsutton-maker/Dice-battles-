@@ -203,7 +203,7 @@ export function StoreScreen({
     <View style={[styles.overlay, useMenuPageArea(), hidden && styles.hidden]}>
       {/* No coin count here — the shared HUD shows it on every screen. */}
       <View style={styles.header}>
-        <Text style={styles.title}>Store</Text>
+        <Text style={styles.title}>Shop</Text>
       </View>
 
       <ScrollView

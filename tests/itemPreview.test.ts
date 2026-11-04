@@ -108,7 +108,7 @@ suite('preview · only the Store can take coins', () => {
   test('a Store die previewed from the Inventory points at the Store', () => {
     const action = previewAction({ ...base, canBuy: false, price: 300, coins: 9999 });
     assertEqual(action.kind, 'in-store', 'must not offer to sell it');
-    assertEqual(actionLabel(action), 'In the Store for 300', 'names the price and the place');
+    assertEqual(actionLabel(action), 'In the Shop for 300', 'names the price and the place');
     assertEqual(isActionPressable(action), false, 'must not be pressable');
   });
 

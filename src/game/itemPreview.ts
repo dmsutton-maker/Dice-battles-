@@ -171,7 +171,7 @@ export function actionLabel(action: PreviewAction): string {
     case 'unaffordable':
       return `${action.short} more coins to go`;
     case 'in-store':
-      return `In the Store for ${action.price}`;
+      return `In the Shop for ${action.price}`;
     case 'locked':
       return `${action.short} more trophies to go`;
     case 'prize':

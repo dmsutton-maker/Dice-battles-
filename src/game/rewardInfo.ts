@@ -79,7 +79,7 @@ export function rewardInfo(input: RewardInfoInput): RewardInfo {
     }
   } else if (reward.coins > 0) {
     title = `${reward.coins.toLocaleString('en-US')} coins`;
-    body = 'Spend them in the Store.';
+    body = 'Spend them in the Shop.';
   } else {
     title = `${reward.trophies} trophies`;
     body = 'They move you up the trophy ladder.';

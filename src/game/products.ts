@@ -99,7 +99,7 @@ export const PRODUCTS: Product[] = [
     kind: 'once',
     name: 'No more ads',
     details:
-      "No more ads after games, ever. Works on all your phones.",
+      "No more ads after games, ever. Works on all your devices.",
     blurb: 'No more ads, ever.',
     usd: 3.99,
     grants: [REMOVE_ADS],
@@ -122,7 +122,7 @@ export const PRODUCTS: Product[] = [
     kind: 'consumable',
     name: 'Pouch of coins',
     details:
-      "500 coins to spend in the Store.",
+      "500 coins to spend in the Shop.",
     blurb: '500 coins.',
     usd: 0.99,
     coins: 500,
@@ -133,7 +133,7 @@ export const PRODUCTS: Product[] = [
     kind: 'consumable',
     name: 'Chest of coins',
     details:
-      "3,000 coins to spend in the Store. A better deal than pouches.",
+      "3,000 coins to spend in the Shop. A better deal than pouches.",
     blurb: '3,000 coins.',
     usd: 4.99,
     coins: 3000,
@@ -144,7 +144,7 @@ export const PRODUCTS: Product[] = [
     kind: 'consumable',
     name: 'Vault of coins',
     details:
-      "7,000 coins to spend in the Store. The best deal.",
+      "7,000 coins to spend in the Shop. The best deal.",
     blurb: '7,000 coins.',
     usd: 9.99,
     coins: 7000,
@@ -156,7 +156,7 @@ export const PRODUCTS: Product[] = [
     kind: 'once',
     name: 'Starter pack',
     details:
-      "1,500 coins and the Supporter die. Only in your first two days.",
+      "1,500 coins and the Supporter die. Only in your first 48 hours.",
     blurb: '1,500 coins and a special die.',
     usd: 4.99,
     coins: 1500,
@@ -292,7 +292,7 @@ export function sellable(
   now: number,
   /**
    * Family tester mode. The family installed the game long before the
-   * Starter pack went on sale, so its two-day window closed months ago
+   * Starter pack went on sale, so its 48-hour window closed months ago
    * for every one of them — without this they could never see it, let
    * alone try buying it in the sandbox. Players never have this on.
    */
