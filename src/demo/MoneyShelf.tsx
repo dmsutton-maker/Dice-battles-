@@ -7,7 +7,7 @@ import { playClick } from '../audio/sounds';
 import { PRODUCTS, priceLabel, type Product } from '../game/products';
 import { ProductArt } from './ProductArt';
 import { ItemIcon } from './ItemIcon';
-import { pictureOfProduct } from '../game/productPictures';
+import { includedItems } from '../game/productPictures';
 import type { PreviewTarget } from '../game/itemPreview';
 import { skinById } from '../game/diceSkins';
 import { ARENAS, type ArenaId } from '../arena/arenas';
@@ -403,7 +403,7 @@ function ProductDetail({
     (productPictures.ts), so nothing can be shown that is not included.
   */
   const included = onPreview
-    ? pictureOfProduct(product).items.map((item) =>
+    ? includedItems(product).map((item) =>
         item.kind === 'die'
           ? { ...item, name: `${skinById(item.id).name} dice`, target: { kind: 'die' as const, id: item.id, from: 'store' as const } }
           : { ...item, name: ARENAS[item.id as ArenaId]?.name ?? item.id, target: { kind: 'arena' as const, id: item.id as ArenaId, from: 'store' as const } },
@@ -446,7 +446,10 @@ function ProductDetail({
                   onPress={() => onPreview?.(item.target)}
                 >
                   <ItemIcon picture={item.kind === 'die' ? { kind: 'die', id: item.id } : { kind: 'arena', id: item.id as ArenaId }} size={40} />
-                  <Text style={styles.includedName}>{item.name}</Text>
+                  <View style={styles.includedText}>
+                    <Text style={styles.includedName}>{item.name}</Text>
+                    {item.freeRow && <Text style={styles.includedFree}>Free row: everyone can earn it</Text>}
+                  </View>
                   <Text style={styles.includedGo}>See it</Text>
                 </Pressable>
               ))}
@@ -599,7 +602,9 @@ const styles = StyleSheet.create({
     borderWidth: SHAPE.line,
     borderColor: 'rgba(29,26,46,0.14)',
   },
-  includedName: { ...TYPE.body, color: THEME.ink, fontWeight: '800', flex: 1 },
+  includedText: { flex: 1 },
+  includedName: { ...TYPE.body, color: THEME.ink, fontWeight: '800' },
+  includedFree: { ...TYPE.small, color: THEME.inkSoft },
   includedGo: { ...TYPE.small, color: THEME.accent, fontWeight: '800' },
   detailBuy: { alignSelf: 'stretch', marginTop: 14, minHeight: MIN_TAP },
   detailClose: { alignSelf: 'center', marginTop: 10, minHeight: MIN_TAP, justifyContent: 'center', paddingHorizontal: 20 },

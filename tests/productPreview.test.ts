@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assert, suite, test } from './harness';
 import { PRODUCTS } from '../src/game/products';
-import { pictureOfProduct } from '../src/game/productPictures';
+import { includedItems } from '../src/game/productPictures';
 import { ARENAS } from '../src/arena/arenas';
 import { DICE_SKINS } from '../src/game/diceSkins';
+import { GOLD_PASS, seasonAt } from '../src/game/seasonPass';
 
 /*
   David, 21 Oct 2026: "When you click on a money purchase to view it and
@@ -17,7 +18,7 @@ const read = (p: string) => readFileSync(join(root, p), 'utf8');
 suite('money shop · a purchase shows what it includes, on the board', () => {
   test('every die and battlefield a product includes can be opened', () => {
     const shelf = read('src/demo/MoneyShelf.tsx');
-    assert(/pictureOfProduct\(product\)\.items\.map/.test(shelf), 'the full story does not list what the product includes');
+    assert(/includedItems\(product\)\.map/.test(shelf), 'the full story does not list what the product includes');
     assert(/onPreview\?\.\(item\.target\)/.test(shelf), 'tapping an included item does not open it');
     assert(/from: 'store' as const/.test(shelf), 'the preview is not opened from the Store');
     assert(/setViewing\(null\);\s*onPreview\(target\);/.test(shelf), 'the full story stays open over the board');
@@ -44,12 +45,24 @@ suite('money shop · a purchase shows what it includes, on the board', () => {
     const skins = new Set(DICE_SKINS.map((s) => s.id));
     let listed = 0;
     for (const p of PRODUCTS) {
-      for (const item of pictureOfProduct(p).items) {
+      for (const item of includedItems(p)) {
         listed++;
         if (item.kind === 'die') assert(skins.has(item.id), `${p.id} includes a die that does not exist: ${item.id}`);
         else assert(item.id in ARENAS, `${p.id} includes a battlefield that does not exist: ${item.id}`);
       }
     }
     assert(listed >= 4, `only ${listed} included items across the shop`);
+  });
+
+  test('the Gold Pass lists the Ice Dice too, marked as the free row', () => {
+    const gold = PRODUCTS.find((p) => p.id === GOLD_PASS.productId)!;
+    const season = seasonAt(new Date('2026-11-10T12:00:00Z').getTime());
+    assert(season.number === 1, 'expected Fire & Ice in mid November 2026');
+    const listed = includedItems(gold);
+    const ids = listed.map((i) => i.id);
+    for (const id of ['snow', 'fire', 'ice', 'volcano']) assert(ids.includes(id), `the Gold Pass does not list ${id}`);
+    assert(listed.find((i) => i.id === 'ice')?.freeRow === true, 'ice is not marked as the free row');
+    assert(!listed.find((i) => i.id === 'fire')?.freeRow, 'a Gold row item is marked free');
+    assert(/item\.freeRow/.test(read('src/demo/MoneyShelf.tsx')) && /Free row/.test(read('src/demo/MoneyShelf.tsx')), 'the shelf does not show the free row text');
   });
 });
