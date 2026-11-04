@@ -6,6 +6,7 @@ import { coinsInPile, pictureOfProduct } from '../game/productPictures';
 import { ArenaIcon, DieIcon } from '../ui/Icon';
 import { SHAPE, THEME } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
+import { GoldPassMark } from './GoldPassMark';
 import { ItemIcon } from './ItemIcon';
 
 /**
@@ -22,7 +23,12 @@ export function ProductArt({ product, size = 64 }: { product: Product; size?: nu
   const gold = product.kind === 'season';
 
   let body: React.ReactNode;
-  if (pic.noAds) {
+  if (gold) {
+    // The Gold Pass wears its own mark, the same every month; what the
+    // month's pass holds is named in the text beside it and shown as
+    // tiles on the pass card.
+    body = <GoldPassMark size={size * 0.9} />;
+  } else if (pic.noAds) {
     body = <NoAds size={size} />;
   } else if (pic.placeholder) {
     body = <Fan size={size} count={pic.placeholder === 'dice' ? 3 : 2} render={(s) =>
