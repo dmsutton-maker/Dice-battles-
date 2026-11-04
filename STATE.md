@@ -5,7 +5,7 @@ one read instead of reconstructing it from conversation history. Keep it
 current — a stale map is worse than none. `AGENTS.md` holds the *rules*;
 this holds the *facts*.
 
-Last updated: 18 October 2026.
+Last updated: 4 November 2026.
 
 ## The two things being built
 
@@ -307,6 +307,21 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **4 Nov 2026 (v1.159.0, update 58345c1d, website deployed):** online
+  battles, Practice in Settings, seven dice redrawn, Store renamed Shop,
+  the trophy ladder topped at 8,000, Dino Valley hidden (`hidden` in
+  products.ts), the Gold Pass mark. Shipped before the App Store
+  submission at Marc's request, so the pre-submission pass is re-run on
+  this state. **Online battles are OFF until David applies
+  `hq/supabase/migrations/20261104_matchmaking.sql`**: until then
+  `/api/match` answers `off` and the app plays a rival at once. Below
+  100 trophies it is always a rival (`BOT_ONLY_BELOW_TROPHIES`). Open for
+  David: `dino_valley` is in the draft App Review submission but no
+  longer shown in the app; App Store Connect still to change by hand
+  (Neon $0.99, IAP descriptions saying "phones", "two days", "Store");
+  the privacy policy and App Review notes do not yet describe online
+  play. Online wins are paid on the phone's own word. Ocean option C
+  (flowing water, splash) was chosen but is NOT built.
 - **4 Nov 2026 (v1.158.0):** the title card is a LOADING screen
   (`src/game/launchReady.ts`: min 0.8 s, cap 12 s) and every picture is
   painted in slices. Shelf pictures and the equipped die are kept
