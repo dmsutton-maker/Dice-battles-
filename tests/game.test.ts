@@ -697,10 +697,10 @@ suite('game · color war shares the bottom row', () => {
  * the highest thing is only 10 thousand trophies."
  */
 suite('the ladder', () => {
-  test('the summit is ten thousand trophies, exactly', () => {
+  test('the summit is eight thousand trophies, exactly', () => {
     const top = TIERS[TIERS.length - 1];
     note(`the ladder ends at ${top.at} (${top.name})`);
-    assertEqual(top.at, 10000, 'the top of the ladder has moved off 10,000');
+    assertEqual(top.at, 8000, 'the top of the ladder has moved off 8,000');
   });
 
   test('every rung is harder than the one below it', () => {

@@ -65,3 +65,33 @@ suite('ladder · nobody loses Bubblegum Dice when its rung moved up', () => {
     assertEqual(TIERS.find((t) => t.id === 'bubblegum-dice')!.at, 560, 'new rung');
   });
 });
+
+suite('ladder · respaced on 4 Nov 2026, so the top gaps are smaller', () => {
+  // The v1.158.0 ladder. Marc: "lessen the highest amount ... around 8500 or 8000".
+  const OLD: Record<string, number> = {
+    'ruby-dice': 1500, 'desert-arena': 1900, 'ocean-dice': 2350, 'autumn-arena': 2850,
+    'lavender-dice': 3400, 'aurora-arena': 4050, 'slate-dice': 4750, 'blossom-dice': 5600,
+    'cavern-arena': 6550, 'copper-dice': 7600, 'sky-arena': 8750, 'moon-arena': 10000,
+  };
+
+  test('nothing moved up', () => {
+    for (const [id, was] of Object.entries(OLD)) {
+      const t = TIERS.find((r) => r.id === id);
+      assert(!!t, `${id} left the ladder`);
+      assert(t!.at <= was, `${id} moved up from ${was} to ${t!.at}`);
+    }
+  });
+
+  test('the order is unchanged', () => {
+    const ids = TIERS.map((t) => t.id as string).filter((id) => id in OLD);
+    assertEqual(ids.join(), Object.keys(OLD).join(), 'the rungs are in a different order');
+  });
+
+  test('the top is 8,000 and no step is bigger than 800', () => {
+    assertEqual(TIERS[TIERS.length - 1].at, 8000, 'the summit is not 8,000');
+    for (let i = 1; i < TIERS.length; i++) {
+      const step = TIERS[i].at - TIERS[i - 1].at;
+      assert(step <= 800, `${TIERS[i].name}: a step of ${step}`);
+    }
+  });
+});
