@@ -2,7 +2,7 @@ import type { ModeId } from './modes';
 import {
   MATCH_JOIN_WAIT_MS,
   isSearchOver,
-  searchesForPlayers,
+  whyNoSearch,
   type Pairing,
 } from './matchSearch';
 
@@ -60,13 +60,14 @@ export interface MatchFlowStep {
 }
 
 /**
- * Where a start begins. In a mode that cannot be played live (Skirmish,
- * Color War), or with the service known to be off, the bot is settled
- * before the first frame — no wait. Everything else searches, whatever
- * the trophies (Marc, 4 Nov 2026).
+ * Where a start begins. Below 100 trophies, in a mode that cannot be
+ * played live (Skirmish, Color War), or with the service known to be
+ * off, the bot is settled before the first frame — no wait. Color Rush
+ * and Ultimate from 100 trophies search.
  */
-export function startFlow(mode: ModeId, serviceOn: boolean): MatchFlowState {
-  if (!searchesForPlayers(mode)) return { kind: 'bot', reason: 'not-live' };
+export function startFlow(trophies: number, mode: ModeId, serviceOn: boolean): MatchFlowState {
+  const why = whyNoSearch(trophies, mode);
+  if (why) return { kind: 'bot', reason: why };
   if (!serviceOn) return { kind: 'bot', reason: 'no-service' };
   return { kind: 'asking' };
 }

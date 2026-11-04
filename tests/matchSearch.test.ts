@@ -5,6 +5,7 @@ import {
   SEARCH_DEADLINE_MS,
   isSearchOver,
   searchProgress,
+  BOT_ONLY_BELOW_TROPHIES,
   searchesForPlayers,
   secondsShown,
 } from '../src/game/matchSearch';
@@ -33,29 +34,33 @@ const src = (p: string) => readFileSync(join(root, p), 'utf8');
  * The order of a search is tested in matchFlow.test.ts.
  */
 
-suite('matchmaking · everybody searches', () => {
-  test('there is no trophy floor any more', () => {
+suite('matchmaking · who searches', () => {
+  test('below 100 trophies it is always a bot, from 100 Color Rush and Ultimate search', () => {
     /*
-      David asked on 9 Sep 2026 for every game below 100 trophies to be
-      against a bot. Marc, 4 Nov 2026, superseded it: "the online battle
-      should be the dominant way to play ... the only way to play a bot
-      should be if no real player is found in 15 seconds".
+      David, 9 Sep 2026: every game below 100 trophies against a bot.
+      Marc, 4 Nov 2026, after it was briefly removed: "no, until 100
+      trophies should always be against bots".
     */
     for (const mode of ['classic', 'ultimate'] as const) {
-      assertEqual(searchesForPlayers(mode), true, `${mode} should search`);
-      assertEqual(startFlow(mode, true).kind, 'asking', `${mode} does not ask the server`);
+      for (const t of [0, 1, 50, 99]) {
+        assertEqual(searchesForPlayers(t, mode), false, `${mode} at ${t} searched`);
+        const first = startFlow(t, mode, true);
+        assertEqual(first.kind === 'bot' ? first.reason : '', 'below-threshold', `${mode} at ${t}`);
+      }
+      for (const t of [100, 101, 5000]) {
+        assertEqual(searchesForPlayers(t, mode), true, `${mode} at ${t} should search`);
+        assertEqual(startFlow(t, mode, true).kind, 'asking', `${mode} at ${t} does not ask the server`);
+      }
     }
-    const source = src('src/game/matchSearch.ts');
-    assert(!/export const BOT_ONLY_BELOW_TROPHIES/.test(source), 'the 100-trophy floor is back');
-    assert(source.includes('supersedes'), 'matchSearch.ts does not say the floor was superseded');
+    assertEqual(BOT_ONLY_BELOW_TROPHIES, 100, 'the floor moved');
   });
 
   test('Skirmish and Color War go to a bot at once', () => {
     // They cannot be played over a connection today (friendlyBattle.ts,
     // MODE_NOT_READY), so there is nobody to search for.
     for (const mode of ['skirmish', 'colorwar'] as const) {
-      assertEqual(searchesForPlayers(mode), false, `${mode} searched`);
-      const first = startFlow(mode, true);
+      assertEqual(searchesForPlayers(500, mode), false, `${mode} searched`);
+      const first = startFlow(500, mode, true);
       assertEqual(first.kind === 'bot' ? first.reason : '', 'not-live', `${mode} reason`);
     }
   });
@@ -63,7 +68,7 @@ suite('matchmaking · everybody searches', () => {
   test('the overlay settles its first state before the first frame', () => {
     const overlay = src('src/demo/MatchmakingOverlay.tsx');
     assert(
-      /useState<MatchFlowState>\(\(\) =>[\s\S]{0,160}startFlow\(mode, hasMatchmakingService\(\)\)/.test(
+      /useState<MatchFlowState>\(\(\) =>[\s\S]{0,160}startFlow\(trophies, mode, hasMatchmakingService\(\)\)/.test(
         overlay,
       ),
       'the overlay does not settle its first state before the first frame',
@@ -196,7 +201,7 @@ suite('matchmaking · it does not pretend', () => {
       assert(first.calls[0].endsWith('/api/match'), `asked ${first.calls[0]}`);
       assertEqual(hasMatchmakingService(), false, 'the switch stayed on');
 
-      const next = startFlow(REQUEST.mode, hasMatchmakingService());
+      const next = startFlow(500, REQUEST.mode, hasMatchmakingService());
       assertEqual(next.kind, 'bot', 'the next start searches again');
       const again = await withFetch(server, () => findWaitingPlayer(ME, REQUEST, STATS));
       assertEqual(again.calls.length, 0, 'the next start asked the server again');

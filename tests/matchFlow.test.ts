@@ -49,7 +49,7 @@ function run(
   return { state, effects };
 }
 
-const asking = (): MatchFlowState => startFlow('classic', true);
+const asking = (): MatchFlowState => startFlow(500, 'classic', true);
 
 suite('match flow · the states', () => {
   test('a search starts by asking, and is shown once the server says it is looking', () => {
@@ -119,17 +119,17 @@ suite('match flow · the states', () => {
     assertEqual(state.kind, 'bot', 'off did not settle a bot');
     assertEqual(state.kind === 'bot' ? state.reason : '', 'no-service', 'reason');
     // And with the switch already off, before the first frame.
-    assertEqual(startFlow('classic', false).kind, 'bot', 'a known-off service still asks');
+    assertEqual(startFlow(500, 'classic', false).kind, 'bot', 'a known-off service still asks');
   });
 
   test('Skirmish and Color War mean an immediate bot; any trophies search', () => {
-    assertEqual(startFlow('skirmish', true).kind, 'bot', 'Skirmish searched');
-    assertEqual(startFlow('colorwar', true).kind, 'bot', 'Color War searched');
-    assertEqual(startFlow('ultimate', true).kind, 'asking', 'Ultimate does not search');
+    assertEqual(startFlow(500, 'skirmish', true).kind, 'bot', 'Skirmish searched');
+    assertEqual(startFlow(500, 'colorwar', true).kind, 'bot', 'Color War searched');
+    assertEqual(startFlow(500, 'ultimate', true).kind, 'asking', 'Ultimate does not search');
   });
 
   test('a settled state does not move again', () => {
-    const bot = startFlow('skirmish', true);
+    const bot = startFlow(500, 'skirmish', true);
     for (const event of [
       { type: 'tick', elapsedMs: 99_000 },
       { type: 'answer', pairing: null },
@@ -234,8 +234,8 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('two phones pair into the same battle, each by the other\'s name', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let a = startFlow(REQ.mode, true);
-      let b = startFlow(REQ.mode, true);
+      let a = startFlow(500, REQ.mode, true);
+      let b = startFlow(500, REQ.mode, true);
       a = stepFlow(a, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
       assertEqual(a.kind, 'searching', 'the first phone in found somebody who was not there');
       b = stepFlow(b, { type: 'answer', pairing: await findWaitingPlayer(phone('p-b'), REQ, STATS) }).state;
@@ -257,7 +257,7 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('one phone alone gets the bot at 15 s', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let state = startFlow(REQ.mode, true);
+      let state = startFlow(500, REQ.mode, true);
       for (let t = 0; t < SEARCH_DEADLINE_MS; t += 900) {
         state = stepFlow(state, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
         state = stepFlow(state, { type: 'tick', elapsedMs: t }).state;
@@ -274,7 +274,7 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('a pairing just before the deadline is joined, not abandoned', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let a = startFlow(REQ.mode, true);
+      let a = startFlow(500, REQ.mode, true);
       a = stepFlow(a, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
       // B arrives at 14.9 s and is paired with A before A hears of it.
       const b = await findWaitingPlayer(phone('p-b'), REQ, STATS);
@@ -293,7 +293,7 @@ suite('match flow · two phones through a stubbed fetch', () => {
   test('cancel leaves the queue and returns to the menu', async () => {
     const server = fakeServer();
     await withServer(server, async () => {
-      let a = startFlow(REQ.mode, true);
+      let a = startFlow(500, REQ.mode, true);
       a = stepFlow(a, { type: 'answer', pairing: await findWaitingPlayer(phone('p-a'), REQ, STATS) }).state;
       const step = stepFlow(a, { type: 'cancel' });
       assertEqual(step.state.kind, 'cancelled', 'cancel did not cancel');

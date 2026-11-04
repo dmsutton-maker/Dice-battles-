@@ -94,13 +94,13 @@ export function MatchmakingOverlay({
   /*
     In a mode that cannot be played live, with the service known to be
     off, or for practice, the bot is settled before the first frame
-    (startFlow). There is no trophy floor (Marc, 4 Nov 2026). Otherwise
+    (startFlow), and below 100 trophies too (BOT_ONLY_BELOW_TROPHIES). Otherwise
     the first ask goes out, and the search is only SHOWN once the server
     says it is looking — an `off` answer goes straight to the reveal, as
     it always did.
   */
   const [flow, setFlow] = useState<MatchFlowState>(() =>
-    botOnly ? { kind: 'bot', reason: botOnly } : startFlow(mode, hasMatchmakingService()),
+    botOnly ? { kind: 'bot', reason: botOnly } : startFlow(trophies, mode, hasMatchmakingService()),
   );
   const flowRef = useRef(flow);
   const mounted = useRef(true);
