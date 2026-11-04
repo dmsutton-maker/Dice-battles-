@@ -1,41 +1,46 @@
+import type { BattleHandle } from './battlesApi';
+import type { ModeId } from './modes';
+import { FRIENDLY_MODES } from './friendlyBattle';
+
 /**
  * Who you are paired against, and how long the game looks before giving
  * up and using a bot.
  *
  * David asked on 9 Sep 2026 for two things: every game below 100
- * trophies against a bot, and above that a search that counts up to
- * about fifteen seconds looking for a real player, dropping to a bot if
- * it finds nobody.
+ * trophies against a bot, and above that a search of about fifteen
+ * seconds looking for a real player, dropping to a bot if it finds
+ * nobody. Marc, 4 Nov 2026, made it real: "it should search for a player
+ * for 15 seconds and it should say 'searching for opponent' or
+ * something, and if it can't find a real person to verse after 15
+ * seconds then it loads you against one of the bots".
  *
- * THE HONEST STATE OF THIS. There is no online play in this game. There
- * is no matchmaking server, no shared round, no way for two phones to
- * roll against each other — `matchmaking.ts` has said so in its own
- * header since it was written, and deliberately never used the words
- * "searching for players online" because that would be a promise the
- * game cannot keep to people who include five-year-olds.
+ * The search asks the HQ site's queue (`onlineMatch.ts`, /api/match),
+ * and the battle it finds is played over the same live route as a
+ * friend battle. Only Color Rush and Ultimate can be played that way
+ * (friendlyBattle.ts, FRIENDLY_MODES), so the other modes never search.
  *
- * So this file is the whole rule, written properly and tested, with the
- * one step it cannot do yet behind a switch: `onlineMatch.ts` answers
- * "is anybody there?" and currently answers "no service" immediately.
- * That is the same two-state pattern the adverts and the purchases use.
- *
- * While the switch is off, a player never waits fifteen seconds for an
- * answer that was never coming — the search ends the moment the lookup
- * says there is nobody to look for, and the round starts against a bot
- * with the wording it has always had. The countdown, the fallback and
- * the trophy floor all become real the day a server exists, without
- * anything here changing.
+ * THE HONEST PART. A player only waits when the server is really
+ * looking. A site that answers "off", or cannot be reached, settles the
+ * bot at once, with no fifteen-second act in front of it — the game
+ * behaves exactly as it did before matchmaking existed. The order of a
+ * search is written as a pure state machine in `matchFlow.ts`.
  */
 
 /**
  * Below this many trophies, no search happens at all: it is a bot, every
- * time.
+ * time, and the battle counts exactly like any other (stakes.ts).
  *
  * The point is the first hour. A beginner put in front of a stranger
  * loses, and losing your first few games to someone who already owns the
  * ladder is how somebody stops playing. 100 is also where the first
  * trophy reward already sits, so "you are ready for other people" lands
  * on a moment the game already treats as an arrival.
+ *
+ * David set it on 9 Sep 2026. Marc's "the online battle should be the
+ * dominant way to play" (4 Nov 2026) removed it for a moment; Marc the
+ * same day: "no, until 100 trophies should always be against bots". So
+ * online is the dominant way to play FROM 100 trophies, and practice
+ * against a bot is in Settings for anybody, counting for nothing.
  */
 export const BOT_ONLY_BELOW_TROPHIES = 100;
 
@@ -45,18 +50,47 @@ export const SEARCH_DEADLINE_MS = 15_000;
 /** How often the search asks again while it waits. */
 export const SEARCH_POLL_MS = 900;
 
+/**
+ * How long a matched opponent has to arrive in the room. Somebody the
+ * server paired us with whose phone never shows up means a bot, not a
+ * long wait for a stranger.
+ */
+export const MATCH_JOIN_WAIT_MS = 10_000;
+
 export type Pairing =
   /** Too few trophies to be matched with a person at all. */
   | { kind: 'bot'; reason: 'below-threshold' }
+  /**
+   * A mode that cannot be played live (Skirmish, Color War): a bot at
+   * once, because there is no way to play it against a person yet.
+   */
+  | { kind: 'bot'; reason: 'not-live' }
+  /** Practice from Settings: a bot on purpose, counting for nothing. */
+  | { kind: 'bot'; reason: 'practice' }
   /** Looked, found nobody in time. */
   | { kind: 'bot'; reason: 'nobody-found' }
-  /** No matchmaking service in this build, so there was nothing to look at. */
+  /** The matchmaking service is off or out of reach, so there was nothing to look at. */
   | { kind: 'bot'; reason: 'no-service' }
-  | { kind: 'player'; playerId: string; name: string };
+  /** Somebody was found, but their phone never arrived in the room. */
+  | { kind: 'bot'; reason: 'no-show' }
+  /** The server paired us: a real person, in a live battle. */
+  | { kind: 'player'; playerId: string; name: string; battle: BattleHandle };
 
-/** Does this player get a search at all? */
-export function searchesForPlayers(trophies: number): boolean {
-  return trophies >= BOT_ONLY_BELOW_TROPHIES;
+/**
+ * Does this battle search for a person? Not below the trophy floor, and
+ * not in Skirmish or Color War, which cannot be played live today
+ * (friendlyBattle.ts, MODE_NOT_READY: one shared jail, one shared board).
+ * Color Rush and Ultimate from 100 trophies always do.
+ */
+export function searchesForPlayers(trophies: number, mode: ModeId): boolean {
+  return trophies >= BOT_ONLY_BELOW_TROPHIES && FRIENDLY_MODES.includes(mode);
+}
+
+/** Why a battle that does not search goes to a bot — the floor first. */
+export function whyNoSearch(trophies: number, mode: ModeId): 'below-threshold' | 'not-live' | null {
+  if (trophies < BOT_ONLY_BELOW_TROPHIES) return 'below-threshold';
+  if (!FRIENDLY_MODES.includes(mode)) return 'not-live';
+  return null;
 }
 
 /**
@@ -66,6 +100,15 @@ export function searchesForPlayers(trophies: number): boolean {
 export function secondsShown(elapsedMs: number): number {
   const capped = Math.min(Math.max(0, elapsedMs), SEARCH_DEADLINE_MS);
   return Math.floor(capped / 1000);
+}
+
+/**
+ * The countdown a player sees while searching: 15 at the start, down to
+ * 0 at the deadline, and never below it.
+ */
+export function secondsLeft(elapsedMs: number): number {
+  const capped = Math.min(Math.max(0, elapsedMs), SEARCH_DEADLINE_MS);
+  return Math.ceil((SEARCH_DEADLINE_MS - capped) / 1000);
 }
 
 /** Has the search run out of time? */

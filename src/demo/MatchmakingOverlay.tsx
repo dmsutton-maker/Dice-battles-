@@ -1,8 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { SHAPE, THEME } from '../ui/theme';
-import { AI_ROSTER, AiOpponent } from '../game/ai';
+import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
+import { SecondaryButton } from '../ui/Card';
+import { playClick } from '../audio/sounds';
+import { AI_ROSTER, AiOpponent, type AiDifficultyId } from '../game/ai';
 import { PRISONER_COLORS, inkOn } from '../game/colors';
+import type { ModeId } from '../game/modes';
+import type { Identity } from '../game/playerIdentity';
+import type { BattleHandle } from '../game/battlesApi';
 import {
   MATCH_TOTAL_MS,
   SCAN_TICK_MS,
@@ -11,108 +16,233 @@ import {
   scanIndexAt,
   stageAt,
 } from '../game/matchmaking';
+import { searchProgress, secondsLeft, SEARCH_POLL_MS } from '../game/matchSearch';
+import { PRACTICE_RESULT_LINE } from '../game/stakes';
 import {
-  isSearchOver,
-  searchProgress,
-  searchesForPlayers,
-  secondsShown,
-  SEARCH_POLL_MS,
-  type Pairing,
-} from '../game/matchSearch';
-import { findWaitingPlayer } from '../game/onlineMatch';
+  isLooking,
+  showsSearch,
+  startFlow,
+  stepFlow,
+  type MatchFlowEvent,
+  type MatchFlowState,
+} from '../game/matchFlow';
+import {
+  cancelSearch,
+  findWaitingPlayer,
+  hasMatchmakingService,
+  leaveMatchBattle,
+  withdrawFromSearch,
+  type ProfileStats,
+} from '../game/onlineMatch';
 
+/** The line under a rival who was picked because no person could be. */
+function botFooter(state: MatchFlowState): string {
+  if (state.kind === 'bot' && state.reason === 'nobody-found') return "Nobody free right now — here's a rival.";
+  if (state.kind === 'bot' && state.reason === 'no-show') return "Your opponent didn't make it — here's a rival.";
+  if (state.kind === 'bot' && state.reason === 'practice') return PRACTICE_RESULT_LINE;
+  return 'Get ready to battle!';
+}
 
 /**
- * Shown for a couple of seconds at the top of every round: names shuffle
- * past, then the rival you actually face is revealed.
+ * Shown at the top of every round: a search for a real opponent where
+ * there is one to be had, then the rival you face.
  *
- * `onDone` fires exactly once. The timer is cleared on unmount, so leaving
- * the round mid-search cannot start a countdown for a battle nobody is in.
+ * Marc, 4 Nov 2026: "it should search for a player for 15 seconds and it
+ * should say 'searching for opponent' or something, and if it can't find
+ * a real person to verse after 15 seconds then it loads you against one
+ * of the bots". The order is matchFlow.ts; this draws it and does what
+ * each step says.
+ *
+ * A person found goes to `onPlayer`, and the screen takes it from there
+ * into the waiting room — no bot reveal, because there is no bot. A bot
+ * is never presented as a person: after a search that found nobody the
+ * reveal says so.
+ *
+ * `onDone` fires exactly once, after a bot's reveal. The timers are
+ * cleared on unmount, and leaving mid-search leaves the queue, so going
+ * back to the menu cannot leave a stranger waiting for us.
  */
 export function MatchmakingOverlay({
   opponent,
   trophies,
+  me,
+  mode,
+  difficulty,
+  stats,
+  botOnly,
   onDone,
+  onPlayer,
+  onCancel,
 }: {
   opponent: AiOpponent;
-  /** Decides whether a search for a real player happens at all. */
+  /** Sent with the search, so the server pairs people near each other. */
   trophies: number;
+  me: Identity | null;
+  mode: ModeId;
+  difficulty: AiDifficultyId;
+  /** Published once if the server does not know this phone yet. */
+  stats: ProfileStats;
+  /**
+   * Straight to a rival with no search: the opponent we were matched
+   * with never came (`no-show`), or practice from Settings (`practice`).
+   */
+  botOnly: 'no-show' | 'practice' | null;
   onDone: () => void;
+  onPlayer: (battle: BattleHandle, name: string) => void;
+  onCancel: () => void;
 }) {
   /*
-    Below the trophy floor there is no search: it is a bot, immediately,
-    which is the point of the floor. Above it the game looks for a real
-    player — but only where there is somewhere to look. See
-    onlineMatch.ts: with no matchmaking service the honest answer is that
-    the question cannot be asked, and a fifteen-second wait for an answer
-    that was never coming is theatre.
+    In a mode that cannot be played live, with the service known to be
+    off, or for practice, the bot is settled before the first frame
+    (startFlow), and below 100 trophies too (BOT_ONLY_BELOW_TROPHIES). Otherwise
+    the first ask goes out, and the search is only SHOWN once the server
+    says it is looking — an `off` answer goes straight to the reveal, as
+    it always did.
   */
-  const [pairing, setPairing] = useState<Pairing | null>(
-    searchesForPlayers(trophies) ? null : { kind: 'bot', reason: 'below-threshold' },
+  const [flow, setFlow] = useState<MatchFlowState>(() =>
+    botOnly ? { kind: 'bot', reason: botOnly } : startFlow(trophies, mode, hasMatchmakingService()),
   );
+  const flowRef = useRef(flow);
+  const mounted = useRef(true);
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(Date.now());
   const finished = useRef(false);
   const done = useRef(onDone);
   done.current = onDone;
+  const toPlayer = useRef(onPlayer);
+  toPlayer.current = onPlayer;
+  const meRef = useRef(me);
+  meRef.current = me;
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
+  const request = useRef({ mode, difficulty, trophies });
 
-  useEffect(() => {
-    if (pairing !== null) return;
-    let live = true;
-    const ask = async () => {
-      const found = await findWaitingPlayer();
-      if (!live || found === null) return;
-      setPairing(found);
-    };
-    void ask();
-    const id = setInterval(() => void ask(), SEARCH_POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(id);
-    };
-  }, [pairing]);
-
-  // Waiting for people is the only thing that takes fifteen seconds. Once
-  // the pairing is settled the overlay is the reveal it has always been.
-  const waiting = pairing === null;
-  const waitingRef = useRef(waiting);
-  waitingRef.current = waiting;
+  const dispatch = useCallback((event: MatchFlowEvent) => {
+    const step = stepFlow(flowRef.current, event);
+    flowRef.current = step.state;
+    if (mounted.current) setFlow(step.state);
+    for (const effect of step.effects) {
+      if (effect.type === 'leave-battle') {
+        void leaveMatchBattle(meRef.current, effect.battleId);
+      } else if (step.state.kind === 'withdrawing') {
+        // The deadline: the server's answer to leaving decides.
+        void withdrawFromSearch(meRef.current).then((pairing) =>
+          dispatch({ type: 'leaveAnswer', pairing }),
+        );
+      } else {
+        void cancelSearch(meRef.current);
+      }
+    }
+  }, []);
 
   /*
-    When the pairing settles, the reveal starts from THERE rather than
-    from when the search began — otherwise a search that took ten seconds
+    Leaving the overlay by any road while still looking leaves the queue.
+    Not once matched: the screen has taken that battle into the waiting
+    room, and leaving it here would walk out on the person in it.
+  */
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (isLooking(flowRef.current) || flowRef.current.kind === 'withdrawing') {
+        dispatch({ type: 'cancel' });
+      }
+    };
+  }, [dispatch]);
+
+  const looking = isLooking(flow);
+  useEffect(() => {
+    if (!looking) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // One question at a time, so a slow answer never stacks up behind another.
+    const ask = async () => {
+      const found = await findWaitingPlayer(meRef.current, request.current, statsRef.current);
+      // Dispatched even when stale: a late "matched" has to leave its room.
+      dispatch({ type: 'answer', pairing: found });
+      if (live && isLooking(flowRef.current)) timer = setTimeout(() => void ask(), SEARCH_POLL_MS);
+    };
+    void ask();
+    return () => {
+      live = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [looking, dispatch]);
+
+  // A real person: the screen takes them into the waiting room.
+  useEffect(() => {
+    if (flow.kind !== 'matched') return;
+    toPlayer.current(flow.pairing.battle, flow.pairing.name);
+  }, [flow]);
+
+  const isBot = flow.kind === 'bot';
+  const botRef = useRef(isBot);
+  botRef.current = isBot;
+
+  /*
+    When the bot settles, the reveal starts from THERE rather than from
+    when the search began — otherwise a search that took fifteen seconds
     would skip straight past the reveal into the countdown, and nobody
     would see who they were playing.
   */
-  const settledAt = useRef(0);
-  useEffect(() => {
-    if (pairing !== null && settledAt.current === 0) {
-      settledAt.current = Date.now() - startedAt.current;
-    }
-  }, [pairing]);
+  const settledAt = useRef<number | null>(null);
+  if (isBot && settledAt.current === null) settledAt.current = Date.now() - startedAt.current;
 
   useEffect(() => {
     const id = setInterval(() => {
       const next = Date.now() - startedAt.current;
       setElapsed(next);
-      if (waitingRef.current) {
-        // Out of time: take the bot rather than keep somebody staring.
-        if (isSearchOver(next)) setPairing({ kind: 'bot', reason: 'nobody-found' });
+      if (!botRef.current) {
+        // Out of time: withdraw, and let the server's answer decide.
+        dispatch({ type: 'tick', elapsedMs: next });
         return;
       }
-      if (isComplete(next - settledAt.current) && !finished.current) {
+      if (isComplete(next - (settledAt.current ?? next)) && !finished.current) {
         finished.current = true;
         clearInterval(id);
         done.current();
       }
     }, SCAN_TICK_MS / 2);
     return () => clearInterval(id);
-  }, []);
+  }, [dispatch]);
 
-  // The reveal's own clock starts when the pairing settles.
-  const revealElapsed = waiting ? 0 : elapsed - settledAt.current;
+  const searching = showsSearch(flow) || flow.kind === 'matched' || flow.kind === 'cancelled';
+
+  if (searching) {
+    return (
+      <View style={styles.overlay}>
+        <Text style={styles.kicker}>{`SEARCHING FOR AN OPPONENT${dotsAt(elapsed)}`}</Text>
+
+        <View style={styles.card}>
+          <Text style={styles.count} accessibilityLiveRegion="polite">
+            {secondsLeft(elapsed)}
+          </Text>
+        </View>
+
+        <Text style={styles.footer}>{"If nobody is free, you'll play a rival instead."}</Text>
+
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${searchProgress(elapsed) * 100}%` }]} />
+        </View>
+
+        <SecondaryButton
+          style={styles.cancel}
+          onPress={() => {
+            playClick();
+            dispatch({ type: 'cancel' });
+            onCancel();
+          }}
+        >
+          <Text style={styles.cancelText}>Cancel</Text>
+        </SecondaryButton>
+      </View>
+    );
+  }
+
+  // The reveal's own clock starts when the bot settles.
+  const revealElapsed = isBot ? elapsed - (settledAt.current ?? 0) : 0;
   const stage = stageAt(revealElapsed);
-  const scanning = waiting || stage === 'scanning';
+  const scanning = !isBot || stage === 'scanning';
   const shown = scanning
     ? AI_ROSTER[scanIndexAt(elapsed, AI_ROSTER.length)]
     : opponent;
@@ -120,11 +250,7 @@ export function MatchmakingOverlay({
   return (
     <View style={styles.overlay}>
       <Text style={styles.kicker}>
-        {waiting
-          ? `LOOKING FOR A PLAYER${dotsAt(elapsed)}`
-          : scanning
-            ? `FINDING YOUR OPPONENT${dotsAt(elapsed)}`
-            : 'YOUR OPPONENT'}
+        {scanning ? `FINDING YOUR OPPONENT${dotsAt(elapsed)}` : 'YOUR OPPONENT'}
       </Text>
 
       <View style={[styles.card, !scanning && styles.cardFound]}>
@@ -132,25 +258,16 @@ export function MatchmakingOverlay({
         <Text style={[styles.name, !scanning && styles.nameFound]}>
           {shown.name}
         </Text>
+        {botOnly === 'practice' && <Text style={styles.tag}>Practice</Text>}
       </View>
 
-      <Text style={styles.footer}>
-        {waiting
-          ? `${secondsShown(elapsed)}s — a rival is picked if nobody joins`
-          : scanning
-            ? ' '
-            : 'Get ready to battle!'}
-      </Text>
+      <Text style={styles.footer}>{scanning ? ' ' : botFooter(flow)}</Text>
 
       <View style={styles.track}>
         <View
           style={[
             styles.fill,
-            {
-              width: waiting
-                ? `${searchProgress(elapsed) * 100}%`
-                : `${Math.min(100, (revealElapsed / MATCH_TOTAL_MS) * 100)}%`,
-            },
+            { width: `${Math.min(100, (revealElapsed / MATCH_TOTAL_MS) * 100)}%` },
           ]}
         />
       </View>
@@ -253,6 +370,17 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: THEME.gold,
   },
+  count: {
+    color: THEME.ink,
+    fontSize: 56,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+    minWidth: 90,
+    textAlign: 'center',
+  },
+  tag: { ...TYPE.small, color: THEME.inkSoft, marginTop: 6, fontWeight: '700' },
+  cancel: { marginTop: 26, minWidth: 160, minHeight: MIN_TAP, paddingVertical: 12 },
+  cancelText: { ...TYPE.body, color: THEME.ink, fontWeight: '800' },
 });
 
 /**

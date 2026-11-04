@@ -1,60 +1,130 @@
 /**
  * Is there a real person waiting for a game right now?
  *
- * THE SWITCH, in the same shape as `adSdk.ts` and `storeKit.ts`.
+ * Marc, 4 Nov 2026: "add the online matchmaking where you now verse real
+ * players instead of bots. it should search for a player for 15 seconds
+ * and it should say 'searching for opponent' or something, and if it
+ * can't find a real person to verse after 15 seconds then it loads you
+ * against one of the bots".
  *
- * CURRENT STATE: OFF, because there is nothing to switch on. This game
- * has no matchmaking server and no way for two phones to play a shared
- * round: the dice are simulated locally, the opponent's rolls come from
- * a timer, and nothing about that is synchronised with anybody. Until
- * that exists, the only truthful answer to "is anybody there?" is that
- * there is nowhere to ask.
+ * THE SERVICE NOW EXISTS. The queue is a table on the HQ site
+ * (`match_queue`, asked through /api/match): two phones searching for
+ * the same mode and difficulty, close enough in trophies, are paired out
+ * of it into a `battles` row. The shared round is the friend battle's
+ * live route (/api/battles/live) unchanged — Color Rush and Ultimate are
+ * independent races, so "these are the colours I have freed" is the
+ * whole game, and the server keeps the clock. Without a person, the
+ * opponent is the computer, rolling from `ai.ts` on a timer, as always.
  *
- * WHY IT RETURNS NO-SERVICE RATHER THAN NOBODY-FOUND. Those two are not
- * the same thing and the difference reaches the player. "Nobody found"
- * means the game looked and the lobby was empty, and it is fair to spend
- * fifteen seconds establishing that. "No service" means the question
- * cannot be asked at all, and spending fifteen seconds pretending to ask
- * it would be theatre — a made-up wait, ending in a made-up
- * disappointment, in front of children who would believe both.
- *
- * WHAT TURNING IT ON NEEDS, honestly, because it is not a one-line
- * change like the adverts were:
- *
- *   1. A queue somewhere that two players can both join and be paired
- *      out of — the Supabase project already holds profiles, so this is
- *      a table and an endpoint, not new infrastructure.
- *   2. A shared round: both phones agreeing on the arena, the roll
- *      order, and every die result, with an answer for what happens
- *      when one of them walks into a lift. This is the large part.
- *   3. A rethink of what the opponent's rolls ARE. Today they come from
- *      `ai.ts` on a timer; against a person they come over a network and
- *      can be late, or never arrive.
- *
- * Only the first is small. The rule that uses this — trophy floor,
- * fifteen-second deadline, bot fallback — is written and tested in
- * `matchSearch.ts` and does not change when this is switched on.
- */
-import type { Pairing } from './matchSearch';
-
-export function hasMatchmakingService(): boolean {
-  // ONLINE PLAY OFF. See the note above: turning this on is a feature,
-  // not a flag, and this line is the last thing that changes, not the
-  // first.
-  return false;
-}
-
-/**
- * Ask once whether somebody is waiting.
+ * THE HONEST RULE. A player only waits when the server is really
+ * looking. "Nobody found" means the game looked and the queue was empty,
+ * and it is fair to spend fifteen seconds establishing that. "No
+ * service" means the question cannot be asked — a site from before
+ * /api/match, the migration not applied, no connection — and pretending
+ * to ask it for fifteen seconds would be theatre in front of children
+ * who would believe it. So the first `off` answer turns the switch below
+ * off for the rest of the session and every later start goes straight
+ * to a rival, exactly as before matchmaking existed.
  *
  * Never throws and never blocks: the same rule as `ads.ts` and
  * `friendsApi.ts`. A search that hangs is worse than one that fails,
  * because the player is staring at it.
  */
-export async function findWaitingPlayer(): Promise<Pairing | null> {
-  if (!hasMatchmakingService()) return { kind: 'bot', reason: 'no-service' };
-  // When a service exists, this is where it is asked. Returning null
-  // means "not yet, keep waiting" — the deadline in matchSearch.ts is
-  // what ends the wait, not this.
+import type { Identity } from './playerIdentity';
+import type { Pairing } from './matchSearch';
+import { leaveMatch, pulseBattle, searchMatch, type MatchAnswer, type MatchRequest } from './battlesApi';
+import { pushProfile } from './friendsApi';
+
+export type { MatchRequest } from './battlesApi';
+
+/** What `pushProfile` publishes, built the way the Friends screen builds it. */
+export type ProfileStats = Parameters<typeof pushProfile>[1];
+
+let serviceOn = true;
+
+/** False once the server has said `off` (or could not be reached) this session. */
+export function hasMatchmakingService(): boolean {
+  return serviceOn;
+}
+
+/** Tests only: a fresh session. */
+export function resetMatchmakingForTest(): void {
+  serviceOn = true;
+}
+
+/**
+ * The name shown for a stranger: what they chose, or "Player". Never
+ * their id or friend code. The same rule as the server's
+ * `opponentDisplayName` (hq/src/lib/matchQueue.ts), applied again here
+ * so an older or odd answer still cannot put an id on screen.
+ */
+export function opponentDisplayName(name: unknown): string {
+  const trimmed = typeof name === 'string' ? name.trim() : '';
+  return trimmed.length > 0 ? trimmed : 'Player';
+}
+
+function asPairing(answer: MatchAnswer): Pairing | null {
+  if (answer.kind === 'matched') {
+    return {
+      kind: 'player',
+      playerId: answer.battle.opponentId ?? '',
+      name: opponentDisplayName(answer.opponentName),
+      battle: answer.battle,
+    };
+  }
+  if (answer.kind === 'off' || answer.kind === 'no-profile') {
+    return { kind: 'bot', reason: 'no-service' };
+  }
+  // Still searching (or a `left` this build did not ask for): keep waiting.
   return null;
+}
+
+/**
+ * Ask once whether somebody is waiting. Null means "not yet, keep
+ * waiting" — the deadline in matchSearch.ts ends the wait, not this.
+ *
+ * A server that does not know this phone (`no-profile`) is sent the
+ * profile once and asked again once; the queue needs a profile row.
+ */
+export async function findWaitingPlayer(
+  me: Identity | null,
+  request: MatchRequest,
+  stats: ProfileStats,
+): Promise<Pairing | null> {
+  if (!serviceOn || !me) return { kind: 'bot', reason: 'no-service' };
+  let answer = await searchMatch(me, request);
+  if (answer.kind === 'no-profile') {
+    await pushProfile(me, stats);
+    answer = await searchMatch(me, request);
+  }
+  if (answer.kind === 'off') serviceOn = false;
+  return asPairing(answer);
+}
+
+/**
+ * The deadline has passed: leave the queue, and take whatever the server
+ * says happened. A pairing made in the last moment is a person in a room
+ * waiting for us, so that is joined; anything else is a rival.
+ */
+export async function withdrawFromSearch(me: Identity | null): Promise<Pairing> {
+  if (!me) return { kind: 'bot', reason: 'nobody-found' };
+  const pairing = asPairing(await leaveMatch(me));
+  return pairing?.kind === 'player' ? pairing : { kind: 'bot', reason: 'nobody-found' };
+}
+
+/**
+ * The player cancelled. Leave the queue, and if the server had already
+ * paired us, leave that room too, so the other phone is told at once
+ * and gets its rival instead of waiting for somebody who has gone.
+ */
+export async function cancelSearch(me: Identity | null): Promise<void> {
+  if (!me) return;
+  const answer = await leaveMatch(me);
+  if (answer.kind === 'matched') await leaveMatchBattle(me, answer.battle.id);
+}
+
+/** Walk out of a matched room nobody is going to play in. */
+export async function leaveMatchBattle(me: Identity | null, battleId: string): Promise<void> {
+  if (!me) return;
+  await pulseBattle(me, battleId, [], { leave: true });
 }

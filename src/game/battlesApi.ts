@@ -27,7 +27,7 @@ const TIMEOUT_MS = 5000;
 async function call<T>(
   path: string,
   init?: RequestInit,
-): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+): Promise<{ ok: true; data: T } | { ok: false; error: string; status?: number }> {
   const controller =
     typeof AbortController === 'function' ? new AbortController() : null;
   const timer = setTimeout(() => controller?.abort(), TIMEOUT_MS);
@@ -41,7 +41,7 @@ async function call<T>(
     const body = stripEmojiDeep((await response.json()) as Record<string, unknown>);
     if (!response.ok) {
       const message = typeof body?.error === 'string' ? body.error : 'that did not work';
-      return { ok: false, error: message };
+      return { ok: false, error: message, status: response.status };
     }
     return { ok: true, data: body as T };
   } catch {
@@ -241,4 +241,87 @@ export async function pulseBattle(
         : null,
     started: result.data.started !== false,
   };
+}
+
+/**
+ * ONLINE MATCHMAKING, the server's half of "find me somebody to play".
+ * Marc, 4 Nov 2026: "add the online matchmaking where you now verse real
+ * players instead of bots".
+ *
+ * Every answer is one of these, and nothing else: a failure of any kind
+ * — no connection, a timeout, a site from before /api/match that answers
+ * a page instead of JSON, a server error — is `off`, which the game reads
+ * as "play a rival now", exactly what it did before matchmaking existed.
+ * `no-profile` is the server not knowing this phone yet (401); the caller
+ * publishes the profile and asks again.
+ */
+export type MatchAnswer =
+  | { kind: 'off' }
+  | { kind: 'no-profile' }
+  | { kind: 'searching' }
+  | { kind: 'left' }
+  | { kind: 'matched'; battle: BattleHandle; opponentName: string };
+
+export interface MatchRequest {
+  mode: ModeId;
+  difficulty: AiDifficultyId;
+  trophies: number;
+}
+
+type RawMatch = {
+  state?: string;
+  battle?: Partial<BattleHandle> & { opponentName?: string };
+};
+
+function readMatch(
+  result: { ok: true; data: RawMatch } | { ok: false; error: string; status?: number },
+): MatchAnswer {
+  if (!result.ok) return result.status === 401 ? { kind: 'no-profile' } : { kind: 'off' };
+  const { state, battle } = result.data ?? {};
+  if (state === 'searching') return { kind: 'searching' };
+  if (state === 'left') return { kind: 'left' };
+  if (state === 'matched' && battle && typeof battle.id === 'string' && battle.mode && battle.difficulty) {
+    return {
+      kind: 'matched',
+      battle: {
+        id: battle.id,
+        mode: battle.mode,
+        difficulty: battle.difficulty,
+        opponentId: battle.opponentId,
+        opponentName: battle.opponentName,
+      },
+      opponentName: battle.opponentName ?? '',
+    };
+  }
+  // `off`, and anything this build does not understand.
+  return { kind: 'off' };
+}
+
+/** Join the queue, or ask again whether it has found somebody. */
+export async function searchMatch(me: Identity, request: MatchRequest): Promise<MatchAnswer> {
+  const result = await call<RawMatch>('/match', {
+    method: 'POST',
+    body: JSON.stringify({
+      playerId: me.playerId,
+      secret: me.secret,
+      action: 'search',
+      mode: request.mode,
+      difficulty: request.difficulty,
+      trophies: request.trophies,
+    }),
+  });
+  return readMatch(result);
+}
+
+/**
+ * Stop looking. The answer can still be `matched`: the server may have
+ * paired this phone in the moment before it asked to leave, and then
+ * there is a person in a room waiting for it.
+ */
+export async function leaveMatch(me: Identity): Promise<MatchAnswer> {
+  const result = await call<RawMatch>('/match', {
+    method: 'POST',
+    body: JSON.stringify({ playerId: me.playerId, secret: me.secret, action: 'leave' }),
+  });
+  return readMatch(result);
 }

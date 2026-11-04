@@ -173,6 +173,10 @@ import {
 } from '../game/battleMenu';
 import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
+import { opponentDisplayName } from '../game/onlineMatch';
+import { joinWaitOver } from '../game/matchFlow';
+import { battleKindOf, paysNothing, PRACTICE_RESULT_LINE, stakesFor } from '../game/stakes';
+import { FORFEIT_LINE, forgetMatch, rememberMatch, settleUnfinishedMatch } from '../game/pendingMatch';
 import { FriendlyWaitOverlay } from './FriendlyWaitOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
@@ -591,11 +595,34 @@ export function DiceDemoScreen() {
   */
   const outgoingRef = useRef<ChallengeState['outgoing']>(null);
   outgoingRef.current = challenges.outgoing;
+  /*
+    A live battle against another phone: a FRIEND who was challenged, or
+    since 4 Nov 2026 a stranger the matchmaking queue paired us with
+    (`kind: 'match'`, onlineMatch.ts). Both are played over the same live
+    route; they differ in what they pay and in what a no-show means.
+  */
   const [friendly, setFriendly] = useState<
-    { battleId: string; opponentId: string; opponentName: string } | null
+    { battleId: string; opponentId: string; opponentName: string; kind: 'friend' | 'match' } | null
   >(null);
   const friendlyRef = useRef<typeof friendly>(null);
   friendlyRef.current = friendly;
+  /*
+    The opponent the queue found never arrived, and a rival is starting
+    in their place: the next MatchmakingOverlay goes straight to the bot
+    with no second search. Read when that overlay mounts, cleared when
+    the countdown begins or the player leaves.
+  */
+  const skipSearchRef = useRef(false);
+  /*
+    PRACTICE (Marc, 4 Nov 2026): "a button in settings that lets you play
+    a bot as practice and those battles don't count for anything". Set by
+    the Settings button's start, kept through "Play again", and cleared
+    by any other start or by going back to the menu. finishRound reads
+    the ref, through stakes.ts, to pay nothing.
+  */
+  const [practice, setPractice] = useState(false);
+  const practiceRef = useRef(false);
+  practiceRef.current = practice;
   /*
     THE BATTLE MENU (BattleMenu.tsx, battleMenu.ts). Marc, 2 Nov 2026:
     "when you're in a battle and want to exit a game it should be a
@@ -611,7 +638,7 @@ export function DiceDemoScreen() {
   const [battleMenu, setBattleMenu] = useState(false);
   const battleMenuRef = useRef(false);
   battleMenuRef.current = battleMenu;
-  const menuKind: BattleMenuKind = friendly ? 'friend' : 'computer';
+  const menuKind: BattleMenuKind = friendly ? 'friend' : practice ? 'practice' : 'computer';
   const battleLive = appActive && !(battleMenu && pausesBattle(menuKind));
   /*
     THE WAITING ROOM (friendlyBattle.ts, JOIN_WAIT_MS). David, 1 Nov
@@ -638,6 +665,8 @@ export function DiceDemoScreen() {
   const startFriendlyRef = useRef<
     ((battle: BattleHandle, opponentName: string) => void) | null
   >(null);
+  /* The same for friendNoShow, which hands a stranger's no-show to matchNoShow below. */
+  const matchNoShowRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     let alive = true;
     loadIdentity()
@@ -759,6 +788,25 @@ export function DiceDemoScreen() {
 
   const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
+  /*
+    AN ONLINE BATTLE WALKED OUT OF BY CLOSING THE APP (pendingMatch.ts).
+    Marc, 4 Nov 2026: "if i forfeit an online match, do I lose trophies?
+    If i don't then make sure I do". Once the saved progress is in (so
+    the loss lands on the real trophies, not the defaults) and there is
+    an identity to ask the server with.
+  */
+  useEffect(() => {
+    if (!me || !hydrated) return;
+    let alive = true;
+    void settleUnfinishedMatch(me).then((result) => {
+      if (!alive || !result) return;
+      setTrophies(result.trophies);
+      showCallout(FORFEIT_LINE);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [me, hydrated]);
   /*
     THE LOADING SCREEN. The family, 3 Nov 2026: "i want the speed fixes
     now. like make sure the game is fully loaded before showing the home
@@ -1393,6 +1441,9 @@ export function DiceDemoScreen() {
       friendlyRef.current = null;
     }
     setFriendReady(false);
+    skipSearchRef.current = false;
+    practiceRef.current = false;
+    setPractice(false);
     stopAnnouncer();
     resetRace();
     setCallout(null);
@@ -1422,6 +1473,10 @@ export function DiceDemoScreen() {
   const friendNoShow = useCallback(() => {
     const gone = friendlyRef.current;
     if (!gone) return;
+    if (gone.kind === 'match') {
+      matchNoShowRef.current?.();
+      return;
+    }
     countdownTimers.current.forEach(clearTimeout);
     flashTimers.current.forEach(clearTimeout);
     flashTimers.current = [];
@@ -1452,7 +1507,8 @@ export function DiceDemoScreen() {
         thing this mode is for.
 
         Done first and with a `return`, so none of the paying paths below
-        can be reached by accident when a fifth one is added.
+        can be reached by accident when a fifth one is added. Practice
+        from Settings takes the same return (stakes.ts).
       */
       const playing = friendlyRef.current;
       if (playing) {
@@ -1467,6 +1523,19 @@ export function DiceDemoScreen() {
         }
         setFriendly(null);
         friendlyRef.current = null;
+        // Settled normally, so not a walk-out at the next launch.
+        if (playing.kind === 'match') forgetMatch();
+      }
+      /*
+        WHAT THIS BATTLE COUNTS TOWARD comes from one table, stakes.ts
+        (Marc, 4 Nov 2026: "the online battle should ... count towards
+        everything"). Online and computer battles count for everything,
+        the ad tally included — the ad still only ever SHOWS at a start or
+        on leaving the result screen (ads.ts), never between two people
+        mid-battle. A friendly or a practice battle counts for nothing.
+      */
+      const stakes = stakesFor(battleKindOf(playing?.kind ?? null, practiceRef.current));
+      if (paysNothing(stakes)) {
         setLastDelta(0);
         setLastCoins(0);
         setLastXp(0);
@@ -1832,7 +1901,7 @@ export function DiceDemoScreen() {
     starting. It used to arm the cup flag — see cupsRef for why there is
     no longer a flag to arm.
   */
-  const startCountdown = useCallback((origin: 'casual' | 'again' | 'friendly' = 'casual') => {
+  const startCountdown = useCallback((origin: 'casual' | 'again' | 'friendly' | 'practice' = 'casual') => {
     /*
       ONE START AT A TIME. While an owed ad loads, nothing is on screen
       for up to six seconds, and a second tap on Play used to start the
@@ -1847,6 +1916,11 @@ export function DiceDemoScreen() {
       return;
     }
     startPendingRef.current = true;
+    // Practice from Settings; "Play again" keeps whatever the last one was.
+    if (origin !== 'again') {
+      practiceRef.current = origin === 'practice';
+      setPractice(origin === 'practice');
+    }
     const epoch = startEpochRef.current;
     const startedFrom = phaseRef.current;
     // Timers from the last battle (callouts, flashes) end with it.
@@ -1912,6 +1986,16 @@ export function DiceDemoScreen() {
   }, [resetRace, setPhaseBoth]);
 
   const beginCountdown = useCallback(() => {
+    skipSearchRef.current = false;
+    /*
+      An online battle is written down as it starts (pendingMatch.ts), so
+      closing the app mid-battle still counts as a loss at the next
+      launch. Not in the waiting room: nobody has played yet there.
+    */
+    const live = friendlyRef.current;
+    if (live && live.kind === 'match') {
+      rememberMatch({ battleId: live.battleId, mode: modeRef.current, difficulty: difficultyRef.current });
+    }
     setPhaseBoth('arm');
     playCue('ready');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -2168,7 +2252,13 @@ export function DiceDemoScreen() {
   */
   const leaveBattle = useCallback(() => {
     setBattleMenu(false);
-    if (friendlyRef.current) {
+    /*
+      An online battle is left like one against the computer — the
+      ordinary loss, which also tells the server so the other player
+      wins — because it pays like one, and walking out must not be a way
+      round losing trophies.
+    */
+    if (friendlyRef.current && friendlyRef.current.kind === 'friend') {
       quitToMenu();
       return;
     }
@@ -2520,7 +2610,7 @@ export function DiceDemoScreen() {
     same game.
   */
   const startFriendly = useCallback(
-    (battle: BattleHandle, opponentName: string) => {
+    (battle: BattleHandle, opponentName: string, kind: 'friend' | 'match' = 'friend') => {
       if (friendlyRef.current) return;
       setBanner(null);
       setMode(battle.mode);
@@ -2546,11 +2636,13 @@ export function DiceDemoScreen() {
         battleId: battle.id,
         opponentId: battle.opponentId ?? '',
         opponentName,
+        kind,
       });
       friendlyRef.current = {
         battleId: battle.id,
         opponentId: battle.opponentId ?? '',
         opponentName,
+        kind,
       };
       setTab('play');
       setShowFriends(false);
@@ -2559,6 +2651,48 @@ export function DiceDemoScreen() {
     [startCountdown],
   );
   startFriendlyRef.current = startFriendly;
+
+  /*
+    THE QUEUE FOUND SOMEBODY (MatchmakingOverlay, onlineMatch.ts). Into
+    the same waiting room as a friend battle, by the name they chose or
+    "Player", and from there the same live beat plays it.
+  */
+  const startOnline = useCallback(
+    (battle: BattleHandle, name: string) => {
+      startFriendly(battle, opponentDisplayName(name), 'match');
+    },
+    [startFriendly],
+  );
+
+  /*
+    THE STRANGER NEVER CAME: the server closed the room (they cancelled,
+    or never arrived), or MATCH_JOIN_WAIT_MS passed here with no word.
+    The player came to play, so a rival starts at once, with the reveal
+    saying why and no second search. The room is left as well, so a
+    phone that was only late is told rather than kept waiting.
+  */
+  const matchNoShow = useCallback(() => {
+    const gone = friendlyRef.current;
+    if (!gone || gone.kind !== 'match') return;
+    const who = meRef.current;
+    if (who) void pulseBattle(who, gone.battleId, [], { leave: true });
+    forgetMatch();
+    countdownTimers.current.forEach(clearTimeout);
+    flashTimers.current.forEach(clearTimeout);
+    flashTimers.current = [];
+    startEpochRef.current += 1;
+    startPendingRef.current = false;
+    setFriendly(null);
+    friendlyRef.current = null;
+    setFriendReady(false);
+    stopAnnouncer();
+    resetRace();
+    setMatchNote(null);
+    setPhaseBoth('pick');
+    skipSearchRef.current = true;
+    startCountdown('casual');
+  }, [resetRace, setPhaseBoth, startCountdown]);
+  matchNoShowRef.current = matchNoShow;
 
   const answerBattle = useCallback(
     async (inviteId: string, action: 'accept' | 'decline' | 'cancel') => {
@@ -2705,6 +2839,8 @@ export function DiceDemoScreen() {
     if (phase !== 'matching' || !friendly || friendReady) return;
     const id = setInterval(() => {
       if (localWaitOver(friendWaitSinceRef.current, Date.now())) friendNoShow();
+      // A stranger gets less time than a friend: the player came to play.
+      else if (friendly.kind === 'match' && joinWaitOver(friendWaitSinceRef.current, Date.now())) friendNoShow();
     }, 1000);
     return () => clearInterval(id);
   }, [phase, friendly, friendReady, friendNoShow]);
@@ -2927,6 +3063,24 @@ export function DiceDemoScreen() {
   // the menu to change mode, difficulty or arena. Tapping the result screen
   // used to restart instantly, which meant a stray tap started a fresh
   // round (and on Hard, put 25 trophies back on the line).
+  /*
+    What a won or lost result screen says was paid: the trophies and the
+    coins, or in practice that nothing changed (stakes.ts).
+  */
+  const paidLines = (delta: string) =>
+    practice ? (
+      <Text style={styles.trophyLine}>{PRACTICE_RESULT_LINE}</Text>
+    ) : (
+      <>
+        <Text style={styles.trophyLine}>
+          {delta} trophies → {trophies}
+        </Text>
+        <Text style={[styles.coinLine, styles.onGlass]}>
+          +{lastCoins} coins → {wallet.coins}
+        </Text>
+      </>
+    );
+
   const roundOverButtons = (
     <View style={styles.endButtons}>
       <Pressable style={styles.playAgainButton} onPress={() => startCountdown('again')}>
@@ -3102,6 +3256,8 @@ export function DiceDemoScreen() {
             <Text style={styles.scoreLabel}>{opponent.short}</Text>
           </View>
           <View style={styles.aiMeta}>
+            {/* Practice from Settings says so for the whole battle. */}
+            {practice && <Text style={styles.practiceTag}>PRACTICE</Text>}
             {/*
               WHAT YOUR OPPONENT HAS, with a cross on each one.
 
@@ -3304,6 +3460,7 @@ export function DiceDemoScreen() {
       {phase === 'matching' && friendly && (
         <FriendlyWaitOverlay
           opponent={opponent}
+          kind={friendly.kind}
           ready={friendReady}
           onDone={beginCountdown}
           onCancel={quitToMenu}
@@ -3313,7 +3470,14 @@ export function DiceDemoScreen() {
         <MatchmakingOverlay
           opponent={opponent}
           trophies={trophies}
+          me={me}
+          mode={mode}
+          difficulty={difficulty}
+          stats={friendStats}
+          botOnly={practice ? 'practice' : skipSearchRef.current ? 'no-show' : null}
           onDone={beginCountdown}
+          onPlayer={startOnline}
+          onCancel={quitToMenu}
         />
       )}
 
@@ -3330,12 +3494,7 @@ export function DiceDemoScreen() {
       {phase === 'won' && (
         <View style={styles.roundOver}>
           <Text style={styles.overlayTitle}>Victory!</Text>
-          <Text style={styles.trophyLine}>
-            {lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta} trophies → {trophies}
-          </Text>
-          <Text style={[styles.coinLine, styles.onGlass]}>
-            +{lastCoins} coins → {wallet.coins}
-          </Text>
+          {paidLines(`${lastDelta !== null && lastDelta >= 0 ? `+${lastDelta}` : lastDelta}`)}
           {lastXp > 0 && (
             <Text style={[styles.coinLine, styles.onGlass]}>
               +{lastXp} XP · season level {levelFor(season?.xp ?? 0)}
@@ -3368,9 +3527,13 @@ export function DiceDemoScreen() {
             {playerScore}–{aiScore} — nobody loses trophies.{'\n'}Settle it in a
             rematch!
           </Text>
-          <Text style={[styles.coinLine, styles.onGlass]}>
-            +{lastCoins} coins → {wallet.coins}
-          </Text>
+          {practice ? (
+            <Text style={[styles.coinLine, styles.onGlass]}>{PRACTICE_RESULT_LINE}</Text>
+          ) : (
+            <Text style={[styles.coinLine, styles.onGlass]}>
+              +{lastCoins} coins → {wallet.coins}
+            </Text>
+          )}
           {lastXp > 0 && (
             <Text style={[styles.coinLine, styles.onGlass]}>
               +{lastXp} XP · season level {levelFor(season?.xp ?? 0)}
@@ -3594,15 +3757,17 @@ export function DiceDemoScreen() {
       {battleMenu && menuShowsIn(phase) && (
         <BattleMenu
           title={menuTitle(menuKind)}
-          note={menuNote(menuKind)}
+          note={friendly?.kind === 'match' ? `${friendly.opponentName} is still playing` : menuNote(menuKind)}
           audio={audioPrefs}
           onAudio={setAudioPrefs}
           onResume={() => setBattleMenu(false)}
           onHowTo={() => setPopup('howto')}
           leave={leaveWords(
-            friendly
+            friendly && friendly.kind === 'friend'
               ? { kind: 'friend', friendName: friendly.opponentName }
-              : {
+              : practice
+                ? { kind: 'practice' }
+                : {
                   kind: 'computer',
                   trophies: getProgress().trophies,
                   difficulty: difficultyRef.current,
@@ -3723,6 +3888,34 @@ export function DiceDemoScreen() {
               </View>
               <View style={[styles.toggleBox, colorblind && styles.toggleBoxOn]}>
                 <Text style={styles.toggleTick}>{colorblind ? '✓' : ''}</Text>
+              </View>
+            </Pressable>
+            {/*
+              PRACTICE AGAINST A BOT. Marc, 4 Nov 2026: "there should be a
+              button in settings that lets you play a bot as practice and
+              those battles don't count for anything". Leaves Settings and
+              starts a battle the way Start battle does, at the mode and
+              difficulty already chosen, with no search (stakes.ts).
+            */}
+            <View style={styles.settingsDividerLine} />
+            <Pressable
+              style={styles.toggleRow}
+              accessibilityRole="button"
+              onPress={() => {
+                playClick();
+                setPopup(null);
+                setTab('play');
+                startCountdown('practice');
+              }}
+            >
+              <View style={styles.toggleText}>
+                <View style={styles.toggleLabelRow}>
+                  <Text style={styles.toggleLabel}>Practice against a bot</Text>
+                </View>
+                <Text style={styles.toggleNote}>
+                  {MODES[mode].name} · {AI_DIFFICULTIES[difficulty].label}. Nothing counts: no
+                  trophies, coins or XP either way.
+                </Text>
               </View>
             </Pressable>
             {/*
@@ -3928,10 +4121,7 @@ export function DiceDemoScreen() {
       {phase === 'lost' && (
         <View style={styles.roundOver}>
           <Text style={styles.overlayTitle}>Defeat!</Text>
-          <Text style={styles.trophyLine}>{lastDelta} trophies → {trophies}</Text>
-          <Text style={[styles.coinLine, styles.onGlass]}>
-            +{lastCoins} coins → {wallet.coins}
-          </Text>
+          {paidLines(`${lastDelta}`)}
           {lastXp > 0 && (
             <Text style={[styles.coinLine, styles.onGlass]}>
               +{lastXp} XP · season level {levelFor(season?.xp ?? 0)}
@@ -4022,6 +4212,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     marginLeft: 2,
+  },
+  practiceTag: {
+    color: THEME.inkSoft,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   calloutWrap: {
     position: 'absolute',
