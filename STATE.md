@@ -320,9 +320,9 @@ one is added; it does not need a new build.
   in App Store Connect on 4 Nov 2026: `dino_valley` is out of the draft
   submission and removed from sale (the product still exists), the
   draft holds the other 7 purchases, and the coin packs say "Shop".
-  Still open:
-  the privacy policy and App Review notes do not yet describe online
-  play. Online wins are paid on the phone's own word.
+  The privacy policy, terms and App Review notes describe online play
+  since 4 Nov 2026 (website deployed 14:25 UTC, `dpl_8Q2GCdByL4UFJXeb8Ksm26bbzSG4`).
+  Still open: online wins are paid on the phone's own word.
 - **4 Nov 2026 (v1.160.0, update f9099fe4):** the Ocean dice flow on
   one 1.8 s clock (`src/dice/oceanFlow.ts`) and splash when they land
   (`src/dice/diceOcean.ts`, effect `ocean`). Marc may want the flow
