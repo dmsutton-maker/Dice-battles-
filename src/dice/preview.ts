@@ -476,13 +476,27 @@ const NEON_CYAN_HEAD_AT = 0.28;
 /** How quickly the tail fades behind the head; a long one paled the whole tube. */
 const NEON_CARD_TAIL = 16;
 
+/** How much of a texel `off` texels from a tube's middle the card's light covers. */
+const neonCardOn = (off: number) => Math.max(0, 1 - Math.max(0, off - 1) / 3);
+
 export function paintNeon(rgb: number[]): void {
+  // The edge of the light is supersampled 2x2 so the card matches the
+  // die (4 Nov 2026, Marc: "make the neon dice less pixelated"); "how
+  // far round" is read at the texel's centre, as the glow map does.
+  const SS = 2;
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
       const t = neonTubesAt(sheetToCube(x, y));
       const i = (y * SIZE + x) * 3;
-      const pinkOn = Math.max(0, 1 - Math.max(0, t.pinkOff - 1) / 3);
-      const cyanOn = Math.max(0, 1 - Math.max(0, t.cyanOff - 1) / 3);
+      let pinkOn = 0;
+      let cyanOn = 0;
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          const s = neonTubesAt(sheetToCube(x + (sx + 0.5) / SS - 0.5, y + (sy + 0.5) / SS - 0.5));
+          pinkOn += neonCardOn(s.pinkOff) / (SS * SS);
+          cyanOn += neonCardOn(s.cyanOff) / (SS * SS);
+        }
+      }
       const pinkBehind = ((NEON_PINK_HEAD_AT - t.pinkAlong) % 1 + 1) % 1;
       const cyanBehind = ((NEON_CYAN_HEAD_AT - t.cyanAlong) % 1 + 1) % 1;
       mixInto(rgb, i, NEON_PINK_HEAD, pinkOn * Math.exp(-pinkBehind * NEON_CARD_TAIL) * 0.8);

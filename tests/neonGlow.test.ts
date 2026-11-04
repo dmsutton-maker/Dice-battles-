@@ -242,6 +242,28 @@ suite('neon dice · the light runs round the tubes', () => {
     }
   });
 
+  test('the paint, the glow map and the card are supersampled, not stair-stepped', () => {
+    /*
+      Marc, 4 Nov 2026: "make the neon dice less pixelated." The tube
+      cores and the grid are under a texel wide, so each is averaged over
+      the texel: the paint 3x3, the glow map's edge of light 4x4, the
+      card's 2x2. The design itself is unchanged, and the price is not
+      touched here (tests/neonDice.test.ts pins $0.99).
+    */
+    const patterns = readFileSync(join(root, 'src/dice/patterns.ts'), 'utf8');
+    const neon = patterns.slice(patterns.indexOf('  neon: (() => {'), patterns.indexOf('  supporterCompass:'));
+    assert(/const N = 3;[\s\S]*neonAt\(u, v,/.test(neon), 'the Neon paint is not supersampled 3x3');
+    assert(/mod\(dot3\(P, F\.u\), 8\)/.test(neon) && /- 24\.5\)/.test(neon), 'the grid or the halo changed');
+    const glow = readFileSync(join(root, 'src/dice/neonGlow.ts'), 'utf8');
+    assert(/const SS = 4;/.test(glow), 'the glow map is not supersampled 4x4');
+    const preview = readFileSync(join(root, 'src/dice/preview.ts'), 'utf8');
+    const card = preview.slice(preview.indexOf('export function paintNeon'));
+    assert(/const SS = 2;/.test(card), 'the card is not supersampled 2x2');
+    // "How far round" is still read once, at the texel's centre.
+    assert(/data\[i\] = Math\.round\(centre\.pinkAlong \* 255\)/.test(glow), 'the glow map no longer reads the count at the centre');
+    assert(/NEON_PINK_HEAD_AT - t\.pinkAlong/.test(card), 'the card no longer reads the count at the centre');
+  });
+
   test('the die on the board glows, the shelf card shows it, and nothing is painted on a sticker', () => {
     const mesh = readFileSync(join(root, 'src/dice/DieMesh.tsx'), 'utf8');
     assert(/pattern === 'neon'\) return glowingNeonMaterials\(/.test(mesh), 'the Neon die does not glow');

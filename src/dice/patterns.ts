@@ -2037,7 +2037,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       return [r / (N * N), g / (N * N), b / (N * N)];
     };
   })(),
-  neon: (x, y) => {
+neon: (() => {
     /*
       Neon, 20 Oct 2026. David asked for "a new cool dice that is worth
       one or two dollars" and picked this of three: an arcade at night.
@@ -2053,25 +2053,63 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       grid is planes through the die eight texels apart, so its lines
       meet themselves over every edge, and a faint cyan ring round each
       colour sticker gives every side its glow.
+
+      BETTER QUALITY since 4 Nov 2026 (Marc: "make the neon dice less
+      pixelated"). The same design — same colours, same tubes, same grid
+      and halo — supersampled 3x3, because the white-hot core of a tube
+      and a grid line are each under a texel wide and at 64 texels a
+      side they came out as a staircase.
     */
-    const P = sheetToCube(x, y);
-    let px = rgb('#0c0a18');
-    const F = FACE_FRAMES[cubeFace(P)];
-    const gu = Math.abs(mod(dot3(P, F.u), 8) - 4);
-    const gv = Math.abs(mod(dot3(P, F.v), 8) - 4);
-    px = mixRgb(px, rgb('#3a2470'), smoothstep(0.9, 0.2, Math.min(4 - gu, 4 - gv)) * 0.5);
-    // A faint cyan ring round the sticker, like a sign's border.
-    const halo = Math.abs(Math.hypot(dot3(P, F.u), dot3(P, F.v)) - 24.5);
-    px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-halo / 1.6) * 0.45);
-    // Since 1 Nov 2026 the same two tubes feed the glow map the GPU
-    // runs light along (neonGlow.ts), so the light and the paint agree.
-    const { pinkOff: pink, cyanOff: cyan } = neonTubesAt(P);
-    px = mixRgb(px, rgb('#2ee6ff'), Math.exp(-cyan / 2.0) * 0.85);
-    px = mixRgb(px, rgb('#d8fbff'), smoothstep(1.0, 0.3, cyan));
-    px = mixRgb(px, rgb('#ff2fb4'), Math.exp(-pink / 2.2) * 0.9);
-    px = mixRgb(px, rgb('#ffd0f0'), smoothstep(1.1, 0.3, pink));
-    return px;
-  },
+    const GLASS = rgb('#0c0a18');
+    const GRID = rgb('#3a2470');
+    const CYAN = rgb('#2ee6ff');
+    const CYAN_CORE = rgb('#d8fbff');
+    const PINK = rgb('#ff2fb4');
+    const PINK_CORE = rgb('#ffd0f0');
+    const neonAt = (x: number, y: number, tubes: NeonTubes): [number, number, number] => {
+      const P = sheetToCube(x, y);
+      let px = GLASS;
+      const F = FACE_FRAMES[cubeFace(P)];
+      const gu = Math.abs(mod(dot3(P, F.u), 8) - 4);
+      const gv = Math.abs(mod(dot3(P, F.v), 8) - 4);
+      px = mixRgb(px, GRID, smoothstep(0.9, 0.2, Math.min(4 - gu, 4 - gv)) * 0.5);
+      // A faint cyan ring round the sticker, like a sign's border.
+      const halo = Math.abs(Math.hypot(dot3(P, F.u), dot3(P, F.v)) - 24.5);
+      px = mixRgb(px, CYAN, Math.exp(-halo / 1.6) * 0.45);
+      // Since 1 Nov 2026 the same two tubes feed the glow map the GPU
+      // runs light along (neonGlow.ts), so the light and the paint agree.
+      const { pinkOff: pink, cyanOff: cyan } = tubes;
+      px = mixRgb(px, CYAN, Math.exp(-cyan / 2.0) * 0.85);
+      px = mixRgb(px, CYAN_CORE, smoothstep(1.0, 0.3, cyan));
+      px = mixRgb(px, PINK, Math.exp(-pink / 2.2) * 0.9);
+      px = mixRgb(px, PINK_CORE, smoothstep(1.1, 0.3, pink));
+      return px;
+    };
+    // Measuring the tubes is most of the cost (two seamAt a call), and
+    // this far from both the glow is a gentle slope a third of a texel
+    // cannot stair: the texel's middle serves all nine. Near a tube every
+    // sub-sample is measured, which is where the staircase was.
+    const TUBE_NEAR = 3.5;
+    return (x: number, y: number): [number, number, number] => {
+      const N = 3;
+      const centre = neonTubesAt(sheetToCube(x, y));
+      const near = Math.min(centre.pinkOff, centre.cyanOff) < TUBE_NEAR;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const u = x + (sx + 0.5) / N - 0.5;
+          const v = y + (sy + 0.5) / N - 0.5;
+          const c = neonAt(u, v, near ? neonTubesAt(sheetToCube(u, v)) : centre);
+          r += c[0];
+          g += c[1];
+          b += c[2];
+        }
+      }
+      return [r / (N * N), g / (N * N), b / (N * N)];
+    };
+  })(),
 
   supporterCompass: (() => {
     /*
@@ -4168,6 +4206,9 @@ export const SMOOTH_EDGES: ReadonlySet<string> = new Set([
   'frost',
   'lavender',
   'tartan',
+  // Not neon: it supersamples itself 3x3 (4 Nov 2026), and a thin bright
+  // tube on black glass crosses EDGE_STEP in one texel by design, so this
+  // pass would blur it wider than the glow map for 40% more painting.
 ]);
 
 /**
