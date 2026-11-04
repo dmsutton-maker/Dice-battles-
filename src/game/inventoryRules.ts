@@ -100,6 +100,7 @@ export const STARTING_DICE: readonly string[] = INVENTORY_SKIN_ORDER.filter(
     !s.prize &&
     !s.pass &&
     !s.paid &&
+    !s.retired &&
     (s.unlock === null || s.unlock === undefined || freeRung(s.unlock)),
 ).map((s) => s.id);
 
@@ -119,7 +120,10 @@ export function onlyStarters(ids: readonly string[], starting: readonly string[]
  * would be counting something the player is not to be shown.
  */
 export function obtainableDiceCount(now: number = Date.now()): number {
-  return INVENTORY_SKIN_ORDER.filter((s) => !isFutureSeasonItem('dice', s.id, now)).length;
+  // A retired die (Baseball, 4 Nov 2026) is nobody's to get, so it is not
+  // in the "of N" either — tester mode sees it, but it is not counted.
+  return INVENTORY_SKIN_ORDER.filter((s) => !s.retired && !isFutureSeasonItem('dice', s.id, now))
+    .length;
 }
 
 export function obtainableArenaCount(now: number = Date.now()): number {

@@ -15,6 +15,7 @@ import {
   LADDER_SKINS,
   PASS_SKINS,
   PAID_SKINS,
+  RETIRED_SKINS,
   PRIZE_SKINS,
   STORE_SKINS,
 } from '../src/game/diceSkins';
@@ -436,8 +437,10 @@ suite('inventory · everything is listed cheapest first', () => {
       FIVE since 18 Oct 2026: the money-only Supporter die (Starter pack)
       comes last of all, after the pass.
     */
+    // Retired dice (Marc, 4 Nov 2026) sit at the very end and are not
+    // ladder dice, whatever their lack of a price would otherwise say.
     const ladder = INVENTORY_SKIN_ORDER.filter(
-      (s) => s.price === undefined && !s.prize && !s.pass && !s.paid,
+      (s) => s.price === undefined && !s.prize && !s.pass && !s.paid && !s.retired,
     );
     const shop = INVENTORY_SKIN_ORDER.filter((s) => s.price !== undefined);
     const prizes = INVENTORY_SKIN_ORDER.filter((s) => s.prize);
@@ -448,7 +451,7 @@ suite('inventory · everything is listed cheapest first', () => {
     // being true halfway down.
     assertEqual(
       INVENTORY_SKIN_ORDER.slice(0, ladder.length).every(
-        (s) => s.price === undefined && !s.prize && !s.pass && !s.paid,
+        (s) => s.price === undefined && !s.prize && !s.pass && !s.paid && !s.retired,
       ),
       true,
       'every trophy die comes before every coin die',
@@ -474,9 +477,15 @@ suite('inventory · everything is listed cheapest first', () => {
       'the season pass dice are not after the prizes',
     );
     assertEqual(
-      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length + prizes.length + pass.length).every((s) => s.paid),
+      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length + prizes.length + pass.length, ladder.length + shop.length + prizes.length + pass.length + paid.length).every((s) => s.paid),
       true,
-      'the money-only dice are not last',
+      'the money-only dice are not after the pass dice',
+    );
+    // Retired dice (Marc, 4 Nov 2026: admin mode only) are last of all.
+    assertEqual(
+      INVENTORY_SKIN_ORDER.slice(ladder.length + shop.length + prizes.length + pass.length + paid.length).every((s) => s.retired),
+      true,
+      'the retired dice are not last',
     );
     assertEqual(paid.length, PAID_SKINS.length, 'a money-only die fell off the list');
     assertEqual(prizes.length, PRIZE_SKINS.length, 'a prize die fell off the list');
@@ -516,9 +525,12 @@ suite('inventory · everything is listed cheapest first', () => {
       'no duplicates',
     );
     assertEqual(
-      LADDER_SKINS.length + STORE_SKINS.length + PRIZE_SKINS.length + PASS_SKINS.length + PAID_SKINS.length,
+      // Plus the retired ones (Marc, 4 Nov 2026: Baseball is "only in your
+      // inventory with admin mode"): no route, by design, and counted here
+      // so a die cannot quietly fall off every list.
+      LADDER_SKINS.length + STORE_SKINS.length + PRIZE_SKINS.length + PASS_SKINS.length + PAID_SKINS.length + RETIRED_SKINS.length,
       DICE_SKINS.length,
-      'every die is earned, bought, won in a cup, won on the pass or bought with money — never none of them',
+      'every die is earned, bought, won in a cup, won on the pass, bought with money or retired — never none of them',
     );
   });
 

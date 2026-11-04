@@ -88,6 +88,8 @@ export function setsOwned(trophies: number): number {
     // below, which would otherwise hand the Amethyst die to everyone on
     // install — that combination is how Ivory says it is free.
     if (skin.prize || skin.pass) return owns(skin.id);
+    // Retired: nobody's, not even in tester mode (Marc, 4 Nov 2026).
+    if (skin.retired) return false;
     if (skin.paid) return hasEntitlement(skin.id);
     if (skin.price !== undefined) return owns(skin.id);
     if (skin.unlock === null || skin.unlock === undefined) return true;

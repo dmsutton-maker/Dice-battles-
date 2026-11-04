@@ -32,6 +32,7 @@ import {
   isArenaUnlocked,
   keepPassArenas,
   keepRaisedRungs,
+  refundRetiredDice,
   isSkinUnlocked,
   getLoadout,
   loadLoadout,
@@ -124,7 +125,7 @@ import {
   clearPurchases,
   loadWallet,
 } from '../game/currency';
-import { DEFAULT_SKIN_ID, skinById, STORE_SKINS } from '../game/diceSkins';
+import { DEFAULT_SKIN_ID, RETIRED_DICE_REFUNDS, skinById, STORE_SKINS } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
@@ -375,6 +376,26 @@ export function DiceDemoScreen() {
         // Bubblegum Dice moved up the ladder; whoever had it keeps it.
         // Quietly: nothing changes for them, so there is nothing to say.
         if (keepRaisedRungs().length > 0) setWallet({ ...getWallet() });
+        /*
+          The Baseball dice is retired (Marc, 4 Nov 2026): admin mode only
+          from now on. Anybody who had bought it gets the 480 coins back
+          and is told so once, here, the launch it happens.
+        */
+        const refunded = refundRetiredDice();
+        if (refunded.length > 0) {
+          setWallet({ ...getWallet() });
+          setRewards((queue) => [
+            ...queue,
+            ...refunded.map((id) => ({
+              picture: { kind: 'coins' as const },
+              name: `${skinById(id).name} dice`,
+              kicker: 'COINS BACK',
+              note:
+                `The ${skinById(id).name} dice has been retired from the game, so the ` +
+                `${RETIRED_DICE_REFUNDS[id].toLocaleString()} coins you paid for it are back in your wallet.`,
+            })),
+          ]);
+        }
         const kept = keepPassArenas();
         if (kept.length > 0) {
           setWallet({ ...getWallet() });
