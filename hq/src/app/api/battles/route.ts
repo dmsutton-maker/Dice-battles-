@@ -296,23 +296,31 @@ export async function GET(request: NextRequest) {
     challenger joins: they never tap Accept, so the only way their phone
     learns the room exists is finding it here while it is still waiting
     for them. A list of values, not an "or" string — see the note above.
+
+    NEVER A MATCH (4 Nov 2026). A battle against a stranger from online
+    matchmaking (../match) is a `battles` row too, with `kind = 'match'`,
+    and the game joins whatever this answer hands it as a FRIEND battle.
+    So matches are left out here, in JS rather than in the query: `*` and
+    a filter on the value read back work whether or not the `kind` column
+    exists yet (20261104_matchmaking.sql adds it), and a row without one
+    is a friend battle. A few rows per side, so a match that is newer
+    than a friend battle cannot hide it.
   */
   const liveSides = await Promise.all(
     (['a_id', 'b_id'] as const).map((side) =>
       supabase
         .from('battles')
-        .select('id, a_id, b_id, mode, difficulty, state, started_at')
+        .select('*')
         .in('state', ['waiting', 'playing'])
         .eq(side, auth.playerId)
         .order('started_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .limit(5),
     ),
   );
   const live =
     liveSides
-      .map((r) => r.data)
-      .filter((r): r is NonNullable<typeof r> => Boolean(r))
+      .flatMap((r) => r.data ?? [])
+      .filter((r) => r.kind !== 'match')
       .sort((x, y) => String(y.started_at).localeCompare(String(x.started_at)))[0] ?? null;
 
   /*

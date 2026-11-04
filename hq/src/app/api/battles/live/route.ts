@@ -8,6 +8,7 @@ import {
   joinWindowOver,
   timeoutWinner,
 } from '@/lib/battleClock';
+import { matchClaimHolds } from '@/lib/matchQueue';
 
 /**
  * The battle itself, while two people are playing it.
@@ -67,6 +68,20 @@ import {
  * into is closed after JOIN_WAIT_MS with no winner, and the phone that
  * waited is told `over` with nobody having won, which the game reads as
  * "your friend did not make it".
+ *
+ * A MATCH IS PLAYED HERE TOO, with two differences. Marc, 4 Nov 2026,
+ * asked for online battles against real players; online matchmaking
+ * (../../match) writes a battle row with `kind = 'match'`, and it is
+ * beaten exactly like a friend battle except:
+ *  - backing out of the waiting room closes it with NO winner, so the
+ *    stranger still in it takes the no-show path and gets a bot. A free
+ *    win for a battle nobody played is wrong once wins are worth
+ *    something.
+ *  - a claim to have won holds only with every colour freed and at
+ *    least MATCH_MIN_MS in (matchClaimHolds, ../../../../lib/matchQueue.ts).
+ *    One that does not is ignored and the beat is just a beat.
+ * The clock, the tie and the sweep are the same for both. A row from
+ * before the `kind` column existed has none, and is a friend battle.
  */
 
 export const dynamic = 'force-dynamic';
@@ -100,12 +115,15 @@ export async function POST(request: NextRequest) {
   if (!battleId) return NextResponse.json({ error: 'which battle?' }, { status: 400 });
 
   const supabase = supabaseAdmin();
+  // `*` rather than COLUMNS for this first read only, so `kind` comes
+  // back when the column exists and the read still works when it does not.
   const { data: battle } = await supabase
     .from('battles')
-    .select(COLUMNS)
+    .select('*')
     .eq('id', battleId)
     .maybeSingle();
   if (!battle) return NextResponse.json({ error: 'no such battle' }, { status: 404 });
+  const isMatch = battle.kind === 'match';
 
   const iAmA = battle.a_id === auth.playerId;
   const iAmB = battle.b_id === auth.playerId;
@@ -164,6 +182,16 @@ export async function POST(request: NextRequest) {
     patch.state = 'over';
     patch.ended_at = now.toISOString();
     onlyIfWaiting = true;
+  } else if (isMatch && body.leave === true && waiting) {
+    /*
+      A MATCH left before it began: closed with no winner. The stranger
+      still waiting reads `over` with nobody having won as "your opponent
+      did not make it" and plays a bot, instead of being handed a win
+      for a battle that never happened.
+    */
+    patch.state = 'over';
+    patch.ended_at = now.toISOString();
+    onlyIfWaiting = true;
   } else if (body.leave === true && (battle.state === 'playing' || waiting)) {
     /*
       Leaving is a real move, not a disconnection. A player who backs out
@@ -178,7 +206,12 @@ export async function POST(request: NextRequest) {
     patch.state = 'over';
     patch.ended_at = now.toISOString();
     if (!battle.winner) patch.winner = iAmA ? battle.b_id : battle.a_id;
-  } else if (body.claimWin === true && battle.state === 'playing' && !battle.winner) {
+  } else if (
+    body.claimWin === true &&
+    battle.state === 'playing' &&
+    !battle.winner &&
+    (!isMatch || matchClaimHolds(freed, startedAtMs, now.getTime()))
+  ) {
     // First claim wins; a second one finds `winner` already set and the
     // `.is('winner', null)` below refuses it.
     patch.winner = auth.playerId;
