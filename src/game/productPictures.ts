@@ -58,6 +58,24 @@ export function pictureOfProduct(product: Product): ProductPicture {
 }
 
 /**
+ * What the full story lists, a tap from the board: the card's items and,
+ * for the Gold Pass, the free row too, marked, in level order. Marc, 4 Nov
+ * 2026: "add the ice dice to the preview of the gold pass in the store".
+ * A pass holder is paid both rows, so the Ice Dice are included; the
+ * card's own picture (pictureOfProduct) is left alone.
+ */
+export function includedItems(product: Product): (ProductPicture['items'][number] & { freeRow?: true })[] {
+  if (product.id !== GOLD_PASS.productId) return pictureOfProduct(product).items;
+  return [...seasonAt().items]
+    .sort((a, b) => a.level - b.level)
+    .map((s) => ({
+      kind: s.item.kind === 'dice' ? ('die' as const) : ('arena' as const),
+      id: s.item.id,
+      ...(s.track === 'free' ? { freeRow: true as const } : {}),
+    }));
+}
+
+/**
  * How many coins to draw in the pile, so a bigger pack LOOKS bigger:
  * three for the pouch, six for the chest, ten for the vault.
  */
