@@ -75,6 +75,7 @@ async function main(): Promise<void> {
   await import('./reinstall.test');
   await import('./foldable.test');
   await import('./matchSearch.test');
+  await import('./matchFlow.test');
   await import('./warmup.test');
   await import('./auditFixes.test');
   await import('./glide.test');

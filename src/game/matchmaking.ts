@@ -6,12 +6,12 @@
  * it lands on is the rival you actually face — the screen is a reveal, not
  * a decoration over a fixed outcome.
  *
- * It does NOT contact a network or look for other people. v1 is one player
- * against these opponents, so the copy says "finding your opponent" and
- * never "searching for players online" — that would be a promise the game
- * cannot keep, and the people playing this include kids who would believe
- * it. When real online play exists, this is the screen that earns the
- * other wording.
+ * It does NOT contact a network or look for other people. The reveal is
+ * only ever of a computer rival, so the copy says "finding your opponent"
+ * and never that a person was found. The search for a real person (Marc,
+ * 4 Nov 2026) comes before it and is separate: matchSearch.ts and
+ * matchFlow.ts, with its own "Searching for an opponent…" wording, and
+ * this reveal only plays when that search ends in a rival.
  *
  * Timing lives here rather than in the component so the sequence can be
  * tested without a renderer.

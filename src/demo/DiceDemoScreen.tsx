@@ -173,6 +173,8 @@ import {
 } from '../game/battleMenu';
 import { BugReportModal } from '../debug/BugReportModal';
 import { MatchmakingOverlay } from './MatchmakingOverlay';
+import { opponentDisplayName } from '../game/onlineMatch';
+import { joinWaitOver } from '../game/matchFlow';
 import { FriendlyWaitOverlay } from './FriendlyWaitOverlay';
 import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
@@ -591,11 +593,24 @@ export function DiceDemoScreen() {
   */
   const outgoingRef = useRef<ChallengeState['outgoing']>(null);
   outgoingRef.current = challenges.outgoing;
+  /*
+    A live battle against another phone: a FRIEND who was challenged, or
+    since 4 Nov 2026 a stranger the matchmaking queue paired us with
+    (`kind: 'match'`, onlineMatch.ts). Both are played over the same live
+    route; they differ in what they pay and in what a no-show means.
+  */
   const [friendly, setFriendly] = useState<
-    { battleId: string; opponentId: string; opponentName: string } | null
+    { battleId: string; opponentId: string; opponentName: string; kind: 'friend' | 'match' } | null
   >(null);
   const friendlyRef = useRef<typeof friendly>(null);
   friendlyRef.current = friendly;
+  /*
+    The opponent the queue found never arrived, and a rival is starting
+    in their place: the next MatchmakingOverlay goes straight to the bot
+    with no second search. Read when that overlay mounts, cleared when
+    the countdown begins or the player leaves.
+  */
+  const skipSearchRef = useRef(false);
   /*
     THE BATTLE MENU (BattleMenu.tsx, battleMenu.ts). Marc, 2 Nov 2026:
     "when you're in a battle and want to exit a game it should be a
@@ -638,6 +653,8 @@ export function DiceDemoScreen() {
   const startFriendlyRef = useRef<
     ((battle: BattleHandle, opponentName: string) => void) | null
   >(null);
+  /* The same for friendNoShow, which hands a stranger's no-show to matchNoShow below. */
+  const matchNoShowRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     let alive = true;
     loadIdentity()
@@ -1393,6 +1410,7 @@ export function DiceDemoScreen() {
       friendlyRef.current = null;
     }
     setFriendReady(false);
+    skipSearchRef.current = false;
     stopAnnouncer();
     resetRace();
     setCallout(null);
@@ -1422,6 +1440,10 @@ export function DiceDemoScreen() {
   const friendNoShow = useCallback(() => {
     const gone = friendlyRef.current;
     if (!gone) return;
+    if (gone.kind === 'match') {
+      matchNoShowRef.current?.();
+      return;
+    }
     countdownTimers.current.forEach(clearTimeout);
     flashTimers.current.forEach(clearTimeout);
     flashTimers.current = [];
@@ -1467,15 +1489,26 @@ export function DiceDemoScreen() {
         }
         setFriendly(null);
         friendlyRef.current = null;
+      }
+      if (playing && playing.kind === 'friend') {
         setLastDelta(0);
         setLastCoins(0);
         setLastXp(0);
         return;
       }
+      /*
+        AN ONLINE BATTLE AGAINST A STRANGER PAYS LIKE A BATTLE AGAINST THE
+        COMPUTER at the same difficulty — trophies, coins, the pass and
+        Game Center — but moves no cup (the plan's default for Marc's
+        matchmaking, 4 Nov 2026, until he and David say otherwise). Like
+        a friendly it does not count toward the ad: nothing lands between
+        two people, and the ad already had its moment before the search.
+      */
+      const online = playing?.kind === 'match';
       // Counted here, at the real end of the game, but NOT shown here —
       // see src/game/ads.ts. An interstitial over the fanfare and the
       // trophy count would bury the reward the player just earned.
-      noteGameFinished();
+      if (!online) noteGameFinished();
       // Beside it on purpose: this is the one line every finished battle
       // reaches exactly once, ties included — they return early below,
       // before any trophy is moved.
@@ -1512,7 +1545,7 @@ export function DiceDemoScreen() {
         battle used to move all of them and pay prizes for cups the
         player was told were not running.
       */
-      const scored = scoreBattle(scorableTournaments(withRotation(cupsRef.current, Date.now()), todayStamp()), cupStatesRef.current, {
+      const scored = scoreBattle(online ? [] : scorableTournaments(withRotation(cupsRef.current, Date.now()), todayStamp()), cupStatesRef.current, {
         mode: modeRef.current,
         difficulty: difficultyRef.current,
         outcome,
@@ -1912,6 +1945,7 @@ export function DiceDemoScreen() {
   }, [resetRace, setPhaseBoth]);
 
   const beginCountdown = useCallback(() => {
+    skipSearchRef.current = false;
     setPhaseBoth('arm');
     playCue('ready');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -2168,7 +2202,13 @@ export function DiceDemoScreen() {
   */
   const leaveBattle = useCallback(() => {
     setBattleMenu(false);
-    if (friendlyRef.current) {
+    /*
+      An online battle is left like one against the computer — the
+      ordinary loss, which also tells the server so the other player
+      wins — because it pays like one, and walking out must not be a way
+      round losing trophies.
+    */
+    if (friendlyRef.current && friendlyRef.current.kind === 'friend') {
       quitToMenu();
       return;
     }
@@ -2520,7 +2560,7 @@ export function DiceDemoScreen() {
     same game.
   */
   const startFriendly = useCallback(
-    (battle: BattleHandle, opponentName: string) => {
+    (battle: BattleHandle, opponentName: string, kind: 'friend' | 'match' = 'friend') => {
       if (friendlyRef.current) return;
       setBanner(null);
       setMode(battle.mode);
@@ -2546,11 +2586,13 @@ export function DiceDemoScreen() {
         battleId: battle.id,
         opponentId: battle.opponentId ?? '',
         opponentName,
+        kind,
       });
       friendlyRef.current = {
         battleId: battle.id,
         opponentId: battle.opponentId ?? '',
         opponentName,
+        kind,
       };
       setTab('play');
       setShowFriends(false);
@@ -2559,6 +2601,47 @@ export function DiceDemoScreen() {
     [startCountdown],
   );
   startFriendlyRef.current = startFriendly;
+
+  /*
+    THE QUEUE FOUND SOMEBODY (MatchmakingOverlay, onlineMatch.ts). Into
+    the same waiting room as a friend battle, by the name they chose or
+    "Player", and from there the same live beat plays it.
+  */
+  const startOnline = useCallback(
+    (battle: BattleHandle, name: string) => {
+      startFriendly(battle, opponentDisplayName(name), 'match');
+    },
+    [startFriendly],
+  );
+
+  /*
+    THE STRANGER NEVER CAME: the server closed the room (they cancelled,
+    or never arrived), or MATCH_JOIN_WAIT_MS passed here with no word.
+    The player came to play, so a rival starts at once, with the reveal
+    saying why and no second search. The room is left as well, so a
+    phone that was only late is told rather than kept waiting.
+  */
+  const matchNoShow = useCallback(() => {
+    const gone = friendlyRef.current;
+    if (!gone || gone.kind !== 'match') return;
+    const who = meRef.current;
+    if (who) void pulseBattle(who, gone.battleId, [], { leave: true });
+    countdownTimers.current.forEach(clearTimeout);
+    flashTimers.current.forEach(clearTimeout);
+    flashTimers.current = [];
+    startEpochRef.current += 1;
+    startPendingRef.current = false;
+    setFriendly(null);
+    friendlyRef.current = null;
+    setFriendReady(false);
+    stopAnnouncer();
+    resetRace();
+    setMatchNote(null);
+    setPhaseBoth('pick');
+    skipSearchRef.current = true;
+    startCountdown('casual');
+  }, [resetRace, setPhaseBoth, startCountdown]);
+  matchNoShowRef.current = matchNoShow;
 
   const answerBattle = useCallback(
     async (inviteId: string, action: 'accept' | 'decline' | 'cancel') => {
@@ -2705,6 +2788,8 @@ export function DiceDemoScreen() {
     if (phase !== 'matching' || !friendly || friendReady) return;
     const id = setInterval(() => {
       if (localWaitOver(friendWaitSinceRef.current, Date.now())) friendNoShow();
+      // A stranger gets less time than a friend: the player came to play.
+      else if (friendly.kind === 'match' && joinWaitOver(friendWaitSinceRef.current, Date.now())) friendNoShow();
     }, 1000);
     return () => clearInterval(id);
   }, [phase, friendly, friendReady, friendNoShow]);
@@ -3304,6 +3389,7 @@ export function DiceDemoScreen() {
       {phase === 'matching' && friendly && (
         <FriendlyWaitOverlay
           opponent={opponent}
+          kind={friendly.kind}
           ready={friendReady}
           onDone={beginCountdown}
           onCancel={quitToMenu}
@@ -3313,7 +3399,14 @@ export function DiceDemoScreen() {
         <MatchmakingOverlay
           opponent={opponent}
           trophies={trophies}
+          me={me}
+          mode={mode}
+          difficulty={difficulty}
+          stats={friendStats}
+          skipSearch={skipSearchRef.current}
           onDone={beginCountdown}
+          onPlayer={startOnline}
+          onCancel={quitToMenu}
         />
       )}
 
@@ -3594,21 +3687,22 @@ export function DiceDemoScreen() {
       {battleMenu && menuShowsIn(phase) && (
         <BattleMenu
           title={menuTitle(menuKind)}
-          note={menuNote(menuKind)}
+          note={friendly?.kind === 'match' ? `${friendly.opponentName} is still playing` : menuNote(menuKind)}
           audio={audioPrefs}
           onAudio={setAudioPrefs}
           onResume={() => setBattleMenu(false)}
           onHowTo={() => setPopup('howto')}
           leave={leaveWords(
-            friendly
+            friendly && friendly.kind === 'friend'
               ? { kind: 'friend', friendName: friendly.opponentName }
               : {
                   kind: 'computer',
                   trophies: getProgress().trophies,
                   difficulty: difficultyRef.current,
-                  // The cups finishRound scores against, asked the same way.
+                  // The cups finishRound scores against, asked the same way:
+                  // none for an online battle, which moves no cup.
                   runs: runsALossEnds(
-                    scorableTournaments(withRotation(cups, Date.now()), todayStamp()),
+                    friendly ? [] : scorableTournaments(withRotation(cups, Date.now()), todayStamp()),
                     cupStates,
                     { mode: modeRef.current, difficulty: difficultyRef.current },
                   ),

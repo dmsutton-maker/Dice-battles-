@@ -38,7 +38,8 @@ suite('audit fixes · finishRound scores only the cups the tab shows', () => {
     assert(
       // The week's cup is added in front of the board's (cupRotation.ts),
       // and the whole list still goes through scorableTournaments.
-      /scoreBattle\(\s*scorableTournaments\(withRotation\(cupsRef\.current, Date\.now\(\)\), todayStamp\(\)\)/.test(body),
+      // An online battle against a stranger moves no cup (`online ? []`).
+      /scoreBattle\(\s*(online \? \[\] : )?scorableTournaments\(withRotation\(cupsRef\.current, Date\.now\(\)\), todayStamp\(\)\)/.test(body),
       'finishRound scores against every fetched cup, closed and not-yet-open ones included',
     );
     assert(

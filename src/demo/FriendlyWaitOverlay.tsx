@@ -6,6 +6,7 @@ import { playClick } from '../audio/sounds';
 import type { AiOpponent } from '../game/ai';
 import { DOT_TICK_MS } from '../game/matchmaking';
 import { HERE_MS, joinLine, joinProgress } from '../game/friendlyBattle';
+import { MATCH_JOIN_WAIT_MS } from '../game/matchSearch';
 import { RivalBadge, matchOverlayStyles as m } from './MatchmakingOverlay';
 
 /**
@@ -27,15 +28,22 @@ import { RivalBadge, matchOverlayStyles as m } from './MatchmakingOverlay';
  * localWaitOver), so there is one place that goes back to the menu.
  * Cancel is always there, because a wait nobody can leave is a trap.
  *
+ * Since 4 Nov 2026 it is also the room for a stranger the matchmaking
+ * queue paired us with (`kind: 'match'`): the same wait, by the name
+ * they chose, with its shorter MATCH_JOIN_WAIT_MS, and a battle that
+ * counts like any other.
+ *
  * `onDone` fires exactly once, and not at all once unmounted.
  */
 export function FriendlyWaitOverlay({
   opponent,
+  kind = 'friend',
   ready,
   onDone,
   onCancel,
 }: {
   opponent: AiOpponent;
+  kind?: 'friend' | 'match';
   ready: boolean;
   onDone: () => void;
   onCancel: () => void;
@@ -58,6 +66,9 @@ export function FriendlyWaitOverlay({
     return () => clearTimeout(id);
   }, [ready]);
 
+  const waitProgress =
+    kind === 'match' ? Math.min(1, Math.max(0, elapsed) / MATCH_JOIN_WAIT_MS) : joinProgress(elapsed);
+
   return (
     <View style={m.overlay}>
       <Text style={m.kicker}>YOUR OPPONENT</Text>
@@ -67,7 +78,9 @@ export function FriendlyWaitOverlay({
         <Text style={[m.name, m.nameFound]} numberOfLines={1} adjustsFontSizeToFit>
           {opponent.name}
         </Text>
-        <Text style={styles.tag}>Friendly battle · no trophies</Text>
+        <Text style={styles.tag}>
+          {kind === 'match' ? 'Online battle · trophies count' : 'Friendly battle · no trophies'}
+        </Text>
       </View>
 
       <Text style={m.footer} accessibilityLiveRegion="polite">
@@ -75,7 +88,7 @@ export function FriendlyWaitOverlay({
       </Text>
 
       <View style={m.track}>
-        <View style={[m.fill, { width: `${(ready ? 1 : joinProgress(elapsed)) * 100}%` }]} />
+        <View style={[m.fill, { width: `${(ready ? 1 : waitProgress) * 100}%` }]} />
       </View>
 
       {!ready && (

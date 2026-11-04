@@ -9,7 +9,12 @@ import {
   searchesForPlayers,
   secondsShown,
 } from '../src/game/matchSearch';
-import { findWaitingPlayer, hasMatchmakingService } from '../src/game/onlineMatch';
+import {
+  findWaitingPlayer,
+  hasMatchmakingService,
+  resetMatchmakingForTest,
+} from '../src/game/onlineMatch';
+import { startFlow } from '../src/game/matchFlow';
 
 const root = join(__dirname, '..');
 const src = (p: string) => readFileSync(join(root, p), 'utf8');
@@ -18,14 +23,15 @@ const src = (p: string) => readFileSync(join(root, p), 'utf8');
  * Who you get paired against.
  *
  * David, 9 Sep 2026: every game below 100 trophies against a bot, and
- * above that a count-up to roughly fifteen seconds looking for a real
- * player before settling for one.
+ * above that roughly fifteen seconds looking for a real player before
+ * settling for one. Marc, 4 Nov 2026, made the looking real: "it should
+ * search for a player for 15 seconds and it should say 'searching for
+ * opponent' or something".
  *
- * The rule is written and tested here in full. The one step it cannot
- * take yet — actually finding a person — is behind the switch in
- * onlineMatch.ts, because this game has no matchmaking server and no
- * shared round. These tests pin the rule AND the honesty: that nobody is
- * made to wait fifteen seconds for an answer that was never coming.
+ * These tests pin the rule AND the honesty: nobody is made to wait
+ * fifteen seconds for an answer that was never coming. A server that
+ * says `off`, or cannot be reached, settles the bot on the first ask.
+ * The order of a search is tested in matchFlow.test.ts.
  */
 
 suite('matchmaking · the trophy floor', () => {
@@ -49,13 +55,28 @@ suite('matchmaking · the trophy floor', () => {
       timer — so below the floor the overlay settles the pairing before
       its first frame rather than searching and giving up.
     */
+    for (const t of [0, 42, 99]) {
+      const first = startFlow(t, 'classic', true);
+      assertEqual(first.kind, 'bot', `${t} trophies starts a search`);
+      assertEqual(first.kind === 'bot' ? first.reason : '', 'below-threshold', 'reason');
+    }
     const overlay = src('src/demo/MatchmakingOverlay.tsx');
     assert(
-      /searchesForPlayers\(trophies\)\s*\?\s*null\s*:\s*\{ kind: 'bot', reason: 'below-threshold' \}/.test(
+      /useState<MatchFlowState>\(\(\) =>[\s\S]{0,120}startFlow\(trophies, mode, hasMatchmakingService\(\)\)/.test(
         overlay,
       ),
-      'a player under the floor is not paired immediately',
+      'the overlay does not settle its first state before the first frame',
     );
+  });
+
+  test('only modes that can be played live search', () => {
+    // Skirmish and Color War cannot be played over a connection
+    // (friendlyBattle.ts, FRIENDLY_MODES), so they go straight to a bot.
+    assertEqual(searchesForPlayers(500, 'classic'), true, 'Color Rush');
+    assertEqual(searchesForPlayers(500, 'ultimate'), true, 'Ultimate');
+    assertEqual(searchesForPlayers(500, 'skirmish'), false, 'Skirmish');
+    assertEqual(searchesForPlayers(500, 'colorwar'), false, 'Color War');
+    assertEqual(searchesForPlayers(50, 'classic'), false, 'the floor still applies');
   });
 });
 
@@ -81,13 +102,19 @@ suite('matchmaking · the fifteen seconds', () => {
     assertEqual(searchProgress(SEARCH_DEADLINE_MS * 2), 1, 'overfilled');
   });
 
-  test('running out of time falls back to a bot rather than waiting on', () => {
+  test('running out of time withdraws, then lets the server decide', () => {
+    // The ruling itself is matchFlow.ts (tested there); the overlay has
+    // to feed it the clock and act on the withdrawal.
     const overlay = src('src/demo/MatchmakingOverlay.tsx');
     assert(
-      /isSearchOver\(next\)\)\s*setPairing\(\{ kind: 'bot', reason: 'nobody-found' \}\)/.test(
+      /dispatch\(\{ type: 'tick', elapsedMs: next \}\)/.test(overlay),
+      'the search can run past its deadline with nobody watching the clock',
+    );
+    assert(
+      /withdrawFromSearch\(meRef\.current\)\.then\(\(pairing\) =>\s*dispatch\(\{ type: 'leaveAnswer', pairing \}\)/.test(
         overlay,
       ),
-      'the search can run past its deadline with nobody watching the clock',
+      'the deadline does not leave the queue and read the answer',
     );
   });
 
@@ -101,70 +128,156 @@ suite('matchmaking · the fifteen seconds', () => {
     */
     const overlay = src('src/demo/MatchmakingOverlay.tsx');
     assert(
-      /elapsed - settledAt\.current/.test(overlay),
+      /elapsed - \(settledAt\.current \?\? 0\)/.test(overlay),
       'the reveal is timed from the start of the search, not from the pairing',
     );
   });
 });
 
 suite('matchmaking · it does not pretend', () => {
-  test('there is no matchmaking service, and the code says so plainly', () => {
-    assertEqual(hasMatchmakingService(), false, 'a service appeared without one being built');
+  const ME = { playerId: 'p-test', secret: 's-test', name: 'Tester', friendCode: 'ABCD2345' } as never;
+  const REQUEST = { mode: 'classic' as const, difficulty: 'medium' as const, trophies: 500 };
+  const STATS = {} as never;
+
+  /** Swap global fetch for one run, counting the calls. */
+  async function withFetch<T>(
+    impl: (url: string) => Promise<unknown>,
+    run: () => Promise<T>,
+  ): Promise<{ result: T; calls: string[] }> {
+    const calls: string[] = [];
+    const real = (globalThis as { fetch?: unknown }).fetch;
+    (globalThis as { fetch?: unknown }).fetch = async (url: string) => {
+      calls.push(url);
+      return impl(url);
+    };
+    try {
+      return { result: await run(), calls };
+    } finally {
+      (globalThis as { fetch?: unknown }).fetch = real;
+    }
+  }
+
+  const SERVERS: [string, (url: string) => Promise<unknown>][] = [
+    // Today's live site: no /api/match, so Next answers a 404 page, not JSON.
+    [
+      'a site without /api/match',
+      async () => ({
+        ok: false,
+        status: 404,
+        json: async () => {
+          throw new SyntaxError('Unexpected token < in JSON');
+        },
+      }),
+    ],
+    // The route deployed, the migration not applied.
+    ['a server that says off', async () => ({ ok: true, status: 200, json: async () => ({ state: 'off' }) })],
+    // A plane, a tunnel, a dead server.
+    [
+      'no connection',
+      async () => {
+        throw new TypeError('Network request failed');
+      },
+    ],
+  ];
+
+  for (const [name, server] of SERVERS) {
+    test(`${name}: a bot on the first ask, not a fifteen-second act`, async () => {
+      /*
+        THE POINT OF THIS WHOLE FILE.
+
+        "Nobody found" and "there is nowhere to ask" are different
+        things, and the difference reaches the player. Spending fifteen
+        seconds pretending to search a lobby that does not exist would be
+        a made-up wait ending in a made-up disappointment. So the first
+        answer settles it, and the switch stays off for the session: the
+        next start does not even ask, and its bot is settled before the
+        first frame — exactly the game before matchmaking existed.
+      */
+      resetMatchmakingForTest();
+      const first = await withFetch(server, () => findWaitingPlayer(ME, REQUEST, STATS));
+      assertEqual(first.result?.kind, 'bot', 'the first answer should pair a bot');
+      assertEqual(
+        first.result && first.result.kind === 'bot' ? first.result.reason : '',
+        'no-service',
+        'reason',
+      );
+      assertEqual(first.calls.length, 1, 'asked more than once');
+      assert(first.calls[0].endsWith('/api/match'), `asked ${first.calls[0]}`);
+      assertEqual(hasMatchmakingService(), false, 'the switch stayed on');
+
+      const next = startFlow(REQUEST.trophies, REQUEST.mode, hasMatchmakingService());
+      assertEqual(next.kind, 'bot', 'the next start searches again');
+      const again = await withFetch(server, () => findWaitingPlayer(ME, REQUEST, STATS));
+      assertEqual(again.calls.length, 0, 'the next start asked the server again');
+      assertEqual(again.result?.kind, 'bot', 'the next start is not a bot');
+      resetMatchmakingForTest();
+    });
+  }
+
+  test('no identity yet means a bot, not a wait', async () => {
+    resetMatchmakingForTest();
+    const { result, calls } = await withFetch(
+      async () => ({ ok: true, status: 200, json: async () => ({ state: 'searching' }) }),
+      () => findWaitingPlayer(null, REQUEST, STATS),
+    );
+    assertEqual(result?.kind, 'bot', 'waited with nobody to ask as');
+    assertEqual(calls.length, 0, 'asked without an identity');
   });
 
-  test('with no service the answer is immediate, not a fifteen-second act', async () => {
+  /** The words the overlay actually RENDERS, not the whole file. */
+  function rendered(): string {
     /*
-      THE POINT OF THIS WHOLE FILE.
-
-      "Nobody found" and "there is nowhere to ask" are different things,
-      and the difference reaches the player. Spending fifteen seconds
-      pretending to search a lobby that does not exist would be a made-up
-      wait ending in a made-up disappointment, performed for an audience
-      that includes five-year-olds. So the lookup answers at once, and
-      the overlay settles on that first answer.
-    */
-    const answer = await findWaitingPlayer();
-    assertEqual(answer?.kind, 'bot', 'the no-service answer should pair a bot');
-    assertEqual(answer && 'reason' in answer ? answer.reason : '', 'no-service', 'reason');
-    note('no matchmaking service: the search resolves on its first ask');
-  });
-
-  test('nothing on screen claims to have found a person while none can be', () => {
-    // matchmaking.ts has refused the words "searching for players online"
-    // since it was written, for exactly this reason. The new wording has
-    // to clear the same bar.
-    /*
-      Checked against the words the overlay actually RENDERS, not the
-      whole file: the first version of this test read every quoted
-      string, and failed on the import path '../game/onlineMatch'. A
-      module name is not something a player ever sees.
+      The first version of this test read every quoted string, and failed
+      on the import path '../game/onlineMatch'. A module name is not
+      something a player ever sees.
     */
     const overlay = src('src/demo/MatchmakingOverlay.tsx')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/[^\n]*/g, '')
       .replace(/^import[\s\S]*?from '[^']+';$/gm, '');
-    const shown = [...overlay.matchAll(/<Text[\s\S]*?<\/Text>/g)].join('\n');
-    assert(shown.length > 0, 'no rendered text found — this test has stopped checking anything');
-    for (const lie of ['online', 'real player', 'someone else', 'another player']) {
-      assert(
-        !new RegExp(lie, 'i').test(shown),
-        `the overlay shows the words "${lie}" to a player, and there is nobody there`,
-      );
-    }
-    note('rendered wording says "looking for a player", never that one was found');
+    const texts = [...overlay.matchAll(/<Text[\s\S]*?<\/Text>/g)].join('\n');
+    const footers = overlay.slice(overlay.indexOf('function botFooter'), overlay.indexOf('export function MatchmakingOverlay'));
+    return `${texts}\n${footers}`;
+  }
+
+  test('the search says what it is doing, in Marc\'s words', () => {
+    const shown = rendered();
+    assert(shown.includes('SEARCHING FOR AN OPPONENT'), 'the search does not say "Searching for an opponent"');
+    assert(/secondsLeft\(elapsed\)/.test(shown), 'no countdown on the search');
+    assert(shown.includes("If nobody is free, you'll play a rival instead."), 'the search does not say what happens if nobody comes');
+    assert(shown.includes('Cancel'), 'a search nobody can leave');
   });
 
-  test('turning it on is written down as a feature, not a flag', () => {
+  test('a bot after a search says nobody was free', () => {
+    const shown = rendered();
+    assert(shown.includes("Nobody free right now — here's a rival."), 'a rival after a search is not explained');
+    assert(shown.includes("Your opponent didn't make it — here's a rival."), 'a no-show is not explained');
+  });
+
+  test('nothing on screen claims a bot is a person', () => {
+    const shown = rendered();
+    assert(shown.length > 0, 'no rendered text found — this test has stopped checking anything');
+    for (const lie of ['found a real player', 'real player', 'found a player', 'someone else', 'another player', 'online']) {
+      assert(
+        !new RegExp(lie, 'i').test(shown),
+        `the overlay shows the words "${lie}" to a player`,
+      );
+    }
+    note('rendered wording: "Searching for an opponent", then a rival that is called a rival');
+  });
+
+  test('onlineMatch.ts says what the service is made of', () => {
     /*
-      The adverts really were one line away. This is not, and saying so
-      in the file is what stops a future session flipping the switch and
-      shipping a search that finds nobody for ever.
+      The queue (match_queue on the HQ site), the shared round (the
+      friend battle's live route) and the computer's rolls (ai.ts) when
+      there is nobody. Written down so a later session knows what
+      "online" means here without reading the server.
     */
     const online = src('src/game/onlineMatch.ts');
-    for (const needed of ['queue', 'shared round', 'ai.ts']) {
+    for (const needed of ['queue', 'shared round', 'live route', 'ai.ts']) {
       assert(
         online.toLowerCase().includes(needed.toLowerCase()),
-        `onlineMatch.ts does not say that "${needed}" is needed first`,
+        `onlineMatch.ts does not say what "${needed}" is`,
       );
     }
   });
