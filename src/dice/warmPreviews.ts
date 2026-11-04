@@ -8,6 +8,7 @@ import { fromList, MENU_SLICE_MS, once, PaintStep, runSliced, SlicedRun } from '
 import { fishSchoolJobs, fishWaterJob } from './fishSwim';
 import { circuitPulseJob } from './circuitPulse';
 import { neonGlowJob } from './neonGlow';
+import { oceanChopJob, oceanSwellJob } from './oceanFlow';
 import type { DiceSkin } from '../game/diceSkins';
 
 /**
@@ -240,6 +241,11 @@ export function equippedDieKeys(skin: DiceSkin | undefined): string[] {
   }
   if (skin.pattern === 'circuit') keys.push(...faces.map((f) => `die:circuit-pulse:${f}`));
   if (skin.pattern === 'neon') keys.push(...faces.map((f) => `die:neon-glow:${f}`));
+  // The Ocean die's table picture is its two maps alone; see dieJobs.
+  if (skin.pattern === 'ocean') {
+    keys.push(...faces.map((f) => `die:ocean-swell:${f}`), ...faces.map((f) => `die:ocean-chop:${f}`));
+    return keys;
+  }
   keys.push(...faces.map((f) => dieFaceKey(skin.pattern, skin.body, skin.ink ?? skin.body, f)));
   return keys;
 }
@@ -263,7 +269,9 @@ function shadingJobs(): PaintStep[] {
  * The extra maps the moving dice draw on top come first — the Fish
  * die's water and schools (fishSwim.ts), the Circuit Board's wiring
  * (circuitPulse.ts), the Neon die's glow (neonGlow.ts) — then the six
- * painted sides, a few texels a step.
+ * painted sides, a few texels a step. The Ocean die's sea is coloured
+ * by the GPU from its swell and chop maps (oceanFlow.ts), so its six
+ * painted sides are nobody's: only the shelf card shows the still.
  */
 export function dieJobs(skin: DiceSkin): PaintStep[] {
   if (skin.pattern === 'plain') return [];
@@ -274,6 +282,10 @@ export function dieJobs(skin: DiceSkin): PaintStep[] {
   }
   if (skin.pattern === 'circuit') jobs.push(...present(faces.map(circuitPulseJob)));
   if (skin.pattern === 'neon') jobs.push(...present(faces.map(neonGlowJob)));
+  if (skin.pattern === 'ocean') {
+    jobs.push(...present(faces.map(oceanSwellJob)), ...present(faces.map(oceanChopJob)));
+    return jobs;
+  }
   try {
     jobs.push(
       ...dieFaceJobs(

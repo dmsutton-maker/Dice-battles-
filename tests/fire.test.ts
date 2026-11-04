@@ -62,12 +62,14 @@ suite('fire dice · the skin', () => {
     assert(fire.pass === true, 'the Fire dice are not a season pass die');
   });
 
-  test('only the Fire, Ice, Neon, Sun and Moon dice have an effect', () => {
+  test('only the Fire, Ice, Neon, Sun, Moon and Ocean dice have an effect', () => {
     // Neon joined on 20 Oct 2026 (a light trail, diceNeon.ts), the first
     // effect on a die sold for money rather than won on the pass; Sun and
-    // Moon on 21 Oct 2026, season 2 of the pass (diceSun.ts, diceMoon.ts).
+    // Moon on 21 Oct 2026, season 2 of the pass (diceSun.ts, diceMoon.ts);
+    // Ocean on 4 Nov 2026, a ladder die that splashes (diceOcean.ts).
     const expected = [
       'fire:fire', 'ice:ice', 'moon:moon', 'neon:neon', 'sun:sun',
+      'ocean:ocean',
       // Season dice with effects go ABOVE this comment, one line per season.
     ];
     const moving = DICE_SKINS.filter((s) => s.effect !== undefined).map((s) => `${s.id}:${s.effect}`);
@@ -189,8 +191,10 @@ suite('fire dice · it never hides the roll', () => {
       // stuff"); the effect tells them the moment a die lands. neonGlow
       // reads only the painter and the texture cache: looks, no physics.
       './neonGlow',
+      // The Ocean dice splash (4 Nov 2026), checked the same way.
+      './diceOcean',
     ]);
-    for (const file of ['diceFire', 'diceIce', 'diceNeon', 'diceSun', 'diceMoon', 'dieEffect', 'groundMarks', 'particles']) {
+    for (const file of ['diceFire', 'diceIce', 'diceNeon', 'diceSun', 'diceMoon', 'diceOcean', 'dieEffect', 'groundMarks', 'particles']) {
       const source = readFileSync(`src/dice/${file}.ts`, 'utf8');
       const imports = [...source.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
       const stray = imports.filter((m) => !allowed.has(m));

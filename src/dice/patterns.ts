@@ -1922,6 +1922,88 @@ export function neonTubesAt(P: readonly number[]): NeonTubes {
   };
 }
 
+/**
+ * The sea at a point of the sheet, before any colour: the phase of the
+ * long swell and of the shorter chop riding it, and the grain that
+ * ruffles the surface. The `ocean` painter below colours it at the start
+ * of its clock, and the die on the table (oceanFlow.ts) paints these
+ * three once per side and lets the GPU colour them with the clock added,
+ * so the two are the same sea.
+ */
+export interface OceanWave {
+  /** Where along the long roll, in radians. */
+  roll: number;
+  /** Where along the chop, in radians, before the roll's own lift is added to it. */
+  rip: number;
+  /** The grain that ripples the water and breaks the foam into patches, 0..1. */
+  grain: number;
+}
+
+export function oceanWaveAt(x: number, y: number): OceanWave {
+  const wander = fbm(x, y, [32, 16], [0.8, 0.28]) * 0.45;
+  return {
+    // The long roll: two swells across the tile, down and to the right.
+    // 0.375 and 0.35 across (from 0.42 and 0.34), so both trains of waves
+    // go round the die a whole number of times and meet themselves.
+    roll: ((y + x * 0.375) / SIZE) * Math.PI * 4 + wander,
+    // Shorter waves riding it, turned a little across the roll.
+    rip: ((y * 0.85 - x * 0.35) / SIZE) * Math.PI * 10 + wander * 1.7,
+    grain: wrappedNoise(x, y, 8),
+  };
+}
+
+/**
+ * The sea's colours, trough to crest, then what the grain and the foam
+ * mix in. One table, read by the painter here and written into the
+ * shader in oceanFlow.ts, so the still picture and the flowing one
+ * cannot be two different blues.
+ */
+export const OCEAN_PAINT = {
+  trough: '#14577a',
+  deep: '#2382a8',
+  shallow: '#3aa6c6',
+  glass: '#76c4dc',
+  /** Green light coming back up out of the deepest troughs. */
+  weed: '#15695a',
+  rippleLight: '#8fd0e2',
+  rippleDark: '#0f4f6e',
+  foam: '#cfe7ef',
+  spray: '#f4fbfd',
+} as const;
+
+/**
+ * The colour of the sea at `w`, `along` of the way through its clock
+ * (0..1): the swell and the chop have each moved one whole wave along by
+ * 1, so the picture at 1 is the picture at 0. oceanFlow.ts's shader is
+ * this, line for line, and tests/oceanFlow.test.ts holds the two together.
+ */
+export function oceanColorAt(w: OceanWave, along: number): [number, number, number] {
+  const a = along * Math.PI * 2;
+  const roll = Math.sin(w.roll - a);
+  const rip = Math.sin(w.rip + roll * 0.75 - a);
+  const water = roll * 0.6 + rip * 0.4;
+
+  /*
+    The water itself, and there is far more of it than there is foam.
+    Sea read from above is mostly mid-blue; trough to crest is a real
+    range but it is not black to white.
+  */
+  let px = mixRgb(rgb(OCEAN_PAINT.trough), rgb(OCEAN_PAINT.deep), smoothstep(-1, -0.1, water));
+  px = mixRgb(px, rgb(OCEAN_PAINT.shallow), smoothstep(-0.15, 0.55, water));
+  px = mixRgb(px, rgb(OCEAN_PAINT.glass), smoothstep(0.5, 0.95, water));
+  px = mixRgb(px, rgb(OCEAN_PAINT.weed), smoothstep(-0.45, -0.95, water) * 0.42);
+  // Ripple everywhere, so the surface is never a clean gradient.
+  const ripple = w.grain - 0.5;
+  px = mixRgb(px, rgb(ripple > 0 ? OCEAN_PAINT.rippleLight : OCEAN_PAINT.rippleDark), Math.abs(ripple) * 0.45);
+
+  // Where a short wave is breaking, and only up on the roll.
+  const breaking = smoothstep(0.3, 0.9, rip) * smoothstep(-0.15, 0.75, roll);
+  const froth = 0.5 + w.grain * 0.8;
+  px = mixRgb(px, rgb(OCEAN_PAINT.foam), breaking * Math.min(1, froth) * 0.95);
+  px = mixRgb(px, rgb(OCEAN_PAINT.spray), breaking * smoothstep(0.72, 0.99, rip) * 0.8);
+  return px;
+}
+
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   rosettes: (() => {
     /*
@@ -3120,35 +3202,11 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       runs along the tops of the rollers and leaves the troughs alone,
       which is what a sea from above actually does.
     */
-    const wander = fbm(x, y, [32, 16], [0.8, 0.28]) * 0.45;
-    // The long roll: two swells across the tile, down and to the right.
-    // 0.375 and 0.35 across (from 0.42 and 0.34), so both trains of waves
-    // go round the die a whole number of times and meet themselves.
-    const roll = Math.sin(((y + x * 0.375) / SIZE) * Math.PI * 4 + wander);
-    // Shorter waves riding it, turned a little across the roll.
-    const rip = Math.sin(((y * 0.85 - x * 0.35) / SIZE) * Math.PI * 10 + wander * 1.7 + roll * 0.75);
-    const water = roll * 0.6 + rip * 0.4;
-
-    /*
-      The water itself, and there is far more of it than there is foam.
-      Sea read from above is mostly mid-blue; trough to crest is a real
-      range but it is not black to white.
-    */
-    let px = mixRgb(rgb('#14577a'), rgb('#2382a8'), smoothstep(-1, -0.1, water));
-    px = mixRgb(px, rgb('#3aa6c6'), smoothstep(-0.15, 0.55, water));
-    px = mixRgb(px, rgb('#76c4dc'), smoothstep(0.5, 0.95, water));
-    // Green light coming back up out of the deepest troughs.
-    px = mixRgb(px, rgb('#15695a'), smoothstep(-0.45, -0.95, water) * 0.42);
-    // Ripple everywhere, so the surface is never a clean gradient.
-    const ripple = wrappedNoise(x, y, 8) - 0.5;
-    px = mixRgb(px, rgb(ripple > 0 ? '#8fd0e2' : '#0f4f6e'), Math.abs(ripple) * 0.45);
-
-    // Where a short wave is breaking, and only up on the roll.
-    const breaking = smoothstep(0.3, 0.9, rip) * smoothstep(-0.15, 0.75, roll);
-    const froth = 0.5 + wrappedNoise(x, y, 8) * 0.8;
-    px = mixRgb(px, rgb('#cfe7ef'), breaking * Math.min(1, froth) * 0.95);
-    px = mixRgb(px, rgb('#f4fbfd'), breaking * smoothstep(0.72, 0.99, rip) * 0.8);
-    return px;
+    // The sea's own maths is oceanWaveAt and oceanColorAt, above the
+    // table, since 4 Nov 2026: on the table the water FLOWS (oceanFlow.ts
+    // runs the same sums on the GPU with the clock added), and this still
+    // picture is that sea at the start of its clock.
+    return oceanColorAt(oceanWaveAt(x, y), 0);
   },
 
   dimples: (x, y) => {

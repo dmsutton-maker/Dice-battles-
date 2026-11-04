@@ -18,6 +18,7 @@ import {
 import { FISH_TICK, swimmingFishMaterials } from './fishSwim';
 import { PULSE_TICK, pulsingCircuitMaterials } from './circuitPulse';
 import { glowingNeonMaterials, NEON_TICK } from './neonGlow';
+import { flowingOceanMaterials, OCEAN_TICK } from './oceanFlow';
 import { useSceneryTick } from '../arena/sceneryClock';
 
 /*
@@ -142,16 +143,20 @@ export const DieMesh = forwardRef<
     // The Neon tubes glow and chase: the glass painted once, the light
     // run round its tubes by the GPU (neonGlow.ts). 1 Nov 2026.
     if (pattern === 'neon') return glowingNeonMaterials(shade, bodyColor, patternInk ?? bodyColor);
+    // The Ocean flows: where every texel is on the waves painted once,
+    // the sea coloured by the GPU with the clock added (oceanFlow.ts).
+    // 4 Nov 2026.
+    if (pattern === 'ocean') return flowingOceanMaterials(shade);
     return createDieFaceTextures(pattern, bodyColor, patternInk ?? bodyColor).map(
       // A colour painter ignores the ink; a mask painter cannot do
       // without one.
       (map) => new THREE.MeshBasicMaterial({ map, ...shade }),
     );
   }, [bodyColor, pattern, patternInk]);
-  // The board's own clock moves the fish, the pulses and the neon, so
-  // they run while the board draws and hold still when it stops, like
-  // the water and the torches.
-  useSceneryTick(pattern === 'fish' ? FISH_TICK : pattern === 'circuit' ? PULSE_TICK : pattern === 'neon' ? NEON_TICK : null);
+  // The board's own clock moves the fish, the pulses, the neon and the
+  // sea, so they run while the board draws and hold still when it stops,
+  // like the water and the torches.
+  useSceneryTick(pattern === 'fish' ? FISH_TICK : pattern === 'circuit' ? PULSE_TICK : pattern === 'neon' ? NEON_TICK : pattern === 'ocean' ? OCEAN_TICK : null);
   // Unlit stickers with toneMapped:false — the face color IS the game
   // signal, so it must render as the exact palette hex from every angle and
   // must bypass the scene's tone mapping curve. This lets the rest of the

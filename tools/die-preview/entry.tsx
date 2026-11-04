@@ -8,6 +8,7 @@ import { DieMesh } from '../../src/dice/DieMesh';
 import { FISH_TICK } from '../../src/dice/fishSwim';
 import { PULSE_TICK } from '../../src/dice/circuitPulse';
 import { NEON_TICK, neonLanded } from '../../src/dice/neonGlow';
+import { OCEAN_TICK } from '../../src/dice/oceanFlow';
 import { DICE_SKINS } from '../../src/game/diceSkins';
 import { TUNING } from '../../src/game/tuning';
 
@@ -33,7 +34,8 @@ import { TUNING } from '../../src/game/tuning';
  * ?arena=castle            the battlefield under the table view
  * ?fishT=4                 where the Fish dice's fish have swum to, in
  *                          seconds (there is no clock here to move them);
- *                          the Circuit pulses and the Neon light too
+ *                          the Circuit pulses, the Neon light and the
+ *                          Ocean's sea too
  * ?flare=1                 the Neon die as it is the moment it lands
  *
  * Usage (react-dom and playwright must be in node_modules, and taken out
@@ -57,6 +59,7 @@ FISH_TICK(Number(P.get('fishT') ?? 0));
 PULSE_TICK(Number(P.get('fishT') ?? 0));
 if (P.get('flare') === '1') neonLanded();
 NEON_TICK(Number(P.get('fishT') ?? 0));
+OCEAN_TICK(Number(P.get('fishT') ?? 0));
 
 /** Resting orientations that put a different face up, with some yaw. */
 const RESTS: [number, number, number][] = [

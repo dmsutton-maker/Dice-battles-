@@ -31,7 +31,7 @@ export const DIE_BLURBS: Record<string, string> = {
   granite: 'Speckled grey stone.',
   silver: 'Shiny silver.',
   ruby: 'Deep red, like a jewel.',
-  ocean: 'Rolling blue sea waves.',
+  ocean: 'Waves that roll, and a splash when it lands.',
   lavender: 'Soft purple lavender.',
   slate: 'Dark grey slate.',
   blossom: 'Pink blossom petals.',

@@ -400,7 +400,7 @@ suite('fast start · the shelf pictures are painted once per version', () => {
 
 suite('fast start · the die in hand is painted once per version', () => {
   test('the keys kept are exactly what the die paints', () => {
-    for (const id of ['ivory', 'pizza', 'fish', 'circuit', 'neon']) {
+    for (const id of ['ivory', 'pizza', 'fish', 'circuit', 'neon', 'ocean']) {
       clearTextureCacheForTests();
       const skin = skinById(id);
       for (const job of equippedDieJobs(skin)) while (!job.step());

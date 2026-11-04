@@ -388,6 +388,35 @@ export const TUNING = {
     /** How strong the moonlight on the floor is under a resting die. */
     glowOpacity: 0.22,
   },
+  ocean: {
+    /*
+      THE OCEAN DICE DO SOMETHING since 4 Nov 2026. Marc: "do option c
+      with the flowing water and splash" — the sea on the shell flows
+      (oceanFlow.ts) and a die that lands throws a splash (diceOcean.ts).
+      Of an earlier try: "once the water starts flowing, it's going off
+      sync so fix that" — so every side of both dice reads ONE clock,
+      wrapped to `flowSeconds`, and the picture repeats exactly once a
+      period.
+    */
+    /** Seconds the sea takes to come round to the same picture: one swell and one chop along. */
+    flowSeconds: 1.8,
+    /** Particle budget for every droplet, both dice together. */
+    particles: 360,
+    /** Droplets in the ring thrown out when a die comes to rest. */
+    splashDrops: 14,
+    /** Droplets off a bounce on the way down, and off each die as it leaves the hand. */
+    sprayDrops: 5,
+    throwDrops: 8,
+    /** Droplets and fine spray when a die goes under in the moat. */
+    sinkDrops: 40,
+    sinkMist: 12,
+    /** A die that comes to rest again sooner than this after a splash only sprays: a wobble is not a second landing. */
+    splashAgainSeconds: 0.6,
+    /** The wet sheen on the board round a landed die: how strong, how wide (world units), and seconds to dry. */
+    sheenOpacity: 0.35,
+    sheenSize: 1.3,
+    sheenSeconds: 0.5,
+  },
 } as const;
 
 /**

@@ -60,9 +60,9 @@ export interface DiceSkin {
    * than the shell texture: 'fire' and 'ice' — see src/dice/dieEffect.ts.
    * Looks only: an effect never reaches the physics or the settle rule.
    * 'sun' and 'moon' (season 2, 21 Oct 2026) are in diceSun.ts and
-   * diceMoon.ts.
+   * diceMoon.ts; 'ocean' (4 Nov 2026) in diceOcean.ts.
    */
-  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon';
+  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon' | 'ocean';
   /**
    * Taken off the shelf and off the ladder: nobody can get it any more,
    * and only family tester (admin) mode shows it. Marc, 4 Nov 2026, on
@@ -261,7 +261,9 @@ export const DICE_SKINS: DiceSkin[] = [
     brighter — which is also what separates a garnet from a fire engine.
   */
   { id: 'ruby', name: 'Ruby', body: '#b02a5c', pattern: 'sheen', ink: '#ffdfe6', unlock: 'ruby-dice' },
-  { id: 'ocean', name: 'Ocean', body: '#1f6e8a', pattern: 'ocean', unlock: 'ocean-dice' },
+  // The sea flows on the shell and a die splashes when it lands, since
+  // 4 Nov 2026 (Marc: "do option c with the flowing water and splash").
+  { id: 'ocean', name: 'Ocean', body: '#1f6e8a', pattern: 'ocean', unlock: 'ocean-dice', effect: 'ocean' },
   // Lavender mixes its own paint too (green stems, purple bud spikes),
   // so like blossom it carries no ink.
   { id: 'lavender', name: 'Lavender', body: '#b9a8e8', pattern: 'lavender', unlock: 'lavender-dice' },
