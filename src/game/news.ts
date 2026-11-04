@@ -90,6 +90,18 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-160-0-ocean',
+    date: '4 November 2026',
+    version: 'v1.160.0',
+    title: 'The Ocean dice are alive',
+    icon: 'dice',
+    body:
+      'The Ocean dice now move: the waves roll round the die while you ' +
+      'play, every side in step, and each landing throws up a splash of ' +
+      'droplets. Dropping one in the moat makes a bigger one. The faces ' +
+      'stay put, as always.',
+  },
+  {
     id: 'v1-159-0-online',
     date: '4 November 2026',
     version: 'v1.159.0',

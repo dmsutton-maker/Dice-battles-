@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.160.0 — 2026-11-04 · requested by Marc
+
+Marc chose option C of four on the Ocean design canvas ("do option c
+with the flowing water and splash"), with "once the water starts
+flowing, it's going off sync so fix that". Branch feature/ocean-c.
+Runtime 4.0.0 (build 18).
+
+### Added
+- **The Ocean dice flow.** The sea moves on the shell: a small shader
+  (`src/dice/oceanFlow.ts`) slides the swell and the chop along from two
+  data maps painted once per side, and colours the water exactly as the
+  still painter does, so the first frame IS the shop picture. ONE
+  CLOCK: every side of both dice reads the same time, wrapped every
+  1.8 s (`TUNING.ocean.flowSeconds`), and both wave trains move a whole
+  wave per period, so nothing can drift. Maps are painted in slices and
+  kept per GAME_VERSION like Neon's.
+- **A splash when it lands** (`src/dice/diceOcean.ts`, effect `ocean`):
+  a ring of droplets off the shell's bottom edge and a sheen on the
+  board that dries in half a second; a light spray on the throw and on a
+  bounce; a bigger splash in the moat. LOOKS ONLY, nothing on the faces,
+  nothing in the physics. Numbers in `TUNING.ocean`.
+- Tests: `oceanFlow.test.ts` (period, one clock, first frame equals the
+  still, shader pinned), `oceanSplash.test.ts` (9).
+
+### Changed
+- Ocean blurb: "Waves that roll, and a splash when it lands."
+
 ## v1.159.0 — 2026-11-04 · requested by Marc
 
 Marc's design picks and his ten-request batch of 4 Nov 2026, merged
