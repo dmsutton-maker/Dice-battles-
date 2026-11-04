@@ -312,9 +312,10 @@ one is added; it does not need a new build.
   the trophy ladder topped at 8,000, Dino Valley hidden (`hidden` in
   products.ts), the Gold Pass mark. Shipped before the App Store
   submission at Marc's request, so the pre-submission pass is re-run on
-  this state. **Online battles are OFF until David applies
-  `hq/supabase/migrations/20261104_matchmaking.sql`**: until then
-  `/api/match` answers `off` and the app plays a rival at once. Below
+  this state. **Online battles are ON**: the database half,
+  `hq/supabase/migrations/20261104_matchmaking.sql`, was applied on
+  4 Nov 2026 through the Supabase connector (`match_queue`,
+  `battles.kind`, `claim_match()` service-role only). Below
   100 trophies it is always a rival (`BOT_ONLY_BELOW_TROPHIES`). Open for
   David: `dino_valley` is in the draft App Review submission but no
   longer shown in the app; App Store Connect still to change by hand
@@ -349,9 +350,9 @@ one is added; it does not need a new build.
   `FriendlyWaitOverlay.tsx` and the live beat in DiceDemoScreen.tsx.
 - **1 Nov 2026 (v1.154.0):** the migration
   `hq/supabase/migrations/20261101_battle_clock.sql` (a check that a
-  battle's winner is a player or 'tie') has NOT been applied: the
-  Supabase connector cannot reach the Dice Battles project. The code
-  does not depend on it. Apply it when the connector is back.
+  battle's winner is a player or 'tie') was applied on 4 Nov 2026,
+  once the Supabase connector reached the Dice Battles org again.
+  The `changes` table was caught up the same day (v1.142.0 to v1.160.0).
 - **Neon dice are $0.99 in the game since v1.154.0; the App Store
   Connect price for `neon_dice` is David's to change to match.**
 
