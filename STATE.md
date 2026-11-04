@@ -320,8 +320,11 @@ one is added; it does not need a new build.
   longer shown in the app; App Store Connect still to change by hand
   (Neon $0.99, IAP descriptions saying "phones", "two days", "Store");
   the privacy policy and App Review notes do not yet describe online
-  play. Online wins are paid on the phone's own word. Ocean option C
-  (flowing water, splash) was chosen but is NOT built.
+  play. Online wins are paid on the phone's own word.
+- **4 Nov 2026 (v1.160.0, update f9099fe4):** the Ocean dice flow on
+  one 1.8 s clock (`src/dice/oceanFlow.ts`) and splash when they land
+  (`src/dice/diceOcean.ts`, effect `ocean`). Marc may want the flow
+  slower or faster: `TUNING.ocean.flowSeconds`, an OTA update.
 - **4 Nov 2026 (v1.158.0):** the title card is a LOADING screen
   (`src/game/launchReady.ts`: min 0.8 s, cap 12 s) and every picture is
   painted in slices. Shelf pictures and the equipped die are kept
