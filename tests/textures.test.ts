@@ -786,3 +786,74 @@ suite('textures · baked shading and inset stickers', () => {
     }
   });
 });
+
+suite('textures · the Supporter compass is drawn smooth', () => {
+  /*
+    Marc, 4 Nov 2026: "fix the quality of the supporter dice, because
+    it's very pixelated". The ticks, the points and the rope used to be
+    decided in or out per texel, a staircase once a face is magnified
+    three times on the table. The painter now ramps every edge and
+    supersamples round the gold itself, and is NOT on SMOOTH_EDGES (see
+    the note there), so the checks the smoothed painters get are applied
+    to it here directly, plus one on the ring of ticks, where the
+    staircase showed most.
+  */
+  const supporter = DICE_SKINS.find((s) => s.pattern === 'supporterCompass')!;
+  const supporterSampler = () => shellSampler('supporterCompass', supporter.body, supporter.ink ?? supporter.body);
+
+  test('it is a smooth function of position', () => {
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const sample = supporterSampler();
+    let jumps = 0;
+    const N = 1500;
+    for (let k = 0; k < N; k++) {
+      const x = Math.floor(rnd() * 256);
+      const y = Math.floor(rnd() * 192);
+      const a = sample(x, y);
+      const b = sample(x + 0.013, y + 0.007);
+      if (Math.max(...a.map((v, i) => Math.abs(v - b[i]))) > 10) jumps++;
+    }
+    assert(jumps / N < 0.01, `the compass jumps at ${((jumps / N) * 100).toFixed(1)}% of nudges`);
+  });
+
+  test('the ring of ticks is anti-aliased, not a staircase', () => {
+    /*
+      In the red channel the teal is about 14..24, a tick (gold at 0.8)
+      about 175 and a point 156..227. With hard edges a ring texel is
+      one or the other: in v1.158.0, 21.0% of neighbouring pairs in the
+      ring stepped by more than 120 and only 7.1% of its texels sat
+      part-way between. Smooth edges put many texels part-way and few
+      steps at full height.
+    */
+    const px = patternPixels('supporterCompass', supporter.body, supporter.ink ?? supporter.body);
+    const red = (x: number, y: number) => px[(y * S + x) * 3];
+    const inRing = (x: number, y: number) => {
+      const r = Math.hypot(x + 0.5 - S / 2, y + 0.5 - S / 2);
+      return r > 22 && r < 25.5;
+    };
+    let texels = 0;
+    let between = 0;
+    let pairs = 0;
+    let tall = 0;
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        if (!inRing(x, y)) continue;
+        texels++;
+        const v = red(x, y);
+        if (v > 60 && v < 135) between++;
+        for (const [nx, ny] of [
+          [x + 1, y],
+          [x, y + 1],
+        ] as const) {
+          if (nx >= S || ny >= S || !inRing(nx, ny)) continue;
+          pairs++;
+          if (Math.abs(v - red(nx, ny)) > 120) tall++;
+        }
+      }
+    }
+    note(`compass ring: ${((100 * tall) / pairs).toFixed(1)}% full-height steps, ${((100 * between) / texels).toFixed(1)}% texels part-way (v1.158.0: 21.0%, 7.1%)`);
+    assert(tall / pairs < 0.1, `${tall} of ${pairs} ring pairs step at full height — a staircase`);
+    assert(between / texels > 0.15, `only ${between} of ${texels} ring texels are part-way between teal and gold`);
+  });
+});
