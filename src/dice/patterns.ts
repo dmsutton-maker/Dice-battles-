@@ -1742,12 +1742,6 @@ export function fishWaterAt(P: readonly number[]): Rgb {
   return waterAt(cubeNoise(P, 16));
 }
 
-/**
- * The pizza's toppings, scattered over the die: on every side three
- * pepperoni, an olive and a basil leaf, some lying across an edge.
- */
-const PIZZA_TOPPINGS = new StickerSheet(scatterStickers(7, 5, 6.8, 12.5, 2.5, 6.8, [0, 0, 1, 0, 2]));
-
 /*
   The pizza's paints, read once rather than on every sample. They used to
   be parsed from their hex inside pizzaAt — a dozen strings parsed for
@@ -1770,51 +1764,82 @@ const PIZZA_OLIVE_HOLE = rgb('#4a4541');
 
 /** The pizza at a sub-texel sheet point; `pizza` averages nine of these. */
 function pizzaAt(x: number, y: number): [number, number, number] {
-  const SAUCE = PIZZA_SAUCE;
-  const CHEESE = PIZZA_CHEESE;
-  const CHEESE_BROWN = PIZZA_CHEESE_BROWN;
-  const PEP = PIZZA_PEP;
-  const PEP_RIM = PIZZA_PEP_RIM;
-  const PEP_FAT = PIZZA_PEP_FAT;
-  const BASIL = PIZZA_BASIL;
-  const BASIL_VEIN = PIZZA_BASIL_VEIN;
-  const OLIVE = PIZZA_OLIVE;
+  /*
+    A PAN PIZZA ON EVERY SIDE since 4 Nov 2026. Marc: "I want it to
+    actually look like a pizza with crust on the edges, and make the
+    sides look more put together instead of random", and of the two
+    renders on the design board, "i like E, use it".
+
+    So each face is a square pan: a puffed golden crust frames it, a
+    line of sauce shows where the cheese stops short of the crust, and
+    the toppings are laid out the same way on every face — pepperoni on
+    two corners, a basil leaf on the other two, an olive at the middle
+    of each edge. The crust runs along every edge of the die, so the six
+    pans meet at the corners and the die reads as one object. Painted in
+    the face's own (u, v) texels (FACE_FRAMES), the way circuit is.
+
+    The scattered-pie version this replaces (one pie wrapped round the
+    cube, toppings scattered as stickers) is in git before this date.
+  */
   const P = sheetToCube(x, y);
-  // Melted cheese, browned where it blistered, and the sauce showing
-  // through where the cheese ran thin.
-  let px = mixRgb(CHEESE, CHEESE_BROWN, smoothstep(0.55, 0.85, cubeNoise([P[0] + 13, P[1] + 41, P[2]], 16)) * 0.7);
-  const blister = cubeNoise([P[0] * 1 + 5, P[1] + 9, P[2] + 3], 2.4);
-  px = mixRgb(px, CHEESE_BROWN, smoothstep(0.78, 0.9, blister) * 0.75);
-  const thin = cubeNoise([P[0] + 30, P[1] + 10, P[2] + 21], 11);
-  px = mixRgb(px, SAUCE, smoothstep(0.6, 0.74, thin) * 0.95);
-  px = mixRgb(px, PIZZA_SAUCE_DARK, smoothstep(0.74, 0.86, thin) * 0.5);
-  let under: [number, number, number] | null = null;
-  for (const { s, lx, ly } of PIZZA_TOPPINGS.hits(P)) {
+  const F = FACE_FRAMES[cubeFace(P)];
+  const u = dot3(P, F.u);
+  const v = dot3(P, F.v);
+  const H = SIZE / 2;
+  const m = Math.max(Math.abs(u), Math.abs(v));
+  const CRUST_W = 6;
+  const crustIn = H - CRUST_W;
+  const bake = cubeNoise([P[0] + 7, P[1] + 3, P[2] + 11], 6);
+  if (m >= crustIn) {
+    // The crust: puffed in the middle of the band, browned at the lip.
+    const t = (m - crustIn) / CRUST_W;
+    let c = mixRgb(rgb('#d9973f'), rgb('#f0c272'), smoothstep(0.1, 0.45, t) * smoothstep(0.9, 0.55, t));
+    c = mixRgb(c, rgb('#a8641f'), smoothstep(0.78, 1, t) * 0.8);
+    c = mixRgb(c, rgb('#b8742a'), smoothstep(0.62, 0.9, bake) * 0.45);
+    return c;
+  }
+  if (m >= crustIn - 2.2) {
+    // Sauce showing where the cheese stops short of the crust.
+    const t = (crustIn - m) / 2.2;
+    return mixRgb(PIZZA_SAUCE, PIZZA_SAUCE_DARK, smoothstep(0.3, 1, t) * 0.5 + (bake - 0.5) * 0.3);
+  }
+  // Melted cheese, browned where it blistered.
+  let px = mixRgb(PIZZA_CHEESE, PIZZA_CHEESE_BROWN, smoothstep(0.55, 0.85, cubeNoise([P[0] + 13, P[1] + 41, P[2]], 16)) * 0.6);
+  const blister = cubeNoise([P[0] + 5, P[1] + 9, P[2] + 3], 2.4);
+  px = mixRgb(px, PIZZA_CHEESE_BROWN, smoothstep(0.74, 0.9, blister) * 0.7);
+  // A little sauce bleeding through near the rim.
+  px = mixRgb(px, PIZZA_SAUCE, smoothstep(crustIn - 7, crustIn - 2.5, m) * 0.35 * smoothstep(0.4, 0.8, bake));
+  // The layout, the same on every face.
+  const C = 18.6;
+  const R = 5.3;
+  const slots: [number, number, number][] = [[C, C, 0], [-C, -C, 0], [-C, C, 2], [C, -C, 2]];
+  for (const [su, sv, kind] of slots) {
+    const lx = u - su;
+    const ly = v - sv;
     const d = Math.hypot(lx, ly);
-    if (s.kind === 0) {
-      // Pepperoni: a big round, cupped — a dark rim, a lighter fleck of
-      // fat here and there, a glint on the far side.
-      const R = 5.7 + s.h * 0.9;
+    if (kind === 0) {
       if (d < R) {
-        let pep = d > R - 1.3 ? PEP_RIM : PEP;
-        if (hashCell(Math.floor(lx * 1.5 + s.h * 40), Math.floor(ly * 1.5 + s.h * 90)) > 0.86 && d < R - 1.6) pep = mixRgb(pep, PEP_FAT, 0.7);
-        if (Math.hypot(lx + 2, ly + 2) < 1.4) pep = mixRgb(pep, PIZZA_PEP_GLINT, 0.6);
-        if (!under) under = pep;
-      } else if (d < R + 0.8 && !under) {
-        // A soft shadow where the slice sits in the cheese.
-        px = mixRgb(px, CHEESE_BROWN, 0.6);
+        let pep = d > R - 1.3 ? PIZZA_PEP_RIM : PIZZA_PEP;
+        if (hashCell(Math.floor(lx * 1.5 + 40), Math.floor(ly * 1.5 + 90)) > 0.86 && d < R - 1.6) pep = mixRgb(pep, PIZZA_PEP_FAT, 0.7);
+        if (Math.hypot(lx + 1.8, ly + 1.8) < 1.3) pep = mixRgb(pep, PIZZA_PEP_GLINT, 0.6);
+        return pep;
       }
-    } else if (s.kind === 1) {
-      // A black olive: a ring with a hole, the cheese showing through it.
-      if (d < 3.3 && d > 1.3) return d < 1.8 ? PIZZA_OLIVE_HOLE : OLIVE;
+      if (d < R + 0.9) px = mixRgb(px, PIZZA_CHEESE_BROWN, 0.6);
     } else {
-      // A basil leaf lying on the cheese, a pale vein down its middle.
-      const u = lx / 5.4;
-      const v = ly / 2.4;
-      if (u * u + v * v < 1 && Math.abs(v) < 1 - u * u * 0.5) return Math.abs(ly) < 0.35 ? BASIL_VEIN : BASIL;
+      // A basil leaf lying along the diagonal, a pale vein down it.
+      const a = (lx + (su > 0 ? -ly : ly)) / Math.SQRT2;
+      const b = (ly - (su > 0 ? -lx : lx)) / Math.SQRT2;
+      const lu = a / 6.2;
+      const lv = b / 2.9;
+      if (lu * lu + lv * lv < 1 && Math.abs(lv) < 1 - lu * lu * 0.5) return Math.abs(b) < 0.4 ? PIZZA_BASIL_VEIN : PIZZA_BASIL;
     }
   }
-  return under ?? px;
+  // An olive at the middle of each edge.
+  for (const [ou, ov] of [[0, crustIn - 3.2], [0, -(crustIn - 3.2)], [crustIn - 3.2, 0], [-(crustIn - 3.2), 0]]) {
+    const d = Math.hypot(u - ou, v - ov);
+    if (d < 2.9 && d > 1.2) return d < 1.6 ? PIZZA_OLIVE_HOLE : PIZZA_OLIVE;
+  }
+  return px;
 }
 
 /** Distance from (x, y) to the segment a-b. */
@@ -2157,15 +2182,11 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       on every side — the same pizza six times, with a crust framing
       each face.
 
-      ONE PIZZA ROUND THE WHOLE DIE since 21 Oct 2026. The die is cut
-      from the middle of the pie: melted cheese everywhere, browned where
-      it blistered, tomato sauce showing through in patches, and the
-      toppings — big cupped pepperoni, black olives, basil leaves —
-      scattered over all six sides as stickers on the die
-      (PIZZA_TOPPINGS), a pepperoni that lies across an edge carrying on
-      whole onto the next side. The crust went with the frames: a cube
-      has no outside edge for one to sit on. Supersampled 3x3, so the
-      toppings have clean round edges at shelf size.
+      ONE PIZZA ROUND THE WHOLE DIE from 21 Oct 2026, toppings
+      scattered as stickers; then A PAN PIZZA ON EVERY SIDE from
+      4 Nov 2026 (Marc: crust on the edges, sides put together, not
+      random) — see pizzaAt. Supersampled 3x3, so the crust, the sauce
+      line and the toppings have clean edges at shelf size.
     */
     const N = 3;
     let r = 0;
