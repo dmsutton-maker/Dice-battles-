@@ -19,6 +19,7 @@ import { Card, PrimaryButton, SecondaryButton } from '../ui/Card';
 import { TrophyIcon } from '../ui/Icon';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GoldCoin } from './GoldCoin';
+import { GoldPassMark } from './GoldPassMark';
 import { ItemIcon, pictureOfItem } from './ItemIcon';
 import { DailyQuests } from './DailyQuests';
 import type { QuestState } from '../game/quests';
@@ -214,9 +215,12 @@ export function SeasonPassCard({
       <DailyQuests quest={quest} onChoose={onChooseQuest} />
 
       {gold ? (
-        <Text style={styles.goldOwned}>
-          You have the Gold Pass — both rows are yours.
-        </Text>
+        <View style={styles.goldOwnedRow}>
+          <GoldPassMark size={28} />
+          <Text style={styles.goldOwned}>
+            You have the Gold Pass — both rows are yours.
+          </Text>
+        </View>
       ) : (
         <View style={styles.goldAsk}>
           <Text style={styles.goldWhy}>
@@ -224,7 +228,10 @@ export function SeasonPassCard({
             level. Levels you have already reached pay out straight away.
           </Text>
           <SecondaryButton onPress={onGetGold} style={styles.goldButton}>
-            <Text style={styles.goldButtonText}>Get the Gold Pass</Text>
+            <View style={styles.goldButtonRow}>
+              <GoldPassMark size={26} />
+              <Text style={styles.goldButtonText}>Get the Gold Pass</Text>
+            </View>
           </SecondaryButton>
         </View>
       )}
@@ -340,10 +347,12 @@ const styles = StyleSheet.create({
   how: { color: THEME.inkFaint, fontSize: 12, fontWeight: '600', lineHeight: 17, marginTop: 4 },
   track: { gap: 8, paddingTop: 8, paddingRight: 4 },
   key: { color: THEME.inkFaint, fontSize: 12, fontWeight: '700', marginTop: 14 },
-  goldOwned: { color: THEME.ink, ...TYPE.small, fontWeight: '800', marginTop: 10 },
+  goldOwnedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  goldOwned: { color: THEME.ink, ...TYPE.small, fontWeight: '800', flexShrink: 1 },
   goldAsk: { marginTop: 12, gap: 10 },
   goldWhy: { color: THEME.inkSoft, ...TYPE.small },
   goldButton: { alignSelf: 'stretch', paddingVertical: 12, backgroundColor: THEME.gold },
+  goldButtonRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   goldButtonText: { color: THEME.ink, ...TYPE.body, fontWeight: '900' },
   tile: {
     width: TILE,
