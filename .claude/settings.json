@@ -1,4 +1,30 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npm run check)",
+      "Bash(npm test)",
+      "Bash(npm test *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx expo export *)",
+      "Bash(npx vercel link *)",
+      "Bash(npx vercel deploy *)",
+      "Bash(npx --yes vercel@latest link *)",
+      "Bash(npx --yes vercel@latest deploy *)",
+      "Bash(npx eas-cli update *)",
+      "Bash(npx eas-cli build *)",
+      "Bash(npx eas-cli build:view *)",
+      "Bash(npx eas-cli build:list *)",
+      "Bash(npx eas-cli submit *)",
+      "Bash(npx --yes eas-cli@latest update *)",
+      "Bash(npx --yes eas-cli@latest build *)",
+      "Bash(npx --yes eas-cli@latest build:view *)",
+      "Bash(npx --yes eas-cli@latest build:list *)",
+      "Bash(npx --yes eas-cli@latest submit *)",
+      "Bash(eas update *)",
+      "Bash(eas build *)",
+      "Bash(eas submit *)"
+    ]
+  },
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   },
