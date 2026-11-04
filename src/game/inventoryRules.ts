@@ -3,6 +3,7 @@ import { DiceSkin } from './diceSkins';
 import { monthStamp } from './easternTime';
 import type { PreviewTarget } from './itemPreview';
 import { ARENA_ORDER, ARENA_UNLOCKS, INVENTORY_SKIN_ORDER, isArenaUnlocked, isSkinUnlocked } from './loadout';
+import { PRODUCTS } from './products';
 import { Tier, TIERS } from './progress';
 import { passInfo } from './seasonPass';
 import { tierItem } from './tierItem';
@@ -126,8 +127,12 @@ export function obtainableDiceCount(now: number = Date.now()): number {
     .length;
 }
 
-export function obtainableArenaCount(now: number = Date.now()): number {
-  return ARENA_ORDER.filter((id) => !isFutureSeasonItem('arena', id, now)).length;
+export function obtainableArenaCount(trophies: number, now: number = Date.now()): number {
+  // A battlefield only a hidden product grants (Dino Valley, 4 Nov 2026)
+  // is nobody's to get, so it is counted only for whoever already has it.
+  const hiddenOnly = (id: ArenaId) =>
+    PRODUCTS.some((p) => p.hidden && (p.grants ?? []).includes(id)) && !isArenaUnlocked(id, trophies);
+  return ARENA_ORDER.filter((id) => !isFutureSeasonItem('arena', id, now) && !hiddenOnly(id)).length;
 }
 
 /**

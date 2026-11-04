@@ -311,7 +311,13 @@ export function noteTesterModeChanged(): void {
   notifyChanged();
 }
 
-/** Is this id something the game sells for money (a product, or what one grants)? */
+/**
+ * Is this id something the game sells for money (a product, or what one grants)?
+ *
+ * A `hidden` product (Dino Valley) still counts, so admin mode lends it.
+ * restore(), the purchase listener (`settle`), `isArenaUnlocked` and
+ * `refreshPrices` likewise ignore `hidden` on purpose: owners keep it.
+ */
 export function isSoldForMoney(id: string): boolean {
   return (
     id === GOLD_PASS_ID ||

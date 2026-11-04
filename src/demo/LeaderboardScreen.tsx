@@ -152,7 +152,7 @@ export function LeaderboardScreen({
   const now = Date.now();
   const boards = inventoryArenas(trophies, now).length;
   const dice = inventoryDice(trophies, now).length;
-  const boardsOf = obtainableArenaCount(now);
+  const boardsOf = obtainableArenaCount(trophies, now);
   const diceOf = obtainableDiceCount(now);
 
   // Your league is the highest rung of the ladder you have reached.

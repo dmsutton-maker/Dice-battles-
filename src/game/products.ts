@@ -75,6 +75,14 @@ export interface Product {
   /** Why it is not for sale yet. Required whenever `available` is false. */
   blockedBy?: string;
   /**
+   * Off the shelf for now (Marc, 4 Nov 2026: "put it away for now ... I
+   * have a better idea for it later"). Still a real product: owners keep
+   * it, Restore and the purchase listener still deliver it, and tester
+   * mode still lends it. Unlike `available: false` it is not listed under
+   * "Coming later" and `isSoldForMoney` still counts it.
+   */
+  hidden?: true;
+  /**
    * Only offered in the first 48 hours after the game was installed.
    * A starter pack, in the family's words.
    */
@@ -219,6 +227,10 @@ export const PRODUCTS: Product[] = [
     usd: 2.99,
     grants: ['dino'],
     available: true,
+    // Marc, 4 Nov 2026: "take the dino valley out of the store and put it
+    // away for now because it will not be available for purchase as I have
+    // a better idea for it later, so just hide it".
+    hidden: true,
   },
 
   /*
@@ -300,6 +312,7 @@ export function sellable(
 ): Product[] {
   return PRODUCTS.filter((p) => {
     if (!p.available) return false;
+    if (p.hidden) return false;
     if (p.starterOnly) return family || withinStarterWindow(installedAt, now);
     return true;
   });
@@ -337,6 +350,7 @@ export function paidSkinWhere(skinId: string): string {
   const product = PRODUCTS.find((p) => p.available && (p.grants ?? []).includes(skinId));
   if (!product) return 'Money shop';
   if (product.starterOnly) return product.name;
+  if (product.hidden) return 'Not on sale';
   return priceLabel(product, null);
 }
 
