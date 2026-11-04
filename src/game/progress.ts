@@ -205,7 +205,7 @@ export const TIERS: Tier[] = [
     rung was no harder than the one below it, which reads as a mistake
     because it was one.
 
-    The summit is 10,000 exactly. Marc asked for that on 27 Aug 2026:
+    The summit WAS 10,000 exactly (it is 8,000 since 4 Nov 2026, below). Marc asked for that on 27 Aug 2026:
     "change the trophy amount of some items so that the highest thing is
     only 10 thousand trophies." This comment used to argue it could not be
     done without a kink, and ran the ladder on to 10,600 instead. That is
@@ -239,27 +239,39 @@ export const TIERS: Tier[] = [
     THE RUNGS ABOVE WERE RESPACED to close the two holes, under three
     rules that all had to hold at once:
 
-      - The summit stays 10,000 exactly (Marc, 27 Aug 2026, above).
+      - The summit stays 10,000 exactly (Marc, 27 Aug 2026, above;
+        8,000 from 4 Nov 2026).
       - Every step is bigger than the one below it.
       - NOTHING MOVES UP. An item that moved up would lock itself again
         for anybody sitting between its old and new number, so every
         rung either stayed put or came DOWN — things only arrive sooner.
 
-    The twelve steps from Midnight Dice are now 350, 400, 450, 500, 550,
-    650, 700, 850, 950, 1050, 1150 and 1250, which sum to the same 8,850.
+    The twelve steps from Midnight Dice were 350, 400, 450, 500, 550,
+    650, 700, 850, 950, 1050, 1150 and 1250, which sum to 8,850.
+  */
+  /*
+    RESPACED AGAIN on 4 Nov 2026. Marc: "rework the ladder trophy amounts
+    to make sense with the loss of some dice, and maybe lessen the
+    highest amount too in order so that the gaps aren't as big, like
+    maybe somewhere around 8500 or 8000." The summit is now 8,000 and the
+    twelve steps from Midnight Dice are 350, 390, 430, 470, 510, 550,
+    590, 630, 670, 710, 750 and 800: every step still bigger than the one
+    below, but the top gaps fall from 1,150 and 1,250 to 750 and 800.
+    Rungs up to Midnight Dice (the Game Center ids) did not move, and
+    nothing moved UP, so things only arrive sooner.
   */
   { at: 1500, name: 'Ruby Dice', id: 'ruby-dice' },
-  { at: 1900, name: 'Desert Dunes', id: 'desert-arena' },
-  { at: 2350, name: 'Ocean Dice', id: 'ocean-dice' },
-  { at: 2850, name: 'Autumn Woods', id: 'autumn-arena' },
-  { at: 3400, name: 'Lavender Dice', id: 'lavender-dice' },
-  { at: 4050, name: 'Frozen Lights', id: 'aurora-arena' },
-  { at: 4750, name: 'Slate Dice', id: 'slate-dice' },
-  { at: 5600, name: 'Blossom Dice', id: 'blossom-dice' },
-  { at: 6550, name: 'Crystal Cavern', id: 'cavern-arena' },
-  { at: 7600, name: 'Copper Dice', id: 'copper-dice' },
-  { at: 8750, name: 'Sky Kingdom', id: 'sky-arena' },
-  { at: 10000, name: 'Moon Base', id: 'moon-arena' },
+  { at: 1890, name: 'Desert Dunes', id: 'desert-arena' },
+  { at: 2320, name: 'Ocean Dice', id: 'ocean-dice' },
+  { at: 2790, name: 'Autumn Woods', id: 'autumn-arena' },
+  { at: 3300, name: 'Lavender Dice', id: 'lavender-dice' },
+  { at: 3850, name: 'Frozen Lights', id: 'aurora-arena' },
+  { at: 4440, name: 'Slate Dice', id: 'slate-dice' },
+  { at: 5070, name: 'Blossom Dice', id: 'blossom-dice' },
+  { at: 5740, name: 'Crystal Cavern', id: 'cavern-arena' },
+  { at: 6450, name: 'Copper Dice', id: 'copper-dice' },
+  { at: 7200, name: 'Sky Kingdom', id: 'sky-arena' },
+  { at: 8000, name: 'Moon Base', id: 'moon-arena' },
 ];
 
 /**
