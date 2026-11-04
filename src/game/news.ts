@@ -90,6 +90,38 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-159-0-online',
+    date: '4 November 2026',
+    version: 'v1.159.0',
+    title: 'Battle real players',
+    icon: 'people',
+    body:
+      'From 100 trophies, Color Rush and Ultimate look for a real ' +
+      'player first. You will see "Searching for an opponent" with a ' +
+      'countdown; if nobody is free within 15 seconds you play a rival ' +
+      'instead. Online battles count for everything: trophies, coins, ' +
+      'the pass, quests and cups. Leaving one early counts as a loss.\n\n' +
+      'Want to warm up? Settings has a new Practice button: a battle ' +
+      'against the computer that changes nothing, win or lose.',
+  },
+  {
+    id: 'v1-159-0-new-looks',
+    date: '4 November 2026',
+    version: 'v1.159.0',
+    title: 'New looks, and the Shop',
+    icon: 'dice',
+    body:
+      'Seven dice have been redrawn: Pizza is a pan pizza with crust on ' +
+      'every side, Leopard has proper rosettes, Tiger has real tapering ' +
+      'stripes, Watermelon is the whole melon, Donut is pink frosting ' +
+      'and rainbow sprinkles, and Snake, Supporter and Neon are sharper. ' +
+      'The Fish card matches the die.\n\n' +
+      'The tab where you buy things is now called the Shop, and the ' +
+      'Gold Pass has its own ' +
+      'gold badge. The trophy ladder now tops out at 8,000, so ' +
+      'everything above Midnight Dice arrives sooner.',
+  },
+  {
     id: 'v1-158-0-fast-start',
     date: '4 November 2026',
     version: 'v1.158.0',

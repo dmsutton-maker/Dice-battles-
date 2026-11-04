@@ -2037,7 +2037,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       return [r / (N * N), g / (N * N), b / (N * N)];
     };
   })(),
-neon: (() => {
+  neon: (() => {
     /*
       Neon, 20 Oct 2026. David asked for "a new cool dice that is worth
       one or two dollars" and picked this of three: an arcade at night.

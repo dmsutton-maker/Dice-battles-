@@ -1,5 +1,66 @@
 # Changelog
 
+## v1.159.0 — 2026-11-04 · requested by Marc
+
+Marc's design picks and his ten-request batch of 4 Nov 2026, merged
+from sixteen held branches (feature/ladder-respace, copy-shop,
+dino-hidden, gold-pass-ice, gold-pass-logo, fish-card, pizza-pan,
+snake-quality, leopard-bold, tiger-bold, melon-whole, donut-frosting,
+supporter-quality, neon-quality, match-server, match-client). Shipped
+before the App Store submission at Marc's request ("make sure to add
+all this stuff we did in the last few hours right now"); the
+pre-submission pass has to run again on this version. Runtime 4.0.0
+(build 18).
+
+### Added
+- **Online battles.** From 100 trophies, Color Rush and Ultimate search
+  for a real player for 15 s ("Searching for an opponent…", a countdown,
+  Cancel), then fall back to a rival. A match is played over the same
+  live route as a friend battle. Below 100 trophies, and in Skirmish and
+  Color War, it is a rival at once (David, 9 Sep; Marc, 4 Nov: "until
+  100 trophies should always be against bots"). Online battles count
+  for everything a computer battle does, cups and the ad tally included
+  (`src/game/stakes.ts`). Leaving one from the menu is an ordinary loss;
+  closing the app mid-match is charged as a loss at the next launch
+  (`src/game/pendingMatch.ts`). Game side: `matchFlow.ts`,
+  `onlineMatch.ts`, `battlesApi.ts`, `MatchmakingOverlay.tsx`. Server
+  side: `hq/src/app/api/match`, `hq/src/lib/matchQueue.ts`, and the
+  migration `hq/supabase/migrations/20261104_matchmaking.sql`. **Until
+  that migration is applied and the site deployed, the app plays a rival
+  at once, exactly as before.**
+- **Practice** in Settings: a battle against the computer that counts
+  for nothing, labelled as practice throughout.
+- **The Gold Pass mark**: a gold die with a sparkle
+  (`assets/logo/gold-pass*.png`, `GoldPassMark.tsx`) on the Shop card
+  and the pass card.
+
+### Changed
+- **Dice redrawn**: Pizza (pan pizza, crust on every edge), Leopard (big
+  clustered rosettes), Tiger (tapering, forking stripes), Watermelon (the
+  whole fruit; body colour dark green), Donut (pink frosting and rainbow
+  sprinkles only), Snake (same design, supersampled), Fish card (two
+  whole fish like the die). Supporter and Neon smoothed, designs
+  unchanged. Kept pictures are re-painted because GAME_VERSION moved.
+- **Store is now Shop** everywhere a player reads it, old News included.
+- "No more ads" works on all your **devices**; the Starter pack is your
+  first **48 hours** (it always was 48 h).
+- **The trophy ladder tops out at 8,000** (was 10,000); every rung above
+  Midnight Dice comes down, none goes up, the largest step is 800.
+- The Gold Pass sheet lists the season's free-row die too (Ice).
+- **Dino Valley is off the Shop** (`hidden`); owners keep it, Restore
+  and admin mode still work.
+- The "A new cup every week…" paragraph is gone from Cups.
+
+### For David, by hand
+- Apply `hq/supabase/migrations/20261104_matchmaking.sql` to turn online
+  battles on (the site is deployed with this release and answers "off"
+  until then).
+- Take `dino_valley` out of the draft App Review submission.
+- App Store Connect: Neon at $0.99; IAP descriptions that say
+  "phones", "two days" or "Store".
+- Privacy policy and App Review notes: online play shows your chosen
+  name and trophies to the player you are matched with.
+
 ## v1.158.0 — 2026-11-04 · requested by Marc
 
 Marc, 3 Nov 2026: "The game runs very slow when you open it, especially
