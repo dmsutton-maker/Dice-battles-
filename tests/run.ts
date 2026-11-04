@@ -28,6 +28,7 @@ async function main(): Promise<void> {
   await import('./downloadSize.test');
   await import('./duoDesign.test');
   await import('./battleMenu.test');
+  await import('./fastStart.test');
   await import('./friendlyBattle.test');
   await import('./friendlyServer.test');
   await import('./secretCodes.test');

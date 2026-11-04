@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cachedTexture } from '../arena/textureCache';
+import { cachedTexture, paintNow, RowPainting, rowJob } from '../arena/textureCache';
 import type { SceneryTick } from '../arena/sceneryClock';
 import {
   CIRCUIT_ROUTES,
@@ -169,11 +169,21 @@ export function pulseAt(P: readonly number[]): PulsePoint | null {
  * the paint texel for texel.
  */
 export function circuitPulseTexture(face: number): THREE.Texture {
-  return cachedTexture(`die:circuit-pulse:${face}`, () => {
-    const data = new Uint8Array(SIZE * SIZE * 4);
-    const at = dieFaceSampler((sx, sy) => sheetToCube(sx, sy), face);
-    const N = 2;
-    for (let y = 0; y < SIZE; y++) {
+  return cachedTexture(`die:circuit-pulse:${face}`, () => paintNow(circuitPulsePainting(face)));
+}
+
+/** The same map a row at a time, for the warm-up (warmPreviews.ts). */
+export function circuitPulseJob(face: number): { step(): boolean } | null {
+  return rowJob(`die:circuit-pulse:${face}`, () => circuitPulsePainting(face));
+}
+
+function circuitPulsePainting(face: number): RowPainting {
+  const data = new Uint8Array(SIZE * SIZE * 4);
+  const at = dieFaceSampler((sx, sy) => sheetToCube(sx, sy), face);
+  const N = 2;
+  return {
+    rows: SIZE,
+    row(y) {
       for (let x = 0; x < SIZE; x++) {
         const centre = pulseAt(at(x, y));
         // The edge of the glow is supersampled so it is soft; the map
@@ -190,19 +200,21 @@ export function circuitPulseTexture(face: number): THREE.Texture {
         data[i + 2] = (centre?.kind ?? 0) * 255;
         data[i + 3] = Math.round((on / (N * N)) * 255);
       }
-    }
-    const texture = new THREE.DataTexture(data, SIZE, SIZE);
-    // Data, not colour: read back exactly as written. No mipmaps, which
-    // would average "how far along" across wires that are not joined.
-    texture.colorSpace = THREE.NoColorSpace;
-    texture.wrapS = THREE.ClampToEdgeWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
-    texture.generateMipmaps = false;
-    texture.needsUpdate = true;
-    return texture;
-  });
+    },
+    done: () => {
+      const texture = new THREE.DataTexture(data, SIZE, SIZE);
+      // Data, not colour: read back exactly as written. No mipmaps, which
+      // would average "how far along" across wires that are not joined.
+      texture.colorSpace = THREE.NoColorSpace;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearFilter;
+      texture.generateMipmaps = false;
+      texture.needsUpdate = true;
+      return texture;
+    },
+  };
 }
 
 const DECLARE = `uniform float uPulseTime;

@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { DICE_SKINS } from '../src/game/diceSkins';
-import { shellPreviewUri } from '../src/dice/preview';
+import { clearShelfPicturesForTests, shellPreviewUri } from '../src/dice/preview';
+import { SQUARE_STEP_TEXELS } from '../src/dice/patterns';
 import {
-  WARM_CHUNK,
   resetWarmForTest,
   skinsNeedingPreview,
   warmDicePreviews,
@@ -64,21 +64,41 @@ suite('speed · the dice pictures are painted before anybody asks', () => {
     note(`${ticks} background ticks; opening the tab afterwards took ${openMs}ms`);
   });
 
-  test('it paints one at a time, because one is already a whole frame', () => {
+  test('a picture is painted over several slices, not one per tick', () => {
     /*
-      A single die is ~16ms on a desktop and more on a phone — already a
-      frame. Painting two per tick to "get it over with" would drop one
-      and the warming would become visible, which defeats the point.
+      Changed 3 Nov 2026. David's family: "The game runs very slow when
+      you open it ... it all has to be lightning fast." This used to pin
+      ONE PICTURE PER TICK, on the reasoning that one die was a frame —
+      measured that day, one picture was up to 333ms on a desktop (the
+      Pizza die), so a tick was up to twenty frames. Every picture is now
+      painted a few texels a step (squareJob) under a time budget, so a
+      single picture is spread over several slices. Counted rather than
+      timed, so a loaded machine cannot fail it.
     */
-    assertEqual(WARM_CHUNK, 1, 'the chunk size');
+    assert(SQUARE_STEP_TEXELS <= 64, `a step paints ${SQUARE_STEP_TEXELS} texels — a whole row or more`);
+    clearShelfPicturesForTests();
+    resetWarmForTest();
+    const queue: (() => void)[] = [];
+    warmDicePreviews((run) => queue.push(run), () => true, () => {}, () => 1);
+    let ticks = 0;
+    while (queue.length) {
+      queue.shift()!();
+      ticks++;
+    }
+    assert(
+      ticks > skinsNeedingPreview().length,
+      `${ticks} slices for ${skinsNeedingPreview().length} pictures — whole pictures are still painted in one go`,
+    );
+    note(`${ticks} slices of ~1ms for ${skinsNeedingPreview().length} pictures`);
   });
 
-  test('it yields between every chunk rather than looping', () => {
+  test('it yields between slices rather than looping', () => {
     /*
       A plain loop would block exactly as long as the tab used to. Read
       from behaviour rather than from the shape of the source: never more
-      than one continuation waiting at a time, and one tick per chunk.
+      than one continuation waiting at a time.
     */
+    clearShelfPicturesForTests();
     resetWarmForTest();
     const queue: (() => void)[] = [];
     warmDicePreviews((run) => queue.push(run), () => true);
@@ -88,12 +108,8 @@ suite('speed · the dice pictures are painted before anybody asks', () => {
       queue.shift()!();
       ticks++;
     }
-    assertEqual(
-      ticks,
-      Math.ceil(skinsNeedingPreview().length / WARM_CHUNK),
-      'the warmer did not hand the thread back once per chunk',
-    );
-    note(`${ticks} ticks for ${skinsNeedingPreview().length} pictures`);
+    assert(ticks > 1, 'the warmer painted everything without handing the thread back');
+    note(`${ticks} slices for ${skinsNeedingPreview().length} pictures at the menu's budget`);
   });
 
   test('it stops while the game is in a pocket', () => {
@@ -154,6 +170,11 @@ suite('speed · the heavy tabs are built once', () => {
     // Building both there would move the cost onto the thing the player
     // actually wants, which is the first battle. They are built when the
     // warming finishes, or on the tap if that comes first.
+    //
+    // Since 3 Nov 2026 "the warming" is the loading screen's: both pages
+    // are built under the title card, once the first screenful of their
+    // pictures is painted (launchWarm.ts), so the first tap only shows
+    // them. tests/fastStart.test.ts covers that.
     const screen = src('src/demo/DiceDemoScreen.tsx');
     assert(
       /setBuiltHeavyTabs/.test(screen),
@@ -238,7 +259,10 @@ suite('speed · the heavy tabs are up in the frame you tap', () => {
 
   test('stopping partway does not claim to have finished', () => {
     // Backgrounding the game stops the warming. Building the pages then
-    // would ask for the pictures that never got painted.
+    // would ask for the pictures that never got painted. From a cold
+    // cache since 3 Nov 2026: a slice now paints as many pictures as fit
+    // its budget, so a warm cache finishes in the first one.
+    clearShelfPicturesForTests();
     resetWarmForTest();
     const queue: (() => void)[] = [];
     let awake = true;

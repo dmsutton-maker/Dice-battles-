@@ -38,6 +38,60 @@ export function cachedTexture(key: string, make: () => THREE.Texture): THREE.Tex
   return built;
 }
 
+/** The texture under `key` if it has been built, without building it. */
+export function peekCachedTexture(key: string): THREE.Texture | undefined {
+  return cache.get(key);
+}
+
+/** Whether `key` has been built — so a warm-up can skip what is done. */
+export function hasCachedTexture(key: string): boolean {
+  return cache.has(key);
+}
+
+/**
+ * A picture that can be painted a row at a time.
+ *
+ * David, 3 Nov 2026: "The game runs very slow when you open it ... it all
+ * has to be lightning fast." The die maps (the Fish die's water, the
+ * Circuit Board's wiring, the Neon glow, the stickers) were each a
+ * single 20-200ms block of painting on a desktop. Written as rows, the
+ * same loop can run to the end at once (paintNow) or a row per step in
+ * the warm-up (rowJob) — the same code either way, so the two cannot
+ * paint different pictures.
+ */
+export interface RowPainting {
+  rows: number;
+  row(y: number): void;
+  done(): THREE.Texture;
+}
+
+/** Paint every row now and hand back the texture. */
+export function paintNow(painting: RowPainting): THREE.Texture {
+  for (let y = 0; y < painting.rows; y++) painting.row(y);
+  return painting.done();
+}
+
+/**
+ * `key`'s picture as a job a row per step, cached under `key` when it
+ * finishes; null if it is already cached.
+ */
+export function rowJob(key: string, start: () => RowPainting): { step(): boolean } | null {
+  if (cache.has(key)) return null;
+  let painting: RowPainting | null = null;
+  let y = 0;
+  return {
+    step() {
+      if (cache.has(key)) return true;
+      painting ??= start();
+      if (y < painting.rows) painting.row(y++);
+      if (y < painting.rows) return false;
+      const done = painting;
+      cachedTexture(key, () => done.done());
+      return true;
+    },
+  };
+}
+
 /** How many textures have been built. Test-only. */
 export function cachedTextureCount(): number {
   return cache.size;
@@ -131,6 +185,26 @@ export function paintInBackground(
   });
   running.set(key, promise);
   return promise;
+}
+
+/**
+ * `key`'s picture as a job of two rows a step, cached when it finishes;
+ * null if it is already cached. For the loading screen, which runs its
+ * own slices (slicedPaint.ts) rather than paintInBackground's timer.
+ */
+export function surfaceJob(key: string, start: () => PaintJob): { step(): boolean } | null {
+  if (cache.has(key)) return null;
+  let job: PaintJob | null = null;
+  return {
+    step() {
+      if (cache.has(key)) return true;
+      job ??= start();
+      if (!job.step(2)) return false;
+      const done = job;
+      cachedTexture(key, () => done.texture);
+      return true;
+    },
+  };
 }
 
 export interface Progressive {

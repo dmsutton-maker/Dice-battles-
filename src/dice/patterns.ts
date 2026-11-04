@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cachedTexture } from '../arena/textureCache';
+import { cachedTexture, hasCachedTexture } from '../arena/textureCache';
 import { BUBBLE, FishPlace, goldfishAt, Rgb, waterAt } from './goldfish';
 export type { Rgb } from './goldfish';
 
@@ -1733,17 +1733,37 @@ export function fishWaterAt(P: readonly number[]): Rgb {
  */
 const PIZZA_TOPPINGS = new StickerSheet(scatterStickers(7, 5, 6.8, 12.5, 2.5, 6.8, [0, 0, 1, 0, 2]));
 
+/*
+  The pizza's paints, read once rather than on every sample. They used to
+  be parsed from their hex inside pizzaAt — a dozen strings parsed for
+  each of nine samples a texel, which made Pizza the slowest die in the
+  game to paint (1.8 seconds for its six sides on a desktop, 3 Nov 2026).
+  Same numbers; nothing that reads them changes them.
+*/
+const PIZZA_SAUCE = rgb('#b3342a');
+const PIZZA_SAUCE_DARK = rgb('#8d2a22');
+const PIZZA_CHEESE = rgb('#f4d27a');
+const PIZZA_CHEESE_BROWN = rgb('#d49a45');
+const PIZZA_PEP = rgb('#c23a2f');
+const PIZZA_PEP_RIM = rgb('#83241e');
+const PIZZA_PEP_FAT = rgb('#e0806a');
+const PIZZA_PEP_GLINT = rgb('#f2b8a8');
+const PIZZA_BASIL = rgb('#2f9a3a');
+const PIZZA_BASIL_VEIN = rgb('#8fd06a');
+const PIZZA_OLIVE = rgb('#22201f');
+const PIZZA_OLIVE_HOLE = rgb('#4a4541');
+
 /** The pizza at a sub-texel sheet point; `pizza` averages nine of these. */
 function pizzaAt(x: number, y: number): [number, number, number] {
-  const SAUCE = rgb('#b3342a');
-  const CHEESE = rgb('#f4d27a');
-  const CHEESE_BROWN = rgb('#d49a45');
-  const PEP = rgb('#c23a2f');
-  const PEP_RIM = rgb('#83241e');
-  const PEP_FAT = rgb('#e0806a');
-  const BASIL = rgb('#2f9a3a');
-  const BASIL_VEIN = rgb('#8fd06a');
-  const OLIVE = rgb('#22201f');
+  const SAUCE = PIZZA_SAUCE;
+  const CHEESE = PIZZA_CHEESE;
+  const CHEESE_BROWN = PIZZA_CHEESE_BROWN;
+  const PEP = PIZZA_PEP;
+  const PEP_RIM = PIZZA_PEP_RIM;
+  const PEP_FAT = PIZZA_PEP_FAT;
+  const BASIL = PIZZA_BASIL;
+  const BASIL_VEIN = PIZZA_BASIL_VEIN;
+  const OLIVE = PIZZA_OLIVE;
   const P = sheetToCube(x, y);
   // Melted cheese, browned where it blistered, and the sauce showing
   // through where the cheese ran thin.
@@ -1752,7 +1772,7 @@ function pizzaAt(x: number, y: number): [number, number, number] {
   px = mixRgb(px, CHEESE_BROWN, smoothstep(0.78, 0.9, blister) * 0.75);
   const thin = cubeNoise([P[0] + 30, P[1] + 10, P[2] + 21], 11);
   px = mixRgb(px, SAUCE, smoothstep(0.6, 0.74, thin) * 0.95);
-  px = mixRgb(px, rgb('#8d2a22'), smoothstep(0.74, 0.86, thin) * 0.5);
+  px = mixRgb(px, PIZZA_SAUCE_DARK, smoothstep(0.74, 0.86, thin) * 0.5);
   let under: [number, number, number] | null = null;
   for (const { s, lx, ly } of PIZZA_TOPPINGS.hits(P)) {
     const d = Math.hypot(lx, ly);
@@ -1763,7 +1783,7 @@ function pizzaAt(x: number, y: number): [number, number, number] {
       if (d < R) {
         let pep = d > R - 1.3 ? PEP_RIM : PEP;
         if (hashCell(Math.floor(lx * 1.5 + s.h * 40), Math.floor(ly * 1.5 + s.h * 90)) > 0.86 && d < R - 1.6) pep = mixRgb(pep, PEP_FAT, 0.7);
-        if (Math.hypot(lx + 2, ly + 2) < 1.4) pep = mixRgb(pep, rgb('#f2b8a8'), 0.6);
+        if (Math.hypot(lx + 2, ly + 2) < 1.4) pep = mixRgb(pep, PIZZA_PEP_GLINT, 0.6);
         if (!under) under = pep;
       } else if (d < R + 0.8 && !under) {
         // A soft shadow where the slice sits in the cheese.
@@ -1771,7 +1791,7 @@ function pizzaAt(x: number, y: number): [number, number, number] {
       }
     } else if (s.kind === 1) {
       // A black olive: a ring with a hole, the cheese showing through it.
-      if (d < 3.3 && d > 1.3) return d < 1.8 ? rgb('#4a4541') : OLIVE;
+      if (d < 3.3 && d > 1.3) return d < 1.8 ? PIZZA_OLIVE_HOLE : OLIVE;
     } else {
       // A basil leaf lying on the cheese, a pale vein down its middle.
       const u = lx / 5.4;
@@ -3881,64 +3901,136 @@ type TexelSampler = (x: number, y: number) => [number, number, number];
  * side of the die, so the two cannot drift apart.
  */
 function paintSquare(texel: TexelSampler, smooth: boolean): number[] {
+  const job = squareJob(texel, smooth);
+  while (!job.step());
+  return job.pixels();
+}
+
+/**
+ * How many texels one step of a square job paints.
+ *
+ * A QUARTER OF A ROW. David, 3 Nov 2026: "The game runs very slow when
+ * you open it ... it all has to be lightning fast." The warm-up used to
+ * paint a whole die per tick — up to 1.4 seconds on a desktop for the
+ * Pizza die, several times that on a phone, all in one go on the thread
+ * that draws the menu. A step this small costs about a millisecond even
+ * for the slowest painter (Pizza averages nine samples a texel), so the
+ * caller can stop at any time budget it likes (slicedPaint.ts).
+ */
+export const SQUARE_STEP_TEXELS = 16;
+
+/**
+ * One 64x64 square, painted a few texels at a time.
+ *
+ * EXACTLY the work paintSquare always did, in the same order — it is
+ * paintSquare, cut into steps. `step()` does a little more and says
+ * whether the square is finished; `pixels()` is the finished square.
+ * paintSquare runs one of these to the end, so the shelf, the table and
+ * the warm-up cannot disagree about a single byte.
+ */
+export interface SquareJob {
+  step(): boolean;
+  pixels(): number[];
+}
+
+export function squareJob(texel: TexelSampler, smooth: boolean): SquareJob {
   const px = new Float64Array(SIZE * SIZE * 3);
-  for (let y = 0, i = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++, i += 3) {
-      const c = texel(x, y);
-      px[i] = c[0];
-      px[i + 1] = c[1];
-      px[i + 2] = c[2];
-    }
-  }
+  const total = SIZE * SIZE;
+  // Stage 0 paints texels [0, total); 1 marks edges; 2 smooths them, a
+  // few rows at a time; 3 rounds to bytes; 4 is done.
+  let stage = 0;
+  let k = 0;
+  let edge: Uint8Array | null = null;
+  let out: number[] | null = null;
+  const sharp = (a: number, b: number) =>
+    Math.max(
+      Math.abs(px[a] - px[b]),
+      Math.abs(px[a + 1] - px[b + 1]),
+      Math.abs(px[a + 2] - px[b + 2]),
+    ) > EDGE_STEP;
 
-  if (smooth) {
-    // Mark both texels of every sharp step, across and down.
-    const edge = new Uint8Array(SIZE * SIZE);
-    const step = (a: number, b: number) =>
-      Math.max(
-        Math.abs(px[a] - px[b]),
-        Math.abs(px[a + 1] - px[b + 1]),
-        Math.abs(px[a + 2] - px[b + 2]),
-      ) > EDGE_STEP;
-    for (let y = 0; y < SIZE; y++) {
-      for (let x = 0; x < SIZE; x++) {
-        const k = y * SIZE + x;
-        if (x + 1 < SIZE && step(k * 3, (k + 1) * 3)) edge[k] = edge[k + 1] = 1;
-        if (y + 1 < SIZE && step(k * 3, (k + SIZE) * 3)) edge[k] = edge[k + SIZE] = 1;
+  const step = (): boolean => {
+    if (stage === 0) {
+      const end = Math.min(total, k + SQUARE_STEP_TEXELS);
+      for (; k < end; k++) {
+        const x = k % SIZE;
+        const y = (k - x) / SIZE;
+        const c = texel(x, y);
+        const i = k * 3;
+        px[i] = c[0];
+        px[i + 1] = c[1];
+        px[i + 2] = c[2];
       }
+      if (k < total) return false;
+      stage = smooth ? 1 : 3;
+      k = 0;
+      return false;
     }
-    for (let k = 0; k < SIZE * SIZE; k++) {
-      if (!edge[k]) continue;
-      const x = k % SIZE;
-      const y = (k - x) / SIZE;
-      const i = k * 3;
-      let r = px[i];
-      let g = px[i + 1];
-      let b = px[i + 2];
-      for (const [dx, dy] of SUBSAMPLES) {
-        // Kept on this square, so an edge texel is averaged over its own
-        // texel and not its neighbour's.
-        const c = texel(
-          Math.min(SIZE - 1, Math.max(0, x + dx)),
-          Math.min(SIZE - 1, Math.max(0, y + dy)),
-        );
-        r += c[0];
-        g += c[1];
-        b += c[2];
+    if (stage === 1) {
+      // Mark both texels of every sharp step, across and down.
+      edge = new Uint8Array(total);
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          const e = y * SIZE + x;
+          if (x + 1 < SIZE && sharp(e * 3, (e + 1) * 3)) edge[e] = edge[e + 1] = 1;
+          if (y + 1 < SIZE && sharp(e * 3, (e + SIZE) * 3)) edge[e] = edge[e + SIZE] = 1;
+        }
       }
-      const n = SUBSAMPLES.length + 1;
-      px[i] = r / n;
-      px[i + 1] = g / n;
-      px[i + 2] = b / n;
+      stage = 2;
+      k = 0;
+      return false;
     }
-  }
+    if (stage === 2) {
+      // The re-asked texels, a few at a time: on a busy painter most of a
+      // row can be edge, and each one is asked twice more.
+      let asked = 0;
+      for (; k < total && asked < SQUARE_STEP_TEXELS; k++) {
+        if (!edge![k]) continue;
+        asked++;
+        const x = k % SIZE;
+        const y = (k - x) / SIZE;
+        const i = k * 3;
+        let r = px[i];
+        let g = px[i + 1];
+        let b = px[i + 2];
+        for (const [dx, dy] of SUBSAMPLES) {
+          // Kept on this square, so an edge texel is averaged over its own
+          // texel and not its neighbour's.
+          const c = texel(
+            Math.min(SIZE - 1, Math.max(0, x + dx)),
+            Math.min(SIZE - 1, Math.max(0, y + dy)),
+          );
+          r += c[0];
+          g += c[1];
+          b += c[2];
+        }
+        const n = SUBSAMPLES.length + 1;
+        px[i] = r / n;
+        px[i + 1] = g / n;
+        px[i + 2] = b / n;
+      }
+      if (k < total) return false;
+      stage = 3;
+      return false;
+    }
+    if (stage === 3) {
+      // Rounded to whole bytes. A Uint8Array used to truncate these for
+      // free; the PNG encoder takes a plain array and a fractional byte
+      // corrupts the stream.
+      out = new Array<number>(total * 3);
+      for (let i = 0; i < out.length; i++) out[i] = Math.round(px[i]);
+      stage = 4;
+    }
+    return true;
+  };
 
-  // Rounded to whole bytes. A Uint8Array used to truncate these for
-  // free; the PNG encoder takes a plain array and a fractional byte
-  // corrupts the stream.
-  const out = new Array<number>(SIZE * SIZE * 3);
-  for (let i = 0; i < out.length; i++) out[i] = Math.round(px[i]);
-  return out;
+  return {
+    step,
+    pixels() {
+      if (!out) throw new Error('square job read before it finished');
+      return out;
+    },
+  };
 }
 
 /**
@@ -4114,6 +4206,50 @@ export function createDieFaceTextures(
         textureFromPixels(dieFacePixels(pattern, base, ink, face)),
       ) as THREE.DataTexture,
   );
+}
+
+/**
+ * The cache key of one side of a die — the one createDieFaceTextures
+ * uses. tests/fastStart.test.ts checks the two agree.
+ */
+export function dieFaceKey(pattern: string, base: string, ink: string, face: number): string {
+  return `die:${pattern}:${base}:${ink}:face${face}`;
+}
+
+/**
+ * The sides of a die still to paint, as jobs a few texels at a time.
+ *
+ * For the warm-up and the loading screen (slicedPaint.ts): each job,
+ * once finished, puts its side into the same cache entry
+ * createDieFaceTextures reads, built from the same pixels — so a die
+ * painted this way and a die painted on the spot are the same texture.
+ * Sides already cached are left out, so asking twice costs nothing.
+ */
+export function dieFaceJobs(
+  pattern: Exclude<PatternId, 'plain'>,
+  base: string,
+  ink: string,
+): { step(): boolean }[] {
+  const jobs: { step(): boolean }[] = [];
+  for (let face = 0; face < DIE_FACE_SLOTS.length; face++) {
+    const key = dieFaceKey(pattern, base, ink, face);
+    if (hasCachedTexture(key)) continue;
+    let square: SquareJob | null = null;
+    jobs.push({
+      step() {
+        if (hasCachedTexture(key)) return true;
+        square ??= squareJob(
+          dieFaceSampler(shellSampler(pattern, base, ink), face),
+          SMOOTH_EDGES.has(pattern),
+        );
+        if (!square.step()) return false;
+        const done = square;
+        cachedTexture(key, () => textureFromPixels(done.pixels()));
+        return true;
+      },
+    });
+  }
+  return jobs;
 }
 
 export function createPatternTexture(

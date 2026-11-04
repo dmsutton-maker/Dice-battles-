@@ -1,11 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { initSounds, playStartup } from '../audio/sounds';
 import { loadAudioSettings } from '../audio/settings';
-import { Image, StyleSheet, Text, View } from 'react-native';
-import { THEME } from '../ui/theme';
+import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
+import { SHAPE, THEME } from '../ui/theme';
+import { launchProgress, onLaunchChange } from '../game/launchReady';
 
-/** How long the title card is held before the game appears. */
-export const BOOT_SPLASH_MS = 1900;
+/** The loading bar's width, in points. */
+const BAR_WIDTH = 176;
+/** Inside its outline. */
+const FILL_WIDTH = BAR_WIDTH - SHAPE.line * 2;
 
 
 /**
@@ -19,10 +22,37 @@ export const BOOT_SPLASH_MS = 1900;
  * The name is the full "Dice Battles: Color Rush" — David asked for the
  * one name everywhere, so the icon, the title card and the App Store
  * listing now all agree.
+ *
+ * A LOADING SCREEN since 3 Nov 2026. The family: "make sure the game is
+ * fully loaded before showing the home screen". It no longer decides how
+ * long it stays up — App lifts it when the game reports ready
+ * (src/game/launchReady.ts) — and it shows how far along that is with a
+ * bar under the tagline, drawn in the card's own ink on paper.
  */
-export function BootSplash({ onDone }: { onDone: () => void }) {
-  const done = useRef(onDone);
-  done.current = onDone;
+export function BootSplash() {
+  /*
+    The bar is a scale on the native side, not a width in JavaScript:
+    the loading work runs on the JavaScript thread in slices, and an
+    animation driven from there would stutter between them. Each report
+    of progress starts a short native glide to the new figure.
+  */
+  const fill = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let last = -1;
+    const show = () => {
+      const to = launchProgress();
+      if (to === last) return;
+      last = to;
+      Animated.timing(fill, {
+        toValue: to,
+        duration: 260,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    };
+    show();
+    return onLaunchChange(show);
+  }, [fill]);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,11 +68,8 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
       .catch(() => {
         // No sound is fine; the card still shows.
       });
-
-    const id = setTimeout(() => done.current(), BOOT_SPLASH_MS);
     return () => {
       cancelled = true;
-      clearTimeout(id);
     };
   }, []);
 
@@ -68,6 +95,30 @@ export function BootSplash({ onDone }: { onDone: () => void }) {
       <Text style={styles.subtitle}>COLOR RUSH</Text>
       <View style={styles.rule} />
       <Text style={styles.tagline}>Colors, not numbers</Text>
+      <View
+        style={styles.track}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading"
+      >
+        <Animated.View
+          style={[
+            styles.fill,
+            {
+              // Grown from the left edge: shifted half its lost width
+              // back, since a scale works from the middle.
+              transform: [
+                {
+                  translateX: fill.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-FILL_WIDTH / 2, 0],
+                  }),
+                },
+                { scaleX: fill },
+              ],
+            },
+          ]}
+        />
+      </View>
 
       <View style={styles.studio}>
         <Text style={styles.studioLabel}>a game by</Text>
@@ -140,6 +191,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginTop: 16,
+  },
+  /*
+    The bar: the card's rule drawn long and hollow, filling with the
+    same ink. Paper & Ink tokens only, no new colour.
+  */
+  track: {
+    width: BAR_WIDTH,
+    height: 10,
+    marginTop: 26,
+    borderRadius: SHAPE.radiusSm,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    backgroundColor: THEME.sunk,
+    overflow: 'hidden',
+  },
+  fill: {
+    width: FILL_WIDTH,
+    height: '100%',
+    backgroundColor: THEME.ink,
   },
   studio: {
     position: 'absolute',

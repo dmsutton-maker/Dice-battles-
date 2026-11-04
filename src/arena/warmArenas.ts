@@ -1,6 +1,7 @@
-import { cachedTexture } from './textureCache';
+import { cachedTexture, PAINT_BUDGET_MS } from './textureCache';
 import { ARENA_THEMES, ThemedArenaId } from './themeData';
-import { paintThemedSurfaces } from './ThemedArena';
+import { paintThemedSurfaces, themedSurfaceJobs } from './ThemedArena';
+import { jungleFloorJob } from './jungleFloorTexture';
 import {
   createCourtyardFloorTexture,
   createDeckGlowTexture,
@@ -10,6 +11,8 @@ import {
   createHullPlateTexture,
   createJungleTrayTexture,
   createSunsetFloorTexture,
+  bespokeFloorJob,
+  BespokePainting,
 } from './bespokeFloors';
 
 /**
@@ -40,6 +43,113 @@ import {
  */
 let started = false;
 
+/** Test seam: allow the battlefield warm-up to be started again. */
+export function resetArenaWarmForTests(): void {
+  started = false;
+}
+
+type Step = { step(): boolean };
+
+/**
+ * The paintings behind each bespoke picture: painted a row per step
+ * first (bespokeFloors.ts, bespokeFloorJob), so turning them into the
+ * texture afterwards is a copy of bytes rather than 70-200ms of painting
+ * in one block. David, 3 Nov 2026: "it all has to be lightning fast."
+ */
+const PAINTINGS_BEHIND: Record<string, readonly BespokePainting[]> = {
+  'castle-floor': ['courtyard'],
+  'castle-sunset-floor': ['sunset'],
+  'sunset-ground': ['dusk-ground'],
+  'jungle-tray-floor': ['jungle-tray'],
+  'space-floor': ['deck'],
+  'space-floor-glow': ['deck'],
+  'space-hull-plate': ['hull-plate'],
+};
+
+/**
+ * Everything a bespoke board paints when it mounts, by board: its
+ * pictures' paintings, then the pictures. Read off the boards
+ * (CastleArena.tsx, JungleArena.tsx, SpaceArena.tsx, castleParts.tsx,
+ * ruinParts.tsx, spaceParts.tsx). The meadow, the castle's stone and the
+ * jungle's ground are left as paintings: their boards set the repeat as
+ * they make the texture, so only the painting is shared.
+ */
+const BESPOKE_LAUNCH: Record<string, () => (Step | null)[]> = {
+  castle: () => [
+    bespokeFloorJob('courtyard'),
+    bespokeFloorJob('meadow'),
+    bespokeFloorJob('stone-blocks'),
+    textureStep('castle-floor', createCourtyardFloorTexture),
+  ],
+  castleSunset: () => [
+    bespokeFloorJob('sunset'),
+    bespokeFloorJob('dusk-ground'),
+    bespokeFloorJob('stone-blocks'),
+    textureStep('castle-sunset-floor', createSunsetFloorTexture),
+    textureStep('sunset-ground', createDuskGroundTexture),
+  ],
+  jungle: () => [
+    bespokeFloorJob('jungle-tray'),
+    jungleFloorJob(),
+    textureStep('jungle-tray-floor', createJungleTrayTexture),
+  ],
+  space: () => [
+    bespokeFloorJob('deck'),
+    bespokeFloorJob('hull-plate'),
+    textureStep('space-floor', createDeckTexture),
+    textureStep('space-floor-glow', createDeckGlowTexture),
+    textureStep('space-field', createFieldTexture),
+    textureStep('space-hull-plate', createHullPlateTexture),
+  ],
+};
+
+function textureStep(key: string, make: () => import('three').Texture): Step {
+  return {
+    step() {
+      cachedTexture(key, make);
+      return true;
+    },
+  };
+}
+
+/**
+ * The equipped battlefield's floor and ground — what its board paints
+ * the moment it mounts — as jobs, for the loading screen.
+ *
+ * David, 3 Nov 2026: "make sure the game is fully loaded before showing
+ * the home screen." The board used to paint these in one block at its
+ * first mount (up to 200ms on a desktop for one picture, several times
+ * that on a phone); painted here, under the title card and in slices,
+ * the board then mounts onto pictures that are already in the cache.
+ */
+export function arenaLaunchJobs(arenaId: string): Step[] {
+  const bespoke = BESPOKE_LAUNCH[arenaId];
+  const jobs = bespoke
+    ? bespoke()
+    : arenaId in ARENA_THEMES
+      ? themedSurfaceJobs(arenaId, ARENA_THEMES[arenaId as ThemedArenaId])
+      : [];
+  return jobs.filter((job): job is Step => job !== null);
+}
+
+/** Run `job` a menu slice at a time on `schedule`, then `then`. */
+function inSlices(job: Step, schedule: (run: () => void) => void, then: () => void): void {
+  const go = () => {
+    const t0 = Date.now();
+    let finished = false;
+    try {
+      do finished = job.step();
+      while (!finished && Date.now() - t0 < PAINT_BUDGET_MS);
+    } catch {
+      // Painted on the tap instead, as before any of this existed.
+      finished = true;
+    }
+    if (finished) then();
+    else schedule(go);
+  };
+  go();
+}
+
 export function warmAllArenaTextures(
   schedule: (run: () => void) => void,
   shouldContinue: () => boolean,
@@ -50,12 +160,11 @@ export function warmAllArenaTextures(
   /*
     The bespoke boards FIRST. Their pictures are plain painters under
     fixed keys (CastleArena.tsx, JungleArena.tsx, SpaceArena.tsx,
-    spaceParts.tsx, ruinParts.tsx), painted in one go each, so they are
-    the only boards that still paint on the tap when cold — a quarter of
-    a second each on a desktop. Done in the first moments on the menu,
-    before the themed boards, which can show a stand-in meanwhile. The
-    castle's own are painted at launch, since it is the board the game
-    opens on.
+    spaceParts.tsx, ruinParts.tsx) — painted a row per step since 3 Nov
+    2026, where each used to be a quarter of a second in one block on a
+    desktop — so they are the only boards that still paint on the tap
+    when cold. Done in the first moments on the menu, before the themed
+    boards, which can show a stand-in meanwhile.
   */
   const whole: [string, () => import('three').Texture][] = [
     ['castle-floor', createCourtyardFloorTexture],
@@ -68,9 +177,24 @@ export function warmAllArenaTextures(
     ['space-hull-plate', createHullPlateTexture],
   ];
   for (const [key, make] of whole) {
+    for (const name of PAINTINGS_BEHIND[key] ?? []) {
+      jobs.push((done) => {
+        const job = bespokeFloorJob(name);
+        if (job) inSlices(job, schedule, done);
+        else done();
+      });
+    }
     jobs.push((done) => {
       cachedTexture(key, make);
       done();
+    });
+  }
+  // The paintings whose boards make their own texture from them.
+  for (const make of [() => bespokeFloorJob('meadow'), () => bespokeFloorJob('stone-blocks'), jungleFloorJob]) {
+    jobs.push((done) => {
+      const job = make();
+      if (job) inSlices(job, schedule, done);
+      else done();
     });
   }
   for (const id of Object.keys(ARENA_THEMES) as ThemedArenaId[]) {

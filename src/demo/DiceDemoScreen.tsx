@@ -103,7 +103,13 @@ import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { hasEntitlement,
   goldPassUnlocked, hasGoldPass, initPurchases, noteTesterModeChanged, onPurchasesChanged } from '../game/purchases';
 import { lookupCode } from '../game/secretCodes';
-import { warmAllDieFaces, warmDicePreviews, warmDieFaces } from '../dice/warmPreviews';
+import { equippedDieKeys, warmAllDieFaces, warmDicePreviews } from '../dice/warmPreviews';
+import { runLaunchWarm } from '../dice/launchWarm';
+import { loadShelfPictures, saveShelfPictures } from '../dice/shelfStore';
+import { loadKeptTextures, saveKeptTextures } from '../dice/keptTextures';
+import { LOAD_SLICE_MS, MENU_SLICE_MS } from '../dice/slicedPaint';
+import { launchSettled, onLaunchChange, reportStep } from '../game/launchReady';
+import { inventoryDice } from '../game/inventoryRules';
 import { warmAllArenaTextures } from '../arena/warmArenas';
 import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
@@ -118,7 +124,7 @@ import {
   clearPurchases,
   loadWallet,
 } from '../game/currency';
-import { DEFAULT_SKIN_ID, skinById } from '../game/diceSkins';
+import { DEFAULT_SKIN_ID, skinById, STORE_SKINS } from '../game/diceSkins';
 import { DiceScene, SceneControls } from './DiceScene';
 import { InventoryScreen } from './InventoryScreen';
 import { LeaderboardScreen } from './LeaderboardScreen';
@@ -245,6 +251,13 @@ import {
  * The AI rolls fair virtual dice on a timer (difficulty = speed).
  */
 
+/**
+ * How many shelf pictures of each shelf the loading screen waits for:
+ * the cards a phone shows before any scrolling (three across, three
+ * down). The rest are painted straight after, behind the home screen.
+ */
+const SHELF_FIRST_SCREEN = 9;
+
 /** Longest a preview waits for its board before showing its name anyway. */
 const PREVIEW_DRAW_WAIT_MS = 2500;
 
@@ -312,6 +325,8 @@ export function DiceDemoScreen() {
 
   useEffect(() => {
     initSounds();
+    // The loading screen waits for the players to exist (launchReady.ts).
+    reportStep('sounds');
     initAnnouncer();
     // Nothing is drawn until the saved loadout and progress are in hand:
     // rendering first would show the default castle for a frame before
@@ -323,6 +338,11 @@ export function DiceDemoScreen() {
       loadWallet(),
       loadColorblindMode(),
       loadTutorialSeen(),
+      // The shelf pictures and the equipped die kept from the last
+      // launch of this version (shelfStore.ts, keptTextures.ts), so the
+      // loading screen need not paint them again.
+      loadShelfPictures(),
+      loadKeptTextures(),
     ])
       .then(([audio, saved, progress, purse, cb, tutorialSeen]) => {
         setAudioPrefs(audio);
@@ -378,7 +398,10 @@ export function DiceDemoScreen() {
       .catch(() => {
         // Defaults are fine if storage is unavailable.
       })
-      .finally(() => setHydrated(true));
+      .finally(() => {
+        reportStep('saved');
+        setHydrated(true);
+      });
 
     /*
       Ads start themselves up in the background, deliberately outside the
@@ -443,67 +466,12 @@ export function DiceDemoScreen() {
   const [twoPlayer, setTwoPlayer] = useState(false);
   const [loadout, setLoadout] = useState(getLoadout());
   /*
-    The equipped skin, readable from an effect that must not re-run every
-    time it changes. The warmer only reads it once, at the moment it
-    starts; equipping a different die later paints its sides on the first
-    roll exactly as it did before any of this existed.
-  */
-  const equippedRef = useRef(loadout.skinId);
-  equippedRef.current = loadout.skinId;
-  /*
     Whether the background painting of every die has reached its last
     stage, and so may be restarted when the player is back on the menu.
     See shouldWarmFaces.
   */
   const facesWarmableRef = useRef(false);
 
-  /*
-    Paint the dice pictures in the background, so the Items and Store
-    tabs are already warm the first time anybody opens them.
-
-    Deliberately AFTER the first interactions rather than at launch: the
-    player wants a battle, and a second of blocked JavaScript there is
-    worse than a second in a menu they may never open. It also stops
-    while the game is in a pocket — there is nothing to be warm for, and
-    it is the same thread the battery work just quietened.
-  */
-  useEffect(() => {
-    const { InteractionManager } = require('react-native');
-    const handle = InteractionManager.runAfterInteractions(() => {
-      // The die in the player's hand first — it is the one thing here
-      // that would otherwise stutter during an actual roll.
-      warmDieFaces(skinById(equippedRef.current));
-      warmDicePreviews(
-        (run) => setTimeout(run, 0),
-        () => activeRef.current,
-        // Every picture is now cached, so building the two heavy pages
-        // costs React work and nothing else. Doing it here means the
-        // first tap has nothing left to do but reveal them — without
-        // this, the tap itself pays for ~70 cards and the tab appears a
-        // beat late even though the flash is gone.
-        () => {
-          setBuiltHeavyTabs((seen) => ({ ...seen, store: true, inventory: true }));
-          /*
-            Last, and biggest. Opening a die to look at it paints its six
-            sides — 192ms on a desktop, more on a phone — in the frame
-            the preview is trying to appear in, which is the lag David
-            reported on 10 Sep 2026. Painting them all takes 4.4s of
-            desktop work, so it goes behind everything that makes a tab
-            open at all: nobody can open a preview before the shelf it is
-            opened from exists.
-          */
-          facesWarmableRef.current = true;
-          // The battlefields alongside the dice, not after them: their
-          // floors are painted in short slices (warmArenas.ts), so the
-          // two share the idle time and every board is warm within the
-          // first minute instead of after the last die.
-          warmArenas();
-          warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
-        },
-      );
-    });
-    return () => handle.cancel();
-  }, []);
   const [tab, setTab] = useState<Tab>('play');
   const [showFriends, setShowFriends] = useState(false);
   /*
@@ -770,6 +738,122 @@ export function DiceDemoScreen() {
 
   const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
+  /*
+    THE LOADING SCREEN. The family, 3 Nov 2026: "i want the speed fixes
+    now. like make sure the game is fully loaded before showing the home
+    screen". The title card stays up (App.tsx) until this screen has
+    reported every step in launchReady.ts; `launched` turns true when it
+    lifts — ready, or the cap reached — and the background painting that
+    is NOT worth waiting for starts after that, on the menu only.
+
+    `boardMayMount` holds the 3D board back until the die in the
+    player's hand and the battlefield under it are painted. The board is
+    behind solid paper on every menu, so nobody sees it wait; mounting it
+    first used to paint both in one block of up to two seconds on a
+    desktop, the moment the game appeared.
+  */
+  const [launched, setLaunched] = useState(launchSettled);
+  const launchedRef = useRef(launched);
+  launchedRef.current = launched;
+  const [boardMayMount, setBoardMayMount] = useState(launchSettled);
+  useEffect(
+    () =>
+      onLaunchChange(() => {
+        if (!launchSettled()) return;
+        setLaunched(true);
+        // The cap was reached with the pictures unfinished: mount anyway,
+        // painting what is left on the spot, as it was before.
+        setBoardMayMount(true);
+      }),
+    [],
+  );
+
+  /*
+    Every shelf picture is painted. Last, and biggest: opening a die to
+    look at it paints its six sides in the frame the preview is trying
+    to appear in, which is the lag David reported on 10 Sep 2026.
+    Painting them all is some thirteen seconds of desktop work, so it
+    goes behind everything that makes a tab open at all, in slices, on
+    the menu only (shouldWarmFaces).
+  */
+  function shelfDone() {
+    // Kept for the next launch of this version (shelfStore.ts), once the
+    // frame is past.
+    setTimeout(() => void saveShelfPictures(), 0);
+    facesWarmableRef.current = true;
+    // The battlefields alongside the dice, not after them: their
+    // floors are painted in short slices (warmArenas.ts), so the
+    // two share the idle time and every board is warm within the
+    // first minute instead of after the last die.
+    warmArenas();
+    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
+  }
+  /*
+    Paint, under the title card, what the home screen and its tabs need
+    on the first touch — the die in your hand, the battlefield, the first
+    screenful of each shelf — then build the Store and the Inventory so
+    the first tap on either has nothing left to do but show them. See
+    src/dice/launchWarm.ts for the order and why.
+
+    The rest of the shelf carries on straight after, at the menu's pace
+    (the budget drops the moment the card lifts), and stops while the game
+    is in a pocket. The die faces and the other battlefields come last,
+    on the menu only — painting them all is over a minute's work on a
+    phone and nobody can open a preview before its shelf exists.
+  */
+  useEffect(() => {
+    if (!hydrated) return;
+    const trophiesNow = getProgress().trophies;
+    const shelfIds = [
+      ...STORE_SKINS.slice(0, SHELF_FIRST_SCREEN),
+      ...inventoryDice(trophiesNow).slice(0, SHELF_FIRST_SCREEN),
+    ].map((skin) => skin.id);
+    const handle = runLaunchWarm({
+      skin: activeSkin(trophiesNow),
+      arenaId: activeArena(trophiesNow),
+      shelfIds,
+      budget: () => (launchSettled() ? MENU_SLICE_MS : LOAD_SLICE_MS),
+      report: reportStep,
+      onBoard: () => setBoardMayMount(true),
+      onPictures: () => {
+        // One page per commit, so neither lands on top of the other.
+        setBuiltHeavyTabs((seen) => ({ ...seen, store: true }));
+        setTimeout(() => setBuiltHeavyTabs((seen) => ({ ...seen, inventory: true })), 0);
+      },
+      shelfMayContinue: () => activeRef.current,
+      onShelfDone: shelfDone,
+    });
+    return () => handle.cancel();
+  }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+    The shelf stops while the game is in a pocket; coming back picks it
+    up where it left off. (A call while it is running, or after it has
+    finished, does nothing.) Not before the loading screen has reached
+    the shelf (boardMayMount), so the die and the floor go first.
+  */
+  useEffect(() => {
+    if (!hydrated || !appActive || !boardMayMount) return;
+    warmDicePreviews(
+      (run) => setTimeout(run, 0),
+      () => activeRef.current,
+      shelfDone,
+      () => (launchSettled() ? MENU_SLICE_MS : LOAD_SLICE_MS),
+    );
+  }, [hydrated, appActive, boardMayMount]); // eslint-disable-line react-hooks/exhaustive-deps
+  /*
+    The die faces wait for the card to lift (shouldWarmFaces), so when it
+    does, start them if the shelf is already done.
+  */
+  useEffect(() => {
+    if (!launched) return;
+    // The die in hand, kept for the next launch (keptTextures.ts) — after
+    // the card has lifted, never while it waits. Written only if it was
+    // painted this time.
+    setTimeout(() => void saveKeptTextures(equippedDieKeys(activeSkin(getProgress().trophies))), 0);
+    if (!facesWarmableRef.current) return;
+    shelfDone();
+  }, [launched]); // eslint-disable-line react-hooks/exhaustive-deps
   const [unlockAll, setUnlockAll] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
@@ -1035,7 +1119,11 @@ export function DiceDemoScreen() {
     nothing.
   */
   const shouldWarmFaces = () =>
-    activeRef.current && phaseRef.current === 'pick' && previewRef.current === null;
+    activeRef.current &&
+    phaseRef.current === 'pick' &&
+    previewRef.current === null &&
+    // Not under the loading screen: none of it is needed before home.
+    launchedRef.current;
 
   /*
     And every battlefield's floor and ground, under the same rule, in
@@ -1638,6 +1726,10 @@ export function DiceDemoScreen() {
     alive, so nothing else is.
   */
   const [builtHeavyTabs, setBuiltHeavyTabs] = useState<Record<string, boolean>>({});
+  // Both pages are up: the loading screen's 'pages' step (launchReady.ts).
+  useEffect(() => {
+    if (builtHeavyTabs.store && builtHeavyTabs.inventory) reportStep('pages');
+  }, [builtHeavyTabs]);
   useEffect(() => {
     if (menuTab !== 'store' && menuTab !== 'inventory') return;
     setBuiltHeavyTabs((seen) => (seen[menuTab] ? seen : { ...seen, [menuTab]: true }));
@@ -2337,6 +2429,16 @@ export function DiceDemoScreen() {
   */
   const waterIdle = appActive && phase === 'battle';
   const [drawnToken, setDrawnToken] = useState('');
+  /*
+    The board's first frames, drawn under the title card: the shaders
+    compiled and the pictures sent to the graphics chip now, rather than
+    in the first second of the first battle. The loading screen's
+    'scene' step.
+  */
+  const sceneWarming = !launched && boardMayMount && drawnToken !== sceneToken;
+  useEffect(() => {
+    if (boardMayMount && drawnToken === sceneToken) reportStep('scene');
+  }, [boardMayMount, drawnToken, sceneToken]);
   const stale = preview !== null && drawnToken !== sceneToken;
   /*
     A board that has still not drawn after this long is let through
@@ -2836,80 +2938,87 @@ export function DiceDemoScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      <Canvas
-        style={styles.canvas}
-        /*
-         * The board is not just hidden — it stops rendering. Now that the
-         * home and round-over overlays are solid paper, the scene is only
-         * ever visible during a round (matching's dim still lets it ghost
-         * through) or in an item preview, and a phone should not be
-         * running a 3D scene nobody can see.
-         */
-        /*
-          Three questions, in order of how much they save.
-
-          Is the game even on screen? Is the board visible at all — it is
-          hidden behind solid paper on every menu and result screen. And
-          during a battle, is anything on it actually MOVING: dice in the
-          air, or a prisoner mid-leap. A battle is mostly somebody
-          deciding whether to tap, and redrawing an unchanged picture
-          sixty times a second through all of that is the most expensive
-          thing this game does to a phone.
-
-          The countdown phases stay on: they are under two seconds and
-          the board is what the player is looking at.
-        */
-        frameloop={
-          appActive &&
-          (preview !== null ||
-            phase === 'matching' ||
-            phase === 'arm' ||
-            phase === 'go' ||
-            (phase === 'battle' && (rolling || boardBusy || burning)))
-            ? 'always'
-            : waterIdle
-              ? 'demand'
-              : 'never'
-        }
-        camera={{ position: [0, 10.5, 5.6], fov: 46 }}
-        onCreated={({ camera }) => {
-          camera.lookAt(0, 0, -0.2);
-        }}
-      >
-        <color attach="background" args={[ARENAS[sceneArenaId].skyColor]} />
-        <DiceScene
+      {/*
+        Not until the equipped die and battlefield are painted (see
+        boardMayMount) — behind the title card, so nobody sees it wait.
+      */}
+      {boardMayMount && (
+        <Canvas
+          style={styles.canvas}
           /*
-            The arena is deliberately NOT in this key.
-            
-            It used to be, which tore down and rebuilt the physics world,
-            both dice bodies and every mesh in the scene each time you
-            looked at a different battlefield — for a change that is
-            purely scenery. `physics` is a useMemo with no dependencies
-            and relies on this remount, so the key still carries the
-            difficulty and the round, which is what actually changes the
-            LAYOUT. Nothing about which arena you are standing in touches
-            the simulation: `ArenaComponent`, `look` and `lighting` are
-            all read per render inside DiceScene.
+           * The board is not just hidden — it stops rendering. Now that the
+           * home and round-over overlays are solid paper, the scene is only
+           * ever visible during a round (matching's dim still lets it ghost
+           * through) or in an item preview, and a phone should not be
+           * running a 3D scene nobody can see.
+           */
+          /*
+            Three questions, in order of how much they save.
+
+            Is the game even on screen? Is the board visible at all — it is
+            hidden behind solid paper on every menu and result screen. And
+            during a battle, is anything on it actually MOVING: dice in the
+            air, or a prisoner mid-leap. A battle is mostly somebody
+            deciding whether to tap, and redrawing an unchanged picture
+            sixty times a second through all of that is the most expensive
+            thing this game does to a phone.
+
+            The countdown phases stay on: they are under two seconds and
+            the board is what the player is looking at.
           */
-          key={`${difficulty}-${round}`}
-          layout={layout}
-          arenaId={sceneArenaId}
-          dieBodyColor={dieBodyColor}
-          diePattern={sceneSkin.pattern}
-          diePatternInk={sceneSkin.ink}
-          dieEffect={sceneSkin.effect}
-          dieSymbols={colorblind}
-          controlsRef={controlsRef}
-          onThrow={handleThrow}
-          onSettled={handleSettled}
-          onMoatSink={handleMoatSink}
-          units={units}
-          shakeSignal={shakeSignal}
-          throwsEnabled={phase === 'battle'}
-          waterIdle={waterIdle}
-        />
-        <FirstFrame token={sceneToken} onDrawn={setDrawnToken} />
-      </Canvas>
+          frameloop={
+            appActive &&
+            (sceneWarming ||
+              preview !== null ||
+              phase === 'matching' ||
+              phase === 'arm' ||
+              phase === 'go' ||
+              (phase === 'battle' && (rolling || boardBusy || burning)))
+              ? 'always'
+              : waterIdle
+                ? 'demand'
+                : 'never'
+          }
+          camera={{ position: [0, 10.5, 5.6], fov: 46 }}
+          onCreated={({ camera }) => {
+            camera.lookAt(0, 0, -0.2);
+          }}
+        >
+          <color attach="background" args={[ARENAS[sceneArenaId].skyColor]} />
+          <DiceScene
+            /*
+              The arena is deliberately NOT in this key.
+            
+              It used to be, which tore down and rebuilt the physics world,
+              both dice bodies and every mesh in the scene each time you
+              looked at a different battlefield — for a change that is
+              purely scenery. `physics` is a useMemo with no dependencies
+              and relies on this remount, so the key still carries the
+              difficulty and the round, which is what actually changes the
+              LAYOUT. Nothing about which arena you are standing in touches
+              the simulation: `ArenaComponent`, `look` and `lighting` are
+              all read per render inside DiceScene.
+            */
+            key={`${difficulty}-${round}`}
+            layout={layout}
+            arenaId={sceneArenaId}
+            dieBodyColor={dieBodyColor}
+            diePattern={sceneSkin.pattern}
+            diePatternInk={sceneSkin.ink}
+            dieEffect={sceneSkin.effect}
+            dieSymbols={colorblind}
+            controlsRef={controlsRef}
+            onThrow={handleThrow}
+            onSettled={handleSettled}
+            onMoatSink={handleMoatSink}
+            units={units}
+            shakeSignal={shakeSignal}
+            throwsEnabled={phase === 'battle'}
+            waterIdle={waterIdle}
+          />
+          <FirstFrame token={sceneToken} onDrawn={setDrawnToken} />
+        </Canvas>
+      )}
 
       {/*
         The cover over a canvas that has not caught up yet.

@@ -122,7 +122,7 @@ if (params.get('screen') === 'dots') {
   createRoot(host).render(
     <View style={{ flexDirection: 'row', gap: 12 }}>
       <View style={{ width: 393, height: 852, position: 'relative' }}>
-        <BootSplash onDone={() => {}} />
+        <BootSplash />
       </View>
       <View style={{ width: 393, height: 852, position: 'relative', backgroundColor: '#fdf6ec' }}>
         <BottomNav active="play" onSelect={() => {}} />

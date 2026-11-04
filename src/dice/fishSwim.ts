@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cachedTexture } from '../arena/textureCache';
+import { cachedTexture, paintNow, RowPainting, rowJob } from '../arena/textureCache';
 import type { SceneryTick } from '../arena/sceneryClock';
 import { FISH_FIN, FishPlace, goldfishAt } from './goldfish';
 import { DIE_FACE_SLOTS, dieFaceSampler, fishWaterAt, sheetToCube } from './patterns';
@@ -106,11 +106,23 @@ export const CAP_SCHOOL: readonly FishPlace[] = [0, 1, 2].map((i) => {
  * other pattern's sides are (dieFaceSampler), so it runs over every edge.
  */
 export function fishWaterTexture(face = 4): THREE.Texture {
-  return cachedTexture(`die:fish-swim:water:${face}`, () => {
-    const data = new Uint8Array(SIZE * SIZE * 4);
-    const N = 3;
-    const at = dieFaceSampler((sx, sy) => fishWaterAt(sheetToCube(sx, sy)), face);
-    for (let y = 0; y < SIZE; y++) {
+  return cachedTexture(fishWaterKey(face), () => paintNow(fishWaterPainting(face)));
+}
+
+const fishWaterKey = (face: number) => `die:fish-swim:water:${face}`;
+
+/** The same water a row at a time, for the warm-up (warmPreviews.ts). */
+export function fishWaterJob(face: number): { step(): boolean } | null {
+  return rowJob(fishWaterKey(face), () => fishWaterPainting(face));
+}
+
+function fishWaterPainting(face: number): RowPainting {
+  const data = new Uint8Array(SIZE * SIZE * 4);
+  const N = 3;
+  const at = dieFaceSampler((sx, sy) => fishWaterAt(sheetToCube(sx, sy)), face);
+  return {
+    rows: SIZE,
+    row(y) {
       for (let x = 0; x < SIZE; x++) {
         let sr = 0;
         let sg = 0;
@@ -130,48 +142,60 @@ export function fishWaterTexture(face = 4): THREE.Texture {
         data[i + 2] = Math.round(sb / (N * N));
         data[i + 3] = 255;
       }
-    }
-    return finish(data, SIZE, THREE.ClampToEdgeWrapping);
-  });
+    },
+    done: () => finish(data, SIZE, THREE.ClampToEdgeWrapping),
+  };
 }
 
-/** Paint a school on a clear layer `width` texels wide, wrapping sideways. */
-function schoolLayer(width: number, school: readonly FishPlace[], wrap: boolean): Uint8Array {
+/** Paint a school on a clear layer `width` texels wide, wrapping sideways, a row at a time. */
+function schoolLayer(
+  width: number,
+  school: readonly FishPlace[],
+  wrap: boolean,
+  wrapS: THREE.Wrapping,
+): RowPainting {
   const data = new Uint8Array(width * SIZE * 4);
   const N = 3;
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < width; x++) {
-      let hits = 0;
-      let sr = 0;
-      let sg = 0;
-      let sb = 0;
-      for (let sy = 0; sy < N; sy++) {
-        for (let sx = 0; sx < N; sx++) {
-          const fx = x + (sx + 0.5) / N;
-          const fy = y + (sy + 0.5) / N;
-          const c =
-            goldfishAt(fx, fy, school) ??
-            (wrap ? goldfishAt(fx - width, fy, school) ?? goldfishAt(fx + width, fy, school) : null);
-          if (c) {
-            hits += 1;
-            sr += c[0];
-            sg += c[1];
-            sb += c[2];
+  return {
+    rows: SIZE,
+    row(y) {
+      for (let x = 0; x < width; x++) {
+        let hits = 0;
+        let sr = 0;
+        let sg = 0;
+        let sb = 0;
+        for (let sy = 0; sy < N; sy++) {
+          for (let sx = 0; sx < N; sx++) {
+            const fx = x + (sx + 0.5) / N;
+            const fy = y + (sy + 0.5) / N;
+            const c =
+              goldfishAt(fx, fy, school) ??
+              (wrap ? goldfishAt(fx - width, fy, school) ?? goldfishAt(fx + width, fy, school) : null);
+            if (c) {
+              hits += 1;
+              sr += c[0];
+              sg += c[1];
+              sb += c[2];
+            }
           }
         }
+        const i = (y * width + x) * 4;
+        // Open water keeps a fin colour under zero alpha, so a filtered
+        // edge darkens toward the fish's own outline rather than to black.
+        const c = hits ? [sr / hits, sg / hits, sb / hits] : FISH_FIN;
+        data[i] = Math.round(c[0]);
+        data[i + 1] = Math.round(c[1]);
+        data[i + 2] = Math.round(c[2]);
+        data[i + 3] = Math.round((hits / (N * N)) * 255);
       }
-      const i = (y * width + x) * 4;
-      // Open water keeps a fin colour under zero alpha, so a filtered
-      // edge darkens toward the fish's own outline rather than to black.
-      const c = hits ? [sr / hits, sg / hits, sb / hits] : FISH_FIN;
-      data[i] = Math.round(c[0]);
-      data[i + 1] = Math.round(c[1]);
-      data[i + 2] = Math.round(c[2]);
-      data[i + 3] = Math.round((hits / (N * N)) * 255);
-    }
-  }
-  return data;
+    },
+    done: () => finish(data, width, wrapS),
+  };
 }
+
+const schoolPainting = (dir: 1 | -1) =>
+  schoolLayer(RING, STRIP_SCHOOL.filter((f) => f[2] === dir), true, THREE.RepeatWrapping);
+const capPainting = () => schoolLayer(SIZE, CAP_SCHOOL, false, THREE.ClampToEdgeWrapping);
 
 /**
  * One school on a clear layer four sides wide: the fish swimming `dir`
@@ -179,16 +203,21 @@ function schoolLayer(width: number, school: readonly FishPlace[], wrap: boolean)
  * where the strip closes carries on at its start.
  */
 export function fishSchoolTexture(dir: 1 | -1): THREE.Texture {
-  return cachedTexture(`die:fish-swim:school:${dir}`, () =>
-    finish(schoolLayer(RING, STRIP_SCHOOL.filter((f) => f[2] === dir), true), RING, THREE.RepeatWrapping),
-  );
+  return cachedTexture(`die:fish-swim:school:${dir}`, () => paintNow(schoolPainting(dir)));
 }
 
 /** The three fish that circle a cap, on a clear layer one side wide. */
 export function fishCapTexture(): THREE.Texture {
-  return cachedTexture('die:fish-swim:cap', () =>
-    finish(schoolLayer(SIZE, CAP_SCHOOL, false), SIZE, THREE.ClampToEdgeWrapping),
-  );
+  return cachedTexture('die:fish-swim:cap', () => paintNow(capPainting()));
+}
+
+/** The schools and the cap a row at a time, for the warm-up. */
+export function fishSchoolJobs(): ({ step(): boolean } | null)[] {
+  return [
+    rowJob('die:fish-swim:school:1', () => schoolPainting(1)),
+    rowJob('die:fish-swim:school:-1', () => schoolPainting(-1)),
+    rowJob('die:fish-swim:cap', capPainting),
+  ];
 }
 
 function finish(data: Uint8Array, width: number, wrapS: THREE.Wrapping): THREE.DataTexture {

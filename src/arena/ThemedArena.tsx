@@ -20,7 +20,7 @@ import {
   startTraySurface,
   surfaceExtras,
 } from './groundTexture';
-import { cachedTexture, paintInBackground, progressiveTexture } from './textureCache';
+import { cachedTexture, paintInBackground, progressiveTexture, surfaceJob } from './textureCache';
 import { useSceneryTick } from './sceneryClock';
 import { ArenaStructure, ArenaTheme, PropPlacement, ThemedArenaId } from './themeData';
 import { ARENA_JAILS } from './jailKinds';
@@ -1396,6 +1396,20 @@ export function paintThemedSurfaces(
   paintInBackground(floorKey(id, theme), () => startTraySurface(theme.structure, f.paint, f.world), schedule, () =>
     paintInBackground(groundKey(id, theme), () => startGroundSurface(theme.structure, g.paint, g.repeat), schedule, onDone),
   );
+}
+
+/**
+ * A themed board's floor and ground as jobs, for the loading screen: the
+ * equipped board is painted under the title card, under the same keys
+ * the board reads, so it opens on its real floor rather than a stand-in.
+ */
+export function themedSurfaceJobs(id: string, theme: ArenaTheme): { step(): boolean }[] {
+  const f = floorSpec(theme);
+  const g = groundSpec(theme);
+  return [
+    surfaceJob(floorKey(id, theme), () => startTraySurface(theme.structure, f.paint, f.world)),
+    surfaceJob(groundKey(id, theme), () => startGroundSurface(theme.structure, g.paint, g.repeat)),
+  ].filter((job): job is { step(): boolean } => job !== null);
 }
 
 /**

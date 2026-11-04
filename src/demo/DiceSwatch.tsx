@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { DiceSkin } from '../game/diceSkins';
-import { shellPreviewUri } from '../dice/preview';
+import { cachedShellPreviewUri, onShelfPicture, shellPreviewUri } from '../dice/preview';
+import { prioritiseShelfPictures } from '../dice/warmPreviews';
 
 /**
  * What a dice skin actually looks like, for the Store and the Inventory.
@@ -26,7 +27,7 @@ export function DiceSwatch({
   skin: DiceSkin;
   size?: number;
 }) {
-  const uri = shellPreviewUri(skin);
+  const uri = useShelfPicture(skin);
   const radius = size * 0.24;
 
   return (
@@ -73,3 +74,44 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.22)',
   },
 });
+
+/**
+ * The skin's shelf picture once it is painted, and null until then.
+ *
+ * David, 3 Nov 2026: "The game runs very slow when you open it ... it all
+ * has to be lightning fast." This card used to paint its own picture in
+ * the frame it was drawn — 40ms on a desktop for an ordinary die and a
+ * quarter of a second for the Pizza die, several times that on a phone —
+ * so a shelf drawn before the warm-up had finished stalled for every
+ * missing picture at once. Now a card never paints: until its picture is
+ * ready it shows the die's own shell colour (the way a plain die always
+ * looks), asks for its picture to be painted next, and swaps it in when
+ * it lands — a few frames later at most.
+ *
+ * Only when nothing is painting at all (a tool or a test, or the warm-up
+ * paused while the game was in a pocket) does it paint for itself, after
+ * the frame rather than during it.
+ */
+function useShelfPicture(skin: DiceSkin): string | null {
+  // Read from the cache on every draw; this only asks for a redraw when
+  // the picture lands.
+  const [, redraw] = useState(0);
+  const shown = cachedShellPreviewUri(skin);
+  useEffect(() => {
+    if (skin.pattern === 'plain') return;
+    if (cachedShellPreviewUri(skin) !== null) {
+      // Painted between this draw and now: show it.
+      if (shown === null) redraw((n) => n + 1);
+      return;
+    }
+    const stop = onShelfPicture((id) => {
+      if (id === skin.id) redraw((n) => n + 1);
+    });
+    if (!prioritiseShelfPictures([skin.id])) {
+      shellPreviewUri(skin);
+      redraw((n) => n + 1);
+    }
+    return stop;
+  }, [skin, shown]);
+  return shown;
+}
