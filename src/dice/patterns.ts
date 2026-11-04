@@ -1650,16 +1650,9 @@ const DRUMSTICKS = new StickerSheet(scatterStickers(19, 2, 13.5, 22, 3, 7));
 
 /** The donut's sprinkles: a jittered lattice over every side. */
 const SPRINKLES = new StickerSheet(
-  latticeStickers(23, SIZE / 6, 3, 3.5).map((s) => ({ ...s, rot: s.h * Math.PI })),
+  latticeStickers(23, SIZE / 6, 3, 4.4).map((s) => ({ ...s, rot: s.h * Math.PI })),
 );
 
-/**
- * The four corners of the die the donut's glaze did not reach: alternate
- * ones, so every side has cake in two opposite corners.
- */
-const BARE_CORNERS: readonly (readonly [number, number, number])[] = [
-  [32, 32, 32], [32, -32, -32], [-32, 32, -32], [-32, -32, 32],
-];
 
 /**
  * The goldfish on the still picture of the Fish dice: two whole fish on
@@ -2272,52 +2265,85 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return [r / (N * N), g / (N * N), b / (N * N)];
   },
 
-  donut: (x, y) => {
+  donut: (() => {
     /*
-      Pink glaze with sprinkles, and the cake showing where the glaze
-      ran out.
-
-      The scallops of that edge used to be finer than the texture could
-      resolve and aliased into a staircase of big square steps; and the
-      edge was a margin stamped on the lower right of every side. Since
-      21 Oct 2026 the die is one dipped cake: the glaze did not reach
-      four of its eight corners — alternate ones, so every side shows
-      cake in two opposite corners — and its lip round each bare corner
-      is one scalloped curve over the three sides that meet there,
-      measured from the corner itself so it turns the edges unbroken.
-      The sprinkles are stickers on the die (SPRINKLES), a jittered
-      lattice over every side, each a short capsule in one of five
-      colours turned its own way, and none on the bare cake.
+      Donut, redrawn 4 Nov 2026. Marc, of eight real renders: "make
+      designs where the actual design is pink frosting and rainbow
+      sprinkles, forget about showing the actual donut", then "do E and
+      make it better quality". So: pink frosting and rainbow sprinkles
+      over the whole die, and nothing else. The cake that used to show
+      at four corners is gone. The frosting is poured, paler where it is
+      thick, with one soft sweep of gloss; the sprinkles are rods in
+      seven colours, lit on top, shaded underneath, a sugar glint near
+      one end, and a touch of shadow in the frosting round each so they
+      sit ON it. Supersampled 3x3.
     */
-    const P = sheetToCube(x, y);
-    const cakePx = mixRgb(rgb('#d9a55c'), rgb('#c2882e'), cubeNoise([P[0] + 4, P[1] + 8, P[2] + 2], 3.2) * 0.5);
-    // How far this point is from the nearest bare corner, scalloped.
-    let bare = Infinity;
-    for (const [cx, cy, cz] of BARE_CORNERS) {
-      bare = Math.min(bare, Math.hypot(P[0] - cx, P[1] - cy, P[2] - cz));
-    }
-    const lip = 13 + (cubeNoise([P[0] + 11, P[1] + 3, P[2] + 7], 5) - 0.5) * 5;
-    // Blended across about two texels rather than a hard boolean, so the
-    // icing has a lip instead of a cut.
-    const cake = smoothstep(lip + 1, lip - 1, bare);
-    if (cake >= 1) return cakePx;
-    let glaze = rgb('#e8a8b8');
-    // Poured icing: a little thicker and paler here and there, and one
-    // soft sweep of gloss round the whole die, the way a glaze shines.
-    glaze = mixRgb(glaze, rgb('#f6c9d6'), smoothstep(0.45, 0.9, cubeNoise([P[0] + 20, P[1] + 30, P[2] + 40], 14)) * 0.5);
-    glaze = mixRgb(glaze, rgb('#d9909f'), smoothstep(0.55, 0.9, cubeNoise([P[0] + 3, P[1] + 50, P[2] + 9], 9)) * 0.35);
-    glaze = mixRgb(glaze, rgb('#fdeaf0'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)));
-    const jimmies = ['#e84a6e', '#3fa35c', '#3f7fd0', '#f0c020', '#ffffff'];
-    for (const { s, lx, ly } of SPRINKLES.hits(P)) {
-      if (Math.abs(lx) < 3 && Math.abs(ly) < 1.1) {
-        glaze = rgb(jimmies[Math.floor(s.h * jimmies.length) % jimmies.length]);
-        // A sprinkle is a little rod: shaded along one side.
-        glaze = mixRgb(glaze, rgb('#000000'), smoothstep(0.3, 1.1, ly) * 0.25);
-        break;
+    const jimmies = ['#f0506a', '#ff9e4a', '#f5b800', '#2f9e55', '#3f7fd0', '#8f5fe0', '#ffffff'];
+    const at = (x: number, y: number): [number, number, number] => {
+      const P = sheetToCube(x, y);
+      let glaze = rgb('#eca3b6');
+      // Poured frosting: thicker and paler here and there, a little
+      // deeper elsewhere, and a soft sweep of gloss round the die.
+      glaze = mixRgb(glaze, rgb('#f8c8d6'), smoothstep(0.45, 0.9, cubeNoise([P[0] + 20, P[1] + 30, P[2] + 40], 14)) * 0.5);
+      glaze = mixRgb(glaze, rgb('#d98aa0'), smoothstep(0.55, 0.9, cubeNoise([P[0] + 3, P[1] + 50, P[2] + 9], 9)) * (1 ? 0.22 : 0.35));
+      if (0) {
+        // Piped frosting: soft ridges that wander, lit on one flank and
+        // shaded on the other.
+        const ridge = Math.sin(cubeFbm(P, [32, 16], [1, 0.5]) * 9 + (P[0] + P[2]) * 0.25);
+        glaze = mixRgb(glaze, rgb('#f8c8d6'), smoothstep(0.2, 0.9, ridge) * 0.4);
+        glaze = mixRgb(glaze, rgb('#d98aa0'), smoothstep(-0.2, -0.9, ridge) * 0.3);
       }
-    }
-    return mixRgb(glaze, cakePx, cake);
-  },
+      glaze = mixRgb(glaze, rgb('#ffffff'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * (1 ? 0.62 : 0.55));
+      for (const { s, lx, ly } of SPRINKLES.hits(P)) {
+        const SHAPE: string = 'rod';
+        const shape = SHAPE === 'mix' ? (hashCell(s.face * 31 + 7, Math.round(s.u * 3 + s.v * 5)) < 0.5 ? 'rod' : 'dot') : SHAPE;
+        let d: number;
+        let edge: number;
+        let shade: number;
+        if (shape === 'rod') {
+          // A capsule: a rod with rounded ends, lit along one side.
+          const w = 3.7;
+          const h = 1.3;
+          d = Math.hypot(Math.max(0, Math.abs(lx) - (w - h)), ly);
+          edge = h;
+          shade = ly / h;
+        } else {
+          // A nonpareil: a little ball, lit top-left.
+          d = Math.hypot(lx, ly);
+          edge = 1.6;
+          shade = (lx + ly) / (edge * 1.4);
+        }
+        if (d < edge) {
+          let c = rgb(jimmies[Math.floor(s.h * jimmies.length) % jimmies.length]);
+          c = mixRgb(c, rgb('#ffffff'), smoothstep(0.2, -0.7, shade) * 0.4);
+          c = mixRgb(c, rgb('#000000'), smoothstep(0.1, 0.9, shade) * 0.32);
+          if (1 && shape === 'rod') {
+            // A sugar glint near one end of each rod.
+            c = mixRgb(c, rgb('#ffffff'), smoothstep(0.9, 0.2, Math.hypot((lx - (s.h - 0.5) * 2.4) / 1.1, (ly + 0.45) / 0.45)) * 0.75);
+          }
+          // A touch of shadow in the frosting just outside the sprinkle.
+          return mixRgb(c, mixRgb(glaze, rgb('#d98aa0'), 0.5), smoothstep(edge - 0.5, edge, d));
+        }
+        if (d < edge + 0.8) glaze = mixRgb(glaze, rgb('#d98aa0'), smoothstep(edge + 0.8, edge, d) * 0.35);
+      }
+      return glaze;
+    };
+    return (x: number, y: number): [number, number, number] => {
+      const N = 3;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const c = at(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          r += c[0];
+          g += c[1];
+          b += c[2];
+        }
+      }
+      return [r / (N * N), g / (N * N), b / (N * N)];
+    };
+  })(),
 
   /** Six soft bands on the diagonal, sky between. */
   rainbow: (x, y) => {

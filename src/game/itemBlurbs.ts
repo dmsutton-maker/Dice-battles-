@@ -63,7 +63,7 @@ export const DIE_BLURBS: Record<string, string> = {
   waffles: 'Chicken and waffles.',
   watermelon: 'A whole watermelon, stripes and all.',
   pizza: 'A pan pizza on every side, crust and all.',
-  donut: 'A pink frosted donut.',
+  donut: 'Pink frosting and rainbow sprinkles.',
   denim: 'Blue jeans.',
   camo: 'Green camouflage.',
   tartan: 'Red tartan.',
