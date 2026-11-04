@@ -135,17 +135,23 @@ export function neonGlowJob(face: number): { step(): boolean } | null {
 function neonGlowPainting(face: number): RowPainting {
   const data = new Uint8Array(SIZE * SIZE * 4);
   const at = dieFaceSampler((sx, sy) => sheetToCube(sx, sy), face);
-  const SS = 2;
+  // 4x4 since 4 Nov 2026 (Marc: "make the neon dice less pixelated");
+  // at 2x2 the head of light had a stepped edge where the tube bends.
+  const SS = 4;
   return {
     rows: SIZE,
     row(y) {
       for (let x = 0; x < SIZE; x++) {
         const centre = neonTubesAt(at(x, y));
         // The edge of the light is supersampled so it is soft; "how far
-        // round" is read at the texel's centre, where it is exact.
+        // round" is read at the texel's centre, where it is exact. A
+        // texel whose middle is past the reach by more than the
+        // sub-samples spread has no light at any of them, so they are
+        // not measured.
         let pink = 0;
         let cyan = 0;
-        for (let sy = 0; sy < SS; sy++) {
+        const dark = Math.min(centre.pinkOff, centre.cyanOff) > N.pulseReach + 1;
+        for (let sy = 0; sy < SS && !dark; sy++) {
           for (let sx = 0; sx < SS; sx++) {
             const t = neonTubesAt(at(x + (sx + 0.5) / SS - 0.5, y + (sy + 0.5) / SS - 0.5));
             pink += neonMaskAt(t.pinkOff);
