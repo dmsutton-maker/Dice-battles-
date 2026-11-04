@@ -2073,7 +2073,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return px;
   },
 
-  supporterCompass: (x, y) => {
+  supporterCompass: (() => {
     /*
       The Supporter die, 19 Oct 2026. David: "make the supporter dice
       look better or give me new ideas for how it should look", then of
@@ -2093,60 +2093,134 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       chart's roses are joined by — that carry straight on over the edges
       onto the neighbouring sides, each cardinal line running into the
       next rose's cardinal point, so the six roses are one web.
+
+      SMOOTH since 4 Nov 2026 (Marc: "fix the quality of the supporter
+      dice, because it's very pixelated"). The same design, colours and
+      measurements, drawn without the in-or-out decisions that gave the
+      ticks, the points and the rope a 64-texel staircase: every edge is
+      now a ramp of about half a texel, and a texel on the ring, the
+      rope or a point is the average of 3x3 points inside it, as
+      diamonds is. Every sample unfolds its point onto five other sides
+      for the rhumb lines, so nine samples everywhere would be nine
+      times the warm-up: a texel near only a rhumb line, whose profile
+      is already a ramp, takes five points, and one with no gold within
+      reach of its sub-samples takes a single one. Not on SMOOTH_EDGES:
+      it supersamples itself.
     */
     const GOLD = rgb('#d6b25e');
     const GOLD_LIT = rgb('#f0d48a');
     const GOLD_SHADE = rgb('#9c7b36');
-    const P = sheetToCube(x, y);
-    const f = cubeFace(P);
-    const F = FACE_FRAMES[f];
-    const dx = dot3(P, F.u);
-    const dy = dot3(P, F.v);
-    const r = Math.hypot(dx, dy);
-    const a = Math.atan2(dy, dx);
-    let px = mixRgb(rgb('#14555c'), rgb('#0e4248'), smoothstep(14, 32, r) * 0.6);
-    px = mixRgb(px, rgb('#1a6670'), (cubeNoise(P, 16) - 0.5) * 0.3);
-    // Rhumb lines: from this side's rose and from each neighbour's,
-    // unfolded over the shared edge, every 22.5 degrees, fading with
-    // distance. Only outside the ring of ticks.
-    let rhumb = 0;
-    for (let g = 0; g < 6; g++) {
-      const uv = g === f ? [dx, dy] : unfoldOnto(P, g);
-      if (!uv) continue;
-      const rr = Math.hypot(uv[0], uv[1]);
-      if (rr < 25.5) continue;
-      const sector = Math.PI / 8;
-      const ang = Math.atan2(uv[1], uv[0]);
-      const off = Math.abs((((ang % sector) + sector) % sector) - sector / 2);
-      const across = rr * Math.sin(off);
-      rhumb = Math.max(rhumb, smoothstep(0.9, 0.3, across) * smoothstep(78, 30, rr) * 0.5);
-    }
-    px = mixRgb(px, GOLD, rhumb);
-    // The rope along every edge of the die: two twisted strands, as a
-    // band of slanted gold dashes, its twist counted along the edge.
-    const edge = Math.min(SIZE / 2 - Math.abs(dx), SIZE / 2 - Math.abs(dy));
-    if (edge > 1.2 && edge < 4.2) {
-      // The axis the edge runs along is the one that is neither the
-      // face's nor the border's.
-      const alongU = SIZE / 2 - Math.abs(dx) < SIZE / 2 - Math.abs(dy);
-      const along = alongU ? dy : dx;
-      const twist = mod(along + (edge - 2.7) * 2.2, 5);
-      px = mixRgb(GOLD_SHADE, GOLD_LIT, smoothstep(0.5, 2.5, twist) * smoothstep(5, 3, twist));
-    }
-    // Ticks round the sticker, every fifteen degrees.
-    if (r > 22.5 && r < 25 && mod(a / (Math.PI / 12), 1) < 0.22) px = mixRgb(px, GOLD, 0.8);
-    // Eight points: the cardinals reach the rope, the diagonals stop short.
-    for (let k = 0; k < 8; k++) {
-      const pa = (k * Math.PI) / 4;
-      const len = k % 2 === 0 ? 31 : 27;
-      const along = dx * Math.cos(pa) + dy * Math.sin(pa);
-      const across = -dx * Math.sin(pa) + dy * Math.cos(pa);
-      if (along < 19 || along > len) continue;
-      const half = 3.2 * (1 - (along - 19) / (len - 19));
-      if (Math.abs(across) <= half) px = across < 0 ? mixRgb(GOLD, GOLD_LIT, 0.5) : GOLD_SHADE;
-    }
-    return px;
-  },
+    const TICK = Math.PI / 12;
+    /**
+     * How far outside a ramp's end a texel's centre must be for all its
+     * sub-samples (within half a texel of it) to miss the gold, so one
+     * sample is the whole answer.
+     */
+    const NEAR = 0.6;
+    // Eight points: the cardinals reach the rope, the diagonals stop
+    // short. Each starts under the sticker at 19 and tapers to a tip.
+    const POINTS = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => ({
+      cos: Math.cos((k * Math.PI) / 4),
+      sin: Math.sin((k * Math.PI) / 4),
+      len: k % 2 === 0 ? 31 : 27,
+    }));
+    // Set by compassAt: is the point within NEAR of a hard edge (the
+    // ring, the rope, a point), or only of a rhumb line?
+    let nearHard = false;
+    let nearRhumb = false;
+    const compassAt = (x: number, y: number): [number, number, number] => {
+      nearHard = false;
+      nearRhumb = false;
+      const P = sheetToCube(x, y);
+      const f = cubeFace(P);
+      const F = FACE_FRAMES[f];
+      const dx = dot3(P, F.u);
+      const dy = dot3(P, F.v);
+      const r = Math.hypot(dx, dy);
+      const a = Math.atan2(dy, dx);
+      let px = mixRgb(rgb('#14555c'), rgb('#0e4248'), smoothstep(14, 32, r) * 0.6);
+      px = mixRgb(px, rgb('#1a6670'), (cubeNoise(P, 16) - 0.5) * 0.3);
+      // Rhumb lines: from this side's rose and from each neighbour's,
+      // unfolded over the shared edge, every 22.5 degrees, fading with
+      // distance. Only outside the ring of ticks.
+      let rhumb = 0;
+      for (let g = 0; g < 6; g++) {
+        const uv = g === f ? [dx, dy] : unfoldOnto(P, g);
+        if (!uv) continue;
+        const rr = Math.hypot(uv[0], uv[1]);
+        if (rr < 25.2 || rr > 78) continue;
+        const sector = Math.PI / 8;
+        const ang = Math.atan2(uv[1], uv[0]);
+        const off = Math.abs((((ang % sector) + sector) % sector) - sector / 2);
+        const across = rr * Math.sin(off);
+        if (across < 0.9 + NEAR) nearRhumb = true;
+        rhumb = Math.max(rhumb, smoothstep(0.9, 0.3, across) * smoothstep(25.2, 25.8, rr) * smoothstep(78, 30, rr) * 0.5);
+      }
+      px = mixRgb(px, GOLD, rhumb);
+      // The rope along every edge of the die: two twisted strands, as a
+      // band of slanted gold dashes, its twist counted along the edge.
+      // The band is 1.2 to 4.2 texels in from the edge, each side a ramp.
+      const edge = Math.min(SIZE / 2 - Math.abs(dx), SIZE / 2 - Math.abs(dy));
+      if (edge < 4.5 + NEAR) nearHard = true;
+      const rope = smoothstep(0.9, 1.5, edge) * smoothstep(4.5, 3.9, edge);
+      if (rope > 0) {
+        // The axis the edge runs along is the one that is neither the
+        // face's nor the border's.
+        const alongU = SIZE / 2 - Math.abs(dx) < SIZE / 2 - Math.abs(dy);
+        const along = alongU ? dy : dx;
+        const twist = mod(along + (edge - 2.7) * 2.2, 5);
+        px = mixRgb(px, mixRgb(GOLD_SHADE, GOLD_LIT, smoothstep(0.5, 2.5, twist) * smoothstep(5, 3, twist)), rope);
+      }
+      // Ticks round the sticker, every fifteen degrees, 22.5 to 25 out,
+      // each 0.22 of its fifteen degrees wide. The angular edge is
+      // measured in texels at this radius so its ramp is the same width
+      // as the ring's.
+      if (r > 22.2 - NEAR && r < 25.3 + NEAR) nearHard = true;
+      const ta = mod(a / TICK - 0.11, 1);
+      const tickAcross = (0.11 - Math.min(ta, 1 - ta)) * TICK * r;
+      const tick = smoothstep(-0.3, 0.3, tickAcross) * smoothstep(22.2, 22.8, r) * smoothstep(25.3, 24.7, r);
+      px = mixRgb(px, GOLD, 0.8 * tick);
+      // The points. Nothing of them lies under the sticker or beyond
+      // the longest tip, so most texels skip the loop.
+      for (let k = 0; r >= 19 && r < 31 + 0.5 + NEAR && k < 8; k++) {
+        const { cos, sin, len } = POINTS[k];
+        const along = dx * cos + dy * sin;
+        const across = -dx * sin + dy * cos;
+        if (along < 19 || along > len + 0.5 + NEAR) continue;
+        const half = 3.2 * (1 - (along - 19) / (len - 19));
+        if (Math.abs(across) > half + 0.5 + NEAR) continue;
+        nearHard = true;
+        // Texels inside the point: positive within its two slanted
+        // edges and short of its tip.
+        const inside = Math.min(half - Math.abs(across), len - along);
+        const facet = mixRgb(GOLD_SHADE, mixRgb(GOLD, GOLD_LIT, 0.5), smoothstep(0.4, -0.4, across));
+        px = mixRgb(px, facet, smoothstep(-0.5, 0.5, inside));
+      }
+      return px;
+    };
+    return (x: number, y: number): [number, number, number] => {
+      const centre = compassAt(x, y);
+      if (!nearHard && !nearRhumb) return centre;
+      // 3x3 on a hard edge, the centre and the four quarter-points on a
+      // rhumb line.
+      const N = nearHard ? 3 : 2;
+      let r = centre[0];
+      let g = centre[1];
+      let b = centre[2];
+      let n = 1;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          if (N === 3 && sx === 1 && sy === 1) continue; // the centre, already taken
+          const c = compassAt(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          r += c[0];
+          g += c[1];
+          b += c[2];
+          n++;
+        }
+      }
+      return [r / n, g / n, b / n];
+    };
+  })(),
 
   watermelon: (() => {
     /*
@@ -4056,8 +4130,10 @@ export function shellSampler(
  * and granite hash each whole texel into a sparkle or a speck. Asked at
  * x + 0.25 those give a different random texel, and averaging would
  * wash the speckle out rather than smooth an edge. Painters that already
- * supersample themselves (fish, blossom, waffle) gain nothing and would
- * pay nine times over. tests/textures.test.ts checks that everything
+ * supersample themselves (fish, blossom, waffle, supporterCompass) gain
+ * nothing and would pay nine times over: the compass passes both checks
+ * below, and listing it took its six sides from 217 ms to 546 ms in
+ * node. tests/textures.test.ts checks that everything
  * here is continuous, so a painter that grows a per-texel hash cannot
  * stay on the list unnoticed.
  */
