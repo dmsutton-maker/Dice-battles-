@@ -3358,41 +3358,72 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return mixRgb(px, rgb('#f7e6b8'), (wrappedNoise(x * 5, y, 16) - 0.5) * 0.13);
   },
 
-  diamonds: (x, y) => {
+  diamonds: (() => {
     /*
       A diamondback: big dark saddles down the spine, pale-edged, over
       fine scales. The scales used to BE the diamonds, which is a
       lattice — a diamondback's markings are several scales across.
+
+      BETTER QUALITY since 4 Nov 2026 (Marc: "stick with the original
+      but make it better quality"). The same design — same saddles, same
+      scales, same colours — painted properly: supersampled 3x3 so the
+      saddle edges are clean instead of stair-stepped, the cream edging
+      a defined band rather than a smear, the scale hatch quieter with a
+      gloss on each scale, and a soft sheen over the whole hide.
     */
-    // Fifty-eight scales round the die (4.41px, from 4.4).
-    const scale = RING / 58;
-    const su = (x + y) / scale;
-    const sv = (x - y) / scale;
-    const fu = su - Math.floor(su) - 0.5;
-    const fv = sv - Math.floor(sv) - 0.5;
-    const keel = -(fu + fv) * 1.4;
-    let px = mixRgb(
-      rgb('#97ac60'),
-      rgb('#c6d393'),
-      hashCell(mod(Math.floor(su), 58), mod(Math.floor(sv), 58)) * 0.7,
-    );
-    px = mixRgb(px, rgb('#e4ecc1'), Math.max(0, keel) * 0.4);
-    px = mixRgb(px, rgb('#606f37'), Math.max(0, -keel) * 0.45);
-    px = mixRgb(px, rgb('#4e5b2d'), smoothstep(0.4, 0.5, Math.max(Math.abs(fu), Math.abs(fv))) * 0.5);
-    /*
-      The saddles. Bigger than the scales by a long way, wandering with
-      the noise so they are not a stamped grid, and edged in cream — the
-      edging is most of what makes a snake read as a snake.
-    */
-    // Unscaled: x * 0.7 does not go round the die a whole number of times.
-    const wobble = fbm(x, y, [32, 16], [1, 0.5]) * 9 - 4.5;
-    const bx = Math.abs(((x + wobble + SIZE * 1.5) % 32) - 16) / 16;
-    const by = Math.abs(((y - wobble * 0.5 + SIZE * 1.5) % 21.33) - 10.67) / 10.67;
-    const saddle = bx * 0.62 + by * 0.38;
-    px = mixRgb(px, rgb('#f4f2d4'), smoothstep(0.62, 0.44, saddle) * 0.85);
-    px = mixRgb(px, rgb('#2b3317'), smoothstep(0.44, 0.3, saddle));
-    return px;
-  },
+    const diamondAt = (x: number, y: number): [number, number, number] => {
+      // Fifty-eight scales round the die (4.41px, from 4.4).
+      const scale = RING / 58;
+      const su = (x + y) / scale;
+      const sv = (x - y) / scale;
+      const fu = su - Math.floor(su) - 0.5;
+      const fv = sv - Math.floor(sv) - 0.5;
+      const keel = -(fu + fv) * 1.4;
+      const edge = Math.max(Math.abs(fu), Math.abs(fv));
+      let px = mixRgb(
+        rgb('#97ac60'),
+        rgb('#c6d393'),
+        hashCell(mod(Math.floor(su), 58), mod(Math.floor(sv), 58)) * 0.6,
+      );
+      // Each scale: lit on its keel side, shaded on the other, a dark
+      // seam round it, and a small gloss near its centre.
+      px = mixRgb(px, rgb('#e4ecc1'), Math.max(0, keel) * 0.3);
+      px = mixRgb(px, rgb('#606f37'), Math.max(0, -keel) * 0.3);
+      px = mixRgb(px, rgb('#4e5b2d'), smoothstep(0.38, 0.5, edge) * 0.55);
+      px = mixRgb(px, rgb('#f2f6dc'), smoothstep(0.22, 0.05, Math.hypot(fu + 0.12, fv + 0.12)) * 0.22);
+      /*
+        The saddles. Bigger than the scales by a long way, wandering with
+        the noise so they are not a stamped grid, and edged in cream — the
+        edging is most of what makes a snake read as a snake.
+      */
+      const wobble = fbm(x, y, [32, 16], [1, 0.5]) * 9 - 4.5;
+      const bx = Math.abs(((x + wobble + SIZE * 1.5) % 32) - 16) / 16;
+      const by = Math.abs(((y - wobble * 0.5 + SIZE * 1.5) % 21.33) - 10.67) / 10.67;
+      // A rounded diamond rather than a sharp one: the corners soften.
+      const saddle = Math.pow(Math.pow(bx, 1.15) * 0.62 + Math.pow(by, 1.15) * 0.38, 1 / 1.15);
+      // Cream band of a set width just outside the dark core.
+      px = mixRgb(px, rgb('#f4f2d4'), smoothstep(0.6, 0.52, saddle) * smoothstep(0.42, 0.48, saddle) * 0.92);
+      px = mixRgb(px, rgb('#2b3317'), smoothstep(0.48, 0.42, saddle));
+      // A faint sheen across the hide, so it reads as skin, not print.
+      px = mixRgb(px, rgb('#ffffff'), Math.min(1, sweepOfLight(sheetToCube(x, y), 7, 18, 0.4, 0.35, 6, 0.25)) * 0.12);
+      return px;
+    };
+    return (x: number, y: number): [number, number, number] => {
+      const N = 3;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const c = diamondAt(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          r += c[0];
+          g += c[1];
+          b += c[2];
+        }
+      }
+      return [r / (N * N), g / (N * N), b / (N * N)];
+    };
+  })(),
 
   tigerStripes: (x, y) => {
     /*
