@@ -3529,21 +3529,81 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     };
   })(),
 
-  tigerStripes: (x, y) => {
+  tigerStripes: (() => {
     /*
-      Black stripes over orange FUR. The fur is the half a mask could
-      never draw — a tiger is not painted, it is hairy, and flat ink on
-      flat orange reads as a warning sign.
+      Tiger, redrawn 4 Nov 2026 (Marc: "I like B and make the quality
+      better", of four real renders). The stripes used to be wavy ribbons
+      that ran the full height at one width and swayed in step, which
+      read as a print. A tiger's stripes TAPER to points, fork, and vary
+      in length: three families of them here, under three to a face so
+      they read from the game camera, each stripe pinching to nothing
+      where its width profile falls away, a fine fur fringe on every
+      edge, a brown edge before the black, and a pale rim of fur beside
+      each stripe, over bright orange fur with hair streaks and a faint
+      gloss. Supersampled 3x3.
     */
-    const sway = tiling(y, 2) * 4 + fbm(x, y, [32], [1]) * 3;
-    const wave = Math.abs(tiling(x + sway, 4));
-    const width = 0.28 + 0.3 * tiling(y + 11, 3);
-    const stripe = smoothstep(width + 0.12, width - 0.06, wave);
-    let px = mixRgb(rgb('#a04c18'), rgb('#cf7a2b'), wrappedNoise(x, y, 32));
-    px = mixRgb(px, rgb('#edc48a'), smoothstep(0.55, 0.95, wave) * 0.42);
-    px = mixRgb(px, mixRgb(rgb('#191524'), rgb('#332c40'), wrappedNoise(x * 2, y * 2, 16)), stripe);
-    return mixRgb(px, rgb('#f7e0c2'), (wrappedNoise(x * 4, y, 16) - 0.5) * 0.14 + 0.07);
-  },
+    const DARK = rgb('#b4561c');
+    const LIGHT = rgb('#e68e32');
+    const INK = rgb('#0f0c14');
+    const EDGE = rgb('#2a1a10');
+    const BELLY = rgb('#e68e32');
+    const TURNS = 1.25;
+    // A stripe family: stripes at a regular spacing round the die, each
+    // swaying with the noise and tapering where its own width profile
+    // falls to nothing. `phase` separates the families so the second
+    // family's stripes sit between the first's and start part way down,
+    // which is what makes a fork.
+    const family = (x: number, y: number, phase: number, lo: number, hi: number, k: number): number => {
+      const sway = tiling(y + phase * 7, 0.5) * 4 + fbm(x + phase * 19, y, [32, 16], [1, 0.5]) * 5;
+      const wave = Math.abs(tiling(x + sway + phase, TURNS)) + fbm(x * 5 + phase, y * 3, [8, 4], [1, 0.6]) * 0.07;
+      // Width along the stripe: lumpy, pinching to nothing at the taper
+      // points, and zero outside [lo, hi] of the height for a short stripe.
+      const t = (y + SIZE * 0.5) / (SIZE * 2);
+      const lump = 0.5 + 0.5 * tiling(y + phase * 5 + fbm(x, y + phase, [32], [1]) * 8, 1.0);
+      const span = smoothstep(lo - 0.08, lo + 0.06, t) * smoothstep(hi + 0.08, hi - 0.06, t);
+      const width = (0.16 + 0.26 * lump) * k * span;
+      return smoothstep(width + 0.06, width - 0.05, wave) + smoothstep(width + 0.22, width + 0.04, wave) * 0.001;
+    };
+    const at = (x: number, y: number): [number, number, number] => {
+      const P = sheetToCube(x, y);
+      const height = (P[1] + SIZE / 2) / SIZE;
+      const bellyT = 0.0 * smoothstep(0.5, 0.0, height);
+      // Fur: a soft mottle and hair streaks running down the flank.
+      const mottle = fbm(x, y, [32, 16], [1, 0.5]) * 0.5 + 0.5;
+      const hair = fbm(x * 6, y * 2 + 7, [16, 8], [1, 0.5]);
+      let px = mixRgb(DARK, LIGHT, mottle * 0.8);
+      px = mixRgb(px, BELLY, bellyT);
+      px = mixRgb(px, rgb('#ffffff'), Math.max(0, hair) * 0.1);
+      px = mixRgb(px, DARK, Math.max(0, -hair) * 0.1 * 0.6);
+      // Two families of long stripes and one of short ones between them.
+      let ink = family(x, y, 0, -0.1, 1.1, 1.35);
+      ink = Math.max(ink, family(x, y, SIZE / TURNS / 2, 0.45, 1.1, 1.35 * 0.8));
+      ink = Math.max(ink, family(x, y, SIZE / TURNS / 4 + 3, -0.1, 0.4, 1.35 * 0.7));
+      // Pale fur right beside each stripe, which gives it an edge at die size.
+      const near = Math.max(family(x, y, 0, -0.1, 1.1, 1.35 + 0.45), family(x, y, SIZE / TURNS / 2, 0.45, 1.1, (1.35 + 0.45) * 0.8), family(x, y, SIZE / TURNS / 4 + 3, -0.1, 0.4, (1.35 + 0.45) * 0.7));
+      px = mixRgb(px, rgb('#f6d9a8'), Math.max(0, near - ink) * 0.5);
+      // Stripes go brown at their edge before black, as fur does.
+      px = mixRgb(px, EDGE, Math.min(1, ink * 2.2));
+      px = mixRgb(px, INK, smoothstep(0.35, 1, ink));
+      px = mixRgb(px, rgb('#ffffff'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * 0.09);
+      return px;
+    };
+    return (x: number, y: number): [number, number, number] => {
+      const N = 3;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const c = at(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          r += c[0];
+          g += c[1];
+          b += c[2];
+        }
+      }
+      return [r / (N * N), g / (N * N), b / (N * N)];
+    };
+  })(),
 
   honeycomb: (x, y) => {
     /*
