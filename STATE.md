@@ -316,10 +316,11 @@ one is added; it does not need a new build.
   `hq/supabase/migrations/20261104_matchmaking.sql`, was applied on
   4 Nov 2026 through the Supabase connector (`match_queue`,
   `battles.kind`, `claim_match()` service-role only). Below
-  100 trophies it is always a rival (`BOT_ONLY_BELOW_TROPHIES`). Open for
-  David: `dino_valley` is in the draft App Review submission but no
-  longer shown in the app; App Store Connect still to change by hand
-  (Neon $0.99, IAP descriptions saying "phones", "two days", "Store");
+  100 trophies it is always a rival (`BOT_ONLY_BELOW_TROPHIES`). Done
+  in App Store Connect on 4 Nov 2026: `dino_valley` is out of the draft
+  submission and removed from sale (the product still exists), the
+  draft holds the other 7 purchases, and the coin packs say "Shop".
+  Still open:
   the privacy policy and App Review notes do not yet describe online
   play. Online wins are paid on the phone's own word.
 - **4 Nov 2026 (v1.160.0, update f9099fe4):** the Ocean dice flow on
