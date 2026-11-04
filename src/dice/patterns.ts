@@ -1707,8 +1707,23 @@ const BARE_CORNERS: readonly (readonly [number, number, number])[] = [
   [32, 32, 32], [32, -32, -32], [-32, 32, -32], [-32, -32, 32],
 ];
 
-/** The goldfish on the still picture of the Fish dice: two to a side, each headed its own way. */
-const GOLDFISH = new StickerSheet(scatterStickers(29, 2, 15.5, 20, 3, 10, [0, 1]));
+/**
+ * The goldfish on the still picture of the Fish dice: two whole fish on
+ * every side, one above the colour sticker swimming right, one below it
+ * swimming left, in the side's own texels (FACE_FRAMES).
+ *
+ * Marc, 4 Nov 2026: "make the icon for the fish look more like the
+ * actual design, because it just looks wrong right now." The card used
+ * to take whatever the scattered school left on the front side, which
+ * was two fish cut in half by its right edge and a lot of empty water.
+ * Fixed places keep both fish whole, clear of the sticker the card
+ * draws over its middle, and looking like the pair that swim past on
+ * the board (fishSwim.ts).
+ */
+const CARD_SCHOOL: readonly FishPlace[] = [
+  [-5, -21, 1, -0.1],
+  [5, 21, -1, 0.08],
+];
 /** The Moon dice's twinkles: three four-pointed stars to a side, some over an edge. */
 const MOON_TWINKLES = new StickerSheet(scatterStickers(41, 3, 6, 11, 2, 6));
 const FISH_BUBBLES = new StickerSheet(scatterStickers(37, 3, 2.2, 7, 1));
@@ -3716,18 +3731,14 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       Rebuilt as big orange goldfish — the one hue no blue-shell mask
       could mix, and the only orange-on-blue die in the set.
 
-      SWIMMING ROUND THE DIE since 21 Oct 2026. The same four fish used
-      to sit on every side; now the school is strewn over the whole die
-      as stickers (GOLDFISH), two to a side with some crossing an edge,
-      each headed its own way, over water whose ripple is noise of the
-      point in space, so nothing breaks at any edge.
-
-      This is the STILL picture — the shop card. The die on the board
-      paints the water and the fish apart so the fish can swim
-      (fishSwim.ts); both take their shapes from goldfish.ts.
+      SWIMMING ROUND THE DIE since 21 Oct 2026 on the board (fishSwim.ts).
+      This is the STILL picture — the shop card — and since 4 Nov 2026
+      it shows two whole fish in fixed places on every side (CARD_SCHOOL)
+      over the same rippled water, rather than whatever a scattered
+      school left on the front side: Marc, "make the icon for the fish
+      look more like the actual design, because it just looks wrong
+      right now". Both take their shapes from goldfish.ts.
     */
-    const RIGHT: readonly FishPlace[] = [[0, 0, 1, 0]];
-    const LEFT: readonly FishPlace[] = [[0, 0, -1, 0]];
     return (x: number, y: number): [number, number, number] => {
       // Supersample 3x3 — blossom's lesson: tilted edges on a 64px grid
       // only survive with partial coverage along every boundary.
@@ -3738,12 +3749,9 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       for (let sy = 0; sy < N; sy++) {
         for (let sx = 0; sx < N; sx++) {
           const P = sheetToCube(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
-          let c: Rgb | null = null;
-          for (const { s, lx, ly } of GOLDFISH.hits(P)) {
-            c = goldfishAt(lx, ly, s.kind === 0 ? RIGHT : LEFT);
-            if (c) break;
-          }
-          c = c ?? fishWaterAt(P);
+          // Two whole fish in fixed places on this side (CARD_SCHOOL).
+          const F = FACE_FRAMES[cubeFace(P)];
+          const c: Rgb = goldfishAt(dot3(P, F.u), dot3(P, F.v), CARD_SCHOOL) ?? fishWaterAt(P);
           sr += c[0];
           sg += c[1];
           sb += c[2];
