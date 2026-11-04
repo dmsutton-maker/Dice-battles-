@@ -840,6 +840,7 @@ export type ColorPatternId =
   | 'supporterCompass'
   // Neon, 20 Oct 2026: the first die sold on its own for real money.
   | 'neon'
+  | 'rosettes'
   | 'patches' | 'bands' | 'diamonds' | 'tigerStripes' | 'honeycomb'
   // Cookie, 19 Oct 2026: a chocolate chunk is dark with a lit shoulder
   // and a glint, over golden dough that goes toasted — four colours,
@@ -1485,53 +1486,6 @@ const PAINTERS: Record<MaskPatternId, Painter> = {
    * anywhere — the shelf and the table must show the same die.
    */
 
-  /** Leopard: broken rings on a staggered grid, a dot in some. */
-  rosettes: (x, y) => {
-    /*
-      Each rosette sits in a cell of a staggered lattice, jittered, and
-      its ring can reach past the cell: so every texel looks in the
-      neighbouring cells too (20 Oct 2026). Before that a rosette was cut
-      off at its cell's edge, which showed wherever a cell boundary fell,
-      and the lattice's rows fall exactly on the top and bottom edges of
-      every side.
-    */
-    const cell = 16;
-    const cols = RING / cell;
-    // The rows a quarter cell up, for the same reason the columns are
-    // slid: the rows' edges fell on the top and bottom edges of every
-    // side, and every ring's rim crossed them in the same place.
-    const row0 = Math.floor((y + cell / 4) / cell);
-    for (let oy = -1; oy <= 1; oy++) {
-      const row = row0 + oy;
-      // Each row slid along by its own amount, not the alternate half
-      // cell of a brick lattice: with a regular stagger every other row's
-      // rosettes line up in columns, and a column's rings all cross the
-      // same edge of the die at the same point, which read as a seam
-      // there. A leopard's spots are not in columns anyway.
-      const offset = hashCell(row + 77, 3) * cell;
-      const col0 = Math.floor((x + offset) / cell);
-      for (let ox = -1; ox <= 1; ox++) {
-        const col = mod(col0 + ox, cols);
-        const h = hashCell(col, row);
-        // Jittered by up to six texels each way (it was one and a half):
-        // looser, as a leopard's spots are, and no row's rings all reach
-        // the same line, so no edge of the die gets a row of rims.
-        const cx = x - ((col0 + ox) * cell - offset + cell / 2 - (h - 0.5) * 12);
-        const cy = y - (row * cell - cell / 4 + cell / 2 - (hashCell(col + 9, row) - 0.5) * 12);
-        const r = Math.hypot(cx, cy);
-        const ring = 4.6 + h * 1.4;
-        // The ring, BROKEN in one or two places — an unbroken ring is a
-        // polka dot with a hole, not a rosette.
-        const a = Math.atan2(cy, cx);
-        const gapAt = h * Math.PI * 2;
-        const inGap = Math.abs(Math.atan2(Math.sin(a - gapAt), Math.cos(a - gapAt))) < 0.7;
-        if (Math.abs(r - ring) < 1.6 && !inGap) return 0.95;
-        // A smaller solid freckle in the middle of about half of them.
-        if (h > 0.5 && r < 1.8) return 0.95;
-      }
-    }
-    return 0;
-  },
 
   /** Tiger: vertical stripes that wave and TAPER to points. */
   giraffe: (x, y) => {
@@ -1976,6 +1930,120 @@ export function neonTubesAt(P: readonly number[]): NeonTubes {
 }
 
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
+  rosettes: (() => {
+    /*
+      Leopard, redrawn 4 Nov 2026 (Marc: "option B but make it better
+      quality", of four real renders). A rosette is a CLUSTER of two to
+      five dark blotches round a patch of fur a shade darker than the
+      ground, not a thin ring with a gap in it, which is what this was
+      and which read as C's and 3's on a flat tan shell. Fewer and
+      bigger than before (under three across a face) so they read from
+      the game camera, on bright gold fur with a soft mottle and hair
+      streaks, a paler rim of fur round every blotch, a darker heart in
+      every rosette, a freckle beside some, and a faint gloss. Four
+      colours, so a colour painter now. Supersampled 3x3.
+    */
+    const GROUND = rgb('#e0a953');
+    const LIGHT = rgb('#eec070');
+    const CENTRE = rgb('#b4772a');
+    const INK = rgb('#2a180a');
+    const BELLY = rgb('#e0a953');
+    const cell = 23;
+    const cols = Math.round(RING / cell);
+    const cw = RING / cols;
+    const at = (x: number, y: number): [number, number, number] => {
+      const P = sheetToCube(x, y);
+      // Back to belly: how high on the die, 1 at the top cap, 0 at the bottom.
+      const height = (P[1] + SIZE / 2) / SIZE;
+      const bellyT = 0.0 * smoothstep(0.55, 0.0, height);
+      // Fur: soft mottle plus fine hair streaks running round the die.
+      const mottle = fbm(x, y, [32, 16, 8], [1, 0.6, 0.3]) * 0.5 + 0.5;
+      const hair = fbm(x * 3, y * 7 + 11, [16, 8], [1, 0.5]);
+      let px = mixRgb(GROUND, LIGHT, mottle * 0.7);
+      px = mixRgb(px, BELLY, bellyT);
+      px = mixRgb(px, LIGHT, Math.max(0, hair) * 0.07);
+      px = mixRgb(px, INK, Math.max(0, -hair) * 0.07 * 0.5);
+      let ink = 0;
+      let rim = 0;
+      let centre = 0;
+      const row0 = Math.floor((y + cw / 4) / cw);
+      for (let oy = -1; oy <= 1; oy++) {
+        const row = row0 + oy;
+        const offset = hashCell(row + 77, 3) * cw;
+        const col0 = Math.floor((x + offset) / cw);
+        for (let ox = -1; ox <= 1; ox++) {
+          const col = mod(col0 + ox, cols);
+          const h = hashCell(col, row);
+          const h2 = hashCell(col + 9, row);
+          const h3 = hashCell(col + 5, row + 31);
+          // Rosettes shrink toward the belly and become solid spots there.
+          const shrink = 1 - bellyT * 0.45;
+          const cx = x - ((col0 + ox) * cw - offset + cw / 2 - (h - 0.5) * 10);
+          const cy = y - (row * cw - cw / 4 + cw / 2 - (h2 - 0.5) * 10);
+          const r = Math.hypot(cx, cy);
+          const ring = (7.6 + h3 * 1.6) * shrink;
+          const wob = fbm(x + col * 13, y + row * 7, [16, 8], [1, 0.5]) * 0.6;
+          if (bellyT > 0.75) {
+            // Low on the belly: one solid spot.
+            ink = Math.max(ink, smoothstep(ring * 0.45 + 0.9, ring * 0.45 - 0.6, r + wob));
+            continue;
+          }
+          centre = Math.max(centre, smoothstep(ring * 1.05, ring * 0.55, r));
+          const n = 3 + Math.floor(h3 * 3);
+          const spin = h * Math.PI * 2;
+          for (let k = 0; k < n; k++) {
+            const hk = hashCell(col * 7 + k + 1, row * 3 + k);
+            // One blotch in about five is missing, which is the broken look.
+            if (hk < 0.18) continue;
+            const ang = spin + ((k + (hk - 0.5) * 0.5) * Math.PI * 2) / n;
+            const dist = ring * (0.85 + hk * 0.3);
+            const bx = Math.cos(ang) * dist;
+            const by = Math.sin(ang) * dist;
+            // Radial and tangential distance from the blotch: tangentially
+            // longer, so each blotch is a dash round the ring, not a dot.
+            const dx = cx - bx;
+            const dy = cy - by;
+            const dr = dx * Math.cos(ang) + dy * Math.sin(ang);
+            const dt = -dx * Math.sin(ang) + dy * Math.cos(ang);
+            const d = Math.hypot(dr * 1.3, dt * 0.7);
+            const rb = 3.4 * (0.78 + hk * 0.7);
+            ink = Math.max(ink, smoothstep(rb + 0.45, rb - 0.4, d + wob));
+            // Fur goes a shade paler right next to a marking, which is what
+            // gives each blotch its edge at die size.
+            rim = Math.max(rim, smoothstep(rb + 2.4, rb + 0.5, d + wob));
+          }
+          // A freckle beside some rosettes, the way the spaces between
+          // rosettes carry odd small spots.
+          if (h2 > 0.62) {
+            const fx = cx - (h - 0.5) * cw * 1.3;
+            const fy = cy - (h3 - 0.5) * cw * 1.3;
+            ink = Math.max(ink, smoothstep(1.9, 0.9, Math.hypot(fx, fy) + wob * 0.5));
+          }
+        }
+      }
+      px = mixRgb(px, CENTRE, centre * (1 - bellyT) * 1.0);
+      px = mixRgb(px, LIGHT, rim * (1 - ink) * 0.45);
+      px = mixRgb(px, INK, ink);
+      // A gloss on the fur, so it reads as a coat and not a print.
+      px = mixRgb(px, rgb('#ffffff'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * 0.1);
+      return px;
+    };
+    return (x: number, y: number): [number, number, number] => {
+      const N = 3;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const c = at(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          r += c[0];
+          g += c[1];
+          b += c[2];
+        }
+      }
+      return [r / (N * N), g / (N * N), b / (N * N)];
+    };
+  })(),
   neon: (x, y) => {
     /*
       Neon, 20 Oct 2026. David asked for "a new cool dice that is worth
