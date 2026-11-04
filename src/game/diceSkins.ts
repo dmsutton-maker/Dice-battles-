@@ -314,7 +314,7 @@ export const DICE_SKINS: DiceSkin[] = [
   { id: 'honeycomb', name: 'Honeycomb', body: '#c2882e', pattern: 'honeycomb', ink: '#6e4a16', price: 890 },
   // The one David named. The waffle carries its own chicken.
   { id: 'waffles', name: 'Chicken & Waffles', body: '#e8b45c', pattern: 'waffle', ink: '#8a5a1e', price: 1165 },
-  { id: 'watermelon', name: 'Watermelon', body: '#f08585', pattern: 'watermelon', ink: '#2e6e38', price: 1240 },
+  { id: 'watermelon', name: 'Watermelon', body: '#2a6a34', pattern: 'watermelon', ink: '#bfdf96', price: 1240 },
   { id: 'pizza', name: 'Pizza', body: '#e8c078', pattern: 'pizza', ink: '#7a2a3d', price: 1320 },
   { id: 'donut', name: 'Donut', body: '#e8a8b8', pattern: 'donut', ink: '#d9a55c', price: 1360 },
 

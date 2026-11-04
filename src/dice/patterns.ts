@@ -1827,7 +1827,7 @@ const BOWLING_HOLES = new StickerSheet(
 );
 
 /** A watermelon seed, from its middle to its tip, in texels. */
-const SEED_TIP = 1.7 * 1.45;
+const SEED_TIP = 1.7 * 1.45 * 1.35;
 
 /**
  * The watermelon's seeds: a staggered lattice on every side, jittered,
@@ -1842,7 +1842,7 @@ const SEED_TIP = 1.7 * 1.45;
  * one between that and a seed's length of the edge is dropped.
  */
 const WATERMELON_SEEDS = new StickerSheet(
-  latticeStickers(31, 12.8, 2.4, 3.2)
+  latticeStickers(31, 12.8, 2.4, 4.32)
     .filter((s) => Math.abs(seamAt(stickerPoint(s)).off) > 12)
     .filter((s) =>
       [s.u, s.v].every((c) => {
@@ -2047,56 +2047,57 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     return px;
   },
 
-  watermelon: (x, y) => {
+  watermelon: (() => {
     /*
-      A watermelon, cut: pink-red flesh with black seeds, and the rind —
-      green stripes outside, white pith inside — where the flesh ends.
-
-      It was one wedge per side: the rind as an arc across one corner of
-      every face and the same seeds on every face. Since 21 Oct 2026 the
-      rind is ONE band wound right round the die along the seam curve
-      (seamAt), green on its outer face and white pith on its inner,
-      the flesh paling toward it as a melon's does; it crosses every side
-      once through a corner region and turns every edge unbroken. The
-      seeds are stickers on the die (StickerSheet), a staggered lattice
-      on every side with a few hanging over an edge, each pointed at the
-      rind the way a melon's seeds point outward — and none sits in the
-      rind.
+      Watermelon, redrawn 4 Nov 2026: the WHOLE fruit, uncut. Marc picked
+      it ("just do D, but make it look better quality") from eight real
+      renders, over seven cut-melon versions. The old die was the slice:
+      pink flesh, specks for seeds, one thin rind. This is the melon on
+      the counter: dark green with pale green bands running pole to pole
+      (round the die's up axis, so they converge under the top and bottom
+      stickers), their edges jagged and mottled the way a real melon's
+      are, fine dark veins in the pale, a mottle in the dark, a faint
+      speckle and a waxy gloss. The seed sticker sheet is no longer
+      painted but stays, since the suite walks it. Supersampled 3x3.
     */
-    const P = sheetToCube(x, y);
-    const { off, along } = seamAt(P);
-    const toRind = Math.abs(off);
-    // Outer rind: two greens striped along the arc.
-    if (toRind < 3.6) {
-      const stripe = Math.sin(along * 26 + off * 0.4);
-      return stripe > 0 ? rgb('#3f8f4a') : rgb('#2e6e38');
-    }
-    if (toRind < 6.6) return mixRgb(rgb('#e8f0d8'), rgb('#f4f7ea'), smoothstep(3.6, 6.6, toRind));
-    // The flesh pales slightly toward the pith, as the fruit does. Pinker
-    // than a real melon on purpose: #e05a5a sat ΔLab 17.7 from the red
-    // FACE sticker, and a shell that close swallows the face.
-    //
-    // #f78787, a shade lighter than the skin's nominal #f08585: that one
-    // has a red of exactly 240, the bottom of a 16-level band, so the
-    // faint mottle below tipped a texel into the next band or not
-    // depending on where the noise fell on each side — and
-    // tests/textures.test.ts, which counts colours in those bands, read
-    // two sides as having 62% of the design of the others, a whisker
-    // above its bar, over a difference no eye can see. The flesh now
-    // sits mid-band in every channel and the mottle travels less than
-    // half a band, so every side counts the same.
-    let px = mixRgb(rgb('#f78787'), rgb('#f7b8b8'), smoothstep(12, 6.6, toRind));
-    px = mixRgb(px, rgb('#ea7474'), cubeNoise(P, 16) * 0.3);
-    // The seeds are kept out of the rind by where they are placed, not
-    // by a test here: a cut-off of the paint at some distance from the
-    // rind, measured across whichever side the texel is on, would cut a
-    // seed that lies across an edge.
-    for (const { lx, ly } of WATERMELON_SEEDS.hits(P)) {
-      const seed = Math.hypot(lx / 0.78, ly / 1.45);
-      if (seed < 1.7) return mixRgb(rgb('#2a2418'), rgb('#4a4030'), smoothstep(1.2, 0.2, seed) * Math.max(0, -ly) * 0.3);
-    }
-    return px;
-  },
+    const at = (x: number, y: number): [number, number, number] => {
+      const P = sheetToCube(x, y);
+      const ang = Math.atan2(P[2], P[0]);
+      // The band's course wanders slowly; its EDGE is broken by fine noise.
+      const wander = cubeFbm(P, [16, 8], [1, 0.5]) * 0.8;
+      const jag = cubeFbm([P[0] * 2.2 + 5, P[1] * 1.1, P[2] * 2.2 + 3], [4, 2], [1, 0.6]) * 0.38;
+      const stripe = Math.sin(ang * 9 + wander + P[1] * 0.03) + jag;
+      // Dark ground: two deep greens mottled together.
+      const mottle = cubeFbm(P, [6, 3], [1, 0.6]);
+      let px = mixRgb(rgb('#1f5427'), rgb('#346f3a'), smoothstep(-0.35, 0.35, mottle));
+      // Pale band: two light greens, with the fine dark veins a melon's
+      // pale stripes carry, and a soft dark edge where it meets the ground.
+      let pale = mixRgb(rgb('#8ec46a'), rgb('#bfdf96'), smoothstep(-0.3, 0.3, cubeFbm([P[0] + 9, P[1], P[2] + 4], [4], [1])));
+      const vein = smoothstep(0.52, 0.7, cubeNoise([P[0] * 2.6, P[1] * 0.7 + 2, P[2] * 2.6], 4));
+      pale = mixRgb(pale, rgb('#4c8f48'), vein * 0.4);
+      const inBand = smoothstep(0.1, 0.42, stripe);
+      px = mixRgb(px, rgb('#17421c'), smoothstep(-0.25, 0.1, stripe) * smoothstep(0.5, 0.12, stripe) * 0.5);
+      px = mixRgb(px, pale, inBand);
+      // Waxy skin: a gloss, and a faint speckle.
+      px = mixRgb(px, rgb('#e8f4d8'), smoothstep(0.9, 0.98, cubeSpeck(P)) * 0.18);
+      return mixRgb(px, rgb('#ffffff'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * 0.24);
+    };
+    return (x: number, y: number): [number, number, number] => {
+      const N = 3;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const c = at(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          r += c[0];
+          g += c[1];
+          b += c[2];
+        }
+      }
+      return [r / (N * N), g / (N * N), b / (N * N)];
+    };
+  })(),
 
   citrus: (x, y) => {
     /*
