@@ -190,6 +190,18 @@ export function grantItem(itemId: string): boolean {
 }
 
 /**
+ * Take one item out of the cupboard — a retired die being refunded
+ * (loadout.ts refundRetiredDice). The one place an `owned` entry is
+ * removed on its own; clearPurchases below is the RESET code's sweep.
+ */
+export function takeBackItem(itemId: string): boolean {
+  if (!owns(itemId)) return false;
+  current = { ...current, owned: current.owned.filter((id) => id !== itemId) };
+  persist();
+  return true;
+}
+
+/**
  * Forget everything bought with coins, so the Store can be walked through
  * again from nothing. The RESET code in DiceDemoScreen.
  *

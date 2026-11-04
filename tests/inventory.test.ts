@@ -15,7 +15,7 @@ import {
   STARTING_DICE,
 } from '../src/game/inventoryRules';
 import { ARENA_ORDER, INVENTORY_SKIN_ORDER, STORE_ARENAS, arenaKey, isArenaUnlocked, isSkinUnlocked } from '../src/game/loadout';
-import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
+import { DICE_SKINS, RETIRED_SKINS, STORE_SKINS } from '../src/game/diceSkins';
 import { resetWalletForTests } from '../src/game/currency';
 import { resetPurchasesForTest } from '../src/game/purchases';
 import { resetProgressForTests, setUnlockAll, TIERS } from '../src/game/progress';
@@ -167,9 +167,12 @@ suite('inventory · a season still to come is shown nowhere', () => {
     const dice = inventoryDice(0, NOV);
     const arenas = inventoryArenas(0, NOV);
     for (const skin of dice) assert(isSkinUnlocked(skin.id, 0), `${skin.name} shows but is not unlocked`);
-    assertEqual(dice.length, obtainableDiceCount(NOV), 'tester mode is missing a die it unlocks');
+    // Tester mode also shows the retired Baseball dice (Marc, 4 Nov 2026:
+    // "only appear in your inventory with admin mode"), which the "of N"
+    // count leaves out because nobody can get it.
+    assertEqual(dice.length, obtainableDiceCount(NOV) + RETIRED_SKINS.length, 'tester mode is missing a die it unlocks');
     assertEqual(arenas.length, obtainableArenaCount(NOV), 'tester mode is missing a battlefield it unlocks');
-    assertEqual(obtainableDiceCount(NOV), DICE_SKINS.length - idsOf(SUN_MOON, 'dice').length, 'the future dice');
+    assertEqual(obtainableDiceCount(NOV), DICE_SKINS.length - idsOf(SUN_MOON, 'dice').length - RETIRED_SKINS.length, 'the future dice');
     assertEqual(obtainableArenaCount(NOV), ARENA_ORDER.length - idsOf(SUN_MOON, 'arena').length, 'the future battlefields');
     assert(!dice.some((s) => s.id === 'sun' || s.id === 'moon'), 'tester mode shows June in November');
     // In June, tester mode has the lot.

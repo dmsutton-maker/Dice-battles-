@@ -9,10 +9,12 @@ import {
   PAID_SKINS,
   PASS_SKINS,
   PRIZE_SKINS,
+  RETIRED_DICE_REFUNDS,
+  RETIRED_SKINS,
   skinById,
   STORE_SKINS,
 } from './diceSkins';
-import { grantItem, owns } from './currency';
+import { grantCoins, grantItem, owns, takeBackItem } from './currency';
 import { hasEntitlement } from './purchases';
 import {
   getProgress,
@@ -147,6 +149,27 @@ export function keepRaisedRungs(): string[] {
 }
 
 /**
+ * A die that has been retired is taken back and paid for.
+ *
+ * Marc, 4 Nov 2026: the Baseball dice is "only in your inventory with
+ * admin mode" from now on. Somebody who had spent 480 coins on it would
+ * otherwise have paid for nothing, so the coins go back into the wallet
+ * and the id leaves `owned`. Run once per launch from the hydrate chain
+ * like keepRaisedRungs; idempotent because the second time there is no
+ * entry to take. Returns the ids refunded, for a line to the player.
+ */
+export function refundRetiredDice(): string[] {
+  const refunded: string[] = [];
+  for (const [id, coins] of Object.entries(RETIRED_DICE_REFUNDS)) {
+    if (!owns(id)) continue;
+    takeBackItem(id);
+    grantCoins(coins);
+    refunded.push(id);
+  }
+  return refunded;
+}
+
+/**
  * The wallet key an arena purchase is stored under.
  *
  * Prefixed, because wallet.owned is one flat list shared with dice skins
@@ -222,6 +245,9 @@ export const INVENTORY_SKIN_ORDER: DiceSkin[] = [
   ),
   // Bought with real money (the Starter pack's Supporter die).
   ...PAID_SKINS,
+  // Retired dice last of all: only admin mode ever sees them (Marc,
+  // 4 Nov 2026), and nothing on their card is an invitation.
+  ...RETIRED_SKINS,
 ];
 
 const STORAGE_KEY = 'dice-battles:loadout';
@@ -303,6 +329,9 @@ export function isSkinUnlocked(skinId: string, trophies: number): boolean {
     setsOwned).
   */
   if (skin.prize || skin.pass) return hasUnlockAll() || owns(skin.id);
+  // Retired (Marc, 4 Nov 2026): admin mode and nothing else, not even a
+  // wallet entry from before — refundRetiredDice has paid that back.
+  if (skin.retired) return hasUnlockAll();
   // Bought with real money: the purchase record is the proof, and it is
   // the one thing Apple's Restore brings back.
   if (skin.paid) return hasUnlockAll() || hasEntitlement(skin.id);

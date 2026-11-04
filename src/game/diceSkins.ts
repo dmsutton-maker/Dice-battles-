@@ -63,6 +63,20 @@ export interface DiceSkin {
    * diceMoon.ts.
    */
   effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon';
+  /**
+   * Taken off the shelf and off the ladder: nobody can get it any more,
+   * and only family tester (admin) mode shows it. Marc, 4 Nov 2026, on
+   * the Baseball dice after four redesigns on a design board: "none of
+   * them look good, just remove it from being able to be obtained and
+   * make it only appear in your inventory with admin mode" — then "do
+   * the same with the soccer ball, basketball, bowling ball, volleyball,
+   * and football dice". Its own
+   * flag for the reason `prize` has one: "no price and no unlock" means
+   * FREE. Whoever had bought it gets its old coin price back
+   * (refundRetiredDice in loadout.ts) and loses the die, which is what
+   * "only with admin mode" means read literally.
+   */
+  retired?: true;
 }
 
 export const DICE_SKINS: DiceSkin[] = [
@@ -277,13 +291,17 @@ export const DICE_SKINS: DiceSkin[] = [
   { id: 'golf', name: 'Golf Ball', body: '#f2f7f2', pattern: 'dimples', ink: '#ffffff', price: 335 },
   { id: 'tennis', name: 'Tennis Ball', body: '#a8b83d', pattern: 'tennis', ink: '#f2f7f2', price: 395 },
   // Wine-dark stitches: true stitch red sat ΔLab 10.6 from the red face.
-  { id: 'baseball', name: 'Baseball', body: '#f5f2ea', pattern: 'baseball', ink: '#7a2a3d', price: 480 },
-  { id: 'soccer', name: 'Soccer Ball', body: '#f7f7f7', pattern: 'soccer', ink: '#1d1a2e', price: 575 },
-  { id: 'basketball', name: 'Basketball', body: '#a34e26', pattern: 'basketball', ink: '#1d1a2e', price: 735 },
-  { id: 'football', name: 'Football', body: '#8a4a2a', pattern: 'laces', ink: '#ffffff', price: 860 },
-  { id: 'bowling', name: 'Bowling Ball', body: '#2e2a3d', pattern: 'bowling', ink: '#f0ede6', price: 990 },
+  // The six ball dice were retired on 4 Nov 2026 (see `retired` above):
+  // Baseball first, then Marc: "do the same with the soccer ball,
+  // basketball, bowling ball, volleyball, and football dice". What each
+  // used to cost is in RETIRED_DICE_REFUNDS.
+  { id: 'baseball', name: 'Baseball', body: '#f5f2ea', pattern: 'baseball', ink: '#7a2a3d', retired: true },
+  { id: 'soccer', name: 'Soccer Ball', body: '#f7f7f7', pattern: 'soccer', ink: '#1d1a2e', retired: true },
+  { id: 'basketball', name: 'Basketball', body: '#a34e26', pattern: 'basketball', ink: '#1d1a2e', retired: true },
+  { id: 'football', name: 'Football', body: '#8a4a2a', pattern: 'laces', ink: '#ffffff', retired: true },
+  { id: 'bowling', name: 'Bowling Ball', body: '#2e2a3d', pattern: 'bowling', ink: '#f0ede6', retired: true },
   // ink unused: a colour painter mixes its own paint. Same below.
-  { id: 'volleyball', name: 'Volleyball', body: '#f0ede6', pattern: 'volleyball', ink: '#2a4a8a', price: 1060 },
+  { id: 'volleyball', name: 'Volleyball', body: '#f0ede6', pattern: 'volleyball', ink: '#2a4a8a', retired: true },
 
   // Food.
   { id: 'cookie', name: 'Cookie', body: '#d9a55c', pattern: 'cookie', ink: '#4a2f1a', price: 415 },
@@ -481,6 +499,16 @@ export const DICE_SKINS: DiceSkin[] = [
  * you climb rather than a jumble, and the thing you can almost afford is
  * near the top.
  */
+/** What each retired die used to cost: paid back to whoever had bought it. */
+export const RETIRED_DICE_REFUNDS: Readonly<Record<string, number>> = {
+  baseball: 480,
+  soccer: 575,
+  basketball: 735,
+  football: 860,
+  bowling: 990,
+  volleyball: 1060,
+};
+
 export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined).sort(
   (a, b) => a.price! - b.price!,
 );
@@ -493,7 +521,7 @@ export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined).sort(
  * not exist.
  */
 export const LADDER_SKINS = DICE_SKINS.filter(
-  (s) => s.price === undefined && !s.prize && !s.pass && !s.paid,
+  (s) => s.price === undefined && !s.prize && !s.pass && !s.paid && !s.retired,
 );
 
 /** Skins that can only be bought with real money. */
@@ -504,6 +532,9 @@ export const PASS_SKINS = DICE_SKINS.filter((s) => s.pass);
 
 /** Skins that can only be won in a tournament. */
 export const PRIZE_SKINS = DICE_SKINS.filter((s) => s.prize);
+
+/** Retired: nobody's to get, admin mode only (Marc, 4 Nov 2026). */
+export const RETIRED_SKINS = DICE_SKINS.filter((s) => s.retired);
 
 export const DEFAULT_SKIN_ID = 'ivory';
 

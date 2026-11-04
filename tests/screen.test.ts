@@ -364,6 +364,13 @@ suite('screen · inventory', () => {
       assert(/^#[0-9a-f]{6}$/i.test(skin.body), `${skin.name} has a malformed colour`);
       const onLadder = skin.unlock !== undefined && skin.unlock !== null;
       const inStore = skin.price !== undefined;
+      // A retired die has NO route on purpose — Marc, 4 Nov 2026: "remove
+      // it from being able to be obtained and make it only appear in your
+      // inventory with admin mode". It must not be sold or earned either.
+      if (skin.retired) {
+        assert(!onLadder && !inStore && !skin.prize && !skin.pass && !skin.paid, `${skin.name} is retired but still has a route`);
+        continue;
+      }
       assert(
         !(onLadder && inStore),
         `${skin.name} is both earnable and purchasable`,
