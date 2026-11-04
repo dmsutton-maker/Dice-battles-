@@ -43,7 +43,7 @@ export const DIE_BLURBS: Record<string, string> = {
   fish: 'Fish swimming all round it.',
   snake: 'Snakeskin scales.',
   leopard: 'Leopard spots.',
-  tiger: 'Tiger stripes.',
+  tiger: 'Big stripes on orange fur.',
   giraffe: 'Giraffe patches.',
   peacock: 'Peacock feathers.',
   golf: 'A dimpled golf ball.',
