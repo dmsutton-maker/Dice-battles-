@@ -1,5 +1,6 @@
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
 import type { WebGLRenderer } from 'three';
+import { readyForReset } from './glReset';
 import { keepOnly } from './tempFiles';
 
 /**
@@ -24,7 +25,10 @@ import { keepOnly } from './tempFiles';
  * Every GL call is followed by `renderer.resetState()`, which is three's
  * way of being told that something else used its context. Without it
  * three's cached bindings would disagree with the real ones on the next
- * frame.
+ * frame. On a phone that call THREW halfway until v1.167.0 and left the
+ * depth test off for the rest of the session: see glReset.ts. Nothing
+ * here touches the context unless `readyForReset` says the reset will
+ * run to the end.
  *
  * Nothing here throws. A board that could not be captured is simply no
  * share button on the result screen.
@@ -60,6 +64,8 @@ export async function captureBoard(renderer: WebGLRenderer | null): Promise<Boar
   const width = gl.drawingBufferWidth;
   const height = gl.drawingBufferHeight;
   if (!(width > 0 && height > 0)) return null;
+  // Before ANY GL call: a reset that throws breaks the board (glReset.ts).
+  if (!readyForReset(gl, renderer.domElement)) return null;
 
   let texture: WebGLTexture | null = null;
   let framebuffer: WebGLFramebuffer | null = null;

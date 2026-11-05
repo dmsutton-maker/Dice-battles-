@@ -117,6 +117,18 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-167-0-board-after-a-win',
+    date: '5 November 2026',
+    version: 'v1.167.0',
+    title: 'The board after a win is back to normal',
+    icon: 'look',
+    body:
+      'After you won a battle, the next battle could start with the castle ' +
+      'floor, the walls, the water and even the dice missing. That is fixed. ' +
+      'It came from the new "Share your win" picture, which also never ' +
+      'appeared because of the same fault: now it does, after every win.',
+  },
+  {
     id: 'v1-166-0-share-win',
     date: '5 November 2026',
     version: 'v1.166.0',

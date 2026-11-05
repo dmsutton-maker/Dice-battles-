@@ -4,6 +4,7 @@ import { THEME } from '../ui/theme';
 import { BoardShot, contextOf, snapshotUri } from './boardShot';
 import { loadShareArt } from './shareArt';
 import { CARD, DrawItem, hexTint, layoutCard, ShareResult } from './shareCard';
+import { readyForReset } from './glReset';
 import { keepOnly } from './tempFiles';
 
 /**
@@ -96,11 +97,14 @@ export async function composeWinCard(
   if (!art) return null;
   // Still here, after the wait? The battle may have been left.
   if (contextOf(renderer) !== gl) return null;
+  // Before ANY GL call: a reset that throws breaks the board (glReset.ts).
+  if (!readyForReset(gl, renderer.domElement)) return null;
 
   const items: DrawItem[] = layoutCard(shot, result);
   const { width, height } = CARD;
   const textures = new Map<string, WebGLTexture>();
   let program: WebGLProgram | null = null;
+  let vertexArray: WebGLVertexArrayObject | null = null;
   let buffer: WebGLBuffer | null = null;
   let target: WebGLTexture | null = null;
   let framebuffer: WebGLFramebuffer | null = null;
@@ -150,6 +154,15 @@ export async function composeWinCard(
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.useProgram(program);
+    /*
+      A vertex array of our own. The attribute below is switched on in
+      whichever vertex array is bound, and the one bound now is the last
+      one three drew with: switched on there, it would point one of the
+      board's shapes at this little buffer and then at nothing once the
+      buffer is deleted.
+    */
+    vertexArray = gl.createVertexArray();
+    gl.bindVertexArray(vertexArray);
     buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
@@ -173,6 +186,7 @@ export async function composeWinCard(
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
+    gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     renderer.resetState();
 
@@ -189,6 +203,8 @@ export async function composeWinCard(
       for (const texture of textures.values()) gl.deleteTexture(texture);
       if (target) gl.deleteTexture(target);
       if (framebuffer) gl.deleteFramebuffer(framebuffer);
+      gl.bindVertexArray(null);
+      if (vertexArray) gl.deleteVertexArray(vertexArray);
       if (buffer) gl.deleteBuffer(buffer);
       if (program) gl.deleteProgram(program);
       renderer.resetState();
