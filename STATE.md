@@ -323,7 +323,7 @@ one is added; it does not need a new build.
   The privacy policy, terms and App Review notes describe online play
   since 4 Nov 2026 (website deployed 14:25 UTC, `dpl_8Q2GCdByL4UFJXeb8Ksm26bbzSG4`).
   Still open: online wins are paid on the phone's own word.
-- **5 Nov 2026 (v1.163.0):** the real-player search shows from the first
+- **5 Nov 2026 (v1.163.0, update 67f8d5a3):** the real-player search shows from the first
   frame (`showsSearch` includes `asking`); no computer rival's name before
   the 15 seconds are up (Marc).
 - **5 Nov 2026 (v1.162.0, update 8a9c042b, website deployed `dpl_EhzpwSMePjwnYmhWUqH37LDc7r8J`):** Marc's second batch. A reinstall restores
