@@ -334,6 +334,12 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **5 Nov 2026 (v1.167.0, update 88bfca8b):** fixed the battle after a win
+  drawing with no floor, walls, gatehouse, water or dice (Marc's screenshot).
+  three's `resetState()` threw on a phone, because expo-gl's context has no
+  `gl.canvas`, and left the depth test off for the session. `src/share/glReset.ts`
+  gives the context a canvas. The same throw meant "Share your win" never once
+  appeared on a phone, so v1.167.0 is its first real run: check the picture.
 - **5 Nov 2026 (v1.166.0, update 543f7baf):** "Share your win" on the victory screen
   (`src/share/`): board captured at the win via expo-gl (MSAA blit first),
   card composed in GL on the tap, shared with React Native's Share. Never run
