@@ -323,7 +323,7 @@ one is added; it does not need a new build.
   The privacy policy, terms and App Review notes describe online play
   since 4 Nov 2026 (website deployed 14:25 UTC, `dpl_8Q2GCdByL4UFJXeb8Ksm26bbzSG4`).
   Still open: online wins are paid on the phone's own word.
-- **5 Nov 2026 (v1.161.0):** Marc's four requests of the day. Shop and
+- **5 Nov 2026 (v1.161.0, update f22413b5, website deployed `dpl_EEcqcXLBsfpwPKjTX1yiud5YjWJ3`):** Marc's four requests of the day. Shop and
   Inventory cards show a sweep of light until their picture lands and the
   open tab's cards paint first (`src/dice/previewLoad.ts`,
   `PreviewLoading.tsx`, `SHELF_SLICE_MS`); a preview never paints on the
