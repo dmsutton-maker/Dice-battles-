@@ -334,6 +334,13 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **5 Nov 2026 (v1.168.0, update 7436920f):** the share card is drawn by three
+  (render target + planes, pictures via `{ data: { localUri } }` like fiber's
+  native TextureLoader), after the raw-GL card came out blank on Marc's
+  iPhone. Same card in a browser; NOT yet seen on a phone. If it is still
+  blank there, the next suspect is expo-gl's file decode (`loadImage`), not
+  the drawing. Ads: tester mode (the admin code) counts as ads removed, so a
+  tester never sees one; real ads also need the app live and approved in AdMob.
 - **5 Nov 2026 (v1.167.0, update 88bfca8b):** fixed the battle after a win
   drawing with no floor, walls, gatehouse, water or dice (Marc's screenshot).
   three's `resetState()` threw on a phone, because expo-gl's context has no
