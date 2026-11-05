@@ -3996,9 +3996,14 @@ export function DiceDemoScreen() {
               {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×
               {wins.medium}   Hard ×{wins.hard}
             </Text>
-            {/* Copyright notice (David, 2 Nov 2026: "add copyrights"). */}
+            {/*
+              Copyright notice (David, 2 Nov 2026: "add copyrights"). The
+              company is Paper Ship Studio LLC since 5 Nov 2026 (Marc:
+              "we're now Paper Ship Studio LLC").
+            */}
             <Text style={styles.copyrightLine}>
-              © {new Date().getFullYear()} Paper Ship Studio™. All rights reserved.
+              © {new Date().getFullYear()} Paper Ship Studio LLC. All rights reserved.{'\n'}
+              Paper Ship Studio™ and Dice Battles: Color Rush™ are trademarks of Paper Ship Studio LLC.
             </Text>
             {/*
               WHERE THE ADS GOT TO — testers only.

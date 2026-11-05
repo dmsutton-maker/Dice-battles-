@@ -494,9 +494,9 @@ one is added; it does not need a new build.
   Note for whoever builds next: the first attempt failed with
   `Connection reset` while EAS downloaded Gradle itself. That is Expo's
   network, not this repo — retry rather than change anything.
-- **No legal entity** — Paper Ship Studio is a trading name, not a
-  company. Legal pages name David Sutton personally, which is correct
-  until that changes.
+- **Paper Ship Studio LLC** since 5 Nov 2026 (Marc). The game's
+  copyright line, the site footer and the legal pages name the LLC; the
+  Apple developer account is still Individual until David converts it.
 
 ## Conventions worth not rediscovering
 
