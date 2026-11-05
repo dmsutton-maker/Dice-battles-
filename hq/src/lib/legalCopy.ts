@@ -33,7 +33,7 @@ export const PRIVACY: LegalCopy = {
   sections: [
     {
       heading: 'The short version',
-      body: 'There are no accounts to sign up for, no analytics, and nothing that tracks you around the internet. Most of the game never talks to us at all: your progress, coins, purchases and unlocked items live on your device. A few things do send us something: adding a friend, battling a friend, playing online against other players once you reach 100 trophies, turning on update notifications, sending a bug report, and writing to us through the contact form. Each is explained below.',
+      body: 'There are no accounts to sign up for, no analytics, and nothing that tracks you around the internet. Most of the game never talks to us at all: your progress, coins, purchases and unlocked items live on your device, with a backup copy in your own iCloud. A few things do send us something: adding a friend, battling a friend, playing online against other players once you reach 100 trophies, turning on update notifications, sending a bug report, and writing to us through the contact form. Each is explained below.',
     },
     {
       heading: 'Friends',
@@ -46,6 +46,10 @@ export const PRIVACY: LegalCopy = {
     {
       heading: 'Online battles',
       body: 'Once you have 100 trophies, a Color Rush or Ultimate battle looks for a real player for up to 15 seconds, and plays the computer instead if it finds nobody. Below 100 trophies, in the other game modes, and in Practice (in Settings) you always play the computer. To look for someone, the game stores the same profile described under Friends. While it looks, our server also keeps your player id, the game mode and difficulty, your trophy count (so you are paired with someone near your level), when you started looking and last checked in, and who you were paired with. That search record is deleted once you have stopped searching for ten minutes, the next time anyone searches. Once you are paired, the battle works exactly like a friend battle, described above. The other player sees only your Game Center name (or just “Player”) and how your game is going: never your friend code, your player id or anything else from your profile. Players who have blocked each other are never paired, and there is no chat of any kind.',
+    },
+    {
+      heading: 'Your saved game in iCloud',
+      body: 'So that deleting the game or getting a new iPhone does not lose your progress, the game keeps a copy of it in your own iCloud account, using Apple\'s iCloud storage for apps: your trophies, wins, coins, unlocked items, season pass and cup progress, your chosen die and battlefield, your settings, and your Friends profile (described above). It is stored by Apple under your Apple ID, not by us, and we cannot see it. Real-money purchases are not part of it; Restore Purchases gets those back from Apple. If several phones share one Apple ID, each keeps its own copy, and a new install asks before using one.',
     },
     {
       heading: 'Purchases',

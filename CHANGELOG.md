@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.162.0 — 2026-11-05 · requested by David
+
+David, 5 Nov 2026, after a TestFlight coin purchase spent on dice was gone
+when he deleted and reinstalled the game: "I want players to be able to
+save their progress no matter what". He chose the player's own iCloud
+over Game Center saved games and over our servers, and wanted it BEFORE
+launch. **Needs build 19**: the iCloud module is native code. Runtime
+stays 4.0.0, because the JavaScript looks the module up with
+`requireOptionalNativeModule`, which returns null on build 18 instead of
+throwing: there the feature is simply absent and the Settings row hidden.
+
+### Added
+- **iCloud saves** (`src/game/cloudSave.ts`, rules in `cloudSaveCore.ts`,
+  native module `modules/icloud-store`, Apple's
+  `NSUbiquitousKeyValueStore`). After every finished game that counts,
+  and whenever the app goes to the background, the game copies its own
+  stores to the player's iCloud: progress (trophies, wins, unlocks, cups,
+  season pass, quests), coins and everything bought with coins, the
+  chosen die and battlefield, settings, the starter-pack clock and the
+  Friends profile. Real-money purchases are deliberately NOT copied:
+  Apple's Restore Purchases is the truth for those, and a copy could
+  outlive a refund. Nothing goes to our servers, so the App Privacy
+  answers ("data not collected") stay true.
+- **"Welcome back!"** on a new install that finds a save in iCloud, with
+  the name, trophies and coins, "Restore my game" or "Start a new game".
+  It looks at launch and again over the next minute, since iCloud can be
+  slow to deliver to a phone that has just installed the game. Restoring
+  writes the stores back and restarts the game on them
+  (`reloadAppAsync`).
+- **One save per phone.** Families often share one Apple ID across
+  several children's devices; each install writes its own slot, a new
+  install never writes over an old one, and the player picks theirs.
+  Up to six phones' saves are kept per Apple ID (`MAX_SLOTS`).
+- **"iCloud save" in Settings**: when it last saved, a nudge to sign in
+  to iCloud if the phone is not, and a way to bring a save from another
+  phone onto this one (which says it replaces this phone's progress).
+- Tests: `tests/cloudSave.test.ts`, including that the module is only
+  ever looked up optionally and that no purchase store is ever copied.
+
 ## v1.161.0 — 2026-11-05 · requested by Marc
 
 Marc's four requests of 5 Nov 2026, merged from feature/shelf-preview-loading,

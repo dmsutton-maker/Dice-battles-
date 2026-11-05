@@ -267,6 +267,30 @@ Settled with David on 1 Nov 2026.
   one chosen, paid through the pass's `addXp`. `QUEST_XP` is in
   seasonPass.ts; retuning it is an OTA release.
 
+## iCloud saves
+
+David, 5 Nov 2026: "I want players to be able to save their progress no
+matter what". Built in v1.162.0, in the player's own iCloud
+(`NSUbiquitousKeyValueStore`), chosen over Game Center saved games and
+over our servers.
+
+- **Real-money purchases are never copied.** `BACKED_UP_KEYS` in
+  `src/game/cloudSaveCore.ts` lists what is; entitlements, Gold Pass
+  months and handled transactions must never join it (Restore Purchases
+  is the truth, and a copy could outlive a refund). The test fails if
+  they do.
+- **A new store the player would miss goes on `BACKED_UP_KEYS`.** A key
+  left off is lost on delete and reinstall, exactly as before.
+- **The native module (`modules/icloud-store`) is only ever looked up
+  with `requireOptionalNativeModule`, in `src/game/cloudSaveSdk.ts`.**
+  That returns null on build 18 instead of throwing, which is why the
+  runtime did not have to be raised. `requireNativeModule` there would
+  red-screen every build without it.
+- **One save per phone.** Families share Apple IDs; a new install never
+  writes over an old slot, and "Welcome back" lets the player pick.
+- Nothing goes to our servers, so App Privacy's "data not collected"
+  stays true. Turning this into a server copy would change that.
+
 ## Push notifications — built, and OFF until somebody can build
 
 David asked for them on 25 Sep 2026: "make push notifications for when
