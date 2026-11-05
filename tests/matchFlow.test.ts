@@ -9,6 +9,7 @@ import {
 } from '../src/game/matchSearch';
 import {
   joinWaitOver,
+  showsSearch,
   startFlow,
   stepFlow,
   type MatchFlowEffect,
@@ -52,8 +53,10 @@ function run(
 const asking = (): MatchFlowState => startFlow(500, 'classic', true);
 
 suite('match flow · the states', () => {
-  test('a search starts by asking, and is shown once the server says it is looking', () => {
+  test('a search starts by asking, and is on screen from the first frame', () => {
     assertEqual(asking().kind, 'asking', 'a Color Rush start does not ask');
+    // Marc, 5 Nov 2026: never the computer rivals before the real search.
+    assert(showsSearch(asking()), 'the first frame of a search shows a rival instead of the search');
     const { state } = run(asking(), [{ type: 'answer', pairing: null }]);
     assertEqual(state.kind, 'searching', '"still looking" did not start the search');
   });
@@ -315,5 +318,14 @@ suite('match flow · two phones through a stubbed fetch', () => {
       await cancelSearch(phone('p-a'));
       assertEqual(server.left.join(), 'p-a:battle-1', 'B is left waiting for somebody who cancelled');
     });
+  });
+});
+
+suite('match flow · no computer rival before the real search', () => {
+  test('the overlay draws the search, not a rival, while the first ask is out', () => {
+    const overlay = readFileSync(join(__dirname, '..', 'src', 'demo', 'MatchmakingOverlay.tsx'), 'utf8');
+    assert(/const searching = showsSearch\(flow\)/.test(overlay), 'the overlay no longer asks showsSearch');
+    const flow = readFileSync(join(__dirname, '..', 'src', 'game', 'matchFlow.ts'), 'utf8');
+    assert(/return state\.kind === 'asking' \|\| state\.kind === 'searching'/.test(flow), 'asking is not shown as a search');
   });
 });

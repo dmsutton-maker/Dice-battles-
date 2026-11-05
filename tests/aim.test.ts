@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { assert, assertEqual, suite, test } from './harness';
-import { TouchSample, flickFromGesture, velocityFromSamples } from '../src/game/aim';
+import { TouchSample, flickFromGesture, isGraze, velocityFromSamples } from '../src/game/aim';
 import { TUNING } from '../src/game/tuning';
 
 /** PanResponder's shape, with only the fields the aim code reads. */
@@ -121,5 +123,92 @@ suite('aim · release velocity', () => {
         Math.abs(wild!.z) <= TUNING.throw.flickMaxSpeed,
       `throw exceeded the limit: ${JSON.stringify(wild)}`,
     );
+  });
+});
+
+/*
+  A GRAZE IS NOT A THROW. Marc, 5 Nov 2026: "If someone swipes twice too
+  fast and doesn't even really touch it the second time it automatically
+  rolls the second time but it shouldn't." Two things made that happen:
+  the scene queued a touch that arrived mid-roll and threw it by itself
+  when the dice landed, and the screen threw for any release at all,
+  however short and still. Both are pinned here.
+*/
+suite('aim · a graze is not a throw', () => {
+  /** A finger down at (100, 400) for `ms`, wandering at most `px`. */
+  const touch = (ms: number, px: number): TouchSample[] => [
+    { x: 100, y: 400, t: 0 },
+    { x: 100 + px, y: 400, t: ms / 2 },
+    { x: 100 + px / 2, y: 400, t: ms },
+  ];
+
+  test('the bars are in tuning.ts, with a reason', () => {
+    assertEqual(TUNING.throw.minTouchMs, 60, 'minTouchMs');
+    assertEqual(TUNING.throw.minTouchPx, 6, 'minTouchPx');
+    const tuning = readFileSync(join(__dirname, '..', 'src/game/tuning.ts'), 'utf8');
+    const before = tuning.slice(0, tuning.indexOf('minTouchMs: 60'));
+    assert(/5 Nov 2026/.test(before.slice(-1600)), 'the graze bars carry no reason');
+  });
+
+  test('a brush of the screen — short and still — is a graze', () => {
+    assert(isGraze(touch(30, 2), 30), 'thirty milliseconds and two points was thrown');
+    assert(isGraze(touch(59, 5), 59), 'just under both bars was thrown');
+    assert(isGraze([], 10), 'a touch with no samples was thrown');
+  });
+
+  test('a quick flick travels, so it is thrown', () => {
+    assert(!isGraze(touch(40, 30), 40), 'a 40 ms flick of 30 points was dropped');
+    // The travel is the furthest any sample got, not where the finger ended.
+    const outAndBack: TouchSample[] = [
+      { x: 0, y: 0, t: 0 },
+      { x: 0, y: -40, t: 20 },
+      { x: 0, y: -2, t: 40 },
+    ];
+    assert(!isGraze(outAndBack, 40), 'a flick that came back to where it started was dropped');
+  });
+
+  test('a deliberate press stays put but lasts, so it is thrown', () => {
+    assert(!isGraze(touch(120, 0), 120), 'a still 120 ms tap was dropped');
+    assert(!isGraze(touch(60, 0), 60), 'a tap exactly at the bar was dropped');
+  });
+
+  test('the scene never throws for a touch that arrived mid-roll', () => {
+    const scene = readFileSync(join(__dirname, '..', 'src/demo/DiceScene.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+    assert(!/queuedThrow/.test(scene), 'the queued throw is back');
+    assert(!/launchRef/.test(scene), 'a launch is kept to fire after the settle');
+    assert(!/setTimeout\([\s\S]{0,200}launch/.test(scene), 'something launches on a timer');
+    assert(
+      /if \(awaitingSettle\.current\) return 'ignored';/.test(scene),
+      'a touch during a roll is not simply ignored',
+    );
+    const settle = scene.slice(scene.indexOf('onSettled(readFaces(diceBodies))'));
+    assert(!/launch\(/.test(settle.slice(0, settle.indexOf('});'))), 'the settle launches a throw');
+  });
+
+  test('the screen drops a graze, except as the first tap of a round on an idle board', () => {
+    const screen = readFileSync(join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'), 'utf8');
+    const release = screen.slice(
+      screen.indexOf('onPanResponderRelease: (event, gesture) => {'),
+      screen.indexOf('onStartShouldSetPanResponder: () => previewRef.current === null') > 0
+        ? screen.indexOf(').current;', screen.indexOf('onPanResponderRelease'))
+        : screen.length,
+    );
+    assert(
+      /const deliberateTap = !rollingRef\.current && throwsThisRoundRef\.current === 0;/.test(release),
+      'the first tap of a round on an idle board is not spared',
+    );
+    assert(
+      /if \(!deliberateTap && isGraze\(samples\.current, event\.nativeEvent\.timestamp - touchedAt\.current\)\) \{\s*samples\.current = \[\];\s*return;/.test(
+        release,
+      ),
+      'a graze is still thrown',
+    );
+    assert(/touchedAt\.current = event\.nativeEvent\.timestamp;/.test(screen), 'the touch has no start time');
+    assert(/throwsThisRoundRef\.current \+= 1;/.test(screen), 'throws are not counted per round');
+    assert(/throwsThisRoundRef\.current = 0;/.test(screen), 'the count never starts again');
+    // And a real tap still rolls: the slow-gesture path is unchanged.
+    assert(/flickFromGesture\(gesture, \{ velocity \}\) \?\? undefined/.test(release), 'a tap no longer rolls');
   });
 });

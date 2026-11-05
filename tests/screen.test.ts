@@ -930,7 +930,9 @@ suite('screen · the board belongs to the battle screen', () => {
       'the top button does not open Settings',
     );
     assert(
-      /onNews=\{\(\) => setPopup\('news'\)\}/.test(source),
+      // Opening it also counts the running version's big update as seen
+      // (whatsNew.ts).
+      /onNews=\{\(\) => \{\s*newsSeen\(\);\s*setPopup\('news'\);\s*\}\}/.test(source),
       'the top button does not open News',
     );
     for (const gone of ["'settings'", "'news'"]) {

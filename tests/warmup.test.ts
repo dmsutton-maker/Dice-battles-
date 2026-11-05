@@ -3,9 +3,11 @@ import { join } from 'node:path';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { DICE_SKINS } from '../src/game/diceSkins';
 import { clearShelfPicturesForTests, shellPreviewUri } from '../src/dice/preview';
+import { pausedForPopup } from '../src/dice/slicedPaint';
 import { SQUARE_STEP_TEXELS } from '../src/dice/patterns';
 import {
   resetWarmForTest,
+  shelfPicturesReady,
   skinsNeedingPreview,
   warmDicePreviews,
 } from '../src/dice/warmPreviews';
@@ -321,5 +323,88 @@ suite('speed · the battlefields are painted before they are opened', () => {
       themedGroundTexture(id, ARENA_THEMES[id]);
     }
     assertEqual(cachedTextureCount(), warmed, 'a board painted a picture the warm-up missed');
+  });
+});
+
+/*
+  Marc, 5 Nov 2026: "When you load the game for the first time in the
+  how to play pop up, when you click next some of the things are very
+  slow to load." The tutorial opened over a home screen painting the
+  shelf and the die faces in the background, and every tap on Next
+  waited behind a slice. While any popup is open the painting pauses
+  (slicedPaint.ts, pausedForPopup) and resumes when it closes.
+*/
+suite('speed · the background painting pauses behind a popup', () => {
+  test('the scheduler yields nothing while a popup is open, and picks up when it closes', () => {
+    resetWarmForTest();
+    clearShelfPicturesForTests();
+    const queue: (() => void)[] = [];
+    let popupOpen = true;
+    const mayRun = () => !pausedForPopup({ launched: true, popupOpen });
+    let slices = 0;
+    const schedule = (run: () => void) => queue.push(run);
+    const t0 = performance.now();
+    warmDicePreviews(schedule, mayRun, undefined, () => 6);
+    while (queue.length) {
+      queue.shift()!();
+      slices++;
+    }
+    const held = performance.now() - t0;
+    assertEqual(slices, 1, 'it kept painting behind the popup');
+    assert(held < 5, `the one slice behind the popup painted for ${held.toFixed(1)} ms`);
+    const painted = DICE_SKINS.filter((s) => s.pattern !== 'plain' && shelfPicturesReady([s.id])).length;
+    assertEqual(painted, 0, 'pictures were painted behind the popup');
+
+    popupOpen = false;
+    warmDicePreviews(schedule, mayRun, undefined, () => 6);
+    assert(queue.length > 0, 'it never restarted after the popup closed');
+    let resumed = 0;
+    while (queue.length && resumed < 40) {
+      queue.shift()!();
+      resumed++;
+    }
+    assert(
+      DICE_SKINS.some((s) => s.pattern !== 'plain' && shelfPicturesReady([s.id])),
+      'nothing was painted once the popup closed',
+    );
+    note(`behind a popup: ${slices} slice, ${held.toFixed(2)} ms, 0 pictures; after it: painting resumed`);
+  });
+
+  test('under the title card nothing pauses: the card is waiting for these pictures', () => {
+    assert(!pausedForPopup({ launched: false, popupOpen: true }), 'the first-launch tutorial held the loading screen');
+    assert(pausedForPopup({ launched: true, popupOpen: true }), 'a popup on the home screen does not pause');
+    assert(!pausedForPopup({ launched: true, popupOpen: false }), 'paused with nothing open');
+  });
+
+  test('every background painter on the screen reads the popup', () => {
+    const screen = code(src('src/demo/DiceDemoScreen.tsx'));
+    assert(/popupRef\.current = popup;/.test(screen), 'the popup is not mirrored for the painters');
+    // The shelf: both the launch warm and the restart share shelfMayContinue.
+    assert(
+      /function shelfMayContinue\(\): boolean \{\s*return \(\s*activeRef\.current &&\s*!pausedForPopup\(\{ launched: launchSettled\(\), popupOpen: popupRef\.current !== null \}\)/.test(screen),
+      'the shelf does not pause for a popup',
+    );
+    assert(/shelfMayContinue,\s*onShelfDone: shelfDone,/.test(screen), 'the launch warm uses a different rule');
+    assert(/warmDicePreviews\(\(run\) => setTimeout\(run, 0\), shelfMayContinue, shelfDone, shelfBudget\)/.test(screen), 'the restart uses a different rule');
+    assert(/\|\| popup !== null\) return;\s*warmDicePreviews/.test(screen), 'the shelf restarts while a popup is open');
+    assert(/\}, \[hydrated, appActive, boardMayMount, popup\]\)/.test(screen), 'closing a popup does not restart the shelf');
+    // The die faces and the battlefields share shouldWarmFaces.
+    assert(
+      /const shouldWarmFaces = \(\) =>[\s\S]{0,400}!pausedForPopup\(\{ launched: launchedRef\.current, popupOpen: popupRef\.current !== null \}\);/.test(screen),
+      'the die faces do not pause for a popup',
+    );
+    assert(/warmAllArenaTextures\(\(run\) => setTimeout\(run, 0\), shouldWarmFaces\)/.test(screen), 'the battlefields use a different rule');
+    assert(/\|\| popup !== null\) return;\s*warmArenas\(\);/.test(screen), 'the faces restart while a popup is open');
+    assert(/\}, \[appActive, phase, preview, popup\]\);/.test(screen), 'closing a popup does not restart the faces');
+  });
+
+  test('the tutorial pages paint nothing of their own', () => {
+    const demo = src('src/demo/ThrowDemo.tsx');
+    assert(/useNativeDriver: true/.test(demo) && !/useNativeDriver: false/.test(demo), 'the demo animates on the JS thread');
+    assert(/require\('\.\.\/\.\.\/assets\/tutorial\/finger\.png'\)/.test(demo), 'the finger is not a bundled asset');
+    const tutorial = code(src('src/demo/TutorialScreen.tsx'));
+    for (const heavy of ['Canvas', 'shellPreviewUri', 'createDieFaceTextures', 'cachedTexture', 'warm']) {
+      assert(!tutorial.includes(heavy), `the tutorial mounts ${heavy}`);
+    }
   });
 });

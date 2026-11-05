@@ -58,6 +58,14 @@ export interface BattleHandle {
   opponentId?: string;
   /** Their name, so the scoreboard is not two player ids. */
   opponentName?: string;
+  /**
+   * A friend's battle, or a match that counts (stakes.ts). The rematch
+   * of a match is handed out by the same poll as a friend battle, and
+   * this is how the game knows to play it as a match. Missing from an
+   * older server, and then it is a friend battle, as every battle that
+   * poll handed out used to be.
+   */
+  kind?: 'friend' | 'match';
 }
 
 export interface ChallengeState {
@@ -79,14 +87,30 @@ const EMPTY: ChallengeState = { incoming: [], outgoing: null, battle: null };
  * when they run out, and whether a battle is waiting.
  */
 export function sameChallenges(a: ChallengeState, b: ChallengeState): boolean {
-  const one = (c: Challenge) =>
-    [c.id, c.mode, c.difficulty, c.expiresAt, c.who?.playerId ?? null, c.who?.name ?? null, c.who?.trophies ?? null];
+  const one = (c: Challenge) => [
+    c.id,
+    c.mode,
+    c.difficulty,
+    c.expiresAt,
+    c.who?.playerId ?? null,
+    c.who?.name ?? null,
+    c.who?.trophies ?? null,
+    c.who?.online ?? null,
+    c.rematchOf ?? null,
+  ];
   const key = (s: ChallengeState) =>
     JSON.stringify([
       s.incoming.map(one),
       s.outgoing ? one(s.outgoing) : null,
       s.battle
-        ? [s.battle.id, s.battle.mode, s.battle.difficulty, s.battle.opponentId ?? null, s.battle.opponentName ?? null]
+        ? [
+            s.battle.id,
+            s.battle.mode,
+            s.battle.difficulty,
+            s.battle.opponentId ?? null,
+            s.battle.opponentName ?? null,
+            s.battle.kind ?? null,
+          ]
         : null,
     ]);
   return key(a) === key(b);
@@ -99,6 +123,7 @@ type RawChallenge = {
   expiresAt: number;
   from?: Challenge['who'];
   to?: Challenge['who'];
+  rematchOf?: string | null;
 };
 
 /**
@@ -127,6 +152,7 @@ export async function fetchChallenges(me: Identity): Promise<ChallengeState> {
     difficulty: raw.difficulty,
     expiresAt: raw.expiresAt,
     who: raw.from ?? raw.to ?? null,
+    rematchOf: typeof raw.rematchOf === 'string' ? raw.rematchOf : null,
   });
   return {
     incoming: (result.data.incoming ?? []).map(shape),
@@ -171,6 +197,47 @@ export async function answerChallenge(
     }),
   });
   return result.ok ? { ok: true, battle: result.data.battle ?? null } : result;
+}
+
+/**
+ * "Play again" after a live battle (rematch.ts). Marc, 5 Nov 2026: "it
+ * should have to wait for the other player too".
+ *
+ * Two good answers. `invite` is the ask sent and waiting: the other
+ * player has it, and the battle, if they say yes, arrives on the
+ * ordinary challenge poll like a challenger's does. `battle` is the
+ * other player having asked FIRST — the server turned this ask into an
+ * accept of theirs — and there is a room to walk into now. The error is
+ * shown to the player as it is, the way a challenge's is.
+ */
+export async function askRematch(
+  me: Identity,
+  battleId: string,
+): Promise<
+  | { ok: true; battle: BattleHandle; invite: null }
+  | { ok: true; battle: null; invite: { id: string; expiresAt: number } }
+  | { ok: false; error: string }
+> {
+  const result = await call<{ battle?: BattleHandle; id?: string; expiresAt?: number }>('/battles', {
+    method: 'POST',
+    body: JSON.stringify({
+      playerId: me.playerId,
+      secret: me.secret,
+      action: 'rematch',
+      battleId,
+    }),
+  });
+  if (!result.ok) return result;
+  if (result.data.battle) return { ok: true, battle: result.data.battle, invite: null };
+  if (typeof result.data.id === 'string') {
+    return {
+      ok: true,
+      battle: null,
+      invite: { id: result.data.id, expiresAt: Number(result.data.expiresAt) || 0 },
+    };
+  }
+  // A site from before the rematch answers something else; nobody waits for it.
+  return { ok: false, error: 'that did not work' };
 }
 
 export interface BattlePulse {
@@ -248,15 +315,21 @@ export async function pulseBattle(
  * Marc, 4 Nov 2026: "add the online matchmaking where you now verse real
  * players instead of bots".
  *
- * Every answer is one of these, and nothing else: a failure of any kind
- * — no connection, a timeout, a site from before /api/match that answers
- * a page instead of JSON, a server error — is `off`, which the game reads
- * as "play a rival now", exactly what it did before matchmaking existed.
- * `no-profile` is the server not knowing this phone yet (401); the caller
- * publishes the profile and asks again.
+ * Every answer is one of these, and nothing else. `off` is ONLY the
+ * server saying so (`{ state: 'off' }`, the migration not applied), and
+ * the game reads it as "play a rival now". A failure of any other kind —
+ * no connection, a timeout, a site that answers a page instead of JSON,
+ * a server error, a state this build does not know — is `failed`: the
+ * question went unanswered, so the game keeps asking until its deadline
+ * (onlineMatch.ts). Marc, 5 Nov 2026: with the admin code on, a start
+ * went straight to a bot with no search. Every one of those failures used
+ * to be read as `off`, and one of them switched the search off for the
+ * rest of the session. `no-profile` is the server not knowing this phone
+ * yet (401); the caller publishes the profile and asks again.
  */
 export type MatchAnswer =
   | { kind: 'off' }
+  | { kind: 'failed' }
   | { kind: 'no-profile' }
   | { kind: 'searching' }
   | { kind: 'left' }
@@ -276,8 +349,9 @@ type RawMatch = {
 function readMatch(
   result: { ok: true; data: RawMatch } | { ok: false; error: string; status?: number },
 ): MatchAnswer {
-  if (!result.ok) return result.status === 401 ? { kind: 'no-profile' } : { kind: 'off' };
+  if (!result.ok) return result.status === 401 ? { kind: 'no-profile' } : { kind: 'failed' };
   const { state, battle } = result.data ?? {};
+  if (state === 'off') return { kind: 'off' };
   if (state === 'searching') return { kind: 'searching' };
   if (state === 'left') return { kind: 'left' };
   if (state === 'matched' && battle && typeof battle.id === 'string' && battle.mode && battle.difficulty) {
@@ -293,8 +367,9 @@ function readMatch(
       opponentName: battle.opponentName ?? '',
     };
   }
-  // `off`, and anything this build does not understand.
-  return { kind: 'off' };
+  // A `matched` with no usable battle, or a state this build does not
+  // know: no answer, which is not the same as `off`.
+  return { kind: 'failed' };
 }
 
 /** Join the queue, or ask again whether it has found somebody. */

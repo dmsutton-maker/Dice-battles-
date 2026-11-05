@@ -70,6 +70,7 @@ async function main(): Promise<void> {
   await import('./coinLabelLayout.test');
   await import('./achievements.test');
   await import('./news.test');
+  await import('./whatsNew.test');
   await import('./crashGuard.test');
   await import('./submission.test');
   await import('./purchases.test');
@@ -77,6 +78,7 @@ async function main(): Promise<void> {
   await import('./website.test');
   await import('./power.test');
   await import('./reinstall.test');
+  await import('./cloudSave.test');
   await import('./foldable.test');
   await import('./matchSearch.test');
   await import('./matchFlow.test');
@@ -97,7 +99,6 @@ async function main(): Promise<void> {
   await import('./seasonRotation.test');
   await import('./productPreview.test');
   await import('./shopName.test');
-  await import('./cloudSave.test');
   process.exit(await runAll());
 }
 

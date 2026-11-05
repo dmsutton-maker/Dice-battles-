@@ -238,7 +238,17 @@ export interface Challenge {
   mode: ModeId;
   difficulty: AiDifficultyId;
   expiresAt: number;
-  who: { playerId: string; name: string; trophies: number } | null;
+  /**
+   * `online` is whether their phone spoke to the server lately, as the
+   * Friends list has it (presenceOf): missing from a server that
+   * predates it, which is "unknown", never "off".
+   */
+  who: { playerId: string; name: string; trophies: number; online?: boolean } | null;
+  /**
+   * The finished battle this invite asks to play again (rematch.ts), or
+   * null for an ordinary challenge. Missing from an older server.
+   */
+  rematchOf?: string | null;
 }
 
 /**

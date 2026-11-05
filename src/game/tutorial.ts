@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { noteSaveChanged } from './saveChanges';
 
 /**
  * How to play, as data.
@@ -146,6 +147,7 @@ export async function loadTutorialSeen(): Promise<boolean> {
 export function markTutorialSeen(): void {
   seen = true;
   AsyncStorage.setItem(STORAGE_KEY, 'true').catch(() => {});
+  noteSaveChanged();
 }
 
 /** Test-only reset so suites do not leak state between cases. */

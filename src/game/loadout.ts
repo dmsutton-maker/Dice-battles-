@@ -26,6 +26,7 @@ import {
   UnlockId,
 } from './progress';
 import { passOrder } from './seasonPass';
+import { noteSaveChanged } from './saveChanges';
 
 /**
  * What the player has EQUIPPED, as opposed to what they have earned
@@ -259,26 +260,40 @@ export function getLoadout(): Loadout {
   return current;
 }
 
+/** A saved loadout as a valid one: anything unknown falls back. */
+function readLoadout(parsed: Record<string, unknown>): Loadout {
+  const arenaId = parsed.arenaId;
+  const skinId = parsed.skinId;
+  return {
+    arenaId: typeof arenaId === 'string' && arenaId in ARENAS ? (arenaId as ArenaId) : DEFAULT_LOADOUT.arenaId,
+    skinId: DICE_SKINS.some((s) => s.id === skinId) ? (skinId as string) : DEFAULT_LOADOUT.skinId,
+  };
+}
+
 export async function loadLoadout(): Promise<Loadout> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      current = {
-        arenaId: parsed.arenaId in ARENAS ? parsed.arenaId : DEFAULT_LOADOUT.arenaId,
-        skinId: DICE_SKINS.some((s) => s.id === parsed.skinId)
-          ? parsed.skinId
-          : DEFAULT_LOADOUT.skinId,
-      };
-    }
+    if (raw) current = readLoadout(JSON.parse(raw));
   } catch {
     // Defaults are fine if storage is unavailable.
   }
   return current;
 }
 
+/**
+ * Put a saved loadout back — the server's backup after a reinstall
+ * (cloudSave.ts), read exactly as a saved one is. Junk changes nothing.
+ */
+export function restoreLoadout(saved: unknown): boolean {
+  if (!saved || typeof saved !== 'object') return false;
+  current = readLoadout(saved as Record<string, unknown>);
+  persist();
+  return true;
+}
+
 function persist(): void {
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  noteSaveChanged();
 }
 
 export function equipArena(arenaId: ArenaId): Loadout {

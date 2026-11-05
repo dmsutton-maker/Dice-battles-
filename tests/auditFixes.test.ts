@@ -159,7 +159,7 @@ suite('audit fixes · die faces are painted only on the menu', () => {
       /warmAllDieFaces\(\s*\(run\) => setTimeout\(run, 0\),\s*shouldWarmFaces,?\s*(warmArenas,?\s*)?(undefined, shelfBudget,?\s*)?\)/.test(screen),
       'warmAllDieFaces is not given the menu-only rule',
     );
-    const resume = between('if (!facesWarmableRef.current) return;', '}, [appActive, phase, preview]');
+    const resume = between('if (!facesWarmableRef.current) return;', '}, [appActive, phase, preview, popup]');
     assert(/phase !== 'pick'/.test(resume), 'the warm-up is restarted outside the menu');
     assert(/warmAllDieFaces\(/.test(resume), 'nothing restarts the warm-up on the way back to the menu');
   });
@@ -169,7 +169,7 @@ suite('audit fixes · die faces are painted only on the menu', () => {
       /const warmArenas = \(\) => warmAllArenaTextures\(\(run\) => setTimeout\(run, 0\), shouldWarmFaces\)/.test(screen),
       'the battlefield warm-up is not given the menu-only rule',
     );
-    const resume = between('if (!facesWarmableRef.current) return;', '}, [appActive, phase, preview]');
+    const resume = between('if (!facesWarmableRef.current) return;', '}, [appActive, phase, preview, popup]');
     assert(/warmArenas/.test(resume), 'coming back to the menu does not resume the battlefields');
   });
 });

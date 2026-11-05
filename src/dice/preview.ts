@@ -1,5 +1,5 @@
 import { DiceSkin } from '../game/diceSkins';
-import { CARD_SAMPLERS, neonTubesAt, PatternId, sheetToCube, shellSampler, SMOOTH_EDGES, squareJob } from './patterns';
+import { cardSquare, neonTubesAt, PatternId, sheetToCube, shellSampler, SMOOTH_EDGES, squareJob } from './patterns';
 
 /**
  * A picture of a dice skin for the Store and the Inventory.
@@ -197,12 +197,10 @@ export function shelfPictureJob(skin: DiceSkin): { step(): boolean } | null {
     // A colour painter ignores this; a mask painter cannot do without it.
     skin.ink ?? skin.body,
   );
-  // The card's own composition, where a crop of the die would mislead.
-  const card = CARD_SAMPLERS[skin.pattern as PatternId];
-  const square = squareJob(
-    card ? card(shell) : shell,
-    SMOOTH_EDGES.has(skin.pattern),
-  );
+  // The card's own composition where a crop of the die would mislead, or
+  // the die's front side, sharper for some (patterns.ts CARD_SCALE).
+  const { texel, size } = cardSquare(skin.pattern as PatternId, shell, skin.effect !== undefined);
+  const square = squareJob(texel, SMOOTH_EDGES.has(skin.pattern), size);
   // The square, then the effect painted over it, then the PNG: three
   // steps, since the effect alone is 10-20ms on a desktop.
   let rgb: number[] | null = null;
@@ -220,7 +218,7 @@ export function shelfPictureJob(skin: DiceSkin): { step(): boolean } | null {
         if (skin.effect === 'moon') paintMoon(rgb);
         if (skin.effect === 'neon') paintNeon(rgb);
       }
-      cache.set(skin.id, encodePng(rgb, SIZE, SIZE));
+      cache.set(skin.id, encodePng(rgb, size, size));
       for (const listener of listeners) {
         try {
           listener(skin.id);

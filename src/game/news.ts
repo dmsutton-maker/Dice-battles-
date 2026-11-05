@@ -86,15 +86,86 @@ export interface NewsItem {
   body: string;
   /** Set when the post is about a released version. */
   version?: string;
+  /**
+   * A BIG update: the post opens by itself, once, the first time the game
+   * starts after that version arrives (src/game/whatsNew.ts). Everything
+   * else waits in the News tab for whoever looks.
+   *
+   * Mark a post major when it is a new way to play, or a change every
+   * player will notice the moment they open the game: online battles, a
+   * new mode, the Shop no longer opening on blank squares. Not for one
+   * redrawn die, one new item or a quiet fix, however welcome; a popup
+   * on every update is a popup nobody reads. At most one major post per version, and it is
+   * the first post for that version (`npm test` checks both).
+   *
+   * Read it through newsIsMajor, never directly: a post from the board
+   * can carry anything in this field.
+   */
+  major?: true;
+}
+
+/**
+ * Whether a post is a big update, whatever the post actually contains.
+ *
+ * The same tolerance as newsIconId: a post from the board is written in a
+ * browser, so a missing field, "yes", 1 or anything else odd is simply
+ * not major rather than a reason to drop the post.
+ */
+export function newsIsMajor(item: unknown): boolean {
+  return typeof item === 'object' && item !== null && (item as Record<string, unknown>).major === true;
 }
 
 export const NEWS: NewsItem[] = [
+  {
+    id: 'v1-163-0-search-first',
+    date: '5 November 2026',
+    version: 'v1.163.0',
+    title: 'Straight to the search',
+    icon: 'people',
+    body:
+      'Starting a battle from 100 trophies now goes straight to "Searching ' +
+      'for an opponent". It used to flash through the computer rivals ' +
+      'first while the game asked the server, which looked like you were ' +
+      'being matched with the computer. A rival only appears if nobody is ' +
+      'free after 15 seconds.',
+  },
+  {
+    id: 'v1-162-0-keeps-everything',
+    date: '5 November 2026',
+    version: 'v1.162.0',
+    title: 'Your progress survives a reinstall',
+    icon: 'fix',
+    major: true,
+    body:
+      'Deleting the game and installing it again no longer starts you ' +
+      'over. Your trophies, record, coins, the dice and battlefields you ' +
+      'have earned, your season pass progress and your settings are kept ' +
+      'safe under your own player id and come back on their own the first ' +
+      'time you open the game after a reinstall, with a "Welcome back" ' +
+      'card. Your friend code and friends list come back too; a bug meant ' +
+      'they were never really being kept before. Open this version once ' +
+      'so it can start keeping them. Anything bought with real money is ' +
+      'restored by Apple as before: Restore purchases in Settings.\n\n' +
+      'After a battle with a friend or an online opponent, "Play again" ' +
+      'now really asks them: you wait while they see the invitation, and ' +
+      'the rematch starts when they accept. Nobody is quietly handed a ' +
+      'computer opponent wearing a friend\'s name.\n\n' +
+      'Also: tap a post here to read all of it; a big update like this one ' +
+      'pops up once when you open the game; online battles keep searching ' +
+      'for a real opponent after a dropped connection instead of giving up ' +
+      'for the session; a second light brush of the screen during a roll no ' +
+      'longer rolls again; How to play pages turn quickly on a new ' +
+      'install; and the Tiger and Watermelon cards are the dice themselves, ' +
+      'sharper.',
+  },
   {
     id: 'v1-161-0-loading',
     date: '5 November 2026',
     version: 'v1.161.0',
     title: 'Faster to load, and better cards',
     icon: 'speed',
+    // Every player sees it the moment they open the Shop.
+    major: true,
     body:
       'The Shop and the Inventory no longer open with blank squares: a ' +
       'card shows a soft shimmer until its picture is ready, and the ' +
@@ -124,6 +195,8 @@ export const NEWS: NewsItem[] = [
     version: 'v1.159.0',
     title: 'Battle real players',
     icon: 'people',
+    // A new way to play.
+    major: true,
     body:
       'From 100 trophies, Color Rush and Ultimate look for a real ' +
       'player first. You will see "Searching for an opponent" with a ' +

@@ -13,9 +13,14 @@ import {
  * a real person to verse after 15 seconds then it loads you against one
  * of the bots".
  *
- * - `asking`: the first question is out. Nothing says "searching" yet,
- *   because the server may answer `off` — and then the bot is settled
- *   at once and nobody watched a search that was never happening.
+ * - `asking`: the first question is out. The search is SHOWN from here,
+ *   the first frame: Marc, 5 Nov 2026, "it still starts off with
+ *   finding an opponent against the AI and then goes to finding an
+ *   opponent against a real player, it should only be against a real
+ *   player until after 15 seconds". This state used to show the
+ *   computer rivals' reveal until the server's first answer, so a
+ *   player saw bot names cycling and then the real search. If the
+ *   server answers `off` the reveal follows, which is rare and honest.
  * - `searching`: the server has said it is looking. The countdown runs.
  * - `withdrawing`: the fifteen seconds are up, and the phone has asked
  *   to leave the queue. The server may have paired us a moment earlier,
@@ -77,9 +82,12 @@ export function isLooking(state: MatchFlowState): boolean {
   return state.kind === 'asking' || state.kind === 'searching';
 }
 
-/** Has the server said it is looking, so a search is shown? */
+/**
+ * Is the search for a real player on screen? From the first ask until
+ * the deadline's answer: never a computer rival's name before then.
+ */
 export function showsSearch(state: MatchFlowState): boolean {
-  return state.kind === 'searching' || state.kind === 'withdrawing';
+  return state.kind === 'asking' || state.kind === 'searching' || state.kind === 'withdrawing';
 }
 
 const settled = (state: MatchFlowState): MatchFlowStep => ({ state, effects: [] });

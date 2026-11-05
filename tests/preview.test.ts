@@ -3,7 +3,7 @@ import { assert, assertEqual, note, suite, test } from './harness';
 import { recallScroll, rememberScroll, resetScrollForTests } from '../src/demo/menuScroll';
 import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
 import { shellPreviewUri } from '../src/dice/preview';
-import { CARD_SAMPLERS, PATTERN_SIZE, patternPixels, shellSampler, STICKER_FRACTION } from '../src/dice/patterns';
+import { CARD_SAMPLERS, CARD_SCALE, cardSquare, PATTERN_SIZE, patternPixels, shellSampler, STICKER_FRACTION } from '../src/dice/patterns';
 
 /**
  * The Store and Inventory pictures are generated, not drawn by hand, so
@@ -34,8 +34,10 @@ suite('preview · the picture is a real PNG', () => {
         'IEND',
         `${skin.name} IEND`,
       );
-      assertEqual(png.readUInt32BE(16), PATTERN_SIZE, `${skin.name} width`);
-      assertEqual(png.readUInt32BE(20), PATTERN_SIZE, `${skin.name} height`);
+      // The die's 64 texels, or a sharper card for a pattern in CARD_SCALE.
+      const side = PATTERN_SIZE * (skin.effect === undefined ? (CARD_SCALE[skin.pattern] ?? 1) : 1);
+      assertEqual(png.readUInt32BE(16), side, `${skin.name} width`);
+      assertEqual(png.readUInt32BE(20), side, `${skin.name} height`);
     }
   });
 
@@ -393,7 +395,7 @@ suite('preview · a patterned skin is patterned everywhere', () => {
   (CARD_SAMPLERS); the die on the board is untouched.
 */
 suite('preview · the cards composed for the card', () => {
-  const CARDS = ['tiger', 'waffles', 'watermelon'] as const;
+  const CARDS = ['waffles'] as const;
   const square = (skinId: string) => {
     const skin = DICE_SKINS.find((s) => s.id === skinId)!;
     const shell = shellSampler(skin.pattern as never, skin.body, skin.ink ?? skin.body);
@@ -402,7 +404,7 @@ suite('preview · the cards composed for the card', () => {
     return { shell, card: card!(shell) };
   };
 
-  test('Tiger, Chicken and Waffles and Watermelon are not crops of the die', () => {
+  test('the Chicken and Waffles card is not a crop of the die', () => {
     for (const id of CARDS) {
       const { shell, card } = square(id);
       let differ = 0;
@@ -437,8 +439,35 @@ suite('preview · the cards composed for the card', () => {
     assertEqual(onEdge, 0, 'a drumstick runs off the card');
   });
 
+  test('the Tiger and Watermelon cards are the die itself, sharper', () => {
+    // Marc, 5 Nov 2026: "just make them the exact same as the actual dice
+    // but better quality." Every texel of the die's front side is among
+    // the card's pixels, exactly, with CARD_SCALE pixels per texel.
+    for (const [id, want] of [['tiger', 3], ['watermelon', 2]] as const) {
+      const skin = DICE_SKINS.find((s) => s.id === id)!;
+      const scale = CARD_SCALE[skin.pattern];
+      assertEqual(scale, want, `${id} pixels per texel`);
+      const shell = shellSampler(skin.pattern as never, skin.body, skin.ink ?? skin.body);
+      const { texel, size } = cardSquare(skin.pattern, shell, skin.effect !== undefined);
+      assertEqual(size, PATTERN_SIZE * want, `${id} card size`);
+      for (const [x, y] of [[0, 0], [10, 50], [31, 31], [63, 63], [40, 7]]) {
+        const a = shell(x, y);
+        const b = texel(want * x + (want - 1) / 2, want * y + (want - 1) / 2);
+        assert(a[0] === b[0] && a[1] === b[1] && a[2] === b[2], `${id} card pixel is not the die's texel at (${x}, ${y})`);
+      }
+      assert(CARD_SAMPLERS[skin.pattern] === undefined, `${id} still has its own composition`);
+    }
+  });
+
+  test('a skin with an effect keeps the 64-pixel card its flames are painted on', () => {
+    const fire = DICE_SKINS.find((s) => s.effect === 'fire')!;
+    const shell = shellSampler(fire.pattern as never, fire.body, fire.ink ?? fire.body);
+    assertEqual(cardSquare(fire.pattern, shell, true).size, PATTERN_SIZE, 'an effect card grew');
+  });
+
   test('the shelf picture is painted through the card composition', () => {
     const source = readFileSync('src/dice/preview.ts', 'utf8');
-    assert(/CARD_SAMPLERS\[skin\.pattern/.test(source), 'shelfPictureJob does not ask CARD_SAMPLERS');
+    assert(/cardSquare\(skin\.pattern/.test(source), 'shelfPictureJob does not ask cardSquare');
+    assert(/encodePng\(rgb, size, size\)/.test(source), 'the PNG is not the card\'s own size');
   });
 });

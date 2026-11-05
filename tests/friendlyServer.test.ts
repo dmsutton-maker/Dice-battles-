@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assert, assertEqual, suite, test } from './harness';
 import { JOIN_WAIT_MS } from '../src/game/friendlyBattle';
+import { REMATCH_WINDOW_MS } from '../src/game/rematch';
 import * as server from '../hq/src/lib/battleClock';
+import * as rematch from '../hq/src/lib/rematch';
 
 /**
  * Friend battles, the server's half: the waiting room and who is on.
@@ -22,6 +24,8 @@ const read = (path: string) => readFileSync(join(root, path), 'utf8');
 const battles = read('hq/src/app/api/battles/route.ts');
 const live = read('hq/src/app/api/battles/live/route.ts');
 const friends = read('hq/src/app/api/friends/route.ts');
+const migration = read('hq/supabase/migrations/20261105_rematch.sql');
+const schema = read('hq/supabase/schema.sql');
 
 suite('friendly server · the waiting room', () => {
   test('the game and the server wait the same time for a friend to walk in', () => {
@@ -135,5 +139,136 @@ suite('friendly server · who is on', () => {
   test('looking at the Friends screen counts as being on', () => {
     const get = friends.slice(friends.indexOf('export async function GET'), friends.indexOf('export async function POST'));
     assert(/touchSeen\(auth\.playerId\)/.test(get), 'the friends GET does not mark the player as on');
+  });
+});
+
+/**
+ * THE REMATCH, the server's half (hq/src/lib/rematch.ts and the
+ * 'rematch' action in the battles route).
+ *
+ * Marc, 5 Nov 2026: "After a game against your friend, if one of you
+ * chooses to play again, it should have to wait for the other player too
+ * in order to be able to play again, because right now it plays again
+ * against your friend but they're not playing really."
+ */
+suite('friendly server · the rematch', () => {
+  const me = 'local-me';
+  const them = 'local-marc';
+  const mine = { id: 'inv-mine', from_id: me, to_id: them };
+  const theirs = { id: 'inv-theirs', from_id: them, to_id: me };
+  const ended = 7_000_000;
+
+  test('the game and the server give the same ten minutes', () => {
+    assertEqual(rematch.REMATCH_WINDOW_MS, REMATCH_WINDOW_MS, 'REMATCH_WINDOW_MS differs between game and server');
+    assertEqual(REMATCH_WINDOW_MS, 10 * 60_000, 'the window is ten minutes');
+  });
+
+  test('within ten minutes of the end, and not after', () => {
+    assert(rematch.rematchWindowOpen(ended, ended), 'closed at once');
+    assert(rematch.rematchWindowOpen(ended, ended + REMATCH_WINDOW_MS - 1), 'closed a moment early');
+    assert(!rematch.rematchWindowOpen(ended, ended + REMATCH_WINDOW_MS), 'open past ten minutes');
+    assert(!rematch.rematchWindowOpen(Number.NaN, ended), 'a battle with no readable end can be played again');
+    // The invite lives exactly to the end of the window.
+    assertEqual(rematch.rematchExpiresAt(ended), ended + REMATCH_WINDOW_MS, 'the invite does not run out with the window');
+  });
+
+  test('both asking is one battle: the second ask accepts the first', () => {
+    // Marc asked first; my ask is the answer to his.
+    const second = rematch.mergeRematchAsks(me, [theirs]);
+    assertEqual(second.kind, 'accept', 'their invite is not accepted');
+    assert(second.kind === 'accept' && second.invite.id === 'inv-theirs', 'accepted the wrong invite');
+    // Seen from Marc's side at the same moment: the mirror image.
+    const his = rematch.mergeRematchAsks(them, [mine]);
+    assertEqual(his.kind, 'accept', 'from the other side, my invite is not accepted');
+    // Nobody has asked: ask.
+    assertEqual(rematch.mergeRematchAsks(me, []).kind, 'ask', 'nothing open is not an ask');
+  });
+
+  test('asking twice returns the invite already sent', () => {
+    const again = rematch.mergeRematchAsks(me, [mine]);
+    assertEqual(again.kind, 'mine', 'a second ask is not the first');
+    assert(again.kind === 'mine' && again.invite.id === 'inv-mine', 'the wrong invite');
+    // Both open at once (two requests raced past the lookup): theirs wins,
+    // so the next ask from either side still ends in one battle.
+    assertEqual(rematch.mergeRematchAsks(me, [mine, theirs]).kind, 'accept', 'two open invites are left standing');
+    // Somebody else's invite for this battle is nobody's business here.
+    assertEqual(rematch.mergeRematchAsks(me, [{ id: 'x', from_id: 'local-other', to_id: them }]).kind, 'ask', 'a stranger\'s invite was taken');
+  });
+
+  test('a rematch is the kind the first battle was', () => {
+    assertEqual(rematch.rematchKind('match'), 'match', 'a match');
+    assertEqual(rematch.rematchKind('friend'), 'friend', 'a friend');
+    assertEqual(rematch.rematchKind(undefined), 'friend', 'a row from before the column');
+    assertEqual(rematch.rematchKind(null), 'friend', 'null');
+  });
+
+  test('the route: only an over battle, only its players, only inside the window', () => {
+    const ask = battles.slice(battles.indexOf("if (action === 'rematch')"), battles.indexOf('const inviteId ='));
+    assert(ask.length > 0, 'there is no rematch action');
+    assert(/if \(!iAmA && !iAmB\) return NextResponse\.json\(\{ error: 'not your battle' \}, \{ status: 403 \}\)/.test(ask), 'anybody may ask about any battle');
+    assert(/battle\.state !== 'over'/.test(ask), 'a battle still on can be asked again');
+    assert(/if \(!rematchWindowOpen\(endedAtMs, Date\.now\(\)\)\)/.test(ask), 'the window is not checked');
+    assert(ask.indexOf('rematchWindowOpen(') < ask.indexOf('mergeRematchAsks('), 'the merge runs before the window');
+  });
+
+  test('the route merges the asks, and accepts by the one accept path', () => {
+    const ask = battles.slice(battles.indexOf("if (action === 'rematch')"), battles.indexOf('const inviteId ='));
+    assert(/\.eq\('state', 'waiting'\)\s*\.eq\('rematch_of', battleId\)/.test(ask), 'the open invites for this battle are not looked up');
+    assert(/if \(openError\) return NextResponse\.json\(\{ error: 'could not send that' \}/.test(ask), 'a failed lookup is read as nobody');
+    assert(/if \(merged\.kind === 'accept'\) \{[\s\S]*?return acceptInvite\(supabase, merged\.invite/.test(ask), 'the second ask does not accept the first');
+    assert(/if \(merged\.kind === 'mine'\) \{[\s\S]*?id: merged\.invite\.id/.test(ask), 'asking twice makes a second invite');
+    // The tapped Accept takes the same path, so a rematch accepted by hand is the same battle.
+    assert(/if \(action === 'accept'\) \{\s*if \(!mine\)[^\n]*\n\s*return acceptInvite\(supabase, invite, now\);/.test(battles), 'accept has its own copy of the battle insert');
+    assert(!/\.or\(/.test(battles), 'an "or" filter string crept into the battles route');
+  });
+
+  test('the invite lives to the end of the window and is marked as a rematch', () => {
+    const ask = battles.slice(battles.indexOf("if (action === 'rematch')"), battles.indexOf('const inviteId ='));
+    const insert = ask.slice(ask.indexOf(".from('battle_invites')\n      .insert({"));
+    assert(/expires_at: new Date\(rematchExpiresAt\(endedAtMs\)\)\.toISOString\(\)/.test(insert), 'the invite runs out in 45 seconds');
+    assert(/rematch_of: battleId/.test(insert), 'the invite is not marked as a rematch');
+    assert(/mode: battle\.mode,\s*difficulty: battle\.difficulty/.test(insert), 'the rematch is not the same game');
+    // One outgoing invite at a time, as with a challenge.
+    assert(/update\(\{ state: 'cancelled', decided_at: now\.toISOString\(\) \}\)\s*\.eq\('from_id', auth\.playerId\)\s*\.eq\('state', 'waiting'\)/.test(ask), 'an earlier invite of mine is left standing');
+  });
+
+  test('they must still be playable, and on — in the same words as a challenge', () => {
+    const ask = battles.slice(battles.indexOf("if (action === 'rematch')"), battles.indexOf('const inviteId ='));
+    assert(ask.includes('mayPlay(supabase, auth.playerId, otherId, kind)'), 'a block or an unfriending is not checked');
+    assert(/if \(!may\.ok \|\| !isOnline\(them\?\.last_seen\)\)/.test(ask), 'an absent player can be asked');
+    assert(ask.includes("is not playing right now"), 'the words differ from a challenge\'s');
+  });
+
+  test('a match\'s rematch is a match: never friends-checked, and found by the poll', () => {
+    const accept = battles.slice(battles.indexOf('async function acceptInvite'), battles.indexOf('const peek ='));
+    assert(/kind = rematchKind\(original\?\.kind\)/.test(accept), 'the kind of the first battle is not read');
+    assert(/\.\.\.\(kind === 'match' \? \{ kind \} : \{\}\)/.test(accept), 'kind is written for every battle, or for none');
+    assert(/battle: \{[\s\S]*?kind,\s*\}/.test(accept), 'the accepter is not told the kind');
+    const may = battles.slice(battles.indexOf('async function mayPlay'), battles.indexOf('async function acceptInvite'));
+    assert(/if \(kind === 'match'\) \{\s*const block = await blockedEitherWay/.test(may), 'two strangers are asked to be friends');
+    assert(/return \{ ok: link\.mine && link\.theirs, error: link\.error \}/.test(may), 'friends are not checked both ways');
+    // The friends poll hands out a match born from an invite, and says so.
+    assert(/\.filter\(\(r\) => r\.kind !== 'match' \|\| fromInvite\.has\(String\(r\.id\)\)\)/.test(battles), 'the asker of a match rematch never finds the room');
+    assert(/kind: rematchKind\(live\.kind\)/.test(battles), 'the poll does not say what kind a battle is');
+  });
+
+  test('invites are read with *, so the website deploys before the migration', () => {
+    assert(/const INVITE_COLUMNS = '\*'/.test(battles), 'invites are read by a list of columns');
+    assert(!/select\('id, from_id, to_id, mode, difficulty, state, expires_at'\)/.test(battles), 'an invite read names columns and would break without rematch_of');
+    assert(/rematchOf: r\.rematch_of \?\? null/.test(battles) && /rematchOf: outgoing\.rematch_of \?\? null/.test(battles), 'the answer does not say which invite is a rematch');
+    assert(/online: isOnline\(p\.last_seen/.test(battles), 'the asker cannot tell their app has closed');
+    assert(/select\('player_id, name, trophies, last_seen'\)/.test(battles), 'last_seen is not read for the online flag');
+  });
+
+  test('the migration is additive, and schema.sql has it too', () => {
+    const statements = migration.replace(/--[^\n]*/g, '');
+    assert(!/\bdrop\b/i.test(statements), 'the migration contains a DROP');
+    assert(/add column if not exists rematch_of uuid null/.test(migration), 'rematch_of');
+    assert(/references public\.battles \(id\) on delete set null/.test(migration), 'rematch_of does not point at battles');
+    assert(/create index if not exists battle_invites_rematch_idx/.test(migration), 'no index for the lookup');
+    assert(/enable row level security/.test(migration), 'RLS is not restated');
+    assert(!/create policy/i.test(statements), 'a policy appeared on a table that has none');
+    assert(schema.includes('rematch_of uuid null'), 'schema.sql has no rematch_of');
+    assert(schema.includes('battle_invites_rematch_idx'), 'schema.sql has no rematch index');
   });
 });
