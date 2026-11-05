@@ -332,7 +332,7 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
-- **5 Nov 2026 (v1.165.0):** all music and jingles are our own (`tools/music/`,
+- **5 Nov 2026 (v1.165.0, update 2228ab4b):** all music and jingles are our own (`tools/music/`,
   `assets/sounds/CREDITS.md`): battle tracks pixel/brass/neon in rotation
   (`musicRotation.ts`), each crossfading into its `-hot` version when either
   side is one rescue from winning (`musicIntensity.ts`), a lobby theme on the
