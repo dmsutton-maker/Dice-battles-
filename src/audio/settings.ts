@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { noteSaveChanged } from '../game/saveChanges';
 
 /**
  * Player-facing audio preferences, persisted across launches.
@@ -89,6 +90,7 @@ export async function loadAudioSettings(): Promise<AudioSettings> {
 export function setAudioVolume(key: AudioLevelKey, value: number): AudioSettings {
   current = { ...current, [key]: clampVolume(value) };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  noteSaveChanged();
   notify();
   return current;
 }

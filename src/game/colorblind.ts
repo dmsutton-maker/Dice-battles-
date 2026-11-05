@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PrisonerColorId } from './colors';
+import { noteSaveChanged } from './saveChanges';
 
 /**
  * Colourblind mode: give every colour a SHAPE as well as a colour.
@@ -57,6 +58,7 @@ export async function loadColorblindMode(): Promise<boolean> {
 export function setColorblindMode(on: boolean): void {
   enabled = on;
   AsyncStorage.setItem(STORAGE_KEY, on ? 'true' : 'false').catch(() => {});
+  noteSaveChanged();
   listeners.forEach((fn) => fn(on));
 }
 

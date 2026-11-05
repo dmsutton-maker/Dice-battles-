@@ -89,6 +89,7 @@ export interface Identity {
 }
 
 let cached: Identity | null = null;
+let loading: Promise<Identity> | null = null;
 
 /** 128 bits of secret, as base36. Enough that guessing is hopeless. */
 function makeSecret(random: () => number = Math.random): string {
@@ -127,9 +128,24 @@ export const ANONYMOUS_NAME = 'New Player';
  * at all still gets a working identity for this session, because the
  * alternative is a friends screen that cannot draw.
  */
-export async function loadIdentity(): Promise<Identity> {
-  if (cached) return cached;
+export function loadIdentity(): Promise<Identity> {
+  if (cached) return Promise.resolve(cached);
+  /*
+    One read at a time. Two callers on the same launch (the home screen,
+    and the backup restore that has to run before it) used to each run
+    the whole read, and on a first launch each would have MADE an id and
+    a secret of its own, with the second overwriting the first's after
+    it had already been sent to the server.
+  */
+  if (!loading) {
+    loading = readIdentity().finally(() => {
+      loading = null;
+    });
+  }
+  return loading;
+}
 
+async function readIdentity(): Promise<Identity> {
   let storedId: string | null = null;
   let storedCode: string | null = null;
   let storedName: string | null = null;
@@ -335,4 +351,5 @@ export async function replaceFriendCode(): Promise<Identity> {
 /** Test seam: forget what was read. */
 export function resetIdentityForTest(): void {
   cached = null;
+  loading = null;
 }

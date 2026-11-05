@@ -78,6 +78,7 @@ async function main(): Promise<void> {
   await import('./website.test');
   await import('./power.test');
   await import('./reinstall.test');
+  await import('./cloudSave.test');
   await import('./foldable.test');
   await import('./matchSearch.test');
   await import('./matchFlow.test');
