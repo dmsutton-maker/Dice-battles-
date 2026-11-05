@@ -71,6 +71,28 @@ export function backgroundSliceMs(at: { launched: boolean; shelfOnly: boolean })
   return at.shelfOnly ? SHELF_SLICE_MS : MENU_SLICE_MS;
 }
 
+/**
+ * Is the background painting PAUSED because a popup is open?
+ *
+ * Marc, 5 Nov 2026: "When you load the game for the first time in the
+ * how to play pop up, when you click next some of the things are very
+ * slow to load." On a first launch the tutorial opens over a home screen
+ * that is painting sixty shelf pictures and then every die's six sides
+ * in the background, a slice every frame, and every tap on Next landed
+ * on the same thread as a slice. So while ANY popup is open — How to
+ * play, News, Settings — every background painter stops (its
+ * `shouldContinue` says no), and starts again where it left off when the
+ * popup closes. Paused rather than slowed: a slice of any length is
+ * still a slice the tap has to wait behind.
+ *
+ * Only once the title card has lifted. The tutorial is opened as the
+ * saved game loads, under the card, and the card waits for the first
+ * screenful of pictures: pausing them there would hold it to its cap.
+ */
+export function pausedForPopup(at: { launched: boolean; popupOpen: boolean }): boolean {
+  return at.launched && at.popupOpen;
+}
+
 const now = () =>
   typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()

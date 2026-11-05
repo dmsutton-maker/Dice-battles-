@@ -93,6 +93,24 @@ export const TUNING = {
     flickUp: 6.5,
     /** Gesture speed (pt/ms) above which a release counts as a flick. */
     flickThreshold: 0.35,
+    /**
+     * A GRAZE is not a throw. A touch that lasted under `minTouchMs` AND
+     * moved under `minTouchPx` is the back of a finger brushing the
+     * screen on the way past — the second touch of a swipe made twice
+     * too fast — and rolls nothing. Marc, 5 Nov 2026: "If someone swipes
+     * twice too fast and doesn't even really touch it the second time it
+     * automatically rolls the second time but it shouldn't." Both have to
+     * hold: a fast flick is short but travels, and a deliberate press
+     * stays put but lasts. The one exception is the first touch of a
+     * round on an idle board, which is a tap however light (aim.ts,
+     * isGraze; DiceDemoScreen.tsx, onPanResponderRelease).
+     *
+     * 60 ms is about four frames; a meant tap, even a child's, holds the
+     * glass longer than that. 6 pt is under the width of a fingertip's
+     * wobble, so a still finger qualifies and a flick never does.
+     */
+    minTouchMs: 60,
+    minTouchPx: 6,
     /** Tumble: random angular speed per axis (rad/s). */
     spinMin: 8,
     spinMax: 24,
@@ -143,25 +161,18 @@ export const TUNING = {
      * nothing reaches it — the dice are still tumbling at 650ms.
      */
     minRollMs: 650,
-    /** Delay before a tap queued mid-roll fires, so the result registers. */
-    queuedThrowDelayMs: 130,
-    /**
-     * The pause after the dice land before a tap that arrived mid-roll
-     * goes out, for a player who has already tapped: they have been
-     * watching and are waiting on it, so they get a short one rather than
-     * `queuedThrowDelayMs`.
-     *
-     * This is now the ONLY thing tapping early changes. It used to also
-     * end the roll in flight, which is the bug above.
-     *
-     * `hurriedSpeed` and `hurriedFlatness` used to sit here, described as
-     * bars a hurried roll had to clear — "moving slowly enough" and "lying
-     * flat enough". Nothing read them. They were left behind when
-     * `isReadable` was deleted, and they made the file describe a safety
-     * check the game had not performed for weeks, which is worse than
-     * having no comment at all. Removed with the path they belonged to.
-     */
-    hurriedThrowDelayMs: 34,
+    /*
+      `queuedThrowDelayMs` (130) and `hurriedThrowDelayMs` (34) used to
+      sit here: the pause after the dice landed before a tap that had
+      arrived mid-roll was thrown by itself. Tapping early used to end the
+      roll in flight (the bug above), then only shorten that pause, and
+      since 5 Nov 2026 it does nothing at all — Marc: "If someone swipes
+      twice too fast and doesn't even really touch it the second time it
+      automatically rolls the second time but it shouldn't." A touch
+      during a roll is ignored (DiceScene.tsx, throwAll), so there is no
+      pause to tune. `hurriedSpeed` and `hurriedFlatness` went the same
+      way earlier, when `isReadable` was deleted.
+    */
     /**
      * Flat enough that the top face is unambiguous. 1 is square, 0.707 is
      * balanced on an edge, 0.577 on a corner.

@@ -288,7 +288,6 @@ function ZoneView({
           arenaId={arenaId}
           dieBodyColor={dieBodyColor}
           dieSymbols={symbols}
-          throwsEnabled={phase === 'battle'}
           waterIdle={waterIdle}
         />
       </Canvas>

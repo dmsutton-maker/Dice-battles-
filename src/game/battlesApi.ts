@@ -248,15 +248,21 @@ export async function pulseBattle(
  * Marc, 4 Nov 2026: "add the online matchmaking where you now verse real
  * players instead of bots".
  *
- * Every answer is one of these, and nothing else: a failure of any kind
- * — no connection, a timeout, a site from before /api/match that answers
- * a page instead of JSON, a server error — is `off`, which the game reads
- * as "play a rival now", exactly what it did before matchmaking existed.
- * `no-profile` is the server not knowing this phone yet (401); the caller
- * publishes the profile and asks again.
+ * Every answer is one of these, and nothing else. `off` is ONLY the
+ * server saying so (`{ state: 'off' }`, the migration not applied), and
+ * the game reads it as "play a rival now". A failure of any other kind —
+ * no connection, a timeout, a site that answers a page instead of JSON,
+ * a server error, a state this build does not know — is `failed`: the
+ * question went unanswered, so the game keeps asking until its deadline
+ * (onlineMatch.ts). Marc, 5 Nov 2026: with the admin code on, a start
+ * went straight to a bot with no search. Every one of those failures used
+ * to be read as `off`, and one of them switched the search off for the
+ * rest of the session. `no-profile` is the server not knowing this phone
+ * yet (401); the caller publishes the profile and asks again.
  */
 export type MatchAnswer =
   | { kind: 'off' }
+  | { kind: 'failed' }
   | { kind: 'no-profile' }
   | { kind: 'searching' }
   | { kind: 'left' }
@@ -276,8 +282,9 @@ type RawMatch = {
 function readMatch(
   result: { ok: true; data: RawMatch } | { ok: false; error: string; status?: number },
 ): MatchAnswer {
-  if (!result.ok) return result.status === 401 ? { kind: 'no-profile' } : { kind: 'off' };
+  if (!result.ok) return result.status === 401 ? { kind: 'no-profile' } : { kind: 'failed' };
   const { state, battle } = result.data ?? {};
+  if (state === 'off') return { kind: 'off' };
   if (state === 'searching') return { kind: 'searching' };
   if (state === 'left') return { kind: 'left' };
   if (state === 'matched' && battle && typeof battle.id === 'string' && battle.mode && battle.difficulty) {
@@ -293,8 +300,9 @@ function readMatch(
       opponentName: battle.opponentName ?? '',
     };
   }
-  // `off`, and anything this build does not understand.
-  return { kind: 'off' };
+  // A `matched` with no usable battle, or a state this build does not
+  // know: no answer, which is not the same as `off`.
+  return { kind: 'failed' };
 }
 
 /** Join the queue, or ask again whether it has found somebody. */

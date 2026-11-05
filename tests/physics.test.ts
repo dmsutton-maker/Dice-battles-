@@ -660,8 +660,12 @@ suite('physics · a roll is over when the dice are, not when a thumb says so', (
 suite('physics · spamming cannot clear the board in seconds', () => {
   /**
    * The fastest a SCORING roll can come round for a player swiping
-   * flat out: however long the dice take to land, plus the short pause
-   * before a queued tap goes back out.
+   * flat out: however long the dice take to land, and not a moment less.
+   * A touch during a roll used to be queued and thrown a short pause
+   * after landing; since 5 Nov 2026 it is ignored (Marc: a second,
+   * barely-there swipe "automatically rolls the second time but it
+   * shouldn't"), so the next roll waits for the next touch and the
+   * cadence is the dice alone.
    *
    * Measured, not read off a constant. The previous version of this suite
    * computed the cadence from `minRollMs`, so it was really asking "is the
@@ -678,7 +682,7 @@ suite('physics · spamming cannot clear the board in seconds', () => {
     times.sort((a, b) => a - b);
     return times[Math.floor(times.length / 2)];
   })();
-  const cadenceMs = measured + TUNING.settle.hurriedThrowDelayMs;
+  const cadenceMs = measured;
 
   test('a scoring roll cannot come round faster than the dice can land', () => {
     // The exploit was not "matches are too likely" — it was that the
@@ -722,23 +726,17 @@ suite('physics · spamming cannot clear the board in seconds', () => {
     );
   });
 
-  test('tapping early still gets you back out faster', () => {
+  test('tapping early changes nothing: no shorter roll, no throw after landing', () => {
     /*
-      What David asked for twice — no sitting watching dice that have
-      obviously finished — survives all of this, because it was never the
-      roll that needed shortening. A tap during a roll is remembered and
-      fires `hurriedThrowDelayMs` after the dice land instead of the full
-      pause, so the input is heard and the wait afterwards is a third of
-      what a patient player gets.
+      Tapping early used to end the roll (the exploit), then only shorten
+      the pause before a queued throw. Now the roll is the roll and the
+      queued throw is gone (aim.test.ts pins the scene). The two delays
+      that tuned it are gone with it, so nothing can bring it back by
+      being set.
     */
-    assert(
-      TUNING.settle.hurriedThrowDelayMs < TUNING.settle.queuedThrowDelayMs,
-      'tapping early no longer shortens anything at all',
-    );
-    note(
-      `pause after landing: ${TUNING.settle.hurriedThrowDelayMs}ms if you already tapped, ` +
-        `${TUNING.settle.queuedThrowDelayMs}ms if you had not`,
-    );
+    const settle = TUNING.settle as Record<string, unknown>;
+    assert(!('hurriedThrowDelayMs' in settle), 'hurriedThrowDelayMs is back in tuning.ts');
+    assert(!('queuedThrowDelayMs' in settle), 'queuedThrowDelayMs is back in tuning.ts');
   });
 });
 
