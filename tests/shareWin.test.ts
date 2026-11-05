@@ -18,6 +18,7 @@ import {
   DIGIT_CELLS_SMALL,
   SHARE_ART_SIZES,
 } from '../src/share/shareArtManifest';
+import { readyForReset } from '../src/share/glReset';
 import { MODES, MODE_ORDER } from '../src/game/modes';
 import { THEME } from '../src/ui/theme';
 import { pngHeader, readPng, writePng } from '../tools/share-card/pngio';
@@ -396,5 +397,79 @@ suite('share your win · the screens', () => {
     }
     assert(code('src/share/boardShot.ts').includes('blitFramebuffer('), 'the frame is resolved with a blit first');
     assert(code('src/share/boardShot.ts').includes('resetState()'), 'three is told its context was borrowed');
+  });
+});
+
+suite('share your win · never breaks the board', () => {
+  /*
+    Marc, 5 Nov 2026: after a win, the next battle had no floor, no
+    walls, no gatehouse, no water and no dice. three's resetState() reads
+    `gl.canvas.width` after it has switched the depth test off and before
+    it clears its own record of that, and a phone's context has no
+    `canvas`: so it threw halfway and left the depth test off until the
+    app was closed. See src/share/glReset.ts.
+  */
+  test('a context with no canvas is given one, sized like the stand-in', () => {
+    const gl: Record<string, unknown> = { drawingBufferWidth: 1179, drawingBufferHeight: 2556 };
+    assert(readyForReset(gl, { width: 1179, height: 2556, style: {} }), 'ready');
+    const canvas = gl.canvas as { width: number; height: number };
+    assertEqual(canvas.width, 1179, 'the width three resets the viewport to');
+    assertEqual(canvas.height, 2556, 'the height');
+  });
+
+  test('with no stand-in, the drawing buffer gives the size', () => {
+    const gl: Record<string, unknown> = { drawingBufferWidth: 750, drawingBufferHeight: 1334 };
+    assert(readyForReset(gl, undefined), 'ready');
+    assertEqual((gl.canvas as { width: number }).width, 750, 'from the drawing buffer');
+  });
+
+  test('a context that already has a canvas is left alone', () => {
+    const own = { width: 10, height: 20 };
+    const gl = { canvas: own };
+    assert(readyForReset(gl, { width: 1, height: 1 }), 'ready');
+    assert(gl.canvas === own, 'not replaced');
+  });
+
+  test('a context that will not take a canvas is reported, so nothing touches it', () => {
+    assert(!readyForReset(Object.freeze({ drawingBufferWidth: 1, drawingBufferHeight: 1 }), { width: 1, height: 1 }), 'frozen');
+    assert(!readyForReset(null), 'no context');
+    assert(!readyForReset({}, undefined), 'nothing to size it by');
+  });
+
+  test('the board capture asks before its first GL call', () => {
+    const whole = code('src/share/boardShot.ts');
+    const text = whole.slice(whole.indexOf('export async function'));
+    const ready = text.indexOf('readyForReset(gl, renderer.domElement)');
+    const firstGl = text.search(/gl\.(create|bind|texImage2D|blitFramebuffer)/);
+    assert(ready > 0, 'boardShot asks readyForReset');
+    assert(ready < firstGl, 'readyForReset comes before the first GL call');
+  });
+
+  test('the card is drawn by three, not by raw GL calls of its own', () => {
+    /*
+      Marc, 5 Nov 2026: "Share your win screen is blank". The raw-GL
+      card cleared its paper and drew nothing on his iPhone, while the
+      same calls draw the whole card in a browser. three draws every
+      battle on that phone; the card goes through it now.
+    */
+    const card = code('src/share/composeCard.ts');
+    for (const raw of ['drawArrays', 'createProgram', 'compileShader', 'vertexAttribPointer', 'resetState', 'gl.texImage2D']) {
+      assert(!card.includes(raw), `composeCard.ts calls ${raw} itself`);
+    }
+    assert(card.includes('new THREE.WebGLRenderTarget('), 'a render target of its own');
+    assert(card.includes('renderer.setRenderTarget(before)'), 'and three is put back on the screen afterwards');
+    assert(card.includes('isDataTexture = true') && card.includes('{ localUri: '), 'pictures load the way fiber loads them on native');
+    assert(card.includes('texture.flipY = false'), 'row 0 of a file is v = 0, as shareCard.ts lays it out');
+    assert(card.includes('THREE.NoColorSpace'), 'uploaded raw, no colour conversion');
+    assert(card.includes('toneMapped: false'), 'and not tone-mapped');
+    assert(card.includes('drawn?.dispose()'), 'everything it made is freed');
+  });
+
+  test('every board gives its context a canvas when it is created', () => {
+    for (const file of ['src/demo/DiceDemoScreen.tsx', 'src/demo/TwoPlayerScreen.tsx']) {
+      const text = code(file);
+      const created = text.slice(text.indexOf('onCreated='), text.indexOf('onCreated=') + 400);
+      assert(created.includes('readyForReset(gl.getContext(), gl.domElement)'), `${file}: onCreated readies the context`);
+    }
   });
 });

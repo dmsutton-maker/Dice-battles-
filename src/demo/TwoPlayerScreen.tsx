@@ -47,6 +47,7 @@ import { MIN_TAP, SHAPE, THEME } from '../ui/theme';
 import type { WebGLRenderer } from 'three';
 import { BoardShot, captureBoard } from '../share/boardShot';
 import { composeWinCard } from '../share/composeCard';
+import { readyForReset } from '../share/glReset';
 import { cardLines, CardLines, ShareResult } from '../share/shareCard';
 import { shareCardFile } from '../share/shareWin';
 import { discardShareFiles } from '../share/tempFiles';
@@ -298,6 +299,8 @@ function ZoneView({
         onCreated={({ camera, gl }) => {
           camera.lookAt(0, 0, -0.2);
           rendererRef.current = gl;
+          // See src/share/glReset.ts: a phone's context has no canvas.
+          readyForReset(gl.getContext(), gl.domElement);
         }}
       >
         <color attach="background" args={[ARENAS[arenaId].skyColor]} />

@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import type { WebGLRenderer } from 'three';
 import { BoardShot, captureBoard } from '../share/boardShot';
 import { composeWinCard } from '../share/composeCard';
+import { readyForReset } from '../share/glReset';
 import { cardLines, ShareResult } from '../share/shareCard';
 import { shareCardFile } from '../share/shareWin';
 import { discardShareFiles } from '../share/tempFiles';
@@ -3783,6 +3784,9 @@ export function DiceDemoScreen() {
             camera.lookAt(0, 0, -0.2);
             // Kept for the win's picture (src/share/boardShot.ts).
             rendererRef.current = gl;
+            // A phone's context has no canvas, and three's resetState
+            // needs one or it breaks the board (src/share/glReset.ts).
+            readyForReset(gl.getContext(), gl.domElement);
           }}
         >
           <color attach="background" args={[ARENAS[sceneArenaId].skyColor]} />

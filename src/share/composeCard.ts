@@ -1,8 +1,11 @@
 import { GLView } from 'expo-gl';
+import { Image } from 'react-native';
+import * as THREE from 'three';
 import type { WebGLRenderer } from 'three';
 import { THEME } from '../ui/theme';
 import { BoardShot, contextOf, snapshotUri } from './boardShot';
 import { loadShareArt } from './shareArt';
+import { SHARE_ART_SIZES } from './shareArtManifest';
 import { CARD, DrawItem, hexTint, layoutCard, ShareResult } from './shareCard';
 import { keepOnly } from './tempFiles';
 
@@ -10,79 +13,174 @@ import { keepOnly } from './tempFiles';
  * The finished card, as a PNG file — made ON DEMAND, when the player
  * taps "Share your win", never on its own.
  *
- * HOW, AND WHY THIS WAY. React Native cannot draw a picture into a
- * file without a native view-capture package, and this game adds no
- * packages for this. What it does have is a GL context (the board's)
- * and expo-gl, which can both load an image file straight into a
- * texture (`texImage2D` with `{ localUri }`) and write any framebuffer
- * out as a PNG (`takeSnapshotAsync` with `framebuffer`). So the card is
- * drawn as a dozen textured rectangles into a 1080 x 1350 framebuffer
- * of our own — the board picture, the banner, the paper, the words —
- * and expo-gl writes the file. The decode and the encode are native;
- * JavaScript issues about forty GL calls and waits.
+ * HOW. React Native cannot draw a picture into a file without a native
+ * view-capture package, and this game adds no packages for this. What
+ * it does have is the board's GL context, and expo-gl, which can load an
+ * image file straight into a texture (`{ localUri }`, decoded natively)
+ * and write any framebuffer out as a PNG (`takeSnapshotAsync` with
+ * `framebuffer`). So the card is drawn as a dozen textured rectangles —
+ * the board picture, the banner, the paper, the words (shareCard.ts) —
+ * into a 1080 x 1350 render target, and expo-gl writes the file.
  *
- * Plain WebGL rather than three for the drawing. The whole thing is a
- * two-dimensional "put this picture here" list (shareCard.ts), one
- * shader covers it, and going through three would have meant reaching
- * into its render-target internals to find the framebuffer id the
- * snapshot needs. The only part of three used is `resetState()`, which
- * tells it its context was borrowed.
+ * DRAWN BY THREE, since v1.167.0. The first version drew the same list
+ * with a shader and raw GL calls of its own. In a browser that card is
+ * perfect; on Marc's iPhone (5 Nov 2026, "Share your win screen is
+ * blank") the paper colour was cleared and not one rectangle appeared.
+ * Raw GL on the board's context means agreeing with three about every
+ * piece of state it left behind, on a GL driver nobody here can watch.
+ * three draws every battle on that phone correctly, and the way it
+ * loads a picture file here is the way fiber's own TextureLoader does on
+ * native (`{ data: { localUri }, width, height }`, `isDataTexture`), so
+ * the card now goes through it: an orthographic scene, a plane per
+ * picture, one render into a render target. Nothing of the GL state is
+ * ours to get wrong.
  *
- * Colour: the textures are uploaded raw and drawn raw, so the pixels in
- * the file are the pixels in the pictures; no colour management is in
- * the way to shift the game's own ink and paper.
+ * Colour: the textures are uploaded raw (`NoColorSpace`), drawn unlit
+ * and un-tone-mapped into a linear render target, so the pixels in the
+ * file are the pixels in the pictures, as before.
  *
  * Nothing here throws. Null means "couldn't make the picture", and the
  * sheet says so.
  */
 
-const VERTEX = `
-attribute vec2 aCorner;
-uniform vec4 uRect;
-uniform vec4 uUv;
-uniform vec2 uCard;
-varying vec2 vUv;
-void main() {
-  vec2 p = uRect.xy + aCorner * uRect.zw;
-  gl_Position = vec4(p.x / uCard.x * 2.0 - 1.0, 1.0 - p.y / uCard.y * 2.0, 0.0, 1.0);
-  vUv = mix(uUv.xy, uUv.zw, aCorner);
-}`;
-
-const FRAGMENT = `
-precision mediump float;
-uniform sampler2D uTex;
-uniform vec3 uTint;
-varying vec2 vUv;
-void main() {
-  vec4 c = texture2D(uTex, vUv);
-  gl_FragColor = vec4(c.rgb * uTint, c.a);
-}`;
-
-function compile(gl: WebGL2RenderingContext, kind: number, source: string): WebGLShader {
-  const shader = gl.createShader(kind);
-  if (!shader) throw new Error('no shader');
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw new Error(gl.getShaderInfoLog(shader) ?? 'shader');
-  }
-  return shader;
+/** One picture the card draws from: what three uploads, and its size in pixels. */
+export interface CardPicture {
+  source: unknown;
+  width: number;
+  height: number;
 }
 
-/** A texture holding the image file at `localUri`, decoded natively by expo-gl. */
-function textureFromFile(gl: WebGL2RenderingContext, localUri: string): WebGLTexture {
-  const texture = gl.createTexture();
-  if (!texture) throw new Error('no texture');
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  // expo-gl's extension: an object with `localUri` is read from disk.
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, {
-    localUri,
-  } as unknown as TexImageSource);
-  return texture;
+/**
+ * The card drawn into a render target of its own, ready to read. The
+ * caller reads it and then calls `dispose`, which frees everything
+ * this made (the textures, the planes, the target).
+ *
+ * Exported for the browser check (tools/die-preview), which feeds it
+ * HTML images instead of files; the drawing is the same code.
+ */
+export function drawCard(
+  renderer: WebGLRenderer,
+  items: readonly DrawItem[],
+  pictures: Record<string, CardPicture>,
+): { target: THREE.WebGLRenderTarget; dispose(): void } {
+  const { width, height } = CARD;
+  const owned: { dispose(): void }[] = [];
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    depthBuffer: false,
+    stencilBuffer: false,
+    generateMipmaps: false,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    colorSpace: THREE.NoColorSpace,
+  });
+  owned.push(target);
+
+  const scene = new THREE.Scene();
+  const [r, g, b] = hexTint(THEME.ground);
+  scene.background = new THREE.Color().setRGB(r, g, b, THREE.LinearSRGBColorSpace);
+  // Card pixels, y down: (0, 0) is the top-left corner of the card.
+  const camera = new THREE.OrthographicCamera(0, width, 0, -height, -10, 10);
+
+  const textures = new Map<string, THREE.Texture>();
+  const textureFor = (art: string): THREE.Texture | null => {
+    const found = textures.get(art);
+    if (found) return found;
+    const picture = pictures[art];
+    if (!picture) return null;
+    const texture = new THREE.Texture();
+    /*
+      fiber's native TextureLoader's shape: the upload is a data
+      upload whose "data" is an object expo-gl decodes from the file.
+      In the browser check `source` is an image element instead, which
+      WebGL2 takes in the same slot.
+    */
+    texture.image = { data: picture.source, width: picture.width, height: picture.height };
+    (texture as unknown as { isDataTexture: boolean }).isDataTexture = true;
+    // Row 0 of the file is v = 0, which is what shareCard.ts's uv rects mean.
+    texture.flipY = false;
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.needsUpdate = true;
+    textures.set(art, texture);
+    owned.push(texture);
+    return texture;
+  };
+
+  items.forEach((item, order) => {
+    const map = textureFor(item.art);
+    if (!map) return;
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    // PlaneGeometry's corners: top-left, top-right, bottom-left, bottom-right.
+    const [u0, v0, u1, v1] = item.uv;
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([u0, v0, u1, v0, u0, v1, u1, v1], 2));
+    const material = new THREE.MeshBasicMaterial({
+      map,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    });
+    material.color.setRGB(item.tint[0], item.tint[1], item.tint[2], THREE.LinearSRGBColorSpace);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(item.x + item.w / 2, -(item.y + item.h / 2), 0);
+    mesh.scale.set(item.w, item.h, 1);
+    // Painted in list order, the order shareCard.ts lays them out in.
+    mesh.renderOrder = order;
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    owned.push(geometry, material);
+  });
+
+  const before = renderer.getRenderTarget();
+  try {
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+  } finally {
+    renderer.setRenderTarget(before);
+  }
+
+  return {
+    target,
+    dispose() {
+      for (const thing of owned) {
+        try {
+          thing.dispose();
+        } catch {
+          // Freed with the context already.
+        }
+      }
+    },
+  };
+}
+
+/** A picture file's size in pixels, from the file itself; `fallback` if it cannot be read. */
+function sizeOfFile(uri: string, fallback: { width: number; height: number }): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    try {
+      Image.getSize(
+        uri,
+        (width, height) => resolve(width > 0 && height > 0 ? { width, height } : fallback),
+        () => resolve(fallback),
+      );
+    } catch {
+      resolve(fallback);
+    }
+  });
+}
+
+/** The GL framebuffer three made for `target`, for the snapshot to read. */
+function framebufferOf(renderer: WebGLRenderer, target: THREE.WebGLRenderTarget): WebGLFramebuffer | null {
+  try {
+    const fb = (renderer.properties.get(target) as { __webglFramebuffer?: unknown }).__webglFramebuffer;
+    return fb && typeof fb === 'object' ? (fb as WebGLFramebuffer) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function composeWinCard(
@@ -94,107 +192,36 @@ export async function composeWinCard(
   if (!gl || !renderer) return null;
   const art = await loadShareArt();
   if (!art) return null;
-  // Still here, after the wait? The battle may have been left.
+  // The board's picture: its size from the file, which is what expo-gl
+  // will decode, so the upload and the allocation agree.
+  const board = await sizeOfFile(shot.uri, { width: shot.width, height: shot.height });
+  // The Canvas can have gone (the player left) while those were read.
   if (contextOf(renderer) !== gl) return null;
 
-  const items: DrawItem[] = layoutCard(shot, result);
-  const { width, height } = CARD;
-  const textures = new Map<string, WebGLTexture>();
-  let program: WebGLProgram | null = null;
-  let buffer: WebGLBuffer | null = null;
-  let target: WebGLTexture | null = null;
-  let framebuffer: WebGLFramebuffer | null = null;
+  const pictures: Record<string, CardPicture> = {
+    board: { source: { localUri: shot.uri }, width: board.width, height: board.height },
+  };
+  for (const id of Object.keys(SHARE_ART_SIZES) as (keyof typeof SHARE_ART_SIZES)[]) {
+    pictures[id] = { source: { localUri: art[id] }, ...SHARE_ART_SIZES[id] };
+  }
+
   let uri: string | null = null;
-
+  let drawn: ReturnType<typeof drawCard> | null = null;
   try {
-    const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX);
-    const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT);
-    program = gl.createProgram();
-    if (!program) throw new Error('no program');
-    gl.attachShader(program, vertex);
-    gl.attachShader(program, fragment);
-    gl.linkProgram(program);
-    gl.deleteShader(vertex);
-    gl.deleteShader(fragment);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      throw new Error(gl.getProgramInfoLog(program) ?? 'link');
+    drawn = drawCard(renderer, layoutCard(board, result), pictures);
+    const framebuffer = framebufferOf(renderer, drawn.target);
+    if (framebuffer) {
+      const snap = await GLView.takeSnapshotAsync(gl, {
+        framebuffer,
+        rect: { x: 0, y: 0, width: CARD.width, height: CARD.height },
+        format: 'png',
+      });
+      uri = snapshotUri(snap);
     }
-
-    textures.set('board', textureFromFile(gl, shot.uri));
-    for (const item of items) {
-      if (item.art !== 'board' && !textures.has(item.art)) {
-        textures.set(item.art, textureFromFile(gl, art[item.art]));
-      }
-    }
-
-    target = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, target);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
-    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error('framebuffer');
-    }
-
-    gl.viewport(0, 0, width, height);
-    gl.disable(gl.DEPTH_TEST);
-    gl.disable(gl.SCISSOR_TEST);
-    gl.disable(gl.CULL_FACE);
-    gl.enable(gl.BLEND);
-    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    const [r, g, b] = hexTint(THEME.ground);
-    gl.clearColor(r, g, b, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-
-    gl.useProgram(program);
-    buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
-    const corner = gl.getAttribLocation(program, 'aCorner');
-    gl.enableVertexAttribArray(corner);
-    gl.vertexAttribPointer(corner, 2, gl.FLOAT, false, 0, 0);
-    gl.uniform2f(gl.getUniformLocation(program, 'uCard'), width, height);
-    gl.uniform1i(gl.getUniformLocation(program, 'uTex'), 0);
-    const uRect = gl.getUniformLocation(program, 'uRect');
-    const uUv = gl.getUniformLocation(program, 'uUv');
-    const uTint = gl.getUniformLocation(program, 'uTint');
-    gl.activeTexture(gl.TEXTURE0);
-
-    for (const item of items) {
-      const texture = textures.get(item.art);
-      if (!texture) continue;
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.uniform4f(uRect, item.x, item.y, item.w, item.h);
-      gl.uniform4f(uUv, item.uv[0], item.uv[1], item.uv[2], item.uv[3]);
-      gl.uniform3f(uTint, item.tint[0], item.tint[1], item.tint[2]);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    renderer.resetState();
-
-    const snap = await GLView.takeSnapshotAsync(gl, {
-      framebuffer,
-      rect: { x: 0, y: 0, width, height },
-      format: 'png',
-    });
-    uri = snapshotUri(snap);
   } catch {
     uri = null;
   } finally {
-    try {
-      for (const texture of textures.values()) gl.deleteTexture(texture);
-      if (target) gl.deleteTexture(target);
-      if (framebuffer) gl.deleteFramebuffer(framebuffer);
-      if (buffer) gl.deleteBuffer(buffer);
-      if (program) gl.deleteProgram(program);
-      renderer.resetState();
-    } catch {
-      // The context is gone; so is everything in it.
-    }
+    drawn?.dispose();
   }
   keepOnly('card', uri);
   return uri;

@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.167.0 — 2026-11-05 · requested by David
+## v1.170.0 — 2026-11-05 · requested by David
 
 David: "I didn't see any ad". AdMob's own reports (checked 5 Nov 2026 by
 Claude in Chrome) show ZERO ad requests from the app in 30 days, on both
@@ -19,6 +19,67 @@ interstitial units — so no phone has ever asked Google for an advert, and
   even begins, so it could only ever say "switched off". Tester mode is
   unchanged: ads.ts still has no tester branch (testerPurchases.test.ts).
 - Tests: `tests/adProblem.test.ts`.
+
+## v1.169.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026, with a screenshot: "When you share your friend code it's
+putting the link twice". Runtime 4.0.0: JS only.
+
+### Fixed
+- **The friend-code invite showed two link cards in Messages.** The share
+  passed the link as `url` (so Messages draws the card) and again at the end
+  of `message`, and iOS hands both over as items. On iOS the message now
+  leaves the link out (`inviteMessage(..., { withLink: false })`); it still
+  carries the readable code. Android ignores `url`, so there the text keeps
+  the link. Tests: invite.test.ts.
+
+## v1.168.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026, with a screenshot of v1.167.0: "Share your win screen is
+blank". Runtime 4.0.0: JS only, no new package.
+
+### Fixed
+- **The share card was an empty sheet of paper.** The card's paper colour
+  was cleared and not one picture was drawn on it: the board, the banner,
+  the score. The raw-GL composer drew the full card in a browser on the same
+  three scene, so the fault is in how its own GL calls met the state of the
+  iPhone's context, which cannot be watched from here. `composeCard.ts` now
+  draws the card with three, which draws every battle on that phone: an
+  orthographic scene of planes rendered into a 1080x1350 render target,
+  pictures loaded the way fiber's native TextureLoader loads them
+  (`{ data: { localUri }, width, height }`, `isDataTexture`), raw colour
+  (`NoColorSpace`, unlit, not tone-mapped), and expo-gl snapshots the target's
+  framebuffer. The board picture's size is read from the file
+  (`Image.getSize`) so the allocation matches what expo-gl decodes. Checked in
+  a browser: the same card as before. Tests: shareWin.test.ts.
+
+## v1.167.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026, with a screenshot: "What happened. I was playing and a new
+game started and the board looks like something is wrong", then "it happened
+again after i restarted the game". Runtime 4.0.0: JS only, no new package.
+
+### Fixed
+- **The battle after a win lost its floor, walls, gatehouse, water and dice.**
+  v1.166.0's win capture called three's `renderer.resetState()`. three's
+  `WebGLState.reset()` switches the depth test (and culling, blending) off in
+  GL, then reads `gl.canvas.width`, and only after that clears its own record
+  of what is on. expo-gl's context has no `canvas` and fiber's native Canvas
+  never sets one, so on a phone the reset threw halfway: depth test really
+  off, three sure it was on, for the rest of the session. The lawn and gravel,
+  drawn later, were painted over the courtyard. Reproduced in a browser by
+  removing the context's `canvas` (identical to Marc's screenshot) and the fix
+  renders pixel-identical to a normal board. `src/share/glReset.ts`
+  (`readyForReset`) gives the context the canvas three expects (fiber's
+  stand-in, `renderer.domElement`); both screens do it in `onCreated`, and the
+  capture and the card composer do it before their first GL call and leave the
+  context untouched if it cannot be done.
+- **"Share your win" never appeared on a phone**, for the same reason: the
+  capture threw before its snapshot every time. It now works.
+- The card composer switched its attribute on in whichever vertex array three
+  had left bound, which could have pointed one of the board's shapes at a
+  deleted buffer; it now uses a vertex array of its own.
+- Tests: shareWin.test.ts, "never breaks the board".
 
 ## v1.166.0 — 2026-11-05 · requested by Marc
 

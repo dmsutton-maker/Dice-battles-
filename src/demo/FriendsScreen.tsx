@@ -433,8 +433,15 @@ export function FriendsScreen({
    * to the chosen app as its own item, and Messages only draws its rich
    * card — the logo, the title — for an item that is a URL on its own.
    * Fold the link into the message string and what sends is a wall of
-   * blue text with no picture in it. The message still ends with the
-   * link as well, for the apps that take only one item.
+   * blue text with no picture in it.
+   *
+   * ON AN IPHONE THE TEXT LEAVES THE LINK OUT. It used to end with the
+   * link too, "for the apps that take only one item", and Messages drew
+   * a card for each copy: Marc, 5 Nov 2026, "When you share your friend
+   * code it's putting the link twice". The words still carry the code
+   * itself, so an app that takes only the text still gets something a
+   * friend can type in. Android's sheet ignores `url` altogether, so
+   * there the link stays in the text.
    *
    * NOTHING HERE IS ALLOWED TO THROW. Share.share REJECTS when somebody
    * swipes the sheet away, which is the most ordinary thing a person
@@ -445,7 +452,7 @@ export function FriendsScreen({
     playClick();
     try {
       await Share.share({
-        message: inviteMessage(who.name, who.friendCode),
+        message: inviteMessage(who.name, who.friendCode, { withLink: Platform.OS !== 'ios' }),
         url: inviteUrl(who.friendCode),
       });
     } catch {
