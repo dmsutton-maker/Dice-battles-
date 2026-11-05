@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.167.0 — 2026-11-05 · requested by David
+
+David: "I didn't see any ad". AdMob's own reports (checked 5 Nov 2026 by
+Claude in Chrome) show ZERO ad requests from the app in 30 days, on both
+interstitial units — so no phone has ever asked Google for an advert, and
+"Limited ad serving" is not the reason. Runtime 4.0.0.
+
+### Added
+- **The reason adverts stopped, on the phone.** `ads.ts` keeps the SDK's
+  own words when start-up stops: the consent service's error or status,
+  or the SDK's start-up error (`adStatus().problem`). The likeliest
+  culprit is the consent step: any error there means no ads, by design,
+  and nothing reported it.
+- **Anybody can see it**: press and hold the version line at the bottom
+  of Settings and the "Ads:" line appears under it, with "Why: …". Before,
+  it was drawn only in tester mode, where adverts are off before start-up
+  even begins, so it could only ever say "switched off". Tester mode is
+  unchanged: ads.ts still has no tester branch (testerPurchases.test.ts).
+- Tests: `tests/adProblem.test.ts`.
+
 ## v1.166.0 — 2026-11-05 · requested by Marc
 
 Marc, 5 Nov 2026: "when someone wins, come up with a winning exciting

@@ -80,6 +80,7 @@ async function main(): Promise<void> {
   await import('./reinstall.test');
   await import('./cloudSave.test');
   await import('./icloudAccount.test');
+  await import('./adProblem.test');
   await import('./foldable.test');
   await import('./matchSearch.test');
   await import('./matchFlow.test');

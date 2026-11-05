@@ -75,8 +75,8 @@ interface NativeAds {
   AdsConsent: {
     requestInfoUpdate(options?: {
       tagForUnderAgeOfConsent?: boolean;
-    }): Promise<{ canRequestAds: boolean }>;
-    loadAndShowConsentFormIfRequired(): Promise<{ canRequestAds: boolean }>;
+    }): Promise<{ canRequestAds: boolean; status?: string }>;
+    loadAndShowConsentFormIfRequired(): Promise<{ canRequestAds: boolean; status?: string }>;
     getConsentInfo(): Promise<{ canRequestAds: boolean }>;
   };
   AdEventType: { LOADED: string; ERROR: string; CLOSED: string };
@@ -270,6 +270,23 @@ export async function initAds(): Promise<void> {
   return starting;
 }
 
+/**
+ * WHY the last start stopped, in the SDK's own words, for the tester line
+ * in Settings. David, 5 Nov 2026: AdMob had received NO requests at all
+ * in 30 days, so the game stops before ever asking, and every failure
+ * here is swallowed on purpose. This keeps the reason instead of a guess;
+ * Settings shows it when the version line is pressed and held.
+ */
+let problem: string | null = null;
+
+function describe(error: unknown): string {
+  const text =
+    error && typeof error === 'object' && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : String(error);
+  return text.replace(/\s+/g, ' ').trim().slice(0, 160) || 'no message';
+}
+
 async function attemptInit(): Promise<void> {
   // Nothing to start up for somebody who bought the adverts away — no
   // SDK, no consent form, no network.
@@ -315,10 +332,12 @@ async function attemptInit(): Promise<void> {
       await mod.AdsConsent.requestInfoUpdate({ tagForUnderAgeOfConsent: true });
       const info = await mod.AdsConsent.loadAndShowConsentFormIfRequired();
       canRequestAds = info?.canRequestAds ?? false;
-    } catch {
+      if (!canRequestAds) problem = `consent status ${info?.status ?? 'unknown'}`;
+    } catch (error) {
       // A consent failure means NO ads, never ads-anyway: the whole point
       // of the form is that skipping it is not allowed.
       canRequestAds = false;
+      problem = `consent error: ${describe(error)}`;
     }
     if (!canRequestAds) {
       stage = 'no-consent';
@@ -333,10 +352,12 @@ async function attemptInit(): Promise<void> {
     await mod.default().initialize();
     ready = true;
     stage = 'ready';
+    problem = null;
     preload();
-  } catch {
+  } catch (error) {
     ready = false;
     stage = 'init-failed';
+    problem = `start-up error: ${describe(error)}`;
   }
 }
 
@@ -646,8 +667,11 @@ export function adStatus(): {
   gamesFinished: number;
   untilNext: number;
   unit: 'test' | 'real';
+  /** Why the last start stopped, in the SDK's words; null when it did not. */
+  problem: string | null;
 } {
   return {
+    problem,
     stage,
     sdk: moduleOrNull() !== null,
     loaded,

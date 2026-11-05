@@ -349,6 +349,7 @@ function AdStatusLine() {
   return (
     <Text style={styles.settingsStats}>
       Ads: {WHY[status.stage]}
+      {status.problem ? `\nWhy: ${status.problem}` : ''}
       {'\n'}
       {status.gamesFinished} games played · next ad in {status.untilNext} ·{' '}
       {status.loaded ? 'one waiting' : 'none waiting'}
@@ -973,6 +974,9 @@ export function DiceDemoScreen() {
     seventh value of `tab`. Only one can be open at a time; there is
     nowhere to open the second from while the first is covering the screen.
   */
+  // The ad status line for anybody, shown by holding the version line in
+  // Settings (David, 5 Nov 2026: AdMob had received no requests at all).
+  const [showAdStatus, setShowAdStatus] = useState(false);
   const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | 'whatsnew' | null>(null);
   // A big update's post, waiting for the loading screen to lift.
   const [whatsNewPost, setWhatsNewPost] = useState<NewsItem | null>(null);
@@ -4770,7 +4774,14 @@ export function DiceDemoScreen() {
               a box of its own with a known bottom, rather than a page
               competing with a tab bar for the same edge.
             */}
-            <Text style={styles.versionLine}>{GAME_VERSION}</Text>
+            <Text
+              style={styles.versionLine}
+              onLongPress={() => setShowAdStatus((on) => !on)}
+              accessibilityHint="Hold to show where the adverts got to"
+            >
+              {GAME_VERSION}
+            </Text>
+            {showAdStatus && !unlockAll && <AdStatusLine />}
           </KeyboardAvoidingView>
         </Popup>
       )}
