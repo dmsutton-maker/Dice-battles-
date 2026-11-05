@@ -421,11 +421,12 @@ it can neither vote nor settle a vote.
 ## The company
 
 The family voted and settled on **Paper Ship Studio** as the name to
-carry more than just this one game — David Sutton's studio, not
-incorporated yet. Use it wherever the game's website names who makes it
-(it already does, in the footer and the legal pages), and use it as the
-Organization name whenever the Apple account is converted from Individual
-and whenever a legal entity is formed. `papershipstudio.com` is bought
+carry more than just this one game. **Since 5 Nov 2026 the company is
+Paper Ship Studio LLC** (Marc: "we're now Paper Ship Studio LLC"): the
+copyright lines in the game and the site footer, and the privacy policy
+and terms, name the LLC. The brand stays "Paper Ship Studio" everywhere
+else. Use "Paper Ship Studio LLC" as the Organization name whenever the
+Apple account is converted from Individual. `papershipstudio.com` is bought
 and is the site's production domain (see STATE.md).
 
 ## The App Store record

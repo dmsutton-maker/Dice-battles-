@@ -25,11 +25,11 @@ export interface LegalCopy {
 }
 
 export const PRIVACY: LegalCopy = {
-  written: '2026-11-04',
+  written: '2026-11-05',
   metaDescription:
     'No accounts and no tracking. Friends, online battles, notifications and bug reports send a little information. This page says exactly what, and why.',
   intro:
-    'Paper Ship Studio ("we," "us," or "the studio") is a small, independent game studio, currently operated by its owner as an individual and trading under the Paper Ship Studio name. This policy covers every app we publish, including Dice Battles: Color Rush.',
+    'Paper Ship Studio LLC ("we," "us," or "the studio") is a small, independent game studio, a limited liability company. This policy covers every app we publish, including Dice Battles: Color Rush.',
   sections: [
     {
       heading: 'The short version',
@@ -95,10 +95,10 @@ export const PRIVACY: LegalCopy = {
 };
 
 export const TERMS: LegalCopy = {
-  written: '2026-11-04',
+  written: '2026-11-05',
   metaDescription: 'The terms that cover your use of any app published by Paper Ship Studio, including purchases and the Gold Pass.',
   intro:
-    'These terms cover your use of any app published by Paper Ship Studio, including Dice Battles: Color Rush. Paper Ship Studio is currently operated by its owner as an individual, trading under the Paper Ship Studio name, and is not yet a registered company. By downloading or using our apps, you agree to these terms.',
+    'These terms cover your use of any app published by Paper Ship Studio LLC, including Dice Battles: Color Rush. By downloading or using our apps, you agree to these terms.',
   sections: [
     {
       heading: 'Using our apps',
@@ -126,7 +126,7 @@ export const TERMS: LegalCopy = {
     },
     {
       heading: 'Intellectual property',
-      body: 'The Paper Ship Studio name, logo, and the design, artwork, and code of our apps belong to Paper Ship Studio. You may not copy, redistribute, or resell any part of our apps without our permission.',
+      body: 'The Paper Ship Studio name and logo, the name Dice Battles: Color Rush, and the design, artwork, and code of our apps belong to Paper Ship Studio LLC. Paper Ship Studio and Dice Battles: Color Rush are trademarks of Paper Ship Studio LLC. You may not copy, redistribute, or resell any part of our apps without our permission.',
     },
     {
       heading: 'No warranty',
