@@ -347,14 +347,18 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **5 Nov 2026 (v1.170.0, update 74235d88):** share card's board was white on
+  iPhone: the capture now has three redraw the scene into a render target
+  (`drawBoard`, isXRRenderTarget + RGBA8) instead of blitting the view's MSAA
+  buffer. v1.168.0's three-drawn card art is confirmed working on Marc's phone;
+  the board half is still to be seen there. Play no longer pays the ad wait
+  again after one came up empty (one 6 s deadline, once a session).
 - **5 Nov 2026 (v1.169.0, update 2270020c):** friend-code invite on iOS no
   longer puts the link in the text as well as in `url` (Messages drew two cards).
 - **5 Nov 2026 (v1.168.0, update 7436920f):** the share card is drawn by three
   (render target + planes, pictures via `{ data: { localUri } }` like fiber's
   native TextureLoader), after the raw-GL card came out blank on Marc's
-  iPhone. Same card in a browser; NOT yet seen on a phone. If it is still
-  blank there, the next suspect is expo-gl's file decode (`loadImage`), not
-  the drawing. Ads: tester mode (the admin code) counts as ads removed, so a
+  iPhone. Confirmed on Marc's phone: the art draws. Ads: tester mode (the admin code) counts as ads removed, so a
   tester never sees one; real ads also need the app live and approved in AdMob.
 - **5 Nov 2026 (v1.167.0, update 88bfca8b):** fixed the battle after a win
   drawing with no floor, walls, gatehouse, water or dice (Marc's screenshot).

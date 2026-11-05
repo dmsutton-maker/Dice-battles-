@@ -1,11 +1,13 @@
 # Changelog
 
-## v1.170.1 — 2026-11-05 · requested by David
+## v1.171.0 — 2026-11-05 · requested by David
 
 After the AdMob consent message was published the phone said "Ads:
 ready", yet AdMob still showed no requests and David saw no ads. The
 status line could not tell "never asked" from "asked and refused".
-Runtime 4.0.0.
+Runtime 4.0.0. Also carries the status line first published as this
+branch's v1.170.0 (hold the version line in Settings), which Marc's own
+v1.170.0 went out without.
 
 ### Added
 - **The status line counts the ad requests sent this launch** ("asked
@@ -14,25 +16,29 @@ Runtime 4.0.0.
   approved. `adStatus().requested`; the ERROR listener now stores the
   error in `problem`, cleared when an ad loads. Nothing else changes.
 
-## v1.170.0 — 2026-11-05 · requested by David
+## v1.170.0 — 2026-11-05 · requested by Marc
 
-David: "I didn't see any ad". AdMob's own reports (checked 5 Nov 2026 by
-Claude in Chrome) show ZERO ad requests from the app in 30 days, on both
-interstitial units — so no phone has ever asked Google for an advert, and
-"Limited ad serving" is not the reason. Runtime 4.0.0.
+Marc, 5 Nov 2026, with a screenshot: "Share still not good" (the card's art
+drew, the board was pure white), and "after i win and hit the paly button again
+there is a long delay till it starts". Runtime 4.0.0: JS only.
 
-### Added
-- **The reason adverts stopped, on the phone.** `ads.ts` keeps the SDK's
-  own words when start-up stops: the consent service's error or status,
-  or the SDK's start-up error (`adStatus().problem`). The likeliest
-  culprit is the consent step: any error there means no ads, by design,
-  and nothing reported it.
-- **Anybody can see it**: press and hold the version line at the bottom
-  of Settings and the "Ads:" line appears under it, with "Why: …". Before,
-  it was drawn only in tester mode, where adverts are off before start-up
-  even begins, so it could only ever say "switched off". Tester mode is
-  unchanged: ads.ts still has no tester branch (testerPurchases.test.ts).
-- Tests: `tests/adProblem.test.ts`.
+### Fixed
+- **The board in the share card was white.** It was copied from the view's
+  multisampled framebuffer, whose contents after a present are not ours to
+  rely on. `boardShot.ts` now has three draw the scene again into a render
+  target (`drawBoard`), marked `isXRRenderTarget` so it gets the screen's tone
+  mapping and sRGB output in the same shader programs (nothing compiles at the
+  win), stored as plain `RGBA8` so the colour is not encoded twice;
+  single-sampled because expo-gl does not implement
+  `renderbufferStorageMultisample`. Screens register their scene and camera
+  (`rememberView`) in `onCreated`. Browser check: mean difference from the
+  screen 1.0 of 255, edges only (no antialiasing).
+- **Play could sit for up to twelve seconds with nothing on screen.** With an
+  advert due, Play waited up to 6 s for the ad SDK to start and then up to 6 s
+  more for an advert, and because a due advert stays owed, every Play paid it
+  again when none ever came. Now one 6 s deadline covers both, and once a wait
+  has come up empty Play stops waiting for the rest of the session (an advert
+  that loads in the background still shows). Tests: ads.test.ts.
 
 ## v1.169.0 — 2026-11-05 · requested by Marc
 
