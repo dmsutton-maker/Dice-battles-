@@ -440,8 +440,10 @@ export function DiceDemoScreen() {
           post waits here and opens once the loading screen has lifted
           (the effect beside `launched`); any launch that shows nothing
           records the version now, so the NEXT big update still shows.
+          A phone with no version recorded but the tutorial seen has
+          played before this record existed: a returning player, told.
         */
-        const big = tutorialSeen ? whatsNewToShow(lastSeenVersion, GAME_VERSION, NEWS) : null;
+        const big = tutorialSeen ? whatsNewToShow(lastSeenVersion, GAME_VERSION, NEWS, tutorialSeen) : null;
         if (big) setWhatsNewPost(big);
         else markNewsSeen(GAME_VERSION);
       })

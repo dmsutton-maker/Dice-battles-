@@ -26,8 +26,14 @@ function compareVersions(a: string, b: string): number {
 /**
  * The post to pop up at this launch, or null for none.
  *
- * - Nothing seen before (a fresh install): null. There is nothing to
- *   announce to somebody who has never played; the tutorial opens instead.
+ * - Nothing seen before and not `returning` (a fresh install): null.
+ *   There is nothing to announce to somebody who has never played; the
+ *   tutorial opens instead.
+ * - Nothing seen before but `returning` (the tutorial was seen, so this
+ *   phone has played before this record existed): counts as having seen
+ *   everything up to the version before this one, so the running
+ *   version's big post still shows once. Without this, the release that
+ *   brought the popup would reach nobody.
  * - The player has already seen this version, or a later one: null. Once
  *   means once.
  * - The newest post for the running version is not major, or there is no
@@ -40,9 +46,10 @@ export function whatsNewToShow(
   lastSeenVersion: string | null,
   current: string,
   posts: NewsItem[],
+  returning: boolean,
 ): NewsItem | null {
-  if (lastSeenVersion === null) return null;
-  if (compareVersions(lastSeenVersion, current) >= 0) return null;
+  if (lastSeenVersion === null && !returning) return null;
+  if (lastSeenVersion !== null && compareVersions(lastSeenVersion, current) >= 0) return null;
   const newest = posts.find((post) => post.version === current);
   return newest && newsIsMajor(newest) ? newest : null;
 }

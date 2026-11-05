@@ -36,56 +36,70 @@ const POSTS: NewsItem[] = [
 
 suite('whatsNew · when a big update pops up', () => {
   test('a fresh install shows nothing: the tutorial opens instead', () => {
-    assertEqual(whatsNewToShow(null, 'v1.162.0', POSTS), null, 'a first launch announced an update');
+    assertEqual(whatsNewToShow(null, 'v1.162.0', POSTS, false), null, 'a first launch announced an update');
+  });
+
+  test('a returning player with nothing recorded is told, once', () => {
+    // The tutorial was seen, so this phone played before the record
+    // existed: it has seen everything up to the version before this one.
+    assertEqual(whatsNewToShow(null, 'v1.162.0', POSTS, true)?.id, 'big', 'a returning player missed the big post');
+  });
+
+  test('a returning player with nothing recorded is not told about an ordinary update', () => {
+    assertEqual(whatsNewToShow(null, 'v1.161.0', POSTS, true), null, 'a small update popped up for a returning player');
+  });
+
+  test('a recorded version wins over returning', () => {
+    assertEqual(whatsNewToShow('v1.162.0', 'v1.162.0', POSTS, true), null, 'returning re-showed a seen post');
   });
 
   test('the first launch after a big update shows its post', () => {
-    assertEqual(whatsNewToShow('v1.161.0', 'v1.162.0', POSTS)?.id, 'big', 'the big post did not show');
+    assertEqual(whatsNewToShow('v1.161.0', 'v1.162.0', POSTS, true)?.id, 'big', 'the big post did not show');
   });
 
   test('skipping versions still shows the newest big post once', () => {
-    assertEqual(whatsNewToShow('v1.150.0', 'v1.162.0', POSTS)?.id, 'big', 'a player two releases behind missed it');
+    assertEqual(whatsNewToShow('v1.150.0', 'v1.162.0', POSTS, true)?.id, 'big', 'a player two releases behind missed it');
   });
 
   test('once seen, never again', () => {
-    assertEqual(whatsNewToShow('v1.162.0', 'v1.162.0', POSTS), null, 'shown a second time');
+    assertEqual(whatsNewToShow('v1.162.0', 'v1.162.0', POSTS, true), null, 'shown a second time');
   });
 
   test('a version newer than the running one counts as seen (a rolled-back update)', () => {
-    assertEqual(whatsNewToShow('v1.163.0', 'v1.162.0', POSTS), null, 'shown after a rollback');
+    assertEqual(whatsNewToShow('v1.163.0', 'v1.162.0', POSTS, true), null, 'shown after a rollback');
   });
 
   test('an ordinary update shows nothing', () => {
-    assertEqual(whatsNewToShow('v1.160.0', 'v1.161.0', POSTS), null, 'a small update popped up');
+    assertEqual(whatsNewToShow('v1.160.0', 'v1.161.0', POSTS, true), null, 'a small update popped up');
   });
 
   test('an ordinary update does not reach back for an older big post', () => {
     // v1.160.0 was big, but the running version's own newest post is not.
-    assertEqual(whatsNewToShow('v1.159.0', 'v1.161.0', POSTS), null, 'an old big post was replayed');
+    assertEqual(whatsNewToShow('v1.159.0', 'v1.161.0', POSTS, true), null, 'an old big post was replayed');
   });
 
   test('a version with no post at all shows nothing', () => {
-    assertEqual(whatsNewToShow('v1.161.0', 'v1.170.0', POSTS), null, 'an unannounced version popped up');
+    assertEqual(whatsNewToShow('v1.161.0', 'v1.170.0', POSTS, true), null, 'an unannounced version popped up');
   });
 
   test('only the NEWEST post for the version decides', () => {
     const smallFirst = [post('small', 'v1.162.0'), post('big-second', 'v1.162.0', true)];
-    assertEqual(whatsNewToShow('v1.161.0', 'v1.162.0', smallFirst), null, 'a later post for the version decided');
+    assertEqual(whatsNewToShow('v1.161.0', 'v1.162.0', smallFirst, true), null, 'a later post for the version decided');
   });
 
   test('an odd value in major is not major', () => {
     const odd = [{ ...post('odd', 'v1.162.0'), major: 'yes' } as unknown as NewsItem];
-    assertEqual(whatsNewToShow('v1.161.0', 'v1.162.0', odd), null, '"yes" counted as major');
+    assertEqual(whatsNewToShow('v1.161.0', 'v1.162.0', odd, true), null, '"yes" counted as major');
   });
 
   test('an unreadable remembered version counts as old', () => {
-    assertEqual(whatsNewToShow('garbage', 'v1.162.0', POSTS)?.id, 'big', 'garbage hid the post');
+    assertEqual(whatsNewToShow('garbage', 'v1.162.0', POSTS, true)?.id, 'big', 'garbage hid the post');
   });
 
   test("today's bundled news against today's version", () => {
-    const shown = whatsNewToShow('v0.0.0', GAME_VERSION, NEWS);
+    const shown = whatsNewToShow('v0.0.0', GAME_VERSION, NEWS, true);
     note(`${GAME_VERSION}: ${shown ? `"${shown.title}" pops up` : 'nothing pops up'}`);
-    assertEqual(whatsNewToShow(GAME_VERSION, GAME_VERSION, NEWS), null, 'the running version was not treated as seen');
+    assertEqual(whatsNewToShow(GAME_VERSION, GAME_VERSION, NEWS, true), null, 'the running version was not treated as seen');
   });
 });
 

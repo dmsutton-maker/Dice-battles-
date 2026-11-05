@@ -346,7 +346,7 @@ suite('news · big updates and collapsed posts', () => {
   test('the big-update popup waits for the saved game and never joins the tutorial', () => {
     const game = readFileSync(join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'), 'utf8');
     assert(
-      /const big = tutorialSeen \? whatsNewToShow\(lastSeenVersion, GAME_VERSION, NEWS\) : null;/.test(game),
+      /const big = tutorialSeen \? whatsNewToShow\(lastSeenVersion, GAME_VERSION, NEWS, tutorialSeen\) : null;/.test(game),
       'the popup can be chosen on the same launch as the tutorial',
     );
     assert(
