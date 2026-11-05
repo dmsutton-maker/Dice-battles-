@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.164.0 — 2026-11-05 · requested by David
+
+David, 5 Nov 2026: "I want players to be able to save their progress no
+matter what", and, once Marc's server backup (v1.162.0) turned out to be
+live already, "Combine them". Marc's backup brings everything back after
+a delete and reinstall on the SAME phone; this carries the account to a
+NEW iPhone. **Needs build 20** (the iCloud module is native code). Runtime
+stays 4.0.0: the module is looked up with `requireOptionalNativeModule`,
+which returns null on build 18, where nothing changes.
+
+### Added
+- **"Is this you?" on a new iPhone** (`src/game/icloudAccount.ts`,
+  `AccountPickPopup.tsx`, native module `modules/icloud-store`, Apple's
+  `NSUbiquitousKeyValueStore`). A phone that has been played keeps its
+  account (player id, device secret, friend code, name, trophies) in the
+  player's own iCloud, written whenever the game is opened or left. A new
+  phone that has not been played, and did not get its account back from
+  the keychain, is offered the accounts iCloud knows, by name and
+  trophies. Choosing one puts it on the phone and restarts the game, and
+  Marc's restore then brings the progress back from the server. "I'm a
+  new player" is not asked again.
+- **It asks, rather than choosing**, because families share one Apple ID
+  across several children's phones: every played phone keeps its own
+  entry (up to `MAX_ACCOUNTS`, 8), and a sibling's account is never put
+  on a phone without the player picking it.
+- Nothing about progress goes to iCloud and nothing new goes to our
+  servers. The privacy policy's backup paragraph says what iCloud holds.
+- Tests: `tests/icloudAccount.test.ts`.
+
 ## v1.163.0 — 2026-11-05 · requested by Marc
 
 Marc, 5 Nov 2026: "When I try to play a game it still starts off with

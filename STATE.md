@@ -164,13 +164,18 @@ and the same day the listing was brought up to date:
   - The submission itself still sits behind the full-test-on-Fable gate
     in AGENTS.md.
 
-## Build 20, runtime 4.0.0 (5 Nov 2026): iCloud saves
+## Build 20, runtime 4.0.0 (5 Nov 2026): iCloud for a new iPhone
 
 - Build 20 (EAS `a5ee8874-9b6e-4794-a2b7-1c67832f7ac4`, ASC build
   `8c20ad92-ecc5-4b09-8936-9195a7246626`) adds the local module
-  `modules/icloud-store` for v1.162.0's iCloud saves. It is the build on
-  App Store version 1.60.0 now (it replaced 18), and the Family TestFlight
-  group gets it automatically.
+  `modules/icloud-store`. It is the build on App Store version 1.60.0
+  (it replaced 18), and the Family TestFlight group gets it on its own.
+- What uses it: v1.164.0's "Is this you?" (`icloudAccount.ts`), which
+  carries the ACCOUNT to a new iPhone; Marc's server backup
+  (`cloudSave.ts`, v1.162.0) then restores the progress. The full iCloud
+  save first built into build 20's own bundle was replaced by this before
+  it was ever published: an over-the-air update newer than the build
+  replaces the built-in JavaScript on first launch.
 - Runtime stays 4.0.0: the JavaScript finds the module with
   `requireOptionalNativeModule`, so build 18 just lacks the feature.
 - iCloud (ICLOUD, Xcode 6) was switched on for bundle ID `YP486623YL`
@@ -182,8 +187,7 @@ and the same day the listing was brought up to date:
   `EXPO_APPLE_TEAM_ID=K3N9FG8NKD` and `EXPO_APPLE_TEAM_TYPE=INDIVIDUAL`
   set (EAS can then fix the profile itself); `eas submit` still needs the
   three `ascApiKey*` fields added to eas.json for the run, then removed.
-- Not yet tried on a phone: install build 20, play, delete, reinstall,
-  and "Welcome back!" should offer the save.
+- Not yet tried on a phone.
 
 ## Build 18, runtime 4.0.0 (2 Nov 2026)
 

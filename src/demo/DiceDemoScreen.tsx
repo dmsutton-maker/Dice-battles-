@@ -235,7 +235,20 @@ import {
   loadTutorialSeen,
   markTutorialSeen,
 } from '../game/tutorial';
-import { flushCloudSave, restoreOnLaunch, watchCloudSave } from '../game/cloudSave';
+import {
+  collectSnapshot,
+  flushCloudSave,
+  isFreshSnapshot,
+  restoreOnLaunch,
+  watchCloudSave,
+} from '../game/cloudSave';
+import {
+  declineAccounts,
+  rememberAccount,
+  watchForAccounts,
+  type CarriedAccount,
+} from '../game/icloudAccount';
+import { AccountPickPopup } from './AccountPickPopup';
 import {
   previewAction,
   PreviewTarget,
@@ -950,6 +963,8 @@ export function DiceDemoScreen() {
 
   const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
+  // Players this phone's iCloud knows, offered to a new iPhone (icloudAccount.ts).
+  const [accountOffer, setAccountOffer] = useState<CarriedAccount[] | null>(null);
   /*
     AN ONLINE BATTLE WALKED OUT OF BY CLOSING THE APP (pendingMatch.ts).
     Marc, 4 Nov 2026: "if i forfeit an online match, do I lose trophies?
@@ -983,6 +998,22 @@ export function DiceDemoScreen() {
   useEffect(() => {
     if (!appActive) void flushCloudSave();
   }, [appActive]);
+  /*
+    THE NEW IPHONE (icloudAccount.ts). David, 5 Nov 2026: "I want players
+    to be able to save their progress no matter what." The server backup
+    above follows the account; the account is kept in the player's own
+    iCloud too, written whenever the game is opened or left once it has
+    been played. On a new phone that has not been played, "Is this you?"
+    offers the accounts iCloud knows; choosing one restarts the game on
+    it and the restore above brings the progress back from the server.
+    Nothing at all on a build without the iCloud module (18 and earlier).
+  */
+  useEffect(() => {
+    if (!me || !hydrated) return;
+    rememberAccount(me, getProgress().trophies, isFreshSnapshot(collectSnapshot()));
+    if (!appActive) return;
+    return watchForAccounts(me, () => isFreshSnapshot(collectSnapshot()), setAccountOffer);
+  }, [me, hydrated, appActive]);
   /*
     THE LOADING SCREEN. The family, 3 Nov 2026: "i want the speed fixes
     now. like make sure the game is fully loaded before showing the home
@@ -4629,6 +4660,16 @@ export function DiceDemoScreen() {
           waitMs={rematchWait.waitMs}
           onDone={() => {}}
           onCancel={leaveRematchWait}
+        />
+      )}
+      {/* Last, so "Is this you?" sits above the tutorial and every popup. */}
+      {accountOffer && (
+        <AccountPickPopup
+          accounts={accountOffer}
+          onNew={() => {
+            void declineAccounts();
+            setAccountOffer(null);
+          }}
         />
       )}
     </View>
