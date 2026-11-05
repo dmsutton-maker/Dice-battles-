@@ -90,6 +90,23 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-161-0-loading',
+    date: '5 November 2026',
+    version: 'v1.161.0',
+    title: 'Faster to load, and better cards',
+    icon: 'speed',
+    body:
+      'The Shop and the Inventory no longer open with blank squares: a ' +
+      'card shows a soft shimmer until its picture is ready, and the ' +
+      'cards you are looking at are painted first. Tapping a die or an ' +
+      'arena opens its page at once, with a brief spinner if it is still ' +
+      'being painted. Leopard and Tiger paint much faster too.\n\n' +
+      'The Tiger, Chicken and Waffles and Watermelon cards now show what ' +
+      'the dice really look like. The Tennis Ball die has retired like ' +
+      'the other ball dice; if you owned it, its 395 coins come back to ' +
+      'you.',
+  },
+  {
     id: 'v1-160-0-ocean',
     date: '4 November 2026',
     version: 'v1.160.0',

@@ -323,6 +323,18 @@ one is added; it does not need a new build.
   The privacy policy, terms and App Review notes describe online play
   since 4 Nov 2026 (website deployed 14:25 UTC, `dpl_8Q2GCdByL4UFJXeb8Ksm26bbzSG4`).
   Still open: online wins are paid on the phone's own word.
+- **5 Nov 2026 (v1.161.0):** Marc's four requests of the day. Shop and
+  Inventory cards show a sweep of light until their picture lands and the
+  open tab's cards paint first (`src/dice/previewLoad.ts`,
+  `PreviewLoading.tsx`, `SHELF_SLICE_MS`); a preview never paints on the
+  render path. The Tiger, Chicken and Waffles and Watermelon cards are
+  composed for the card (`CARD_SAMPLERS` in patterns.ts). Leopard and
+  Tiger paint 8x and 6x faster, and `wrappedNoise` reads a lattice table
+  (same pixels). Tennis Ball retired like the six ball dice (395 coins
+  refunded once). Paper Ship Studio LLC in the About text, the site
+  footer and the legal pages (website deployed). Measured only in node:
+  Marc should open the Shop with everything unlocked right after an
+  update and tap Leopard, Pizza and an arena to see the loading states.
 - **4 Nov 2026 (v1.160.0, update f9099fe4):** the Ocean dice flow on
   one 1.8 s clock (`src/dice/oceanFlow.ts`) and splash when they land
   (`src/dice/diceOcean.ts`, effect `ocean`). Marc may want the flow
