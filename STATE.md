@@ -164,6 +164,19 @@ and the same day the listing was brought up to date:
   - The submission itself still sits behind the full-test-on-Fable gate
     in AGENTS.md.
 
+## Ads: why none were ever requested, and the fix (5 Nov 2026)
+
+- AdMob's reports showed ZERO ad requests in 30 days. v1.167.0's status
+  line (hold the version line in Settings) gave the reason: the consent
+  SDK (UMP) failed with "Failed to read publisher's account
+  configuration; no form(s) configured for the input app ID", and
+  `ads.ts` treats any consent failure as no ads.
+- Fixed in AdMob, not in code: a European regulations (GDPR) message was
+  published under Privacy & messaging for Dice Battles: Color Rush (iOS),
+  with "Do not consent" on. David's phone then showed "Ads: ready".
+- Still "Limited ad serving" until the App Store listing is linked in
+  AdMob after launch, so fill may be thin until then.
+
 ## Build 20, runtime 4.0.0 (5 Nov 2026): iCloud for a new iPhone
 
 - Build 20 (EAS `a5ee8874-9b6e-4794-a2b7-1c67832f7ac4`, ASC build
