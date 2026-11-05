@@ -6,6 +6,7 @@ import { AI_DIFFICULTIES } from '../game/ai';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { FriendsIcon } from '../ui/Icon';
 import type { Challenge } from '../game/friendlyBattle';
+import { REMATCH_ACCEPT, REMATCH_NOT_NOW, inviteClockLabel, rematchAskLine } from '../game/rematch';
 
 /**
  * "Marc wants a battle!" — across the top of whatever you were doing.
@@ -23,6 +24,11 @@ import type { Challenge } from '../game/friendlyBattle';
  * is real — the challenge expires whether or not anybody is looking —
  * and showing the seconds is kinder than a button that quietly stops
  * working.
+ *
+ * Since 5 Nov 2026 it is also "Marc wants a rematch!" (rematch.ts): the
+ * same banner for an invite that asks to play the battle just finished
+ * again, with Accept and Not now, and a clock in minutes because a
+ * rematch invite lives ten minutes rather than forty-five seconds.
  */
 export function ChallengeBanner({
   challenge,
@@ -35,6 +41,7 @@ export function ChallengeBanner({
   onAccept: () => void;
   onDecline: () => void;
 }) {
+  const rematch = typeof challenge.rematchOf === 'string';
   const slide = useRef(new Animated.Value(-120)).current;
   // Clear of the status bar wherever the system puts it (safeArea.ts).
   const hud = useHudFrame();
@@ -58,22 +65,22 @@ export function ChallengeBanner({
           <FriendsIcon size={20} />
           <View style={styles.headText}>
             <Text style={styles.title} numberOfLines={1}>
-              {who} wants a battle!
+              {rematch ? rematchAskLine(who) : `${who} wants a battle!`}
             </Text>
             <Text style={styles.detail} numberOfLines={1}>
-              {MODES[challenge.mode].name} · {AI_DIFFICULTIES[challenge.difficulty].label} · no
-              trophies
+              {MODES[challenge.mode].name} · {AI_DIFFICULTIES[challenge.difficulty].label}
+              {rematch ? '' : ' · no trophies'}
             </Text>
           </View>
           {/* The clock, so a challenge that is about to go says so. */}
-          <Text style={styles.clock}>{secondsLeft}</Text>
+          <Text style={styles.clock}>{inviteClockLabel(secondsLeft)}</Text>
         </View>
         <View style={styles.buttons}>
           <Pressable style={[styles.button, styles.decline]} onPress={onDecline}>
-            <Text style={styles.declineText}>No thanks</Text>
+            <Text style={styles.declineText}>{rematch ? REMATCH_NOT_NOW : 'No thanks'}</Text>
           </Pressable>
           <Pressable style={[styles.button, styles.accept]} onPress={onAccept}>
-            <Text style={styles.acceptText}>Battle!</Text>
+            <Text style={styles.acceptText}>{rematch ? REMATCH_ACCEPT : 'Battle!'}</Text>
           </Pressable>
         </View>
       </View>

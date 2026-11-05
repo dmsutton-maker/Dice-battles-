@@ -7,6 +7,7 @@ import type { AiOpponent } from '../game/ai';
 import { DOT_TICK_MS } from '../game/matchmaking';
 import { HERE_MS, joinLine, joinProgress } from '../game/friendlyBattle';
 import { MATCH_JOIN_WAIT_MS } from '../game/matchSearch';
+import { BACK_TO_MENU, goneLine } from '../game/rematch';
 import { RivalBadge, matchOverlayStyles as m } from './MatchmakingOverlay';
 
 /**
@@ -33,18 +34,33 @@ import { RivalBadge, matchOverlayStyles as m } from './MatchmakingOverlay';
  * they chose, with its shorter MATCH_JOIN_WAIT_MS, and a battle that
  * counts like any other.
  *
+ * And since 5 Nov 2026 the room a REMATCH is asked from (rematch.ts;
+ * Marc: "it should have to wait for the other player too"). The screen
+ * sits here with "Waiting for Marc…" from the moment it asks until the
+ * other player answers, over `waitMs` (the rest of the ten-minute
+ * window) rather than the join wait. If they decline, close the app or
+ * let the ten minutes pass, the screen sets `gone`: the line becomes
+ * "Marc has gone", and the one button goes back to the menu — nothing
+ * starts against a bot.
+ *
  * `onDone` fires exactly once, and not at all once unmounted.
  */
 export function FriendlyWaitOverlay({
   opponent,
   kind = 'friend',
   ready,
+  gone = false,
+  waitMs,
   onDone,
   onCancel,
 }: {
   opponent: AiOpponent;
   kind?: 'friend' | 'match';
   ready: boolean;
+  /** They are not coming: say so, and offer only the way back. */
+  gone?: boolean;
+  /** How long the bar takes to fill; the join wait when not given. */
+  waitMs?: number;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -67,7 +83,11 @@ export function FriendlyWaitOverlay({
   }, [ready]);
 
   const waitProgress =
-    kind === 'match' ? Math.min(1, Math.max(0, elapsed) / MATCH_JOIN_WAIT_MS) : joinProgress(elapsed);
+    waitMs !== undefined
+      ? Math.min(1, Math.max(0, elapsed) / Math.max(1, waitMs))
+      : kind === 'match'
+        ? Math.min(1, Math.max(0, elapsed) / MATCH_JOIN_WAIT_MS)
+        : joinProgress(elapsed);
 
   return (
     <View style={m.overlay}>
@@ -84,11 +104,11 @@ export function FriendlyWaitOverlay({
       </View>
 
       <Text style={m.footer} accessibilityLiveRegion="polite">
-        {joinLine(opponent.name, ready ? 'here' : 'waiting', elapsed)}
+        {gone ? goneLine(opponent.name) : joinLine(opponent.name, ready ? 'here' : 'waiting', elapsed)}
       </Text>
 
       <View style={m.track}>
-        <View style={[m.fill, { width: `${(ready ? 1 : waitProgress) * 100}%` }]} />
+        <View style={[m.fill, { width: `${(gone ? 0 : ready ? 1 : waitProgress) * 100}%` }]} />
       </View>
 
       {!ready && (
@@ -99,7 +119,7 @@ export function FriendlyWaitOverlay({
             onCancel();
           }}
         >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{gone ? BACK_TO_MENU : 'Cancel'}</Text>
         </SecondaryButton>
       )}
     </View>

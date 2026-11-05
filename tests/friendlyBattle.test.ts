@@ -17,6 +17,21 @@ import {
   rivalProgressCallout,
   sameColours,
 } from '../src/game/friendlyBattle';
+import {
+  BACK_TO_MENU,
+  REMATCH_ACCEPT,
+  REMATCH_MISSES,
+  REMATCH_NOT_NOW,
+  REMATCH_WINDOW_MS,
+  goneLine,
+  inviteClockLabel,
+  isRematchOf,
+  rematchAskLine,
+  rematchButtonLabel,
+  rematchWindowOpen,
+  whyRematchGone,
+} from '../src/game/rematch';
+import { sameChallenges, type ChallengeState } from '../src/game/battlesApi';
 import { sameList } from '../src/game/friendsPoll';
 import { forgetFriends, recallFriends, rememberFriends } from '../src/game/friendsCache';
 import { EMPTY_LIST, type FriendList } from '../src/game/friendsApi';
@@ -128,7 +143,7 @@ suite('friendly battle · the waiting room', () => {
     assert(poll.includes('OUTGOING_POLL_MS'), 'the poll never uses the faster interval');
     assert(poll.includes('outgoingRef.current'), 'the poll does not read the challenge it sent');
     assert(
-      /\}, \[me, appActive, friendly, phase\]\);/.test(poll),
+      /\}, \[me, appActive, friendly, phase, rematch\]\);/.test(poll),
       'the poll restarts on every challenge change instead of reading a ref',
     );
   });
@@ -233,5 +248,147 @@ suite('friendly battle · the banner and who is on', () => {
     assertEqual(back?.friends[0].online, undefined, 'a minutes-old "On now" was kept');
     assertEqual(back?.friends[0].name, 'Marc', 'the friend went with it');
     forgetFriends();
+  });
+});
+
+/**
+ * PLAYING AGAIN, WITH THE SAME PERSON (src/game/rematch.ts).
+ *
+ * Marc, 5 Nov 2026: "After a game against your friend, if one of you
+ * chooses to play again, it should have to wait for the other player too
+ * in order to be able to play again, because right now it plays again
+ * against your friend but they're not playing really."
+ */
+suite('friendly battle · playing again, with the same person', () => {
+  const ended = 5_000_000;
+  const outgoing = (id: string, online?: boolean) => ({
+    id,
+    who: { playerId: 'local-marc', name: 'Marc', trophies: 10, online },
+  });
+
+  test('the window is ten minutes from the end', () => {
+    assertEqual(REMATCH_WINDOW_MS, 10 * 60_000, 'ten minutes');
+    assert(rematchWindowOpen(ended, ended), 'closed at once');
+    assert(rematchWindowOpen(ended, ended + REMATCH_WINDOW_MS - 1), 'closed a moment early');
+    assert(!rematchWindowOpen(ended, ended + REMATCH_WINDOW_MS), 'open past ten minutes');
+    assert(!rematchWindowOpen(Number.NaN, ended), 'a battle with no end can be played again');
+  });
+
+  test('the words', () => {
+    assertEqual(rematchButtonLabel('Marc'), 'Play again with Marc', 'the button');
+    assertEqual(rematchAskLine('Marc'), 'Marc wants a rematch!', 'the ask');
+    assertEqual(goneLine('Marc'), 'Marc has gone', 'the no-show');
+    assertEqual(REMATCH_ACCEPT, 'Accept', 'accept');
+    assertEqual(REMATCH_NOT_NOW, 'Not now', 'not now');
+    assertEqual(BACK_TO_MENU, 'Back to menu', 'the way back');
+    assert(isRematchOf({ rematchOf: 'b1' }, 'b1'), 'the rematch of this battle');
+    assert(!isRematchOf({ rematchOf: 'b2' }, 'b1'), 'the rematch of another battle');
+    assert(!isRematchOf({ rematchOf: null }, 'b1'), 'an ordinary challenge');
+    assert(!isRematchOf({}, 'b1'), 'an older server');
+  });
+
+  test('why the wait is over, and when it is not', () => {
+    const now = ended + 30_000;
+    assertEqual(whyRematchGone(outgoing('i1', true), 'i1', ended, now), null, 'they are there, thinking');
+    assertEqual(whyRematchGone(outgoing('i1'), 'i1', ended, now), null, 'an older server says nothing about who is on');
+    assertEqual(whyRematchGone(outgoing('i1', false), 'i1', ended, now), 'offline', 'their app is closed');
+    assertEqual(whyRematchGone(null, 'i1', ended, now), 'missing', 'the invite is gone');
+    assertEqual(whyRematchGone(outgoing('other', true), 'i1', ended, now), 'missing', 'some other invite of mine');
+    assertEqual(whyRematchGone(outgoing('i1', true), 'i1', ended, ended + REMATCH_WINDOW_MS), 'window', 'ten minutes');
+    // One failed poll looks like "missing"; the screen waits for two.
+    assertEqual(REMATCH_MISSES, 2, 'polls in a row');
+  });
+
+  test('the clock on a rematch invite reads as minutes', () => {
+    assertEqual(inviteClockLabel(45), '45', 'a challenge');
+    assertEqual(inviteClockLabel(59), '59', 'just under a minute');
+    assertEqual(inviteClockLabel(60), '1:00', 'a minute');
+    assertEqual(inviteClockLabel(599), '9:59', 'the whole window');
+    assertEqual(inviteClockLabel(-3), '0', 'never negative');
+    assertEqual(inviteClockLabel(Number.NaN), '0', 'unreadable');
+  });
+
+  test('a rematch invite, and who is on, are changes the poll re-draws', () => {
+    const base = (): ChallengeState => ({
+      incoming: [{ id: 'i1', mode: 'classic', difficulty: 'easy', expiresAt: 1, who: null }],
+      outgoing: null,
+      battle: null,
+    });
+    const a = base();
+    const b = base();
+    b.incoming[0].rematchOf = 'b1';
+    assert(!sameChallenges(a, b), 'a challenge turning into a rematch ask is not a change');
+    const c = base();
+    c.incoming[0].who = { playerId: 'p', name: 'Marc', trophies: 1, online: true };
+    const d = base();
+    d.incoming[0].who = { playerId: 'p', name: 'Marc', trophies: 1, online: false };
+    assert(!sameChallenges(c, d), 'their phone going quiet is not a change');
+    const e = base();
+    e.battle = { id: 'b', mode: 'classic', difficulty: 'easy', kind: 'friend' };
+    const f = base();
+    f.battle = { id: 'b', mode: 'classic', difficulty: 'easy', kind: 'match' };
+    assert(!sameChallenges(e, f), 'the kind of battle is not a change');
+    assert(sameChallenges(base(), base()), 'the same answer twice is a change');
+  });
+
+  test('"Play again" after a live battle asks, and never starts a bot', () => {
+    const buttons = between('const roundOverButtons = (', 'if (!hydrated) {');
+    assert(buttons.includes('rematchButtonLabel(rematch.opponentName)'), 'the button is not by their name');
+    assert(/rematch \? \(\s*<Pressable[^>]*onPress=\{\(\) => void askForRematch\(\)\}/.test(buttons), 'the button does not ask');
+    assert(buttons.includes("startCountdown('again')"), 'the plain "Play again" is gone');
+    const ask = between('const askForRematch = useCallback', 'const leaveRematchWait = useCallback');
+    assert(!ask.includes('startCountdown('), 'the ask starts a battle by itself');
+    assert(!ask.includes('pickOpponent('), 'the ask draws a bot');
+    assert(ask.indexOf('setRematchWait(opened)') < ask.indexOf('await askRematch('), 'the room opens after the ask, not before');
+    assert(/if \(result\.battle\) \{\s*startFriendly\(result\.battle, again\.opponentName, result\.battle\.kind \?\? again\.kind\)/.test(ask), 'their earlier ask is not joined');
+    assert(ask.includes('showCallout(result.error'), 'a refused ask is silent');
+  });
+
+  test('finishRound keeps the battle so it can be asked again', () => {
+    const finish = between('const finishRound = useCallback', 'const startCountdown');
+    assert(/const again = \{[\s\S]*?battleId: playing\.battleId,[\s\S]*?kind: playing\.kind,[\s\S]*?endedAt: Date\.now\(\),[\s\S]*?\};\s*setRematch\(again\)/.test(finish), 'the finished battle is not kept');
+    // Only a battle against a person: inside the `if (playing)`.
+    assert(finish.indexOf('setRematch(again)') < finish.indexOf('const stakes = stakesFor('), 'kept outside the live-battle branch');
+  });
+
+  test('the poll runs on the result screen of a live battle and reads the answer', () => {
+    const poll = between('ASKING WHETHER ANYBODY WANTS A BATTLE', 'The countdown on the banner');
+    assert(/const resultOfLive = rematch !== null && \(phase === 'won' \|\| phase === 'lost' \|\| phase === 'tie'\)/.test(poll), 'the poll is off on the result screen');
+    assert(/if \(phase !== 'pick' && !resultOfLive\) return;/.test(poll), 'the poll runs on every result screen');
+    assert(poll.includes("state.battle.kind ?? 'friend'"), 'a rematch of a match would be played as a friend battle');
+    assert(poll.includes('whyRematchGone(state.outgoing, wait.inviteId, again.endedAt'), 'the room never learns they have gone');
+    assert(/why !== 'missing' \|\| rematchMissesRef\.current >= REMATCH_MISSES/.test(poll), 'one failed poll says they have gone');
+    assert(poll.includes('rematchWaitRef.current !== null'), 'the poll is slow while a rematch ask is out');
+  });
+
+  test('"has gone" goes back to the menu, not to a bot', () => {
+    const leave = between('const leaveRematchWait = useCallback', '/*\n    THE LIVE BATTLE, one beat a second.');
+    assert(/if \(wait\?\.gone\) \{\s*quitToMenu\(\);\s*return;\s*\}/.test(leave), 'the way back is not the menu');
+    assert(leave.includes("answerChallenge(who, wait.inviteId, 'cancel')"), 'Cancel does not take the ask back');
+    assert(!leave.includes('startCountdown('), 'leaving the room starts a battle');
+    const overlay = read('src/demo/FriendlyWaitOverlay.tsx');
+    assert(overlay.includes('goneLine(opponent.name)') && overlay.includes('BACK_TO_MENU'), 'the room cannot say they have gone');
+    assert(/gone=\{rematchWait\.gone\}[\s\S]*?waitMs=\{rematchWait\.waitMs\}[\s\S]*?onCancel=\{leaveRematchWait\}/.test(screen), 'the room is not drawn for the rematch');
+    assert(/\{rematchWait && rematch && !friendly && \(\s*<FriendlyWaitOverlay/.test(screen), 'the rematch room is drawn over the friend\'s own room');
+  });
+
+  test('leaving the result screen takes my ask back and declines theirs', () => {
+    const quit = between('const quitToMenu = useCallback', 'THE FRIEND NEVER CAME');
+    assert(quit.includes("answerChallenge(who, wait.inviteId, 'cancel')"), 'my ask is left standing');
+    assert(/isRematchOf\(c, again\.battleId\)[\s\S]*?answerChallenge\(who, asked\.id, 'decline'\)/.test(quit), 'their ask is left waiting ten minutes');
+    assert(quit.includes('clearRematch()'), 'the finished battle is kept on the menu');
+    const start = between('const startFriendly = useCallback', 'startFriendlyRef.current = startFriendly');
+    assert(start.includes('clearRematch()'), 'a rematch that started is still offered');
+  });
+
+  test('the other player is asked with the challenge banner, in rematch words', () => {
+    const banner = read('src/demo/ChallengeBanner.tsx');
+    assert(banner.includes('rematchAskLine(who)'), 'the banner does not say rematch');
+    assert(banner.includes('REMATCH_ACCEPT') && banner.includes('REMATCH_NOT_NOW'), 'the buttons are not Accept and Not now');
+    assert(banner.includes('inviteClockLabel(secondsLeft)'), 'nine minutes would read as 540');
+    assert(/const bannerStays =\s*banner !== null &&\s*rematch !== null &&/.test(screen), 'the ask slides away after six seconds');
+    assert(/const gone = bannerStays \? null : setTimeout\(\(\) => setBanner\(null\), POPUP_MS\)/.test(screen), 'bannerStays is not read');
+    const answer = between('const answerBattle = useCallback', 'const askForRematch = useCallback');
+    assert(answer.includes("result.battle.kind ?? 'friend'"), 'accepting a match rematch plays it as a friend battle');
   });
 });
