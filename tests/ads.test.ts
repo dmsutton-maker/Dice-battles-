@@ -631,6 +631,21 @@ suite('release · every native package is gated, not just the ad SDK', () => {
       'cannot receive an update at all, so it can never be handed ' +
       'JavaScript that requires it — this one holds whatever the build ' +
       'history says.',
+    'expo-gl':
+      'The board itself: @react-three/fiber/native has drawn every frame ' +
+      'of this game on expo-gl since the first build (16 Aug 2026), so no ' +
+      'binary that can receive an update lacks it. Named directly since ' +
+      '5 Nov 2026 by src/share, for the picture of a win.',
+    'expo-asset':
+      'A dependency of the expo package itself, autolinked into every ' +
+      'build, and in package.json since 17 Aug 2026 (commit 29bc633), ' +
+      'before any build that can receive an update today. src/share reads ' +
+      'the card artwork through it.',
+    'expo-file-system':
+      'In package.json since 17 Aug 2026 (commit 29bc633) beside ' +
+      'expo-asset, and required by expo-updates and expo-asset in every ' +
+      'build; expo-gl writes its snapshots through its native interface. ' +
+      'src/share uses it only to delete the files a win leaves behind.',
   };
 
   /**

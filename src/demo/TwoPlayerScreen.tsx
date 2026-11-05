@@ -42,7 +42,28 @@ import {
   type ClockState,
 } from '../game/battleTimer';
 import { BattleClock } from './BattleClock';
-import { SHAPE, THEME } from '../ui/theme';
+import { MIN_TAP, SHAPE, THEME } from '../ui/theme';
+import type { WebGLRenderer } from 'three';
+import { BoardShot, captureBoard } from '../share/boardShot';
+import { composeWinCard } from '../share/composeCard';
+import { cardLines, CardLines, ShareResult } from '../share/shareCard';
+import { shareCardFile } from '../share/shareWin';
+import { discardShareFiles } from '../share/tempFiles';
+import { ShareSheetState, ShareWinSheet } from './ShareWinSheet';
+
+/**
+ * Share your win, for the half of the phone that won (Marc, 5 Nov
+ * 2026). Handed to the winning zone only, so the loser's half has no
+ * button and no sheet. The sheet is drawn inside the zone, so it is
+ * the right way up for whoever won.
+ */
+interface ZoneShare {
+  sheet: ShareSheetState | null;
+  lines: CardLines;
+  open: () => void;
+  shareNow: () => void;
+  close: () => void;
+}
 
 /**
  * Same-device 2-player split screen — the original tabletop face-off.
@@ -108,6 +129,10 @@ interface ZoneViewProps {
    */
   myColor?: ColorDef;
   controlsRef: React.MutableRefObject<SceneControls | null>;
+  /** This zone's board renderer, for the picture of a win. */
+  rendererRef: React.MutableRefObject<WebGLRenderer | null>;
+  /** Only the winner gets one, and only once the board's picture is in hand. */
+  share: ZoneShare | null;
   onThrow: () => void;
   onSettled: (faces: ColorDef[]) => void;
   phaseRef: React.MutableRefObject<Phase>;
@@ -135,6 +160,8 @@ function ZoneView({
   difficultyName,
   myColor,
   controlsRef,
+  rendererRef,
+  share,
   onThrow,
   onSettled,
   phaseRef,
@@ -267,8 +294,9 @@ function ZoneView({
               : 'never'
         }
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
-        onCreated={({ camera }) => {
+        onCreated={({ camera, gl }) => {
           camera.lookAt(0, 0, -0.2);
+          rendererRef.current = gl;
         }}
       >
         <color attach="background" args={[ARENAS[arenaId].skyColor]} />
@@ -336,11 +364,33 @@ function ZoneView({
             <Pressable style={styles.playAgainButton} onPress={onRematch}>
               <Text style={styles.playAgainText}>Play again</Text>
             </Pressable>
+            {/* The winner's half only: `share` is null for the other. */}
+            {won === true && share && (
+              <Pressable
+                style={styles.shareWinButton}
+                onPress={share.open}
+                accessibilityRole="button"
+                accessibilityLabel="Share your win"
+                accessibilityHint="Makes a picture of the winning board to share"
+              >
+                <Text style={styles.shareWinText}>Share your win</Text>
+              </Pressable>
+            )}
             <Pressable style={styles.homeButton} onPress={onExitToMenu}>
               <Text style={styles.homeText}>Home</Text>
             </Pressable>
           </View>
         </View>
+      )}
+      {won === true && share?.sheet && (
+        <ShareWinSheet
+          state={share.sheet}
+          lines={share.lines}
+          // Half a phone: the preview has to fit in the zone.
+          pictureHeight={190}
+          onShare={share.shareNow}
+          onClose={share.close}
+        />
       )}
     </View>
   );
@@ -423,16 +473,48 @@ export function TwoPlayerScreen({
   const unitsRefB = useRef<PrisonerUnit[]>([]);
   const controlsA = useRef<SceneControls | null>(null);
   const controlsB = useRef<SceneControls | null>(null);
+  const rendererA = useRef<WebGLRenderer | null>(null);
+  const rendererB = useRef<WebGLRenderer | null>(null);
 
   const setPhaseBoth = useCallback((next: Phase) => {
     phaseRef.current = next;
     setPhase(next);
   }, []);
 
+  /*
+    SHARE YOUR WIN, as on the main screen (DiceDemoScreen): the winning
+    board is photographed the moment the match is decided, from the
+    winner's own Canvas, and the card is made when the sheet opens. A
+    draw takes no picture. No trophies here, ever — split screen pays
+    none — so the card says none.
+  */
+  const [winShot, setWinShot] = useState<BoardShot | null>(null);
+  const [shareSheet, setShareSheet] = useState<ShareSheetState | null>(null);
+  const cardUriRef = useRef<string | null>(null);
+  const forgetWinShot = useCallback(() => {
+    setWinShot(null);
+    setShareSheet(null);
+    cardUriRef.current = null;
+    discardShareFiles();
+  }, []);
+  const decided = useCallback(
+    (winner: 0 | 1 | null) => {
+      setWinner(winner);
+      setPhaseBoth('over');
+      if (winner === null) return;
+      const renderer = winner === 0 ? rendererA.current : rendererB.current;
+      void captureBoard(renderer).then((shot) => {
+        if (shot && phaseRef.current === 'over') setWinShot(shot);
+      });
+    },
+    [setPhaseBoth],
+  );
+
   useEffect(() => {
     return () => {
       timers.current.forEach(clearTimeout);
       stopMusic();
+      discardShareFiles();
     };
   }, []);
 
@@ -460,6 +542,7 @@ export function TwoPlayerScreen({
     setUnitsA(fresh.a);
     setUnitsB(fresh.b);
     setWinner(null);
+    forgetWinShot();
     setEndedOnTime(false);
     setPhaseBoth('arm');
     playCue('ready');
@@ -477,7 +560,7 @@ export function TwoPlayerScreen({
         setPhaseBoth('battle');
       }, 1800),
     ];
-  }, [setPhaseBoth, buildBoards, difficulty]);
+  }, [setPhaseBoth, buildBoards, difficulty, forgetWinShot]);
 
   /*
     Time up: whoever has rescued more wins, level is a draw. The scores
@@ -486,12 +569,11 @@ export function TwoPlayerScreen({
   const endOnTime = useCallback(() => {
     if (phaseRef.current !== 'battle') return;
     const outcome = timeUpOutcome(scoreOf(unitsRefA.current), scoreOf(unitsRefB.current));
-    setWinner(outcome === 'won' ? 0 : outcome === 'lost' ? 1 : null);
     setEndedOnTime(true);
-    setPhaseBoth('over');
+    decided(outcome === 'won' ? 0 : outcome === 'lost' ? 1 : null);
     playFanfare();
     playCue(outcome === 'tie' ? 'tie' : 'win');
-  }, [setPhaseBoth]);
+  }, [decided]);
 
   useEffect(() => {
     if (phase !== 'battle' || !appActive) return;
@@ -556,14 +638,13 @@ export function TwoPlayerScreen({
         outcome.boards.a.every((u) => u.station.kind !== 'jail');
 
       if (outcome.winner !== null || jailEmpty) {
-        setWinner(outcome.winner);
-        setPhaseBoth('over');
+        decided(outcome.winner);
         playFanfare();
         if (outcome.winner !== null) playCue('win');
         else playCue('tie');
       }
     },
-    [setPhaseBoth, mode, zoneColors],
+    [decided, mode, zoneColors],
   );
 
   const settledA = useRef(makeSettleHandler(0)).current;
@@ -572,6 +653,43 @@ export function TwoPlayerScreen({
 
   const scoreA = scoreOf(unitsA);
   const scoreB = scoreOf(unitsB);
+
+  // The winner's half gets the share offer, once the board's picture is in hand.
+  const shareResult: ShareResult | null =
+    winner === null
+      ? null
+      : { mode, score: winner === 0 ? scoreA : scoreB, target: targetFor(mode), trophies: 0 };
+  const zoneShare: ZoneShare | null =
+    winShot && shareResult
+      ? {
+          sheet: shareSheet,
+          lines: cardLines(shareResult),
+          open: () => {
+            const made = cardUriRef.current;
+            if (made) {
+              setShareSheet({ step: 'ready', uri: made, shareFailed: false });
+              return;
+            }
+            setShareSheet({ step: 'making' });
+            const renderer = winner === 0 ? rendererA.current : rendererB.current;
+            void composeWinCard(renderer, winShot, shareResult).then((uri) => {
+              if (uri) cardUriRef.current = uri;
+              setShareSheet((open) =>
+                open === null ? null : uri ? { step: 'ready', uri, shareFailed: false } : { step: 'failed' },
+              );
+            });
+          },
+          shareNow: () => {
+            const uri = cardUriRef.current;
+            if (!uri) return;
+            void shareCardFile(uri).then((outcome) => {
+              if (outcome === 'shared') setShareSheet(null);
+              else if (outcome === 'failed') setShareSheet({ step: 'ready', uri, shareFailed: true });
+            });
+          },
+          close: () => setShareSheet(null),
+        }
+      : null;
 
   return (
     <View style={styles.container}>
@@ -596,6 +714,8 @@ export function TwoPlayerScreen({
         difficultyName={AI_DIFFICULTIES[difficulty].label}
         myColor={myColorB}
         controlsRef={controlsB}
+        rendererRef={rendererB}
+        share={winner === 1 ? zoneShare : null}
         onThrow={noop}
         onSettled={settledB}
         phaseRef={phaseRef}
@@ -624,6 +744,8 @@ export function TwoPlayerScreen({
         difficultyName={AI_DIFFICULTIES[difficulty].label}
         myColor={myColorA}
         controlsRef={controlsA}
+        rendererRef={rendererA}
+        share={winner === 0 ? zoneShare : null}
         onThrow={noop}
         onSettled={settledA}
         phaseRef={phaseRef}
@@ -731,6 +853,9 @@ const styles = StyleSheet.create({
   },
   endButtons: {
     flexDirection: 'row',
+    // Three buttons for the winner; wrap on a narrow phone.
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 10,
     marginTop: 14,
     alignItems: 'center',
@@ -742,6 +867,21 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.accent,
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
+  },
+  shareWinButton: {
+    minHeight: MIN_TAP,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    justifyContent: 'center',
+  },
+  shareWinText: {
+    color: THEME.ink,
+    fontSize: 13,
+    fontWeight: '800',
   },
   playAgainText: {
     color: THEME.onAccent,

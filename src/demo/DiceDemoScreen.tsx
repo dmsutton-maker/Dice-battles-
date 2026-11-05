@@ -1,5 +1,12 @@
 import { Canvas } from '@react-three/fiber/native';
 import * as Haptics from 'expo-haptics';
+import type { WebGLRenderer } from 'three';
+import { BoardShot, captureBoard } from '../share/boardShot';
+import { composeWinCard } from '../share/composeCard';
+import { cardLines, ShareResult } from '../share/shareCard';
+import { shareCardFile } from '../share/shareWin';
+import { discardShareFiles } from '../share/tempFiles';
+import { ShareSheetState, ShareWinSheet } from './ShareWinSheet';
 import { StatusBar } from 'expo-status-bar';
 import { paidSkinWhere } from '../game/products';
 import { withRotation } from '../game/cupRotation';
@@ -121,7 +128,7 @@ import { launchSettled, onLaunchChange, reportStep } from '../game/launchReady';
 import { inventoryDice } from '../game/inventoryRules';
 import { warmAllArenaTextures } from '../arena/warmArenas';
 import { useAppActive } from '../game/useAppActive';
-import { SHAPE, THEME, TYPE } from '../ui/theme';
+import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
 import { FLIGHT_SECONDS } from '../game/flight';
 import { flickFromGesture, isGraze, TouchSample, velocityFromSamples } from '../game/aim';
@@ -569,6 +576,25 @@ export function DiceDemoScreen() {
 
   const controlsRef = useRef<SceneControls | null>(null);
   const [phase, setPhase] = useState<Phase>('pick');
+  /*
+    SHARE YOUR WIN (Marc, 5 Nov 2026). The board's renderer, kept from
+    the Canvas so a win can photograph the board the moment it happens
+    (src/share/boardShot.ts), and the picture that came back. `winShot`
+    is only ever set by a WON battle, which is what keeps the share
+    button off every loss and tie: there is nothing to show. The card
+    itself is made when the player opens the sheet, not before, and is
+    remembered so a second look does not make it twice.
+  */
+  const rendererRef = useRef<WebGLRenderer | null>(null);
+  const [winShot, setWinShot] = useState<BoardShot | null>(null);
+  const [shareSheet, setShareSheet] = useState<ShareSheetState | null>(null);
+  const cardUriRef = useRef<string | null>(null);
+  const forgetWinShot = useCallback(() => {
+    setWinShot(null);
+    setShareSheet(null);
+    cardUriRef.current = null;
+    discardShareFiles();
+  }, []);
   const [difficulty, setDifficulty] = useState<AiDifficultyId>('easy');
   const [mode, setMode] = useState<ModeId>('classic');
   const [opponent, setOpponent] = useState<AiOpponent>(() => pickOpponent());
@@ -1691,6 +1717,8 @@ export function DiceDemoScreen() {
 
   const quitToMenu = useCallback(() => {
     countdownTimers.current.forEach(clearTimeout);
+    // The win's picture belongs to the result screen being left.
+    forgetWinShot();
     /*
       Callout timers too, not only the countdown. They were cleared only
       on unmount, so the list grew for the whole session, and the
@@ -1760,7 +1788,7 @@ export function DiceDemoScreen() {
       next Start battle pays it.
     */
     void showAdIfDue({ wait: false });
-  }, [resetRace, setPhaseBoth, clearRematch]);
+  }, [resetRace, setPhaseBoth, clearRematch, forgetWinShot]);
 
   /*
     THE FRIEND NEVER CAME. The server closes a waiting room nobody joined
@@ -1795,6 +1823,18 @@ export function DiceDemoScreen() {
   const finishRound = useCallback(
     (outcome: 'won' | 'lost' | 'tie') => {
       setPhaseBoth(outcome);
+      /*
+        THE PICTURE OF THE WIN, taken right here, before anything else
+        — the board as it is, dice where they landed, no result screen
+        over it yet. Only a win: a loss or a tie takes no picture and so
+        offers no sharing. Cheap (a copy of the frame and a native JPEG)
+        and fire-and-forget; a capture that fails is simply no button.
+      */
+      if (outcome === 'won') {
+        void captureBoard(rendererRef.current).then((shot) => {
+          if (shot && phaseRef.current === 'won') setWinShot(shot);
+        });
+      }
       /*
         A FRIENDLY BATTLE PAYS NOTHING, as David asked — "a trophyless
         friendly battle". No trophies, no coins, no cup progress, and
@@ -2234,6 +2274,8 @@ export function DiceDemoScreen() {
       return;
     }
     startPendingRef.current = true;
+    // A new battle: the last win's picture is done with.
+    forgetWinShot();
     // Practice from Settings; "Play again" keeps whatever the last one was.
     if (origin !== 'again') {
       practiceRef.current = origin === 'practice';
@@ -2301,7 +2343,7 @@ export function DiceDemoScreen() {
       setMatchNote(null);
       setPhaseBoth('matching');
     });
-  }, [resetRace, setPhaseBoth]);
+  }, [resetRace, setPhaseBoth, forgetWinShot]);
 
   const beginCountdown = useCallback(() => {
     skipSearchRef.current = false;
@@ -3539,7 +3581,59 @@ export function DiceDemoScreen() {
     Marc", and it asks them (rematch.ts) rather than starting a battle
     against a bot in their name. A plain "Play again" is the computer's.
   */
-  const roundOverButtons = (
+  /*
+    SHARE YOUR WIN. What the card says comes from the scoreboard's own
+    numbers — the score as battleScores counted it, the mode, the
+    trophies this win paid — and nothing else: no name of anybody's,
+    no code, no id (src/share/shareCard.ts). The picture is made when
+    the sheet opens and kept for a second look; "Share" hands the file
+    to the phone's share sheet and nothing is sent without that tap.
+  */
+  const shareResult: ShareResult = {
+    mode,
+    score: playerScore,
+    target,
+    trophies: lastDelta !== null && lastDelta > 0 ? lastDelta : 0,
+  };
+  const openShareSheet = async () => {
+    const shot = winShot;
+    if (!shot) return;
+    playClick();
+    const made = cardUriRef.current;
+    if (made) {
+      setShareSheet({ step: 'ready', uri: made, shareFailed: false });
+      return;
+    }
+    setShareSheet({ step: 'making' });
+    const uri = await composeWinCard(rendererRef.current, shot, shareResult);
+    if (uri) cardUriRef.current = uri;
+    // Closed with "Not now" while it was being made: stay closed. The
+    // picture is kept for the next tap either way.
+    setShareSheet((open) =>
+      open === null ? null : uri ? { step: 'ready', uri, shareFailed: false } : { step: 'failed' },
+    );
+  };
+  const shareNow = async () => {
+    const uri = cardUriRef.current;
+    if (!uri) return;
+    const outcome = await shareCardFile(uri);
+    if (outcome === 'shared') setShareSheet(null);
+    else if (outcome === 'failed') setShareSheet({ step: 'ready', uri, shareFailed: true });
+    // Dismissed: the sheet stays, and so does the choice.
+  };
+  const shareWinButton = winShot ? (
+    <Pressable
+      style={styles.shareWinButton}
+      onPress={() => void openShareSheet()}
+      accessibilityRole="button"
+      accessibilityLabel="Share your win"
+      accessibilityHint="Makes a picture of the winning board to share"
+    >
+      <Text style={styles.shareWinText}>Share your win</Text>
+    </Pressable>
+  ) : null;
+
+  const roundOverButtons = (between: React.ReactNode = null) => (
     <View style={styles.endButtons}>
       {rematch ? (
         <Pressable style={styles.playAgainButton} onPress={() => void askForRematch()}>
@@ -3550,6 +3644,7 @@ export function DiceDemoScreen() {
           <Text style={styles.playAgainText}>Play again</Text>
         </Pressable>
       )}
+      {between}
       <Pressable style={styles.homeButton} onPress={quitToMenu}>
         <Text style={styles.homeText}>Home</Text>
       </Pressable>
@@ -3619,8 +3714,10 @@ export function DiceDemoScreen() {
                 : 'never'
           }
           camera={{ position: [0, 10.5, 5.6], fov: 46 }}
-          onCreated={({ camera }) => {
+          onCreated={({ camera, gl }) => {
             camera.lookAt(0, 0, -0.2);
+            // Kept for the win's picture (src/share/boardShot.ts).
+            rendererRef.current = gl;
           }}
         >
           <color attach="background" args={[ARENAS[sceneArenaId].skyColor]} />
@@ -3995,7 +4092,8 @@ export function DiceDemoScreen() {
             You {playerScore} — {opponent.name} {aiScore}.
           </Text>
           {difficultyRow}
-          {roundOverButtons}
+          {/* The share button is here and nowhere else: a win's picture only. */}
+          {roundOverButtons(shareWinButton)}
         </View>
       )}
       {phase === 'tie' && (
@@ -4018,7 +4116,7 @@ export function DiceDemoScreen() {
             </Text>
           )}
           {difficultyRow}
-          {roundOverButtons}
+          {roundOverButtons()}
         </View>
       )}
       {/*
@@ -4226,6 +4324,16 @@ export function DiceDemoScreen() {
       */}
       {phase === 'pick' && preview === null && (
         <BottomNav active={tab} onSelect={setTab} />
+      )}
+
+      {shareSheet !== null && phase === 'won' && (
+        <ShareWinSheet
+          state={shareSheet}
+          lines={cardLines(shareResult)}
+          pictureHeight={340}
+          onShare={() => void shareNow()}
+          onClose={() => setShareSheet(null)}
+        />
       )}
 
       {rewards.length > 0 && (
@@ -4640,7 +4748,7 @@ export function DiceDemoScreen() {
             Avenge your prisoners!
           </Text>
           {difficultyRow}
-          {roundOverButtons}
+          {roundOverButtons()}
         </View>
       )}
       {/*
@@ -5372,6 +5480,10 @@ const styles = StyleSheet.create({
   },
   endButtons: {
     flexDirection: 'row',
+    // Three buttons after a win; on a narrow phone the row wraps rather
+    // than squeezing any of them under 44pt.
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 12,
     marginTop: 26,
     alignItems: 'center',
@@ -5383,6 +5495,22 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.accent,
     borderWidth: SHAPE.line,
     borderColor: THEME.ink,
+  },
+  /** Share your win: paper with an ink line, beside the accent Play again. */
+  shareWinButton: {
+    minHeight: MIN_TAP,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: SHAPE.radiusLg,
+    backgroundColor: THEME.surface,
+    borderWidth: SHAPE.line,
+    borderColor: THEME.ink,
+    justifyContent: 'center',
+  },
+  shareWinText: {
+    color: THEME.ink,
+    fontSize: 16,
+    fontWeight: '800',
   },
   playAgainText: {
     color: THEME.onAccent,
