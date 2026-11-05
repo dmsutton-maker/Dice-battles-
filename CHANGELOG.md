@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.168.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026, with a screenshot of v1.167.0: "Share your win screen is
+blank". Runtime 4.0.0: JS only, no new package.
+
+### Fixed
+- **The share card was an empty sheet of paper.** The card's paper colour
+  was cleared and not one picture was drawn on it: the board, the banner,
+  the score. The raw-GL composer drew the full card in a browser on the same
+  three scene, so the fault is in how its own GL calls met the state of the
+  iPhone's context, which cannot be watched from here. `composeCard.ts` now
+  draws the card with three, which draws every battle on that phone: an
+  orthographic scene of planes rendered into a 1080x1350 render target,
+  pictures loaded the way fiber's native TextureLoader loads them
+  (`{ data: { localUri }, width, height }`, `isDataTexture`), raw colour
+  (`NoColorSpace`, unlit, not tone-mapped), and expo-gl snapshots the target's
+  framebuffer. The board picture's size is read from the file
+  (`Image.getSize`) so the allocation matches what expo-gl decodes. Checked in
+  a browser: the same card as before. Tests: shareWin.test.ts.
+
 ## v1.167.0 — 2026-11-05 · requested by Marc
 
 Marc, 5 Nov 2026, with a screenshot: "What happened. I was playing and a new

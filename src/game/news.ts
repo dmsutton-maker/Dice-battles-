@@ -117,6 +117,17 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-168-0-share-picture',
+    date: '5 November 2026',
+    version: 'v1.168.0',
+    title: 'Your win picture shows up now',
+    icon: 'look',
+    body:
+      'Tapping "Share your win" showed an empty card. Now it shows your ' +
+      'winning board with the big VICTORY! banner, your score and the ' +
+      'trophies you won, ready to share.',
+  },
+  {
     id: 'v1-167-0-board-after-a-win',
     date: '5 November 2026',
     version: 'v1.167.0',

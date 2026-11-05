@@ -436,20 +436,33 @@ suite('share your win · never breaks the board', () => {
     assert(!readyForReset({}, undefined), 'nothing to size it by');
   });
 
-  test('both GL users ask before their first GL call, and the card brings its own vertex array', () => {
-    for (const file of ['src/share/boardShot.ts', 'src/share/composeCard.ts']) {
-      // The exported function's body; helpers above it only define calls.
-      const whole = code(file);
-      const text = whole.slice(whole.indexOf('export async function'));
-      const ready = text.indexOf('readyForReset(gl, renderer.domElement)');
-      const firstGl = text.search(/gl\.(create|bind|texImage2D|compileShader|shaderSource)/);
-      assert(ready > 0, `${file} asks readyForReset`);
-      assert(ready < firstGl, `${file}: readyForReset comes before the first GL call`);
-    }
+  test('the board capture asks before its first GL call', () => {
+    const whole = code('src/share/boardShot.ts');
+    const text = whole.slice(whole.indexOf('export async function'));
+    const ready = text.indexOf('readyForReset(gl, renderer.domElement)');
+    const firstGl = text.search(/gl\.(create|bind|texImage2D|blitFramebuffer)/);
+    assert(ready > 0, 'boardShot asks readyForReset');
+    assert(ready < firstGl, 'readyForReset comes before the first GL call');
+  });
+
+  test('the card is drawn by three, not by raw GL calls of its own', () => {
+    /*
+      Marc, 5 Nov 2026: "Share your win screen is blank". The raw-GL
+      card cleared its paper and drew nothing on his iPhone, while the
+      same calls draw the whole card in a browser. three draws every
+      battle on that phone; the card goes through it now.
+    */
     const card = code('src/share/composeCard.ts');
-    const own = card.indexOf('gl.bindVertexArray(vertexArray)');
-    assert(own > 0 && own < card.indexOf('enableVertexAttribArray('), 'the attribute is switched on in our own vertex array');
-    assert(card.includes('deleteVertexArray(vertexArray)'), 'and the vertex array is freed');
+    for (const raw of ['drawArrays', 'createProgram', 'compileShader', 'vertexAttribPointer', 'resetState', 'gl.texImage2D']) {
+      assert(!card.includes(raw), `composeCard.ts calls ${raw} itself`);
+    }
+    assert(card.includes('new THREE.WebGLRenderTarget('), 'a render target of its own');
+    assert(card.includes('renderer.setRenderTarget(before)'), 'and three is put back on the screen afterwards');
+    assert(card.includes('isDataTexture = true') && card.includes('{ localUri: '), 'pictures load the way fiber loads them on native');
+    assert(card.includes('texture.flipY = false'), 'row 0 of a file is v = 0, as shareCard.ts lays it out');
+    assert(card.includes('THREE.NoColorSpace'), 'uploaded raw, no colour conversion');
+    assert(card.includes('toneMapped: false'), 'and not tone-mapped');
+    assert(card.includes('drawn?.dispose()'), 'everything it made is freed');
   });
 
   test('every board gives its context a canvas when it is created', () => {
