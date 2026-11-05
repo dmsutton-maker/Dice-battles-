@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { assert, assertEqual, note, suite, test } from './harness';
 import { store } from './storageMock';
 import { loadIdentity, resetIdentityForTest } from '../src/game/playerIdentity';
-import { useFakeVaultForTest } from '../src/game/deviceVault';
+import { KEYCHAIN_KEY, keychainKey, useFakeVaultForTest } from '../src/game/deviceVault';
 
 /**
  * Deleting the game and installing it again.
@@ -129,10 +129,68 @@ suite('reinstall · the profile comes back', () => {
     resetIdentityForTest();
     await loadIdentity();
 
-    keychain.delete('dice-battles/player-secret');
+    keychain.delete(keychainKey('dice-battles/player-secret'));
     reinstall();
     const after = await loadIdentity();
     assertEqual(after.recovered, false, 'a code without a secret was called a recovery');
+  });
+});
+
+suite('reinstall · the keychain takes the keys it is given', () => {
+  /*
+    Marc, 5 Nov 2026: "When I delete the game and redownload it, it
+    completely resets my account, friends, friend code, trophies, coins,
+    and everything."
+
+    THE REAL GAP. expo-secure-store accepts only `[\w.-]` in a key and
+    THROWS on anything else, and the game's keys are
+    `dice-battles/player-id` and the like — so every keychain write and
+    read since 7 Sep 2026 threw, was swallowed by the catch that exists
+    for a keychain that will not answer, and nothing was ever kept. The
+    tests above passed because their fake keychain took any key. It is
+    now as strict as the real one, so this whole file would fail again
+    if the slash came back.
+  */
+  const identitySource = readFileSync(
+    join(__dirname, '..', 'src/game/playerIdentity.ts'),
+    'utf8',
+  );
+  const storageKeys = [...identitySource.matchAll(/const \w+_KEY = '([^']+)'/g)].map((m) => m[1]);
+
+  test('the rule is the one the installed module enforces', () => {
+    const file = join(__dirname, '..', 'node_modules/expo-secure-store/build/SecureStore.js');
+    let source = '';
+    try {
+      source = readFileSync(file, 'utf8');
+    } catch {
+      note('expo-secure-store not installed; the key rule is checked against the copy in deviceVault.ts');
+      return;
+    }
+    const rule = source.match(/function isValidKey\(key\) \{\s*return typeof key === 'string' && (\/[^/]+\/)\.test\(key\);/);
+    assert(rule !== null, 'expo-secure-store no longer validates keys the way deviceVault.ts expects');
+    assertEqual(rule![1], KEYCHAIN_KEY.toString(), 'the key rule in deviceVault.ts differs from the module');
+  });
+
+  test('every identity key is refused raw, and accepted once translated', () => {
+    assert(storageKeys.length >= 3, 'the identity keys were not found');
+    for (const key of storageKeys) {
+      assert(!KEYCHAIN_KEY.test(key), `${key} would be accepted raw; the translation is pointless`);
+      assert(KEYCHAIN_KEY.test(keychainKey(key)), `${keychainKey(key)} is still refused by the keychain`);
+    }
+    // And no two keys collapse into one name.
+    assertEqual(new Set(storageKeys.map(keychainKey)).size, storageKeys.length, 'two keys share a keychain name');
+  });
+
+  test('a launch puts all three in the keychain under names it accepts', async () => {
+    const keychain = new Map<string, string>();
+    useFakeVaultForTest(keychain);
+    store.clear();
+    resetIdentityForTest();
+    await loadIdentity();
+    assertEqual(keychain.size, 3, 'the id, the code and the secret were not all written');
+    for (const key of keychain.keys()) {
+      assert(KEYCHAIN_KEY.test(key), `${key} is a name the real keychain throws on`);
+    }
   });
 });
 

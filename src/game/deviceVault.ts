@@ -46,6 +46,27 @@
 /** Keyed together so a future migration can move them as one. */
 const SERVICE = 'dice-battles';
 
+/**
+ * What expo-secure-store accepts as a key: letters, digits, `.`, `-` and
+ * `_`, nothing else (`isValidKey` in its SecureStore.js). The game's
+ * storage keys are `dice-battles/player-id` and the like.
+ *
+ * FOUND ON 5 NOV 2026, from Marc: "When I delete the game and redownload
+ * it, it completely resets my account, friends, friend code, trophies,
+ * coins, and everything." The slash failed that rule, so for two months
+ * every write and every read here threw "Invalid key provided to
+ * SecureStore", the catch below swallowed it, and the keychain never
+ * held anything on any phone. The reinstall tests passed because their
+ * fake keychain took any key at all; it is as strict as the real one
+ * now (useFakeVaultForTest).
+ */
+export const KEYCHAIN_KEY = /^[\w.-]+$/;
+
+/** The keychain's name for one of the game's storage keys. */
+export function keychainKey(key: string): string {
+  return key.replace(/[^\w.-]/g, '.');
+}
+
 interface SecureStoreModule {
   getItemAsync(key: string, options?: { keychainService?: string }): Promise<string | null>;
   setItemAsync(
@@ -96,7 +117,7 @@ export async function vaultGet(key: string): Promise<string | null> {
   const secure = vault();
   if (!secure) return null;
   try {
-    return await secure.getItemAsync(key, { keychainService: SERVICE });
+    return await secure.getItemAsync(keychainKey(key), { keychainService: SERVICE });
   } catch {
     return null;
   }
@@ -116,7 +137,7 @@ export async function vaultSet(key: string, value: string): Promise<boolean> {
   const secure = vault();
   if (!secure) return false;
   try {
-    await secure.setItemAsync(key, value, {
+    await secure.setItemAsync(keychainKey(key), value, {
       keychainService: SERVICE,
       keychainAccessible: secure.AFTER_FIRST_UNLOCK,
     });
@@ -139,15 +160,25 @@ export function resetVaultForTest(): void {
  * suite runs as though the phone had no keychain) but leaves the one
  * behaviour that matters untestable. Pass a map to play the keychain,
  * null to go back to having none.
+ *
+ * The fake refuses the keys the real module refuses (KEYCHAIN_KEY): a
+ * fake that took anything is how the slash went unnoticed.
  */
 export function useFakeVaultForTest(fake: Map<string, string> | null): void {
   if (fake === null) {
     store = null;
     return;
   }
+  const check = (key: string) => {
+    if (!KEYCHAIN_KEY.test(key)) throw new Error(`Invalid key provided to SecureStore: ${key}`);
+  };
   store = {
-    getItemAsync: async (key: string) => fake.get(key) ?? null,
+    getItemAsync: async (key: string) => {
+      check(key);
+      return fake.get(key) ?? null;
+    },
     setItemAsync: async (key: string, value: string) => {
+      check(key);
       fake.set(key, value);
     },
   };
