@@ -1051,16 +1051,29 @@ suite('screen · the board belongs to the battle screen', () => {
       leaving a preview cannot leave the shelf stuck over the board.
     */
     assert(
-      /const holdShelf = waiting;/.test(source) &&
+      /const holdShelf = waiting && !previewOwnScreen;/.test(source) &&
         /const waiting = stale && !staleTooLong;/.test(source),
       'the shelf hold is no longer tied to the frame watch',
+    );
+    /*
+      Marc, 5 Nov 2026: a preview whose item is still being painted shows
+      its own screen (name, button, spinner) instead of holding the shelf
+      up — so that screen can only be on while a preview is open: loading
+      comes from previewScene, which is never loading with nothing open,
+      and the other half names the open preview.
+    */
+    assert(
+      /const previewOwnScreen = previewLoading \|\| \(preview !== null && paintedFor === previewKey\);/.test(source),
+      "the preview's own screen is no longer tied to an open preview",
     );
     // David, 18 Oct 2026: the name and the Equip button arrived before
     // the item. They wait for the same frame the shelf does now, and the
     // same time limit lets both through, so a board that never draws
     // still leaves a way to close the preview.
+    // Except on the preview's own loading screen, where the name and the
+    // ✕ are what says the tap was heard (Marc, 5 Nov 2026).
     assert(
-      /\{previewView && !waiting && \(\s*<ItemPreviewBar/.test(source),
+      /\{previewView && \(!waiting \|\| previewOwnScreen\) && \(\s*<ItemPreviewBar/.test(source),
       'the preview bar goes up before the board has drawn',
     );
     assert(

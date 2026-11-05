@@ -154,7 +154,9 @@ suite('audit fixes · die faces are painted only on the menu', () => {
 
   test('the first run uses that rule, and returning to the menu starts it again', () => {
     assert(
-      /warmAllDieFaces\(\s*\(run\) => setTimeout\(run, 0\),\s*shouldWarmFaces,?\s*(warmArenas,?\s*)?\)/.test(screen),
+      // The budget follows the open tab (shelfBudget, Marc 5 Nov 2026);
+      // the stop rule is still the menu's.
+      /warmAllDieFaces\(\s*\(run\) => setTimeout\(run, 0\),\s*shouldWarmFaces,?\s*(warmArenas,?\s*)?(undefined, shelfBudget,?\s*)?\)/.test(screen),
       'warmAllDieFaces is not given the menu-only rule',
     );
     const resume = between('if (!facesWarmableRef.current) return;', '}, [appActive, phase, preview]');

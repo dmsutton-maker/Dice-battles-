@@ -182,8 +182,15 @@ suite('power · the board stops between rolls', () => {
     */
     const screen = code('src/demo/DiceDemoScreen.tsx');
     const expr = screen.slice(screen.indexOf('frameloop={'), screen.indexOf('camera={{ position'));
+    /*
+      Except while the item is still being painted (Marc, 5 Nov 2026):
+      the board is covered by the preview's loading state then, and its
+      frames would only slow the painting. previewLoading ends when the
+      painting does — runSliced always finishes, dropping a job that
+      throws — and the loop starts with it, before FirstFrame waits.
+    */
     assert(
-      /preview !== null \|\|/.test(expr),
+      /\(preview !== null && !previewLoading\) \|\|/.test(expr),
       'the preview is no longer the first condition, so a preview could open ' +
         'on a stopped loop and never finish waiting for its first frame',
     );

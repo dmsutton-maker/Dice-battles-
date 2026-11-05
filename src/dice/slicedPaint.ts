@@ -41,6 +41,36 @@ export const LOAD_SLICE_MS = 40;
  */
 export const MENU_SLICE_MS = 6;
 
+/**
+ * The budget per slice while the Store or the Inventory is open, no
+ * battle is running and no preview is up.
+ *
+ * Marc, 5 Nov 2026: "When I load the game and go to shop and inventory
+ * many dice icons are not showing at first." The 6 ms slice exists so
+ * the board can animate beside the painting; on a shelf tab the board is
+ * behind solid paper and stopped, so nothing 3D needs the thread.
+ *
+ * Why 12 and not a whole frame. Modelled with one slice per frame (a
+ * timer firing on the next 1/60 s) and the real painting in node, all
+ * 60 shelf pictures were in after 12.9-13.3 s at 6 ms, 7.8-10.0 s at
+ * 12 ms and 9.3-10.4 s at 16 ms — about 6.2 s of painting each time. A
+ * slice runs past its budget by up to one step, so one budgeted at a
+ * whole frame keeps spilling into the next and losing it; 12 ms ends
+ * inside its frame and is the faster of the two, and a tap never waits
+ * longer than a frame.
+ */
+export const SHELF_SLICE_MS = 12;
+
+/**
+ * Which budget a background slice gets right now: the loading screen's
+ * until it lifts, the shelf's while only a shelf tab is on screen, and
+ * the menu's whenever the board might be visible.
+ */
+export function backgroundSliceMs(at: { launched: boolean; shelfOnly: boolean }): number {
+  if (!at.launched) return LOAD_SLICE_MS;
+  return at.shelfOnly ? SHELF_SLICE_MS : MENU_SLICE_MS;
+}
+
 const now = () =>
   typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()

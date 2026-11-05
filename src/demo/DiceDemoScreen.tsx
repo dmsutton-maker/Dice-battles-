@@ -104,11 +104,19 @@ import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { hasEntitlement,
   goldPassUnlocked, hasGoldPass, initPurchases, noteTesterModeChanged, onPurchasesChanged } from '../game/purchases';
 import { lookupCode } from '../game/secretCodes';
-import { equippedDieKeys, warmAllDieFaces, warmDicePreviews } from '../dice/warmPreviews';
+import {
+  equippedDieKeys,
+  prioritiseShelfPictures,
+  shelfPaintOrder,
+  warmAllDieFaces,
+  warmDicePreviews,
+} from '../dice/warmPreviews';
+import { previewJobs, previewPainted, previewScene } from '../dice/previewLoad';
+import { tierItem } from '../game/tierItem';
 import { runLaunchWarm } from '../dice/launchWarm';
 import { loadShelfPictures, saveShelfPictures } from '../dice/shelfStore';
 import { loadKeptTextures, saveKeptTextures } from '../dice/keptTextures';
-import { LOAD_SLICE_MS, MENU_SLICE_MS } from '../dice/slicedPaint';
+import { backgroundSliceMs, fromList, LOAD_SLICE_MS, runSliced } from '../dice/slicedPaint';
 import { launchSettled, onLaunchChange, reportStep } from '../game/launchReady';
 import { inventoryDice } from '../game/inventoryRules';
 import { warmAllArenaTextures } from '../arena/warmArenas';
@@ -209,6 +217,7 @@ import {
 } from '../game/battleTimer';
 import { TIME_UP_PAUSE_MS } from '../game/tuning';
 import { TierIcon } from './TierIcon';
+import { PreviewLoading } from './PreviewLoading';
 import { FirstFrame } from './FirstFrame';
 import {
   loadTutorialSeen,
@@ -498,6 +507,8 @@ export function DiceDemoScreen() {
   const facesWarmableRef = useRef(false);
 
   const [tab, setTab] = useState<Tab>('play');
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
   const [showFriends, setShowFriends] = useState(false);
   /*
     A friend code that arrived from a link somebody tapped.
@@ -855,7 +866,33 @@ export function DiceDemoScreen() {
     // two share the idle time and every board is warm within the
     // first minute instead of after the last die.
     warmArenas();
-    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
+    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces, undefined, shelfBudget);
+  }
+  /*
+    How long a background slice of shelf painting may run: the loading
+    screen's under the card, the menu's whenever the board could be on
+    screen, and a longer one while the Store or the Inventory is all
+    there is to see (slicedPaint.ts, SHELF_SLICE_MS). Read before every
+    slice, so it follows the tab as it changes.
+  */
+  function shelfBudget(): number {
+    return backgroundSliceMs({
+      launched: launchSettled(),
+      shelfOnly:
+        activeRef.current &&
+        phaseRef.current === 'pick' &&
+        previewRef.current === null &&
+        (tabRef.current === 'store' || tabRef.current === 'inventory'),
+    });
+  }
+  /*
+    The die in your hand and the ladder's next die, which the home screen
+    shows as well as the shelves: painted before any other shelf picture.
+  */
+  function homeDiceIds(trophiesNow: number): (string | null)[] {
+    const next = nextTier(trophiesNow);
+    const item = next ? tierItem(next) : null;
+    return [activeSkin(trophiesNow).id, item?.kind === 'die' ? item.skin.id : null];
   }
   /*
     Paint, under the title card, what the home screen and its tabs need
@@ -873,15 +910,18 @@ export function DiceDemoScreen() {
   useEffect(() => {
     if (!hydrated) return;
     const trophiesNow = getProgress().trophies;
-    const shelfIds = [
-      ...STORE_SKINS.slice(0, SHELF_FIRST_SCREEN),
-      ...inventoryDice(trophiesNow).slice(0, SHELF_FIRST_SCREEN),
-    ].map((skin) => skin.id);
+    const shelfIds = shelfPaintOrder(
+      homeDiceIds(trophiesNow),
+      [
+        ...STORE_SKINS.slice(0, SHELF_FIRST_SCREEN),
+        ...inventoryDice(trophiesNow).slice(0, SHELF_FIRST_SCREEN),
+      ].map((skin) => skin.id),
+    );
     const handle = runLaunchWarm({
       skin: activeSkin(trophiesNow),
       arenaId: activeArena(trophiesNow),
       shelfIds,
-      budget: () => (launchSettled() ? MENU_SLICE_MS : LOAD_SLICE_MS),
+      budget: shelfBudget,
       report: reportStep,
       onBoard: () => setBoardMayMount(true),
       onPictures: () => {
@@ -903,13 +943,22 @@ export function DiceDemoScreen() {
   */
   useEffect(() => {
     if (!hydrated || !appActive || !boardMayMount) return;
-    warmDicePreviews(
-      (run) => setTimeout(run, 0),
-      () => activeRef.current,
-      shelfDone,
-      () => (launchSettled() ? MENU_SLICE_MS : LOAD_SLICE_MS),
-    );
+    warmDicePreviews((run) => setTimeout(run, 0), () => activeRef.current, shelfDone, shelfBudget);
   }, [hydrated, appActive, boardMayMount]); // eslint-disable-line react-hooks/exhaustive-deps
+  /*
+    A shelf tab opening puts ITS cards at the front of the queue, top to
+    bottom, behind the die in hand and the ladder's next die. Marc, 5 Nov
+    2026: "When I load the game and go to shop and inventory many dice
+    icons are not showing at first." With everything unlocked there are
+    sixty pictures, all painted again after every update, and they used
+    to be painted in whatever order the hidden cards happened to mount.
+  */
+  useEffect(() => {
+    if (!hydrated || (tab !== 'store' && tab !== 'inventory')) return;
+    const trophiesNow = getProgress().trophies;
+    const shelf = tab === 'store' ? STORE_SKINS : inventoryDice(trophiesNow);
+    prioritiseShelfPictures(shelfPaintOrder(homeDiceIds(trophiesNow), shelf.map((skin) => skin.id)));
+  }, [hydrated, tab]); // eslint-disable-line react-hooks/exhaustive-deps
   /*
     The die faces wait for the card to lift (shouldWarmFaces), so when it
     does, start them if the shelf is already done.
@@ -1208,7 +1257,7 @@ export function DiceDemoScreen() {
     if (!facesWarmableRef.current) return;
     if (!appActive || phase !== 'pick' || preview !== null) return;
     warmArenas();
-    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces);
+    warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces, undefined, shelfBudget);
   }, [appActive, phase, preview]);
 
   useEffect(() => {
@@ -2487,13 +2536,56 @@ export function DiceDemoScreen() {
     arenaIdRef.current = arenaId;
   }, [arenaId]);
   const equippedSkin = activeSkin(trophies);
+  /*
+    Whether the previewed item's pictures are painted, so the board can
+    draw it without painting anything itself (previewLoad.ts). Marc, 5
+    Nov 2026: tapping a die or a battlefield froze the screen for about a
+    second, half way between the shelf and the preview, while the board
+    painted the item in the middle of drawing it. An item that is not
+    painted yet opens the preview's own screen at once and is painted in
+    slices (the effect below); the board takes it when that is done.
+  */
+  const previewKey = preview ? `${preview.kind}:${preview.id}` : null;
+  const [paintedFor, setPaintedFor] = useState<string | null>(null);
+  const painted = useMemo(
+    () => preview === null || paintedFor === previewKey || previewPainted(preview),
+    [previewKey, paintedFor], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  // What the board was last given, so switching between previews keeps
+  // the last item on the board while the next one is painted.
+  const onBoardRef = useRef<PreviewTarget | null>(null);
+  const opening = previewScene(preview, painted, onBoardRef.current);
+  onBoardRef.current = opening.show;
+  const previewLoading = opening.loading;
+  /*
+    This preview showed its own screen while it was painted, so it keeps
+    it — name, button, spinner — until the board has drawn the item,
+    rather than going back to the shelf for those frames (holdShelf).
+  */
+  const previewOwnScreen = previewLoading || (preview !== null && paintedFor === previewKey);
+  useEffect(() => {
+    if (preview === null || !previewLoading) return;
+    const key = previewKey;
+    // The player is waiting and nothing else is moving: the loading
+    // screen's budget. A job that fails is dropped and painted by the
+    // board on the spot, as before any of this existed.
+    const run = runSliced(fromList(previewJobs(preview)), {
+      budget: () => LOAD_SLICE_MS,
+      onDone: () => setPaintedFor(key),
+    });
+    return () => run.cancel();
+  }, [previewKey, previewLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (preview === null) setPaintedFor(null);
+  }, [preview]);
   // What the board actually draws. While a preview is open that is the
   // previewed item, which is the whole trick: there is no second scene and
   // no painted mock-up, so the preview cannot disagree with the game.
+  // Only once its pictures are painted (opening.show), never before.
   const sceneArenaId: ArenaId =
-    preview?.kind === 'arena' ? preview.id : arenaId;
+    opening.show?.kind === 'arena' ? opening.show.id : arenaId;
   const sceneSkin =
-    preview?.kind === 'die' ? skinById(preview.id) : equippedSkin;
+    opening.show?.kind === 'die' ? skinById(opening.show.id) : equippedSkin;
   const dieBodyColor = sceneSkin.body;
 
   /*
@@ -2586,7 +2678,7 @@ export function DiceDemoScreen() {
     sky slab stays for the paths that have no shelf up — previewing from
     inside another preview — where fading into the arena is right.
   */
-  const holdShelf = waiting;
+  const holdShelf = waiting && !previewOwnScreen;
 
   const showPreview = (target: PreviewTarget | null) => {
     previewRef.current = target;
@@ -3144,7 +3236,7 @@ export function DiceDemoScreen() {
           frameloop={
             appActive &&
             (sceneWarming ||
-              preview !== null ||
+              (preview !== null && !previewLoading) ||
               phase === 'matching' ||
               phase === 'arm' ||
               phase === 'go' ||
@@ -3211,6 +3303,20 @@ export function DiceDemoScreen() {
             StyleSheet.absoluteFill,
             { backgroundColor: ARENAS[sceneArenaId].skyColor },
           ]}
+        />
+      )}
+
+      {/*
+        The preview's own loading state, while the item is painted and
+        until the board has drawn it: the board's area in the sky of the
+        battlefield it will show, and the game's spinner. The name and the
+        button are already up over it (ItemPreviewBar), so the screen is
+        the preview from the first frame after the tap. Never for an item
+        that is already painted — that opens as it always did.
+      */}
+      {previewOwnScreen && (previewLoading || waiting) && (
+        <PreviewLoading
+          sky={ARENAS[preview?.kind === 'arena' ? preview.id : sceneArenaId].skyColor}
         />
       )}
 
@@ -3696,7 +3802,7 @@ export function DiceDemoScreen() {
         used to go up on the tap, over a shelf still waiting for the
         board, so the words arrived a beat before the thing they named.
       */}
-      {previewView && !waiting && (
+      {previewView && (!waiting || previewOwnScreen) && (
         <ItemPreviewBar
           name={previewView.name}
           note={previewView.note}
