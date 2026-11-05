@@ -15,9 +15,17 @@ import math, random
 # phone is 0.46 wide-to-tall and an iPad is 0.75, so the headline block and
 # the art have to be laid out per device or one of them ends up with a
 # metre of empty sky.
+#
+# The boards are rendered at the size of the box under the headline
+# (shots.json: 1290 x 2240 for the phone, 2048 x 2040 for the iPad, the
+# iPad ones named with a W), so the board fills everything from the
+# headline down and bleeds off three edges. `art_top` is where a fitted
+# block (the collection, the two-player pair) may start.
 DEVICES = {
-    'iphone': {'w': 1290, 'h': 2796, 'text': 1.00, 'art': 1.00, 'head_y': 0.118},
-    'ipad':   {'w': 2048, 'h': 2732, 'text': 1.34, 'art': 1.42, 'head_y': 0.140},
+    'iphone': {'w': 1290, 'h': 2796, 'text': 1.00, 'art': 1.00, 'head_y': 0.100,
+               'art_top': 0.235, 'suffix': '', 'grid_cols': 4},
+    'ipad':   {'w': 2048, 'h': 2732, 'text': 1.26, 'art': 1.42, 'head_y': 0.110,
+               'art_top': 0.315, 'suffix': 'W', 'grid_cols': 5},
 }
 W, H = DEVICES['iphone']['w'], DEVICES['iphone']['h']
 

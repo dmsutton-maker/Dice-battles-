@@ -34,12 +34,53 @@ cd - && npx esbuild tools/store-shots/entry.tsx --bundle \
   --loader:.png=dataurl --loader:.jpg=dataurl \
   --alias:@react-three/fiber/native=@react-three/fiber \
   --define:process.env.NODE_ENV='"production"'
-node tools/store-shots/shoot.js '[{"name":"sky","w":1600,"h":1500,"arena":"sky","skin":"ivory","dist":16,"pitch":0.72,"yaw":0.30}, ...]'
-# the iPad board shots want wider renders (…W) — see SHOTS in build-shots.py
-npx tsx tools/store-shots/dice-grid.ts
-python3 tools/store-shots/build-shots.py
+node tools/store-shots/shoot.js              # every render in shots.json → $SHOTS_TMP
+npx tsx tools/store-shots/dice-grid.ts        # the dice-set cards → $SHOTS_TMP/cards
+python3 tools/store-shots/build-shots.py      # → store/screenshots/{iphone,ipad}
 npm uninstall --no-save react-dom playwright   # ← REQUIRED, see arena-preview/README.md
 ```
+
+`$SHOTS_TMP` defaults to `/tmp/store-shots`. `shoot.js hero cup` renders
+only those; `SHOTS_JSON=other.json` tries a camera out without touching
+`shots.json`. If Playwright cannot find its browser, set `CHROME_PATH`.
+
+## The set (rebuilt 5 Nov 2026)
+
+David approved a rebuild against Apple's asset best practices on
+5 Nov 2026. The boards now fill everything from the headline down
+instead of sitting under half a screen of empty sky: each one is rendered
+at the size of that box (1290 × 2240 for the phone, 2048 × 2040 for the
+iPad, the iPad renders named with a `W`) with a closer, wider camera, and
+its top melts into the backdrop.
+
+| # | kicker | headline | picture |
+|---|---|---|---|
+| 01 | Two dice. Six colors. | MATCH THEM, SET ONE FREE | Crystal Cavern, Ivory dice mid-roll |
+| 02 | Play online | BATTLE REAL PLAYERS | Pirate Cove, Neon against Galaxy |
+| 03 | Earn them or buy them | COLLECT DICE AND BATTLEFIELDS | dice-set cards, then Candy Meadow, Toy Room, Dino Valley |
+| 04 | New dice. New battlefields. | A NEW SEASON EVERY MONTH | Volcano Rim with the Fire die, Snowy Hollow with the Ice die, one board split |
+| 05 | Win coins and trophies | A NEW CUP EVERY WEEK | Sky Kingdom, Gold dice |
+| 06 | Two players, one screen | PUT THE PHONE BETWEEN YOU | Sunny Farm, the top half turned round |
+
+Dropped in that rebuild: NOTHING TO READ (01 already says six colours),
+FOUR WAYS TO PLAY and BATTLEFIELDS TO UNLOCK (folded into 03). Online
+play (`matchSearch.ts`, from 100 trophies), the monthly season
+(`seasonPass.ts`) and the weekly cup (`cupRotation.ts`) were the biggest
+things the old set did not show.
+
+**The dice grid is only dice a player can get today** (`GRID_DICE` in
+`dice-grid.ts`, which refuses anything else): never a `retired` die — the
+ball dice Marc took off the shelf in November 2026 — never the cup-only
+Amethyst, and no season pass dice, because those leave the pass when
+their season ends and a screenshot outlives a season.
+
+**04 shows Season 1's items** (Fire & Ice, October–November 2026). Its
+words name no season, so they stay true, but from December the picture
+is last season's: rebuild it with the running season's dice and
+battlefields when the screenshots are next submitted.
+
+Fire and Ice are drawn with their real effects (`dieEffect.ts`), run for
+a moment of flight in `entry.tsx` so the flames and mist are in the air.
 
 Baloo 2 and Nunito are SIL Open Font License, which permits commercial
 use. They are fetched rather than committed.
@@ -85,13 +126,17 @@ for rejection, and one that UNDERSTATES it just sells the game short for
 however many months pass before the next release.
 
 So the copy names the KIND of thing and not the quantity of it:
-BATTLEFIELDS TO UNLOCK, DICE SETS TO COLLECT. Both stay true whether the
-next release adds four arenas or none.
+COLLECT DICE AND BATTLEFIELDS. That stays true whether the next release
+adds four arenas or none. The same goes for the online shot: it says
+REAL PLAYERS, not a trophy count, because the threshold is one constant
+in `matchSearch.ts` that could move any day.
 
-FOUR WAYS TO PLAY stays a number on purpose. The modes are the game's
-structure rather than a collection that grows — they are named in the
-description, the tutorial and the mode picker — so if a fifth ever ships
-it is a change big enough that the screenshots would be rebuilt anyway.
+(FOUR WAYS TO PLAY was the one number kept on purpose, the modes being
+the game's structure rather than a collection that grows. That shot was
+dropped in the November 2026 rebuild to make room for online play.)
+
+Apple's rules on top of Marc's: no ™, © or prices, no awards, no URLs,
+no other platforms, and nothing that is not 4+.
 
 ## What these deliberately do not do
 
