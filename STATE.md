@@ -323,7 +323,7 @@ one is added; it does not need a new build.
   The privacy policy, terms and App Review notes describe online play
   since 4 Nov 2026 (website deployed 14:25 UTC, `dpl_8Q2GCdByL4UFJXeb8Ksm26bbzSG4`).
   Still open: online wins are paid on the phone's own word.
-- **5 Nov 2026 (v1.162.0):** Marc's second batch. A reinstall restores
+- **5 Nov 2026 (v1.162.0, update 8a9c042b, website deployed `dpl_EhzpwSMePjwnYmhWUqH37LDc7r8J`):** Marc's second batch. A reinstall restores
   everything (`src/game/cloudSave.ts`, `POST /api/players/save`, table
   `player_saves`; the keychain keys had a slash and had NEVER been written
   since 7 Sep: fixed, so only a phone that opens v1.162.0 once before being
