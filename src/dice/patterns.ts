@@ -4325,35 +4325,63 @@ export function shellSampler(
  * How the SHELF CARD sees a pattern, where that differs from the die.
  *
  * The card is one flat square; the die shows three sides at an angle
- * under the game's camera. A stripe that reads right wrapped round a
- * corner is a slab on a flat card, pale green bands that read as a
- * melon on a curved die wash out flat, and a drumstick that hangs over
- * an edge is cut off. Each entry composes the card from the same
- * painter, pulled back so more of the design fits or with its own
- * fixed placements, so the card shows what the die IS rather than a
- * crop of it. Marc, 5 Nov 2026: "Fix the icons for the tiger, chicken
- * and waffles, and watermelon dice". The die on the board is untouched.
+ * under the game's camera. A drumstick that hangs over an edge of the
+ * die is cut off on the card, so the waffle's card has its own fixed
+ * placements, and shows what the die IS rather than a crop of it.
+ * Marc, 5 Nov 2026: "Fix the icons for the tiger, chicken and waffles,
+ * and watermelon dice". The tiger and the melon were composed here too
+ * for a day, pulled back to show more of the design; Marc preferred the
+ * die's own side, sharper (CARD_SCALE below). The die on the board is
+ * untouched either way.
  */
 export const CARD_SAMPLERS: Partial<Record<PatternId, (shell: Sampler) => Sampler>> = {
-  // Pulled back, so the stripes are thinner and there are more of them.
-  tigerStripes: (shell) => pulledBack(shell, 1.6),
-  // Pulled back and with the bands pushed apart: the pale paler, the dark darker.
-  watermelon: (shell) => {
-    const far = pulledBack(shell, 1.5);
-    return (sx, sy) => {
-      const c = far(sx, sy);
-      const k = (c[0] + c[1] + c[2]) / 3 > 120 ? 1.12 : 0.8;
-      return [Math.min(255, c[0] * k), Math.min(255, c[1] * k), Math.min(255, c[2] * k)];
-    };
-  },
   // The waffle with two whole drumsticks in fixed places.
   waffle: () => (sx, sy) => waffleAt(sheetToCube(sx, sy), CARD_DRUMSTICKS, CARD_DRUMSTICK_SCALE),
 };
 
-/** The painter seen from further back: `zoom` texels of the die per texel of the card, about its centre. */
-function pulledBack(shell: Sampler, zoom: number): Sampler {
-  const half = SIZE / 2;
-  return (sx, sy) => shell((sx - half) * zoom + half, (sy - half) * zoom + half);
+/**
+ * How many card pixels per texel of the die, for the SHELF CARD of a
+ * pattern that should look exactly like the die, only sharper.
+ *
+ * Marc, 5 Nov 2026, on the first Tiger and Watermelon cards (pulled back
+ * to show more of the design): "I don't like those icons for the tiger
+ * or watermelon skins, just make them the exact same as the actual dice
+ * but better quality." So those two cards are the die's own front side
+ * again, painted at three times the resolution: the painters are
+ * continuous, so asked at a third of a texel they give real detail, not
+ * a blown-up 64-pixel picture. Nine times the painting for those two
+ * cards, which the sliced painter spreads out like any other. Only for
+ * a skin without an effect: the flames, ice and the rest are painted
+ * over a 64-pixel square.
+ */
+export const CARD_SCALE: Partial<Record<PatternId, number>> = {
+  tigerStripes: 3,
+  // Twice, not three times: the melon's painter is the slowest left
+  // (0.8 s for six sides in node), and nine times it is 3 s for one card.
+  watermelon: 2,
+};
+
+/**
+ * The shelf card's texel sampler and its size in pixels, for `skin`'s
+ * pattern: its own composition (CARD_SAMPLERS), or the die's front side
+ * at CARD_SCALE. The shelf picture (preview.ts) paints exactly this.
+ */
+export function cardSquare(
+  pattern: PatternId,
+  shell: Sampler,
+  hasEffect: boolean,
+): { texel: TexelSampler; size: number } {
+  const card = CARD_SAMPLERS[pattern];
+  if (card) return { texel: card(shell), size: SIZE };
+  const scale = hasEffect ? 1 : (CARD_SCALE[pattern] ?? 1);
+  if (scale === 1) return { texel: shell, size: SIZE };
+  // Pixel (x, y) of the big square is the point (x + 0.5) / scale - 0.5
+  // of the die's sheet, so pixel (scale * x + (scale - 1) / 2, ...) IS
+  // texel (x, y): the die's own texels are among the card's.
+  return {
+    texel: (x, y) => shell((x + 0.5) / scale - 0.5, (y + 0.5) / scale - 0.5),
+    size: SIZE * scale,
+  };
 }
 
 /**
@@ -4477,9 +4505,9 @@ export interface SquareJob {
   pixels(): number[];
 }
 
-export function squareJob(texel: TexelSampler, smooth: boolean): SquareJob {
-  const px = new Float64Array(SIZE * SIZE * 3);
-  const total = SIZE * SIZE;
+export function squareJob(texel: TexelSampler, smooth: boolean, size: number = SIZE): SquareJob {
+  const px = new Float64Array(size * size * 3);
+  const total = size * size;
   // Stage 0 paints texels [0, total); 1 marks edges; 2 smooths them, a
   // few rows at a time; 3 rounds to bytes; 4 is done.
   let stage = 0;
@@ -4497,8 +4525,8 @@ export function squareJob(texel: TexelSampler, smooth: boolean): SquareJob {
     if (stage === 0) {
       const end = Math.min(total, k + SQUARE_STEP_TEXELS);
       for (; k < end; k++) {
-        const x = k % SIZE;
-        const y = (k - x) / SIZE;
+        const x = k % size;
+        const y = (k - x) / size;
         const c = texel(x, y);
         const i = k * 3;
         px[i] = c[0];
@@ -4513,11 +4541,11 @@ export function squareJob(texel: TexelSampler, smooth: boolean): SquareJob {
     if (stage === 1) {
       // Mark both texels of every sharp step, across and down.
       edge = new Uint8Array(total);
-      for (let y = 0; y < SIZE; y++) {
-        for (let x = 0; x < SIZE; x++) {
-          const e = y * SIZE + x;
-          if (x + 1 < SIZE && sharp(e * 3, (e + 1) * 3)) edge[e] = edge[e + 1] = 1;
-          if (y + 1 < SIZE && sharp(e * 3, (e + SIZE) * 3)) edge[e] = edge[e + SIZE] = 1;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const e = y * size + x;
+          if (x + 1 < size && sharp(e * 3, (e + 1) * 3)) edge[e] = edge[e + 1] = 1;
+          if (y + 1 < size && sharp(e * 3, (e + size) * 3)) edge[e] = edge[e + size] = 1;
         }
       }
       stage = 2;
@@ -4531,8 +4559,8 @@ export function squareJob(texel: TexelSampler, smooth: boolean): SquareJob {
       for (; k < total && asked < SQUARE_STEP_TEXELS; k++) {
         if (!edge![k]) continue;
         asked++;
-        const x = k % SIZE;
-        const y = (k - x) / SIZE;
+        const x = k % size;
+        const y = (k - x) / size;
         const i = k * 3;
         let r = px[i];
         let g = px[i + 1];
@@ -4541,8 +4569,8 @@ export function squareJob(texel: TexelSampler, smooth: boolean): SquareJob {
           // Kept on this square, so an edge texel is averaged over its own
           // texel and not its neighbour's.
           const c = texel(
-            Math.min(SIZE - 1, Math.max(0, x + dx)),
-            Math.min(SIZE - 1, Math.max(0, y + dy)),
+            Math.min(size - 1, Math.max(0, x + dx)),
+            Math.min(size - 1, Math.max(0, y + dy)),
           );
           r += c[0];
           g += c[1];
