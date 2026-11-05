@@ -143,6 +143,7 @@ import { DICE_SKINS } from '../game/diceSkins';
 import { Identity, loadIdentity } from '../game/playerIdentity';
 import {
   answerChallenge,
+  askRematch,
   fetchChallenges,
   pulseBattle,
   sameChallenges,
@@ -162,7 +163,15 @@ import {
   sameColours,
   secondsLeft,
   topChallenge,
+  type Challenge,
 } from '../game/friendlyBattle';
+import {
+  REMATCH_MISSES,
+  REMATCH_WINDOW_MS,
+  isRematchOf,
+  rematchButtonLabel,
+  whyRematchGone,
+} from '../game/rematch';
 import { ChallengeBanner } from './ChallengeBanner';
 import { StoreScreen } from './StoreScreen';
 import { TwoPlayerScreen } from './TwoPlayerScreen';
@@ -606,6 +615,9 @@ export function DiceDemoScreen() {
   */
   const outgoingRef = useRef<ChallengeState['outgoing']>(null);
   outgoingRef.current = challenges.outgoing;
+  /* For quitToMenu, which declines a rematch ask on the way out. */
+  const incomingRef = useRef<Challenge[]>([]);
+  incomingRef.current = challenges.incoming;
   /*
     A live battle against another phone: a FRIEND who was challenged, or
     since 4 Nov 2026 a stranger the matchmaking queue paired us with
@@ -662,6 +674,46 @@ export function DiceDemoScreen() {
   */
   const [friendReady, setFriendReady] = useState(false);
   const friendWaitSinceRef = useRef(0);
+  /*
+    THE BATTLE JUST FINISHED, if it was against a person, so it can be
+    played again WITH them (rematch.ts). Marc, 5 Nov 2026: "it should
+    have to wait for the other player too in order to be able to play
+    again, because right now it plays again against your friend but
+    they're not playing really."
+
+    Set by finishRound and cleared by whatever leaves the result screen.
+    While it is set, the result screen's button is "Play again with
+    Marc", and the challenge poll keeps running there so their answer —
+    or their own ask — can arrive. `rematchWait` is the room this phone
+    sits in after asking: the invite id once the server has answered,
+    `gone` once there is nobody left to wait for, and how long the bar
+    has to fill (the rest of the ten minutes).
+  */
+  const [rematch, setRematch] = useState<{
+    battleId: string;
+    opponentId: string;
+    opponentName: string;
+    kind: 'friend' | 'match';
+    endedAt: number;
+  } | null>(null);
+  const rematchRef = useRef<typeof rematch>(null);
+  rematchRef.current = rematch;
+  const [rematchWait, setRematchWait] = useState<{
+    inviteId: string | null;
+    gone: boolean;
+    waitMs: number;
+  } | null>(null);
+  const rematchWaitRef = useRef<typeof rematchWait>(null);
+  rematchWaitRef.current = rematchWait;
+  /** Polls in a row that did not list my rematch invite (REMATCH_MISSES). */
+  const rematchMissesRef = useRef(0);
+  const clearRematch = useCallback(() => {
+    setRematch(null);
+    rematchRef.current = null;
+    setRematchWait(null);
+    rematchWaitRef.current = null;
+    rematchMissesRef.current = 0;
+  }, []);
   /** The challenge the banner is showing, and when to slide it away. */
   const [banner, setBanner] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -674,7 +726,7 @@ export function DiceDemoScreen() {
     fills in than from the one thing it calls.
   */
   const startFriendlyRef = useRef<
-    ((battle: BattleHandle, opponentName: string) => void) | null
+    ((battle: BattleHandle, opponentName: string, kind?: 'friend' | 'match') => void) | null
   >(null);
   /* The same for friendNoShow, which hands a stranger's no-show to matchNoShow below. */
   const matchNoShowRef = useRef<(() => void) | null>(null);
@@ -723,7 +775,14 @@ export function DiceDemoScreen() {
   useEffect(() => {
     if (!me || !appActive) return;
     if (friendly) return;
-    if (phase !== 'pick') return;
+    /*
+      And on the RESULT SCREEN of a live battle (rematch.ts), since
+      5 Nov 2026: that is where the other player's rematch ask, or their
+      answer to mine, has to arrive. The poll is still off during a
+      battle and on every other result screen.
+    */
+    const resultOfLive = rematch !== null && (phase === 'won' || phase === 'lost' || phase === 'tie');
+    if (phase !== 'pick' && !resultOfLive) return;
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
     const ask = async () => {
@@ -739,14 +798,35 @@ export function DiceDemoScreen() {
         The other half of accepting. Whoever SENT the challenge never
         taps anything — a battle simply appears in their answer here, and
         they drop into it. That is why the server hands back the room on
-        this call rather than only to the accepter.
+        this call rather than only to the accepter. The same for a
+        rematch: whoever asked finds the room here once the other player
+        says yes, and plays it as the kind the server says it is.
       */
       if (state.battle) {
         startFriendlyRef.current?.(
           state.battle,
           state.battle.opponentName ?? 'Your friend',
+          state.battle.kind ?? 'friend',
         );
         return;
+      }
+      /*
+        MY REMATCH ASK IS OUT: is there still somebody to wait for? The
+        invite missing from the answer twice running, their phone gone
+        quiet, or the ten minutes up (whyRematchGone), and the room says
+        "Marc has gone" instead of waiting on. Not while the ask itself
+        is still in flight, when there is no invite to look for yet.
+      */
+      const again = rematchRef.current;
+      const wait = rematchWaitRef.current;
+      if (again && wait?.inviteId && !wait.gone) {
+        const why = whyRematchGone(state.outgoing, wait.inviteId, again.endedAt, Date.now());
+        rematchMissesRef.current = why === 'missing' ? rematchMissesRef.current + 1 : 0;
+        if (why && (why !== 'missing' || rematchMissesRef.current >= REMATCH_MISSES)) {
+          const over = { ...wait, gone: true };
+          setRematchWait(over);
+          rematchWaitRef.current = over;
+        }
       }
       const top = topChallenge(state.incoming);
       if (top && !bannerSeen.current.has(top.id)) {
@@ -757,9 +837,11 @@ export function DiceDemoScreen() {
         Every second and a half while my challenge is out, since 1 Nov
         2026: the friend who sent it used to find out on the next
         five-second ask, arriving up to eight seconds after the friend
-        who accepted (David: "it doesn't connect").
+        who accepted (David: "it doesn't connect"). The same while a
+        rematch ask is out.
       */
-      const waitingOnThem = state.outgoing !== null || outgoingRef.current !== null;
+      const waitingOnThem =
+        state.outgoing !== null || outgoingRef.current !== null || rematchWaitRef.current !== null;
       timer = setTimeout(ask, waitingOnThem ? OUTGOING_POLL_MS : CHALLENGE_POLL_MS);
     };
     timer = setTimeout(ask, 0);
@@ -767,18 +849,29 @@ export function DiceDemoScreen() {
       alive = false;
       clearTimeout(timer);
     };
-  }, [me, appActive, friendly, phase]);
+  }, [me, appActive, friendly, phase, rematch]);
 
-  /* The countdown on the banner, and the banner's own short life. */
+  /*
+    The countdown on the banner, and the banner's own short life.
+
+    A rematch ask for the battle on THIS result screen stays up until it
+    is answered (rematch.ts): the person it is for is sitting right
+    there looking at the result, and six seconds is a popup, not an
+    invitation. It still goes the moment the invite does.
+  */
+  const bannerStays =
+    banner !== null &&
+    rematch !== null &&
+    challenges.incoming.some((c) => c.id === banner && isRematchOf(c, rematch.battleId));
   useEffect(() => {
     if (!banner) return;
     const tick = setInterval(() => setNow(Date.now()), 500);
-    const gone = setTimeout(() => setBanner(null), POPUP_MS);
+    const gone = bannerStays ? null : setTimeout(() => setBanner(null), POPUP_MS);
     return () => {
       clearInterval(tick);
-      clearTimeout(gone);
+      if (gone) clearTimeout(gone);
     };
-  }, [banner]);
+  }, [banner, bannerStays]);
 
   /*
     Settings and News open OVER whatever you were doing rather than
@@ -1489,6 +1582,26 @@ export function DiceDemoScreen() {
       setFriendly(null);
       friendlyRef.current = null;
     }
+    /*
+      LEAVING THE RESULT SCREEN ENDS THE REMATCH (rematch.ts). My own
+      ask is taken back, and a rematch the other player asked for is
+      declined — so their room says "has gone" now rather than in ten
+      minutes. Fire-and-forget, as the leave above is; a cancel that
+      finds the invite already over is refused and nothing minds.
+    */
+    const again = rematchRef.current;
+    if (again) {
+      const who = meRef.current;
+      const wait = rematchWaitRef.current;
+      if (who && wait?.inviteId) void answerChallenge(who, wait.inviteId, 'cancel');
+      const asked = incomingRef.current.find((c) => isRematchOf(c, again.battleId));
+      if (who && asked) void answerChallenge(who, asked.id, 'decline');
+      if (asked) {
+        setChallenges((c) => ({ ...c, incoming: c.incoming.filter((x) => x.id !== asked.id) }));
+      }
+      setBanner(null);
+      clearRematch();
+    }
     setFriendReady(false);
     skipSearchRef.current = false;
     practiceRef.current = false;
@@ -1509,7 +1622,7 @@ export function DiceDemoScreen() {
       next Start battle pays it.
     */
     void showAdIfDue({ wait: false });
-  }, [resetRace, setPhaseBoth]);
+  }, [resetRace, setPhaseBoth, clearRematch]);
 
   /*
     THE FRIEND NEVER CAME. The server closes a waiting room nobody joined
@@ -1574,6 +1687,24 @@ export function DiceDemoScreen() {
         friendlyRef.current = null;
         // Settled normally, so not a walk-out at the next launch.
         if (playing.kind === 'match') forgetMatch();
+        /*
+          And it can be played AGAIN, with the same person: the result
+          screen's "Play again with Marc" reads this (rematch.ts). The
+          ten minutes count from here, this phone's reckoning of the end
+          — a moment before the server's, which is the safe side of it.
+        */
+        const again = {
+          battleId: playing.battleId,
+          opponentId: playing.opponentId,
+          opponentName: playing.opponentName,
+          kind: playing.kind,
+          endedAt: Date.now(),
+        };
+        setRematch(again);
+        rematchRef.current = again;
+        setRematchWait(null);
+        rematchWaitRef.current = null;
+        rematchMissesRef.current = 0;
       }
       /*
         WHAT THIS BATTLE COUNTS TOWARD comes from one table, stakes.ts
@@ -2705,6 +2836,8 @@ export function DiceDemoScreen() {
     (battle: BattleHandle, opponentName: string, kind: 'friend' | 'match' = 'friend') => {
       if (friendlyRef.current) return;
       setBanner(null);
+      // A rematch that was being asked for, or offered, is now happening.
+      clearRematch();
       setMode(battle.mode);
       modeRef.current = battle.mode;
       setDifficulty(battle.difficulty);
@@ -2740,7 +2873,7 @@ export function DiceDemoScreen() {
       setShowFriends(false);
       startCountdown('friendly');
     },
-    [startCountdown],
+    [startCountdown, clearRematch],
   );
   startFriendlyRef.current = startFriendly;
 
@@ -2798,7 +2931,12 @@ export function DiceDemoScreen() {
       }
       if (action === 'accept' && result.battle) {
         const from = challenges.incoming.find((c) => c.id === inviteId);
-        startFriendly(result.battle, from?.who?.name ?? 'Your friend');
+        // A rematch is the kind the first battle was; a challenge is a friend's.
+        startFriendly(
+          result.battle,
+          from?.who?.name ?? rematchRef.current?.opponentName ?? 'Your friend',
+          result.battle.kind ?? 'friend',
+        );
       } else {
         setChallenges((c) => ({
           ...c,
@@ -2809,6 +2947,71 @@ export function DiceDemoScreen() {
     },
     [challenges.incoming, showCallout, startFriendly],
   );
+
+  /*
+    "PLAY AGAIN WITH MARC" (rematch.ts). Marc, 5 Nov 2026: "it should
+    have to wait for the other player too in order to be able to play
+    again, because right now it plays again against your friend but
+    they're not playing really."
+
+    Into the waiting room at once, then the ask. The server answers one
+    of two things: an INVITE, which the other player now has on their
+    result screen (or their home screen) and this phone waits on, the
+    poll above watching for their answer; or a BATTLE, because they had
+    already asked — the server made this ask the answer to theirs — and
+    the room is entered exactly as an accepted challenge's is. Nothing
+    on this path shows an ad (startCountdown's friendly rule), and
+    nothing ever starts against a bot: a friend who does not answer is
+    "Marc has gone", and the way out is the menu.
+  */
+  const askForRematch = useCallback(async () => {
+    const again = rematchRef.current;
+    const who = meRef.current;
+    if (!again || !who || rematchWaitRef.current) return;
+    const opened = {
+      inviteId: null,
+      gone: false,
+      waitMs: Math.max(0, again.endedAt + REMATCH_WINDOW_MS - Date.now()),
+    };
+    setRematchWait(opened);
+    rematchWaitRef.current = opened;
+    rematchMissesRef.current = 0;
+    const result = await askRematch(who, again.battleId);
+    // Cancelled, left, or already in the room while the ask was out.
+    if (rematchWaitRef.current !== opened || rematchRef.current !== again) return;
+    if (!result.ok) {
+      setRematchWait(null);
+      rematchWaitRef.current = null;
+      showCallout(result.error, 'lookout');
+      return;
+    }
+    if (result.battle) {
+      startFriendly(result.battle, again.opponentName, result.battle.kind ?? again.kind);
+      return;
+    }
+    const waiting = { ...opened, inviteId: result.invite.id };
+    setRematchWait(waiting);
+    rematchWaitRef.current = waiting;
+  }, [showCallout, startFriendly]);
+
+  /*
+    The one button in the rematch room. Cancel takes the ask back and
+    leaves the result screen as it was; once "Marc has gone" it is the
+    way back to the menu, through quitToMenu, which also tidies up any
+    invite still standing.
+  */
+  const leaveRematchWait = useCallback(() => {
+    const wait = rematchWaitRef.current;
+    if (wait?.gone) {
+      quitToMenu();
+      return;
+    }
+    const who = meRef.current;
+    if (who && wait?.inviteId) void answerChallenge(who, wait.inviteId, 'cancel');
+    setRematchWait(null);
+    rematchWaitRef.current = null;
+    rematchMissesRef.current = 0;
+  }, [quitToMenu]);
 
   /*
     THE LIVE BATTLE, one beat a second.
@@ -3173,11 +3376,22 @@ export function DiceDemoScreen() {
       </>
     );
 
+  /*
+    After a battle against a PERSON the button is "Play again with
+    Marc", and it asks them (rematch.ts) rather than starting a battle
+    against a bot in their name. A plain "Play again" is the computer's.
+  */
   const roundOverButtons = (
     <View style={styles.endButtons}>
-      <Pressable style={styles.playAgainButton} onPress={() => startCountdown('again')}>
-        <Text style={styles.playAgainText}>Play again</Text>
-      </Pressable>
+      {rematch ? (
+        <Pressable style={styles.playAgainButton} onPress={() => void askForRematch()}>
+          <Text style={styles.playAgainText}>{rematchButtonLabel(rematch.opponentName)}</Text>
+        </Pressable>
+      ) : (
+        <Pressable style={styles.playAgainButton} onPress={() => startCountdown('again')}>
+          <Text style={styles.playAgainText}>Play again</Text>
+        </Pressable>
+      )}
       <Pressable style={styles.homeButton} onPress={quitToMenu}>
         <Text style={styles.homeText}>Home</Text>
       </Pressable>
@@ -4245,6 +4459,25 @@ export function DiceDemoScreen() {
           {difficultyRow}
           {roundOverButtons}
         </View>
+      )}
+      {/*
+        THE REMATCH ROOM (rematch.ts), over the result screen from the
+        ask until the other player answers — or has gone. Last in the
+        tree so it covers every result screen; the challenge banner's
+        own zIndex keeps that on top of it. `ready` never turns true
+        here: the battle itself arrives through startFriendly, which
+        takes this down and puts the friend's own waiting room up.
+      */}
+      {rematchWait && rematch && !friendly && (
+        <FriendlyWaitOverlay
+          opponent={opponent}
+          kind={rematch.kind}
+          ready={false}
+          gone={rematchWait.gone}
+          waitMs={rematchWait.waitMs}
+          onDone={() => {}}
+          onCancel={leaveRematchWait}
+        />
       )}
     </View>
   );

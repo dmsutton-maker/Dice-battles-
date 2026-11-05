@@ -173,7 +173,12 @@ suite('match server · the routes', () => {
   });
 
   test('the friends poll is never handed a match', () => {
-    assert(/\.filter\(\(r\) => r\.kind !== 'match'\)/.test(battles), 'battles GET does not filter out matches in JS');
+    // Since 5 Nov 2026 a match BORN FROM AN INVITE (a rematch) is let
+    // through, by its id: the queue's own battles still never are.
+    assert(
+      /\.filter\(\(r\) => r\.kind !== 'match' \|\| fromInvite\.has\(String\(r\.id\)\)\)/.test(battles),
+      'battles GET does not filter out matches in JS',
+    );
     const liveSides = battles.slice(battles.indexOf('const liveSides'), battles.indexOf('const live ='));
     assert(/\.select\('\*'\)/.test(liveSides), 'the friends poll names a column that may not exist yet');
   });

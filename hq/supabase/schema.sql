@@ -1009,6 +1009,16 @@ create table if not exists public.battles (
 create index if not exists battles_players_idx
   on public.battles (a_id, b_id, state);
 
+-- A rematch (migrations/20261105_rematch.sql): "Play again" after a live
+-- battle is an invite the other player has to accept, and this says
+-- which finished battle it asks to play again. Null for an ordinary
+-- challenge. Added here, after battles, because it points at it.
+alter table public.battle_invites
+  add column if not exists rematch_of uuid null
+    references public.battles (id) on delete set null;
+create index if not exists battle_invites_rematch_idx
+  on public.battle_invites (rematch_of) where (state = 'waiting');
+
 -- No policies on either: every read and write goes through the HQ API with
 -- the service key, which checks the device secret first — the same
 -- arrangement player_profiles has.
