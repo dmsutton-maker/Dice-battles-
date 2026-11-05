@@ -332,7 +332,7 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
-- **5 Nov 2026 (v1.166.0):** "Share your win" on the victory screen
+- **5 Nov 2026 (v1.166.0, update 543f7baf):** "Share your win" on the victory screen
   (`src/share/`): board captured at the win via expo-gl (MSAA blit first),
   card composed in GL on the tap, shared with React Native's Share. Never run
   on a device before shipping: first check on a phone that the picture is
