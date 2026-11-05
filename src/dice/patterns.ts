@@ -171,19 +171,59 @@ function hashCell(ix: number, iy: number): number {
   return Math.abs((Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453) % 1);
 }
 
+/*
+  The lattice of a period, read once: hashCell at every corner of the
+  cells-by-cells grid the noise wraps over. wrappedNoise used to call
+  hashCell (a sine) four times per octave, and the painters ask for
+  tens of octaves a texel; the same values from a table are the same
+  picture, bit for bit, in a fraction of the time (5 Nov 2026, the six
+  sides of every die in node on a desktop: 8.4 s to 7.5 s, the tiger
+  alone 975 ms to 406 ms). Only a period that divides the ring has a
+  whole number of cells; any other goes the long way round, as before.
+*/
+const LATTICES = new Map<number, Float64Array>();
+function lattice(cells: number): Float64Array {
+  let table = LATTICES.get(cells);
+  if (!table) {
+    table = new Float64Array(cells * cells);
+    for (let iy = 0; iy < cells; iy++) {
+      for (let ix = 0; ix < cells; ix++) table[iy * cells + ix] = hashCell(ix, iy);
+    }
+    LATTICES.set(cells, table);
+  }
+  return table;
+}
+
+function ease(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
 export function wrappedNoise(x: number, y: number, period: number): number {
   const cells = RING / period;
   const gx = Math.floor(x / period);
   const gy = Math.floor(y / period);
-  const fx = x / period - gx;
-  const fy = y / period - gy;
-  const at = (ix: number, iy: number) =>
-    hashCell(((ix % cells) + cells) % cells, ((iy % cells) + cells) % cells);
-  const ease = (t: number) => t * t * (3 - 2 * t);
-  const sx = ease(fx);
-  const sy = ease(fy);
-  const top = at(gx, gy) + (at(gx + 1, gy) - at(gx, gy)) * sx;
-  const bot = at(gx, gy + 1) + (at(gx + 1, gy + 1) - at(gx, gy + 1)) * sx;
+  const sx = ease(x / period - gx);
+  const sy = ease(y / period - gy);
+  if (cells !== Math.floor(cells)) {
+    const at = (ix: number, iy: number) =>
+      hashCell(((ix % cells) + cells) % cells, ((iy % cells) + cells) % cells);
+    const top = at(gx, gy) + (at(gx + 1, gy) - at(gx, gy)) * sx;
+    const bot = at(gx, gy + 1) + (at(gx + 1, gy + 1) - at(gx, gy + 1)) * sx;
+    return top + (bot - top) * sy;
+  }
+  const table = lattice(cells);
+  let ix = gx % cells;
+  if (ix < 0) ix += cells;
+  let iy = gy % cells;
+  if (iy < 0) iy += cells;
+  const ix1 = ix + 1 === cells ? 0 : ix + 1;
+  const iy1 = iy + 1 === cells ? 0 : iy + 1;
+  const a = table[iy * cells + ix];
+  const b = table[iy * cells + ix1];
+  const c = table[iy1 * cells + ix];
+  const d = table[iy1 * cells + ix1];
+  const top = a + (b - a) * sx;
+  const bot = c + (d - c) * sx;
   return top + (bot - top) * sy;
 }
 
@@ -1647,6 +1687,19 @@ const BLOSSOM_PETALS = new StickerSheet(scatterStickers(17, 2, 4.5, 9, 2));
 
 /** Fried drumsticks over the waffle: one or two to a side. */
 const DRUMSTICKS = new StickerSheet(scatterStickers(19, 2, 13.5, 22, 3, 7));
+/**
+ * The drumsticks on the SHELF CARD of Chicken and Waffles: two whole
+ * ones, one above the middle with its bone to the right and one below
+ * with its bone to the left, on the one side the card shows. The card
+ * used to show that side of the die, which left every drumstick cut off
+ * by an edge (Marc, 5 Nov 2026: "Fix the icons for the tiger, chicken
+ * and waffles, and watermelon dice").
+ */
+const CARD_DRUMSTICKS = new StickerSheet([
+  { face: 4, u: 0, v: -15, rot: -0.22, reach: 22, h: 0.3, kind: 0 },
+  { face: 4, u: 0, v: 15, rot: Math.PI + 0.22, reach: 22, h: 0.7, kind: 0 },
+]);
+const CARD_DRUMSTICK_SCALE = 1.3;
 
 /** The donut's sprinkles: a jittered lattice over every side. */
 const SPRINKLES = new StickerSheet(
@@ -2004,6 +2057,48 @@ export function oceanColorAt(w: OceanWave, along: number): [number, number, numb
   return px;
 }
 
+/**
+ * The waffle and its drumsticks at a point on the die. `sticks` is the
+ * sheet the drumsticks lie on: DRUMSTICKS for the die, CARD_DRUMSTICKS
+ * for the shelf card (see CARD_SAMPLERS), where they are drawn `scale`
+ * times bigger so two of them fill the card as well as three sides' worth
+ * fill the die.
+ */
+function waffleAt(P: readonly number[], sticks: StickerSheet, scale = 1): Rgb {
+  const F = FACE_FRAMES[cubeFace(P)];
+  const cell = 16;
+  const inX = mod(dot3(P, F.u), cell);
+  const inY = mod(dot3(P, F.v), cell);
+  const edge = Math.min(inX, cell - inX, inY, cell - inY);
+  let px = edge < 2
+    ? mixRgb(rgb('#f0c878'), rgb('#e8b45c'), 0.4)
+    : mixRgb(rgb('#d9a04a'), rgb('#a8742a'), smoothstep(2, 8, edge));
+  // Baked unevenly: a little darker here and there.
+  px = mixRgb(px, rgb('#9a6424'), smoothstep(0.6, 0.85, cubeNoise(P, 12)) * 0.3);
+  for (const { s, lx, ly } of sticks.hits(P)) {
+    const ux = lx / scale;
+    const uy = ly / scale;
+    // The bone and its knuckle, out of the narrow end.
+    if (Math.hypot(ux - 10.6, uy - 0.4) < 2.8 || (Math.abs(uy) < 1.8 && ux > 3.2 && ux < 10.8)) {
+      return mixRgb(rgb('#f2e6c9'), rgb('#cbbb99'), smoothstep(-1, 2.2, uy));
+    }
+    const lump = cubeFbm([P[0] + s.h * 30, P[1] + 7, P[2] + s.h * 50], [16, 8], [1, 0.6]) * 1.7;
+    const meat = Math.hypot((ux + 3.2) / 8, uy / 6.4) + lump * 0.1;
+    if (meat < 1.42) {
+      // Crust: craggy fried skin, darkest at the rim, which fades over
+      // a texel or two rather than stopping dead — a hard rim that
+      // happened to lie along an edge of the die read as a seam.
+      const crust = mixRgb(
+        mixRgb(rgb('#c9762e'), rgb('#9e5418'), cubeNoise([P[0] + 2, P[1] + 5, P[2] + 9], 2.2)),
+        rgb('#6e360e'),
+        smoothstep(0.55, 1, meat),
+      );
+      return mixRgb(crust, px, smoothstep(1.0, 1.42, meat));
+    }
+  }
+  return px;
+}
+
 const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   rosettes: (() => {
     /*
@@ -2026,21 +2121,70 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const cell = 23;
     const cols = Math.round(RING / cell);
     const cw = RING / cols;
-    const at = (x: number, y: number): [number, number, number] => {
-      const P = sheetToCube(x, y);
-      // Back to belly: how high on the die, 1 at the top cap, 0 at the bottom.
-      const height = (P[1] + SIZE / 2) / SIZE;
-      const bellyT = 0.0 * smoothstep(0.55, 0.0, height);
-      // Fur: soft mottle plus fine hair streaks running round the die.
-      const mottle = fbm(x, y, [32, 16, 8], [1, 0.6, 0.3]) * 0.5 + 0.5;
-      const hair = fbm(x * 3, y * 7 + 11, [16, 8], [1, 0.5]);
-      let px = mixRgb(GROUND, LIGHT, mottle * 0.7);
-      px = mixRgb(px, BELLY, bellyT);
-      px = mixRgb(px, LIGHT, Math.max(0, hair) * 0.07);
-      px = mixRgb(px, INK, Math.max(0, -hair) * 0.07 * 0.5);
+    /*
+      SPEED, 5 Nov 2026. The first version asked the fur noise and a
+      wobble noise for every cell of every sub-sample: 4.0 s for six
+      sides in node on a desktop, the slowest die in the game, which the
+      loading screen and the preview had to hide. The fur (mottle, hair,
+      gloss) is smooth, so it is asked ONCE per texel; the wobble once
+      per sub-sample; only the markings, which have the edges, are
+      sampled 3x3. Same picture to the eye. With the rosettes' fixed
+      parts kept per cell (below): 0.5 s.
+    */
+    const bellyT = 0;
+    /*
+      A rosette's fixed parts — its hashes, its ring, and each blotch's
+      direction, distance and size — worked out once per cell and kept,
+      rather than hashed (a sine each) and rotated (a cosine and a sine
+      each) again for every one of the nine sub-samples of every texel
+      near it. The same numbers, so the same picture bit for bit.
+    */
+    type Blotch = { ca: number; sa: number; dist: number; rb: number };
+    type Cell = { h: number; h2: number; h3: number; ring: number; blotches: Blotch[] };
+    const CELLS = new Map<number, Cell>();
+    const cellAt = (col: number, row: number): Cell => {
+      const key = row * 4096 + col;
+      let c = CELLS.get(key);
+      if (c) return c;
+      const h = hashCell(col, row);
+      const h2 = hashCell(col + 9, row);
+      const h3 = hashCell(col + 5, row + 31);
+      // Rosettes shrink toward the belly and become solid spots there.
+      const shrink = 1 - bellyT * 0.45;
+      const ring = (7.6 + h3 * 1.6) * shrink;
+      const n = 3 + Math.floor(h3 * 3);
+      const spin = h * Math.PI * 2;
+      const blotches: Blotch[] = [];
+      for (let k = 0; k < n; k++) {
+        const hk = hashCell(col * 7 + k + 1, row * 3 + k);
+        // One blotch in about five is missing, which is the broken look.
+        if (hk < 0.18) continue;
+        const ang = spin + ((k + (hk - 0.5) * 0.5) * Math.PI * 2) / n;
+        blotches.push({
+          ca: Math.cos(ang),
+          sa: Math.sin(ang),
+          dist: ring * (0.85 + hk * 0.3),
+          rb: 3.4 * (0.78 + hk * 0.7),
+        });
+      }
+      c = { h, h2, h3, ring, blotches };
+      CELLS.set(key, c);
+      return c;
+    };
+    /*
+      How far from a rosette's centre anything of it can reach: its
+      blotches sit up to ring * 1.15 out and shade to nothing within
+      (rb + 2.4) / 0.7 of that, its freckle lies up to 0.65 * cw * sqrt 2
+      away and reaches 1.9 beyond, and the wobble can bring either 0.6
+      nearer. Past this a cell adds exactly nothing (every smoothstep is
+      0), so it is not asked.
+    */
+    const REACH = 23.5;
+    const marksAt = (x: number, y: number): [number, number, number] => {
       let ink = 0;
       let rim = 0;
       let centre = 0;
+      const wob = fbm(x, y, [16, 8], [1, 0.5]) * 0.6;
       const row0 = Math.floor((y + cw / 4) / cw);
       for (let oy = -1; oy <= 1; oy++) {
         const row = row0 + oy;
@@ -2048,40 +2192,20 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
         const col0 = Math.floor((x + offset) / cw);
         for (let ox = -1; ox <= 1; ox++) {
           const col = mod(col0 + ox, cols);
-          const h = hashCell(col, row);
-          const h2 = hashCell(col + 9, row);
-          const h3 = hashCell(col + 5, row + 31);
-          // Rosettes shrink toward the belly and become solid spots there.
-          const shrink = 1 - bellyT * 0.45;
+          const { h, h2, h3, ring, blotches } = cellAt(col, row);
           const cx = x - ((col0 + ox) * cw - offset + cw / 2 - (h - 0.5) * 10);
           const cy = y - (row * cw - cw / 4 + cw / 2 - (h2 - 0.5) * 10);
           const r = Math.hypot(cx, cy);
-          const ring = (7.6 + h3 * 1.6) * shrink;
-          const wob = fbm(x + col * 13, y + row * 7, [16, 8], [1, 0.5]) * 0.6;
-          if (bellyT > 0.75) {
-            // Low on the belly: one solid spot.
-            ink = Math.max(ink, smoothstep(ring * 0.45 + 0.9, ring * 0.45 - 0.6, r + wob));
-            continue;
-          }
+          if (r >= REACH) continue;
           centre = Math.max(centre, smoothstep(ring * 1.05, ring * 0.55, r));
-          const n = 3 + Math.floor(h3 * 3);
-          const spin = h * Math.PI * 2;
-          for (let k = 0; k < n; k++) {
-            const hk = hashCell(col * 7 + k + 1, row * 3 + k);
-            // One blotch in about five is missing, which is the broken look.
-            if (hk < 0.18) continue;
-            const ang = spin + ((k + (hk - 0.5) * 0.5) * Math.PI * 2) / n;
-            const dist = ring * (0.85 + hk * 0.3);
-            const bx = Math.cos(ang) * dist;
-            const by = Math.sin(ang) * dist;
+          for (const { ca, sa, dist, rb } of blotches) {
             // Radial and tangential distance from the blotch: tangentially
             // longer, so each blotch is a dash round the ring, not a dot.
-            const dx = cx - bx;
-            const dy = cy - by;
-            const dr = dx * Math.cos(ang) + dy * Math.sin(ang);
-            const dt = -dx * Math.sin(ang) + dy * Math.cos(ang);
+            const dx = cx - ca * dist;
+            const dy = cy - sa * dist;
+            const dr = dx * ca + dy * sa;
+            const dt = -dx * sa + dy * ca;
             const d = Math.hypot(dr * 1.3, dt * 0.7);
-            const rb = 3.4 * (0.78 + hk * 0.7);
             ink = Math.max(ink, smoothstep(rb + 0.45, rb - 0.4, d + wob));
             // Fur goes a shade paler right next to a marking, which is what
             // gives each blotch its edge at die size.
@@ -2096,27 +2220,39 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
           }
         }
       }
+      return [ink, rim, centre];
+    };
+    const GLOSS = rgb('#ffffff');
+    return (x: number, y: number): [number, number, number] => {
+      const P = sheetToCube(x, y);
+      // Fur: soft mottle plus fine hair streaks running round the die.
+      const mottle = fbm(x, y, [32, 16, 8], [1, 0.6, 0.3]) * 0.5 + 0.5;
+      const hair = fbm(x * 3, y * 7 + 11, [16, 8], [1, 0.5]);
+      let px = mixRgb(GROUND, LIGHT, mottle * 0.7);
+      px = mixRgb(px, BELLY, bellyT);
+      px = mixRgb(px, LIGHT, Math.max(0, hair) * 0.07);
+      px = mixRgb(px, INK, Math.max(0, -hair) * 0.07 * 0.5);
+      // The markings, sampled 3x3 and averaged.
+      const N = 3;
+      let ink = 0;
+      let rim = 0;
+      let centre = 0;
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          const m = marksAt(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
+          ink += m[0];
+          rim += m[1];
+          centre += m[2];
+        }
+      }
+      ink /= N * N;
+      rim /= N * N;
+      centre /= N * N;
       px = mixRgb(px, CENTRE, centre * (1 - bellyT) * 1.0);
       px = mixRgb(px, LIGHT, rim * (1 - ink) * 0.45);
       px = mixRgb(px, INK, ink);
       // A gloss on the fur, so it reads as a coat and not a print.
-      px = mixRgb(px, rgb('#ffffff'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * 0.1);
-      return px;
-    };
-    return (x: number, y: number): [number, number, number] => {
-      const N = 3;
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      for (let sy = 0; sy < N; sy++) {
-        for (let sx = 0; sx < N; sx++) {
-          const c = at(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
-          r += c[0];
-          g += c[1];
-          b += c[2];
-        }
-      }
-      return [r / (N * N), g / (N * N), b / (N * N)];
+      return mixRgb(px, GLOSS, Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * 0.1);
     };
   })(),
   neon: (() => {
@@ -2717,39 +2853,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       the die at all — every card promised chicken and every die was a
       plain waffle.
     */
-    const P = sheetToCube(x, y);
-    const F = FACE_FRAMES[cubeFace(P)];
-    const cell = 16;
-    const inX = mod(dot3(P, F.u), cell);
-    const inY = mod(dot3(P, F.v), cell);
-    const edge = Math.min(inX, cell - inX, inY, cell - inY);
-    let px = edge < 2
-      ? mixRgb(rgb('#f0c878'), rgb('#e8b45c'), 0.4)
-      : mixRgb(rgb('#d9a04a'), rgb('#a8742a'), smoothstep(2, 8, edge));
-    // Baked unevenly: a little darker here and there.
-    px = mixRgb(px, rgb('#9a6424'), smoothstep(0.6, 0.85, cubeNoise(P, 12)) * 0.3);
-    for (const { s, lx, ly } of DRUMSTICKS.hits(P)) {
-      const ux = lx;
-      const uy = ly;
-      // The bone and its knuckle, out of the narrow end.
-      if (Math.hypot(ux - 10.6, uy - 0.4) < 2.8 || (Math.abs(uy) < 1.8 && ux > 3.2 && ux < 10.8)) {
-        return mixRgb(rgb('#f2e6c9'), rgb('#cbbb99'), smoothstep(-1, 2.2, uy));
-      }
-      const lump = cubeFbm([P[0] + s.h * 30, P[1] + 7, P[2] + s.h * 50], [16, 8], [1, 0.6]) * 1.7;
-      const meat = Math.hypot((ux + 3.2) / 8, uy / 6.4) + lump * 0.1;
-      if (meat < 1.42) {
-        // Crust: craggy fried skin, darkest at the rim, which fades over
-        // a texel or two rather than stopping dead — a hard rim that
-        // happened to lie along an edge of the die read as a seam.
-        const crust = mixRgb(
-          mixRgb(rgb('#c9762e'), rgb('#9e5418'), cubeNoise([P[0] + 2, P[1] + 5, P[2] + 9], 2.2)),
-          rgb('#6e360e'),
-          smoothstep(0.55, 1, meat),
-        );
-        return mixRgb(crust, px, smoothstep(1.0, 1.42, meat));
-      }
-    }
-    return px;
+    return waffleAt(sheetToCube(x, y), DRUMSTICKS);
   },
 
   strawberry: (x, y) => {
@@ -3750,7 +3854,16 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     // falls to nothing. `phase` separates the families so the second
     // family's stripes sit between the first's and start part way down,
     // which is what makes a fork.
-    const family = (x: number, y: number, phase: number, lo: number, hi: number, k: number): number => {
+    /*
+      SPEED, 5 Nov 2026. The first version measured six families per
+      sub-sample (three for the ink, three again, wider, for the pale rim)
+      and the fur noise in every sub-sample: 2.2 s for six sides in node
+      on a desktop. Each family is now measured once per sub-sample and
+      gives both the ink and the rim from the same wave; the fur is asked
+      once per texel. Same picture to the eye. With wrappedNoise reading
+      its lattice from a table: 0.4 s.
+    */
+    const family = (x: number, y: number, phase: number, lo: number, hi: number, k: number, out: [number, number]): void => {
       const sway = tiling(y + phase * 7, 0.5) * 4 + fbm(x + phase * 19, y, [32, 16], [1, 0.5]) * 5;
       const wave = Math.abs(tiling(x + sway + phase, TURNS)) + fbm(x * 5 + phase, y * 3, [8, 4], [1, 0.6]) * 0.07;
       // Width along the stripe: lumpy, pinching to nothing at the taper
@@ -3758,47 +3871,53 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
       const t = (y + SIZE * 0.5) / (SIZE * 2);
       const lump = 0.5 + 0.5 * tiling(y + phase * 5 + fbm(x, y + phase, [32], [1]) * 8, 1.0);
       const span = smoothstep(lo - 0.08, lo + 0.06, t) * smoothstep(hi + 0.08, hi - 0.06, t);
-      const width = (0.16 + 0.26 * lump) * k * span;
-      return smoothstep(width + 0.06, width - 0.05, wave) + smoothstep(width + 0.22, width + 0.04, wave) * 0.001;
+      const base = (0.16 + 0.26 * lump) * span;
+      const width = base * k;
+      // The pale fur beside the stripe: the same stripe, 0.45 wider.
+      const wide = base * (k + 0.45);
+      out[0] = Math.max(out[0], smoothstep(width + 0.06, width - 0.05, wave) + smoothstep(width + 0.22, width + 0.04, wave) * 0.001);
+      out[1] = Math.max(out[1], smoothstep(wide + 0.06, wide - 0.05, wave) + smoothstep(wide + 0.22, wide + 0.04, wave) * 0.001);
     };
-    const at = (x: number, y: number): [number, number, number] => {
+    const bellyT = 0;
+    const WHITE = rgb('#ffffff');
+    const PALE = rgb('#f6d9a8');
+    // Two families of long stripes and one of short ones between them.
+    const stripesAt = (x: number, y: number, out: [number, number]): void => {
+      out[0] = 0;
+      out[1] = 0;
+      family(x, y, 0, -0.1, 1.1, 1.35, out);
+      family(x, y, SIZE / TURNS / 2, 0.45, 1.1, 1.35 * 0.8, out);
+      family(x, y, SIZE / TURNS / 4 + 3, -0.1, 0.4, 1.35 * 0.7, out);
+    };
+    return (x: number, y: number): [number, number, number] => {
       const P = sheetToCube(x, y);
-      const height = (P[1] + SIZE / 2) / SIZE;
-      const bellyT = 0.0 * smoothstep(0.5, 0.0, height);
       // Fur: a soft mottle and hair streaks running down the flank.
       const mottle = fbm(x, y, [32, 16], [1, 0.5]) * 0.5 + 0.5;
       const hair = fbm(x * 6, y * 2 + 7, [16, 8], [1, 0.5]);
       let px = mixRgb(DARK, LIGHT, mottle * 0.8);
       px = mixRgb(px, BELLY, bellyT);
-      px = mixRgb(px, rgb('#ffffff'), Math.max(0, hair) * 0.1);
+      px = mixRgb(px, WHITE, Math.max(0, hair) * 0.1);
       px = mixRgb(px, DARK, Math.max(0, -hair) * 0.1 * 0.6);
-      // Two families of long stripes and one of short ones between them.
-      let ink = family(x, y, 0, -0.1, 1.1, 1.35);
-      ink = Math.max(ink, family(x, y, SIZE / TURNS / 2, 0.45, 1.1, 1.35 * 0.8));
-      ink = Math.max(ink, family(x, y, SIZE / TURNS / 4 + 3, -0.1, 0.4, 1.35 * 0.7));
+      // The stripes, sampled 3x3 and averaged.
+      const N = 3;
+      let ink = 0;
+      let near = 0;
+      const out: [number, number] = [0, 0];
+      for (let sy = 0; sy < N; sy++) {
+        for (let sx = 0; sx < N; sx++) {
+          stripesAt(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5, out);
+          ink += out[0];
+          near += out[1];
+        }
+      }
+      ink /= N * N;
+      near /= N * N;
       // Pale fur right beside each stripe, which gives it an edge at die size.
-      const near = Math.max(family(x, y, 0, -0.1, 1.1, 1.35 + 0.45), family(x, y, SIZE / TURNS / 2, 0.45, 1.1, (1.35 + 0.45) * 0.8), family(x, y, SIZE / TURNS / 4 + 3, -0.1, 0.4, (1.35 + 0.45) * 0.7));
-      px = mixRgb(px, rgb('#f6d9a8'), Math.max(0, near - ink) * 0.5);
+      px = mixRgb(px, PALE, Math.max(0, near - ink) * 0.5);
       // Stripes go brown at their edge before black, as fur does.
       px = mixRgb(px, EDGE, Math.min(1, ink * 2.2));
       px = mixRgb(px, INK, smoothstep(0.35, 1, ink));
-      px = mixRgb(px, rgb('#ffffff'), Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * 0.09);
-      return px;
-    };
-    return (x: number, y: number): [number, number, number] => {
-      const N = 3;
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      for (let sy = 0; sy < N; sy++) {
-        for (let sx = 0; sx < N; sx++) {
-          const c = at(x + (sx + 0.5) / N - 0.5, y + (sy + 0.5) / N - 0.5);
-          r += c[0];
-          g += c[1];
-          b += c[2];
-        }
-      }
-      return [r / (N * N), g / (N * N), b / (N * N)];
+      return mixRgb(px, WHITE, Math.min(1, sweepOfLight(P, 7, 18, 0.4, 0.35, 6, 0.25)) * 0.09);
     };
   })(),
 
@@ -4200,6 +4319,41 @@ export function shellSampler(
       mask >= 0 ? b + (i - b) * mask : b * (1 + mask * SHADE_DEPTH);
     return [mix(br, ir), mix(bg, ig), mix(bb, ib)];
   };
+}
+
+/**
+ * How the SHELF CARD sees a pattern, where that differs from the die.
+ *
+ * The card is one flat square; the die shows three sides at an angle
+ * under the game's camera. A stripe that reads right wrapped round a
+ * corner is a slab on a flat card, pale green bands that read as a
+ * melon on a curved die wash out flat, and a drumstick that hangs over
+ * an edge is cut off. Each entry composes the card from the same
+ * painter, pulled back so more of the design fits or with its own
+ * fixed placements, so the card shows what the die IS rather than a
+ * crop of it. Marc, 5 Nov 2026: "Fix the icons for the tiger, chicken
+ * and waffles, and watermelon dice". The die on the board is untouched.
+ */
+export const CARD_SAMPLERS: Partial<Record<PatternId, (shell: Sampler) => Sampler>> = {
+  // Pulled back, so the stripes are thinner and there are more of them.
+  tigerStripes: (shell) => pulledBack(shell, 1.6),
+  // Pulled back and with the bands pushed apart: the pale paler, the dark darker.
+  watermelon: (shell) => {
+    const far = pulledBack(shell, 1.5);
+    return (sx, sy) => {
+      const c = far(sx, sy);
+      const k = (c[0] + c[1] + c[2]) / 3 > 120 ? 1.12 : 0.8;
+      return [Math.min(255, c[0] * k), Math.min(255, c[1] * k), Math.min(255, c[2] * k)];
+    };
+  },
+  // The waffle with two whole drumsticks in fixed places.
+  waffle: () => (sx, sy) => waffleAt(sheetToCube(sx, sy), CARD_DRUMSTICKS, CARD_DRUMSTICK_SCALE),
+};
+
+/** The painter seen from further back: `zoom` texels of the die per texel of the card, about its centre. */
+function pulledBack(shell: Sampler, zoom: number): Sampler {
+  const half = SIZE / 2;
+  return (sx, sy) => shell((sx - half) * zoom + half, (sy - half) * zoom + half);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { DiceSkin } from '../game/diceSkins';
-import { neonTubesAt, PatternId, sheetToCube, shellSampler, SMOOTH_EDGES, squareJob } from './patterns';
+import { CARD_SAMPLERS, neonTubesAt, PatternId, sheetToCube, shellSampler, SMOOTH_EDGES, squareJob } from './patterns';
 
 /**
  * A picture of a dice skin for the Store and the Inventory.
@@ -191,13 +191,16 @@ export function shelfPictureJob(skin: DiceSkin): { step(): boolean } | null {
   // for that, which silently gave every colour-painted skin a blank card
   // the moment one arrived without a dummy ink to satisfy the check.
   if (skin.pattern === 'plain' || cache.has(skin.id)) return null;
+  const shell = shellSampler(
+    skin.pattern as Exclude<PatternId, 'plain'>,
+    skin.body,
+    // A colour painter ignores this; a mask painter cannot do without it.
+    skin.ink ?? skin.body,
+  );
+  // The card's own composition, where a crop of the die would mislead.
+  const card = CARD_SAMPLERS[skin.pattern as PatternId];
   const square = squareJob(
-    shellSampler(
-      skin.pattern as Exclude<PatternId, 'plain'>,
-      skin.body,
-      // A colour painter ignores this; a mask painter cannot do without it.
-      skin.ink ?? skin.body,
-    ),
+    card ? card(shell) : shell,
     SMOOTH_EDGES.has(skin.pattern),
   );
   // The square, then the effect painted over it, then the PNG: three

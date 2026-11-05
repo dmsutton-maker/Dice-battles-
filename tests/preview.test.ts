@@ -3,7 +3,7 @@ import { assert, assertEqual, note, suite, test } from './harness';
 import { recallScroll, rememberScroll, resetScrollForTests } from '../src/demo/menuScroll';
 import { DICE_SKINS, STORE_SKINS } from '../src/game/diceSkins';
 import { shellPreviewUri } from '../src/dice/preview';
-import { PATTERN_SIZE, patternPixels, STICKER_FRACTION } from '../src/dice/patterns';
+import { CARD_SAMPLERS, PATTERN_SIZE, patternPixels, shellSampler, STICKER_FRACTION } from '../src/dice/patterns';
 
 /**
  * The Store and Inventory pictures are generated, not drawn by hand, so
@@ -382,5 +382,63 @@ suite('preview · a patterned skin is patterned everywhere', () => {
     const withoutInk = patterned.filter((s) => s.ink === undefined);
     note(`${patterned.length} patterned skins, ${withoutInk.length} of them mixing their own paint`);
     assert(withoutInk.length > 0, 'no colour-painted skins left — this test has lost its subject');
+  });
+});
+
+/*
+  Marc, 5 Nov 2026: "Fix the icons for the tiger, chicken and waffles,
+  and watermelon dice." Those cards showed the front side of the die as
+  a flat crop: slabs of stripe, washed-out bands, drumsticks cut off by
+  the edge. Each now has its own composition from the same painter
+  (CARD_SAMPLERS); the die on the board is untouched.
+*/
+suite('preview · the cards composed for the card', () => {
+  const CARDS = ['tiger', 'waffles', 'watermelon'] as const;
+  const square = (skinId: string) => {
+    const skin = DICE_SKINS.find((s) => s.id === skinId)!;
+    const shell = shellSampler(skin.pattern as never, skin.body, skin.ink ?? skin.body);
+    const card = CARD_SAMPLERS[skin.pattern];
+    assert(card !== undefined, `${skinId} has no card composition`);
+    return { shell, card: card!(shell) };
+  };
+
+  test('Tiger, Chicken and Waffles and Watermelon are not crops of the die', () => {
+    for (const id of CARDS) {
+      const { shell, card } = square(id);
+      let differ = 0;
+      for (let y = 0; y < PATTERN_SIZE; y++) {
+        for (let x = 0; x < PATTERN_SIZE; x++) {
+          const a = shell(x, y);
+          const b = card(x, y);
+          if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) > 12) differ++;
+        }
+      }
+      const share = differ / (PATTERN_SIZE * PATTERN_SIZE);
+      assert(share > 0.2, `${id}'s card is still the die's front side (${(share * 100).toFixed(0)}% differs)`);
+    }
+  });
+
+  test('the chicken card shows two whole drumsticks, one above and one below', () => {
+    const { card } = square('waffles');
+    // The bone is the one pale, bluish-pale thing on a brown waffle.
+    const bone = (c: [number, number, number]) => c[0] > 200 && c[2] > 150;
+    let top = 0;
+    let bottom = 0;
+    let onEdge = 0;
+    for (let y = 0; y < PATTERN_SIZE; y++) {
+      for (let x = 0; x < PATTERN_SIZE; x++) {
+        if (!bone(card(x, y))) continue;
+        if (y < PATTERN_SIZE / 2) top++;
+        else bottom++;
+        if (x < 2 || y < 2 || x >= PATTERN_SIZE - 2 || y >= PATTERN_SIZE - 2) onEdge++;
+      }
+    }
+    assert(top > 8 && bottom > 8, `a bone is missing (${top} bone texels above, ${bottom} below)`);
+    assertEqual(onEdge, 0, 'a drumstick runs off the card');
+  });
+
+  test('the shelf picture is painted through the card composition', () => {
+    const source = readFileSync('src/dice/preview.ts', 'utf8');
+    assert(/CARD_SAMPLERS\[skin\.pattern/.test(source), 'shelfPictureJob does not ask CARD_SAMPLERS');
   });
 });
