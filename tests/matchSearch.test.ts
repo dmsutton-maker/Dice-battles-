@@ -13,6 +13,7 @@ import {
   findWaitingPlayer,
   hasMatchmakingService,
   resetMatchmakingForTest,
+  withdrawFromSearch,
 } from '../src/game/onlineMatch';
 import { startFlow } from '../src/game/matchFlow';
 
@@ -30,8 +31,10 @@ const src = (p: string) => readFileSync(join(root, p), 'utf8');
  *
  * These tests pin the rule AND the honesty: nobody is made to wait
  * fifteen seconds for an answer that was never coming. A server that
- * says `off`, or cannot be reached, settles the bot on the first ask.
- * The order of a search is tested in matchFlow.test.ts.
+ * says `off` settles the bot on the first ask. A request that FAILS is
+ * not an answer, so the search goes on (Marc, 5 Nov 2026; the rest of
+ * that is in matchmaking.test.ts). The order of a search is tested in
+ * matchFlow.test.ts.
  */
 
 suite('matchmaking · who searches', () => {
@@ -153,70 +156,94 @@ suite('matchmaking · it does not pretend', () => {
     }
   }
 
-  const SERVERS: [string, (url: string) => Promise<unknown>][] = [
-    // Today's live site: no /api/match, so Next answers a 404 page, not JSON.
-    [
-      'a site without /api/match',
-      async () => ({
-        ok: false,
-        status: 404,
-        json: async () => {
-          throw new SyntaxError('Unexpected token < in JSON');
+  // The route deployed, the migration not applied.
+  const saysOff = async () => ({ ok: true, status: 200, json: async () => ({ state: 'off' }) });
+
+  test('a server that says off: a bot on the first ask, not a fifteen-second act', async () => {
+    /*
+      THE POINT OF THIS WHOLE FILE.
+
+      "Nobody found" and "there is nowhere to ask" are different
+      things, and the difference reaches the player. Spending fifteen
+      seconds pretending to search a lobby that does not exist would be
+      a made-up wait ending in a made-up disappointment. So the first
+      answer settles it, and the `off` is remembered for a minute: the
+      next start in that minute does not even ask, and its bot is
+      settled before the first frame — exactly the game before
+      matchmaking existed. Not for the session any more (Marc, 5 Nov
+      2026): that is in matchmaking.test.ts.
+    */
+    resetMatchmakingForTest();
+    const first = await withFetch(saysOff, () => findWaitingPlayer(ME, REQUEST, STATS));
+    assertEqual(first.result?.kind, 'bot', 'the first answer should pair a bot');
+    assertEqual(
+      first.result && first.result.kind === 'bot' ? first.result.reason : '',
+      'no-service',
+      'reason',
+    );
+    assertEqual(first.calls.length, 1, 'asked more than once');
+    assert(first.calls[0].endsWith('/api/match'), `asked ${first.calls[0]}`);
+    assertEqual(hasMatchmakingService(), false, 'the switch stayed on');
+
+    const next = startFlow(500, REQUEST.mode, hasMatchmakingService());
+    assertEqual(next.kind, 'bot', 'the next start searches again');
+    const again = await withFetch(saysOff, () => findWaitingPlayer(ME, REQUEST, STATS));
+    assertEqual(again.calls.length, 0, 'the next start asked the server again');
+    assertEqual(again.result?.kind, 'bot', 'the next start is not a bot');
+    resetMatchmakingForTest();
+  });
+
+  test('a request that fails is asked again, and the deadline decides', async () => {
+    /*
+      A plane, a tunnel, a dead server, a site whose /api/match answers a
+      404 page instead of JSON: none of them is the server saying "off".
+      They used to be read as `off`, which is how one blip silenced the
+      search for the session (Marc, 5 Nov 2026). Now the ask is simply
+      unanswered — the search goes on, and if nothing ever answers, the
+      leave at the deadline settles a rival for "nobody found".
+    */
+    const failures: [string, (url: string) => Promise<unknown>][] = [
+      [
+        'a 404 page',
+        async () => ({
+          ok: false,
+          status: 404,
+          json: async () => {
+            throw new SyntaxError('Unexpected token < in JSON');
+          },
+        }),
+      ],
+      [
+        'no connection',
+        async () => {
+          throw new TypeError('Network request failed');
         },
-      }),
-    ],
-    // The route deployed, the migration not applied.
-    ['a server that says off', async () => ({ ok: true, status: 200, json: async () => ({ state: 'off' }) })],
-    // A plane, a tunnel, a dead server.
-    [
-      'no connection',
-      async () => {
-        throw new TypeError('Network request failed');
-      },
-    ],
-  ];
-
-  for (const [name, server] of SERVERS) {
-    test(`${name}: a bot on the first ask, not a fifteen-second act`, async () => {
-      /*
-        THE POINT OF THIS WHOLE FILE.
-
-        "Nobody found" and "there is nowhere to ask" are different
-        things, and the difference reaches the player. Spending fifteen
-        seconds pretending to search a lobby that does not exist would be
-        a made-up wait ending in a made-up disappointment. So the first
-        answer settles it, and the switch stays off for the session: the
-        next start does not even ask, and its bot is settled before the
-        first frame — exactly the game before matchmaking existed.
-      */
+      ],
+    ];
+    for (const [name, server] of failures) {
       resetMatchmakingForTest();
       const first = await withFetch(server, () => findWaitingPlayer(ME, REQUEST, STATS));
-      assertEqual(first.result?.kind, 'bot', 'the first answer should pair a bot');
+      assertEqual(first.result, null, `${name}: settled something instead of asking again`);
+      assertEqual(first.calls.length, 1, `${name}: asked ${first.calls.length} times`);
+      assertEqual(hasMatchmakingService(), true, `${name}: switched the service off`);
+      const gaveUp = await withFetch(server, () => withdrawFromSearch(ME));
+      assertEqual(gaveUp.result.kind, 'bot', `${name}: the deadline did not settle a rival`);
       assertEqual(
-        first.result && first.result.kind === 'bot' ? first.result.reason : '',
-        'no-service',
-        'reason',
+        gaveUp.result.kind === 'bot' ? gaveUp.result.reason : '',
+        'nobody-found',
+        `${name}: the reason is not "nobody found"`,
       );
-      assertEqual(first.calls.length, 1, 'asked more than once');
-      assert(first.calls[0].endsWith('/api/match'), `asked ${first.calls[0]}`);
-      assertEqual(hasMatchmakingService(), false, 'the switch stayed on');
+    }
+    resetMatchmakingForTest();
+  });
 
-      const next = startFlow(500, REQUEST.mode, hasMatchmakingService());
-      assertEqual(next.kind, 'bot', 'the next start searches again');
-      const again = await withFetch(server, () => findWaitingPlayer(ME, REQUEST, STATS));
-      assertEqual(again.calls.length, 0, 'the next start asked the server again');
-      assertEqual(again.result?.kind, 'bot', 'the next start is not a bot');
-      resetMatchmakingForTest();
-    });
-  }
-
-  test('no identity yet means a bot, not a wait', async () => {
+  test('no identity yet waits for it, and asks nothing', async () => {
     resetMatchmakingForTest();
     const { result, calls } = await withFetch(
       async () => ({ ok: true, status: 200, json: async () => ({ state: 'searching' }) }),
       () => findWaitingPlayer(null, REQUEST, STATS),
     );
-    assertEqual(result?.kind, 'bot', 'waited with nobody to ask as');
+    assertEqual(result, null, 'decided a bot with nobody to ask as');
     assertEqual(calls.length, 0, 'asked without an identity');
   });
 

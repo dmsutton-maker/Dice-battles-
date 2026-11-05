@@ -116,7 +116,7 @@ import { tierItem } from '../game/tierItem';
 import { runLaunchWarm } from '../dice/launchWarm';
 import { loadShelfPictures, saveShelfPictures } from '../dice/shelfStore';
 import { loadKeptTextures, saveKeptTextures } from '../dice/keptTextures';
-import { backgroundSliceMs, fromList, LOAD_SLICE_MS, runSliced } from '../dice/slicedPaint';
+import { backgroundSliceMs, fromList, LOAD_SLICE_MS, pausedForPopup, runSliced } from '../dice/slicedPaint';
 import { launchSettled, onLaunchChange, reportStep } from '../game/launchReady';
 import { inventoryDice } from '../game/inventoryRules';
 import { warmAllArenaTextures } from '../arena/warmArenas';
@@ -124,7 +124,7 @@ import { useAppActive } from '../game/useAppActive';
 import { SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
 import { FLIGHT_SECONDS } from '../game/flight';
-import { flickFromGesture, TouchSample, velocityFromSamples } from '../game/aim';
+import { flickFromGesture, isGraze, TouchSample, velocityFromSamples } from '../game/aim';
 import {
   awardCoins,
   buyWithCoins,
@@ -807,6 +807,9 @@ export function DiceDemoScreen() {
   const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | 'whatsnew' | null>(null);
   // A big update's post, waiting for the loading screen to lift.
   const [whatsNewPost, setWhatsNewPost] = useState<NewsItem | null>(null);
+  // Read by the background painters before every slice (pausedForPopup).
+  const popupRef = useRef<typeof popup>(null);
+  popupRef.current = popup;
   // The cup being played, if any. A round started from a cup reports back
   // to it when it finishes.
   /*
@@ -906,6 +909,18 @@ export function DiceDemoScreen() {
     });
   }
   /*
+    Whether the shelf may keep painting: on screen, and not behind a
+    popup once the card has lifted (slicedPaint.ts, pausedForPopup). Marc,
+    5 Nov 2026: the first-launch tutorial's Next was slow because every
+    tap waited behind a slice of this.
+  */
+  function shelfMayContinue(): boolean {
+    return (
+      activeRef.current &&
+      !pausedForPopup({ launched: launchSettled(), popupOpen: popupRef.current !== null })
+    );
+  }
+  /*
     The die in your hand and the ladder's next die, which the home screen
     shows as well as the shelves: painted before any other shelf picture.
   */
@@ -949,22 +964,23 @@ export function DiceDemoScreen() {
         setBuiltHeavyTabs((seen) => ({ ...seen, store: true }));
         setTimeout(() => setBuiltHeavyTabs((seen) => ({ ...seen, inventory: true })), 0);
       },
-      shelfMayContinue: () => activeRef.current,
+      shelfMayContinue,
       onShelfDone: shelfDone,
     });
     return () => handle.cancel();
   }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /*
-    The shelf stops while the game is in a pocket; coming back picks it
-    up where it left off. (A call while it is running, or after it has
-    finished, does nothing.) Not before the loading screen has reached
-    the shelf (boardMayMount), so the die and the floor go first.
+    The shelf stops while the game is in a pocket, and while a popup is
+    open; coming back, or closing it, picks it up where it left off. (A
+    call while it is running, or after it has finished, does nothing.)
+    Not before the loading screen has reached the shelf (boardMayMount),
+    so the die and the floor go first.
   */
   useEffect(() => {
-    if (!hydrated || !appActive || !boardMayMount) return;
-    warmDicePreviews((run) => setTimeout(run, 0), () => activeRef.current, shelfDone, shelfBudget);
-  }, [hydrated, appActive, boardMayMount]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!hydrated || !appActive || !boardMayMount || popup !== null) return;
+    warmDicePreviews((run) => setTimeout(run, 0), shelfMayContinue, shelfDone, shelfBudget);
+  }, [hydrated, appActive, boardMayMount, popup]); // eslint-disable-line react-hooks/exhaustive-deps
   /*
     A shelf tab opening puts ITS cards at the front of the queue, top to
     bottom, behind the die in hand and the ladder's next die. Marc, 5 Nov
@@ -1185,6 +1201,10 @@ export function DiceDemoScreen() {
 
   // Refs mirroring state that gesture/timer callbacks need synchronously.
   const phaseRef = useRef<Phase>('pick');
+  // Whether the dice are mid-roll, and how many throws this round has
+  // had: the release handler reads both to tell a graze from a tap.
+  const rollingRef = useRef(false);
+  const throwsThisRoundRef = useRef(0);
   const difficultyRef = useRef<AiDifficultyId>('easy');
   const arenaIdRef = useRef<ArenaId>('castle');
   const modeRef = useRef<ModeId>('classic');
@@ -1268,14 +1288,16 @@ export function DiceDemoScreen() {
     thread as the dice physics, which stuttered the throws and slowed the
     clock. warmAllDieFaces already resets itself when it is stopped, so
     pausing here and starting it again on the way back to the menu loses
-    nothing.
+    nothing. "Nothing open over it" includes a popup since 5 Nov 2026
+    (pausedForPopup): the first-launch tutorial sat on top of this.
   */
   const shouldWarmFaces = () =>
     activeRef.current &&
     phaseRef.current === 'pick' &&
     previewRef.current === null &&
     // Not under the loading screen: none of it is needed before home.
-    launchedRef.current;
+    launchedRef.current &&
+    !pausedForPopup({ launched: launchedRef.current, popupOpen: popupRef.current !== null });
 
   /*
     And every battlefield's floor and ground, under the same rule, in
@@ -1289,10 +1311,10 @@ export function DiceDemoScreen() {
   useEffect(() => {
     // Not until the earlier stages have finished and handed over to it.
     if (!facesWarmableRef.current) return;
-    if (!appActive || phase !== 'pick' || preview !== null) return;
+    if (!appActive || phase !== 'pick' || preview !== null || popup !== null) return;
     warmArenas();
     warmAllDieFaces((run) => setTimeout(run, 0), shouldWarmFaces, undefined, shelfBudget);
-  }, [appActive, phase, preview]);
+  }, [appActive, phase, preview, popup]);
 
   useEffect(() => {
     return () => {
@@ -1325,6 +1347,8 @@ export function DiceDemoScreen() {
     setAiFreed([]);
     splashedRef.current = false;
     setRolledFaces(null);
+    rollingRef.current = false;
+    throwsThisRoundRef.current = 0;
     setRolling(false);
   }, []);
 
@@ -2369,12 +2393,15 @@ export function DiceDemoScreen() {
 
   const handleThrow = useCallback(() => {
     markBoardBusy();
+    rollingRef.current = true;
+    throwsThisRoundRef.current += 1;
     setRolling(true);
     setRolledFaces(null);
   }, [markBoardBusy]);
 
   const handleSettled = useCallback(
     (faces: ColorDef[]) => {
+      rollingRef.current = false;
       setRolling(false);
       setRolledFaces(faces);
       setMatchNote(null);
@@ -2521,6 +2548,15 @@ export function DiceDemoScreen() {
     // A tenth of a second of history is all the tail needs.
     if (samples.current.length > 12) samples.current.shift();
   };
+  /*
+    When the finger went down, so the release knows how long the whole
+    touch lasted (the samples keep only the tail). A touch that was both
+    very short and very still is a graze — the second touch of a swipe
+    made twice too fast — and throws nothing, unless the board is idle
+    and it is the first touch of the round, which is a tap however light.
+    Marc, 5 Nov 2026 (aim.ts, isGraze; the bars are in tuning.ts).
+  */
+  const touchedAt = useRef(0);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -2536,6 +2572,7 @@ export function DiceDemoScreen() {
       onPanResponderGrant: (event) => {
         samples.current = [];
         sample(event);
+        touchedAt.current = event.nativeEvent.timestamp;
         if (previewRef.current !== null) return;
         if (phaseRef.current === 'pick') startCountdown('casual');
         // battle: the throw waits for release, so a flick can carry the
@@ -2550,6 +2587,13 @@ export function DiceDemoScreen() {
         sample(event);
         // Not through the battle menu, which is drawn over the board.
         if (phaseRef.current !== 'battle' || battleMenuRef.current) return;
+        // A graze throws nothing, except as the round's first tap on an
+        // idle board (see touchedAt above).
+        const deliberateTap = !rollingRef.current && throwsThisRoundRef.current === 0;
+        if (!deliberateTap && isGraze(samples.current, event.nativeEvent.timestamp - touchedAt.current)) {
+          samples.current = [];
+          return;
+        }
         const velocity = velocityFromSamples(samples.current);
         controlsRef.current?.throwAll(
           flickFromGesture(gesture, { velocity }) ?? undefined,
@@ -3314,7 +3358,6 @@ export function DiceDemoScreen() {
             onMoatSink={handleMoatSink}
             units={units}
             shakeSignal={shakeSignal}
-            throwsEnabled={phase === 'battle'}
             waterIdle={waterIdle}
           />
           <FirstFrame token={sceneToken} onDrawn={setDrawnToken} />
@@ -3615,6 +3658,7 @@ export function DiceDemoScreen() {
           difficulty={difficulty}
           stats={friendStats}
           botOnly={practice ? 'practice' : skipSearchRef.current ? 'no-show' : null}
+          showReason={unlockAll}
           onDone={beginCountdown}
           onPlayer={startOnline}
           onCancel={quitToMenu}

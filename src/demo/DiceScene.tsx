@@ -40,10 +40,11 @@ export interface Flick {
 export interface SceneControls {
   /**
    * Throw both dice, carrying the player's flick if there was one. Reports
-   * whether the throw went out now or was queued behind a roll still in
-   * progress, since rolls are binding until the dice settle.
+   * whether the throw went out, or was ignored because a roll was still in
+   * progress: rolls are binding until the dice settle, and a touch during
+   * one throws nothing, then or later.
    */
-  throwAll: (flick?: Flick) => 'launched' | 'queued';
+  throwAll: (flick?: Flick) => 'launched' | 'ignored';
 }
 
 interface DiceSceneProps {
@@ -77,12 +78,6 @@ interface DiceSceneProps {
    * WaterClock. Passed down from the frameloop rule in DiceDemoScreen.
    */
   waterIdle?: boolean;
-  /**
-   * Whether throws are currently allowed (true during a live round). A tap
-   * queued mid-roll is discarded rather than fired if the round ended while
-   * the dice were still tumbling.
-   */
-  throwsEnabled?: boolean;
 }
 
 const DIE_START_POSITIONS: [number, number, number][] = [
@@ -108,7 +103,6 @@ export function DiceScene({
   diePatternInk,
   dieSymbols = false,
   dieEffect,
-  throwsEnabled = true,
   waterIdle = false,
 }: DiceSceneProps) {
   const ArenaComponent = ARENAS[arenaId].Component;
@@ -183,25 +177,6 @@ export function DiceScene({
   const stillFrames = useRef(0);
   const awaitingSettle = useRef(false);
   const throwStartedAt = useRef(0);
-  /**
-   * A tap made while the dice are still rolling is REMEMBERED and fired the
-   * moment they settle, instead of being swallowed. Frantic tapping is the
-   * whole feel of the game, but a roll must still be binding (you can't
-   * cancel a bad roll mid-air), so the queued throw always lands after the
-   * previous roll has been counted.
-   */
-  const queuedThrow = useRef<{ flick?: Flick } | null>(null);
-  /**
-   * Set when a tap arrives mid-roll. It does not cancel the roll — it asks
-   * for it to be CALLED as soon as there is a real face to read, instead
-   * of when the dice have come to a complete stop. Cleared on every launch.
-   */
-  const hurried = useRef(false);
-  const queuedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const launchRef = useRef<((flick?: Flick) => void) | null>(null);
-  /** Mirrors the `throwsEnabled` prop for use inside the frame loop. */
-  const throwsEnabledRef = useRef(true);
-  throwsEnabledRef.current = throwsEnabled;
 
   // Moat sinking: timestamp until which each die stays underwater before
   // being fished out; 0 = not sinking. Splash ring animation progress.
@@ -294,7 +269,6 @@ export function DiceScene({
   useEffect(() => {
     const launch = (flick?: Flick) => {
       awaitingSettle.current = true;
-      hurried.current = false;
       stillFrames.current = 0;
       throwStartedAt.current = Date.now();
       sankThisRoll.current = [false, false];
@@ -310,36 +284,23 @@ export function DiceScene({
         // tumbling, or players could cancel bad rolls mid-air (which
         // guts Ultimate's prisoner-exchange rule entirely).
         //
-        // The tap is REMEMBERED, not obeyed. It no longer tells the settle
-        // rule anything — that reach-back is what let a player spam the
-        // board clear, because ending the roll early is the same thing as
-        // deciding its colour with a clock. All `hurried` does now is make
-        // the pause AFTER the dice land a short one, since somebody who
-        // has already tapped has seen the result and is waiting on it.
-        if (awaitingSettle.current) {
-          queuedThrow.current = { flick };
-          hurried.current = true;
-          return 'queued';
-        }
+        // A touch that lands mid-roll is IGNORED, not remembered. It used
+        // to be queued and thrown by itself the moment the dice settled,
+        // so a second, barely-there brush of the screen during the tumble
+        // rolled the dice again with nobody meaning it. Marc, 5 Nov 2026:
+        // "If someone swipes twice too fast and doesn't even really touch
+        // it the second time it automatically rolls the second time but
+        // it shouldn't." Nothing tells the settle rule anything either —
+        // that reach-back is what let a player spam the board clear.
+        if (awaitingSettle.current) return 'ignored';
         launch(flick);
         return 'launched';
       },
     };
-    launchRef.current = launch;
     return () => {
       controlsRef.current = null;
-      launchRef.current = null;
     };
   }, [controlsRef, diceBodies, fireSamples, onThrow]);
-
-  // Cancel any pending queued throw on unmount (round change, arena swap).
-  useEffect(
-    () => () => {
-      if (queuedTimer.current) clearTimeout(queuedTimer.current);
-      queuedThrow.current = null;
-    },
-    [],
-  );
 
   useFrame((state, delta) => {
     physics.world.step(
@@ -532,27 +493,8 @@ export function DiceScene({
         */
         freezeDice(diceBodies);
         onSettled(readFaces(diceBodies));
-
-        // Fire a tap that arrived mid-roll, just after the result lands so
-        // the player sees what they rolled. Dropped if the round ended.
-        const queued = queuedThrow.current;
-        const wasHurried = hurried.current;
-        queuedThrow.current = null;
-        hurried.current = false;
-        if (queued) {
-          if (queuedTimer.current) clearTimeout(queuedTimer.current);
-          // The pause exists so the result registers before the dice go
-          // out again. Somebody who has already tapped has seen it and is
-          // waiting, so they get the short one.
-          const delay = wasHurried
-            ? TUNING.settle.hurriedThrowDelayMs
-            : TUNING.settle.queuedThrowDelayMs;
-          queuedTimer.current = setTimeout(() => {
-            if (throwsEnabledRef.current && !awaitingSettle.current) {
-              launchRef.current?.(queued.flick);
-            }
-          }, delay);
-        }
+        // Nothing is thrown for a touch that arrived mid-roll: the next
+        // roll is the next deliberate touch (throwAll above).
       }
     }
   });

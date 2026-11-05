@@ -20,10 +20,13 @@ import { FRIENDLY_MODES } from './friendlyBattle';
  * (friendlyBattle.ts, FRIENDLY_MODES), so the other modes never search.
  *
  * THE HONEST PART. A player only waits when the server is really
- * looking. A site that answers "off", or cannot be reached, settles the
- * bot at once, with no fifteen-second act in front of it — the game
- * behaves exactly as it did before matchmaking existed. The order of a
- * search is written as a pure state machine in `matchFlow.ts`.
+ * looking. A site that answers "off" settles the bot at once, with no
+ * fifteen-second act in front of it — the game behaves exactly as it did
+ * before matchmaking existed — and is not asked again for
+ * `SERVICE_OFF_REMEMBER_MS`. A request that simply fails is asked again
+ * until the deadline, because an unanswered question is not an answer.
+ * The order of a search is written as a pure state machine in
+ * `matchFlow.ts`.
  */
 
 /**
@@ -51,6 +54,22 @@ export const SEARCH_DEADLINE_MS = 15_000;
 export const SEARCH_POLL_MS = 900;
 
 /**
+ * How long an `off` from the server is remembered, so the next start in
+ * that time goes to a rival without asking. A minute, not the session.
+ *
+ * Marc, 5 Nov 2026: "When I have admin on and I try to load into a game
+ * it first says it's matching me against a bot, but it shouldn't." The
+ * switch used to latch off for the rest of the session on the first
+ * `off`, and a network blip, a wrong secret or a server error were all
+ * read as `off` (battlesApi.ts): one of them, and nobody was searched
+ * for again until the app restarted. Only the server's own `off` counts
+ * now, and only for this long, which is enough to spare a site without
+ * the migration a question on every start without silencing the search
+ * for good.
+ */
+export const SERVICE_OFF_REMEMBER_MS = 60_000;
+
+/**
  * How long a matched opponent has to arrive in the room. Somebody the
  * server paired us with whose phone never shows up means a bot, not a
  * long wait for a stranger.
@@ -67,9 +86,9 @@ export type Pairing =
   | { kind: 'bot'; reason: 'not-live' }
   /** Practice from Settings: a bot on purpose, counting for nothing. */
   | { kind: 'bot'; reason: 'practice' }
-  /** Looked, found nobody in time. */
+  /** Looked, found nobody in time (or the server never answered). */
   | { kind: 'bot'; reason: 'nobody-found' }
-  /** The matchmaking service is off or out of reach, so there was nothing to look at. */
+  /** The server said the matchmaking service is off, so there was nothing to look at. */
   | { kind: 'bot'; reason: 'no-service' }
   /** Somebody was found, but their phone never arrived in the room. */
   | { kind: 'bot'; reason: 'no-show' }
@@ -91,6 +110,20 @@ export function whyNoSearch(trophies: number, mode: ModeId): 'below-threshold' |
   if (trophies < BOT_ONLY_BELOW_TROPHIES) return 'below-threshold';
   if (!FRIENDLY_MODES.includes(mode)) return 'not-live';
   return null;
+}
+
+/**
+ * Why this round is against a rival, as one small line for FAMILY TESTER
+ * MODE ONLY — so Marc can read off the overlay which road led to the
+ * bot (5 Nov 2026: "it first says it's matching me against a bot, but it
+ * shouldn't"). The reason code first, then what it means where that is
+ * not obvious. Never shown to an ordinary player.
+ */
+export function rivalReasonText(reason: Extract<Pairing, { kind: 'bot' }>['reason'], trophies: number): string {
+  if (reason === 'no-service') return 'rival: no-service — server said off';
+  if (reason === 'below-threshold') return `rival: below-threshold ${trophies} of ${BOT_ONLY_BELOW_TROPHIES}`;
+  if (reason === 'not-live') return 'rival: not-live — this mode cannot be played live';
+  return `rival: ${reason}`;
 }
 
 /**

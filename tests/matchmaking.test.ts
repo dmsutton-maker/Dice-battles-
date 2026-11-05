@@ -1,4 +1,6 @@
-import { assert, test } from './harness';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { assert, assertEqual, suite, test } from './harness';
 import {
   DOT_TICK_MS,
   MATCH_TOTAL_MS,
@@ -10,6 +12,17 @@ import {
   scanIndexAt,
   stageAt,
 } from '../src/game/matchmaking';
+import { BOT_ONLY_BELOW_TROPHIES, SERVICE_OFF_REMEMBER_MS, rivalReasonText } from '../src/game/matchSearch';
+import {
+  findWaitingPlayer,
+  hasMatchmakingService,
+  resetMatchmakingForTest,
+  withdrawFromSearch,
+} from '../src/game/onlineMatch';
+import { startFlow } from '../src/game/matchFlow';
+
+const root = join(__dirname, '..');
+const src = (p: string) => readFileSync(join(root, p), 'utf8');
 
 test('the whole beat is a couple of seconds', () => {
   assert(
@@ -68,4 +81,135 @@ test('the dots cycle one to three and never grow', () => {
     const n = dotsAt(t).length;
     assert(n >= 1 && n <= 3, `dots ran to ${n} at t=${t}`);
   }
+});
+
+/*
+  THE SWITCH, since 5 Nov 2026. Marc: "When I have admin on and I try to
+  load into a game it first says it's matching me against a bot, but it
+  shouldn't, and when I have admin off it only puts me against bots."
+
+  Admin mode does not touch matchmaking. What sent a start straight to a
+  bot was `no-service`: every failed request was read as the server
+  saying `off`, and the first `off` switched the search off until the
+  app restarted. These pin the repair (src/game/onlineMatch.ts,
+  battlesApi.ts): a failure is not an `off`, an `off` is remembered for
+  a minute and not a session, and an identity still loading is waited
+  for. The admin footer that says why is pinned at the end.
+*/
+suite('matchmaking · the switch is honest and never latches', () => {
+  const ME = { playerId: 'p-test', secret: 's-test', name: 'Tester', friendCode: 'ABCD2345' } as never;
+  const REQUEST = { mode: 'classic' as const, difficulty: 'medium' as const, trophies: 500 };
+  const STATS = {} as never;
+
+  /** Swap global fetch for one run, counting the calls. */
+  async function withFetch<T>(
+    impl: (url: string, init?: RequestInit) => Promise<unknown>,
+    run: () => Promise<T>,
+  ): Promise<{ result: T; calls: string[] }> {
+    const calls: string[] = [];
+    const real = (globalThis as { fetch?: unknown }).fetch;
+    (globalThis as { fetch?: unknown }).fetch = async (url: string, init?: RequestInit) => {
+      calls.push(url);
+      return impl(url, init);
+    };
+    try {
+      return { result: await run(), calls };
+    } finally {
+      (globalThis as { fetch?: unknown }).fetch = real;
+      resetMatchmakingForTest();
+    }
+  }
+
+  const reply = (status: number, body: unknown) => async () => ({
+    ok: status < 400,
+    status,
+    json: async () => body,
+  });
+
+  test('a failed request does not switch the service off', async () => {
+    const failures: [string, (url: string) => Promise<unknown>][] = [
+      ['no connection', async () => { throw new TypeError('Network request failed'); }],
+      ['a server error', reply(500, { error: 'boom' })],
+      ['a page instead of JSON', async () => ({ ok: false, status: 404, json: async () => { throw new SyntaxError('<'); } })],
+      ['a state this build does not know', reply(200, { state: 'paused' })],
+    ];
+    for (const [name, server] of failures) {
+      const { result } = await withFetch(server, async () => {
+        const first = await findWaitingPlayer(ME, REQUEST, STATS);
+        const on = hasMatchmakingService();
+        const flow = startFlow(500, REQUEST.mode, hasMatchmakingService());
+        return { first, on, flow };
+      });
+      assertEqual(result.first, null, `${name}: settled a bot instead of asking again`);
+      assertEqual(result.on, true, `${name}: switched the service off`);
+      assertEqual(result.flow.kind, 'asking', `${name}: the next start does not search`);
+    }
+  });
+
+  test('a wrong secret is not off either: the profile is pushed and the search goes on', async () => {
+    const { result, calls } = await withFetch(
+      (url) => (url.endsWith('/match') ? reply(401, { error: 'unknown player' })() : reply(200, { ok: true })()),
+      () => findWaitingPlayer(ME, REQUEST, STATS),
+    );
+    assertEqual(result, null, 'two 401s settled a bot');
+    assert(calls.some((u) => !u.endsWith('/match')), 'the profile was never pushed');
+    assertEqual(calls.filter((u) => u.endsWith('/match')).length, 2, 'asked other than twice');
+  });
+
+  test('off is remembered for a minute, not the session', async () => {
+    assertEqual(SERVICE_OFF_REMEMBER_MS, 60_000, 'the window is not a minute');
+    const { result } = await withFetch(reply(200, { state: 'off' }), async () => {
+      const first = await findWaitingPlayer(ME, REQUEST, STATS);
+      return {
+        first,
+        now: hasMatchmakingService(),
+        later: hasMatchmakingService(Date.now() + SERVICE_OFF_REMEMBER_MS - 1),
+        expired: hasMatchmakingService(Date.now() + SERVICE_OFF_REMEMBER_MS + 1),
+      };
+    });
+    assertEqual(result.first?.kind, 'bot', 'off did not settle a bot');
+    assertEqual(result.first?.kind === 'bot' ? result.first.reason : '', 'no-service', 'reason');
+    assertEqual(result.now, false, 'off was not remembered at all');
+    assertEqual(result.later, false, 'off was forgotten inside the minute');
+    assertEqual(result.expired, true, 'off is still believed after the minute');
+    assertEqual(hasMatchmakingService(), true, 'a fresh session starts switched off');
+  });
+
+  test('an identity that has not loaded yet is waited for, not decided against', async () => {
+    const searching = reply(200, { state: 'searching' });
+    const { result, calls } = await withFetch(searching, async () => {
+      const without = await findWaitingPlayer(null, REQUEST, STATS);
+      const asked = (globalThis as { fetch?: unknown }).fetch;
+      const withIt = await findWaitingPlayer(ME, REQUEST, STATS);
+      return { without, withIt, asked };
+    });
+    assertEqual(result.without, null, 'no identity decided a bot');
+    assertEqual(result.withIt, null, 'the identity, once there, was not searched with');
+    assertEqual(calls.length, 1, 'asked the server with no identity');
+    const gaveUp = await withFetch(searching, () => withdrawFromSearch(null));
+    assertEqual(gaveUp.result.kind === 'bot' ? gaveUp.result.reason : '', 'nobody-found', 'the deadline with no identity');
+  });
+
+  test('the overlay waits for the identity through its prop, not a snapshot', () => {
+    const overlay = src('src/demo/MatchmakingOverlay.tsx');
+    assert(/meRef\.current = me;/.test(overlay), 'the overlay keeps the identity it mounted with');
+    assert(/findWaitingPlayer\(meRef\.current/.test(overlay), 'the ask does not read the latest identity');
+  });
+
+  test('family tester mode shows the reason under the rival, and nobody else sees it', () => {
+    assertEqual(rivalReasonText('no-service', 500), 'rival: no-service — server said off', 'no-service');
+    assertEqual(rivalReasonText('nobody-found', 500), 'rival: nobody-found', 'nobody-found');
+    assertEqual(
+      rivalReasonText('below-threshold', 30),
+      `rival: below-threshold 30 of ${BOT_ONLY_BELOW_TROPHIES}`,
+      'below-threshold',
+    );
+    const overlay = src('src/demo/MatchmakingOverlay.tsx');
+    assert(
+      /\{showReason && flow\.kind === 'bot' && \(\s*<Text style=\{styles\.reason\}>\{rivalReasonText\(flow\.reason, trophies\)\}<\/Text>/.test(overlay),
+      'the reason line is not behind showReason',
+    );
+    const screen = src('src/demo/DiceDemoScreen.tsx');
+    assert(/showReason=\{unlockAll\}/.test(screen), 'the reason is not tied to family tester mode');
+  });
 });

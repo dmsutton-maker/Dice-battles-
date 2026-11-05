@@ -16,7 +16,7 @@ import {
   scanIndexAt,
   stageAt,
 } from '../game/matchmaking';
-import { searchProgress, secondsLeft, SEARCH_POLL_MS } from '../game/matchSearch';
+import { rivalReasonText, searchProgress, secondsLeft, SEARCH_POLL_MS } from '../game/matchSearch';
 import { PRACTICE_RESULT_LINE } from '../game/stakes';
 import {
   isLooking,
@@ -70,6 +70,7 @@ export function MatchmakingOverlay({
   difficulty,
   stats,
   botOnly,
+  showReason,
   onDone,
   onPlayer,
   onCancel,
@@ -87,13 +88,19 @@ export function MatchmakingOverlay({
    * with never came (`no-show`), or practice from Settings (`practice`).
    */
   botOnly: 'no-show' | 'practice' | null;
+  /**
+   * Family tester mode only: a small line under the rival saying which
+   * road led to a bot (rivalReasonText), so Marc can read why. Never for
+   * an ordinary player.
+   */
+  showReason: boolean;
   onDone: () => void;
   onPlayer: (battle: BattleHandle, name: string) => void;
   onCancel: () => void;
 }) {
   /*
-    In a mode that cannot be played live, with the service known to be
-    off, or for practice, the bot is settled before the first frame
+    In a mode that cannot be played live, with the server's `off` still
+    remembered, or for practice, the bot is settled before the first frame
     (startFlow), and below 100 trophies too (BOT_ONLY_BELOW_TROPHIES). Otherwise
     the first ask goes out, and the search is only SHOWN once the server
     says it is looking — an `off` answer goes straight to the reveal, as
@@ -262,6 +269,9 @@ export function MatchmakingOverlay({
       </View>
 
       <Text style={styles.footer}>{scanning ? ' ' : botFooter(flow)}</Text>
+      {showReason && flow.kind === 'bot' && (
+        <Text style={styles.reason}>{rivalReasonText(flow.reason, trophies)}</Text>
+      )}
 
       <View style={styles.track}>
         <View
@@ -379,6 +389,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tag: { ...TYPE.small, color: THEME.inkSoft, marginTop: 6, fontWeight: '700' },
+  // Family tester mode only: the reason code, small, under the footer.
+  reason: { ...TYPE.small, color: THEME.onInk, marginTop: 6, opacity: 0.7 },
   cancel: { marginTop: 26, minWidth: 160, minHeight: MIN_TAP, paddingVertical: 12 },
   cancelText: { ...TYPE.body, color: THEME.ink, fontWeight: '800' },
 });

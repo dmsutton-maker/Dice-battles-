@@ -41,6 +41,31 @@ export function velocityFromSamples(
 }
 
 /**
+ * Was this touch a graze — too quick AND too still to have been meant?
+ *
+ * Marc, 5 Nov 2026: "If someone swipes twice too fast and doesn't even
+ * really touch it the second time it automatically rolls the second time
+ * but it shouldn't." The second touch of a hurried double swipe is a few
+ * frames long and barely moves. A deliberate tap lasts longer; a flick
+ * travels. Both bars are in tuning.ts (`throw.minTouchMs`,
+ * `throw.minTouchPx`), and both have to be under for a graze, so neither
+ * a quick flick nor a slow press is ever thrown away.
+ *
+ * `durationMs` is the whole gesture, grant to release, measured by the
+ * caller: the sample list only keeps the tail, so it cannot say how long
+ * the finger was down. Travel is the furthest any sample got from the
+ * first one kept.
+ */
+export function isGraze(samples: readonly TouchSample[], durationMs: number): boolean {
+  if (durationMs >= TUNING.throw.minTouchMs) return false;
+  if (samples.length === 0) return true;
+  const first = samples[0];
+  let travel = 0;
+  for (const s of samples) travel = Math.max(travel, Math.hypot(s.x - first.x, s.y - first.y));
+  return travel < TUNING.throw.minTouchPx;
+}
+
+/**
  * Turn a finished gesture into a throw.
  *
  * Read on RELEASE, because a flick's speed and direction only exist once
