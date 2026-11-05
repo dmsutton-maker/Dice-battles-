@@ -117,6 +117,35 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-162-0-keeps-everything',
+    date: '5 November 2026',
+    version: 'v1.162.0',
+    title: 'Your progress survives a reinstall',
+    icon: 'fix',
+    major: true,
+    body:
+      'Deleting the game and installing it again no longer starts you ' +
+      'over. Your trophies, record, coins, the dice and battlefields you ' +
+      'have earned, your season pass progress and your settings are kept ' +
+      'safe under your own player id and come back on their own the first ' +
+      'time you open the game after a reinstall, with a "Welcome back" ' +
+      'card. Your friend code and friends list come back too; a bug meant ' +
+      'they were never really being kept before. Open this version once ' +
+      'so it can start keeping them. Anything bought with real money is ' +
+      'restored by Apple as before: Restore purchases in Settings.\n\n' +
+      'After a battle with a friend or an online opponent, "Play again" ' +
+      'now really asks them: you wait while they see the invitation, and ' +
+      'the rematch starts when they accept. Nobody is quietly handed a ' +
+      'computer opponent wearing a friend\'s name.\n\n' +
+      'Also: tap a post here to read all of it; a big update like this one ' +
+      'pops up once when you open the game; online battles keep searching ' +
+      'for a real opponent after a dropped connection instead of giving up ' +
+      'for the session; a second light brush of the screen during a roll no ' +
+      'longer rolls again; How to play pages turn quickly on a new ' +
+      'install; and the Tiger and Watermelon cards are the dice themselves, ' +
+      'sharper.',
+  },
+  {
     id: 'v1-161-0-loading',
     date: '5 November 2026',
     version: 'v1.161.0',

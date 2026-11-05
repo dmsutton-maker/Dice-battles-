@@ -323,6 +323,21 @@ one is added; it does not need a new build.
   The privacy policy, terms and App Review notes describe online play
   since 4 Nov 2026 (website deployed 14:25 UTC, `dpl_8Q2GCdByL4UFJXeb8Ksm26bbzSG4`).
   Still open: online wins are paid on the phone's own word.
+- **5 Nov 2026 (v1.162.0):** Marc's second batch. A reinstall restores
+  everything (`src/game/cloudSave.ts`, `POST /api/players/save`, table
+  `player_saves`; the keychain keys had a slash and had NEVER been written
+  since 7 Sep: fixed, so only a phone that opens v1.162.0 once before being
+  deleted keeps its identity). "Play again" after a live battle is a rematch
+  invite both must accept (`battle_invites.rematch_of`). News posts
+  collapse and expand; a `major` post pops up once after an update
+  (`src/game/whatsNew.ts`). Matchmaking no longer latches off for the
+  session; a graze during a roll is not a throw; painting pauses behind a
+  popup. Migrations `20261105_rematch.sql` and `20261105_player_saves.sql`
+  applied through the Supabase connector before the website deploy and the
+  OTA update. To test on a phone: open v1.162.0 once, delete, reinstall:
+  "Welcome back" card, same friend code. Open: no confirm dialog when both
+  the phone and the server have progress (the phone wins); board posts
+  cannot be `major` (the feed does not send it).
 - **5 Nov 2026 (v1.161.0, update f22413b5, website deployed `dpl_EEcqcXLBsfpwPKjTX1yiud5YjWJ3`):** Marc's four requests of the day. Shop and
   Inventory cards show a sweep of light until their picture lands and the
   open tab's cards paint first (`src/dice/previewLoad.ts`,

@@ -1,5 +1,70 @@
 # Changelog
 
+## v1.162.0 — 2026-11-05 · requested by Marc
+
+Marc's reports of 5 Nov 2026 (the second batch), merged from feature/cards-hires,
+feature/news-popups, feature/match-swipe-tutorial, feature/friend-rematch and
+feature/cloud-save. Runtime 4.0.0 (build 18). The website was deployed and the
+two migrations (`20261105_rematch.sql`, `20261105_player_saves.sql`) applied
+BEFORE this update went out.
+
+### Added
+- **A reinstall keeps everything** (Marc: "When I delete the game and redownload
+  it, it completely resets my account, friends, friend code, trophies, coins, and
+  everything"). Two things were wrong. The keychain copy of the player id, friend
+  code and secret (`deviceVault.ts`, since 7 Sep) had NEVER been written: the
+  keys carried a slash, which `expo-secure-store` refuses, and the throw was
+  swallowed as "keychain unavailable". The keys are `dice-battles.player-id`
+  and the like now, and the fake keychain in the tests refuses what the real one
+  refuses. And progress lived only in AsyncStorage: `src/game/cloudSave.ts` now
+  backs up trophies, record, wallet, owned and equipped items, season xp, quest
+  and settings to the server (`POST /api/players/save`, table `player_saves`,
+  64 KB cap, debounced 10 s and on backgrounding) under the device's player id,
+  and restores it on the first launch after a reinstall (identity recovered
+  from the keychain, or an empty save), waiting at most 3 s behind the loading
+  screen and showing a "Welcome back" card. Purchases stay Apple's to restore.
+  The privacy policy says so. A phone that is deleted before it has opened this
+  version once still starts over: nothing was in its keychain.
+- **"Play again" after a friend or online battle asks the other player** (Marc:
+  "it should have to wait for the other player too ... right now it plays again
+  against your friend but they're not playing really"). The button reads "Play
+  again with <name>", sends a rematch invite (`action: 'rematch'`,
+  `battle_invites.rematch_of`), and waits in the room; the other phone sees
+  "<name> wants a rematch!" with Accept / Not now; both asking at once is one
+  battle; "has gone" after a decline, a quit or ten minutes, never a bot in the
+  friend's name. Computer and practice battles keep the plain "Play again".
+- **News: tap a post to read it, and a big update pops up once** (Marc: "put it
+  on the news tab and make it to where you can click on it to see the whole
+  thing, but major updates should be a pop up when you open the app for the
+  first time since the update came out"). Posts are collapsed to two lines and
+  expand on a tap; `major: true` on a post makes a "What's new" popup on the
+  first launch after that version arrives (`src/game/whatsNew.ts`, last seen
+  version remembered; the tutorial wins on a fresh install).
+
+### Fixed
+- **Matchmaking never switches itself off for the session** (Marc: "when I have
+  admin on ... it first says it's matching me against a bot"). One failed or odd
+  reply used to count as "the server has no matchmaking" for the rest of the
+  session, and a not-yet-loaded identity too: a bot at once, no search. A
+  failure now just keeps searching until the deadline; only a real `off` is
+  remembered, for 60 s. Admin mode shows the reason a rival was chosen in small
+  text. The queue showed Marc's search at 00:48 UTC finding nobody, which was
+  honest: "admin off → only bots" is what an empty queue looks like.
+- **A second, barely-there swipe no longer rolls the dice again** (Marc: "If
+  someone swipes twice too fast and doesn't even really touch it the second time
+  it automatically rolls the second time"). A touch during the tumble used to
+  be queued and fired after the dice settled; nothing is queued now, and a
+  graze (under 60 ms and 6 pt, `TUNING.throw.minTouchMs/minTouchPx`) is dropped
+  unless it is the round's first touch on an idle board.
+- **How to play is quick on a first launch** (Marc: "when you click next some
+  of the things are very slow to load"). The background painting of shelf
+  pictures and dice faces now pauses while any popup is open
+  (`pausedForPopup`, slicedPaint.ts) and resumes when it closes.
+- **The Tiger and Watermelon cards are the die's own side again**, painted at
+  3 and 2 pixels per texel (`CARD_SCALE`) so they are sharper than before
+  (Marc: "just make them the exact same as the actual dice but better
+  quality"). The Chicken and Waffles card keeps its two whole drumsticks.
+
 ## v1.161.0 — 2026-11-05 · requested by Marc
 
 Marc's four requests of 5 Nov 2026, merged from feature/shelf-preview-loading,
