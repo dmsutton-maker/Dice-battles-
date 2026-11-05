@@ -33,7 +33,11 @@ export const PRIVACY: LegalCopy = {
   sections: [
     {
       heading: 'The short version',
-      body: 'There are no accounts to sign up for, no analytics, and nothing that tracks you around the internet. Most of the game never talks to us at all: your progress, coins, purchases and unlocked items live on your device. A few things do send us something: adding a friend, battling a friend, playing online against other players once you reach 100 trophies, turning on update notifications, sending a bug report, and writing to us through the contact form. Each is explained below.',
+      body: 'There are no accounts to sign up for, no analytics, and nothing that tracks you around the internet. Most of the game never talks to us at all: your progress, coins, purchases and unlocked items live on your device, and the game keeps a copy of your progress on our server only so that it survives a reinstall. A few things do send us something: that backup, adding a friend, battling a friend, playing online against other players once you reach 100 trophies, turning on update notifications, sending a bug report, and writing to us through the contact form. Each is explained below.',
+    },
+    {
+      heading: 'Your progress backup',
+      body: 'So that deleting the game and installing it again does not start you over, the game keeps a copy of your progress on our server: your trophies and battle record, your coins and the items you have earned or bought with them, which die and battlefield you have equipped, your season pass experience and daily quest, and your sound, colourblind and how-to-play settings. It is stored with the same random player id your device uses for Friends, so only your device can read it back, and it is never shown to anyone else. Purchases made with real money are not in it: Restore Purchases asks Apple for those. The backup is deleted with everything else belonging to you if you ask us at hello@papershipstudio.com.',
     },
     {
       heading: 'Friends',
@@ -106,7 +110,7 @@ export const TERMS: LegalCopy = {
     },
     {
       heading: 'No accounts, and where your things are kept',
-      body: 'Our apps don\'t require an account. Your progress, coins, purchases and unlocked items are stored on your own device and are yours to keep or delete. If you use Friends, battle a friend or play online, what other players can see is stored on our server instead. Our Privacy Policy sets out exactly what that includes.',
+      body: 'Our apps don\'t require an account. Your progress, coins, purchases and unlocked items are stored on your own device and are yours to keep or delete, and the game keeps a copy of your progress on our server so that deleting and reinstalling it does not start you over. If you use Friends, battle a friend or play online, what other players can see is stored on our server too. Our Privacy Policy sets out exactly what that includes.',
     },
     {
       heading: 'Purchases',

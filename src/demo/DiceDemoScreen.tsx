@@ -220,9 +220,11 @@ import { TierIcon } from './TierIcon';
 import { PreviewLoading } from './PreviewLoading';
 import { FirstFrame } from './FirstFrame';
 import {
+  hasSeenTutorial,
   loadTutorialSeen,
   markTutorialSeen,
 } from '../game/tutorial';
+import { flushCloudSave, restoreOnLaunch, watchCloudSave } from '../game/cloudSave';
 import {
   previewAction,
   PreviewTarget,
@@ -252,6 +254,7 @@ import {
 import { Reward, RewardPopup } from './RewardPopup';
 import { pictureOfItem } from './ItemIcon';
 import {
+  isColorblindMode,
   loadColorblindMode,
   setColorblindMode,
 } from '../game/colorblind';
@@ -358,7 +361,39 @@ export function DiceDemoScreen() {
       loadShelfPictures(),
       loadKeptTextures(),
     ])
-      .then(([audio, saved, progress, purse, cb, tutorialSeen]) => {
+      .then(async ([audio, saved, progress, purse, cb, tutorialSeen]) => {
+        /*
+          THE REINSTALL (cloudSave.ts). Marc, 5 Nov 2026: "When I delete
+          the game and redownload it, it completely resets my account,
+          friends, friend code, trophies, coins, and everything."
+
+          When this launch got its identity back from the keychain, or
+          the saved game is simply empty, the server's copy of the
+          progress goes in HERE, before any of it is read below — waiting
+          at most RESTORE_WAIT_MS behind the loading screen, identity
+          included (loadIdentity shares one read with the effect further
+          down), and trying again next launch if that was not enough.
+        */
+        const restored = await restoreOnLaunch(loadIdentity());
+        if (restored === 'restored') {
+          audio = getAudioSettings();
+          saved = getLoadout();
+          progress = getProgress();
+          purse = getWallet();
+          cb = isColorblindMode();
+          tutorialSeen = hasSeenTutorial();
+          setRewards((queue) => [
+            ...queue,
+            {
+              picture: { kind: 'trophy' as const },
+              name: 'Your progress is restored',
+              kicker: 'WELCOME BACK',
+              note:
+                'Your trophies, coins and items are back, just as you left them. ' +
+                'Tap Restore purchases in Settings for anything you bought.',
+            },
+          ]);
+        }
         setAudioPrefs(audio);
         setLoadout(saved);
         setWallet(purse);
@@ -818,6 +853,20 @@ export function DiceDemoScreen() {
       alive = false;
     };
   }, [me, hydrated]);
+  /*
+    THE BACKUP (cloudSave.ts). Once the saved game is in and there is an
+    identity to keep it under, every change to it goes up to the server
+    a little after it is made — and whatever is waiting goes the moment
+    the app leaves the screen, because a phone in a pocket may be closed
+    before the timer fires.
+  */
+  useEffect(() => {
+    if (!me || !hydrated) return;
+    return watchCloudSave(me);
+  }, [me, hydrated]);
+  useEffect(() => {
+    if (!appActive) void flushCloudSave();
+  }, [appActive]);
   /*
     THE LOADING SCREEN. The family, 3 Nov 2026: "i want the speed fixes
     now. like make sure the game is fully loaded before showing the home

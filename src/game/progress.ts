@@ -5,6 +5,7 @@ import type { TournamentState } from './tournament';
 import { RewardRange, rollReward } from './rewards';
 import type { SeasonState } from './seasonPass';
 import type { QuestState } from './quests';
+import { noteSaveChanged } from './saveChanges';
 
 /**
  * Trophy progression, Clash Royale style: win trophies on victory, lose
@@ -309,7 +310,7 @@ export function setTrophies(trophies: number): MatchResult {
   const before = current.trophies;
   const after = Math.max(0, Math.min(Math.floor(trophies), TROPHY_CODE_MAX));
   current = { ...current, trophies: after, cheated: true };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   return {
     trophies: after,
     delta: after - before,
@@ -336,7 +337,7 @@ export function awardTrophies(amount: number): MatchResult {
   const add = Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
   const after = before + add;
   current = { ...current, trophies: after };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   return {
     trophies: after,
     delta: after - before,
@@ -346,7 +347,7 @@ export function awardTrophies(amount: number): MatchResult {
 
 export function setUnlockAll(on: boolean): Progress {
   current = { ...current, unlockAll: on };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   return current;
 }
 
@@ -358,7 +359,7 @@ export function hasUnlockAll(): boolean {
 export function markCheated(): void {
   if (current.cheated) return;
   current = { ...current, cheated: true };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
 }
 
 /**
@@ -374,21 +375,21 @@ export function setTournamentState(id: string, state: TournamentState): Progress
     ...current,
     tournaments: { ...(current.tournaments ?? {}), [id]: state },
   };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   return current;
 }
 
 /** Remember where this player stands in the season pass. */
 export function setSeasonState(state: SeasonState): Progress {
   current = { ...current, season: state };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   return current;
 }
 
 /** Remember today's quest, the same way as the season pass. */
 export function setQuestState(state: QuestState): Progress {
   current = { ...current, quest: state };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   return current;
 }
 
@@ -396,14 +397,14 @@ export function setQuestState(state: QuestState): Progress {
 export function markRaisedRungsKept(): void {
   if (current.raisedRungsKept) return;
   current = { ...current, raisedRungsKept: true };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
 }
 
 /** Record that the two former ladder arenas have been handed over. */
 export function markPassArenasKept(): void {
   if (current.passArenasKept) return;
   current = { ...current, passArenasKept: true };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
 }
 
 /** Everything known about this player's tournaments. Never undefined. */
@@ -464,28 +465,56 @@ function seedPlayed<K extends string>(
   return out;
 }
 
+/** Every write here: the save to storage, and the word to the backup. */
+function persist(): void {
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  noteSaveChanged();
+}
+
+/**
+ * A saved record, whatever version wrote it, read over the current one.
+ * Throws on junk, which both callers catch.
+ */
+function readProgress(parsed: Record<string, unknown>): Progress {
+  const wins = { ...EMPTY_WINS, ...((parsed.wins as object) ?? {}) };
+  // Saves written before per-mode counting existed have no modeWins;
+  // they start at zero rather than breaking the read.
+  const modeWins = { ...EMPTY_MODE_WINS, ...((parsed.modeWins as object) ?? {}) };
+  return {
+    ...current,
+    ...(parsed as Partial<Progress>),
+    wins,
+    modeWins,
+    played: seedPlayed(parsed.played as Record<AiDifficultyId, number> | undefined, wins),
+    modePlayed: seedPlayed(parsed.modePlayed as Record<ModeId, number> | undefined, modeWins),
+  };
+}
+
 export async function loadProgress(): Promise<Progress> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const wins = { ...EMPTY_WINS, ...(parsed.wins ?? {}) };
-      // Saves written before per-mode counting existed have no modeWins;
-      // they start at zero rather than breaking the read.
-      const modeWins = { ...EMPTY_MODE_WINS, ...(parsed.modeWins ?? {}) };
-      current = {
-        ...current,
-        ...parsed,
-        wins,
-        modeWins,
-        played: seedPlayed(parsed.played, wins),
-        modePlayed: seedPlayed(parsed.modePlayed, modeWins),
-      };
-    }
+    if (raw) current = readProgress(JSON.parse(raw));
   } catch {
     // Defaults are fine if storage is unavailable.
   }
   return current;
+}
+
+/**
+ * Put a whole record back — the server's backup after a reinstall
+ * (cloudSave.ts). Read exactly as a saved one is, so a backup from an
+ * older version is seeded the same way, and written through the one
+ * write every other change here uses. Junk changes nothing.
+ */
+export function restoreProgress(saved: unknown): boolean {
+  if (!saved || typeof saved !== 'object') return false;
+  try {
+    current = readProgress(saved as Record<string, unknown>);
+  } catch {
+    return false;
+  }
+  persist();
+  return true;
 }
 
 /**
@@ -519,7 +548,7 @@ export function notePlayed(difficulty: AiDifficultyId, mode: ModeId): Progress {
     played: { ...current.played, [difficulty]: current.played[difficulty] + 1 },
     modePlayed: { ...current.modePlayed, [mode]: current.modePlayed[mode] + 1 },
   };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   return current;
 }
 
@@ -562,7 +591,7 @@ export function applyMatchResult(
     ? { ...current.modeWins, [mode]: current.modeWins[mode] + 1 }
     : current.modeWins;
   current = { ...current, trophies: after, wins, modeWins };
-  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  persist();
   const newUnlocks = won
     ? TIERS.filter((t) => t.at > before && t.at <= after)
     : [];

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AiDifficultyId } from './ai';
 import { COIN_CODE_MAX, markCheated } from './progress';
 import { RewardRange, rollReward } from './rewards';
+import { noteSaveChanged } from './saveChanges';
 
 /**
  * Coins: the in-game currency, earned by playing and spent in the Store.
@@ -64,32 +65,47 @@ export function getWallet(): Wallet {
  */
 const RENAMED: Record<string, string> = { champion: 'amethyst' };
 
+/** A saved wallet, whatever wrote it, as a valid one. */
+function readWallet(parsed: Record<string, unknown>): Wallet {
+  const coins = parsed.coins;
+  return {
+    coins: typeof coins === 'number' && Number.isFinite(coins) ? Math.max(0, Math.floor(coins)) : 0,
+    owned: Array.isArray(parsed.owned)
+      ? Array.from(
+          new Set(
+            parsed.owned
+              .filter((id: unknown): id is string => typeof id === 'string')
+              .map((id: string) => RENAMED[id] ?? id),
+          ),
+        )
+      : [],
+  };
+}
+
 export async function loadWallet(): Promise<Wallet> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      current = {
-        coins: Number.isFinite(parsed.coins) ? Math.max(0, Math.floor(parsed.coins)) : 0,
-        owned: Array.isArray(parsed.owned)
-          ? Array.from(
-              new Set(
-                parsed.owned
-                  .filter((id: unknown): id is string => typeof id === 'string')
-                  .map((id: string) => RENAMED[id] ?? id),
-              ),
-            )
-          : [],
-      };
-    }
+    if (raw) current = readWallet(JSON.parse(raw));
   } catch {
     // Defaults are fine if storage is unavailable.
   }
   return current;
 }
 
+/**
+ * Put a whole wallet back — the server's backup after a reinstall
+ * (cloudSave.ts), read exactly as a saved one is. Junk changes nothing.
+ */
+export function restoreWallet(saved: unknown): boolean {
+  if (!saved || typeof saved !== 'object') return false;
+  current = readWallet(saved as Record<string, unknown>);
+  persist();
+  return true;
+}
+
 function persist(): void {
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+  noteSaveChanged();
 }
 
 /** Pay out for a finished battle. Returns the coins awarded, never negative. */
