@@ -334,6 +334,8 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **5 Nov 2026 (v1.169.0, update 2270020c):** friend-code invite on iOS no
+  longer puts the link in the text as well as in `url` (Messages drew two cards).
 - **5 Nov 2026 (v1.168.0, update 7436920f):** the share card is drawn by three
   (render target + planes, pictures via `{ data: { localUri } }` like fiber's
   native TextureLoader), after the raw-GL card came out blank on Marc's
