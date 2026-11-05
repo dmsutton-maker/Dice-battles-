@@ -99,16 +99,22 @@ export function inviteDeepLink(code: string): string {
  * The URL is LAST on purpose. Messages, WhatsApp and the rest build
  * their preview card from the last link in the body, and a trailing
  * sentence after it pushes the card away from the text it belongs to.
+ *
+ * `withLink: false` leaves the link out, for the iPhone's share sheet.
+ * There the link is handed over as its own item as well (FriendsScreen),
+ * and Messages draws a card for EACH copy: Marc, 5 Nov 2026, "When you
+ * share your friend code it's putting the link twice". Android's sheet
+ * ignores the separate link, so there the text keeps it.
  */
-export function inviteMessage(name: string, code: string): string {
+export function inviteMessage(name: string, code: string, { withLink = true }: { withLink?: boolean } = {}): string {
   const pretty = formatFriendCode(code);
   const known = name.trim() && name.trim() !== ANONYMOUS_NAME ? name.trim() : '';
   const who = known ? `It's ${known}. ` : '';
   return (
     `Come and play Dice Battles with me! ${who}` +
     `Tap the link and it'll offer to add me as a friend, ` +
-    `or put my code in yourself: ${pretty}\n\n` +
-    inviteUrl(code)
+    `or put my code in yourself: ${pretty}` +
+    (withLink ? `\n\n${inviteUrl(code)}` : '')
   );
 }
 

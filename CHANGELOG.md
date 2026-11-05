@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.169.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026, with a screenshot: "When you share your friend code it's
+putting the link twice". Runtime 4.0.0: JS only.
+
+### Fixed
+- **The friend-code invite showed two link cards in Messages.** The share
+  passed the link as `url` (so Messages draws the card) and again at the end
+  of `message`, and iOS hands both over as items. On iOS the message now
+  leaves the link out (`inviteMessage(..., { withLink: false })`); it still
+  carries the readable code. Android ignores `url`, so there the text keeps
+  the link. Tests: invite.test.ts.
+
 ## v1.168.0 — 2026-11-05 · requested by Marc
 
 Marc, 5 Nov 2026, with a screenshot of v1.167.0: "Share your win screen is

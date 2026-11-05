@@ -196,6 +196,19 @@ suite('invites · the message', () => {
     );
   });
 
+  test('on an iPhone the text leaves the link out, so Messages draws ONE card', () => {
+    /*
+      Marc, 5 Nov 2026: "When you share your friend code it's putting the
+      link twice". The iPhone's sheet gets the link as its own item too,
+      and Messages drew a card for each copy.
+    */
+    const message = inviteMessage('Marc', 'K7M29XPQ', { withLink: false });
+    assert(!message.includes('http'), `no link in the words: ${JSON.stringify(message)}`);
+    assert(message.includes('K7M2-9XPQ'), 'the readable code is still there');
+    assert(message.includes('Marc'), 'and who is asking');
+    assert(inviteMessage('Marc', 'K7M29XPQ').includes(inviteUrl('K7M29XPQ')), 'the default still carries it, for Android');
+  });
+
   test('a player Game Center has not named is not introduced as "New Player"', () => {
     /*
       Every player is called "New Player" until Apple answers, and a
@@ -384,6 +397,10 @@ suite('invites · the share button', () => {
   test('it shares the written message, not just the bare code', () => {
     assert(/inviteMessage\(/.test(code), 'the message comes from inviteLink.ts');
     assert(/inviteUrl\(/.test(code), 'the url is passed separately so Messages draws the card');
+    assert(
+      /inviteMessage\(who\.name, who\.friendCode, \{ withLink: Platform\.OS !== 'ios' \}\)/.test(code),
+      'on an iPhone the link goes only as the url, never in the words as well',
+    );
   });
 
   test('the share button fills the card it sits on', () => {

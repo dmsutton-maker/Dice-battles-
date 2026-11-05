@@ -117,6 +117,16 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-169-0-one-invite-link',
+    date: '5 November 2026',
+    version: 'v1.169.0',
+    title: 'Friend invites send one link',
+    icon: 'people',
+    body:
+      'Sharing your friend code in Messages put the invite link in twice. ' +
+      'Now it sends one invite card with your message and your code.',
+  },
+  {
     id: 'v1-168-0-share-picture',
     date: '5 November 2026',
     version: 'v1.168.0',
