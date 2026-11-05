@@ -291,7 +291,9 @@ export const DICE_SKINS: DiceSkin[] = [
 
   // Sports balls.
   { id: 'golf', name: 'Golf Ball', body: '#f2f7f2', pattern: 'dimples', ink: '#ffffff', price: 335 },
-  { id: 'tennis', name: 'Tennis Ball', body: '#a8b83d', pattern: 'tennis', ink: '#f2f7f2', price: 395 },
+  // Retired 5 Nov 2026 (Marc: "Take tennis ball out the same way you did
+  // with the other balls"); what it cost is in RETIRED_DICE_REFUNDS.
+  { id: 'tennis', name: 'Tennis Ball', body: '#a8b83d', pattern: 'tennis', ink: '#f2f7f2', retired: true },
   // Wine-dark stitches: true stitch red sat ΔLab 10.6 from the red face.
   // The six ball dice were retired on 4 Nov 2026 (see `retired` above):
   // Baseball first, then Marc: "do the same with the soccer ball,
@@ -509,6 +511,8 @@ export const RETIRED_DICE_REFUNDS: Readonly<Record<string, number>> = {
   football: 860,
   bowling: 990,
   volleyball: 1060,
+  // The seventh ball, 5 Nov 2026.
+  tennis: 395,
 };
 
 export const STORE_SKINS = DICE_SKINS.filter((s) => s.price !== undefined).sort(
