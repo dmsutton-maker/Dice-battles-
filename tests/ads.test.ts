@@ -370,31 +370,19 @@ suite('ads · an ad can never cost a player anything', () => {
     );
   });
 
-  test('a due ad is WAITED for on the way into a battle, but never for ever', () => {
+  test('a due ad that is not in hand is skipped, never waited for', () => {
     /*
-      This test used to assert the exact opposite — "an ad that is not
-      ready is skipped, never waited for" — on the reasoning that a child
-      must not sit watching a spinner because the network is slow.
-
-      That instinct is why David saw no ads at all. An interstitial has
-      to be fetched; the fetch only ever ran in the background; and if
-      the SDK had not finished starting up — which on a cold launch it
-      usually has not — there was nothing in hand when the turn came, so
-      the advert was thrown away and the counter moved on three games, to
-      do the same thing again.
-
-      So it is inverted, WITH A CAP, and the cap is the half that still
-      matters: a phone in a tunnel must be a pause, never a hang.
+      David, 5 Nov 2026: "when you hit button to play next game it stalls
+      for a few seconds still". This test asserted the opposite from
+      11 Sep (wait up to six seconds), a rule made while no advert could
+      ever arrive because the AdMob consent message was missing. With the
+      advert fetched a game early and kept owed, Play does not wait.
     */
-    const cap = /AD_LOAD_WAIT_MS = (\d+)/.exec(source);
-    assert(cap !== null, 'there is no limit on how long the game waits for an ad');
-    const ms = Number(cap![1]);
-    assert(ms > 0 && ms <= 10_000, `${ms}ms is not a pause, it is a hang`);
-    assert(
-      /while \(Date\.now\(\) < until\)/.test(source),
-      'the wait is no longer bounded by a clock',
-    );
-    note(`a due ad is waited for up to ${ms}ms`);
+    assert(!/AD_LOAD_WAIT_MS/.test(source), 'a load wait is back');
+    assert(!/waitForAd\(/.test(source), 'Play waits for an advert to load again');
+    const once = source.slice(source.indexOf('async function showAdIfDueOnce'));
+    assert(!/await initAds\(\)|await Promise\.race\(\[\s*initAds/.test(once), 'Play waits for the SDK to start');
+    assert(/if \(!\(loaded && interstitial\)\) \{\s*preload\(\);\s*return false;/.test(once), 'an advert not in hand is not skipped and fetched');
   });
 
   test('a due ad is never silently thrown away', () => {
@@ -436,8 +424,8 @@ suite('ads · an ad can never cost a player anything', () => {
       documentation and reported the opposite of the truth.
     */
     const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    const gaveUp = /if \(!arrived\) \{([\s\S]*?)\n      \}/.exec(code);
-    assert(gaveUp !== null, 'the give-up branch is gone');
+    const gaveUp = /if \(!\(loaded && interstitial\)\) \{([\s\S]*?)\n  \}/.exec(code);
+    assert(gaveUp !== null, 'the not-in-hand branch is gone');
     assert(
       !/adDue/.test(gaveUp![1]),
       'a due ad is thrown away when the fetch was merely slow, which is the whole bug',
@@ -453,25 +441,10 @@ suite('ads · an ad can never cost a player anything', () => {
     note(`${clears.length} places clear the due flag, none of them a slow fetch`);
   });
 
-  test('the menu does not wait, and the battle does', () => {
-    // Two callers, two rules. An advert arriving six seconds after
-    // somebody got back to the menu is worse than no advert; the same
-    // six seconds before a battle starts is a pause before a game.
-    assert(
-      /showAdIfDue\(\{ wait: false \}\)/.test(screen),
-      'leaving to the menu now waits for an ad to be fetched',
-    );
-    assert(
-      /showAdIfDue\(\{ wait: true \}\)/.test(screen),
-      'starting a battle no longer waits for a due ad',
-    );
-    // Since v1.170.0 the battle's wait is `willWait`: options.wait, and
-    // not already waited for in vain this session. The menu never waits.
-    assert(
-      /const willWait = options\.wait === true && !waitedInVain;/.test(source) &&
-        /if \(!willWait\) return false;/.test(source),
-      'the two callers are no longer told apart',
-    );
+  test('neither the menu nor the battle waits; only the battle may start the SDK', () => {
+    assert(/showAdIfDue\(\{ wait: false \}\)/.test(screen), 'leaving to the menu changed');
+    assert(/showAdIfDue\(\{ wait: true \}\)/.test(screen), 'starting a battle no longer asks for a due ad');
+    assert(/if \(options\.wait\) void initAds\(\);/.test(source), 'the battle start no longer starts the SDK in the background');
   });
 
   test('the configured ad unit is an ad unit, not the App ID', () => {
@@ -755,31 +728,26 @@ suite('release · every native package is gated, not just the ad SDK', () => {
   });
 });
 
-suite('ads · Play waits for an advert once a session, and never twelve seconds', () => {
+suite('ads · Play never waits for an advert', () => {
   /*
     Marc, 5 Nov 2026: "after i win and hit the play button again there is
-    a long delay till it starts". A due advert stays owed until one is
-    shown, so when none ever arrived every Play waited again — and
-    starting the SDK and fetching the advert were six seconds EACH. The
-    SDK is absent in node, so the waiting path cannot run here; this
-    holds the source to the rule instead.
+    a long delay till it starts", and David the same day: "it stalls for
+    a few seconds still". Marc's v1.170.0 cut the wait to once a session;
+    v1.171.1 removes it. The SDK is absent in node, so the source is held
+    to the rule.
   */
   const ads = readFileSync(join(__dirname, '..', 'src', 'game', 'ads.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/[^\n]*/g, '');
   const once = ads.slice(ads.indexOf('async function showAdIfDueOnce'), ads.indexOf('export function adStatus'));
 
-  test('one deadline covers starting the SDK and fetching the advert', () => {
-    assert(once.includes('const deadline = Date.now() + AD_LOAD_WAIT_MS;'), 'one deadline');
-    assertEqual((once.match(/AD_LOAD_WAIT_MS/g) ?? []).length, 1, 'AD_LOAD_WAIT_MS used once, for the deadline');
-    assert(once.includes('setTimeout(resolve, left())') && once.includes('waitForAd(left())'), 'both waits use what is left');
+  test('nothing on the way to the battle is awaited except an advert already on screen', () => {
+    const awaits = once.match(/await [^;]+;/g) ?? [];
+    assertEqual(awaits.join(' | '), 'await interstitial!.show(); | await closed;', 'something else is awaited before the battle');
   });
 
-  test('an empty wait is not paid again until an advert loads', () => {
-    assert(once.includes('const willWait = options.wait === true && !waitedInVain;'), 'the wait is skipped after one came up empty');
-    assertEqual((once.match(/waitedInVain = true;/g) ?? []).length, 2, 'both empty waits mark it');
-    assert(/AdEventType\.LOADED, \(\) => \{\s*loaded = true;\s*waitedInVain = false;/.test(ads), 'an advert loading clears it');
-    const reset = ads.slice(ads.indexOf('export function resetAdsForTest'));
-    assert(reset.includes('waitedInVain = false;'), 'the test reset clears it');
+  test('a due advert that is not in hand stays owed', () => {
+    const branch = /if \(!\(loaded && interstitial\)\) \{([\s\S]*?)\n  \}/.exec(once);
+    assert(branch !== null && !/adDue/.test(branch[1]), 'a slow fetch throws the advert away');
   });
 });

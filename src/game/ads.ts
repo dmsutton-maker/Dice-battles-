@@ -394,7 +394,6 @@ function preload(): void {
     });
     ad.addAdEventListener(mod.AdEventType.LOADED, () => {
       loaded = true;
-      waitedInVain = false;
       problem = null;
     });
     ad.addAdEventListener(mod.AdEventType.ERROR, (error?: unknown) => {
@@ -461,60 +460,26 @@ export function noteGameFinished(): void {
 }
 
 /**
- * How long the game will WAIT for a due ad to arrive before giving up
- * on that turn.
+ * WHY PLAY NEVER WAITS FOR AN ADVERT (5 Nov 2026).
  *
- * David, 11 Sep 2026: "I played 4 games and still haven't gotten any
- * ads. Make sure the ad happens when you press play again or start
- * battle."
+ * The first rule here was "due, but nothing ready: skip it", and the
+ * advert was thrown away with the turn. David saw no ads, so on 11 Sep
+ * the rule was inverted to wait up to six seconds on the way into a
+ * battle. Neither was the real reason: the consent check failed on every
+ * phone (no privacy message in AdMob), so no advert was ever requested.
  *
- * This file used to hold the opposite rule, in as many words: "Due, but
- * nothing ready: SKIP it. Never make a child wait on a network fetch to
- * get back to their game." That was the right instinct and it was also
- * exactly why he saw no ads. An interstitial has to be FETCHED, the
- * fetch was only ever started in the background, and if the SDK had not
- * finished starting up — which on a cold launch it usually has not,
- * because it is racing the phone's connection — there was never
- * anything in hand when the turn came. The advert was then thrown away
- * and the counter moved on to three games' time, where the same thing
- * happened again.
- *
- * So the rule is inverted, with a cap. A due ad is now waited for, but
- * only for as long as an advert is worth waiting for, and the game
- * carries on regardless afterwards. Six seconds is the number: long
- * enough for a normal fetch on a normal connection, short enough that a
- * phone in a tunnel is a pause rather than a hang.
+ * What stands now: a due advert is never thrown away (`adDue` stays set
+ * until one has been on screen), it is fetched a game early and again
+ * when it is due, and Play never waits for one. If it is in hand it is
+ * shown and the battle starts when it closes; if not, the battle starts
+ * at once and the advert is shown on a later Play.
  */
-const AD_LOAD_WAIT_MS = 6000;
-
-/**
- * A wait for an advert has already come up empty this session.
- *
- * Marc, 5 Nov 2026: "after i win and hit the play button again there is
- * a long delay till it starts". A due ad stays owed until one is shown,
- * so when none ever arrives (no connection, no ad to serve before the
- * app is live) EVERY Play paid the wait again, with nothing on screen.
- * So Play waits for an advert once per session; after that it takes one
- * only if it is already in hand, which a background fetch can still
- * manage. Cleared as soon as an advert does load.
- */
-let waitedInVain = false;
 
 /** Stop two callers showing the same ad twice. */
 let showing = false;
 
 /** The showAdIfDue call that is running now, if any. */
 let inFlight: Promise<boolean> | null = null;
-
-/** Resolve once an ad is in hand, or once the wait is up. */
-async function waitForAd(ms: number): Promise<boolean> {
-  const until = Date.now() + ms;
-  while (Date.now() < until) {
-    if (loaded && interstitial) return true;
-    await new Promise((resolve) => setTimeout(resolve, 120));
-  }
-  return loaded && interstitial !== null;
-}
 
 /**
  * Show the interstitial if one is due.
@@ -593,67 +558,27 @@ async function showAdIfDueOnce(
     return false;
   }
 
-  showing = true;
-  // Wait only once a session, and for one deadline across both waits
-  // below: starting the SDK and fetching the advert used to be six
-  // seconds EACH, twelve in all, with Play doing nothing.
-  const willWait = options.wait === true && !waitedInVain;
-  const deadline = Date.now() + AD_LOAD_WAIT_MS;
-  const left = () => Math.max(0, deadline - Date.now());
-  try {
-    /*
-      Start the SDK if it is not started. This is the moment to have
-      another go at it: there is demonstrably a player, a finished game,
-      and a session that has been running long enough to have a
-      connection — which is exactly what a cold launch did not have.
-    */
-    if (!ready) {
-      /*
-        Only the waiting caller may start the SDK. The other one is the
-        player arriving back at the menu, and they are already looking at
-        it — an advert that appeared six seconds later, over the menu,
-        out of nothing, would be worse than no advert.
-      */
-      if (!willWait) {
-        // Still started, in the background, for the next time.
-        if (options.wait) void initAds();
-        return false;
-      }
-      /*
-        Bounded like the load wait below. initAds waits on the consent
-        form and the SDK's own start-up, which on a bad connection can
-        take far longer than six seconds, and the battle start is queued
-        behind this promise: unbounded, Play did nothing for as long as
-        the SDK took. initAds carries on in the background either way.
-      */
-      await Promise.race([
-        initAds(),
-        new Promise<void>((resolve) => setTimeout(resolve, left())),
-      ]);
-    }
-    if (!ready) {
-      waitedInVain = true;
-      return false;
-    }
+  /*
+    NEVER WAIT. David, 5 Nov 2026: "when they should be playing and you
+    hit button to play next game it stalls for a few seconds still". An
+    advert that is not already in hand is skipped, never waited for: the
+    battle starts at once, and the advert stays owed (`adDue` is left
+    set) for the next Play. It is fetched a game early (noteGameFinished)
+    and again here, so on most turns one is already loaded.
 
-    // Ask for one if there is not one in hand, then wait a little.
+    Until 5 Nov the battle start waited up to six seconds (eleven Sep:
+    "make sure the ad happens when you press play again"). That wait was
+    added while no advert could ever arrive (the consent message was
+    missing in AdMob, see STATE.md), so it only ever showed up as a stall.
+  */
+  if (!ready) {
+    // Started in the background, for a later turn; never waited for.
+    if (options.wait) void initAds();
+    return false;
+  }
+  if (!(loaded && interstitial)) {
     preload();
-    if (!(loaded && interstitial)) {
-      if (!willWait) return false;
-      const arrived = await waitForAd(left());
-      if (!arrived) {
-        waitedInVain = true;
-        /*
-          `adDue` is deliberately LEFT SET. The advert is still owed and
-          the next way out of a result screen will try again, rather than
-          the player getting three more free games because one fetch was
-          slow.
-        */
-        return false;
-      }
-    }
-  } finally {
-    showing = false;
+    return false;
   }
 
   adDue = false;
@@ -734,7 +659,6 @@ export function resetAdsForTest(): void {
   stage = 'not-started';
   starting = null;
   showing = false;
-  waitedInVain = false;
   inFlight = null;
   interstitial = null;
   loaded = false;

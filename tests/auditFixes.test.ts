@@ -230,10 +230,9 @@ suite('audit · a slow ad SDK cannot freeze Play', () => {
     const ads = code('src/game/ads.ts');
     const once = ads.slice(ads.indexOf('async function showAdIfDueOnce'));
     assert(
-      // Since v1.170.0 one deadline covers this and the load wait (left()).
-      /const deadline = Date\.now\(\) \+ AD_LOAD_WAIT_MS;/.test(once) &&
-        /await Promise\.race\(\[\s*initAds\(\),\s*new Promise<void>\(\(resolve\) => setTimeout\(resolve, left\(\)\)\)/.test(once),
-      'initAds is awaited without a time limit on the path a battle start waits for',
+      // Since v1.171.1 Play never waits: the SDK is started in the background.
+      !/await initAds\(\)/.test(once) && /void initAds\(\);/.test(once),
+      'the battle start waits for the ad SDK to start',
     );
   });
 });

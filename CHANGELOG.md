@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.171.1 — 2026-11-05 · requested by David
+
+David: "when they should be playing and you hit button to play next game
+it stalls for a few seconds still". Runtime 4.0.0.
+
+### Changed
+- **Play never waits for an advert.** With an advert due, the battle
+  start used to wait up to six seconds for the ad SDK and the advert
+  (once a session since Marc's v1.170.0). That wait dated from 11 Sep,
+  when no advert could ever arrive because AdMob's consent message was
+  missing, so it was only ever a stall. Now an advert already in hand is
+  shown and the battle starts when it closes; one that is not in hand is
+  skipped for this turn but stays owed, and is fetched again at once. It
+  is also fetched a game early, so most turns have one ready. Removed:
+  `AD_LOAD_WAIT_MS`, `waitForAd`, `waitedInVain`. Tests rewritten to the
+  new rule (ads.test.ts, auditFixes.test.ts).
+
 ## v1.171.0 — 2026-11-05 · requested by David
 
 After the AdMob consent message was published the phone said "Ads:
