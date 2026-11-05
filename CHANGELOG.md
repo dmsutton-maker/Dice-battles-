@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.163.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026: "When I try to play a game it still starts off with
+finding an opponent against the AI and then goes to finding an opponent
+against a real player, it should only be against a real player until
+after 15 seconds if it can't find a real player." Runtime 4.0.0 (build 18).
+
+### Fixed
+- **The search for a real player is on screen from the first frame.** While
+  the first ask to the matchmaking server was out (the `asking` state), the
+  overlay drew the computer rivals' reveal, cycling their names under
+  "Finding your opponent", and only switched to "Searching for an
+  opponent" when the server answered. `showsSearch` now includes `asking`
+  (src/game/matchFlow.ts), so a computer rival is only ever shown after
+  the 15-second search, or on the rare answer that the server has
+  matchmaking off. Below 100 trophies, Skirmish, Color War and Practice
+  still go straight to a rival, as before. Tests: matchFlow.test.ts.
+
 ## v1.162.0 — 2026-11-05 · requested by Marc
 
 Marc's reports of 5 Nov 2026 (the second batch), merged from feature/cards-hires,

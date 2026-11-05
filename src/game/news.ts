@@ -117,6 +117,19 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-163-0-search-first',
+    date: '5 November 2026',
+    version: 'v1.163.0',
+    title: 'Straight to the search',
+    icon: 'people',
+    body:
+      'Starting a battle from 100 trophies now goes straight to "Searching ' +
+      'for an opponent". It used to flash through the computer rivals ' +
+      'first while the game asked the server, which looked like you were ' +
+      'being matched with the computer. A rival only appears if nobody is ' +
+      'free after 15 seconds.',
+  },
+  {
     id: 'v1-162-0-keeps-everything',
     date: '5 November 2026',
     version: 'v1.162.0',

@@ -102,9 +102,10 @@ export function MatchmakingOverlay({
     In a mode that cannot be played live, with the server's `off` still
     remembered, or for practice, the bot is settled before the first frame
     (startFlow), and below 100 trophies too (BOT_ONLY_BELOW_TROPHIES). Otherwise
-    the first ask goes out, and the search is only SHOWN once the server
-    says it is looking — an `off` answer goes straight to the reveal, as
-    it always did.
+    the search for a real player is on screen from the first frame while
+    the first ask goes out (showsSearch), and a computer rival is only
+    ever shown after it: at the deadline, or on a rare `off` answer
+    (Marc, 5 Nov 2026).
   */
   const [flow, setFlow] = useState<MatchFlowState>(() =>
     botOnly ? { kind: 'bot', reason: botOnly } : startFlow(trophies, mode, hasMatchmakingService()),
