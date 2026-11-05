@@ -2,6 +2,7 @@ import React from 'react';
 import { InteractionManager } from 'react-native';
 import { CrashScreen } from './src/debug/CrashScreen';
 import { getLastFatal, onFatal, reportFatal } from './src/debug/crashGuard';
+import { titleCardLifted } from './src/audio/sounds';
 import { ScreenRuler } from './src/debug/ScreenRuler';
 import { DiceDemoScreen } from './src/demo/DiceDemoScreen';
 import { BootSplash } from './src/demo/BootSplash';
@@ -136,7 +137,11 @@ export default class App extends React.Component<Record<string, never>, State> {
    * the two.
    */
   private revealIfReady = (): void => {
-    if (this.cardDone && this.state.loading) this.setState({ booting: false });
+    if (this.cardDone && this.state.loading) {
+      // The lobby music waits for the home screen: not under the card,
+      // not over its sting (sounds.ts).
+      this.setState({ booting: false }, titleCardLifted);
+    }
   };
 
   render() {

@@ -100,6 +100,7 @@ async function main(): Promise<void> {
   await import('./seasonRotation.test');
   await import('./productPreview.test');
   await import('./shopName.test');
+  await import('./music.test');
   process.exit(await runAll());
 }
 

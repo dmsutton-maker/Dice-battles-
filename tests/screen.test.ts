@@ -580,12 +580,18 @@ suite('screen · assets', () => {
     walk(config);
   });
 
-  test('licensing credits are recorded for every sound source', () => {
-    // Two of the sound packs are CC-BY: shipping without the credit would
-    // breach their license, so the file has to exist and name them.
+  test('the record of where every sound came from is kept, and none of it needs a credit', () => {
+    // Since 5 Nov 2026 the music, fanfares and cheer are the game's own
+    // and the dice and announcer are Kenney's CC0 recordings, so nothing
+    // in the game requires attribution. CREDITS.md stays as the record
+    // of provenance and has to say both things.
     const credits = readFileSync('assets/sounds/CREDITS.md', 'utf8');
-    ['Kenney', 'Kevin MacLeod', 'CC-BY'].forEach((needle) =>
+    ['Kenney', 'CC0', 'Paper Ship Studio', 'tools/music'].forEach((needle) =>
       assert(credits.includes(needle), `CREDITS.md never mentions ${needle}`),
+    );
+    assert(/nothing in the game requires attribution/i.test(credits), 'CREDITS.md does not say nothing needs a credit');
+    ['CC-BY', 'attribution required', 'Gregor Quendel', 'Kevin MacLeod'].forEach((needle) =>
+      assert(!credits.includes(needle), `CREDITS.md still carries ${needle}`),
     );
   });
 
@@ -1374,18 +1380,22 @@ suite('release · the version number is real', () => {
     );
   });
 
-  test('the Creative Commons credits are somewhere a player can read them', () => {
-    // assets/sounds/CREDITS.md lists these as a licence condition, not a
-    // courtesy — CC-BY 4.0 requires the names to be reachable in the app.
+  test('Settings credits nobody, because nothing in the game needs it', () => {
+    /*
+      Until 5 Nov 2026 this test demanded the Creative Commons names on
+      the Settings screen, which CC-BY 4.0 requires. Marc then had the
+      CC-BY music and cheer replaced with the studio's own so that "we
+      don't have to give credits to anyone", and the credits section went
+      with them. The rule in the other direction — a sound that DOES need
+      a credit gets one — lives in tests/audio.test.ts, read from
+      CREDITS.md.
+    */
     const screen = readFileSync(
       join(root, 'src/demo/DiceDemoScreen.tsx'),
       'utf8',
     );
-    for (const name of ['Kevin MacLeod', 'Gregor Quendel', 'CC BY 4.0']) {
-      assert(
-        screen.includes(name),
-        `Settings never shows "${name}", which the CC-BY licence requires`,
-      );
+    for (const gone of ['Kevin MacLeod', 'incompetech', 'OwlishMedia', 'Zane Little', 'Gregor Quendel', 'CC BY 4.0', 'SOUNDS &amp; MUSIC']) {
+      assert(!screen.includes(gone), `Settings still shows "${gone}" for a sound that is no longer in the game`);
     }
   });
 
