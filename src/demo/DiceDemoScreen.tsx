@@ -355,7 +355,8 @@ function AdStatusLine() {
       {status.gamesFinished} games played · next ad in {status.untilNext} ·{' '}
       {status.loaded ? 'one waiting' : 'none waiting'}
       {'\n'}
-      {status.unit === 'test' ? 'test ads (tester mode)' : 'real ads'}
+      {status.unit === 'test' ? 'test ads (tester mode)' : 'real ads'} · asked Google {status.requested}{' '}
+      {status.requested === 1 ? 'time' : 'times'} since opening
     </Text>
   );
 }

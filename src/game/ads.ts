@@ -279,6 +279,9 @@ export async function initAds(): Promise<void> {
  */
 let problem: string | null = null;
 
+/** Ad requests this launch has sent to Google: proof the phone asked at all. */
+let requested = 0;
+
 function describe(error: unknown): string {
   const text =
     error && typeof error === 'object' && 'message' in error
@@ -391,8 +394,12 @@ function preload(): void {
     });
     ad.addAdEventListener(mod.AdEventType.LOADED, () => {
       loaded = true;
+      problem = null;
     });
-    ad.addAdEventListener(mod.AdEventType.ERROR, () => {
+    ad.addAdEventListener(mod.AdEventType.ERROR, (error?: unknown) => {
+      // Google's answer, kept for the status line: "no fill" means the
+      // request reached Google and nothing was sent back.
+      problem = `ad request error: ${describe(error)}`;
       // No fill, no network, a bad unit id — drop it and try again after
       // the next game rather than holding a dead object forever.
       // Clear our listeners first, so our closures are released. The
@@ -423,6 +430,7 @@ function preload(): void {
     });
     interstitial = ad;
     ad.load();
+    requested += 1;
   } catch {
     interstitial = null;
     loaded = false;
@@ -667,11 +675,14 @@ export function adStatus(): {
   gamesFinished: number;
   untilNext: number;
   unit: 'test' | 'real';
-  /** Why the last start stopped, in the SDK's words; null when it did not. */
+  /** Why the last start or ad request failed, in the SDK's words; null when it did not. */
   problem: string | null;
+  /** Ad requests sent to Google since the game was opened. */
+  requested: number;
 } {
   return {
     problem,
+    requested,
     stage,
     sdk: moduleOrNull() !== null,
     loaded,

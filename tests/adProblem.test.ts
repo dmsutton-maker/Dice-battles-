@@ -21,6 +21,12 @@ suite('ads · the reason they stopped is kept', () => {
     assert(/canRequestAds = false;\s*\n\s*problem = `consent error/.test(ads), 'a failure no longer blocks ads');
   });
 
+  test('a refused ad request keeps Google\'s answer, and requests are counted', () => {
+    assert(/problem = `ad request error: \$\{describe\(error\)\}`/.test(ads), 'a refused request is not kept');
+    assert(/ad\.load\(\);\s*\n\s*requested \+= 1;/.test(ads), 'requests are not counted');
+    assert(/asked Google \{status\.requested\}/.test(screen), 'the count is not on the line');
+  });
+
   test('holding the version line shows the status outside tester mode', () => {
     assert(/onLongPress=\{\(\) => setShowAdStatus\(\(on\) => !on\)\}/.test(screen), 'no way to show it');
     assert(/showAdStatus && !unlockAll && <AdStatusLine \/>/.test(screen), 'not drawn');

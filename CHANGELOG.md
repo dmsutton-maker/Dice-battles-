@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.170.1 — 2026-11-05 · requested by David
+
+After the AdMob consent message was published the phone said "Ads:
+ready", yet AdMob still showed no requests and David saw no ads. The
+status line could not tell "never asked" from "asked and refused".
+Runtime 4.0.0.
+
+### Added
+- **The status line counts the ad requests sent this launch** ("asked
+  Google N times since opening") and keeps Google's answer when one is
+  refused ("Why: ad request error: …"), e.g. no fill or an app not yet
+  approved. `adStatus().requested`; the ERROR listener now stores the
+  error in `problem`, cleared when an ad loads. Nothing else changes.
+
 ## v1.170.0 — 2026-11-05 · requested by David
 
 David: "I didn't see any ad". AdMob's own reports (checked 5 Nov 2026 by
