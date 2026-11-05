@@ -332,6 +332,16 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **5 Nov 2026 (v1.165.0):** all music and jingles are our own (`tools/music/`,
+  `assets/sounds/CREDITS.md`): battle tracks pixel/brass/neon in rotation
+  (`musicRotation.ts`), each crossfading into its `-hot` version when either
+  side is one rescue from winning (`musicIntensity.ts`), a lobby theme on the
+  menus, our fanfares, sting, purchase sound, cheer and equip bloop. No credit
+  is owed to anyone now; Settings has no credits block. Only judged by
+  measurement and on node: Marc should listen on a phone to the build-up
+  switch and the lobby level (`MIX.lobby` 0.35). Still pending: the announcer
+  voices (Kenney CC0 today), and the share-your-win picture (branch
+  feature/share-win).
 - **4 Nov 2026 (v1.159.0, update 58345c1d, website deployed):** online
   battles, Practice in Settings, seven dice redrawn, Store renamed Shop,
   the trophy ladder topped at 8,000, Dino Valley hidden (`hidden` in

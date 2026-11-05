@@ -65,7 +65,8 @@ Needs only Python 3 with `numpy`, and `ffmpeg` on the path.
 ```sh
 cd tools/music
 python3 tracks.py out A B D L      # the three battle tracks and the lobby, as WAV
-./master.sh -15 A A-intense B B-intense D D-intense   # first argument: target LUFS
+./master.sh -15.5 A B D                     # first argument: target LUFS
+./master.sh -14.5 A-intense B-intense D-intense   # the built-up versions, a touch louder
 ./master.sh -18 L                  # the lobby sits quieter, under the menus
 python3 oneshots.py                # the fanfares and stings
 python3 analyse.py A A-intense L   # optional: check what came out
