@@ -332,6 +332,12 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **5 Nov 2026 (v1.166.0):** "Share your win" on the victory screen
+  (`src/share/`): board captured at the win via expo-gl (MSAA blit first),
+  card composed in GL on the tap, shared with React Native's Share. Never run
+  on a device before shipping: first check on a phone that the picture is
+  upright and not black. `BOARD_ANCHOR` in shareCard.ts tunes which band of the
+  board shows. iOS only (Android's Share ignores `url`).
 - **5 Nov 2026 (v1.165.0, update 2228ab4b):** all music and jingles are our own (`tools/music/`,
   `assets/sounds/CREDITS.md`): battle tracks pixel/brass/neon in rotation
   (`musicRotation.ts`), each crossfading into its `-hot` version when either

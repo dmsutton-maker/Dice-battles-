@@ -117,6 +117,19 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-166-0-share-win',
+    date: '5 November 2026',
+    version: 'v1.166.0',
+    title: 'Share your win',
+    icon: 'people',
+    body:
+      'Won a battle? Tap "Share your win" on the victory screen and the game ' +
+      'makes a picture of your winning board with a big VICTORY! banner, your ' +
+      'score and the trophies you won. Share it to Instagram, send it in a ' +
+      'message or save it to your photos. Names never appear on the picture, ' +
+      'and nothing is shared unless you tap Share.',
+  },
+  {
     id: 'v1-165-0-our-music',
     date: '5 November 2026',
     version: 'v1.165.0',

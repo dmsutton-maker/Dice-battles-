@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.166.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026: "when someone wins, come up with a winning exciting
+screenshot from their game and give them the option if they want to share
+that screenshot of the game to like Instagram or other social agencies".
+Branch feature/share-win. Runtime 4.0.0: JS and assets only, no new package.
+
+### Added
+- **Share your win.** At the moment of a win the board is captured (expo-gl
+  `takeSnapshotAsync`, after blitting the 4x MSAA framebuffer to a plain one,
+  which is what makes it readable: `src/share/boardShot.ts`). On "Share your
+  win" the game composes a 1080x1350 card in GL (`src/share/composeCard.ts`):
+  the board, a "VICTORY!" banner, the score as the mode counts it, the mode,
+  trophies won and the game's name; expo-gl writes the PNG natively, and React
+  Native's `Share.share` offers Instagram, Messages, Save Image and the rest.
+  Never after a loss or a tie, never without the tap, and never a name, friend
+  code or id on the picture (`src/share/shareCard.ts`, tested). The two-player
+  screen offers it on the winner's half. Artwork from `tools/share-card/`
+  (Inter, SIL OFL), `assets/share/` 140 KB. Nothing is sent to us: App
+  Privacy answers unchanged. Tests: shareWin.test.ts.
+
 ## v1.165.0 — 2026-11-05 · requested by Marc
 
 Marc, 5 Nov 2026: "Music should be fast paced and energetic and exciting and
