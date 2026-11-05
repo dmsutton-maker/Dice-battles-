@@ -21,7 +21,8 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
-        "com.apple.developer.game-center": true
+        "com.apple.developer.game-center": true,
+        "com.apple.developer.ubiquity-kvstore-identifier": "$(TeamIdentifierPrefix)$(CFBundleIdentifier)"
       },
       "associatedDomains": [
         "applinks:papershipstudio.com",

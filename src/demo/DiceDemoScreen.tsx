@@ -6,6 +6,7 @@ import { withRotation } from '../game/cupRotation';
 import { arenaBlurb, dieBlurb } from '../game/itemBlurbs';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   Dimensions,
   Keyboard,
   KeyboardAvoidingView,
@@ -191,6 +192,18 @@ import { MODE_ICONS } from '../ui/modeIcons';
 import { askToBeTold, pushState, refreshToken, type PushState } from '../game/push';
 import { REVIEW_URL } from '../game/review';
 import { maybeAskForReview } from '../game/askForReview';
+import {
+  backupNow,
+  backupSoon,
+  cloudSaveStatus,
+  declineRestore,
+  otherCloudSaves,
+  setCloudSaveName,
+  setRestoreOfferOpen,
+  watchForRestoreOffer,
+} from '../game/cloudSave';
+import { savedWhen, type CloudSave } from '../game/cloudSaveCore';
+import { CloudRestorePopup } from './CloudRestorePopup';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
 import { BattleClock } from './BattleClock';
@@ -283,6 +296,46 @@ type Phase =
   | 'won'
   | 'lost'
   | 'tie';
+
+/**
+ * The iCloud save, in Settings: whether progress is being kept safe, and
+ * a way to bring a saved game from another phone onto this one.
+ *
+ * Read at render, like AdStatusLine below. Not drawn at all on a build
+ * without the iCloud module (build 18 and earlier) or off iOS: a row
+ * promising something the phone cannot do is worse than no row.
+ */
+function CloudSaveRow({ onOpen }: { onOpen: () => void }) {
+  const status = cloudSaveStatus();
+  if (!status.available) return null;
+  const note = !status.signedIn
+    ? 'Sign in to iCloud in iPhone Settings to keep your progress safe if the game is deleted.'
+    : status.lastResult === 'failed'
+      ? "Couldn't save to iCloud just now. It tries again after your next game."
+      : status.lastSavedAt !== null
+        ? `Saved to your iCloud ${savedWhen(status.lastSavedAt, Date.now())}. Delete the game or get a new iPhone and your progress comes back.`
+        : 'Your progress saves to your iCloud after every game, so it comes back if the game is deleted or you get a new iPhone.';
+  return (
+    <>
+      <View style={styles.settingsDividerLine} />
+      <Pressable
+        style={styles.toggleRow}
+        accessibilityRole="button"
+        onPress={() => {
+          playClick();
+          onOpen();
+        }}
+      >
+        <View style={styles.toggleText}>
+          <View style={styles.toggleLabelRow}>
+            <Text style={styles.toggleLabel}>iCloud save</Text>
+          </View>
+          <Text style={styles.toggleNote}>{note}</Text>
+        </View>
+      </Pressable>
+    </>
+  );
+}
 
 /**
  * One line saying which step the adverts stopped at.
@@ -696,6 +749,23 @@ export function DiceDemoScreen() {
     if (!me) return;
     void refreshToken(me);
   }, [me]);
+  // The name an iCloud save is shown by on "Welcome back" (cloudSave.ts).
+  useEffect(() => {
+    setCloudSaveName(me?.name);
+  }, [me]);
+
+
+  /*
+    Saved to iCloud whenever the game goes into the background too, which
+    catches coins bought in the Shop, a die equipped, a setting changed —
+    anything since the last finished game.
+  */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'background') void backupNow();
+    });
+    return () => sub.remove();
+  }, []);
   /*
     ASKING WHETHER ANYBODY WANTS A BATTLE.
 
@@ -788,6 +858,22 @@ export function DiceDemoScreen() {
 
   const [wallet, setWallet] = useState(getWallet());
   const [hydrated, setHydrated] = useState(false);
+  // A saved game in iCloud to offer, or the Settings list of them (cloudSave.ts).
+  const [cloudOffer, setCloudOffer] = useState<{ saves: CloudSave[]; mode: 'welcome' | 'settings' } | null>(null);
+  /*
+    WELCOME BACK. A new install looks in the player's iCloud for a saved
+    game, at launch and again over the next minute, since iCloud can take
+    a moment to deliver one to a phone that has just installed the game.
+    After the save on this phone has been read (hydrated), so "new"
+    means new.
+  */
+  useEffect(() => {
+    if (!hydrated) return;
+    return watchForRestoreOffer((saves) => {
+      setRestoreOfferOpen(true);
+      setCloudOffer({ saves, mode: 'welcome' });
+    });
+  }, [hydrated]);
   /*
     AN ONLINE BATTLE WALKED OUT OF BY CLOSING THE APP (pendingMatch.ts).
     Marc, 4 Nov 2026: "if i forfeit an online match, do I lose trophies?
@@ -1545,6 +1631,13 @@ export function DiceDemoScreen() {
       // see src/game/ads.ts. An interstitial over the fanfare and the
       // trophy count would bury the reward the player just earned.
       noteGameFinished();
+      /*
+        The iCloud save follows every game that counts (cloudSave.ts).
+        A few seconds later, so the trophies, coins and season levels this
+        battle pays have all been written first; a burst of games saves
+        once.
+      */
+      backupSoon(4000);
       // Beside it on purpose: this is the one line every finished battle
       // reaches exactly once, ties included — they return early below,
       // before any trophy is moved.
@@ -3991,6 +4084,11 @@ export function DiceDemoScreen() {
                 </Text>
               </View>
             </Pressable>
+            <CloudSaveRow
+              onOpen={() => {
+                void otherCloudSaves().then((saves) => setCloudOffer({ saves, mode: 'settings' }));
+              }}
+            />
             <View style={styles.settingsDividerLine} />
             <Text style={styles.settingsStats}>
               {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×
@@ -4134,6 +4232,18 @@ export function DiceDemoScreen() {
           {difficultyRow}
           {roundOverButtons}
         </View>
+      )}
+      {/* Last, so "Welcome back" sits above the tutorial and Settings. */}
+      {cloudOffer && (
+        <CloudRestorePopup
+          saves={cloudOffer.saves}
+          mode={cloudOffer.mode}
+          onClose={() => {
+            if (cloudOffer.mode === 'welcome') void declineRestore();
+            setRestoreOfferOpen(false);
+            setCloudOffer(null);
+          }}
+        />
       )}
     </View>
   );
