@@ -101,6 +101,7 @@ async function main(): Promise<void> {
   await import('./productPreview.test');
   await import('./shopName.test');
   await import('./shareWin.test');
+  await import('./music.test');
   process.exit(await runAll());
 }
 

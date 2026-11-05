@@ -13,7 +13,8 @@ import { ARENAS, ArenaId } from '../arena/arenas';
 import { obstacleLook } from '../arena/obstacleLooks';
 import { FLIGHT_SECONDS } from '../game/flight';
 import { playCue } from '../audio/announcer';
-import { playCheer, playFanfare, playThrow, startMusic, stopMusic } from '../audio/sounds';
+import { playCheer, playFanfare, playThrow, setMusicIntensity, setMusicScene } from '../audio/sounds';
+import { oneFromWinning } from '../game/musicIntensity';
 import { ColorDef, PRISONER_COLORS } from '../game/colors';
 import { makeUnits, MODES, ModeId, PrisonerUnit } from '../game/modes';
 import { AI_DIFFICULTIES, AiDifficultyId } from '../game/ai';
@@ -513,18 +514,46 @@ export function TwoPlayerScreen({
   useEffect(() => {
     return () => {
       timers.current.forEach(clearTimeout);
-      stopMusic();
       discardShareFiles();
     };
   }, []);
 
+  /*
+    What the music hears: the set-up screen is a menu, so the lobby; the
+    countdown and the fight are the battle; the result is silent until
+    somebody chooses. On the way out nothing is said here — the home
+    screen speaks for itself the moment this closes (DiceDemoScreen).
+  */
   useEffect(() => {
-    if (phase === 'arm' || phase === 'go' || phase === 'battle') {
-      startMusic();
+    if (phase === 'ready') {
+      setMusicScene('lobby');
+    } else if (phase === 'arm' || phase === 'go' || phase === 'battle') {
+      setMusicScene('battle');
     } else {
-      stopMusic();
+      setMusicScene('none');
     }
   }, [phase]);
+
+  /*
+    THE BUILD-UP, the same rule as against the computer
+    (src/game/musicIntensity.ts): once either player is one rescue from
+    winning the music goes hot and stays hot for the battle. Skirmish has
+    no count to win on — it ends when the shared jail empties — so there
+    the question is whether one prisoner is left in it.
+  */
+  useEffect(() => {
+    if (phase !== 'battle') return;
+    const total = targetFor(mode);
+    const hot =
+      mode === 'skirmish'
+        ? oneFromWinning(
+            total - unitsA.filter((u) => u.station.kind === 'jail').length,
+            0,
+            total,
+          )
+        : oneFromWinning(scoreOf(unitsA), scoreOf(unitsB), total);
+    if (hot) setMusicIntensity(true);
+  }, [phase, mode, unitsA, unitsB]);
 
   const startMatch = useCallback(() => {
     /*

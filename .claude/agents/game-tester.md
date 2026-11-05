@@ -55,8 +55,11 @@ been of this kind, so weigh these heavily:
   missing from the picker, the Mystery Arena leaking its identity before
   it is earned, persisted progress that fails to load.
 - **Licensing.** Any new audio/art needs its entry in
-  `assets/sounds/CREDITS.md`; two current sources are CC-BY and legally
-  require credit before release.
+  `assets/sounds/CREDITS.md`. Since 5 Nov 2026 nothing in the game
+  requires attribution — the music, fanfares, cheer and UI sounds are the
+  studio's own, and Kenney's dice and announcer are CC0 — so a new sound
+  that is CC-BY would be the first, and would need a credit line in the
+  app before release (tests/audio.test.ts enforces this).
 
 Check the project rules in `AGENTS.md` too — native-only, cannon-es (never
 WASM physics), `@react-three/fiber/native` imports, tuning constants in

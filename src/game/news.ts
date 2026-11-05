@@ -117,6 +117,23 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-165-0-our-music',
+    date: '5 November 2026',
+    version: 'v1.165.0',
+    title: 'Brand-new music, all our own',
+    icon: 'sound',
+    major: true,
+    body:
+      'Every bit of music in the game is new and was made just for Dice ' +
+      'Battles. Three battle tracks take turns, one per battle: a chiptune, a ' +
+      'funk groove and a synth-pop sprint. When either side is one rescue ' +
+      'from winning, the music turns up and gets more intense. The menus ' +
+      'have their own slower, calmer version of the chiptune.\n\n' +
+      'There are new sounds too: your own victory fanfare for each track, a ' +
+      'cheer when a prisoner is freed, a sparkle when you buy something and ' +
+      'a little bloop when you put on a die or a battlefield.',
+  },
+  {
     id: 'v1-163-0-search-first',
     date: '5 November 2026',
     version: 'v1.163.0',

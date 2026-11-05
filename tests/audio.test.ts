@@ -301,14 +301,22 @@ suite('audio · slider knob', () => {
   });
 });
 
-suite('audio · the licences are honoured where a player can find them', () => {
+suite('audio · nothing in the game needs a credit, and the day something does, it gets one', () => {
   const root = join(__dirname, '..');
   const credits = readFileSync(join(root, 'assets/sounds/CREDITS.md'), 'utf8');
   const settings = readFileSync(join(root, 'src/demo/DiceDemoScreen.tsx'), 'utf8');
 
   /*
-    CC-BY is a condition, not a courtesy: the names have to be somewhere a
-    player can actually reach, or the game has no licence to the music.
+    Until 5 Nov 2026 the music and the crowd cheer were CC-BY, and this
+    suite made sure their authors were named on the Settings screen —
+    CC-BY is a condition, not a courtesy. Then Marc: "take away the music
+    that we had before and take away the credits for it so we don't have
+    to give credits to anyone and all the music in the game is just
+    ours." The music, the fanfares, the sting, the purchase sound and the
+    cheer are the studio's own now, and what remains (Kenney's dice and
+    announcer) is CC0. So the rule runs the other way: today nothing is
+    marked as requiring attribution, and if CREDITS.md ever gains a row
+    that is, Settings has to show the name again.
 
     Read out of CREDITS.md rather than listed here, so adding a CC-BY
     sound and forgetting to credit it fails instead of shipping.
@@ -316,53 +324,38 @@ suite('audio · the licences are honoured where a player can find them', () => {
   const required = [...credits.matchAll(/credit ['"]([^'"]+)['"] in the app credits/g)]
     .map((m) => m[1]);
 
-  test('CREDITS.md still names who must be credited', () => {
+  test('today nothing requires attribution, and CREDITS.md says so', () => {
+    assertEqual(required.join(' · '), '', 'a sound is marked as requiring a credit');
     assert(
-      required.length >= 2,
-      'no attribution-required rows found — either the licences changed or ' +
-        'the wording in CREDITS.md did, and this test has stopped checking anything',
+      /nothing in the game requires attribution/i.test(credits),
+      'CREDITS.md does not say that nothing needs a credit',
     );
-    note(`attribution required for: ${required.join(' · ')}`);
+    assert(!/CC-BY|CC BY/.test(credits), 'a CC-BY source is still listed in assets');
+    note('attribution required for: nobody');
   });
 
-  test('every one of them is in the app', () => {
+  test('and Settings carries no credit line for anybody', () => {
+    const panel = settings.slice(settings.indexOf("popup === 'settings'"));
+    for (const name of ['Kevin MacLeod', 'incompetech', 'Gregor Quendel', 'CC BY', 'CC-BY']) {
+      assert(!panel.includes(name), `Settings still credits ${name}`);
+    }
+    assert(!/SOUNDS &amp; MUSIC/.test(settings), 'the SOUNDS & MUSIC credits section is back');
+    assert(!/creditLine/.test(settings), 'the credit line style is still there, unused');
+  });
+
+  test('if a row ever requires a credit again, the app has to show it', () => {
+    // Runs over an empty list today. The day a CC-BY sound is added to
+    // CREDITS.md with the "credit ... in the app credits" wording, this
+    // fails until the name is on the Settings screen, where a player can
+    // find it. The lesson of 7 Sep 2026 still applies then: left-aligned,
+    // readable ink, 12pt or more, under a heading — not disguised as the
+    // version number.
     for (const who of required) {
-      // The credit line may phrase it differently; the NAME is the part
-      // the licence cares about.
       const name = who.replace(/^Music by /, '').replace(/ \(.*/, '').trim();
       assert(
         settings.includes(name),
         `"${name}" must be credited in the app and is not on the Settings screen`,
       );
     }
-  });
-
-  test('and they do not look like the version number', () => {
-    /*
-      David could not find these on 7 Sep 2026, having been told exactly
-      where they were. They were two 11pt faint centred lines directly
-      above the 11pt faint centred version stamp — reachable, and
-      invisible. A credit nobody can pick out is not attribution.
-    */
-    const style = settings.slice(settings.indexOf('  creditLine: {'));
-    const block = style.slice(0, style.indexOf('},'));
-    assert(
-      !/textAlign: 'center'/.test(block),
-      'the credits are centred again, which makes them read as a version stamp',
-    );
-    assert(
-      !/THEME\.inkFaint/.test(block),
-      'the credits are back to the faintest ink in the theme',
-    );
-    const size = /fontSize: ([\d.]+)/.exec(block);
-    assert(size !== null, 'the credits have no stated size');
-    assert(
-      Number(size![1]) >= 12,
-      `the credits are ${size![1]}pt, small enough to be missed by the person who commissioned them`,
-    );
-    assert(
-      /SOUNDS &amp; MUSIC/.test(settings),
-      'the credits have no heading, so nothing says what they are',
-    );
   });
 });

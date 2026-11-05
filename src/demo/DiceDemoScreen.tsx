@@ -60,9 +60,10 @@ import {
   playClick,
   playEquip,
   playFanfare,
+  playPurchase,
   playThrow,
-  startMusic,
-  stopMusic,
+  setMusicIntensity,
+  setMusicScene,
 } from '../audio/sounds';
 import {
   AI_DIFFICULTIES,
@@ -109,7 +110,7 @@ import {
 import { TUNING } from '../game/tuning';
 import { adStatus, initAds, noteGameFinished, showAdIfDue } from '../game/ads';
 import { hasEntitlement,
-  goldPassUnlocked, hasGoldPass, initPurchases, noteTesterModeChanged, onPurchasesChanged } from '../game/purchases';
+  goldPassUnlocked, hasGoldPass, initPurchases, noteTesterModeChanged, onPurchaseGranted, onPurchasesChanged } from '../game/purchases';
 import { lookupCode } from '../game/secretCodes';
 import {
   equippedDieKeys,
@@ -128,6 +129,7 @@ import { launchSettled, onLaunchChange, reportStep } from '../game/launchReady';
 import { inventoryDice } from '../game/inventoryRules';
 import { warmAllArenaTextures } from '../arena/warmArenas';
 import { useAppActive } from '../game/useAppActive';
+import { oneFromWinning } from '../game/musicIntensity';
 import { MIN_TAP, SHAPE, THEME, TYPE } from '../ui/theme';
 import { GAME_VERSION } from '../game/version';
 import { FLIGHT_SECONDS } from '../game/flight';
@@ -1395,6 +1397,13 @@ export function DiceDemoScreen() {
       }),
     [],
   );
+  /*
+    And the sound of it landing — a coin pack, the Gold Pass, No More
+    Ads, a starter pack — once per purchase, wherever it was bought and
+    whenever it arrives. Marc: "give a little nice synthesized excitement
+    when they purchase something". A Restore never fires this.
+  */
+  useEffect(() => onPurchaseGranted(playPurchase), []);
   const [aiFlash, setAiFlash] = useState(false);
   const [playerFlash, setPlayerFlash] = useState(false);
 
@@ -1521,7 +1530,7 @@ export function DiceDemoScreen() {
       flashTimers.current.forEach(clearTimeout);
       if (calloutTimer.current) clearTimeout(calloutTimer.current);
       stopAnnouncer();
-      stopMusic();
+      setMusicScene('none');
     };
   }, []);
 
@@ -2373,21 +2382,72 @@ export function DiceDemoScreen() {
     ];
   }, [setPhaseBoth]);
 
-  // Background music plays through the countdown and the race. The music
-  // level is not a dependency: the player can move that slider mid-battle
-  // and the loop follows it without being restarted (see syncMusic).
+  // Background music, by phase.
+  /*
+    What the music hears. The home screen and every menu under it are the
+    lobby; the countdown and the race are the battle; the result screens
+    are silent until the next choice. The music level is not a
+    dependency: the player can move that slider mid-battle and the loop
+    follows it without being restarted (see syncMusic in sounds.ts) — and
+    a pause or an app switch keeps the same phase, so the same track.
+
+    Not while the two-player screen is up: it says what it wants itself,
+    and this effect speaks again when it closes, so the lobby comes back.
+  */
   useEffect(() => {
-    if (
+    if (twoPlayer) return;
+    if (phase === 'pick') {
+      setMusicScene('lobby');
+    } else if (
       phase === 'matching' ||
       phase === 'arm' ||
       phase === 'go' ||
       phase === 'battle'
     ) {
-      startMusic();
+      setMusicScene('battle');
     } else {
-      stopMusic();
+      setMusicScene('none');
     }
-  }, [phase]);
+  }, [phase, twoPlayer]);
+
+  /*
+    THE BUILD-UP. Marc, 5 Nov 2026: "as there's only like one more player
+    to save then it gets a little bit more intense". The rule is in
+    src/game/musicIntensity.ts; this reads the counts off the same state
+    the scoreboard draws from — the board for my rescues (and in Color War
+    the rival's, by colour), `aiFreed` for the computer's or a friend's —
+    so every mode and every kind of opponent is covered in one place. Once
+    hot the music stays hot for the rest of the battle; a fresh battle
+    starts cool (sounds.ts).
+  */
+  useEffect(() => {
+    if (phase !== 'battle') return;
+    const freed = (kind: PrisonerUnit['station']['kind'], colorId?: PrisonerColorId) =>
+      units.filter(
+        (u) => u.station.kind === kind && (colorId === undefined || u.colorId === colorId),
+      ).length;
+    let mine: number;
+    let theirs: number;
+    let total: number;
+    if (mode === 'colorwar') {
+      const war = warRef.current;
+      if (!war) return;
+      mine = freed('retreat', war.player.id);
+      theirs = freed('retreat', war.ai.id);
+      total = 3;
+    } else if (mode === 'skirmish') {
+      // No count wins Skirmish — it ends when the shared jail is empty, so
+      // the question is whether one prisoner is left in it.
+      total = PRISONER_COLORS.length;
+      mine = total - freed('jail');
+      theirs = 0;
+    } else {
+      mine = freed('retreat');
+      theirs = aiFreed.length;
+      total = PRISONER_COLORS.length;
+    }
+    if (oneFromWinning(mine, theirs, total)) setMusicIntensity(true);
+  }, [phase, mode, units, aiFreed]);
 
   // The AI opponent: fair virtual rolls on a fixed cadence while battling.
   // What a match DOES depends on the mode.
@@ -3438,7 +3498,8 @@ export function DiceDemoScreen() {
         ...queue,
         { picture: bought.picture, name: bought.name, kicker: 'PURCHASED', note: bought.note },
       ]);
-      playFanfare();
+      // Bought, not won: the purchase sound, not the fanfare.
+      playPurchase();
       return;
     }
 
@@ -4689,36 +4750,19 @@ export function DiceDemoScreen() {
               <Text style={styles.bugReportButtonText}>Report a bug</Text>
             </Pressable>
             {/*
-              The two Creative Commons credits. assets/sounds/CREDITS.md
-              lists these as a condition of the licence, not a courtesy —
-              the music and the crowd are CC-BY 4.0, which requires the
-              names to be somewhere a player can actually reach.
-
-              REACHABLE IS NOT THE SAME AS FINDABLE, learned 7 Sep 2026.
-              These sat at the very bottom of a long scroll as two 11pt
-              faint centred lines, immediately above the 11pt faint centred
-              version stamp — three near-identical whispers in a row, with
-              nothing saying which was which. David, who knew they existed
-              and had been told where to look, could not find them. If the
-              person who commissioned them cannot, a licence auditor
-              certainly cannot.
-
-              So they get a heading and a divider like every other section
-              of this panel, and the same ink as the rest of the text.
-              Nothing was added or moved — they are just no longer
-              disguised as a version number.
+              NO SOUND CREDITS HERE, since 5 Nov 2026. There used to be a
+              SOUNDS & MUSIC section naming the Creative Commons music and
+              crowd cheer, because their licence required the names to be
+              somewhere a player can reach. Marc: "take away the music that we had
+              before and take away the credits for it so we don't have to
+              give credits to anyone and all the music in the game is just
+              ours." The music, fanfares, sting, purchase sound and cheer
+              are now the studio's own (tools/music), and what is left —
+              Kenney's dice and announcer — is CC0, which asks for nothing.
+              assets/sounds/CREDITS.md keeps the record; tests/audio.test.ts
+              brings a credit line back here the day that file gains a row
+              marked "attribution required".
             */}
-            <View style={styles.settingsDividerLine} />
-            <Text style={styles.settingsSectionTitle}>SOUNDS &amp; MUSIC</Text>
-            <Text style={styles.creditLine}>
-              Music by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0
-            </Text>
-            <Text style={styles.creditLine}>
-              Crowd cheering by Gregor Quendel, licensed under CC BY 4.0
-            </Text>
-            <Text style={styles.creditLine}>
-              Dice, fanfare and announcer by Kenney (kenney.nl)
-            </Text>
             </ScrollView>
             {/*
               The version, the last row of the panel. It no longer has to
@@ -5245,19 +5289,6 @@ const styles = StyleSheet.create({
     color: THEME.ink,
     fontSize: 14,
     fontWeight: '800',
-  },
-  creditLine: {
-    /*
-      Left-aligned and the same ink as the rest of the panel, which is
-      what separates a credit from the version stamp below it. Centred
-      11pt faint text is exactly what a version number looks like, and
-      that is precisely how these went unnoticed.
-    */
-    marginTop: 8,
-    color: THEME.inkSoft,
-    fontSize: 12.5,
-    lineHeight: 17,
-    fontWeight: '600',
   },
   versionLine: {
     // The one row outside the scroll, so it needs the inset stated rather

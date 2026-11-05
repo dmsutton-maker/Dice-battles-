@@ -62,5 +62,6 @@ is why it needs no cookie banner. `tests/website.test.ts` checks both.
 ## Not in it
 
 No sound: the page autoplays it muted, which is the only way iOS lets a
-video play by itself. The game's music is CC-BY and would need crediting
-on the page if it were ever added.
+video play by itself. The game's music is the studio's own (tools/music),
+so it could be added without crediting anybody — only the muted autoplay
+stands in the way.

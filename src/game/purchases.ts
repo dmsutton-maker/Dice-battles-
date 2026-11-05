@@ -77,6 +77,35 @@ let priceById = new Map<string, string>();
 /** Screens that want to hear when the answer to `storeState()` changes. */
 const listeners = new Set<() => void>();
 
+/** Screens that want to hear the moment a purchase lands (see onPurchaseGranted). */
+const grantedListeners = new Set<() => void>();
+
+/**
+ * Be told when a PURCHASE has just been handed over — a coin pack, the
+ * Gold Pass, No More Ads, a starter pack, any of it — once per purchase,
+ * however it arrived: from the sheet, or an Ask to Buy approved an hour
+ * later. Marc, 5 Nov 2026: "give a little nice synthesized excitement
+ * when they purchase something". A Restore is not a purchase and never
+ * fires this; nor does a Gold Pass level reward or a secret code, which
+ * have their own fanfare. Returns the function that stops listening.
+ */
+export function onPurchaseGranted(listener: () => void): () => void {
+  grantedListeners.add(listener);
+  return () => {
+    grantedListeners.delete(listener);
+  };
+}
+
+function notifyGranted(): void {
+  for (const listener of [...grantedListeners]) {
+    try {
+      listener();
+    } catch {
+      // A sound that fails is never a purchase's problem.
+    }
+  }
+}
+
 /**
  * Be told when what the Store shows, or what the player owns, changes.
  *
@@ -438,6 +467,7 @@ async function grant(product: Product, boughtAt: number = Date.now()): Promise<v
   await persist();
   // After the write, so a screen that reacts by reading finds it all.
   notifyChanged();
+  notifyGranted();
 }
 
 export type BuyResult =
@@ -578,6 +608,8 @@ function testerBuy(product: Product): BuyResult {
     markCheated();
     notifyChanged();
   }
+  // It lands like a purchase on the screen, so it sounds like one.
+  notifyGranted();
   return { ok: true, product, tester: true };
 }
 
