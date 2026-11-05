@@ -465,8 +465,11 @@ suite('ads · an ad can never cost a player anything', () => {
       /showAdIfDue\(\{ wait: true \}\)/.test(screen),
       'starting a battle no longer waits for a due ad',
     );
+    // Since v1.170.0 the battle's wait is `willWait`: options.wait, and
+    // not already waited for in vain this session. The menu never waits.
     assert(
-      /if \(!options\.wait\) return false;/.test(source),
+      /const willWait = options\.wait === true && !waitedInVain;/.test(source) &&
+        /if \(!willWait\) return false;/.test(source),
       'the two callers are no longer told apart',
     );
   });
@@ -749,5 +752,34 @@ suite('release · every native package is gated, not just the ad SDK', () => {
     for (const [pkg, why] of Object.entries(SAFE_TO_LOAD)) {
       assert(why.length > 40, `${pkg} is exempted with no real reason given`);
     }
+  });
+});
+
+suite('ads · Play waits for an advert once a session, and never twelve seconds', () => {
+  /*
+    Marc, 5 Nov 2026: "after i win and hit the play button again there is
+    a long delay till it starts". A due advert stays owed until one is
+    shown, so when none ever arrived every Play waited again — and
+    starting the SDK and fetching the advert were six seconds EACH. The
+    SDK is absent in node, so the waiting path cannot run here; this
+    holds the source to the rule instead.
+  */
+  const ads = readFileSync(join(__dirname, '..', 'src', 'game', 'ads.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '');
+  const once = ads.slice(ads.indexOf('async function showAdIfDueOnce'), ads.indexOf('export function adStatus'));
+
+  test('one deadline covers starting the SDK and fetching the advert', () => {
+    assert(once.includes('const deadline = Date.now() + AD_LOAD_WAIT_MS;'), 'one deadline');
+    assertEqual((once.match(/AD_LOAD_WAIT_MS/g) ?? []).length, 1, 'AD_LOAD_WAIT_MS used once, for the deadline');
+    assert(once.includes('setTimeout(resolve, left())') && once.includes('waitForAd(left())'), 'both waits use what is left');
+  });
+
+  test('an empty wait is not paid again until an advert loads', () => {
+    assert(once.includes('const willWait = options.wait === true && !waitedInVain;'), 'the wait is skipped after one came up empty');
+    assertEqual((once.match(/waitedInVain = true;/g) ?? []).length, 2, 'both empty waits mark it');
+    assert(/AdEventType\.LOADED, \(\) => \{\s*loaded = true;\s*waitedInVain = false;/.test(ads), 'an advert loading clears it');
+    const reset = ads.slice(ads.indexOf('export function resetAdsForTest'));
+    assert(reset.includes('waitedInVain = false;'), 'the test reset clears it');
   });
 });

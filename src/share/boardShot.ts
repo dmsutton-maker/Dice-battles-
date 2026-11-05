@@ -1,34 +1,38 @@
 import { ExpoWebGLRenderingContext, GLView } from 'expo-gl';
-import type { WebGLRenderer } from 'three';
-import { readyForReset } from './glReset';
+import * as THREE from 'three';
+import type { Camera, Object3D, WebGLRenderer } from 'three';
 import { keepOnly } from './tempFiles';
 
 /**
  * The board, the moment a battle is won: dice where they landed,
  * before the result screen draws over anything.
  *
- * Taken from the game's own GL context — the one the r3f Canvas draws
- * into — through expo-gl's `takeSnapshotAsync`, which reads the pixels
- * and writes a JPEG natively. Nothing is composed and nothing is
- * encoded in JavaScript here; this has to be cheap, because it runs in
- * the same tick as the fanfare.
+ * DRAWN AGAIN, NOT COPIED, since v1.170.0. The first version copied the
+ * screen: it blitted the view's multisampled framebuffer into one of its
+ * own and had expo-gl write that out. On Marc's iPhone (5 Nov 2026) the
+ * board in the card came out pure white, while the card's own artwork,
+ * drawn the other way, was fine. What a phone keeps in the screen's
+ * buffer once a frame has been shown is the driver's business, and
+ * nothing here can watch it. So the scene is drawn once more, by three,
+ * into a render target of our own, and the snapshot reads that.
  *
- * WHY THE BLIT. The context's default framebuffer is the view's
- * MULTISAMPLED one (fiber asks expo-gl for 4x MSAA, and GLView.swift
- * hands that framebuffer back as the default). `glReadPixels` cannot
- * read a multisampled framebuffer — it is an error, and the file would
- * be noise — so the frame is first resolved into a plain framebuffer of
- * our own with `blitFramebuffer`, exactly as expo-gl itself resolves it
- * before presenting, and the snapshot reads from that. Orientation is
- * untouched by the blit, so the file comes out the way the screen looks.
+ * DRAWN EXACTLY AS THE SCREEN IS. three draws a render target in linear
+ * colour with no tone mapping, which would make a darker, flatter board
+ * than the one on screen. Marked `isXRRenderTarget`, the target gets the
+ * screen's treatment instead: the renderer's tone mapping, and output
+ * encoded to the target texture's colour space (sRGB) in the shader,
+ * the very same shader programs the screen uses, so nothing is compiled
+ * at the moment of the win. The storage is forced to plain `RGBA8`;
+ * left to follow the sRGB colour space it would be an sRGB texture and
+ * the hardware would encode the already-encoded colour a second time.
  *
- * Every GL call is followed by `renderer.resetState()`, which is three's
- * way of being told that something else used its context. Without it
- * three's cached bindings would disagree with the real ones on the next
- * frame. On a phone that call THREW halfway until v1.167.0 and left the
- * depth test off for the rest of the session: see glReset.ts. Nothing
- * here touches the context unless `readyForReset` says the reset will
- * run to the end.
+ * Single-sampled: expo-gl does not implement multisampled renderbuffers
+ * (`renderbufferStorageMultisample`), so the picture has no antialiasing.
+ * At the phone's own resolution that is barely visible in a share card.
+ *
+ * Every GL call is three's, so three's record of the GL state stays
+ * true; no `resetState()` is needed. (It used to be called here, and on
+ * a phone it threw halfway and broke the board: see glReset.ts.)
  *
  * Nothing here throws. A board that could not be captured is simply no
  * share button on the result screen.
@@ -58,43 +62,72 @@ export function snapshotUri(snap: { uri: unknown; localUri: unknown }): string |
   return null;
 }
 
+/** The GL framebuffer three made for `target`, for a snapshot to read. */
+export function framebufferOf(renderer: WebGLRenderer, target: THREE.WebGLRenderTarget): WebGLFramebuffer | null {
+  try {
+    const fb = (renderer.properties.get(target) as { __webglFramebuffer?: unknown }).__webglFramebuffer;
+    return fb && typeof fb === 'object' ? (fb as WebGLFramebuffer) : null;
+  } catch {
+    return null;
+  }
+}
+
+/* Each board's scene and camera, by its renderer, from the Canvas's onCreated. */
+const views = new WeakMap<WebGLRenderer, { scene: Object3D; camera: Camera }>();
+
+/** Remember what `renderer` draws, so a win can draw it again. */
+export function rememberView(renderer: WebGLRenderer, scene: Object3D, camera: Camera): void {
+  views.set(renderer, { scene, camera });
+}
+
+/**
+ * The scene drawn as the screen draws it, into a render target the
+ * size of the screen. Returns the target; the caller reads it and
+ * disposes it. Exported for the browser check.
+ */
+export function drawBoard(
+  renderer: WebGLRenderer,
+  scene: Object3D,
+  camera: Camera,
+  width: number,
+  height: number,
+): THREE.WebGLRenderTarget {
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    depthBuffer: true,
+    stencilBuffer: false,
+    generateMipmaps: false,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    colorSpace: THREE.SRGBColorSpace,
+  });
+  // Plain bytes, encoded once, by the shader (see the note at the top).
+  target.texture.internalFormat = 'RGBA8';
+  (target as unknown as { isXRRenderTarget: boolean }).isXRRenderTarget = true;
+  const before = renderer.getRenderTarget();
+  try {
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+  } finally {
+    renderer.setRenderTarget(before);
+  }
+  return target;
+}
+
 export async function captureBoard(renderer: WebGLRenderer | null): Promise<BoardShot | null> {
   const gl = contextOf(renderer);
   if (!gl || !renderer) return null;
+  const view = views.get(renderer);
+  if (!view) return null;
   const width = gl.drawingBufferWidth;
   const height = gl.drawingBufferHeight;
   if (!(width > 0 && height > 0)) return null;
-  // Before ANY GL call: a reset that throws breaks the board (glReset.ts).
-  if (!readyForReset(gl, renderer.domElement)) return null;
 
-  let texture: WebGLTexture | null = null;
-  let framebuffer: WebGLFramebuffer | null = null;
+  let target: THREE.WebGLRenderTarget | null = null;
   let shot: BoardShot | null = null;
   try {
-    texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-    const complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
-
-    if (complete) {
-      // Resolve the view's multisampled frame into ours. `null` is the
-      // default framebuffer on expo-gl, for the read target as for any.
-      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, framebuffer);
-      gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-    }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    renderer.resetState();
-
-    if (complete) {
+    target = drawBoard(renderer, view.scene, view.camera, width, height);
+    const framebuffer = framebufferOf(renderer, target);
+    if (framebuffer) {
       const snap = await GLView.takeSnapshotAsync(gl, {
         framebuffer,
         rect: { x: 0, y: 0, width, height },
@@ -108,9 +141,7 @@ export async function captureBoard(renderer: WebGLRenderer | null): Promise<Boar
     shot = null;
   } finally {
     try {
-      if (framebuffer) gl.deleteFramebuffer(framebuffer);
-      if (texture) gl.deleteTexture(texture);
-      renderer.resetState();
+      target?.dispose();
     } catch {
       // The context is gone; so is everything in it.
     }

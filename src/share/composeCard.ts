@@ -3,7 +3,7 @@ import { Image } from 'react-native';
 import * as THREE from 'three';
 import type { WebGLRenderer } from 'three';
 import { THEME } from '../ui/theme';
-import { BoardShot, contextOf, snapshotUri } from './boardShot';
+import { BoardShot, contextOf, framebufferOf, snapshotUri } from './boardShot';
 import { loadShareArt } from './shareArt';
 import { SHARE_ART_SIZES } from './shareArtManifest';
 import { CARD, DrawItem, hexTint, layoutCard, ShareResult } from './shareCard';
@@ -171,16 +171,6 @@ function sizeOfFile(uri: string, fallback: { width: number; height: number }): P
       resolve(fallback);
     }
   });
-}
-
-/** The GL framebuffer three made for `target`, for the snapshot to read. */
-function framebufferOf(renderer: WebGLRenderer, target: THREE.WebGLRenderTarget): WebGLFramebuffer | null {
-  try {
-    const fb = (renderer.properties.get(target) as { __webglFramebuffer?: unknown }).__webglFramebuffer;
-    return fb && typeof fb === 'object' ? (fb as WebGLFramebuffer) : null;
-  } catch {
-    return null;
-  }
 }
 
 export async function composeWinCard(

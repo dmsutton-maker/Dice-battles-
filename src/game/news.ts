@@ -117,6 +117,17 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-170-0-board-in-picture',
+    date: '5 November 2026',
+    version: 'v1.170.0',
+    title: 'Your winning board is in the picture, and Play starts sooner',
+    icon: 'look',
+    body:
+      'The "Share your win" picture now shows your winning board behind the ' +
+      'VICTORY! banner, instead of a white space. And pressing Play after a ' +
+      'game no longer sits waiting for an advert that is not coming.',
+  },
+  {
     id: 'v1-169-0-one-invite-link',
     date: '5 November 2026',
     version: 'v1.169.0',

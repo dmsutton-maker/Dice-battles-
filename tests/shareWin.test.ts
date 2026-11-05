@@ -395,8 +395,7 @@ suite('share your win · the screens', () => {
       assert(calls.length >= 1, `${file} takes a snapshot`);
       for (const call of calls) assert(call.includes('framebuffer'), `${file}: a snapshot without a framebuffer`);
     }
-    assert(code('src/share/boardShot.ts').includes('blitFramebuffer('), 'the frame is resolved with a blit first');
-    assert(code('src/share/boardShot.ts').includes('resetState()'), 'three is told its context was borrowed');
+    assert(code('src/share/boardShot.ts').includes('framebufferOf(renderer, target)'), 'the snapshot reads our own target');
   });
 });
 
@@ -436,13 +435,29 @@ suite('share your win · never breaks the board', () => {
     assert(!readyForReset({}, undefined), 'nothing to size it by');
   });
 
-  test('the board capture asks before its first GL call', () => {
-    const whole = code('src/share/boardShot.ts');
-    const text = whole.slice(whole.indexOf('export async function'));
-    const ready = text.indexOf('readyForReset(gl, renderer.domElement)');
-    const firstGl = text.search(/gl\.(create|bind|texImage2D|blitFramebuffer)/);
-    assert(ready > 0, 'boardShot asks readyForReset');
-    assert(ready < firstGl, 'readyForReset comes before the first GL call');
+  test('the board is drawn again by three, as the screen draws it, not copied from the screen', () => {
+    /*
+      Marc, 5 Nov 2026: the board in the card came out pure white. It was
+      copied from the screen's multisampled buffer, whose contents after
+      a frame is shown are the driver's business. Now three draws the
+      scene once more into a target of our own.
+    */
+    const shot = code('src/share/boardShot.ts');
+    for (const raw of ['blitFramebuffer', 'resetState', 'gl.createTexture', 'gl.bindFramebuffer']) {
+      assert(!shot.includes(raw), `boardShot.ts calls ${raw} itself`);
+    }
+    assert(shot.includes('new THREE.WebGLRenderTarget('), 'a render target of its own');
+    assert(shot.includes('isXRRenderTarget = true'), 'tone-mapped and sRGB-encoded like the screen');
+    assert(shot.includes("internalFormat = 'RGBA8'"), 'stored as plain bytes, so the colour is not encoded twice');
+    assert(shot.includes('colorSpace: THREE.SRGBColorSpace'), 'encoded to sRGB in the shader');
+    assert(!/samples:/.test(shot), 'single-sampled: expo-gl has no renderbufferStorageMultisample');
+    assert(shot.includes('renderer.setRenderTarget(before)'), 'the screen is put back afterwards');
+    assert(shot.includes('target?.dispose()'), 'and the target freed');
+    for (const file of ['src/demo/DiceDemoScreen.tsx', 'src/demo/TwoPlayerScreen.tsx']) {
+      const text = code(file);
+      const created = text.slice(text.indexOf('onCreated='), text.indexOf('onCreated=') + 500);
+      assert(created.includes('rememberView(gl, scene, camera)'), `${file}: the board's scene is remembered for the win`);
+    }
   });
 
   test('the card is drawn by three, not by raw GL calls of its own', () => {

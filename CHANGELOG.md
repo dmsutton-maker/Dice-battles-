@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.170.0 — 2026-11-05 · requested by Marc
+
+Marc, 5 Nov 2026, with a screenshot: "Share still not good" (the card's art
+drew, the board was pure white), and "after i win and hit the paly button again
+there is a long delay till it starts". Runtime 4.0.0: JS only.
+
+### Fixed
+- **The board in the share card was white.** It was copied from the view's
+  multisampled framebuffer, whose contents after a present are not ours to
+  rely on. `boardShot.ts` now has three draw the scene again into a render
+  target (`drawBoard`), marked `isXRRenderTarget` so it gets the screen's tone
+  mapping and sRGB output in the same shader programs (nothing compiles at the
+  win), stored as plain `RGBA8` so the colour is not encoded twice;
+  single-sampled because expo-gl does not implement
+  `renderbufferStorageMultisample`. Screens register their scene and camera
+  (`rememberView`) in `onCreated`. Browser check: mean difference from the
+  screen 1.0 of 255, edges only (no antialiasing).
+- **Play could sit for up to twelve seconds with nothing on screen.** With an
+  advert due, Play waited up to 6 s for the ad SDK to start and then up to 6 s
+  more for an advert, and because a due advert stays owed, every Play paid it
+  again when none ever came. Now one 6 s deadline covers both, and once a wait
+  has come up empty Play stops waiting for the rest of the session (an advert
+  that loads in the background still shows). Tests: ads.test.ts.
+
 ## v1.169.0 — 2026-11-05 · requested by Marc
 
 Marc, 5 Nov 2026, with a screenshot: "When you share your friend code it's

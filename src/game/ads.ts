@@ -370,6 +370,7 @@ function preload(): void {
     });
     ad.addAdEventListener(mod.AdEventType.LOADED, () => {
       loaded = true;
+      waitedInVain = false;
     });
     ad.addAdEventListener(mod.AdEventType.ERROR, () => {
       // No fill, no network, a bad unit id — drop it and try again after
@@ -456,6 +457,19 @@ export function noteGameFinished(): void {
  * phone in a tunnel is a pause rather than a hang.
  */
 const AD_LOAD_WAIT_MS = 6000;
+
+/**
+ * A wait for an advert has already come up empty this session.
+ *
+ * Marc, 5 Nov 2026: "after i win and hit the play button again there is
+ * a long delay till it starts". A due ad stays owed until one is shown,
+ * so when none ever arrives (no connection, no ad to serve before the
+ * app is live) EVERY Play paid the wait again, with nothing on screen.
+ * So Play waits for an advert once per session; after that it takes one
+ * only if it is already in hand, which a background fetch can still
+ * manage. Cleared as soon as an advert does load.
+ */
+let waitedInVain = false;
 
 /** Stop two callers showing the same ad twice. */
 let showing = false;
@@ -551,6 +565,12 @@ async function showAdIfDueOnce(
   }
 
   showing = true;
+  // Wait only once a session, and for one deadline across both waits
+  // below: starting the SDK and fetching the advert used to be six
+  // seconds EACH, twelve in all, with Play doing nothing.
+  const willWait = options.wait === true && !waitedInVain;
+  const deadline = Date.now() + AD_LOAD_WAIT_MS;
+  const left = () => Math.max(0, deadline - Date.now());
   try {
     /*
       Start the SDK if it is not started. This is the moment to have
@@ -565,7 +585,11 @@ async function showAdIfDueOnce(
         it — an advert that appeared six seconds later, over the menu,
         out of nothing, would be worse than no advert.
       */
-      if (!options.wait) return false;
+      if (!willWait) {
+        // Still started, in the background, for the next time.
+        if (options.wait) void initAds();
+        return false;
+      }
       /*
         Bounded like the load wait below. initAds waits on the consent
         form and the SDK's own start-up, which on a bad connection can
@@ -575,17 +599,21 @@ async function showAdIfDueOnce(
       */
       await Promise.race([
         initAds(),
-        new Promise<void>((resolve) => setTimeout(resolve, AD_LOAD_WAIT_MS)),
+        new Promise<void>((resolve) => setTimeout(resolve, left())),
       ]);
     }
-    if (!ready) return false;
+    if (!ready) {
+      waitedInVain = true;
+      return false;
+    }
 
     // Ask for one if there is not one in hand, then wait a little.
     preload();
     if (!(loaded && interstitial)) {
-      if (!options.wait) return false;
-      const arrived = await waitForAd(AD_LOAD_WAIT_MS);
+      if (!willWait) return false;
+      const arrived = await waitForAd(left());
       if (!arrived) {
+        waitedInVain = true;
         /*
           `adDue` is deliberately LEFT SET. The advert is still owed and
           the next way out of a result screen will try again, rather than
@@ -671,6 +699,7 @@ export function resetAdsForTest(): void {
   stage = 'not-started';
   starting = null;
   showing = false;
+  waitedInVain = false;
   inFlight = null;
   interstitial = null;
   loaded = false;

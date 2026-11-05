@@ -45,7 +45,7 @@ import {
 import { BattleClock } from './BattleClock';
 import { MIN_TAP, SHAPE, THEME } from '../ui/theme';
 import type { WebGLRenderer } from 'three';
-import { BoardShot, captureBoard } from '../share/boardShot';
+import { BoardShot, captureBoard, rememberView } from '../share/boardShot';
 import { composeWinCard } from '../share/composeCard';
 import { readyForReset } from '../share/glReset';
 import { cardLines, CardLines, ShareResult } from '../share/shareCard';
@@ -296,9 +296,10 @@ function ZoneView({
               : 'never'
         }
         camera={{ position: [0, 10.5, 5.6], fov: 46 }}
-        onCreated={({ camera, gl }) => {
+        onCreated={({ camera, gl, scene }) => {
           camera.lookAt(0, 0, -0.2);
           rendererRef.current = gl;
+          rememberView(gl, scene, camera);
           // See src/share/glReset.ts: a phone's context has no canvas.
           readyForReset(gl.getContext(), gl.domElement);
         }}
