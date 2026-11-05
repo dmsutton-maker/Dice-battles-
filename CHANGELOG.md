@@ -1,5 +1,55 @@
 # Changelog
 
+## v1.161.0 — 2026-11-05 · requested by Marc
+
+Marc's four requests of 5 Nov 2026, merged from feature/shelf-preview-loading,
+feature/retire-tennis, feature/llc and feature/card-pictures. Runtime 4.0.0
+(build 18).
+
+### Fixed
+- **No more blank cards or a frozen second** (Marc: "many dice icons are
+  not showing at first ... about a second where the screen is the page it
+  was on, no words at the top ... Make it load better, or give a very
+  brief loading thing"). A Shop or Inventory card without its picture yet
+  shows a soft sweep of light instead of a flat square; the open tab's
+  cards are painted first (a card used to push itself to the FRONT of
+  the queue as it mounted, which painted the bottom of the shelf first:
+  the Shop's first eighteen cards took 12.4 s, now 0.5 s), behind the
+  die in hand and the ladder's next die; and the slice grows to 12 ms
+  (`SHELF_SLICE_MS`) while only a shelf tab is on screen. A preview
+  never paints on the render path any more: `src/dice/previewLoad.ts`
+  gives the board only an item whose pictures are cached, and anything
+  else opens its name, button and a spinner at once and is painted in
+  `LOAD_SLICE_MS` slices (`PreviewLoading.tsx`). Tests:
+  `previewLoad.test.ts`.
+- **The Tiger, Chicken and Waffles and Watermelon cards** (Marc: "Fix the
+  icons for the tiger, chicken and waffles, and watermelon dice"). Each
+  card showed the die's front side as a flat crop: slabs of stripe,
+  washed-out bands, drumsticks cut off by the edge. `CARD_SAMPLERS` in
+  patterns.ts composes those three cards from the same painters: the
+  tiger pulled back so the stripes are thinner and more, the melon
+  pulled back with its bands pushed apart, and the waffle with two whole
+  drumsticks in fixed places (`CARD_DRUMSTICKS`). The dice on the board
+  are untouched.
+
+### Changed
+- **Leopard and Tiger paint eight and six times faster** (found while
+  measuring the loading fix: they were the two slowest dice to paint,
+  4.0 s and 2.2 s for six sides in node on a desktop, now 0.5 s and
+  0.4 s). The fur is asked once per texel and only the markings are
+  supersampled; the rosettes' fixed parts are kept per cell; and
+  `wrappedNoise` reads its lattice from a table instead of four sines
+  per octave, which is the same picture bit for bit for every die (the
+  six sides of every die together: 11.1 s to 5.7 s).
+- **Tennis Ball retired** (Marc: "Take tennis ball out the same way you
+  did with the other balls"): off the shelf and every count, seen only in
+  admin mode; anyone who bought it gets its 395 coins back the next time
+  the game opens, through the same refund as the six ball dice.
+- **Paper Ship Studio LLC** (Marc: "we're now Paper Ship Studio LLC"):
+  the About text, the website footer, the privacy policy and the terms
+  name the LLC, with Paper Ship Studio™ and Dice Battles: Color Rush™ as
+  its trademarks.
+
 ## v1.160.0 — 2026-11-04 · requested by Marc
 
 Marc chose option C of four on the Ocean design canvas ("do option c

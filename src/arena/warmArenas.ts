@@ -1,4 +1,4 @@
-import { cachedTexture, PAINT_BUDGET_MS } from './textureCache';
+import { cachedTexture, hasCachedTexture, PAINT_BUDGET_MS } from './textureCache';
 import { ARENA_THEMES, ThemedArenaId } from './themeData';
 import { paintThemedSurfaces, themedSurfaceJobs } from './ThemedArena';
 import { jungleFloorJob } from './jungleFloorTexture';
@@ -103,7 +103,9 @@ const BESPOKE_LAUNCH: Record<string, () => (Step | null)[]> = {
   ],
 };
 
-function textureStep(key: string, make: () => import('three').Texture): Step {
+/** Null once cached, like every other job, so "nothing left" can be asked. */
+function textureStep(key: string, make: () => import('three').Texture): Step | null {
+  if (hasCachedTexture(key)) return null;
   return {
     step() {
       cachedTexture(key, make);

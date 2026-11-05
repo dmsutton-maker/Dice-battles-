@@ -20,10 +20,12 @@ import { setsOwned } from '../src/game/achievements';
  */
 const NOV = Date.UTC(2026, 10, 4, 12);
 
-const BALLS = ['baseball', 'soccer', 'basketball', 'football', 'bowling', 'volleyball'];
+// The six ball dice of v1.158.0, and the Tennis Ball since 5 Nov 2026
+// (Marc: "Take tennis ball out the same way you did with the other balls").
+const BALLS = ['baseball', 'soccer', 'basketball', 'football', 'bowling', 'volleyball', 'tennis'];
 
-suite('retired dice · the six ball dice are nobody\'s to get any more', () => {
-  test('all six are retired, and a retired die has no price, rung, prize, pass or product', () => {
+suite('retired dice · the seven ball dice are nobody\'s to get any more', () => {
+  test('all seven are retired, and a retired die has no price, rung, prize, pass or product', () => {
     for (const id of BALLS) assert(skinById(id).retired === true, `${id} is not marked retired`);
     assertEqual(RETIRED_SKINS.length, BALLS.length, 'something else is retired too');
     for (const skin of RETIRED_SKINS) {

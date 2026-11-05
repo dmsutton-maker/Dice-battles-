@@ -30,6 +30,7 @@ async function main(): Promise<void> {
   await import('./retiredDice.test');
   await import('./battleMenu.test');
   await import('./fastStart.test');
+  await import('./previewLoad.test');
   await import('./friendlyBattle.test');
   await import('./friendlyServer.test');
   await import('./matchServer.test');

@@ -69,11 +69,11 @@ const firstIds: string[] = [];
  * Paint these shelf pictures before any other.
  *
  * The loading screen asks for the first screenful of the Store and the
- * Inventory, so the first tap on either finds its cards already drawn;
- * a card that comes on screen before its picture is painted asks for
- * its own (DiceSwatch). Returns whether a warm-up is running that will
- * get to them — false means nothing is painting and the caller must
- * paint for itself.
+ * Inventory, so the first tap on either finds its cards already drawn,
+ * and the game screen asks again for a shelf's cards, in the order they
+ * are shown, the moment that tab opens. Returns whether a warm-up is
+ * running that will get to them — false means nothing is painting and
+ * the caller must paint for itself.
  */
 export function prioritiseShelfPictures(ids: readonly string[]): boolean {
   for (let i = ids.length - 1; i >= 0; i--) {
@@ -82,6 +82,40 @@ export function prioritiseShelfPictures(ids: readonly string[]): boolean {
     firstIds.unshift(ids[i]);
   }
   return started && !finished;
+}
+
+/**
+ * A card waiting for its picture: paint it after what was asked for
+ * first, without moving anything already asked for.
+ *
+ * Marc, 5 Nov 2026: "When I load the game and go to shop and inventory
+ * many dice icons are not showing at first." Every card used to call
+ * prioritiseShelfPictures for itself as it mounted. Both pages are built
+ * hidden at once, so every card mounted in one go and each pushed itself
+ * to the FRONT: the shelf was painted bottom card first, the
+ * Inventory's last die before the Store's first. Cards now only join the
+ * back of the queue, in the order they appear, and the open tab decides
+ * what goes in front. Returns what prioritiseShelfPictures does.
+ */
+export function wantShelfPicture(id: string): boolean {
+  if (!firstIds.includes(id)) firstIds.push(id);
+  return started && !finished;
+}
+
+/**
+ * The order a shelf tab's pictures are painted in when it opens: the die
+ * in your hand and the ladder's next die first (both on the home screen
+ * as well), then the tab's cards top to bottom. Each once.
+ */
+export function shelfPaintOrder(
+  first: readonly (string | null | undefined)[],
+  shelf: readonly string[],
+): string[] {
+  const order: string[] = [];
+  for (const id of [...first, ...shelf]) {
+    if (id && !order.includes(id)) order.push(id);
+  }
+  return order;
 }
 
 /** Whether every one of these shelf pictures is painted. */
@@ -311,6 +345,11 @@ export function resetWarmForTest(): void {
   finished = false;
   startedFaces = false;
   firstIds.length = 0;
+}
+
+/** Test seam: the pictures asked for, in the order they will be painted. */
+export function shelfQueueForTests(): string[] {
+  return [...firstIds];
 }
 
 /**
