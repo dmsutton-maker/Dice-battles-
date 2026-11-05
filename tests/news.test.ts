@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { store } from './storageMock';
 import { assert, assertEqual, note, suite, test } from './harness';
 import {
@@ -6,6 +8,7 @@ import {
   NEWS,
   NEWS_ICON_IDS,
   newsIconId,
+  newsIsMajor,
   NewsItem,
 } from '../src/game/news';
 import { GAME_VERSION } from '../src/game/version';
@@ -280,5 +283,83 @@ suite('news · every post has a drawn picture', () => {
     const merged = mergeNews([], [{ ...post('from-the-board'), icon: undefined }]);
     assertEqual(merged.length, 1, 'a post with no picture was dropped');
     assertEqual(newsIconId(merged[0].icon), 'news', 'it should fall back to plain news');
+  });
+});
+
+/**
+ * Big updates (`major`), and the News tab reading as headlines.
+ *
+ * Marc, 5 Nov 2026: "put it on the news tab and make it to where you can
+ * click on it to see the whole thing, but major updates should be a pop
+ * up when you open the app for the first time since the update came out."
+ */
+suite('news · big updates and collapsed posts', () => {
+  test('there are major posts, and the examples are the ones meant', () => {
+    const major = NEWS.filter((n) => newsIsMajor(n));
+    assert(major.length > 0, 'no post is marked major');
+    for (const id of ['v1-159-0-online', 'v1-161-0-loading']) {
+      assert(newsIsMajor(NEWS.find((n) => n.id === id)), `${id} should be major`);
+    }
+    note(`${major.length} major posts`);
+  });
+
+  test('at most one major post per version, and it leads that version', () => {
+    // whatsNewToShow reads the NEWEST post for a version, so a major post
+    // sitting second would never pop up.
+    const seen = new Set<string>();
+    for (const item of NEWS) {
+      if (!item.version) continue;
+      const first = !seen.has(item.version);
+      seen.add(item.version);
+      if (!newsIsMajor(item)) continue;
+      assert(first, `${item.id} is major but is not the first post for ${item.version}`);
+    }
+    for (const version of seen) {
+      const majors = NEWS.filter((n) => n.version === version && newsIsMajor(n));
+      assert(majors.length <= 1, `${version} has ${majors.length} major posts`);
+    }
+  });
+
+  test('a post from the board with an odd major survives and is not major', () => {
+    for (const junk of [undefined, null, 'yes', 1, 'true', {}]) {
+      const merged = mergeNews([], [{ ...post('odd'), major: junk } as unknown as NewsItem]);
+      assertEqual(merged.length, 1, `major: ${JSON.stringify(junk)} dropped the post`);
+      assert(!newsIsMajor(merged[0]), `major: ${JSON.stringify(junk)} counted as major`);
+    }
+    assert(newsIsMajor({ ...post('real'), major: true }), 'major: true was not major');
+    assert(!newsIsMajor(null) && !newsIsMajor('post'), 'a non-post counted as major');
+  });
+
+  test('the News tab shows each post collapsed, and a tap opens it', () => {
+    const screen = readFileSync(join(__dirname, '..', 'src/demo/NewsScreen.tsx'), 'utf8');
+    assert(
+      /numberOfLines=\{expanded \? undefined : COLLAPSED_LINES\}/.test(screen),
+      'the body is not cut to a few lines until opened',
+    );
+    assert(/LayoutAnimation\.configureNext/.test(screen), 'opening a post does not animate');
+    assert(
+      /<Pressable[\s\S]{0,200}onPress=\{\(\) => toggle\(item\.id\)\}[\s\S]{0,100}accessibilityRole="button"/.test(screen),
+      'a post card is not a button that toggles it',
+    );
+  });
+
+  test('the big-update popup waits for the saved game and never joins the tutorial', () => {
+    const game = readFileSync(join(__dirname, '..', 'src/demo/DiceDemoScreen.tsx'), 'utf8');
+    assert(
+      /const big = tutorialSeen \? whatsNewToShow\(lastSeenVersion, GAME_VERSION, NEWS, tutorialSeen\) : null;/.test(game),
+      'the popup can be chosen on the same launch as the tutorial',
+    );
+    assert(
+      /if \(big\) setWhatsNewPost\(big\);\s*else markNewsSeen\(GAME_VERSION\);/.test(game),
+      'a launch that shows nothing does not record the version',
+    );
+    assert(
+      /if \(!hydrated \|\| !launched \|\| !whatsNewPost\) return;\s*setPopup\(\(open\) => open \?\? 'whatsnew'\);/.test(game),
+      'the popup can open before the saved game is in and the loading screen has lifted',
+    );
+    assert(
+      /onNews=\{\(\) => \{\s*newsSeen\(\);/.test(game),
+      'opening the News tab does not count as seeing the update',
+    );
   });
 });

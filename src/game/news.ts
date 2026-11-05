@@ -86,6 +86,33 @@ export interface NewsItem {
   body: string;
   /** Set when the post is about a released version. */
   version?: string;
+  /**
+   * A BIG update: the post opens by itself, once, the first time the game
+   * starts after that version arrives (src/game/whatsNew.ts). Everything
+   * else waits in the News tab for whoever looks.
+   *
+   * Mark a post major when it is a new way to play, or a change every
+   * player will notice the moment they open the game: online battles, a
+   * new mode, the Shop no longer opening on blank squares. Not for one
+   * redrawn die, one new item or a quiet fix, however welcome; a popup
+   * on every update is a popup nobody reads. At most one major post per version, and it is
+   * the first post for that version (`npm test` checks both).
+   *
+   * Read it through newsIsMajor, never directly: a post from the board
+   * can carry anything in this field.
+   */
+  major?: true;
+}
+
+/**
+ * Whether a post is a big update, whatever the post actually contains.
+ *
+ * The same tolerance as newsIconId: a post from the board is written in a
+ * browser, so a missing field, "yes", 1 or anything else odd is simply
+ * not major rather than a reason to drop the post.
+ */
+export function newsIsMajor(item: unknown): boolean {
+  return typeof item === 'object' && item !== null && (item as Record<string, unknown>).major === true;
 }
 
 export const NEWS: NewsItem[] = [
@@ -95,6 +122,8 @@ export const NEWS: NewsItem[] = [
     version: 'v1.161.0',
     title: 'Faster to load, and better cards',
     icon: 'speed',
+    // Every player sees it the moment they open the Shop.
+    major: true,
     body:
       'The Shop and the Inventory no longer open with blank squares: a ' +
       'card shows a soft shimmer until its picture is ready, and the ' +
@@ -124,6 +153,8 @@ export const NEWS: NewsItem[] = [
     version: 'v1.159.0',
     title: 'Battle real players',
     icon: 'people',
+    // A new way to play.
+    major: true,
     body:
       'From 100 trophies, Color Rush and Ultimate look for a real ' +
       'player first. You will see "Searching for an opponent" with a ' +

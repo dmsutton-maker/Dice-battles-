@@ -190,7 +190,9 @@ import { rangeLabel } from '../game/rewards';
 import { StatsHud } from './StatsHud';
 import { BottomNav, useBottomNavHeight, Tab } from './BottomNav';
 import { useBottomInset, useHudFrame } from '../game/safeArea';
-import { NewsScreen } from './NewsScreen';
+import { NewsScreen, WhatsNew } from './NewsScreen';
+import { NEWS, NewsItem } from '../game/news';
+import { loadLastSeenVersion, markNewsSeen, whatsNewToShow } from '../game/whatsNew';
 import { Popup } from './Popup';
 import { TopButtons } from './TopButtons';
 import { ItemPreviewBar } from './ItemPreviewBar';
@@ -352,13 +354,14 @@ export function DiceDemoScreen() {
       loadWallet(),
       loadColorblindMode(),
       loadTutorialSeen(),
+      loadLastSeenVersion(),
       // The shelf pictures and the equipped die kept from the last
       // launch of this version (shelfStore.ts, keptTextures.ts), so the
       // loading screen need not paint them again.
       loadShelfPictures(),
       loadKeptTextures(),
     ])
-      .then(([audio, saved, progress, purse, cb, tutorialSeen]) => {
+      .then(([audio, saved, progress, purse, cb, tutorialSeen, lastSeenVersion]) => {
         setAudioPrefs(audio);
         setLoadout(saved);
         setWallet(purse);
@@ -428,6 +431,21 @@ export function DiceDemoScreen() {
         // that — it stays behind the ❓ for whoever picks the phone up in
         // six months and has no idea what any of this is.
         if (!tutorialSeen) setPopup('howto');
+        /*
+          WHAT'S NEW (whatsNew.ts). Marc, 5 Nov 2026: "major updates
+          should be a pop up when you open the app for the first time
+          since the update came out." Never on the same launch as the
+          tutorial, which wins; the version is still recorded, so the
+          tutorial's player is not told about it next time either. The
+          post waits here and opens once the loading screen has lifted
+          (the effect beside `launched`); any launch that shows nothing
+          records the version now, so the NEXT big update still shows.
+          A phone with no version recorded but the tutorial seen has
+          played before this record existed: a returning player, told.
+        */
+        const big = tutorialSeen ? whatsNewToShow(lastSeenVersion, GAME_VERSION, NEWS, tutorialSeen) : null;
+        if (big) setWhatsNewPost(big);
+        else markNewsSeen(GAME_VERSION);
       })
       .catch(() => {
         // Defaults are fine if storage is unavailable.
@@ -786,7 +804,9 @@ export function DiceDemoScreen() {
     seventh value of `tab`. Only one can be open at a time; there is
     nowhere to open the second from while the first is covering the screen.
   */
-  const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | null>(null);
+  const [popup, setPopup] = useState<'settings' | 'news' | 'howto' | 'whatsnew' | null>(null);
+  // A big update's post, waiting for the loading screen to lift.
+  const [whatsNewPost, setWhatsNewPost] = useState<NewsItem | null>(null);
   // The cup being played, if any. A round started from a cup reports back
   // to it when it finishes.
   /*
@@ -972,6 +992,20 @@ export function DiceDemoScreen() {
     if (!facesWarmableRef.current) return;
     shelfDone();
   }, [launched]); // eslint-disable-line react-hooks/exhaustive-deps
+  /*
+    A big update's post opens after the saved game is in AND the loading
+    screen has lifted, never under the title card or in the first frame,
+    and only over nothing: a popup already open keeps the screen.
+  */
+  useEffect(() => {
+    if (!hydrated || !launched || !whatsNewPost) return;
+    setPopup((open) => open ?? 'whatsnew');
+  }, [hydrated, launched, whatsNewPost]);
+  /** The post has been read, or the News tab opened: either counts as told. */
+  function newsSeen() {
+    markNewsSeen(GAME_VERSION);
+    setWhatsNewPost(null);
+  }
   const [unlockAll, setUnlockAll] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeFeedback, setCodeFeedback] = useState<string | null>(null);
@@ -3836,7 +3870,10 @@ export function DiceDemoScreen() {
           friendsReady={me !== null}
           onFriends={() => setShowFriends(true)}
           onSettings={() => setPopup('settings')}
-          onNews={() => setPopup('news')}
+          onNews={() => {
+            newsSeen();
+            setPopup('news');
+          }}
         />
       )}
 
@@ -3907,6 +3944,28 @@ export function DiceDemoScreen() {
             onClose={() => {
               markTutorialSeen();
               setPopup(null);
+            }}
+          />
+        </Popup>
+      )}
+
+      {popup === 'whatsnew' && whatsNewPost && (
+        <Popup
+          title="What's new"
+          onClose={() => {
+            newsSeen();
+            setPopup(null);
+          }}
+        >
+          <WhatsNew
+            item={whatsNewPost}
+            onDone={() => {
+              newsSeen();
+              setPopup(null);
+            }}
+            onAllNews={() => {
+              newsSeen();
+              setPopup('news');
             }}
           />
         </Popup>
