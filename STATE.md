@@ -187,7 +187,9 @@ and the same day the listing was brought up to date:
   `EXPO_APPLE_TEAM_ID=K3N9FG8NKD` and `EXPO_APPLE_TEAM_TYPE=INDIVIDUAL`
   set (EAS can then fix the profile itself); `eas submit` still needs the
   three `ascApiKey*` fields added to eas.json for the run, then removed.
-- Not yet tried on a phone.
+- Tried on a phone 5 Nov 2026: David deleted and reinstalled build 20 and
+  was welcomed back with his progress. The new-iPhone question ("Is this
+  you?") has not been tried on a second device yet.
 
 ## Build 18, runtime 4.0.0 (2 Nov 2026)
 
