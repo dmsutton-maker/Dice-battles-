@@ -189,8 +189,12 @@ and the same day the listing was brought up to date:
 - Fixed in AdMob, not in code: a European regulations (GDPR) message was
   published under Privacy & messaging for Dice Battles: Color Rush (iOS),
   with "Do not consent" on. David's phone then showed "Ads: ready".
-- Still "Limited ad serving" until the App Store listing is linked in
-  AdMob after launch, so fill may be thin until then.
+- Confirmed on David's phone 6 Nov 2026 (v1.171.1): "asked Google 4 times
+  since opening", every answer "[googleMobileAds/no-fill] No ad to show".
+  The game requests correctly; Google serves nothing to an app that is
+  "Requires review" / "Limited ad serving". Expected to fill once the app
+  is live and its App Store page is linked in AdMob (launch-day step).
+  Child-directed, non-personalised, G-rated requests fill below average.
 
 ## Build 20, runtime 4.0.0 (5 Nov 2026): iCloud for a new iPhone
 
