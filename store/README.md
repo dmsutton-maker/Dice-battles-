@@ -19,3 +19,19 @@ the things that stay true.
 Keywords deliberately avoid repeating words already in the app's name —
 Apple indexes the name separately, so "dice" and "rush" there would be
 spent twice.
+
+## Videos
+
+`videos/` holds the App Store videos, rendered from the game itself by
+`tools/trailer` (see its README for how to re-render them). Approved by
+David on 5 Nov 2026. None of them is uploaded yet.
+
+| file | where it goes in App Store Connect |
+|---|---|
+| `videos/header-3840x1646.mp4` | the moving header at the top of the product page (21:9, loops, muted) |
+| `videos/header-3840x1646.png` | the header's still, for where the video does not play |
+| `videos/preview-iphone-886x1920.mp4` | iPhone app preview (portrait) |
+| `videos/preview-ipad-1200x1600.mp4` | iPad app preview (portrait) |
+
+Like the screenshots, check the sizes App Store Connect asks for on the
+day of the upload rather than trusting this table.
