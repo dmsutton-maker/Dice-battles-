@@ -164,6 +164,20 @@ and the same day the listing was brought up to date:
   - The submission itself still sits behind the full-test-on-Fable gate
     in AGENTS.md.
 
+## App Store page assets (6 Nov 2026)
+
+- The 12 screenshots in `store/screenshots/` (rebuilt 5 Nov: closer
+  boards; order battle, online, collecting, season, cups, two players;
+  no retired dice) replaced the old ones on version 1.60.0 through the
+  API, all COMPLETE. Screenshot 04 shows Fire & Ice: rebuild it with the
+  running season's items for any submission after 30 Nov.
+- `store/videos/header-3840x1646.mp4` (21:9 looping header, iOS 27+) goes
+  in through App Store Connect's web page (Claude in Chrome); the API has
+  no header endpoint.
+- The two app previews in `store/videos/` are NOT uploaded: they use
+  cinematic cameras, and guideline 2.3.4 allows only screen captures of
+  the app. A preview should be cut from a real screen recording.
+
 ## Ads: why none were ever requested, and the fix (5 Nov 2026)
 
 - AdMob's reports showed ZERO ad requests in 30 days. v1.167.0's status
