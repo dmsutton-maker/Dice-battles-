@@ -17,7 +17,7 @@ import { tierItem } from './tierItem';
  *
  * Until then the Inventory listed every die and every battlefield in the
  * game, owned or not, with a locked card saying where each came from — a
- * coin price, a trophy rung, "Win it in a cup", "$1.99", and "Season 8
+ * coin price, a trophy rung, "Win it in a cup", "$1.99", and "Season 7
  * pass" for Sun & Moon, a season that does not start until June 2027.
  * Now each unowned thing is seen where it is got instead:
  *
@@ -40,12 +40,36 @@ import { tierItem } from './tierItem';
  * New York time — the same clock seasonAt turns on.
  *
  * Asked of the item's OWN season, not of the one running: Sun & Moon is
- * Season 8's, and stays a future item all the way through Seasons 1 to
- * 7, whoever holds which of them.
+ * Season 7's, and stays a future item all the way through Seasons 1 to
+ * 6, whoever holds which of them.
  */
 export function isFutureSeasonItem(kind: 'dice' | 'arena', id: string, now: number = Date.now()): boolean {
   const place = passInfo(kind, id, now);
   return place !== null && place.season.month > monthStamp(now);
+}
+
+/**
+ * Whether a future season's item could already have been earned: its
+ * season ran before, under another number (`earnedFrom`). Fire & Ice
+ * was Season 1 from 1 Oct to 8 Nov 2026 before moving to January, and
+ * the Fire dice a player won in October are theirs to see now.
+ */
+export function earnedEarlier(kind: 'dice' | 'arena', id: string, now: number = Date.now()): boolean {
+  const place = passInfo(kind, id, now);
+  const from = place?.season.earnedFrom;
+  return from !== undefined && from <= monthStamp(now);
+}
+
+/**
+ * Whether an item is kept out of sight as "the future season stuff": its
+ * season is still to come AND nobody could have earned it yet. Fire &
+ * Ice's items are a future season's from 8 Nov 2026 to January, but some
+ * players won them in October, so they are shown to those players and
+ * counted in the "of N" like anything else; otherwise somebody could own
+ * 59 of 58.
+ */
+export function hiddenFutureItem(kind: 'dice' | 'arena', id: string, now: number = Date.now()): boolean {
+  return isFutureSeasonItem(kind, id, now) && !earnedEarlier(kind, id, now);
 }
 
 /**
@@ -57,7 +81,8 @@ export function isFutureSeasonItem(kind: 'dice' | 'arena', id: string, now: numb
  * purchase record and family tester mode. A future season's item stays
  * out even then — tester mode opens it for USE, but "the future season
  * stuff" was named on its own in the request, so it is not shown here
- * to anybody until its month comes.
+ * to anybody until its month comes — unless its season already ran once
+ * (`earnedEarlier`), in which case an owned one was honestly won.
  */
 export function belongsInInventory(
   kind: 'dice' | 'arena',
@@ -65,7 +90,7 @@ export function belongsInInventory(
   owned: boolean,
   now: number = Date.now(),
 ): boolean {
-  return owned && !isFutureSeasonItem(kind, id, now);
+  return owned && !hiddenFutureItem(kind, id, now);
 }
 
 /** The dice in the cupboard, in the cupboard's order (INVENTORY_SKIN_ORDER). */
@@ -123,7 +148,7 @@ export function onlyStarters(ids: readonly string[], starting: readonly string[]
 export function obtainableDiceCount(now: number = Date.now()): number {
   // A retired die (Baseball, 4 Nov 2026) is nobody's to get, so it is not
   // in the "of N" either — tester mode sees it, but it is not counted.
-  return INVENTORY_SKIN_ORDER.filter((s) => !s.retired && !isFutureSeasonItem('dice', s.id, now))
+  return INVENTORY_SKIN_ORDER.filter((s) => !s.retired && !hiddenFutureItem('dice', s.id, now))
     .length;
 }
 
@@ -132,7 +157,7 @@ export function obtainableArenaCount(trophies: number, now: number = Date.now())
   // is nobody's to get, so it is counted only for whoever already has it.
   const hiddenOnly = (id: ArenaId) =>
     PRODUCTS.some((p) => p.hidden && (p.grants ?? []).includes(id)) && !isArenaUnlocked(id, trophies);
-  return ARENA_ORDER.filter((id) => !isFutureSeasonItem('arena', id, now) && !hiddenOnly(id)).length;
+  return ARENA_ORDER.filter((id) => !hiddenFutureItem('arena', id, now) && !hiddenOnly(id)).length;
 }
 
 /**

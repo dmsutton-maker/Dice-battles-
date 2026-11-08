@@ -15,7 +15,7 @@ import { SEASONS } from '../src/game/seasonPass';
 import { TUNING } from '../src/game/tuning';
 
 /*
-  Season 2 of the pass, "Sugar & Snow", December 2026, built 8 Nov 2026
+  Season 1 of the pass, "Sugar & Snow", October to December 2026, built 8 Nov 2026 and swapped in as Season 1 the same day
   to the plan in docs/seasons-3-to-8.md. David, 21 Oct 2026: "Make 2 new
   dice and 2 new arenas every month normally going on with a theme like
   how this one is fire and ice." Marc, 8 Nov 2026: "Work on season 2."
@@ -68,12 +68,15 @@ function overTheTop(points: [number, number, number][]): number {
 }
 
 suite('sugar & snow · the season', () => {
-  test('Season 2 is December 2026, with its four things on the usual levels', () => {
-    const s = SEASONS.find((x) => x.number === 2);
-    assert(s !== undefined, 'there is no Season 2');
+  test('Season 1 is October to December 2026, with its four things on the usual levels', () => {
+    // Built as Season 2 for December; swapped to Season 1 the same day,
+    // 8 Nov 2026, David: "so season 2 is the current season, but
+    // obviously call it season 1 ... go until the end of December".
+    const s = SEASONS.find((x) => x.number === 1);
+    assert(s !== undefined, 'there is no Season 1');
     assertEqual(s!.name, 'Sugar & Snow', 'its name');
-    assertEqual(s!.month, '2026-12', 'its month');
-    assertEqual(s!.months ?? 1, 1, 'one month long');
+    assertEqual(s!.month, '2026-10', 'its month');
+    assertEqual(s!.months ?? 1, 3, 'three months long: October to December');
     const at = (level: number) => s!.items.find((i) => i.level === level)!;
     assertEqual(`${at(6).item.kind}:${at(6).item.id}:${at(6).track}`, 'arena:gingerbread:gold', 'level 6');
     assertEqual(`${at(12).item.kind}:${at(12).item.id}:${at(12).track}`, 'dice:gingerbread:gold', 'level 12');

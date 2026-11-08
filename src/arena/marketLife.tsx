@@ -6,7 +6,7 @@ import { useSceneryTick } from './sceneryClock';
 import { Snowfall } from './snowfall';
 
 /**
- * The Twinkle Market's life, Season 2 of the pass, Sugar & Snow (8 Nov
+ * The Twinkle Market's life, Season 1 of the pass, Sugar & Snow (8 Nov
  * 2026): skaters gliding in loops on a frozen pond beyond the far wall,
  * shoppers in bobble hats strolling round the outside strips, the
  * string lights chasing in slow waves along the walls, and a few

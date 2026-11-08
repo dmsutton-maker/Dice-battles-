@@ -432,7 +432,7 @@ export const DICE_SKINS: DiceSkin[] = [
   },
 
   /*
-    SUGAR & SNOW — season 2 of the pass, December 2026 (built 8 Nov).
+    SUGAR & SNOW — season 1 of the pass, October to December 2026 (built 8 Nov, swapped in the same day).
     Specified in docs/seasons-3-to-8.md.
 
     THE GINGERBREAD DICE: a baked-brown biscuit iced in one go — white

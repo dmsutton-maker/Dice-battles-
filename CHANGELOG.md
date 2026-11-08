@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.173.0 — 2026-11-08 · requested by David
+
+David, 8 Nov 2026: "Because we're already over a week into this season, I
+want to swap around season one and season two, so season 2 is the current
+season, but obviously call it season 1. And I want it to go until the end
+of December, and for fire and ice to start on January first." JS only,
+runtime 4.0.0.
+
+### Changed
+- **Season 1 is Sugar & Snow**, October to December 2026 (`months: 3`):
+  Gingerbread Village (Gold, level 6), Gingerbread dice (Gold, 12), Bauble
+  dice (free, 20), Twinkle Market (Gold, 30). **Season 2 is Fire & Ice**,
+  January 2027. Sun & Moon in June is therefore Season 7, not 8, by the
+  numbering rule (a season's number counts the months since the last), so
+  Seasons 3 to 6 have February to May: four months for the five planned in
+  `docs/seasons-3-to-8.md`.
+- A Gold Pass bought in October or November, and `season_pass_1`, now
+  cover December too: the season is one season.
+- **Levels already climbed pay their new items once** (`addXp`,
+  `claimGold`): a save notes which item table each row was paid against
+  (`SeasonState.table` / `goldTable`, `seasonItemsKey`). A save from before
+  this change at level 21 is paid the Bauble dice on its next battle, and a
+  Gold Pass holder the Village and the Gingerbread dice at the next claim;
+  coins and trophies at the other levels were paid once and stay paid.
+- Fire & Ice's items are a future season's until January, but anybody who
+  earned them in October still sees and uses them, and they count in the
+  Inventory's "of N" (`earnedFrom` on the season, `earnedEarlier` /
+  `hiddenFutureItem` in inventoryRules.ts). Sun & Moon's stay hidden.
+- News: the v1.172.0 post no longer says Sugar & Snow starts on 1
+  December; a new post explains the swap.
+
 ## v1.172.0 — 2026-11-08 · requested by David and Marc
 
 David, 21 Oct 2026: "Make 2 new dice and 2 new arenas every month normally

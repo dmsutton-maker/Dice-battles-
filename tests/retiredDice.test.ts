@@ -65,10 +65,11 @@ suite('retired dice · the seven ball dice are nobody\'s to get any more', () =>
   });
 
   test('it is not counted: not in "of N", not by the Collector achievement', () => {
-    // Dice on a season that has not started by November (Sugar & Snow in
-    // December, Sun & Moon in June) are not to be had yet either.
+    // Dice on a season that has not started by November and that nobody
+    // could have earned yet (Sun & Moon in June; not Fire & Ice, which
+    // was Season 1 until 8 Nov 2026) are not to be had yet either.
     const future = new Set(
-      SEASONS.filter((season) => season.month > '2026-11').flatMap((season) =>
+      SEASONS.filter((season) => season.month > '2026-11' && season.earnedFrom === undefined).flatMap((season) =>
         season.items.filter((i) => i.item.kind === 'dice').map((i) => i.item.id),
       ),
     );

@@ -78,7 +78,7 @@ export const ARENA_JAILS: Record<JailArenaId, JailKind> = {
   // Season 2 of the pass, Sun & Moon (21 Oct 2026).
   suntemple: 'sunShrine',
   moongarden: 'toriiGate',
-  // Season 2 of the pass, Sugar & Snow (8 Nov 2026).
+  // Season 1 of the pass, Sugar & Snow (8 Nov 2026).
   gingerbread: 'biscuitPen',
   twinklemarket: 'marketStall',
 };

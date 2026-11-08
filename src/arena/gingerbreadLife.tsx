@@ -6,7 +6,7 @@ import { useSceneryTick } from './sceneryClock';
 import { Snowfall } from './snowfall';
 
 /**
- * The Gingerbread Village's life, Season 2 of the pass, Sugar & Snow
+ * The Gingerbread Village's life, Season 1 of the pass, Sugar & Snow
  * (8 Nov 2026): a little train of sweets running round the village on
  * a track outside the walls, gingerbread people waving from the corner
  * cottages' doors, smoke curling from the cottage chimneys, and snow

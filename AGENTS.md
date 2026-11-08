@@ -194,24 +194,34 @@ David, 21 Oct 2026: "I want the gold pass to rotate on the first of
 every month according to EST", and "Make 2 new dice and 2 new arenas
 every month normally going on with a theme like how this one is fire
 and ice." Then on 26 Oct 2026: "Change the November season to be for
-June and make the Fire and Ice season go through November."
+June and make the Fire and Ice season go through November." And on
+8 Nov 2026, with Sugar & Snow built for December: "swap around season
+one and season two, so season 2 is the current season, but obviously
+call it season 1. And I want it to go until the end of December, and
+for fire and ice to start on January first."
 
 - `SEASONS` in `src/game/seasonPass.ts` is the list, from October
   2026, each entry with a start month, a name and four items: two new
   dice and two new battlefields, three on the Gold row and one on the
   free row. A season normally runs one month; `months` makes it longer,
-  and Fire & Ice runs two (October and November 2026). `seasonAt(now)`
+  and Season 1 runs three (October to December 2026). `seasonAt(now)`
   picks the season on every phone alike (`src/game/easternTime.ts`),
   and experience starts again when a season ends, at midnight on the
   1st, New York time. Nothing runs on a server.
-- **The calendar, settled 26 Oct 2026:** Season 1 Fire & Ice (Oct–Nov
-  2026), 2 Sugar & Snow (Dec), 3 Rumble & Rain (Jan 2027), 4 Shield &
-  Scale (Feb), 5 Wind & Wings (Mar), 6 Bamboo & Blossom (Apr), 7 Big
-  Top & Boardwalk (May), 8 Sun & Moon (Jun, already built). The six
-  between are specified in `docs/seasons-3-to-8.md`. A season's number
-  counts the months since the one before it, so a month with nothing
-  built (a stand-in, the previous season's items under the month's
-  number) and a built season never disagree about the numbering.
+- **The calendar, since 8 Nov 2026:** Season 1 Sugar & Snow (Oct–Dec
+  2026), 2 Fire & Ice (Jan 2027), 3 to 6 (Feb–May) four of the five
+  planned in `docs/seasons-3-to-8.md` (Rumble & Rain, Shield & Scale,
+  Wind & Wings, Bamboo & Blossom, Big Top & Boardwalk; which one waits
+  is David's call), 7 Sun & Moon (Jun, already built). A season's
+  number counts the months since the one before it, so a month with
+  nothing built (a stand-in, the previous season's items under the
+  month's number) and a built season never disagree about the numbering.
+- **When a running season's item table changes** (the swap above), a
+  save keeps its experience and is paid the new table's items at the
+  levels it has already climbed, once, on each row (`SeasonState.table`
+  / `goldTable`); coins and trophies at the other levels stay paid. A
+  season that ran once and moved (`earnedFrom`) keeps its earned items
+  visible and counted, unlike a season nobody could have earned yet.
 - **Every season has to be BUILT and SHIPPED before it starts**: two
   new dice (`pass: true` in diceSkins.ts, continuous like every die,
   ideally with an effect like Fire and Ice), two new battlefields

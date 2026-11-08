@@ -36,8 +36,9 @@ import type { PrizeItem, TournamentPrize } from './tournament';
  * New York time (easternTime.ts), on every phone alike; experience and
  * the levels paid start again from nothing, and the old season's items
  * stay in the cupboard of whoever earned them. A season CAN run longer
- * than a month (`months`); Fire & Ice runs two, by David's choice on
- * 26 Oct 2026, and nothing resets until it ends.
+ * than a month (`months`); Season 1 runs three, October to December
+ * 2026, by David's choices of 26 Oct and 8 Nov 2026, and nothing resets
+ * until it ends.
  *
  * EVERY MONTH NEEDS ITS SEASON BUILT AND SHIPPED BEFORE THE FIRST: two
  * new dice, two new battlefields, a name. A month with no season here
@@ -54,12 +55,21 @@ export interface SeasonDef {
   /** The New York month it starts, YYYY-MM. */
   month: string;
   /**
-   * How many months it runs. Absent means one. Fire & Ice runs two:
+   * How many months it runs. Absent means one. Season 1 runs three:
    * David, 26 Oct 2026, "make the Fire and Ice season go through
-   * November", so that the next six seasons could be built properly
-   * rather than Sun & Moon arriving in a week.
+   * November", so that the next seasons could be built properly rather
+   * than Sun & Moon arriving in a week; then 8 Nov 2026, Sugar & Snow
+   * swapped in as Season 1 "until the end of December".
    */
   months?: number;
+  /**
+   * The month its items were first on the pass, when that is EARLIER
+   * than `month`: Fire & Ice was Season 1 from 1 Oct to 8 Nov 2026 and
+   * then moved to January, so the Fire and Ice dice somebody earned in
+   * those weeks are theirs to see and use now, not hidden until January
+   * like a season nobody could have earned yet (inventoryRules.ts).
+   */
+  earnedFrom?: string;
   items: readonly { level: number; item: PrizeItem; track: Track }[];
 }
 
@@ -79,38 +89,34 @@ export function seasonCoversMonth(season: Pick<SeasonDef, 'month' | 'months'>, m
 }
 
 export const SEASONS: readonly SeasonDef[] = [
+  /*
+    Season 1, Sugar & Snow. Built on 8 Nov 2026 as Season 2 for December,
+    and the same day David swapped the two round: "Because we're already
+    over a week into this season, I want to swap around season one and
+    season two, so season 2 is the current season, but obviously call it
+    season 1. And I want it to go until the end of December, and for fire
+    and ice to start on January first." So Sugar & Snow is Season 1,
+    running from the start of the pass to the end of December, and the
+    Fire & Ice items that nobody had earned yet wait for January. The
+    season had already been running a week under Fire & Ice's table, so
+    the levels already climbed are paid their Sugar & Snow items once
+    (see `addXp` and `claimGold`); the coins and trophies at the other
+    levels were paid once and stay paid.
+
+    Winter treats by day and twinkling lights by night: the Gingerbread
+    Village, the Gingerbread dice, the Bauble dice on the free row, and
+    the Twinkle Market as the big prize. Three of the four on the Gold
+    row, as David asked: "most of the good rewards only in the paid
+    version". The free die sits two-thirds of the way up so that
+    somebody who never pays still has something special to climb
+    towards, and it is earned. The same shape every season.
+  */
   {
     number: 1,
     id: 'season-1',
-    name: 'Fire & Ice',
-    month: '2026-10',
-    months: 2,
-    /*
-      Three of the four on the Gold row, as David asked: "most of the
-      good rewards only in the paid version". The Ice Dice stay on the
-      free row so that somebody who never pays still has something
-      special to climb towards, and it sits two-thirds of the way up so
-      it is earned. The same shape every season.
-    */
-    items: [
-      { level: 6, item: { kind: 'arena', id: 'snow' }, track: 'gold' },
-      { level: 12, item: { kind: 'dice', id: 'fire' }, track: 'gold' },
-      { level: 20, item: { kind: 'dice', id: 'ice' }, track: 'free' },
-      { level: 30, item: { kind: 'arena', id: 'volcano' }, track: 'gold' },
-    ],
-  },
-  /*
-    Season 2, Sugar & Snow: December 2026, built 8 Nov 2026 to the plan
-    in docs/seasons-3-to-8.md. Winter treats by day and twinkling lights
-    by night: the Gingerbread Village, the Gingerbread dice, the Bauble
-    dice on the free row, and the Twinkle Market as the big prize. The
-    same shape as Season 1: three on the Gold row, the second die free.
-  */
-  {
-    number: 2,
-    id: 'season-2',
     name: 'Sugar & Snow',
-    month: '2026-12',
+    month: '2026-10',
+    months: 3,
     items: [
       { level: 6, item: { kind: 'arena', id: 'gingerbread' }, track: 'gold' },
       { level: 12, item: { kind: 'dice', id: 'gingerbread' }, track: 'gold' },
@@ -119,15 +125,36 @@ export const SEASONS: readonly SeasonDef[] = [
     ],
   },
   /*
-    Seasons 3 to 7 (January to May 2027: Rumble & Rain, Shield & Scale,
-    Wind & Wings, Bamboo & Blossom, Big Top & Boardwalk) are planned in
-    docs/seasons-3-to-8.md and slot in here as they are built. Sun & Moon
-    was built as Season 2 for November; David moved it to June on 26 Oct
-    2026 ("Change the November season to be for June").
+    Season 2, Fire & Ice: January 2027. It was Season 1 from 1 Oct to
+    8 Nov 2026, and the Fire and Ice dice and the Snowy Hollow and
+    Volcano Rim battlefields anybody earned in those weeks are theirs;
+    the rest become the January pass.
   */
   {
-    number: 8,
-    id: 'season-8',
+    number: 2,
+    id: 'season-2',
+    name: 'Fire & Ice',
+    month: '2027-01',
+    earnedFrom: '2026-10',
+    items: [
+      { level: 6, item: { kind: 'arena', id: 'snow' }, track: 'gold' },
+      { level: 12, item: { kind: 'dice', id: 'fire' }, track: 'gold' },
+      { level: 20, item: { kind: 'dice', id: 'ice' }, track: 'free' },
+      { level: 30, item: { kind: 'arena', id: 'volcano' }, track: 'gold' },
+    ],
+  },
+  /*
+    Seasons 3 to 6 (February to May 2027) are to be built from the plan
+    in docs/seasons-3-to-8.md (Rumble & Rain, Shield & Scale, Wind &
+    Wings, Bamboo & Blossom, Big Top & Boardwalk: five planned, four
+    months, one to drop or move) and slot in here as they are built. Sun
+    & Moon was built as Season 2 for November; David moved it to June on
+    26 Oct 2026 ("Change the November season to be for June"), and the
+    swap of 8 Nov 2026 made June the seventh season.
+  */
+  {
+    number: 7,
+    id: 'season-7',
     name: 'Sun & Moon',
     month: '2027-06',
     items: [
@@ -144,10 +171,11 @@ export const SEASONS: readonly SeasonDef[] = [
  *
  * A month no built season covers — between two seasons, or after the
  * last — is a one-month stand-in: the latest season that had started,
- * under the number the month would have had. Season 1 runs October and
- * November and is number 1; December with nothing built would be
- * "Season 2", and Sun & Moon in June is number 8 because six months lie
- * between. tests/seasonRotation.test.ts holds the numbering to that.
+ * under the number the month would have had. Season 1 runs October to
+ * December and is number 1; Fire & Ice in January is 2; February with
+ * nothing built would be "Season 3", and Sun & Moon in June is number 7
+ * because four months lie between. tests/seasonRotation.test.ts holds
+ * the numbering to that.
  */
 export function seasonAt(now: number = Date.now()): SeasonDef {
   const month = monthStamp(now);
@@ -400,10 +428,38 @@ export interface SeasonState {
    * from before the Gold Pass existed, which is the same as 0.
    */
   goldPaid?: number;
+  /**
+   * Which item table `paid` was paid against (seasonItemsKey), and
+   * which `goldPaid` was. Absent on saves from before 8 Nov 2026, when
+   * Sugar & Snow took Season 1 over from Fire & Ice a week in: a save
+   * whose table is not the running season's is owed the new table's
+   * items at the levels it has already climbed, once.
+   */
+  table?: string;
+  goldTable?: string;
+}
+
+/**
+ * A fingerprint of a season's item table, so a save can tell when the
+ * table it was paid against has changed under it.
+ */
+export function seasonItemsKey(season: Pick<SeasonDef, 'items'>): string {
+  return season.items.map((s) => `${s.level}:${s.track}:${s.item.kind}/${s.item.id}`).join(',');
 }
 
 export function freshSeason(now: number = Date.now()): SeasonState {
-  return { season: seasonAt(now).id, xp: 0, paid: 0, goldPaid: 0 };
+  const key = seasonItemsKey(seasonAt(now));
+  return { season: seasonAt(now).id, xp: 0, paid: 0, goldPaid: 0, table: key, goldTable: key };
+}
+
+/**
+ * The item levels of one row, up to a level, that a save paid against
+ * a DIFFERENT table is still owed: the coins and trophies at the other
+ * levels were paid once and stay paid, but an item that was not on the
+ * table then was never handed over.
+ */
+function owedItems(season: SeasonDef, track: Track, upTo: number): number[] {
+  return season.items.filter((s) => s.track === track && s.level <= upTo).map((s) => s.level);
 }
 
 /**
@@ -412,18 +468,23 @@ export function freshSeason(now: number = Date.now()): SeasonState {
  * Levels are paid ONCE: `paid` remembers the highest one handed over, so
  * a save loaded twice, or a battle counted after a crash, cannot pay a
  * level again. A state from a different season starts fresh — the pass
- * is a season's, not a lifetime's.
+ * is a season's, not a lifetime's. A state from THIS season whose items
+ * were paid against another table (8 Nov 2026) is first paid the new
+ * table's free-row items at the levels it has already climbed.
  */
 export function addXp(
   state: SeasonState | undefined,
   xp: number,
   now: number = Date.now(),
 ): { state: SeasonState; reached: number[] } {
-  const base = state && state.season === seasonAt(now).id ? state : freshSeason(now);
+  const season = seasonAt(now);
+  const same = state !== undefined && state.season === season.id;
+  const base = same ? state : freshSeason(now);
+  const key = seasonItemsKey(season);
   const add = Number.isFinite(xp) ? Math.max(0, Math.floor(xp)) : 0;
-  const next = { ...base, xp: base.xp + add };
+  const next = { ...base, xp: base.xp + add, table: key };
   const level = levelFor(next.xp);
-  const reached: number[] = [];
+  const reached: number[] = same && (state.table ?? '') !== key ? owedItems(season, 'free', base.paid) : [];
   for (let n = base.paid + 1; n <= level; n++) reached.push(n);
   next.paid = Math.max(base.paid, level);
   return { state: next, reached };
@@ -436,16 +497,21 @@ export function addXp(
  * pass is bought, and at launch. Buying it at level 15 pays levels 1 to
  * 15 of the Gold row at once — the pass is for the season, not for the
  * levels still to come — and `goldPaid` makes sure no Gold level is ever
- * paid twice, the same promise `paid` makes for the free row.
+ * paid twice, the same promise `paid` makes for the free row. A save
+ * paid against another item table (8 Nov 2026) is first paid the new
+ * table's Gold items at the levels already climbed, like `addXp`.
  */
 export function claimGold(
   state: SeasonState | undefined,
   now: number = Date.now(),
 ): { state: SeasonState; reached: number[] } {
-  const base = state && state.season === seasonAt(now).id ? state : freshSeason(now);
+  const season = seasonAt(now);
+  const same = state !== undefined && state.season === season.id;
+  const base = same ? state : freshSeason(now);
+  const key = seasonItemsKey(season);
   const level = levelFor(base.xp);
   const already = base.goldPaid ?? 0;
-  const reached: number[] = [];
+  const reached: number[] = same && (state.goldTable ?? '') !== key ? owedItems(season, 'gold', already) : [];
   for (let n = already + 1; n <= level; n++) reached.push(n);
-  return { state: { ...base, goldPaid: Math.max(already, level) }, reached };
+  return { state: { ...base, goldPaid: Math.max(already, level), goldTable: key }, reached };
 }

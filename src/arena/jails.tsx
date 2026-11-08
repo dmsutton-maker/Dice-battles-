@@ -1366,7 +1366,7 @@ const DESIGNS: Record<JailKind, Design> = {
   },
 
   /*
-    Gingerbread Village, Season 2 of the pass, Sugar & Snow (8 Nov
+    Gingerbread Village, Season 1 of the pass, Sugar & Snow (8 Nov
     2026): a biscuit pen. A gingerbread back wall capped with icing and
     studded with gumdrops, and candy-stick bars — cream with brown
     stripes, never red, to stay clear of the Red face — along the back
@@ -1418,7 +1418,7 @@ const DESIGNS: Record<JailKind, Design> = {
   },
 
   /*
-    Twinkle Market, Season 2 of the pass: a market stall. Four wooden
+    Twinkle Market, Season 1 of the pass: a market stall. Four wooden
     posts carry a striped awning (cream and teal) over the pen, with a
     paper lantern hanging from its front edge and swinging; a wooden
     counter runs along the back with parcels on it, and wooden bars run

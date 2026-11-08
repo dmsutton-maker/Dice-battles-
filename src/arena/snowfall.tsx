@@ -4,7 +4,7 @@ import { TUNING } from '../game/tuning';
 import { useSceneryTick } from './sceneryClock';
 
 /**
- * Snow falling gently over a winter board. Season 2 of the pass, Sugar
+ * Snow falling gently over a winter board. Season 1 of the pass, Sugar
  * & Snow (8 Nov 2026): the Gingerbread Village and the Twinkle Market
  * share it.
  *

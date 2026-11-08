@@ -6,6 +6,8 @@ import {
   belongsInInventory,
   inventoryArenas,
   inventoryDice,
+  earnedEarlier,
+  hiddenFutureItem,
   isFutureSeasonItem,
   ladderPreview,
   obtainableArenaCount,
@@ -35,15 +37,18 @@ import { actionLabel, isActionPressable, previewAction } from '../src/game/itemP
 */
 
 const at = (iso: string) => Date.parse(iso);
-/** Fire & Ice is running (October and November 2026). */
+/** Sugar & Snow, Season 1, is running (October to December 2026). */
 const NOV = at('2026-11-10T12:00:00Z');
-/** After Fire & Ice: a stand-in month, nothing new built for it yet. */
+/** Still Season 1: it runs to the end of December since 8 Nov 2026. */
 const DEC = at('2026-12-10T12:00:00Z');
+/** After Season 1: Fire & Ice, Season 2, January 2027. */
+const JAN = at('2027-01-10T12:00:00Z');
 /** Sun & Moon's month, June 2027. */
 const JUNE = at('2027-06-10T12:00:00Z');
 
 const SUN_MOON = SEASONS.find((s) => s.name === 'Sun & Moon')!;
 const FIRE_ICE = SEASONS.find((s) => s.name === 'Fire & Ice')!;
+const SUGAR_SNOW = SEASONS.find((s) => s.name === 'Sugar & Snow')!;
 const idsOf = (season: typeof SUN_MOON, kind: 'dice' | 'arena') =>
   season.items.filter((s) => s.item.kind === kind).map((s) => s.item.id);
 
@@ -73,11 +78,11 @@ suite('inventory · only what the player owns', () => {
       const dice = new Set(inventoryDice(trophies, NOV).map((s) => s.id));
       const arenas = new Set(inventoryArenas(trophies, NOV));
       for (const skin of DICE_SKINS) {
-        const owned = isSkinUnlocked(skin.id, trophies) && !isFutureSeasonItem('dice', skin.id, NOV);
+        const owned = isSkinUnlocked(skin.id, trophies) && !hiddenFutureItem('dice', skin.id, NOV);
         assertEqual(dice.has(skin.id), owned, `${skin.name} at ${trophies} trophies`);
       }
       for (const id of ARENA_ORDER) {
-        const owned = isArenaUnlocked(id, trophies) && !isFutureSeasonItem('arena', id, NOV);
+        const owned = isArenaUnlocked(id, trophies) && !hiddenFutureItem('arena', id, NOV);
         assertEqual(arenas.has(id), owned, `${id} at ${trophies} trophies`);
       }
     }
@@ -123,12 +128,18 @@ suite('inventory · only what the player owns', () => {
 });
 
 suite('inventory · a season still to come is shown nowhere', () => {
-  test('Sun & Moon is a future season in November 2026, and Fire & Ice is not', () => {
+  test('Sun & Moon and Fire & Ice are future seasons in November 2026, and Sugar & Snow is not', () => {
     for (const id of idsOf(SUN_MOON, 'dice')) assert(isFutureSeasonItem('dice', id, NOV), `${id} is not counted as future`);
     for (const id of idsOf(SUN_MOON, 'arena')) assert(isFutureSeasonItem('arena', id, NOV), `${id} is not counted as future`);
-    for (const id of idsOf(FIRE_ICE, 'dice')) assert(!isFutureSeasonItem('dice', id, NOV), `${id} counted as future`);
+    for (const id of idsOf(FIRE_ICE, 'dice')) assert(isFutureSeasonItem('dice', id, DEC), `${id} is not counted as future`);
+    for (const id of idsOf(FIRE_ICE, 'dice')) assert(!isFutureSeasonItem('dice', id, JAN), `${id} counted as future in its own month`);
+    for (const id of idsOf(SUGAR_SNOW, 'dice')) assert(!isFutureSeasonItem('dice', id, NOV), `${id} counted as future`);
     assert(!isFutureSeasonItem('dice', 'ivory', NOV), 'a die on no pass counted as future');
     assert(!isFutureSeasonItem('dice', 'sun', JUNE), 'Sun & Moon still future in its own month');
+    // Fire & Ice ran as Season 1 until 8 Nov 2026: what was earned then was earned honestly.
+    for (const id of idsOf(FIRE_ICE, 'dice')) assert(earnedEarlier('dice', id, NOV), `${id} could not have been earned before`);
+    for (const id of idsOf(SUN_MOON, 'dice')) assert(!earnedEarlier('dice', id, NOV), `${id} counted as earnable before June`);
+    assert(!earnedEarlier('dice', 'gingerbread', NOV), 'a running season counted as an earlier one');
   });
 
   test('it turns at midnight on the 1st, New York time', () => {
@@ -138,15 +149,15 @@ suite('inventory · a season still to come is shown nowhere', () => {
   });
 
   test("a future season's items hide even for somebody who owns the season before", () => {
-    // Everything Fire & Ice gives, earned — and Sun & Moon's ids in the
+    // Everything Sugar & Snow gives, earned — and Sun & Moon's ids in the
     // wallet too, as if handed over by mistake. Neither makes June show.
-    const fireIce = [...idsOf(FIRE_ICE, 'dice'), ...idsOf(FIRE_ICE, 'arena').map((id) => arenaKey(id as never))];
+    const sugarSnow = [...idsOf(SUGAR_SNOW, 'dice'), ...idsOf(SUGAR_SNOW, 'arena').map((id) => arenaKey(id as never))];
     const sunMoon = [...idsOf(SUN_MOON, 'dice'), ...idsOf(SUN_MOON, 'arena').map((id) => arenaKey(id as never))];
-    fresh([...fireIce, ...sunMoon]);
+    fresh([...sugarSnow, ...sunMoon]);
     const dice = inventoryDice(0, NOV).map((s) => s.id);
     const arenas: string[] = inventoryArenas(0, NOV);
-    for (const id of idsOf(FIRE_ICE, 'dice')) assert(dice.includes(id), `${id} (earned) is missing`);
-    for (const id of idsOf(FIRE_ICE, 'arena')) assert(arenas.includes(id), `${id} (earned) is missing`);
+    for (const id of idsOf(SUGAR_SNOW, 'dice')) assert(dice.includes(id), `${id} (earned) is missing`);
+    for (const id of idsOf(SUGAR_SNOW, 'arena')) assert(arenas.includes(id), `${id} (earned) is missing`);
     for (const id of idsOf(SUN_MOON, 'dice')) assert(!dice.includes(id), `${id} shows before its season`);
     for (const id of idsOf(SUN_MOON, 'arena')) assert(!arenas.includes(id), `${id} shows before its season`);
     // Once June comes, an owned one shows like anything else.
@@ -155,10 +166,26 @@ suite('inventory · a season still to come is shown nowhere', () => {
   });
 
   test("a finished season's items stay with whoever earned them, and nobody else", () => {
-    fresh(['fire']);
-    assert(inventoryDice(0, DEC).some((s) => s.id === 'fire'), 'earned Fire Dice gone after the season');
+    fresh(['gingerbread']);
+    assert(inventoryDice(0, JAN).some((s) => s.id === 'gingerbread'), 'earned Gingerbread Dice gone after the season');
     fresh();
-    assert(!inventoryDice(0, DEC).some((s) => s.id === 'fire'), 'unearned Fire Dice showing after the season');
+    assert(!inventoryDice(0, JAN).some((s) => s.id === 'gingerbread'), 'unearned Gingerbread Dice showing after the season');
+  });
+
+  test('Fire & Ice, earned while it was Season 1, shows before its January turn comes round', () => {
+    // 8 Nov 2026: Fire & Ice moved from Season 1 to Season 2 (January)
+    // a week into November. The Fire dice somebody won in October are
+    // theirs, and not hidden for two months as a "future season".
+    const fireIce = [...idsOf(FIRE_ICE, 'dice'), ...idsOf(FIRE_ICE, 'arena').map((id) => arenaKey(id as never))];
+    fresh(fireIce);
+    for (const when of [NOV, DEC, JAN]) {
+      const dice = inventoryDice(0, when).map((s) => s.id);
+      const arenas: string[] = inventoryArenas(0, when);
+      for (const id of idsOf(FIRE_ICE, 'dice')) assert(dice.includes(id), `${id} (earned) is missing`);
+      for (const id of idsOf(FIRE_ICE, 'arena')) assert(arenas.includes(id), `${id} (earned) is missing`);
+    }
+    fresh();
+    assert(!inventoryDice(0, NOV).some((s) => s.id === 'fire'), 'unearned Fire Dice showing before January');
   });
 
   test('tester mode shows everything it unlocks, except a season still to come', () => {
@@ -172,10 +199,13 @@ suite('inventory · a season still to come is shown nowhere', () => {
     // count leaves out because nobody can get it.
     assertEqual(dice.length, obtainableDiceCount(NOV) + RETIRED_SKINS.length, 'tester mode is missing a die it unlocks');
     assertEqual(arenas.length, obtainableArenaCount(0, NOV), 'tester mode is missing a battlefield it unlocks');
-    // Every season still to come in November: Sugar & Snow (December) and Sun & Moon (June).
-    const futureDice = SEASONS.filter((season) => season.month > '2026-11').flatMap((season) => idsOf(season, 'dice'));
+    // Every season still to come in November that nobody could have earned
+    // yet: Sun & Moon (June). Fire & Ice (January) was Season 1 until
+    // 8 Nov 2026, so its items count and show for whoever has them.
+    const hidden = (season: typeof SUN_MOON) => season.month > '2026-11' && season.earnedFrom === undefined;
+    const futureDice = SEASONS.filter(hidden).flatMap((season) => idsOf(season, 'dice'));
     assertEqual(obtainableDiceCount(NOV), DICE_SKINS.length - futureDice.length - RETIRED_SKINS.length, 'the future dice');
-    const futureArenas = SEASONS.filter((season) => season.month > '2026-11').flatMap((season) => idsOf(season, 'arena'));
+    const futureArenas = SEASONS.filter(hidden).flatMap((season) => idsOf(season, 'arena'));
     assertEqual(obtainableArenaCount(0, NOV), ARENA_ORDER.length - futureArenas.length, 'the future battlefields');
     assert(!dice.some((s) => s.id === 'sun' || s.id === 'moon'), 'tester mode shows June in November');
     // In June, tester mode has the lot.

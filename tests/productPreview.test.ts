@@ -54,15 +54,15 @@ suite('money shop · a purchase shows what it includes, on the board', () => {
     assert(listed >= 4, `only ${listed} included items across the shop`);
   });
 
-  test('the Gold Pass lists the Ice Dice too, marked as the free row', () => {
+  test('the Gold Pass lists the free-row die too, marked as the free row', () => {
     const gold = PRODUCTS.find((p) => p.id === GOLD_PASS.productId)!;
     const season = seasonAt(new Date('2026-11-10T12:00:00Z').getTime());
-    assert(season.number === 1, 'expected Fire & Ice in mid November 2026');
+    assert(season.number === 1 && season.name === 'Sugar & Snow', 'expected Sugar & Snow in mid November 2026');
     const listed = includedItems(gold);
     const ids = listed.map((i) => i.id);
-    for (const id of ['snow', 'fire', 'ice', 'volcano']) assert(ids.includes(id), `the Gold Pass does not list ${id}`);
-    assert(listed.find((i) => i.id === 'ice')?.freeRow === true, 'ice is not marked as the free row');
-    assert(!listed.find((i) => i.id === 'fire')?.freeRow, 'a Gold row item is marked free');
+    for (const id of ['gingerbread', 'bauble', 'twinklemarket']) assert(ids.includes(id), `the Gold Pass does not list ${id}`);
+    assert(listed.find((i) => i.id === 'bauble')?.freeRow === true, 'bauble is not marked as the free row');
+    assert(!listed.find((i) => i.id === 'twinklemarket')?.freeRow, 'a Gold row item is marked free');
     assert(/item\.freeRow/.test(read('src/demo/MoneyShelf.tsx')) && /Free row/.test(read('src/demo/MoneyShelf.tsx')), 'the shelf does not show the free row text');
   });
 });

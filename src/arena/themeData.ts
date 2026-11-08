@@ -1378,7 +1378,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   gingerbread: {
     /*
-      Gingerbread Village, Season 2 of the pass, Sugar & Snow (December
+      Gingerbread Village, Season 1 of the pass, Sugar & Snow (December
       2026; built 8 Nov; docs/seasons-3-to-8.md). Winter treats by day: a
       big biscuit tray with white icing piped round its edge, walls of
       gingerbread slabs under an icing cap studded with gumdrops,
@@ -1429,7 +1429,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
 
   twinklemarket: {
     /*
-      Twinkle Market, Season 2 of the pass: a town square on a clear
+      Twinkle Market, Season 1 of the pass: a town square on a clear
       winter night. Frosted cobbles for the board, low snowy stone walls
       strung with warm bulbs, a market stall with a striped awning at
       each corner, a stall for the jail, a bandstand for the retreat, a
@@ -1535,7 +1535,7 @@ export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   // Season 2 of the pass, Sun & Moon (21 Oct 2026): won on the pass only.
   suntemple: { name: 'Sun Temple', short: 'Temple', skyColor: '#ffd9a0', pass: true },
   moongarden: { name: 'Moon Garden', short: 'Garden', skyColor: '#1c2252', pass: true },
-  // Season 2 of the pass, Sugar & Snow (December 2026; built 8 Nov): won on the pass only.
+  // Season 1 of the pass, Sugar & Snow (October to December 2026; built 8 Nov): won on the pass only.
   gingerbread: { name: 'Gingerbread Village', short: 'Village', skyColor: '#cfe4f2', pass: true },
   twinklemarket: { name: 'Twinkle Market', short: 'Market', skyColor: '#1a2448', pass: true },
 };

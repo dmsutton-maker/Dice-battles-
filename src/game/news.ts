@@ -117,21 +117,38 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
-    id: 'v1-172-0-season-2-sugar-and-snow',
+    id: 'v1-173-0-sugar-and-snow-is-on-now',
     date: '8 November 2026',
-    version: 'v1.172.0',
-    title: 'Season 2: Sugar & Snow starts on 1 December',
+    version: 'v1.173.0',
+    title: 'Sugar & Snow is on now, until the end of December',
     icon: 'cups',
     major: true,
     body:
-      'The next season of the pass is ready for December. Sugar & Snow ' +
+      'The seasons have swapped round. Season 1 is now Sugar & Snow, and it ' +
+      'runs until 31 December: the Gingerbread Village at level 6, the ' +
+      'Gingerbread dice at 12, the Bauble dice free to everyone at 20, and ' +
+      'the Twinkle Market at 30. Your level and your Gold Pass carry on ' +
+      'exactly as they are, and any of those levels you have already passed ' +
+      'pay out their new prize the next time you play. Fire & Ice becomes ' +
+      'Season 2 and starts on 1 January. Anything you earned from it ' +
+      'already, the Fire or Ice dice, Snowy Hollow or Volcano Rim, is yours ' +
+      'to keep and use.',
+  },
+  {
+    id: 'v1-172-0-season-2-sugar-and-snow',
+    date: '8 November 2026',
+    version: 'v1.172.0',
+    title: 'Sugar & Snow is built',
+    icon: 'cups',
+    major: true,
+    body:
+      'A new season of the pass is ready. Sugar & Snow ' +
       'brings the Gingerbread Village, a biscuit board with a little train ' +
       'of sweets running round it; the Gingerbread dice, iced biscuits that ' +
       'shed crumbs and land in a puff of sugar; the Bauble dice, green glass ' +
       'with gold glitter, free to everyone at level 20; and the Twinkle ' +
       'Market, a night square of string lights, skaters and shoppers, as the ' +
-      'big prize at level 30. Fire & Ice runs until the end of November, and ' +
-      'everything you have earned in it is yours to keep.',
+      'big prize at level 30.',
   },
   {
     id: 'v1-170-0-board-in-picture',

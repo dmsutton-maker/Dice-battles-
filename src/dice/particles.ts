@@ -37,7 +37,7 @@ export const Kind = {
   // Seasons 2 to 7 (26 Oct 2026) each own a range of numbers, so six
   // seasons built side by side cannot hand two kinds the same number:
   // Season 2 uses 20-29, Season 3 30-39, 4 40-49, 5 50-59, 6 60-69, 7 70-79.
-  // Season 2, Sugar & Snow (8 Nov 2026): the Gingerbread dice's crumbs
+  // Season 1, Sugar & Snow (8 Nov 2026): the Gingerbread dice's crumbs
   // and puff of icing sugar; the Bauble dice's gold glitter.
   Crumb: 20,
   Sugar: 21,

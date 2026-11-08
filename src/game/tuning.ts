@@ -429,7 +429,7 @@ export const TUNING = {
     sheenSeconds: 0.5,
   },
   /**
-   * The Gingerbread dice (diceGingerbread.ts), season 2 of the pass,
+   * The Gingerbread dice (diceGingerbread.ts), season 1 of the pass,
    * Sugar & Snow, 8 Nov 2026: crumbs falling off them as they roll, a
    * puff of icing sugar where one lands, and three crumbs that bounce
    * away. Looks only, like the rest.

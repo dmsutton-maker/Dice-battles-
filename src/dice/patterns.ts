@@ -3268,7 +3268,7 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
   },
   gingerbread: (x, y) => {
     /*
-      GINGERBREAD — season 2 of the pass, "Sugar & Snow", December 2026
+      GINGERBREAD — season 1 of the pass, "Sugar & Snow", October to December 2026
       (built 8 Nov; docs/seasons-3-to-8.md).
 
       A BISCUIT ICED IN ONE GO. The shell is baked brown, darker where

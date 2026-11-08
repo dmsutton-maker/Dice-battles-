@@ -68,7 +68,7 @@ export const ARENA_ART: Record<ArenaId, ImageSourcePropType> = {
   // Season 2 of the pass, Sun & Moon (21 Oct 2026).
   suntemple: require('../../assets/arenas/suntemple.png'),
   moongarden: require('../../assets/arenas/moongarden.png'),
-  // Season 2 of the pass, Sugar & Snow (8 Nov 2026).
+  // Season 1 of the pass, Sugar & Snow (8 Nov 2026).
   gingerbread: require('../../assets/arenas/gingerbread.png'),
   twinklemarket: require('../../assets/arenas/twinklemarket.png'),
 };

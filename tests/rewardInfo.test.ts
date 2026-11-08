@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import './storageMock';
 import { assert, assertEqual, suite, test } from './harness';
 import { rewardInfo, winsFor } from '../src/game/rewardInfo';
-import { goldRewardFor, rewardFor, xpToReach } from '../src/game/seasonPass';
+import { goldRewardFor, rewardFor, xpToReach, SEASONS } from '../src/game/seasonPass';
 
 const root = join(__dirname, '..');
 const code = (path: string) =>
@@ -41,7 +41,7 @@ suite('season pass · every reward has a description', () => {
   });
 
   test('a die or battlefield can be seen from its description', () => {
-    const fire = rewardInfo({ level: 12, track: 'gold', reward: goldRewardFor(12), itemName: 'Fire Dice', xp: 0, gold: true });
+    const fire = rewardInfo({ level: 12, track: 'gold', reward: goldRewardFor(12, SEASONS.find((s) => s.name === 'Fire & Ice')!), itemName: 'Fire Dice', xp: 0, gold: true });
     assertEqual(fire.canPreview, true, 'a die cannot be looked at from its description');
     assert(/burn/.test(fire.body), 'the Fire dice do not mention their flames');
   });

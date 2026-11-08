@@ -6,22 +6,29 @@ me full details of the 2 dice and 2 arenas for each of them." And on
 names to have a better ring to it. Change the November season to be for
 June and make the Fire and Ice season go through November."
 
-So the calendar is: Season 1 Fire & Ice runs October AND November 2026;
-the six seasons below are Seasons 2 to 7, December 2026 to May 2027;
-and Sun & Moon, already built, is Season 8 in June 2027. Each season is
-built a fortnight before it starts, shown to David, and shipped before
-the 1st (see "The season pass turns over on the 1st of the month" in
-`AGENTS.md`).
+Then on 8 Nov 2026, with Sugar & Snow built: "Because we're already over
+a week into this season, I want to swap around season one and season
+two, so season 2 is the current season, but obviously call it season 1.
+And I want it to go until the end of December, and for fire and ice to
+start on January first."
+
+So the calendar is: Season 1 Sugar & Snow runs October to December 2026;
+Season 2 Fire & Ice is January 2027; Seasons 3 to 6 are February to May
+2027, FOUR months for the FIVE planned below (one has to drop or move,
+David's call); and Sun & Moon, already built, is Season 7 in June 2027.
+Each season is built a fortnight before it starts, shown to David, and
+shipped before the 1st (see "The season pass turns over on the 1st of
+the month" in `AGENTS.md`).
 
 | Season | Month | Name | Was called |
 | --- | --- | --- | --- |
-| 2 | Dec 2026 | Sugar & Snow (built 8 Nov 2026, v1.172.0) | Gingerbread & Glitter |
-| 3 | Jan 2027 | Rumble & Rain | Thunder & Rain |
-| 4 | Feb 2027 | Shield & Scale | Dragon & Knight |
-| 5 | Mar 2027 | Wind & Wings | (kept: it already rang) |
-| 6 | Apr 2027 | Bamboo & Blossom | Bamboo & Lotus |
-| 7 | May 2027 | Big Top & Boardwalk | Circus & Fair |
-| 8 | Jun 2027 | Sun & Moon | (built; moved from November) |
+| 1 | Oct–Dec 2026 | Sugar & Snow (built 8 Nov 2026, v1.172.0; Season 1 from v1.173.0) | Gingerbread & Glitter |
+| 2 | Jan 2027 | Fire & Ice (was Season 1 until 8 Nov 2026) | — |
+| 3–6 | Feb–May 2027 | four of: Rumble & Rain, Shield & Scale, Wind & Wings, Bamboo & Blossom, Big Top & Boardwalk | Thunder & Rain, Dragon & Knight, —, Bamboo & Lotus, Circus & Fair |
+| 7 | Jun 2027 | Sun & Moon | (built; moved from November) |
+
+The section headings below keep the numbers and months of the plan as
+it was written on 26 Oct 2026; read them as the order, not the dates.
 
 ## The rules every season follows
 
@@ -590,14 +597,17 @@ A loud, happy month: a big top and a seaside fairground. It starts on
 
 | Season | Month | Name | Lvl 6 (Gold) | Lvl 12 (Gold) | Lvl 20 (Free) | Lvl 30 (Gold) |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Oct–Nov 2026 | Fire & Ice | Snowy Hollow | Fire dice | Ice dice | Volcano Rim |
-| 2 | Dec 2026 | Sugar & Snow | Gingerbread Village | Gingerbread dice | Bauble dice | Twinkle Market |
+| 1 | Oct–Dec 2026 | Sugar & Snow | Gingerbread Village | Gingerbread dice | Bauble dice | Twinkle Market |
+| 2 | Jan 2027 | Fire & Ice | Snowy Hollow | Fire dice | Ice dice | Volcano Rim |
 | 3 | Jan 2027 | Rumble & Rain | Lighthouse Point | Thunder dice | Raindrop dice | Rainforest Falls |
 | 4 | Feb 2027 | Shield & Scale | Jousting Field | Knight dice | Dragon dice | Dragon's Peak |
 | 5 | Mar 2027 | Wind & Wings | Kite Hill | Kite dice | Butterfly dice | Butterfly House |
 | 6 | Apr 2027 | Bamboo & Blossom | Panda Grove | Bamboo dice | Lotus dice | Lotus Pond |
 | 7 | May 2027 | Big Top & Boardwalk | Big Top | Big Top dice | Carousel dice | Seaside Fair |
-| 8 | Jun 2027 | Sun & Moon | Sun Temple | Sun dice | Moon dice | Moon Garden |
+| 7 | Jun 2027 | Sun & Moon | Sun Temple | Sun dice | Moon dice | Moon Garden |
+
+Rows 3 to 7 above keep the plan's own numbering; since 8 Nov 2026 only
+February to May are free before Sun & Moon, so one of the five waits.
 
 ### What to decide before building
 

@@ -2026,7 +2026,7 @@ const GINGER = ['#9a5a2a', '#8a4e22', '#a8662f', '#7e4620'];
 const SWEETS = ['#f2a4c6', '#a6e3cc', '#f5df96', '#c9a6e8'];
 
 /**
- * The Gingerbread Village's wall, Season 2 of the pass, Sugar & Snow
+ * The Gingerbread Village's wall, Season 1 of the pass, Sugar & Snow
  * (8 Nov 2026): slabs of gingerbread along the wall top, a thick
  * rounded cap of white icing over them, gumdrops in pastel colours set
  * into the icing every so often, and a dusting of sugar. Slabs, drops
@@ -2335,7 +2335,7 @@ export function StoreCrest({ theme }: { theme: ArenaTheme }) {
     // Season 2 of the pass, Sun & Moon (21 Oct 2026).
     case 'sunstone': return <TempleWall />;
     case 'lanternWall': return <LanternWall />;
-    // Season 2 of the pass, Sugar & Snow (8 Nov 2026).
+    // Season 1 of the pass, Sugar & Snow (8 Nov 2026).
     case 'icedBiscuit': return <BiscuitWall />;
     case 'stringLights': return <LightsWall />;
     default: return null;

@@ -49,11 +49,12 @@ import { PRODUCTS } from '../src/game/products';
 
 /** What a level pays on the row a season item sits on. */
 /*
-  Season 1, Fire & Ice, by name: these tests are about the pass's rules,
-  which hold in every season, and they must not change their answer on
-  the first of the month (seasonRotation.test.ts covers the turning).
+  Fire & Ice by name: these tests are about the pass's rules, which hold
+  in every season, and they must not change their answer on the first of
+  the month (seasonRotation.test.ts covers the turning). Fire & Ice was
+  Season 1 until 8 Nov 2026 and is Season 2, January 2027, since.
 */
-const S1 = SEASONS[0];
+const S1 = SEASONS.find((s) => s.name === 'Fire & Ice')!;
 const SEASON_ITEMS = S1.items;
 const rewardOn = (level: number, track: 'free' | 'gold'): SeasonReward =>
   track === 'gold' ? goldRewardFor(level, S1) : rewardFor(level, S1);
