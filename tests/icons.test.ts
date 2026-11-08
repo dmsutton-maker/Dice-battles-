@@ -564,7 +564,8 @@ suite('icons · nothing left that types a picture', () => {
       are prose, and one of them is literally about replacing emoji.
     */
     const fields = news.match(/^\s*icon: '[^']*',$/gm) ?? [];
-    assert(fields.length > 40, `only found ${fields.length} posts with a picture`);
+    // 22 posts since 8 Nov 2026, when the list was cut to what is for players (news.ts).
+    assert(fields.length >= 20, `only found ${fields.length} posts with a picture`);
     for (const field of fields) {
       assert(!PICTURE.test(field), `a post still types its picture: ${field.trim()}`);
     }

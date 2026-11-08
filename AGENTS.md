@@ -355,6 +355,19 @@ reach Expo and TestFlight without him having to ask each time.
   environment only. This repo is public.
 - Roll back a bad update with `eas update:republish`, don't ship a
   panicked fix on top of it.
+- **The News tab is for players, and David or Marc reads every post
+  before it ships.** David, 8 Nov 2026, after "the seasons have swapped
+  round" popped up on his phone: "We didn't even launch yet. Don't put
+  back end updates that are just for us in the news ... before each
+  launch run the what's new text in front of me or Marc." So: a post
+  says what is in the game and what is new to play, written for
+  somebody who installed it today. Never the pass calendar, "built",
+  "coming soon", a fix to something only the family saw, or how the
+  game is made; the `changes` table and CHANGELOG.md are where those
+  go. Before ANY `eas update` that adds or changes a post, put the
+  post's exact title and body in chat, say whether it is `major` (pops
+  up once), and WAIT for a yes from David or Marc. An update with no
+  news change needs no such wait.
 
 
 - Every published update gets a version in `CHANGELOG.md`, recording

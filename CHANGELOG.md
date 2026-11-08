@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.174.0 — 2026-11-08 · requested by David
+
+David, 8 Nov 2026, on the v1.173.0 What's new popup: "Why would you put in
+the game the seasons were swapped. We didn't even launch yet. Don't put back
+end updates that are just for us in the news. Double check the news to make
+sure all articles are made just for end users. And also before each launch
+run the what's new text in front of me or Marc." JS only, runtime 4.0.0.
+Published only after David or Marc read the resulting News tab.
+
+### Changed
+- **The News tab is for players.** `NEWS` (news.ts) cut from 103 posts to
+  22: the ones that tell somebody who installed the game today what is in
+  it and what there is to play. Gone: the season swap and "Sugar & Snow is
+  built", every pass-calendar post, "coming soon" posts, fixes to things
+  only the family ever saw, redraws, speed-ups and other under-the-bonnet
+  notes. Kept posts were corrected where they had gone stale (the season
+  pass and Gold Pass posts no longer name Fire & Ice's items; Neon dice are
+  $0.99; the weekly cups no longer promise the Amethyst dice; friend
+  battles are described once, as a feature).
+- No post is `major` for v1.173.0 or v1.174.0, so nothing pops up on the
+  next launch.
+- `tests/news.test.ts`: the "news keeps up" guard allows ten quiet
+  releases instead of three, since a release with nothing new to play now
+  gets no post; the major examples are Battle real players and the music.
+- AGENTS.md, Releasing: every new or changed post is put in chat and
+  waits for a yes from David or Marc before the update carrying it is
+  published.
+
 ## v1.173.0 — 2026-11-08 · requested by David
 
 David, 8 Nov 2026: "Because we're already over a week into this season, I

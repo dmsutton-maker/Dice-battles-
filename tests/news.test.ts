@@ -104,7 +104,10 @@ suite('news · the bundled posts', () => {
     const current = num(GAME_VERSION);
     const behind = (current[0] - newest[0]) * 1000 + (current[1] - newest[1]);
     note(`newest post is v${newest.join('.')}, game is ${GAME_VERSION}`);
-    assert(behind <= 3, `the News tab is ${behind} minor versions behind the game`);
+    // Since 8 Nov 2026 the news is for players only (news.ts), so a run
+    // of releases with nothing new to play goes quiet on purpose. Ten
+    // releases quiet is still a sign something new to play went unsaid.
+    assert(behind <= 10, `the News tab is ${behind} minor versions behind the game`);
   });
 });
 
@@ -297,7 +300,7 @@ suite('news · big updates and collapsed posts', () => {
   test('there are major posts, and the examples are the ones meant', () => {
     const major = NEWS.filter((n) => newsIsMajor(n));
     assert(major.length > 0, 'no post is marked major');
-    for (const id of ['v1-159-0-online', 'v1-161-0-loading']) {
+    for (const id of ['v1-159-0-online', 'v1-165-0-our-music']) {
       assert(newsIsMajor(NEWS.find((n) => n.id === id)), `${id} should be major`);
     }
     note(`${major.length} major posts`);
