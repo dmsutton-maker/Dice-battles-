@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { playClick } from '../audio/sounds';
-import { fetchNews, NEWS, newsIconId, NewsItem } from '../game/news';
+import { fetchNews, NEWS, newsIconId, NewsItem, recentNews } from '../game/news';
 import { NEWS_ICONS } from '../ui/newsIcons';
 import { SHAPE, THEME } from '../ui/theme';
 
@@ -10,9 +10,10 @@ import { SHAPE, THEME } from '../ui/theme';
  *
  * Opens instantly on the posts bundled with the app, then quietly fills in
  * anything written on the HQ board since this version shipped. That order
- * matters: the tab is readable the moment it opens, with no spinner and no
- * empty state, and the network is an improvement rather than a
- * requirement. If it never answers, nobody can tell.
+ * matters: the tab is readable the moment it opens, with no spinner, and
+ * the network is an improvement rather than a requirement. If it never
+ * answers, nobody can tell. Only the last month's posts show (recentNews,
+ * David, 8 Nov 2026), so "Nothing new right now" is an ordinary sight.
  *
  * The list only; the panel, the title and the ✕ come from Popup. News used
  * to be a whole page behind a tab of its own, which was a lot of ceremony
@@ -123,7 +124,7 @@ export function WhatsNew({
 const COLLAPSED_LINES = 2;
 
 export function NewsScreen() {
-  const [items, setItems] = useState<NewsItem[]>(NEWS);
+  const [items, setItems] = useState<NewsItem[]>(() => recentNews(NEWS));
   // The posts opened, by id. Several can be open at once: closing one to
   // read the next would be a chore nobody asked for.
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
@@ -168,10 +169,23 @@ export function NewsScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.note}>
-          Everything that has changed in the game, in plain words. Tap a
-          post to read all of it.
-        </Text>
+        {/*
+          Posts leave a month after their date (recentNews), so an empty
+          list is normal between updates, not a fault.
+        */}
+        {items.length === 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Nothing new right now</Text>
+            <Text style={[styles.cardBody, styles.emptyBody]}>
+              When something new arrives in the game, you will read about it
+              here.
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.note}>
+            What is new in the game this month. Tap a post to read all of it.
+          </Text>
+        )}
 
         {items.map((item) => {
           const expanded = open.has(item.id);
@@ -220,6 +234,9 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
     marginBottom: 16,
+  },
+  emptyBody: {
+    marginTop: 6,
   },
   card: {
     backgroundColor: THEME.tile,

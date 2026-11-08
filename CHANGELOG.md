@@ -2,31 +2,26 @@
 
 ## v1.174.0 — 2026-11-08 · requested by David
 
-David, 8 Nov 2026, on the v1.173.0 What's new popup: "Why would you put in
-the game the seasons were swapped. We didn't even launch yet. Don't put back
-end updates that are just for us in the news. Double check the news to make
-sure all articles are made just for end users. And also before each launch
-run the what's new text in front of me or Marc." JS only, runtime 4.0.0.
-Published only after David or Marc read the resulting News tab.
+David, 8 Nov 2026, on the v1.173.0 What's new popup: "Don't put back end
+updates that are just for us in the news ... before each launch run the
+what's new text in front of me or Marc." Then: "Clear the news tab and then
+automatically clear any future news items older than one month." JS only,
+runtime 4.0.0.
 
 ### Changed
-- **The News tab is for players.** `NEWS` (news.ts) cut from 103 posts to
-  22: the ones that tell somebody who installed the game today what is in
-  it and what there is to play. Gone: the season swap and "Sugar & Snow is
-  built", every pass-calendar post, "coming soon" posts, fixes to things
-  only the family ever saw, redraws, speed-ups and other under-the-bonnet
-  notes. Kept posts were corrected where they had gone stale (the season
-  pass and Gold Pass posts no longer name Fire & Ice's items; Neon dice are
-  $0.99; the weekly cups no longer promise the Amethyst dice; friend
-  battles are described once, as a feature).
-- No post is `major` for v1.173.0 or v1.174.0, so nothing pops up on the
-  next launch.
-- `tests/news.test.ts`: the "news keeps up" guard allows ten quiet
-  releases instead of three, since a release with nothing new to play now
-  gets no post; the major examples are Battle real players and the music.
-- AGENTS.md, Releasing: every new or changed post is put in chat and
-  waits for a yes from David or Marc before the update carrying it is
-  published.
+- **The News tab is empty.** `NEWS` (news.ts) is `[]`; the season-swap post
+  and every older post are gone. The website's `game_news` table was already
+  empty. Nothing pops up on the next launch.
+- **A post leaves by itself a month after its date** (`recentNews`,
+  `newsDate`): dated 8 November, it shows through 8 December. Applied to the
+  bundled list, the board feed and the offline cache alike. A date that
+  cannot be read ("8 November 2026" and "2026-11-08" can) is not shown.
+- NewsScreen says "Nothing new right now" when there is nothing to show.
+- tests: the long-list guards ("news keeps up", "there are major posts", the
+  icon count) are replaced by tests of the month rule and the empty tab.
+- AGENTS.md, Releasing: news is for players only; every new or changed post
+  waits for a yes from David or Marc before it is published; posts expire
+  after a month.
 
 ## v1.173.0 — 2026-11-08 · requested by David
 

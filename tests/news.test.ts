@@ -10,19 +10,30 @@ import {
   newsIconId,
   newsIsMajor,
   NewsItem,
+  newsDate,
+  recentNews,
 } from '../src/game/news';
 import { GAME_VERSION } from '../src/game/version';
 
 /**
- * The News tab has one rule above all others: it must never be empty and
- * must never show an error. It is a page of announcements, not a feature,
- * so every failure has to end at the news the game already shipped with.
+ * The News tab must never show an error. It is a page of announcements,
+ * not a feature, so every failure has to end at the news the game already
+ * shipped with. Since 8 Nov 2026 it may be EMPTY (David: "Clear the news
+ * tab and then automatically clear any future news items older than one
+ * month"), and says "Nothing new right now" when it is.
  */
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/** A date the way posts write them, `days` before today. */
+function written(daysAgo = 0): string {
+  const d = new Date(Date.now() - daysAgo * 86_400_000);
+  return `${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
 
 function post(id: string, over: Partial<NewsItem> = {}): NewsItem {
   return {
     id,
-    date: '24 August 2026',
+    date: written(),
     title: `Post ${id}`,
     icon: 'news',
     body: 'Something happened, and here is a sentence about it.',
@@ -91,23 +102,42 @@ suite('news · the bundled posts', () => {
     note(`${NEWS.length} posts checked for ${NAMES.join(', ')}`);
   });
 
-  test('the news keeps up with what has shipped', () => {
-    // The failure that prompted all of this: the newest post was v1.11.0
-    // while the game was on v1.29.0, so the News tab was telling players
-    // nothing had changed across eighteen releases.
-    const versioned = NEWS.filter((n) => n.version);
-    assert(versioned.length > 0, 'no post mentions a version at all');
-    const num = (v: string) => v.replace(/^v/, '').split('.').map(Number);
-    const newest = versioned
-      .map((n) => num(n.version!))
-      .sort((a, b) => b[0] - a[0] || b[1] - a[1] || b[2] - a[2])[0];
-    const current = num(GAME_VERSION);
-    const behind = (current[0] - newest[0]) * 1000 + (current[1] - newest[1]);
-    note(`newest post is v${newest.join('.')}, game is ${GAME_VERSION}`);
-    // Since 8 Nov 2026 the news is for players only (news.ts), so a run
-    // of releases with nothing new to play goes quiet on purpose. Ten
-    // releases quiet is still a sign something new to play went unsaid.
-    assert(behind <= 10, `the News tab is ${behind} minor versions behind the game`);
+  test('a post is shown for a month after its date, then is gone', () => {
+    const NOV_8 = Date.UTC(2026, 10, 8, 15);
+    const p = post('p', { date: '8 November 2026' });
+    assertEqual(recentNews([p], NOV_8).length, 1, 'gone on its own day');
+    assertEqual(recentNews([p], Date.UTC(2026, 11, 8, 23, 59)).length, 1, 'gone before the month was up');
+    assertEqual(recentNews([p], Date.UTC(2026, 11, 9, 0, 1)).length, 0, 'still there after a month');
+    assertEqual(recentNews([p], Date.UTC(2027, 5, 1)).length, 0, 'still there months later');
+    // The board may write its dates the other way round.
+    assertEqual(recentNews([post('q', { date: '2026-11-08' })], NOV_8).length, 1, 'an ISO date was not read');
+    // Mixed: only the fresh one survives, in its place.
+    const mixed = [post('new', { date: '1 November 2026' }), post('old', { date: '1 September 2026' })];
+    assertEqual(recentNews(mixed, NOV_8).map((m) => m.id).join(','), 'new', 'the wrong posts survived');
+  });
+
+  test('a date that cannot be read is not shown', () => {
+    for (const bad of ['', 'soon', 'November 2026', '31 February 2027', '8 Smarch 2026', '2026-13-01']) {
+      assertEqual(newsDate(bad), null, `"${bad}" was read as a date`);
+      assertEqual(recentNews([post('x', { date: bad })]).length, 0, `"${bad}" was shown`);
+    }
+    assertEqual(newsDate('8 November 2026'), Date.UTC(2026, 10, 8), 'the usual form');
+    assertEqual(newsDate('8 november 2026'), Date.UTC(2026, 10, 8), 'lower-case month');
+  });
+
+  test('the tab and the feed both go through the month rule', () => {
+    const screen = readFileSync(join(__dirname, '..', 'src/demo/NewsScreen.tsx'), 'utf8');
+    assert(/useState<NewsItem\[\]>\(\(\) => recentNews\(NEWS\)\)/.test(screen), 'the tab opens on news of any age');
+    assert(/items\.length === 0/.test(screen) && /Nothing new right now/.test(screen), 'an empty tab says nothing');
+    const source = readFileSync(join(__dirname, '..', 'src/game/news.ts'), 'utf8');
+    assertEqual((source.match(/return recentNews\(mergeNews\(/g) ?? []).length, 1, 'the fresh feed skips the month rule');
+    assert(/const fallback = recentNews\(mergeNews\(/.test(source), 'the offline fallback skips the month rule');
+  });
+
+  test('a fetched post older than a month never reaches the tab', async () => {
+    store.delete('dice-battles:news-cache');
+    const news = await withFetch(ok([post('fresh'), post('stale', { date: written(40) })]), fetchNews);
+    assertEqual(news.map((n) => n.id).join(','), 'fresh', 'a stale board post was shown');
   });
 });
 
@@ -128,9 +158,10 @@ suite('news · merging the board with the bundle', () => {
   });
 
   test('nothing fetched leaves the bundle untouched', () => {
-    const merged = mergeNews(NEWS, []);
-    assertEqual(merged.length, NEWS.length, 'the bundle changed size');
-    assertEqual(merged[0].id, NEWS[0].id, 'the bundle was reordered');
+    const bundle = [post('a'), post('b')];
+    const merged = mergeNews(bundle, []);
+    assertEqual(merged.length, bundle.length, 'the bundle changed size');
+    assertEqual(merged[0].id, bundle[0].id, 'the bundle was reordered');
   });
 });
 
@@ -230,7 +261,9 @@ suite('news · every way the network can fail', () => {
       async () => ({ ok: true, json: async () => null }),
     ]) {
       const news = await withFetch(breaker, fetchNews);
-      assert(Array.isArray(news) && news.length > 0, 'fetchNews returned nothing');
+      // The bundle, as recentNews leaves it: empty is allowed since 8 Nov 2026.
+      assert(Array.isArray(news), 'fetchNews returned something that is not a list');
+      assertEqual(news.length, recentNews(NEWS).length, 'a failure did not fall back to the bundle');
     }
   });
 });
@@ -297,13 +330,11 @@ suite('news · every post has a drawn picture', () => {
  * up when you open the app for the first time since the update came out."
  */
 suite('news · big updates and collapsed posts', () => {
-  test('there are major posts, and the examples are the ones meant', () => {
-    const major = NEWS.filter((n) => newsIsMajor(n));
-    assert(major.length > 0, 'no post is marked major');
-    for (const id of ['v1-159-0-online', 'v1-165-0-our-music']) {
-      assert(newsIsMajor(NEWS.find((n) => n.id === id)), `${id} should be major`);
-    }
-    note(`${major.length} major posts`);
+  test('a major post is always about a released version', () => {
+    // A popup is keyed to a version (whatsNew.ts), so a major post with
+    // none could never pop up.
+    for (const item of NEWS) if (newsIsMajor(item)) assert(item.version !== undefined, `${item.id} is major with no version`);
+    note(`${NEWS.filter((n) => newsIsMajor(n)).length} major posts bundled`);
   });
 
   test('at most one major post per version, and it leads that version', () => {

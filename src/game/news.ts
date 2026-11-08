@@ -128,342 +128,63 @@ export function newsIsMajor(item: unknown): boolean {
   return typeof item === 'object' && item !== null && (item as Record<string, unknown>).major === true;
 }
 
-export const NEWS: NewsItem[] = [
-  {
-    id: 'v1-166-0-share-win',
-    date: '5 November 2026',
-    version: 'v1.166.0',
-    title: 'Share your win',
-    icon: 'people',
-    body:
-      'Won a battle? Tap "Share your win" on the victory screen and the game ' +
-      'makes a picture of your winning board with a big VICTORY! banner, your ' +
-      'score and the trophies you won. Share it to Instagram, send it in a ' +
-      'message or save it to your photos. Names never appear on the picture, ' +
-      'and nothing is shared unless you tap Share.',
-  },
-  {
-    id: 'v1-165-0-our-music',
-    date: '5 November 2026',
-    version: 'v1.165.0',
-    title: 'Brand-new music, all our own',
-    icon: 'sound',
-    major: true,
-    body:
-      'Every bit of music in the game was made just for Dice Battles. Three ' +
-      'battle tracks take turns, one per battle: a chiptune, a funk groove ' +
-      'and a synth-pop sprint. When either side is one rescue from winning, ' +
-      'the music turns up and gets more intense. The menus have their own ' +
-      'slower, calmer version of the chiptune.\n\n' +
-      'Listen out for the sounds too: a victory fanfare for each track, a ' +
-      'cheer when a prisoner is freed, a sparkle when you buy something and ' +
-      'a little bloop when you put on a die or a battlefield.',
-  },
-  {
-    id: 'v1-162-0-keeps-everything',
-    date: '5 November 2026',
-    version: 'v1.162.0',
-    title: 'Your progress survives a reinstall',
-    icon: 'fix',
-    major: true,
-    body:
-      'Deleting the game and installing it again does not start you over. ' +
-      'Your trophies, record, coins, the dice and battlefields you have ' +
-      'earned, your season pass progress, your settings, your friend code ' +
-      'and your friends list are kept safe under your own player id and ' +
-      'come back on their own the first time you open the game after a ' +
-      'reinstall, with a "Welcome back" card. Anything bought with real ' +
-      'money is restored by Apple: Restore purchases in Settings.\n\n' +
-      'After a battle with a friend or an online opponent, "Play again" ' +
-      'really asks them: you wait while they see the invitation, and the ' +
-      'rematch starts when they accept.',
-  },
-  {
-    id: 'v1-160-0-ocean',
-    date: '4 November 2026',
-    version: 'v1.160.0',
-    title: 'The Ocean dice are alive',
-    icon: 'dice',
-    body:
-      'The Ocean dice move: the waves roll round the die while you play, ' +
-      'every side in step, and each landing throws up a splash of droplets. ' +
-      'Dropping one in the moat makes a bigger one. The faces stay put, as ' +
-      'always.',
-  },
-  {
-    id: 'v1-159-0-online',
-    date: '4 November 2026',
-    version: 'v1.159.0',
-    title: 'Battle real players',
-    icon: 'people',
-    // A new way to play.
-    major: true,
-    body:
-      'From 100 trophies, Color Rush and Ultimate look for a real ' +
-      'player first. You will see "Searching for an opponent" with a ' +
-      'countdown; if nobody is free within 15 seconds you play a rival ' +
-      'instead. Online battles count for everything: trophies, coins, ' +
-      'the pass, quests and cups. Leaving one early counts as a loss.\n\n' +
-      'Want to warm up? Settings has a Practice button: a battle ' +
-      'against the computer that changes nothing, win or lose.',
-  },
-  {
-    id: 'v1-157-0-battle-menu',
-    date: '3 November 2026',
-    version: 'v1.157.0',
-    title: 'The battle menu',
-    icon: 'news',
-    body:
-      'The button in the corner of a battle (the three lines) is a menu. ' +
-      'It pauses a battle against the computer, and has the volume ' +
-      'sliders, How to play, and a way to leave.\n\n' +
-      'Leaving asks first, because it counts as a loss: the menu tells ' +
-      'you how many trophies it would cost. In a battle with a friend ' +
-      'nothing pauses, since they are still playing, and leaving hands ' +
-      'them the win.',
-  },
-  {
-    id: 'v1-155-0-friend-battles',
-    date: '1 November 2026',
-    version: 'v1.155.0',
-    title: 'Battle a friend, live',
-    icon: 'people',
-    body:
-      'Challenge a friend to a real battle, against them, live. Open ' +
-      'Friends, tap Battle next to their name, pick the mode and the ' +
-      'battlefield, and ask. It pops up on their screen with Battle! or No ' +
-      'thanks, and the challenge runs out after about forty-five seconds, ' +
-      'so you challenge somebody who is playing right now.\n\n' +
-      'Both phones wait in a little room ("Waiting for your friend...") ' +
-      'until you are both there, then count down together, and the 2:30 ' +
-      'clock starts at that moment for both of you. If your friend does ' +
-      'not turn up within 30 seconds, the room closes and nobody wins or ' +
-      'loses.\n\n' +
-      'You can feel your friend playing: a buzz, a flash and "Sam freed ' +
-      'Red!" when they score, and "needs only ONE more" when they are ' +
-      'close. The Friends list shows who is on right now, so you know who ' +
-      'to challenge. A friend battle is for bragging rights: no trophies ' +
-      'or coins change hands, just who won.',
-  },
-  {
-    id: 'v1-154-0-clock-quests-cupboard',
-    date: '1 November 2026',
-    version: 'v1.154.0',
-    title: 'A battle clock, daily quests and more',
-    icon: 'news',
-    body:
-      'Battles have a 2:30 clock. If nobody has finished when it runs ' +
-      'out, whoever is ahead wins, and a level score is a tie.\n\n' +
-      'Every day the Cups tab offers three quests for the season pass: ' +
-      'pick one, finish it before midnight (New York time) and earn a ' +
-      'big chunk of pass XP.\n\n' +
-      'The Inventory is your cupboard: it shows what you own. Things ' +
-      'you do not have yet are seen where they come from: the Shop, the ' +
-      'Gold Pass and cups in Cups, and the trophy ladder in Records, where ' +
-      'every rung can be tapped to see it on the board.\n\n' +
-      'The Neon dice are alive: a head of light chases round each tube, ' +
-      'the tubes breathe and shift colour, and they flash when a die ' +
-      'lands. The Sun Temple has a phoenix with a fire aura, the Pirate ' +
-      'Cove shark swims under the boats, and the Dino Valley dinosaurs ' +
-      'roam.',
-  },
-  {
-    id: 'v1-147-0-weekly-cups',
-    date: '21 October 2026',
-    version: 'v1.147.0',
-    title: 'A new cup every week',
-    icon: 'cups',
-    body:
-      'Ten cups take turns, one a week, changing at midnight on ' +
-      'Sunday night (New York time). They run from five Color Rush wins ' +
-      'in a row up to The Gauntlet: eight Ultimate wins in a row on Hard. ' +
-      'None of them is easy. A cup that has just run rests for at least ' +
-      'six weeks, and the order is never the same twice.',
-  },
-  {
-    id: 'v1-138-0-neon-dice',
-    date: '20 October 2026',
-    version: 'v1.138.0',
-    title: 'Neon dice',
-    icon: 'dice',
-    body:
-      'In the Shop: Neon dice. Black glass with a glowing pink tube round ' +
-      'every side, and they leave a trail of light as they roll, with a ' +
-      'ring of light where they land. $0.99, yours for good.',
-  },
-  {
-    id: 'v1-134-0-more-life-on-the-boards',
-    date: '19 October 2026',
-    version: 'v1.134.0',
-    title: 'Camels, aliens, lava and snow',
-    icon: 'arena',
-    body:
-      'A camel train crosses the dunes behind Desert Dunes, two of the ' +
-      'camels with riders. Little green aliens bound about behind Moon ' +
-      'Base. A river of lava flows right round Volcano Rim.\n\n' +
-      'On Snowy Hollow two children have a snowball fight behind the far ' +
-      'wall, a snowman gets built in the corner over and over, and a ' +
-      'finished one waddles along the front of the board.',
-  },
-  {
-    id: 'v1-130-0-fights-and-dogfights',
-    date: '19 October 2026',
-    version: 'v1.130.0',
-    title: 'Sword fights and a space battle',
-    icon: 'arena',
-    body:
-      'The sword fighters outside the castle really fight: they circle ' +
-      'each other, lunge, parry and clash blades. The same pairs fight on ' +
-      'Sunset Castle, the Jungle and the themed boards.\n\n' +
-      'On the Space Station, fighter ships chase each other through the ' +
-      'stars beside the deck, firing lasers back and forth, and duck ' +
-      'under the station at either end. The toy train goes round the Toy ' +
-      'Room, and nothing crosses the playing surface.',
-  },
-  {
-    id: 'v1-127-0-boards-come-alive',
-    date: '19 October 2026',
-    version: 'v1.127.0',
-    title: 'The boards are alive',
-    icon: 'arena',
-    body:
-      'Little fish swim around the Coral Reef, a shark circles the pirate ' +
-      'ship and ducks under its hull, two helicopters fly over Rooftop ' +
-      'City, cows, sheep and chickens wander Sunny Farm, and Treasure ' +
-      'Beach has surfers on the waves and sunbathers on the sand. They ' +
-      'move during battles and previews and keep off the playing surface.',
-  },
-  {
-    id: 'v1-107-0-gold-pass',
-    date: '13 October 2026',
-    version: 'v1.107.0',
-    title: 'The Gold Pass',
-    icon: 'cups',
-    body:
-      'The season pass has two rows. Everybody climbs the top row for ' +
-      'free, and it pays something at every level, with one of the ' +
-      'season\'s dice waiting at level 20.\n\n' +
-      'The Gold row sits underneath, on the same levels, and is unlocked ' +
-      'by the Gold Pass in the Shop. It holds the season\'s other three ' +
-      'things, two battlefields and a die, and coins at every other level. ' +
-      'If you get the Gold Pass part-way through the season, every Gold ' +
-      'level you have already reached pays out straight away. Nothing on ' +
-      'either row changes how the dice land.',
-  },
-  {
-    id: 'v1-103-0-moving-water',
-    date: '30 September 2026',
-    version: 'v1.103.0',
-    title: 'Real water, and one or two cups',
-    icon: 'arena',
-    body:
-      'The ponds move. On every battlefield with water — the castle, ' +
-      'the jungle, the beach and the rest — the water ripples and ' +
-      'drifts, light shimmers across it, and foam laps at the edge. The ' +
-      'river in the jungle flows.\n\n' +
-      'The Cups tab shows one or two cups at a time, and every one of them ' +
-      'changes every week or so.',
-  },
-  {
-    id: 'v1-102-0-season-pass',
-    date: '30 September 2026',
-    version: 'v1.102.0',
-    title: 'The season pass',
-    icon: 'cups',
-    body:
-      'Every battle you finish earns experience — a win more than a ' +
-      'loss, and Hard more than Easy — and experience climbs the season ' +
-      'pass, at the top of the Cups tab. There are thirty levels, and every ' +
-      'one pays something: a few coins or a few trophies, a little more ' +
-      'the higher you go.\n\n' +
-      'Four levels are special: a battlefield at level 6, a die at level ' +
-      '12, a die at level 20, and the season\'s big battlefield at level 30. ' +
-      'The season pass is the only way to get them. The season changes on ' +
-      'the 1st of the month, and everything you earned stays yours.\n\n' +
-      'The pass is free. Every level is earned by playing. Tap a die or a ' +
-      'battlefield on the pass to look at it before you get there.',
-  },
-  {
-    id: 'v1-67-0-adverts',
-    date: '7 September 2026',
-    version: 'v1.67.0',
-    title: 'One ad every third game',
-    icon: 'shop',
-    body:
-      'The game is free, and one full-screen ad appears after every third ' +
-      'finished game. That is the whole of it: never during a battle, ' +
-      'never a banner across the board, never a video you have to sit ' +
-      'through.\n\n' +
-      'Every ad is marked for a family audience, so nothing is chosen ' +
-      'based on who is holding the phone and nothing follows you anywhere. ' +
-      'It waits until you leave the results, so it can never cover a ' +
-      'trophy or an unlock you have just won — and the next battle ' +
-      'waits for you to close it.',
-  },
-  {
-    id: 'v1-50-0-big-content',
-    date: '26 August 2026',
-    version: 'v1.50.0',
-    title: 'Battlefields and dice',
-    icon: 'arena',
-    body:
-      'Battlefields to fight on: a snowy hollow, desert dunes, a volcano ' +
-      'rim, a candy meadow, a pirate cove, a coral reef, a rooftop city at ' +
-      'night, a moon base and more. Some are earned by winning trophies ' +
-      'on the ladder, and some are bought with the coins you win by ' +
-      'playing.\n\n' +
-      'And dice: animals from leopard to bumblebee, foods from watermelon ' +
-      'to chicken and waffles, and stranger things — a galaxy, a ' +
-      'rainbow, a circuit board. Tap anything in the Shop or your ' +
-      'Inventory to stand in it or hold it before you spend a single coin.',
-  },
-  {
-    id: 'v1-21-0-tutorial',
-    date: '23 August 2026',
-    version: 'v1.21.0',
-    title: 'How to play',
-    icon: 'help',
-    body:
-      'Six short pages explaining the whole game: the six prisoners, how to ' +
-      'throw, the one rule everything is built on, the four modes, and what ' +
-      'trophies and coins are for. It opens by itself the first time and is ' +
-      'always there afterwards, in Settings.',
-  },
-  {
-    id: 'v1-17-0-previews',
-    date: '22 August 2026',
-    version: 'v1.18.0',
-    title: 'See an item before you buy it',
-    icon: 'shop',
-    body:
-      'Tap anything in the Shop or the Inventory and you see it on the real ' +
-      'board — the actual dice, the actual battlefield — rather ' +
-      'than a small picture of it. Buying happens right there.',
-  },
-  {
-    id: 'v1-10-2-modes',
-    date: '19 August 2026',
-    version: 'v1.10.2',
-    title: 'Every mode plays in split screen',
-    icon: 'people',
-    body:
-      'Two-player split screen, on one phone, works in every mode: Color ' +
-      'Rush, Ultimate, Skirmish and Color War. In Skirmish you share one ' +
-      'jail, so grabbing a colour takes it out from under the other player.',
-  },
-  {
-    id: 'v1-10-2-shapes',
-    date: '19 August 2026',
-    version: 'v1.10.2',
-    title: 'Colorblind mode',
-    icon: 'look',
-    body:
-      'A setting gives every colour its own shape as well — a circle ' +
-      'for red, a square for blue, and so on. Helpful if colours are hard ' +
-      'to tell apart, and in bright sunlight it helps everyone. Find it in ' +
-      'Settings.',
-  },
+/**
+ * Cleared on 8 Nov 2026 at David's request ("Clear the news tab and then
+ * automatically clear any future news items older than one month").
+ * What goes here from now on is for players only, and David or Marc reads
+ * it before it ships (AGENTS.md, Releasing). A post disappears by itself
+ * a month after its date (`recentNews`), so nothing needs taking out by
+ * hand.
+ */
+export const NEWS: NewsItem[] = [];
+
+const MONTHS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
 ];
+
+/**
+ * The day a post is dated, as UTC midnight, or null if it cannot be read.
+ *
+ * Bundled posts are written "8 November 2026"; a post typed on the board
+ * may be that or "2026-11-08". Anything else is unreadable.
+ */
+export function newsDate(text: string): number | null {
+  const t = text.trim();
+  let y: number, m: number, d: number;
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+  const words = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/.exec(t);
+  if (iso) {
+    [y, m, d] = [Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])];
+  } else if (words) {
+    m = MONTHS.indexOf(words[2].toLowerCase());
+    [y, d] = [Number(words[3]), Number(words[1])];
+  } else return null;
+  if (m < 0 || m > 11 || d < 1 || d > 31) return null;
+  const at = Date.UTC(y, m, d);
+  // "31 February" rolls into March in Date.UTC: not a real date.
+  return new Date(at).getUTCDate() === d ? at : null;
+}
+
+/**
+ * The posts still worth showing: those dated within the last month.
+ *
+ * A post dated 8 November shows until the end of 8 December, then is
+ * gone, from the bundled list and the board alike. A post whose date
+ * cannot be read is not shown either: it cannot be told apart from one a
+ * year old, and stale news staying up for ever is exactly what this is
+ * here to stop.
+ */
+export function recentNews(items: NewsItem[], now: number = Date.now()): NewsItem[] {
+  return items.filter((item) => {
+    const at = newsDate(item.date);
+    if (at === null) return false;
+    const day = new Date(at);
+    // The same day next month, through to its end.
+    const until = Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate() + 1);
+    return now < until;
+  });
+}
 
 /**
  * Posts written on the HQ board, layered over the bundled ones.
@@ -547,7 +268,7 @@ async function readCache(): Promise<NewsItem[]> {
 export async function fetchNews(): Promise<NewsItem[]> {
   const cached = await readCache();
   // Something to show immediately if the request below never answers.
-  const fallback = mergeNews(NEWS, cached);
+  const fallback = recentNews(mergeNews(NEWS, cached));
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -565,7 +286,7 @@ export async function fetchNews(): Promise<NewsItem[]> {
     if (clean.length === 0) return fallback;
 
     AsyncStorage.setItem(CACHE_KEY, JSON.stringify(clean)).catch(() => {});
-    return mergeNews(NEWS, clean);
+    return recentNews(mergeNews(NEWS, clean));
   } catch {
     return fallback;
   } finally {

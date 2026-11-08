@@ -368,6 +368,12 @@ reach Expo and TestFlight without him having to ask each time.
   post's exact title and body in chat, say whether it is `major` (pops
   up once), and WAIT for a yes from David or Marc. An update with no
   news change needs no such wait.
+- **A post disappears a month after its date** (David, 8 Nov 2026:
+  "Clear the news tab and then automatically clear any future news
+  items older than one month"). `recentNews` in news.ts filters the
+  bundled list and the board feed alike, so an empty News tab ("Nothing
+  new right now") is normal. Write dates as "8 November 2026" (or
+  "2026-11-08" on the board); a date it cannot read is not shown.
 
 
 - Every published update gets a version in `CHANGELOG.md`, recording
