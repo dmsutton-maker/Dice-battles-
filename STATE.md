@@ -369,6 +369,13 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **8 Nov 2026 (v1.174.0, update 01a1bc89, group 1713b033): the News tab is
+  EMPTY**, at David's request, after the v1.173.0 season-swap post popped up
+  on his phone. A post now disappears by itself a month after its date
+  (`recentNews` in news.ts, bundled and board alike), and any new or changed
+  post is put in chat and waits for a yes from David or Marc before it ships
+  (AGENTS.md, Releasing). Phones that already saw the swap popup keep nothing
+  of it: the post is gone from the tab.
 - **8 Nov 2026 (v1.173.0, update 01a1bbca, group 938375e1): the seasons SWAPPED.**
   David: "swap around season one and season two, so season 2 is the current
   season, but obviously call it season 1 ... go until the end of December, and
