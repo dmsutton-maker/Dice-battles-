@@ -369,16 +369,28 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
-- **8 Nov 2026 (v1.172.0, update d8394194): Season 2, Sugar & Snow, is BUILT**
-  for December (`SEASONS` in seasonPass.ts): Gingerbread Village (`gingerbread`,
+- **8 Nov 2026 (v1.173.0, update 01a1bbca, group 938375e1): the seasons SWAPPED.**
+  David: "swap around season one and season two, so season 2 is the current
+  season, but obviously call it season 1 ... go until the end of December, and
+  for fire and ice to start on January first." Season 1 is Sugar & Snow,
+  Oct–Dec 2026 (`months: 3`); Season 2 is Fire & Ice, Jan 2027 (`earnedFrom:
+  '2026-10'`, so Fire/Ice items won in October stay visible and counted); Sun &
+  Moon is Season 7 by the numbering rule, so **Feb–May holds only four of the
+  five planned seasons — David has to pick which one drops or moves** (see
+  docs/seasons-3-to-8.md). Saves from before the swap keep their XP and are
+  paid the Sugar & Snow items at the levels already climbed, once per row
+  (`SeasonState.table`/`goldTable`). Not yet seen on a phone: Marc should open
+  the game, check the pass shows "Season 1 · Sugar & Snow" to 31 Dec, that the
+  owed items arrive after one battle, and that his Fire dice are still there.
+  Season 3 (February) now has to be built by 15 January.
+- **8 Nov 2026 (v1.172.0, update d8394194): Sugar & Snow is BUILT**
+  (`SEASONS` in seasonPass.ts; Season 1 since v1.173.0): Gingerbread Village (`gingerbread`,
   structure `icedBiscuit`), the Gingerbread dice, the Bauble dice (free row) and
   the Twinkle Market (`twinklemarket`, `stringLights`), with their own kits,
   jails, hazards, floors, card art and life (gingerbreadLife.tsx,
   marketLife.tsx, snowfall.tsx). Looked at in the browser renderer only, not
-  on a phone: Marc should play a battle on each board once December starts (or
-  with the admin code) and check the train, the skaters and the dice effects.
-  Season 3, Rumble & Rain, is next: build it by 15 December
-  (docs/seasons-3-to-8.md).
+  on a phone: Marc should play a battle on each board (they are the running
+  season's now) and check the train, the skaters and the dice effects.
 - **5 Nov 2026 (v1.170.0, update 74235d88):** share card's board was white on
   iPhone: the capture now has three redraw the scene into a render target
   (`drawBoard`, isXRRenderTarget + RGBA8) instead of blitting the view's MSAA
