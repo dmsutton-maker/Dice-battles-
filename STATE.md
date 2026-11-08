@@ -175,9 +175,12 @@ and the same day the listing was brought up to date:
   uploaded 6 Nov 2026 by hand through App Store Connect (the API has no
   header endpoint). It replaced the 16:9 header picture in the one header
   slot; the Search Results tab keeps the 16:9 picture (5244x2950).
-- The two app previews in `store/videos/` are NOT uploaded: they use
-  cinematic cameras, and guideline 2.3.4 allows only screen captures of
-  the app. A preview should be cut from a real screen recording.
+- The two rendered app previews in `store/videos/` are NOT for upload:
+  they use cinematic cameras, and guideline 2.3.4 allows only screen
+  captures of the app. `preview-real-iphone-886x1920.mp4` (8 Nov 2026) is
+  David's own screen recording of a battle, scaled to 886x1920 at 30 fps,
+  status bar blurred, game sound kept, 24.7 s. Uploaded 8 Nov 2026 as
+  the iPhone 6.7" preview (set `IPHONE_67`, poster frame at 6 s), state COMPLETE.
 
 ## Ads: why none were ever requested, and the fix (5 Nov 2026)
 
@@ -189,8 +192,12 @@ and the same day the listing was brought up to date:
 - Fixed in AdMob, not in code: a European regulations (GDPR) message was
   published under Privacy & messaging for Dice Battles: Color Rush (iOS),
   with "Do not consent" on. David's phone then showed "Ads: ready".
-- Still "Limited ad serving" until the App Store listing is linked in
-  AdMob after launch, so fill may be thin until then.
+- Confirmed on David's phone 6 Nov 2026 (v1.171.1): "asked Google 4 times
+  since opening", every answer "[googleMobileAds/no-fill] No ad to show".
+  The game requests correctly; Google serves nothing to an app that is
+  "Requires review" / "Limited ad serving". Expected to fill once the app
+  is live and its App Store page is linked in AdMob (launch-day step).
+  Child-directed, non-personalised, G-rated requests fill below average.
 
 ## Build 20, runtime 4.0.0 (5 Nov 2026): iCloud for a new iPhone
 
