@@ -369,6 +369,16 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **8 Nov 2026 (v1.172.0, update d8394194): Season 2, Sugar & Snow, is BUILT**
+  for December (`SEASONS` in seasonPass.ts): Gingerbread Village (`gingerbread`,
+  structure `icedBiscuit`), the Gingerbread dice, the Bauble dice (free row) and
+  the Twinkle Market (`twinklemarket`, `stringLights`), with their own kits,
+  jails, hazards, floors, card art and life (gingerbreadLife.tsx,
+  marketLife.tsx, snowfall.tsx). Looked at in the browser renderer only, not
+  on a phone: Marc should play a battle on each board once December starts (or
+  with the admin code) and check the train, the skaters and the dice effects.
+  Season 3, Rumble & Rain, is next: build it by 15 December
+  (docs/seasons-3-to-8.md).
 - **5 Nov 2026 (v1.170.0, update 74235d88):** share card's board was white on
   iPhone: the capture now has three redraw the scene into a render target
   (`drawBoard`, isXRRenderTarget + RGBA8) instead of blitting the view's MSAA
