@@ -74,6 +74,8 @@ export const DIE_BLURBS: Record<string, string> = {
   ice: 'Clear ice that leaves frost behind.',
   sun: 'Blazing gold, with a sunburst on landing.',
   moon: 'A silver moon and stars in the night.',
+  gingerbread: 'Iced gingerbread, with a puff of sugar.',
+  bauble: 'Glass and gold glitter that twinkles.',
   amethyst: 'A deep purple gem.',
   supporter: 'A gold compass on teal.',
   neon: 'Light chases round it and it leaves a trail.',
@@ -103,6 +105,8 @@ export const ARENA_BLURBS: Record<ArenaId, string> = {
   dino: 'Dinosaurs roaming round a tar pit.',
   suntemple: 'Priests carrying the sun round a temple.',
   moongarden: 'Lanterns and moths in a night garden.',
+  gingerbread: 'A biscuit village with a sweet train.',
+  twinklemarket: 'A night market of lights and skaters.',
 };
 
 export function dieBlurb(id: string): string {

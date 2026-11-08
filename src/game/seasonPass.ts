@@ -100,12 +100,30 @@ export const SEASONS: readonly SeasonDef[] = [
     ],
   },
   /*
-    Seasons 2 to 7 (December 2026 to May 2027: Sugar & Snow, Rumble &
-    Rain, Shield & Scale, Wind & Wings, Bamboo & Blossom, Big Top &
-    Boardwalk) are planned in docs/seasons-3-to-8.md and slot in here as
-    they are built. Sun & Moon was built as Season 2 for November; David
-    moved it to June on 26 Oct 2026 ("Change the November season to be
-    for June").
+    Season 2, Sugar & Snow: December 2026, built 8 Nov 2026 to the plan
+    in docs/seasons-3-to-8.md. Winter treats by day and twinkling lights
+    by night: the Gingerbread Village, the Gingerbread dice, the Bauble
+    dice on the free row, and the Twinkle Market as the big prize. The
+    same shape as Season 1: three on the Gold row, the second die free.
+  */
+  {
+    number: 2,
+    id: 'season-2',
+    name: 'Sugar & Snow',
+    month: '2026-12',
+    items: [
+      { level: 6, item: { kind: 'arena', id: 'gingerbread' }, track: 'gold' },
+      { level: 12, item: { kind: 'dice', id: 'gingerbread' }, track: 'gold' },
+      { level: 20, item: { kind: 'dice', id: 'bauble' }, track: 'free' },
+      { level: 30, item: { kind: 'arena', id: 'twinklemarket' }, track: 'gold' },
+    ],
+  },
+  /*
+    Seasons 3 to 7 (January to May 2027: Rumble & Rain, Shield & Scale,
+    Wind & Wings, Bamboo & Blossom, Big Top & Boardwalk) are planned in
+    docs/seasons-3-to-8.md and slot in here as they are built. Sun & Moon
+    was built as Season 2 for November; David moved it to June on 26 Oct
+    2026 ("Change the November season to be for June").
   */
   {
     number: 8,

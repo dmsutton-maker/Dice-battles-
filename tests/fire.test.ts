@@ -70,6 +70,8 @@ suite('fire dice · the skin', () => {
     const expected = [
       'fire:fire', 'ice:ice', 'moon:moon', 'neon:neon', 'sun:sun',
       'ocean:ocean',
+      // Sugar & Snow (8 Nov 2026): crumbs and sugar; gold glitter.
+      'gingerbread:gingerbread', 'bauble:bauble',
       // Season dice with effects go ABOVE this comment, one line per season.
     ];
     const moving = DICE_SKINS.filter((s) => s.effect !== undefined).map((s) => `${s.id}:${s.effect}`);
@@ -193,8 +195,11 @@ suite('fire dice · it never hides the roll', () => {
       './neonGlow',
       // The Ocean dice splash (4 Nov 2026), checked the same way.
       './diceOcean',
+      // Sugar & Snow (8 Nov 2026): the Gingerbread and Bauble dice, checked the same way.
+      './diceGingerbread',
+      './diceBauble',
     ]);
-    for (const file of ['diceFire', 'diceIce', 'diceNeon', 'diceSun', 'diceMoon', 'diceOcean', 'dieEffect', 'groundMarks', 'particles']) {
+    for (const file of ['diceFire', 'diceIce', 'diceNeon', 'diceSun', 'diceMoon', 'diceOcean', 'diceGingerbread', 'diceBauble', 'dieEffect', 'groundMarks', 'particles']) {
       const source = readFileSync(`src/dice/${file}.ts`, 'utf8');
       const imports = [...source.matchAll(/^import .* from '([^']+)'/gm)].map((m) => m[1]);
       const stray = imports.filter((m) => !allowed.has(m));

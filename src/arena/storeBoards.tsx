@@ -2020,6 +2020,304 @@ function GardenCorner({ theme }: { theme: ArenaTheme }) {
   );
 }
 
+/* ── Gingerbread Village ─────────────────────────────────────────── */
+
+const GINGER = ['#9a5a2a', '#8a4e22', '#a8662f', '#7e4620'];
+const SWEETS = ['#f2a4c6', '#a6e3cc', '#f5df96', '#c9a6e8'];
+
+/**
+ * The Gingerbread Village's wall, Season 2 of the pass, Sugar & Snow
+ * (8 Nov 2026): slabs of gingerbread along the wall top, a thick
+ * rounded cap of white icing over them, gumdrops in pastel colours set
+ * into the icing every so often, and a dusting of sugar. Slabs, drops
+ * and sugar are one instanced draw each; the icing is a berm.
+ */
+function BiscuitWall() {
+  const { slabs, drops, sugar } = useMemo(() => {
+    const slabs: Inst[] = [];
+    const drops: Inst[] = [];
+    const sugar: Inst[] = [];
+    for (const run of RUNS) {
+      for (const s of spots(run, 0.42, 0.02)) {
+        slabs.push({
+          p: [s.x, wallHeight + 0.07, s.z],
+          r: [0, run.yaw, 0],
+          s: [0.4, 0.14, 0.46],
+          c: GINGER[Math.floor(h1(s.seed) * GINGER.length)],
+        });
+      }
+      for (const s of spots(run, 0.95, 0.3)) {
+        const off = (h1(s.seed + 4) - 0.5) * 0.14;
+        drops.push({
+          p: [s.x + run.nx * off, wallHeight + 0.26, s.z + run.nz * off],
+          s: [0.11, 0.08, 0.11],
+          c: SWEETS[Math.floor(h1(s.seed + 2) * SWEETS.length)],
+        });
+      }
+      for (const s of spots(run, 0.18, 0.05)) {
+        if (h1(s.seed + 9) < 0.5) continue;
+        const off = (h1(s.seed + 7) - 0.5) * 0.3;
+        sugar.push({ p: [s.x + run.nx * off, wallHeight + 0.27, s.z + run.nz * off], s: 0.02, c: '#ffffff' });
+      }
+    }
+    return { slabs, drops, sugar };
+  }, []);
+  return (
+    <group>
+      <Instanced items={slabs}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </Instanced>
+      <Berm color="#fff8f0" radius={0.17} squash={0.45} roughness={0.55} />
+      <Instanced items={drops}>
+        <sphereGeometry args={[1, 10, 7]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.4} />
+      </Instanced>
+      <Instanced items={sugar}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.3} />
+      </Instanced>
+    </group>
+  );
+}
+
+/**
+ * A corner of the Gingerbread Village: a gingerbread cottage on the
+ * wall top, with an icing-snow roof, a lit window, an iced door and a
+ * chimney. The smoke is the life's (gingerbreadLife.tsx).
+ */
+function BiscuitCorner({ theme }: { theme: ArenaTheme }) {
+  return (
+    <group position={[0, wallHeight, 0]}>
+      <mesh position={[0, 0.34, 0]}>
+        <boxGeometry args={[0.72, 0.68, 0.72]} />
+        <meshStandardMaterial color={theme.tower.body} roughness={0.85} />
+      </mesh>
+      {/* The roof: two iced slopes meeting at a ridge. */}
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 0.2, 0.86, 0]} rotation={[0, 0, side * -0.72]}>
+          <boxGeometry args={[0.5, 0.07, 0.84]} />
+          <meshStandardMaterial color={theme.tower.roof} roughness={0.55} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.03, 0]}>
+        <boxGeometry args={[0.08, 0.06, 0.86]} />
+        <meshStandardMaterial color={theme.tower.roof} roughness={0.55} />
+      </mesh>
+      {/* Icing dripping off the eaves. */}
+      {[-0.42, 0.42].map((x) =>
+        [-0.3, -0.1, 0.1, 0.3].map((z) => (
+          <mesh key={`${x}${z}`} position={[x, 0.7, z]}>
+            <sphereGeometry args={[0.055, 8, 6]} />
+            <meshStandardMaterial color={theme.tower.roof} roughness={0.55} />
+          </mesh>
+        )),
+      )}
+      {/* A lit window on two faces, an iced door, a chimney. */}
+      <mesh position={[0, 0.42, 0.365]}>
+        <boxGeometry args={[0.22, 0.2, 0.02]} />
+        <meshBasicMaterial color="#ffd98a" />
+      </mesh>
+      <mesh position={[0.365, 0.42, 0]}>
+        <boxGeometry args={[0.02, 0.2, 0.22]} />
+        <meshBasicMaterial color="#ffd98a" />
+      </mesh>
+      <mesh position={[-0.365, 0.26, 0]}>
+        <boxGeometry args={[0.02, 0.44, 0.26]} />
+        <meshStandardMaterial color="#6e3c14" roughness={0.85} />
+      </mesh>
+      <mesh position={[0.2, 1.08, -0.2]}>
+        <boxGeometry args={[0.16, 0.3, 0.16]} />
+        <meshStandardMaterial color="#7e4620" roughness={0.85} />
+      </mesh>
+      <mesh position={[0.2, 1.24, -0.2]}>
+        <boxGeometry args={[0.19, 0.05, 0.19]} />
+        <meshStandardMaterial color={theme.tower.roof} roughness={0.55} />
+      </mesh>
+      {/* Gumdrops along the roof ridge. */}
+      {[-0.3, 0, 0.3].map((z, i) => (
+        <mesh key={z} position={[0, 1.09, z]} scale={[1, 0.75, 1]}>
+          <sphereGeometry args={[0.07, 10, 7]} />
+          <meshStandardMaterial color={SWEETS[i]} roughness={0.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/* ── Twinkle Market ──────────────────────────────────────────────── */
+
+const SNOWY_STONE = ['#4a5266', '#3f4656', '#565e72', '#454c5e'];
+const BULBS = ['#ffd27a', '#ffb088', '#ffe9b0', '#ffc0a0'];
+
+/**
+ * The Twinkle Market's wall, Season 2 of the pass: a low wall of stone
+ * slabs with snow lying along its top, a wooden post every few steps
+ * with a string of warm bulbs sagging between the posts, and a halo
+ * round every bulb. The bulbs are unlit material, so they are lights
+ * under the night rig; the chase of the lights is the life's
+ * (marketLife.tsx), which pulses halos of its own over these.
+ */
+function LightsWall() {
+  const { slabs, snow, posts, wire, bulbs, halos } = useMemo(() => {
+    const slabs: Inst[] = [];
+    const snow: Inst[] = [];
+    const posts: Inst[] = [];
+    const wire: Inst[] = [];
+    const bulbs: Inst[] = [];
+    const halos: Inst[] = [];
+    for (const run of RUNS) {
+      for (const s of spots(run, 0.3, 0.02)) {
+        slabs.push({
+          p: [s.x, wallHeight + 0.07, s.z],
+          r: [0, run.yaw, 0],
+          s: [0.28, 0.14, 0.46],
+          c: SNOWY_STONE[Math.floor(h1(s.seed) * SNOWY_STONE.length)],
+        });
+        const off = (h1(s.seed + 4) - 0.5) * 0.12;
+        snow.push({
+          p: [s.x + run.nx * off, wallHeight + 0.16, s.z + run.nz * off],
+          r: [0, run.yaw + (h1(s.seed + 5) - 0.5) * 0.4, 0],
+          s: [0.3, 0.05 + h1(s.seed + 6) * 0.04, 0.3],
+          c: h1(s.seed + 7) > 0.5 ? '#eef3f8' : '#dde6f0',
+        });
+      }
+      const postSpots = spots(run, 1.3, 0.3);
+      for (const s of postSpots) {
+        posts.push({ p: [s.x, wallHeight + 0.5, s.z], s: [0.035, 0.6, 0.035], c: '#3a2f2a' });
+        posts.push({ p: [s.x, wallHeight + 0.82, s.z], s: [0.08, 0.03, 0.08], c: '#3a2f2a' });
+      }
+      // The string between each pair of posts: a shallow sag, bulbs along it.
+      for (let i = 0; i + 1 < postSpots.length; i++) {
+        const a = postSpots[i];
+        const b = postSpots[i + 1];
+        const n = 6;
+        for (let k = 0; k <= n; k++) {
+          const t = k / n;
+          const sag = Math.sin(t * Math.PI) * 0.14;
+          const x = a.x + (b.x - a.x) * t;
+          const z = a.z + (b.z - a.z) * t;
+          const y = wallHeight + 0.8 - sag;
+          if (k < n) {
+            const nx = a.x + (b.x - a.x) * ((k + 1) / n);
+            const nz = a.z + (b.z - a.z) * ((k + 1) / n);
+            const ny = wallHeight + 0.8 - Math.sin(((k + 1) / n) * Math.PI) * 0.14;
+            const len = Math.hypot(nx - x, ny - y, nz - z);
+            const pitch = Math.atan2(ny - y, Math.hypot(nx - x, nz - z));
+            wire.push({ p: [(x + nx) / 2, (y + ny) / 2, (z + nz) / 2], r: [0, run.yaw, pitch], s: [len, 0.012, 0.012], c: '#2a2420' });
+          }
+          if (k > 0 && k < n) {
+            const colour = BULBS[(i + k) % BULBS.length];
+            bulbs.push({ p: [x, y - 0.045, z], s: [0.045, 0.06, 0.045], c: colour });
+            halos.push({ p: [x, y - 0.045, z], r: [-Math.PI / 2, 0, 0], s: 0.42, c: colour });
+          }
+        }
+      }
+    }
+    return { slabs, snow, posts, wire, bulbs, halos };
+  }, []);
+  const glow = glowTexture();
+  return (
+    <group>
+      <Instanced items={slabs}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.95} />
+      </Instanced>
+      <Instanced items={snow}>
+        <sphereGeometry args={[1, 8, 5]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </Instanced>
+      <Instanced items={posts}>
+        <cylinderGeometry args={[1, 1, 1, 6]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </Instanced>
+      <Instanced items={wire}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.8} />
+      </Instanced>
+      <Instanced items={bulbs}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshBasicMaterial color="#ffffff" />
+      </Instanced>
+      <Instanced items={halos} renderOrder={2}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color="#ffffff" map={glow} transparent opacity={0.4} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </Instanced>
+    </group>
+  );
+}
+
+/**
+ * A corner of the Twinkle Market: a market stall on the wall top with a
+ * striped awning (cream and teal) and snow on it, a lantern hanging
+ * under the awning, and parcels on its counter.
+ */
+function MarketCorner({ theme }: { theme: ArenaTheme }) {
+  const wood = theme.tower.body;
+  const cream = theme.tower.roof;
+  return (
+    <group position={[0, wallHeight, 0]}>
+      {[-1, 1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <mesh key={`${sx}${sz}`} position={[sx * 0.33, 0.45, sz * 0.33]}>
+            <cylinderGeometry args={[0.03, 0.035, 0.9, 6]} />
+            <meshStandardMaterial color={wood} roughness={0.85} />
+          </mesh>
+        )),
+      )}
+      <mesh position={[0, 0.36, 0]}>
+        <boxGeometry args={[0.72, 0.06, 0.72]} />
+        <meshStandardMaterial color={wood} roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.2, 0]}>
+        <boxGeometry args={[0.66, 0.3, 0.66]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.85} />
+      </mesh>
+      {/* The awning: striped, pitched, snow on top. */}
+      {[0, 1, 2, 3, 4, 5].map((k) => (
+        <mesh key={k} position={[-0.375 + k * 0.15, 0.95, 0]} rotation={[0, 0, 0]}>
+          <boxGeometry args={[0.15, 0.05, 0.86]} />
+          <meshStandardMaterial color={k % 2 ? '#3a8a8f' : cream} roughness={0.8} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.99, 0]}>
+        <boxGeometry args={[0.9, 0.04, 0.5]} />
+        <meshStandardMaterial color="#eef3f8" roughness={0.9} />
+      </mesh>
+      {/* Parcels on the counter. */}
+      {([
+        [-0.2, 0.1, '#b84a5c', 0.2],
+        [0.15, -0.12, '#3a8a8f', 0.16],
+        [0.18, 0.18, cream, 0.14],
+      ] as const).map(([x, z, c, h], i) => (
+        <group key={i} position={[x, 0.39 + h / 2, z]}>
+          <mesh>
+            <boxGeometry args={[0.2, h, 0.2]} />
+            <meshStandardMaterial color={c} roughness={0.6} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[0.21, h + 0.005, 0.04]} />
+            <meshStandardMaterial color="#e8c25a" roughness={0.4} metalness={0.4} />
+          </mesh>
+        </group>
+      ))}
+      {/* The lantern under the awning, and its glow. */}
+      <mesh position={[0, 0.82, 0.3]}>
+        <boxGeometry args={[0.12, 0.14, 0.12]} />
+        <meshBasicMaterial color="#ffe2a8" />
+      </mesh>
+      <mesh position={[0, 0.91, 0.3]}>
+        <coneGeometry args={[0.1, 0.07, 4]} />
+        <meshStandardMaterial color="#3a2f2a" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.5, 0.3]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.1, 1.1]} />
+        <meshBasicMaterial color="#ffd27a" map={glowTexture()} transparent opacity={0.35} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+    </group>
+  );
+}
+
 /* ── what ThemedArena asks for ────────────────────────────────────── */
 
 /** The wall of a store board, or null for any other structure. */
@@ -2037,6 +2335,9 @@ export function StoreCrest({ theme }: { theme: ArenaTheme }) {
     // Season 2 of the pass, Sun & Moon (21 Oct 2026).
     case 'sunstone': return <TempleWall />;
     case 'lanternWall': return <LanternWall />;
+    // Season 2 of the pass, Sugar & Snow (8 Nov 2026).
+    case 'icedBiscuit': return <BiscuitWall />;
+    case 'stringLights': return <LightsWall />;
     default: return null;
   }
 }
@@ -2055,6 +2356,8 @@ export function StoreCorner({ theme }: { theme: ArenaTheme }) {
     case 'fernRock': return <DinoCorner theme={theme} />;
     case 'sunstone': return <TempleCorner theme={theme} />;
     case 'lanternWall': return <GardenCorner theme={theme} />;
+    case 'icedBiscuit': return <BiscuitCorner theme={theme} />;
+    case 'stringLights': return <MarketCorner theme={theme} />;
     default: return null;
   }
 }

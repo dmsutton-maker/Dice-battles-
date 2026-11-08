@@ -16,4 +16,4 @@
  * enforces that, so a release that forgets to move it fails before it
  * can go out.
  */
-export const GAME_VERSION = 'v1.171.1';
+export const GAME_VERSION = 'v1.172.0';

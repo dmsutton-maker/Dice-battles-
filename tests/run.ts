@@ -25,6 +25,7 @@ async function main(): Promise<void> {
   await import('./neonDice.test');
   await import('./dinoValley.test');
   await import('./season2.test');
+  await import('./sugarSnow.test');
   await import('./downloadSize.test');
   await import('./duoDesign.test');
   await import('./retiredDice.test');

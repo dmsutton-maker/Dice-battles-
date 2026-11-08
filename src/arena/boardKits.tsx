@@ -12,6 +12,8 @@ import { SnowLife } from './snowLife';
 import { DinoLife } from './dinoLife';
 import { TempleLife } from './templeLife';
 import { GardenLife } from './gardenLife';
+import { GingerbreadLife } from './gingerbreadLife';
+import { MarketLife } from './marketLife';
 
 /**
  * The walls, corners and surroundings of eight battlefields: Snowy
@@ -1570,6 +1572,9 @@ export function BoardScenery({ theme }: { theme: ArenaTheme }) {
       {/* Season 2 of the pass (21 Oct 2026): the procession and the moths. */}
       {theme.structure === 'sunstone' && <TempleLife />}
       {theme.structure === 'lanternWall' && <GardenLife />}
+      {/* Sugar & Snow (8 Nov 2026): the sweet train and smoke; skaters and shoppers. */}
+      {theme.structure === 'icedBiscuit' && <GingerbreadLife />}
+      {theme.structure === 'stringLights' && <MarketLife />}
     </group>
   );
 }

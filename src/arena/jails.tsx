@@ -1364,6 +1364,120 @@ const DESIGNS: Record<JailKind, Design> = {
       }
     },
   },
+
+  /*
+    Gingerbread Village, Season 2 of the pass, Sugar & Snow (8 Nov
+    2026): a biscuit pen. A gingerbread back wall capped with icing and
+    studded with gumdrops, and candy-stick bars — cream with brown
+    stripes, never red, to stay clear of the Red face — along the back
+    and down both sides, open at the front like every pen. A snow-iced
+    rail runs along the top of the bars.
+  */
+  biscuitPen: {
+    looks: (p) => ({
+      platform: { color: p.platform, rough: 0.8 },
+      ginger: { color: '#9a5a2a', rough: 0.85 },
+      dark: { color: '#6e3c14', rough: 0.85 },
+      icing: { color: '#fff8f0', rough: 0.55 },
+      stick: { color: p.bars, rough: 0.5 },
+      stripe: { color: '#7a4418', rough: 0.5 },
+      pink: { color: '#f2a4c6', rough: 0.5 },
+      mint: { color: '#a6e3cc', rough: 0.5 },
+      lemon: { color: '#f5df96', rough: 0.5 },
+    }),
+    build(k) {
+      platform(k);
+      // Icing piped round the platform's edge.
+      for (const z of [-1, 1]) k.box('icing', [PLATFORM_W + 0.04, 0.04, 0.07], [0, -0.02, (z * PLATFORM_D) / 2]);
+      for (const x of span(-2.3, 2.3, 19)) k.ball('icing', 0.07, [x, -0.05, PLATFORM_D / 2 + 0.02], [1, 1.3, 0.6], 8);
+      // The back wall: a gingerbread slab, an icing cap, gumdrops along it.
+      k.box('ginger', [4.9, 0.95, 0.22], [0, 0.475, -0.88]);
+      k.box('dark', [4.9, 0.06, 0.24], [0, 0.03, -0.88]);
+      k.box('icing', [5.0, 0.1, 0.3], [0, 0.98, -0.88]);
+      for (const x of span(-2.4, 2.4, 13)) k.ball('icing', 0.09, [x, 0.93, -0.74], [1, 0.5, 0.6], 8);
+      const sweets = ['pink', 'mint', 'lemon'];
+      span(-2.1, 2.1, 8).forEach((x, i) => k.ball(sweets[i % 3], 0.09, [x, 1.08, -0.88], [1, 0.75, 1], 10));
+      // An iced window either side and a door in the middle, drawn on the slab.
+      for (const x of [-1.5, 1.5]) {
+        k.box('icing', [0.55, 0.05, 0.03], [x, 0.3, -0.765]);
+        k.box('icing', [0.55, 0.05, 0.03], [x, 0.7, -0.765]);
+        for (const dx of [-0.25, 0.25]) k.box('icing', [0.05, 0.45, 0.03], [x + dx, 0.5, -0.765]);
+      }
+      k.box('dark', [0.5, 0.6, 0.03], [0, 0.3, -0.765]);
+      k.tube('icing', span(0, PI, 9).map((a) => [0.28 * Math.cos(a), 0.6 + 0.12 * Math.sin(a), -0.75] as V3), 0.03, 12);
+      // Candy-stick bars down both sides, with brown stripes, under an iced rail.
+      for (const s of [-1, 1]) {
+        for (const z of span(-0.6, 0.3, 4)) {
+          k.cyl('stick', 0.05, 0.05, 0.95, 8, [s * 2.3, 0.475, z]);
+          for (const y of [0.15, 0.4, 0.65, 0.88]) k.cyl('stripe', 0.052, 0.052, 0.06, 8, [s * 2.3, y, z], [0, 0, 0.3]);
+        }
+        k.box('icing', [0.14, 0.08, 1.15], [s * 2.3, 0.98, -0.15]);
+        for (const z of span(-0.65, 0.35, 5)) k.ball('icing', 0.06, [s * 2.3, 0.98, z], [1, 0.9, 1], 8);
+      }
+    },
+  },
+
+  /*
+    Twinkle Market, Season 2 of the pass: a market stall. Four wooden
+    posts carry a striped awning (cream and teal) over the pen, with a
+    paper lantern hanging from its front edge and swinging; a wooden
+    counter runs along the back with parcels on it, and wooden bars run
+    down both sides and along the back under the counter.
+  */
+  marketStall: {
+    looks: (p) => ({
+      platform: { color: p.platform, rough: 0.95 },
+      wood: { color: p.bars, rough: 0.85 },
+      dark: { color: '#4a3a2e', rough: 0.85 },
+      cream: { color: '#f0e6d2', rough: 0.8 },
+      teal: { color: '#3a8a8f', rough: 0.8 },
+      crimson: { color: '#b84a5c', rough: 0.7 },
+      gold: { color: '#e8c25a', rough: 0.4, metal: 0.4 },
+      paper: { color: '#ffe2a8', unlit: true },
+      snow: { color: '#eef3f8', rough: 0.9 },
+    }),
+    build(k) {
+      platform(k);
+      // Posts at the four corners of the pen; the back pair taller.
+      for (const s of [-1, 1]) {
+        k.cyl('wood', 0.06, 0.07, 1.3, 8, [s * 2.3, 0.65, -0.84]);
+        k.cyl('wood', 0.06, 0.07, 1.1, 8, [s * 2.3, 0.55, 0.4]);
+      }
+      // The counter along the back, parcels on it.
+      k.box('wood', [4.75, 0.08, 0.5], [0, 0.55, -0.7]);
+      k.box('dark', [4.75, 0.5, 0.06], [0, 0.28, -0.46]);
+      const wraps = ['crimson', 'teal', 'cream', 'crimson', 'teal'];
+      span(-1.9, 1.9, 5).forEach((x, i) => {
+        const h = 0.18 + (i % 2) * 0.08;
+        k.box(wraps[i], [0.26, h, 0.26], [x, 0.59 + h / 2, -0.72]);
+        k.box('gold', [0.27, h + 0.01, 0.05], [x, 0.59 + h / 2, -0.72]);
+        k.box('gold', [0.05, h + 0.01, 0.27], [x, 0.59 + h / 2, -0.72]);
+      });
+      // The awning: sloping from the back posts to the front, striped, snow on it.
+      const slope = Math.atan2(0.2, 1.2);
+      span(-2.2, 2.2, 9).forEach((x, i) => k.box(i % 2 ? 'teal' : 'cream', [0.55, 0.05, 1.2], [x, 1.2, -0.22], [slope, 0, 0]));
+      k.box('snow', [5.0, 0.05, 0.42], [0, 1.3, -0.58], [slope, 0, 0]);
+      // A scalloped front edge.
+      for (const x of span(-2.2, 2.2, 9)) k.ball(x % 1 ? 'cream' : 'teal', 0.14, [x, 1.08, 0.4], [1, 0.6, 0.3], 8);
+      // Bars: wooden rails along the back under the counter and down both sides.
+      for (const y of [0.15, 0.4]) k.cyl('wood', 0.025, 0.025, 4.6, 6, [0, y, -0.84], [0, 0, PI / 2]);
+      for (const s of [-1, 1]) {
+        for (const z of span(-0.55, 0.2, 4)) k.cyl('wood', 0.03, 0.03, 0.9, 6, [s * 2.3, 0.45, z]);
+        for (const y of [0.3, 0.75]) k.cyl('wood', 0.025, 0.025, 1.15, 6, [s * 2.3, y, -0.2], [PI / 2, 0, 0]);
+      }
+      // The lantern hanging from the front edge, swinging.
+      k.in('lantern', [0, 1.06, 0.3]);
+      k.cyl('dark', 0.008, 0.008, 0.1, 4, [0, -0.05, 0]);
+      k.cyl('paper', 0.09, 0.09, 0.2, 10, [0, -0.21, 0]);
+      k.cyl('dark', 0.035, 0.035, 0.03, 8, [0, -0.1, 0]);
+      k.cyl('dark', 0.1, 0.1, 0.02, 10, [0, -0.32, 0]);
+      k.in('base');
+    },
+    tick(t, live) {
+      const l = live.layers.lantern;
+      if (l) l.rotation.z = 0.08 * Math.sin(t * 1.3);
+    },
+  },
 };
 
 /* ── the component ────────────────────────────────────────────────── */

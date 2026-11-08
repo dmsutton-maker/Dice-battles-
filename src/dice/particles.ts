@@ -37,6 +37,11 @@ export const Kind = {
   // Seasons 2 to 7 (26 Oct 2026) each own a range of numbers, so six
   // seasons built side by side cannot hand two kinds the same number:
   // Season 2 uses 20-29, Season 3 30-39, 4 40-49, 5 50-59, 6 60-69, 7 70-79.
+  // Season 2, Sugar & Snow (8 Nov 2026): the Gingerbread dice's crumbs
+  // and puff of icing sugar; the Bauble dice's gold glitter.
+  Crumb: 20,
+  Sugar: 21,
+  Glitter: 22,
   // Add each season's kinds ABOVE this comment.
 } as const;
 export type Kind = (typeof Kind)[keyof typeof Kind];
@@ -227,7 +232,8 @@ export class ParticlePool {
       // A little sideways wander, so flames lick rather than rise in a
       // column and smoke curls rather than climbing a pole.
       const wanders =
-        k === Kind.Flame || k === Kind.Smoke || k === Kind.Steam || k === Kind.Mist || k === Kind.Mote || k === Kind.Stardust;
+        k === Kind.Flame || k === Kind.Smoke || k === Kind.Steam || k === Kind.Mist || k === Kind.Mote || k === Kind.Stardust ||
+        k === Kind.Sugar || k === Kind.Glitter;
       const wx = wanders ? Math.sin(time * 7 + this.seed[i]) * 0.9 * dt : 0;
       const wz = wanders ? Math.cos(time * 5 + this.seed[i]) * 0.5 * dt : 0;
       this.vel[p] = this.vel[p] * damp + wx;
@@ -238,7 +244,7 @@ export class ParticlePool {
       this.pos[p + 2] += this.vel[p + 2] * dt;
       if (
         (k === Kind.Drop && this.pos[p + 1] < WATER_Y) ||
-        (k === Kind.Shard && this.pos[p + 1] < 0.02)
+        ((k === Kind.Shard || k === Kind.Crumb) && this.pos[p + 1] < 0.02)
       ) {
         // Back into the pool it came out of, or melted on the stone.
         this.life[i] = -1;
@@ -319,6 +325,21 @@ export class ParticlePool {
         r = 0.9; g = 0.95; b = 1;
         a = (1 - t) * (0.55 + 0.45 * Math.sin(time * 14 + this.seed[i] * 3));
         glow = 0.9;
+      } else if (k === Kind.Crumb) {
+        // A crumb of gingerbread: baked brown, solid, gone when it lands.
+        r = lerp(0.62, 0.45, t); g = lerp(0.38, 0.25, t); b = lerp(0.17, 0.1, t);
+        a = 1 - t * t * t;
+        glow = 0;
+      } else if (k === Kind.Sugar) {
+        // Icing sugar: a soft white puff that covers, barely shining.
+        r = 1; g = 0.98; b = 0.95;
+        a = Math.min(1, t / 0.08) * Math.pow(1 - t, 1.4) * 0.8;
+        glow = 0.15;
+      } else if (k === Kind.Glitter) {
+        // A fleck of gold glitter: twinkling as it fades, all light.
+        r = 1; g = lerp(0.9, 0.78, t); b = lerp(0.5, 0.3, t);
+        a = (1 - t) * (0.5 + 0.5 * Math.sin(time * 17 + this.seed[i] * 4));
+        glow = 0.9;
       } else if (k === Kind.Shard) {
         r = 0.8; g = 0.93; b = 1;
         a = 1 - t * t;
@@ -382,5 +403,8 @@ export const PARTICLE_KIND = {
   flash: Kind.Flash,
   halo: Kind.Halo,
   stardust: Kind.Stardust,
+  crumb: Kind.Crumb,
+  sugar: Kind.Sugar,
+  glitter: Kind.Glitter,
 } as const;
 

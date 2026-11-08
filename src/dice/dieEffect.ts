@@ -6,6 +6,8 @@ import { DiceNeon } from './diceNeon';
 import { DiceSun } from './diceSun';
 import { DiceMoon } from './diceMoon';
 import { DiceOcean } from './diceOcean';
+import { DiceGingerbread } from './diceGingerbread';
+import { DiceBauble } from './diceBauble';
 
 /**
  * A dice skin that DOES something, rather than only looking like
@@ -60,6 +62,8 @@ export interface DieEffect {
 export type DieEffectId =
   | 'fire' | 'ice' | 'neon' | 'sun' | 'moon'
   | 'ocean'
+  // Season 2, Sugar & Snow (8 Nov 2026).
+  | 'gingerbread' | 'bauble'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -76,5 +80,8 @@ export function createDieEffect(
   if (id === 'moon') return new DiceMoon(dice);
   // The Ocean dice splash when they land (Marc, 4 Nov 2026).
   if (id === 'ocean') return new DiceOcean(dice);
+  // Season 2, Sugar & Snow (8 Nov 2026): crumbs and sugar; gold glitter.
+  if (id === 'gingerbread') return new DiceGingerbread(dice);
+  if (id === 'bauble') return new DiceBauble(dice);
   return id === 'ice' ? new DiceIce(dice, moat) : new DiceFire(dice, moat);
 }

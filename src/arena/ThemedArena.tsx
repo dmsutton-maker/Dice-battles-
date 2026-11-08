@@ -596,6 +596,215 @@ function StoneLantern() {
   );
 }
 
+/** The Gingerbread Village's cottage: gingerbread walls, an icing roof, a lit window, a gumdrop door. */
+function Cottage({ color = '#f2a4c6' }: { color?: string }) {
+  return (
+    <group>
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[1.0, 1.0, 0.9]} />
+        <meshStandardMaterial color="#9a5a2a" roughness={0.85} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 0.28, 1.22, 0]} rotation={[0, 0, side * -0.7]}>
+          <boxGeometry args={[0.7, 0.08, 1.05]} />
+          <meshStandardMaterial color="#fff8f0" roughness={0.55} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.46, 0]}>
+        <boxGeometry args={[0.1, 0.07, 1.07]} />
+        <meshStandardMaterial color="#fff8f0" roughness={0.55} />
+      </mesh>
+      {[-0.56, 0.56].map((x) =>
+        [-0.35, -0.12, 0.12, 0.35].map((z) => (
+          <mesh key={`${x}${z}`} position={[x, 1.0, z]}>
+            <sphereGeometry args={[0.07, 8, 6]} />
+            <meshStandardMaterial color="#fff8f0" roughness={0.55} />
+          </mesh>
+        )),
+      )}
+      {/* The window, lit, and the door with a gumdrop knob. */}
+      <mesh position={[0.22, 0.62, 0.455]}>
+        <boxGeometry args={[0.26, 0.24, 0.02]} />
+        <meshBasicMaterial color="#ffd98a" />
+      </mesh>
+      <mesh position={[-0.22, 0.32, 0.455]}>
+        <boxGeometry args={[0.3, 0.55, 0.02]} />
+        <meshStandardMaterial color="#6e3c14" roughness={0.85} />
+      </mesh>
+      <mesh position={[-0.1, 0.32, 0.47]}>
+        <sphereGeometry args={[0.04, 8, 6]} />
+        <meshStandardMaterial color={color} roughness={0.4} />
+      </mesh>
+      {/* The chimney (its smoke is the life's), and gumdrops along the ridge. */}
+      <mesh position={[0.3, 1.5, -0.25]}>
+        <boxGeometry args={[0.2, 0.4, 0.2]} />
+        <meshStandardMaterial color="#7e4620" roughness={0.85} />
+      </mesh>
+      <mesh position={[0.3, 1.71, -0.25]}>
+        <boxGeometry args={[0.24, 0.05, 0.24]} />
+        <meshStandardMaterial color="#fff8f0" roughness={0.55} />
+      </mesh>
+      {[-0.35, 0, 0.35].map((z, i) => (
+        <mesh key={z} position={[0, 1.52, z]} scale={[1, 0.75, 1]}>
+          <sphereGeometry args={[0.085, 10, 7]} />
+          <meshStandardMaterial color={['#a6e3cc', color, '#f5df96'][i]} roughness={0.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** A gumdrop the size of a bush: a squashed dome of jelly with sugar on it. */
+function Gumdrop({ color = '#f2a4c6' }: { color?: string }) {
+  return (
+    <group>
+      <mesh position={[0, 0.26, 0]} scale={[1, 0.72, 1]}>
+        <sphereGeometry args={[0.42, 14, 10]} />
+        <meshStandardMaterial color={color} roughness={0.35} />
+      </mesh>
+      {[0, 1, 2, 3, 4, 5].map((k) => {
+        const a = k * 1.05;
+        return (
+          <mesh key={k} position={[Math.cos(a) * 0.26, 0.42 + Math.sin(k * 2.3) * 0.06, Math.sin(a) * 0.26]} rotation={[0.3, a, 0.2]}>
+            <boxGeometry args={[0.04, 0.04, 0.04]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.3} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/** The Twinkle Market's stall: a wooden counter under a striped awning, parcels on it, a lantern under the eave. */
+function Stall({ color = '#3a8a8f' }: { color?: string }) {
+  return (
+    <group>
+      {[-1, 1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <mesh key={`${sx}${sz}`} position={[sx * 0.5, 0.75, sz * 0.4]}>
+            <cylinderGeometry args={[0.04, 0.05, 1.5, 6]} />
+            <meshStandardMaterial color="#7a5a3c" roughness={0.85} />
+          </mesh>
+        )),
+      )}
+      <mesh position={[0, 0.62, 0]}>
+        <boxGeometry args={[1.1, 0.08, 0.9]} />
+        <meshStandardMaterial color="#7a5a3c" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.3, 0]}>
+        <boxGeometry args={[1.02, 0.56, 0.82]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.85} />
+      </mesh>
+      {[0, 1, 2, 3, 4, 5, 6].map((k) => (
+        <mesh key={k} position={[-0.54 + k * 0.18, 1.55, 0.05]} rotation={[0.18, 0, 0]}>
+          <boxGeometry args={[0.18, 0.05, 1.15]} />
+          <meshStandardMaterial color={k % 2 ? color : '#f0e6d2'} roughness={0.8} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.62, -0.1]} rotation={[0.18, 0, 0]}>
+        <boxGeometry args={[1.3, 0.05, 0.6]} />
+        <meshStandardMaterial color="#eef3f8" roughness={0.9} />
+      </mesh>
+      {([
+        [-0.3, 0.1, '#b84a5c', 0.24],
+        [0.1, -0.15, '#f0e6d2', 0.18],
+        [0.32, 0.2, color, 0.2],
+      ] as const).map(([x, z, c, h], i) => (
+        <group key={i} position={[x, 0.66 + h / 2, z]}>
+          <mesh>
+            <boxGeometry args={[0.26, h, 0.26]} />
+            <meshStandardMaterial color={c} roughness={0.6} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[0.27, h + 0.005, 0.05]} />
+            <meshStandardMaterial color="#e8c25a" roughness={0.4} metalness={0.4} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 1.3, 0.55]}>
+        <boxGeometry args={[0.14, 0.16, 0.14]} />
+        <meshBasicMaterial color="#ffe2a8" />
+      </mesh>
+    </group>
+  );
+}
+
+/** A stack of wrapped parcels with gold ribbon, snow on the top one. */
+function Parcels() {
+  return (
+    <group>
+      {([
+        [0, 0.17, 0, 0.6, 0.34, 0.5, '#b84a5c'],
+        [-0.05, 0.47, 0.03, 0.42, 0.26, 0.38, '#3a8a8f'],
+        [0.02, 0.7, -0.02, 0.26, 0.2, 0.26, '#f0e6d2'],
+      ] as const).map(([x, y, z, w, h, d, c], i) => (
+        <group key={i} position={[x, y, z]} rotation={[0, i * 0.3, 0]}>
+          <mesh>
+            <boxGeometry args={[w, h, d]} />
+            <meshStandardMaterial color={c} roughness={0.6} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[w + 0.01, h + 0.01, 0.07]} />
+            <meshStandardMaterial color="#e8c25a" roughness={0.4} metalness={0.4} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[0.07, h + 0.01, d + 0.01]} />
+            <meshStandardMaterial color="#e8c25a" roughness={0.4} metalness={0.4} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0.02, 0.82, -0.02]} scale={[1, 0.4, 1]}>
+        <sphereGeometry args={[0.15, 10, 7]} />
+        <meshStandardMaterial color="#eef3f8" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.02, 0.88, -0.02]}>
+        <sphereGeometry args={[0.04, 8, 6]} />
+        <meshStandardMaterial color="#e8c25a" roughness={0.4} metalness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** The Twinkle Market's tree: a tall snowy fir hung with baubles and lights, a gold star on top. */
+function YuleTree() {
+  const baubles: [number, number, number, string][] = [];
+  for (let k = 0; k < 14; k++) {
+    const t = k / 14;
+    const y = 0.75 + t * 1.75;
+    const r = 0.95 - t * 0.78;
+    const a = k * 2.4;
+    baubles.push([Math.cos(a) * r * 0.9, y, Math.sin(a) * r * 0.9, ['#b84a5c', '#e8c25a', '#3a8a8f', '#ffe2a8'][k % 4]]);
+  }
+  return (
+    <group>
+      <mesh position={[0, 0.3, 0]}>
+        <cylinderGeometry args={[0.14, 0.18, 0.6, 8]} />
+        <meshStandardMaterial color="#6b4a2c" roughness={0.9} />
+      </mesh>
+      {[0.95, 1.6, 2.2, 2.7].map((y, i) => (
+        <mesh key={y} position={[0, y, 0]}>
+          <coneGeometry args={[1.0 - i * 0.22, 1.0, 9]} />
+          <meshStandardMaterial color={i === 3 ? '#eef3f8' : '#2f5a3e'} roughness={0.9} />
+        </mesh>
+      ))}
+      {baubles.map(([x, y, z, c], k) => (
+        <mesh key={k} position={[x, y, z]}>
+          <sphereGeometry args={[0.07, 8, 6]} />
+          <meshBasicMaterial color={c} />
+        </mesh>
+      ))}
+      <mesh position={[0, 3.3, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.22, 0.22, 0.06]} />
+        <meshBasicMaterial color="#ffe9b0" />
+      </mesh>
+      <mesh position={[0, 3.3, 0]}>
+        <boxGeometry args={[0.22, 0.22, 0.06]} />
+        <meshBasicMaterial color="#ffe9b0" />
+      </mesh>
+    </group>
+  );
+}
+
 function Flowers({ color = '#ff6e6e' }: { color?: string }) {
   return (
     <group>
@@ -726,6 +935,12 @@ function Prop({ p }: { p: PropPlacement }) {
       case 'campfire': return <Campfire color={p.color} />;
       case 'obelisk': return <Obelisk />;
       case 'stoneLantern': return <StoneLantern />;
+      // Sugar & Snow (8 Nov 2026).
+      case 'cottage': return <Cottage color={p.color} />;
+      case 'gumdrop': return <Gumdrop color={p.color} />;
+      case 'stall': return <Stall color={p.color} />;
+      case 'parcels': return <Parcels />;
+      case 'yuleTree': return <YuleTree />;
     }
   })();
   return (
@@ -1022,6 +1237,48 @@ function RetreatShelter({ theme }: { theme: ArenaTheme }) {
           </mesh>
         </>
       );
+    case 'icedBiscuit':
+      // The Gingerbread Village: a marshmallow canopy, a fat white
+      // cylinder with a rounded top, on the post.
+      return (
+        <>
+          <mesh position={[0, 1.3, 0]}>
+            <cylinderGeometry args={[0.42, 0.42, 0.3, 16]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 1.45, 0]} scale={[1, 0.35, 1]}>
+            <sphereGeometry args={[0.42, 16, 10]} />
+            <meshStandardMaterial color={r.canopy} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 1.58, 0]} scale={[1, 0.7, 1]}>
+            <sphereGeometry args={[0.07, 8, 6]} />
+            <meshStandardMaterial color="#f2a4c6" roughness={0.4} />
+          </mesh>
+        </>
+      );
+    case 'stringLights':
+      // The Twinkle Market: a bandstand roof, a cone with a lit lamp
+      // under it and snow on top.
+      return (
+        <>
+          <mesh position={[0, 1.42, 0]}>
+            <coneGeometry args={[0.7, 0.4, 8]} />
+            <meshStandardMaterial color={r.post} roughness={0.85} />
+          </mesh>
+          <mesh position={[0, 1.6, 0]}>
+            <coneGeometry args={[0.5, 0.14, 8]} />
+            <meshStandardMaterial color="#eef3f8" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 1.18, 0]}>
+            <sphereGeometry args={[0.1, 10, 8]} />
+            <meshBasicMaterial color={r.canopy} />
+          </mesh>
+          <mesh position={[0, 1.7, 0]}>
+            <sphereGeometry args={[0.06, 8, 6]} />
+            <meshBasicMaterial color="#e8c25a" />
+          </mesh>
+        </>
+      );
     case 'blocks':
     default:
       // A pinwheel, four coloured vanes.
@@ -1250,6 +1507,9 @@ function ThemedCrest({ theme, rim }: { theme: ArenaTheme; rim: RimSpot[] }) {
     // Season 2 of the pass, Sun & Moon (21 Oct 2026).
     case 'sunstone':
     case 'lanternWall':
+    // Sugar & Snow (8 Nov 2026).
+    case 'icedBiscuit':
+    case 'stringLights':
     default:
       return <StoreCrest theme={theme} />;
   }
@@ -1297,6 +1557,8 @@ function ThemedCorners({
       case 'fernRock':
       case 'sunstone':
       case 'lanternWall':
+      case 'icedBiscuit':
+      case 'stringLights':
       default:
         return <StoreCorner theme={theme} />;
     }

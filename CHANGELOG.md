@@ -1,5 +1,50 @@
 # Changelog
 
+## v1.172.0 — 2026-11-08 · requested by David and Marc
+
+David, 21 Oct 2026: "Make 2 new dice and 2 new arenas every month normally
+going on with a theme like how this one is fire and ice." Marc, 8 Nov 2026:
+"Work on season 2." Built to docs/seasons-3-to-8.md. Runtime 4.0.0: JS and
+two small PNGs, no new package.
+
+### Added
+- **Season 2: Sugar & Snow**, December 2026, in `SEASONS` (seasonPass.ts):
+  Gingerbread Village (Gold, level 6), the Gingerbread dice (Gold, 12), the
+  Bauble dice (free, 20) and the Twinkle Market (Gold, 30). It starts at
+  midnight on 1 December, New York time, when Fire & Ice ends.
+- **The Gingerbread dice** (`patterns.ts` `gingerbread`, `diceGingerbread.ts`):
+  a baked-brown biscuit with royal-icing zig-zags that run unbroken over
+  every edge (the icing is a function of the point in space, not of a face),
+  an icing ring round each sticker, an icing swirl, dots and pastel sprinkles;
+  crumbs fall off it as it rolls (gone when they reach the floor) and it lands
+  in a puff of icing sugar with three crumbs bouncing away. Soggy in the moat.
+- **The Bauble dice** (`patterns.ts` `bauble`, `diceBauble.ts`): deep
+  pine-green glass with two crossing bands of gold glitter (planes through the
+  centre, so one closed band each over six faces), frosted snowflakes etched
+  between, a gold cap ring round each sticker; a trail of gold glitter and a
+  sheen of light as it rolls, a ring of glitter rising where it lands with one
+  twinkle on its top corner, and a faint pool of gold light at rest.
+- **Gingerbread Village** (`themeData.ts` `gingerbread`, structure
+  `icedBiscuit`): a biscuit tray with icing loops piped round it, gingerbread
+  walls under an icing cap with gumdrops, cottages at the corners with lit
+  windows, a biscuit pen behind candy-stick bars (`jails.tsx` `biscuitPen`), a
+  marshmallow retreat, a cocoa pond with marshmallows (`cocoaPond`, the
+  chocolate shader) and a sugar drift with a candy cane (`sugarDrift`); snow
+  with footprints outside; a train of sweets round the village, gingerbread
+  people waving, chimney smoke and falling snow (`gingerbreadLife.tsx`,
+  `snowfall.tsx`).
+- **Twinkle Market** (`twinklemarket`, structure `stringLights`): frosted
+  cobbles, low snowy stone walls strung with warm bulbs between posts, market
+  stalls with striped awnings at the corners and for the jail (`marketStall`),
+  a bandstand retreat, a tall decorated tree, lanterns and parcels; a skating
+  pond with a hole in the ice (`skatingPond`, water) and a parcel pile
+  (`parcelPile`); skaters on a pond beyond the far wall, shoppers in bobble
+  hats, the lights chasing in slow waves and snowflakes (`marketLife.tsx`).
+- Card pictures for both battlefields (`assets/arenas/`, from
+  `make-themed-art.py`), blurbs, shelf pictures for both dice, a News post
+  (major, so it is shown once). Tests: sugarSnow.test.ts, and the effect,
+  blurb, face-colour and fingerprint suites extended.
+
 ## v1.171.1 — 2026-11-05 · requested by David
 
 David: "when they should be playing and you hit button to play next game

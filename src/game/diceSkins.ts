@@ -62,7 +62,7 @@ export interface DiceSkin {
    * 'sun' and 'moon' (season 2, 21 Oct 2026) are in diceSun.ts and
    * diceMoon.ts; 'ocean' (4 Nov 2026) in diceOcean.ts.
    */
-  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon' | 'ocean';
+  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon' | 'ocean' | 'gingerbread' | 'bauble';
   /**
    * Taken off the shelf and off the ladder: nobody can get it any more,
    * and only family tester (admin) mode shows it. Marc, 4 Nov 2026, on
@@ -429,6 +429,42 @@ export const DICE_SKINS: DiceSkin[] = [
     pattern: 'moonlit',
     pass: true,
     effect: 'moon',
+  },
+
+  /*
+    SUGAR & SNOW — season 2 of the pass, December 2026 (built 8 Nov).
+    Specified in docs/seasons-3-to-8.md.
+
+    THE GINGERBREAD DICE: a baked-brown biscuit iced in one go — white
+    royal-icing zig-zags and swirls that run unbroken over every edge,
+    a piped ring round each colour sticker, and sugar sprinkles between
+    (patterns.ts `gingerbread`); crumbs falling off it as it rolls, and
+    a puff of icing sugar where it lands (diceGingerbread.ts). The brown
+    sits well below Orange in lightness and away from Red in hue.
+  */
+  {
+    id: 'gingerbread',
+    name: 'Gingerbread',
+    body: '#a8662f',
+    pattern: 'gingerbread',
+    pass: true,
+    effect: 'gingerbread',
+  },
+  /*
+    THE BAUBLE DICE: a glass tree ornament seen close up — deep
+    pine-green glass with two crossing bands of gold glitter looping
+    round the die and frosted snowflakes etched between them
+    (patterns.ts `bauble`); a trail of gold glitter as it rolls, a ring
+    of glitter where it lands and one twinkle on its top corner
+    (diceBauble.ts). Darker and bluer than the Green face by a long way.
+  */
+  {
+    id: 'bauble',
+    name: 'Bauble',
+    body: '#1f5a4a',
+    pattern: 'bauble',
+    pass: true,
+    effect: 'bauble',
   },
 
   /*

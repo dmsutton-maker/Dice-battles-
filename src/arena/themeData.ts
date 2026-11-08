@@ -81,6 +81,8 @@ export type PropKind =
   | 'stoneLantern'  // a stone garden lantern, its window lit
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
+  // Sugar & Snow (8 Nov 2026): the Gingerbread Village and Twinkle Market.
+  | 'cottage' | 'gumdrop' | 'stall' | 'parcels' | 'yuleTree'
   ;
 
 export interface PropPlacement {
@@ -142,6 +144,8 @@ export type ArenaStructure =
   | 'fernRock'     // dino: mossy boulders and ferns, fossil ribs at the corners
   | 'sunstone'     // sun temple: courses of cut sandstone, sun medallions and braziers along them
   | 'lanternWall' // moon garden: a low wall of dark stone, paper lanterns on posts, bamboo
+  | 'icedBiscuit' // gingerbread village: gingerbread slabs under an icing cap, gumdrops along it
+  | 'stringLights' // twinkle market: low snowy stone strung with warm bulbs between posts
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -198,6 +202,7 @@ export type ThemedArenaId =
   | 'city' | 'sky' | 'moon' | 'toybox'
   | 'dino'
   | 'suntemple' | 'moongarden'
+  | 'gingerbread' | 'twinklemarket'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -1370,6 +1375,101 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     ),
     lighting: night('#4a5a90', '#1e2240', '#dfe8ff'),
   },
+
+  gingerbread: {
+    /*
+      Gingerbread Village, Season 2 of the pass, Sugar & Snow (December
+      2026; built 8 Nov; docs/seasons-3-to-8.md). Winter treats by day: a
+      big biscuit tray with white icing piped round its edge, walls of
+      gingerbread slabs under an icing cap studded with gumdrops,
+      gingerbread cottages with icing-snow roofs at the corners, a cocoa
+      pond and a sugar drift, snow all round, and a little train of
+      sweets running round the village while chimneys smoke and snow
+      falls (gingerbreadLife.tsx).
+
+      The strips beside the walls hold the cottages and the lamp posts
+      at x ±3.05, inside the train's track at ±3.72.
+    */
+    structure: 'icedBiscuit',
+    meadow: '#eef3f8', hill: '#d6e2ee', mountain: '#c4d2e0', cloud: '#ffffff',
+    floor: { a: '#c98a4b', b: '#b87a3e' },
+    wall: { color: '#9a5a2a', cap: '#fff8f0' },
+    tower: { body: '#9a5a2a', roof: '#fff8f0' },
+    jail: { platform: '#c98a4b', bars: '#f4e6d0' },
+    retreat: { padA: '#fff4ea', padB: '#f6e1cc', post: '#8a5a34', canopy: '#fff8f0', pool: '#6b3a22' },
+    sky: { sun: { color: '#fff8f0', size: 1.4 }, stars: false, body: null },
+    props: [
+      { kind: 'cottage', x: -3.05, z: -4.6, scale: 0.7, color: '#f2a4c6' },
+      { kind: 'lollipop', x: -3.05, z: -2.1, scale: 0.55, color: '#a6e3cc' },
+      { kind: 'pine', x: -3.05, z: 0.4, scale: 0.55 },
+      { kind: 'cottage', x: -3.05, z: 2.8, scale: 0.62, color: '#a6e3cc' },
+      { kind: 'pine', x: 3.05, z: -4.6, scale: 0.52 },
+      { kind: 'cottage', x: 3.05, z: -2.1, scale: 0.68, color: '#f5df96' },
+      { kind: 'lollipop', x: 3.05, z: 0.4, scale: 0.55, color: '#f2a4c6' },
+      { kind: 'snowman', x: 3.05, z: 2.8, scale: 0.5 },
+      { kind: 'gumdrop', x: -2.5, z: -8.8, scale: 1.0, color: '#f2a4c6' },
+      { kind: 'cottage', x: 0.1, z: -9.0, scale: 0.75, color: '#a6e3cc' },
+      { kind: 'gumdrop', x: 2.5, z: -8.8, scale: 1.0, color: '#a6e3cc' },
+      { kind: 'pine', x: -3.95, z: -9.15, scale: 0.6 },
+      { kind: 'gumdrop', x: 3.95, z: -9.15, scale: 1.1, color: '#f5df96' },
+    ],
+    look: look(
+      { kind: 'sugarDrift', color: '#fbf8f2', roughness: 0.9, metalness: 0 },
+      { kind: 'cocoaPond', depths: '#3a1d12', surface: '#6b3a22', surfaceOpacity: 0.85, surfaceRoughness: 0.25,
+        edge: '#f4e6d0', border: { kind: 'stone', color: '#c98a4b' } },
+      'cocoa pond', 'sugar drift', 'Splash! A die fell in the cocoa pond!',
+    ),
+    // A soft white winter morning: cool skylight, a warm bounce off the biscuit.
+    lighting: {
+      hemisphere: { sky: '#dfeeff', ground: '#8a6a4a', intensity: 1.0 },
+      key: { position: [4, 12, 6], intensity: 2.3, color: '#fff6e8' },
+      fill: { position: [-6, 8, -4], intensity: 0.75, color: '#bcd4f0' },
+    },
+  },
+
+  twinklemarket: {
+    /*
+      Twinkle Market, Season 2 of the pass: a town square on a clear
+      winter night. Frosted cobbles for the board, low snowy stone walls
+      strung with warm bulbs, a market stall with a striped awning at
+      each corner, a stall for the jail, a bandstand for the retreat, a
+      tall decorated tree at the far end, parcels and lanterns; skaters
+      on a pond beyond the far wall, shoppers in bobble hats strolling
+      the strips, the lights chasing in slow waves and snow drifting down
+      (marketLife.tsx). Lit, not dark: the tray stays bright enough that
+      the face colours read true, as Moon Garden does.
+    */
+    structure: 'stringLights',
+    meadow: '#aeb8cc', hill: '#95a0b8', mountain: '#6e7a96', cloud: null,
+    floor: { a: '#9aa2b4', b: '#7f8799' },
+    wall: { color: '#3f4656', cap: '#9aa3b8' },
+    tower: { body: '#7a5a3c', roof: '#d9c9a8' },
+    jail: { platform: '#5a6274', bars: '#6b4a30' },
+    retreat: { padA: '#d9dee8', padB: '#bfc7d6', post: '#4a3a2e', canopy: '#ffe2a8', pool: '#6a8fb8' },
+    sky: { sun: null, stars: true, body: null },
+    props: [
+      { kind: 'lantern', x: -3.05, z: -4.6, scale: 0.9, color: '#ffe2a8' },
+      { kind: 'stall', x: -3.05, z: -2.1, scale: 0.75, color: '#3a8a8f' },
+      { kind: 'parcels', x: -3.05, z: 0.4, scale: 0.9 },
+      { kind: 'stall', x: -3.05, z: 2.8, scale: 0.7, color: '#b84a5c' },
+      { kind: 'stall', x: 3.05, z: -4.6, scale: 0.72, color: '#b84a5c' },
+      { kind: 'lantern', x: 3.05, z: -2.1, scale: 0.9, color: '#ffe2a8' },
+      { kind: 'stall', x: 3.05, z: 0.4, scale: 0.75, color: '#3a8a8f' },
+      { kind: 'parcels', x: 3.05, z: 2.8, scale: 0.9 },
+      { kind: 'pine', x: -2.5, z: -8.8, scale: 0.5 },
+      { kind: 'yuleTree', x: 0.1, z: -9.0, scale: 1.0 },
+      { kind: 'pine', x: 2.5, z: -8.8, scale: 0.46 },
+      { kind: 'parcels', x: -3.95, z: -9.15, scale: 1.0 },
+      { kind: 'lantern', x: 3.95, z: -9.15, scale: 0.9, color: '#ffe2a8' },
+    ],
+    look: look(
+      { kind: 'parcelPile', color: '#e8edf5', roughness: 0.9, metalness: 0 },
+      { kind: 'skatingPond', water: true, depths: '#1a2c4a', surface: '#5a86b8', surfaceOpacity: 0.9, surfaceRoughness: 0.08,
+        edge: '#e8f2ff', border: { kind: 'stone', color: '#dfe6f0' } },
+      'skating pond', 'parcel pile', 'Whoosh! A die slid into the skating pond!',
+    ),
+    lighting: night('#4a5a90', '#202640', '#ffe6c0'),
+  },
 };
 
 /**
@@ -1435,4 +1535,7 @@ export const THEMED_ARENA_META: Record<ThemedArenaId, ThemedArenaMeta> = {
   // Season 2 of the pass, Sun & Moon (21 Oct 2026): won on the pass only.
   suntemple: { name: 'Sun Temple', short: 'Temple', skyColor: '#ffd9a0', pass: true },
   moongarden: { name: 'Moon Garden', short: 'Garden', skyColor: '#1c2252', pass: true },
+  // Season 2 of the pass, Sugar & Snow (December 2026; built 8 Nov): won on the pass only.
+  gingerbread: { name: 'Gingerbread Village', short: 'Village', skyColor: '#cfe4f2', pass: true },
+  twinklemarket: { name: 'Twinkle Market', short: 'Market', skyColor: '#1a2448', pass: true },
 };

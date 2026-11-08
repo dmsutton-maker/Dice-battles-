@@ -41,6 +41,8 @@ export type MoundKind =
   // Season 2 of the pass (21 Oct 2026): the Sun Temple's altar and the
   // Moon Garden's stone lantern.
   | 'sunAltar' | 'moonLantern'
+  // Sugar & Snow (8 Nov 2026): a drift of sugar snow; a heap of wrapped parcels.
+  | 'sugarDrift' | 'parcelPile'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -56,6 +58,8 @@ export type PitKind =
   | 'spring' | 'cargoHatch' | 'whirlpool' | 'skylight' | 'toyBox'
   | 'tarPit'
   | 'sunWell' | 'moonPond'
+  // Sugar & Snow (8 Nov 2026): a pond of hot chocolate; a hole in a skating pond's ice.
+  | 'cocoaPond' | 'skatingPond'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;

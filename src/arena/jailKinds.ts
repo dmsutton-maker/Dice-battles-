@@ -44,6 +44,8 @@ export type JailKind =
   | 'boneCage'      // dino valley: bars of bone with knobbed ends, a horned skull
   | 'sunShrine'     // sun temple: sandstone pillars, a carved lintel with a gold sun, braziers
   | 'toriiGate'     // moon garden: a torii gate over a bamboo fence, paper lanterns swinging
+  | 'biscuitPen'    // gingerbread village: a biscuit pen behind candy-stick bars, iced, gumdrops
+  | 'marketStall'   // twinkle market: a stall with a striped awning, wooden bars, a lantern swinging
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -76,4 +78,7 @@ export const ARENA_JAILS: Record<JailArenaId, JailKind> = {
   // Season 2 of the pass, Sun & Moon (21 Oct 2026).
   suntemple: 'sunShrine',
   moongarden: 'toriiGate',
+  // Season 2 of the pass, Sugar & Snow (8 Nov 2026).
+  gingerbread: 'biscuitPen',
+  twinklemarket: 'marketStall',
 };

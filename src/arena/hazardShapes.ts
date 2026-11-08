@@ -865,6 +865,84 @@ const MOUNDS: Record<MoundKind, (kit: Kit, look: MoundLook) => void> = {
     kit.mesh(disc, kit.basic('#ffd27a', { additive: true, opacity: 0.35 }), [0, top + 0.012, 0], { flags: { crown: true } });
   },
 
+  /*
+    Sugar & Snow (8 Nov 2026). The Gingerbread Village's bump: a drift
+    of sugar snow, white with a blue shade in its hollows, sparkling
+    with sugar crystals, a candy cane leaning out of the top and a
+    marshmallow half-buried in it. The cane and the marshmallow are
+    crown pieces, within the middle of the top.
+  */
+  sugarDrift: (kit, look) => {
+    const rand = rng(181);
+    const snow = paintVertices(domeGeometry(28, 10, 0, 0.95), (c) =>
+      mixed(look.color, '#c6d6e6', Math.max(0, 0.55 - (c.y + C) * 1.1) + rand() * 0.08),
+    );
+    kit.mesh(snow, kit.std('#ffffff', { painted: true, rough: look.roughness }), [0, C, 0]);
+    const crystals = domeSpots(182, 70, 0.1, 0.9).map(({ p, n, rand: r }) => ({
+      position: p,
+      up: n,
+      spin: r() * 3,
+      scale: 0.5 + r() * 0.7,
+      color: '#ffffff',
+    }));
+    kit.scatter(new THREE.BoxGeometry(0.025, 0.025, 0.025), kit.std('#ffffff', { rough: 0.25, metal: 0.15 }), crystals);
+    // The candy cane: cream with crimson bands, hooked over at the top.
+    const cream = kit.std('#f4e6d0', { rough: 0.45 });
+    const band = kit.std('#b84a5c', { rough: 0.45 });
+    const lean = 0.2;
+    kit.mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.5, 8), cream, [0.08, MOUND_TOP + 0.22, 0], { rot: [0, 0, lean], flags: { crown: true } });
+    for (const y of [0.06, 0.18, 0.3, 0.42]) {
+      kit.mesh(new THREE.CylinderGeometry(0.037, 0.037, 0.04, 8), band, [0.08 - Math.sin(lean) * (y - 0.22), MOUND_TOP + y, 0], {
+        rot: [0, 0, lean],
+        flags: { crown: true },
+      });
+    }
+    kit.mesh(new THREE.TorusGeometry(0.07, 0.035, 8, 12, Math.PI), cream, [0.08 - Math.sin(lean) * 0.25 - 0.07, MOUND_TOP + 0.47, 0], {
+      rot: [0, 0, lean],
+      flags: { crown: true },
+    });
+    // A marshmallow half-buried on the other side.
+    kit.mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.14, 14), kit.std('#fff4f8', { rough: 0.9 }), [-0.16, MOUND_TOP - 0.02, 0.06], {
+      rot: [0.3, 0, 0.5],
+      flags: { crown: true },
+    });
+  },
+
+  /*
+    The Twinkle Market's bump: a heap of wrapped parcels on a mound of
+    snow — crimson, teal and cream boxes with gold ribbon, the ones on
+    top crown pieces within the middle, a small one perched on the very
+    top with a bow.
+  */
+  parcelPile: (kit, look) => {
+    const rand = rng(191);
+    const snow = paintVertices(domeGeometry(28, 10, 0, 0.95), (c) =>
+      mixed(look.color, '#b4c2d8', Math.max(0, 0.5 - (c.y + C) * 1.0) + rand() * 0.06),
+    );
+    kit.mesh(snow, kit.std('#ffffff', { painted: true, rough: look.roughness }), [0, C, 0]);
+    const wraps = ['#b84a5c', '#3a8a8f', '#f0e6d2', '#8a6ab8'];
+    const ribbon = kit.std('#e8c25a', { rough: 0.4, metal: 0.4 });
+    const boxes = domeSpots(192, 7, 0.3, 0.7).map(({ p, n, rand: r }) => ({
+      position: p,
+      up: n,
+      spin: r() * 6,
+      scale: new THREE.Vector3(0.12 + r() * 0.08, 0.1 + r() * 0.06, 0.12 + r() * 0.08),
+      color: wraps[Math.floor(r() * wraps.length)],
+    }));
+    kit.scatter(new THREE.BoxGeometry(1, 1, 1), kit.std('#ffffff', { rough: 0.6 }), boxes);
+    kit.scatter(new THREE.BoxGeometry(1.04, 1.04, 0.22), ribbon, boxes);
+    kit.scatter(new THREE.BoxGeometry(0.22, 1.04, 1.04), ribbon, boxes);
+    // The top parcel, square on the summit, with a bow.
+    const top = MOUND_TOP;
+    kit.mesh(new THREE.BoxGeometry(0.26, 0.2, 0.26), kit.std('#b84a5c', { rough: 0.6 }), [0, top + 0.08, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.BoxGeometry(0.27, 0.21, 0.06), ribbon, [0, top + 0.08, 0], { flags: { crown: true } });
+    kit.mesh(new THREE.BoxGeometry(0.06, 0.21, 0.27), ribbon, [0, top + 0.08, 0], { flags: { crown: true } });
+    for (const sx of [-1, 1]) {
+      kit.mesh(new THREE.TorusGeometry(0.045, 0.018, 6, 10), ribbon, [sx * 0.05, top + 0.21, 0], { rot: [0, 0, sx * 0.6], flags: { crown: true } });
+    }
+    kit.mesh(new THREE.SphereGeometry(0.03, 8, 6), ribbon, [0, top + 0.2, 0], { flags: { crown: true } });
+  },
+
   // A snowman: the dome is his bottom snowball.
   snowman: (kit, look) => {
     const snow = kit.std(look.color, { rough: 0.7 });
@@ -1312,6 +1390,7 @@ type PitLook = ObstacleLook['pit'];
  */
 export const WATER_PITS: readonly PitKind[] = [
   'moat', 'candlePool', 'lake', 'tidePool', 'puddle', 'spring', 'iceHole', 'moonPond',
+  'skatingPond',
   // New water pits go ABOVE this comment, one line per season.
 ];
 
@@ -1336,6 +1415,8 @@ const SHADER_PITS: Partial<Record<PitKind, { mode: PitMode; colors: (l: PitLook)
   tarPit: { mode: 'tar', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
   // The Sun Temple's well: the water, the sandstone of the shaft, the sun's light.
   sunWell: { mode: 'well', colors: (l) => ({ a: l.surface, b: l.border?.color ?? l.surface, c: l.edge }) },
+  // The Gingerbread Village's cocoa pond: hot chocolate, drawn as the Candy Meadow's pool is.
+  cocoaPond: { mode: 'chocolate', colors: (l) => ({ a: l.surface, b: l.depths, c: l.edge }) },
 };
 
 /** Four boxes round the opening, their inner faces flush with the hole. */
@@ -1771,6 +1852,77 @@ const PITS: Record<PitKind, (kit: Kit, look: PitLook) => void> = {
     kit.mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.16, 8), stone, [H + 0.3, 0.08, -H - 0.25]);
     kit.mesh(new THREE.BoxGeometry(0.16, 0.12, 0.16), kit.basic('#ffe9b0'), [H + 0.3, 0.22, -H - 0.25]);
     kit.mesh(new THREE.ConeGeometry(0.16, 0.1, 6), stone, [H + 0.3, 0.33, -H - 0.25]);
+    void look;
+  },
+
+  /*
+    The Gingerbread Village's cocoa pond (Sugar & Snow, 8 Nov 2026): hot
+    chocolate (the shader) in a kerb of biscuit blocks with icing dripped
+    over them, two marshmallows floating on it, a candy cane leaning in
+    from the kerb, and a dusting of sugar. Nothing over the opening but
+    the marshmallows, which float.
+  */
+  cocoaPond: (kit, look) => {
+    cutStone(kit, 371, look.border?.color ?? '#c98a4b', 0.14);
+    const icing = kit.std('#fff8f0', { rough: 0.5 });
+    // Set back from the hole by more than a drip's own reach, so none hangs over it.
+    const drips = ringSpots(372, 18, [0.14, 0.24]).map(({ p, rand }) => ({
+      position: p.setY(0.16),
+      scale: new THREE.Vector3(0.04 + rand() * 0.03, 0.03, 0.04 + rand() * 0.03),
+    }));
+    kit.scatter(new THREE.SphereGeometry(1, 8, 6), icing, drips);
+    const mallows = [
+      [-0.3, 0.25],
+      [0.32, -0.2],
+    ].map(([x, z], i) => ({ position: new THREE.Vector3(x, 0.07, z), spin: i * 1.3, color: i ? '#fff4f8' : '#fffaf2' }));
+    kit.scatter(new THREE.CylinderGeometry(0.1, 0.1, 0.14, 14), kit.std('#ffffff', { rough: 0.9 }), mallows, { float: true });
+    // The candy cane leaning on the kerb.
+    const cream = kit.std('#f4e6d0', { rough: 0.45 });
+    const crimson = kit.std('#b84a5c', { rough: 0.45 });
+    const cx = H + 0.28;
+    const cz = -H - 0.1;
+    kit.mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8), cream, [cx, 0.3, cz], { rot: [0, 0, -0.35] });
+    for (let k = 0; k < 5; k++) {
+      const t = -0.22 + k * 0.11;
+      kit.mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.035, 8), crimson, [cx + Math.sin(0.35) * t, 0.3 + Math.cos(0.35) * t, cz], {
+        rot: [0, 0, -0.35],
+      });
+    }
+    const sugar = ringSpots(373, 20, [0.05, 0.3]).map(({ p, rand }) => ({
+      position: p.setY(0.165),
+      scale: 0.5 + rand() * 0.6,
+    }));
+    kit.scatter(new THREE.BoxGeometry(0.02, 0.02, 0.02), kit.std('#ffffff', { rough: 0.3 }), sugar);
+  },
+
+  /*
+    The Twinkle Market's skating pond: a hole in the ice, drawn as water
+    by the Pit component. Round it, slabs of snowy ice set back from the
+    edge, a pair of skates left on the bank, a lantern on a post lighting
+    the ice, and a scatter of snow.
+  */
+  skatingPond: (kit, look) => {
+    const slabs = ringSpots(381, 24, [0.2, 0.28]).map(({ p, rand: r }) => ({
+      position: p.setY(0.04),
+      spin: r() * 6,
+      scale: new THREE.Vector3(0.22 + r() * 0.1, 0.08 + r() * 0.04, 0.16 + r() * 0.08),
+      color: r() > 0.5 ? '#eaf1f8' : '#d2dfec',
+    }));
+    kit.scatter(new THREE.BoxGeometry(1, 1, 1), kit.std('#ffffff', { rough: 0.3, metal: 0.05, flat: true }), slabs);
+    // The skates: two boots with blades, side by side on the bank.
+    for (const dx of [-0.07, 0.07]) {
+      kit.mesh(new THREE.BoxGeometry(0.08, 0.1, 0.16), kit.std('#3a2a26', { rough: 0.7 }), [H + 0.32 + dx, 0.13, H + 0.2]);
+      kit.mesh(new THREE.BoxGeometry(0.012, 0.03, 0.18), kit.std('#c8d0dc', { rough: 0.3, metal: 0.6 }), [H + 0.32 + dx, 0.065, H + 0.2]);
+      kit.mesh(new THREE.BoxGeometry(0.09, 0.03, 0.09), kit.std('#b84a5c', { rough: 0.8 }), [H + 0.32 + dx, 0.19, H + 0.17]);
+    }
+    // The lantern post on the far bank.
+    const wood = kit.std('#4a3a2e', { rough: 0.9 });
+    kit.mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.6, 6), wood, [-H - 0.28, 0.3, -H - 0.22]);
+    kit.mesh(new THREE.BoxGeometry(0.12, 0.14, 0.12), kit.basic('#ffe2a8'), [-H - 0.28, 0.66, -H - 0.22]);
+    kit.mesh(new THREE.ConeGeometry(0.1, 0.07, 4), wood, [-H - 0.28, 0.76, -H - 0.22]);
+    const disc = new THREE.CircleGeometry(0.4, 16);
+    disc.rotateX(-Math.PI / 2);
+    kit.mesh(disc, kit.basic('#ffd27a', { additive: true, opacity: 0.25 }), [-H - 0.28, 0.012, -H - 0.22]);
     void look;
   },
 

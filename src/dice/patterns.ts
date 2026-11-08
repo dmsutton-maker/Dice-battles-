@@ -85,6 +85,9 @@ export type PatternId =
   // Season 2, "Sun & Moon" (21 Oct 2026): the Sun dice and the Moon dice.
   | 'sunburst'
   | 'moonlit'
+  // Sugar & Snow, December 2026 (8 Nov 2026): the Gingerbread and Bauble dice.
+  | 'gingerbread'
+  | 'bauble'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -911,6 +914,9 @@ export type ColorPatternId =
   // over a starry night.
   | 'sunburst'
   | 'moonlit'
+  // Sugar & Snow, December 2026 (8 Nov 2026): the Gingerbread and Bauble dice.
+  | 'gingerbread'
+  | 'bauble'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -1726,6 +1732,16 @@ const CARD_SCHOOL: readonly FishPlace[] = [
 ];
 /** The Moon dice's twinkles: three four-pointed stars to a side, some over an edge. */
 const MOON_TWINKLES = new StickerSheet(scatterStickers(41, 3, 6, 11, 2, 6));
+/** The Gingerbread dice's sugar sprinkles (three colours), icing dots and one icing swirl a side. */
+const GINGER_SPRINKLES = new StickerSheet(scatterStickers(47, 6, 3.2, 5.5, 2.5, 3.2, [0, 1, 2]));
+const GINGER_DOTS = new StickerSheet(scatterStickers(53, 4, 1.6, 7, 2, 2));
+const GINGER_SWIRLS = new StickerSheet(scatterStickers(59, 1, 7, 14, 1, 7));
+/** The Bauble dice's frosted snowflakes: two a side, etched in the glass. */
+const BAUBLE_FLAKES = new StickerSheet(scatterStickers(61, 2, 6.5, 12, 1.5, 6.5));
+/** The second glitter band's plane, crossing the first (the body diagonal). */
+const BAUBLE_N2 = norm3([1, -1, 1]);
+/** The sheen's plane: a reflection lying across the glass. */
+const BAUBLE_SHEEN = norm3([1, 2, 0.5]);
 const FISH_BUBBLES = new StickerSheet(scatterStickers(37, 3, 2.2, 7, 1));
 
 /**
@@ -3249,6 +3265,132 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const d = Math.hypot(dot3(P, F.u), dot3(P, F.v));
     px = mixRgb(px, rgb('#c9d2e8'), Math.exp(-Math.abs(d - 24.5) / 1.4) * 0.4);
     return px;
+  },
+  gingerbread: (x, y) => {
+    /*
+      GINGERBREAD — season 2 of the pass, "Sugar & Snow", December 2026
+      (built 8 Nov; docs/seasons-3-to-8.md).
+
+      A BISCUIT ICED IN ONE GO. The shell is baked brown, darker where
+      the bake caught and floury where it did not. The royal icing is
+      piped as a zig-zag that runs round the whole die: it is a function
+      of the point in SPACE, not of a face, so where two faces meet the
+      line simply carries on over the edge. A piped ring of icing circles
+      every colour sticker, so its edge reads whatever lies round it, and
+      between the lines sit an icing swirl, icing dots and sugar
+      sprinkles in pink, mint and lemon, each a sticker that may lie over
+      an edge.
+
+      THE COLOURS KEEP CLEAR OF THE STICKERS. Gingerbread brown is far
+      below Orange in lightness and away from Red in hue (the shell is
+      40 ΔLab from both); the sprinkles are pastels well off the faces
+      they are nearest to. screen.test.ts reads every hex written here.
+    */
+    const P = sheetToCube(x, y);
+    const f = cubeFace(P);
+    const F = FACE_FRAMES[f];
+    let px = rgb('#a8662f');
+    const bake = cubeFbm([P[0] + 3, P[1] + 7, P[2] + 11], [16, 8], [1, 0.5]);
+    px = mixRgb(px, rgb('#7a4418'), smoothstep(-0.05, -0.55, bake) * 0.6);
+    px = mixRgb(px, rgb('#c48a4a'), smoothstep(0.1, 0.6, bake) * 0.35);
+    px = mixRgb(px, rgb('#8c5222'), smoothstep(0.55, 0.9, cubeNoise([P[0] + 21, P[1] + 5, P[2] + 9], 4)) * 0.25);
+    // The zig-zag: a triangle wave along one direction bends a sine
+    // along another, and the sine's zero is the line.
+    const a = dot3(P, SEAM_E1);
+    const b = dot3(P, SEAM_E2);
+    const tri = Math.abs((((b / 9) % 1) + 1) % 1 - 0.5) * 2 - 0.5;
+    const zig = Math.sin(((a + 4.5 * tri) * Math.PI) / 11);
+    let icing = smoothstep(0.26, 0.1, Math.abs(zig));
+    // The icing's shadow, a touch to one side, so it stands proud.
+    const shadowZig = Math.sin(((a + 1.1 + 4.5 * tri) * Math.PI) / 11);
+    const shadow = smoothstep(0.26, 0.1, Math.abs(shadowZig)) * (1 - icing);
+    // One swirl a side: a spiral drawn in its sticker's own frame.
+    for (const { lx, ly } of GINGER_SWIRLS.hits(P)) {
+      const rr = Math.hypot(lx, ly);
+      if (rr > 6.6) continue;
+      const theta = Math.atan2(ly, lx);
+      const turn = ((((rr - (theta / (Math.PI * 2)) * 2.3) / 2.3) % 1) + 1) % 1;
+      const onLine = smoothstep(0.26, 0.1, Math.abs(turn - 0.5)) * smoothstep(6.6, 5.6, rr);
+      icing = Math.max(icing, onLine);
+    }
+    for (const { lx, ly } of GINGER_DOTS.hits(P)) {
+      icing = Math.max(icing, smoothstep(1.5, 0.7, Math.hypot(lx, ly)));
+    }
+    px = mixRgb(px, rgb('#6e3c14'), shadow * 0.45);
+    px = mixRgb(px, rgb('#fff8f0'), icing);
+    // Sprinkles: little capsules of sugar in three colours.
+    for (const { s, lx, ly } of GINGER_SPRINKLES.hits(P)) {
+      const on = smoothstep(2.8, 2.1, Math.abs(lx)) * smoothstep(1.15, 0.65, Math.abs(ly));
+      if (on <= 0) continue;
+      const tint = s.kind === 0 ? '#f2a4c6' : s.kind === 1 ? '#a6e3cc' : '#f5df96';
+      px = mixRgb(px, rgb(tint), on * 0.95);
+      px = mixRgb(px, rgb('#fff8f0'), smoothstep(1.2, 0.3, Math.hypot(lx - 0.6, ly + 0.25)) * on * 0.35);
+    }
+    // The piped ring round each sticker, with its shadow outside it.
+    const d = Math.hypot(dot3(P, F.u), dot3(P, F.v));
+    const r = STICKER_FRACTION * SIZE;
+    px = mixRgb(px, rgb('#6e3c14'), smoothstep(r * 1.3, r * 1.22, d) * smoothstep(r * 1.12, r * 1.2, d) * 0.4);
+    return mixRgb(px, rgb('#fff8f0'), smoothstep(r * 1.22, r * 1.14, d) * smoothstep(r * 1.0, r * 1.07, d));
+  },
+  bauble: (x, y) => {
+    /*
+      BAUBLE — the Gingerbread dice's partner in Sugar & Snow.
+
+      A GLASS ORNAMENT SEEN CLOSE UP. Deep pine-green glass, thicker and
+      darker in places, with a soft reflection lying across it. Two
+      bands of gold glitter loop right round the die: each is a plane
+      through the die's centre, so each is one closed band over six
+      faces, continuous over every edge, and the two cross at two
+      points. Between them, frosted snowflakes are etched into the
+      glass, two to a side, some over an edge. A thin gold ring round
+      each colour sticker is the ornament's cap.
+
+      Every colour is far from every face: the glass is 50 ΔLab from
+      Green and darker than the Blue face by a long way; the gold is
+      30 and more from Yellow and Orange.
+    */
+    const P = sheetToCube(x, y);
+    const f = cubeFace(P);
+    const F = FACE_FRAMES[f];
+    let px = rgb('#1f5a4a');
+    const depth = cubeFbm([P[0] + 9, P[1] + 2, P[2] + 17], [32, 16], [1, 0.5]);
+    px = mixRgb(px, rgb('#143d33'), smoothstep(-0.05, -0.6, depth) * 0.7);
+    px = mixRgb(px, rgb('#2f7a66'), smoothstep(0.1, 0.6, depth) * 0.5);
+    // The reflection: a soft pale band lying across the glass.
+    const hl = dot3(P, BAUBLE_SHEEN);
+    px = mixRgb(px, rgb('#9fd4c4'), smoothstep(7, 0, Math.abs(hl - 14)) * 0.28);
+    // The snowflakes: six arms each with a barb, etched pale into the glass.
+    let etch = 0;
+    for (const { s, lx, ly } of BAUBLE_FLAKES.hits(P)) {
+      const reach = 4.2 + s.h * 2;
+      for (let k = 0; k < 3; k++) {
+        const t = (k * Math.PI) / 3;
+        const c = Math.cos(t);
+        const n = Math.sin(t);
+        const across = Math.abs(lx * n - ly * c);
+        const along = Math.abs(lx * c + ly * n);
+        const arm = smoothstep(0.75, 0.15, across) * smoothstep(reach, reach - 1.2, along);
+        const tip = smoothstep(1.2, 0.3, Math.abs(along - reach * 0.6)) * smoothstep(1.6, 0.4, Math.abs(across - 1.0));
+        etch = Math.max(etch, arm, tip * 0.8);
+      }
+      etch = Math.max(etch, smoothstep(1.3, 0.3, Math.hypot(lx, ly)));
+    }
+    px = mixRgb(px, rgb('#dff2ec'), etch * 0.9);
+    // The two glitter bands, and the glue line along each one's edge.
+    const b1 = Math.abs(dot3(P, SEAM_AXIS));
+    const b2 = Math.abs(dot3(P, BAUBLE_N2));
+    const band = Math.max(smoothstep(4.6, 3.4, b1), smoothstep(4.6, 3.4, b2));
+    let gold = mixRgb(rgb('#c99a3a'), rgb('#e8c25a'), cubeNoise([P[0] + 5, P[1] + 13, P[2] + 1], 3));
+    const spk = cubeSpeck(P);
+    if (spk > 0.86) gold = rgb('#fff1b8');
+    else if (spk < 0.12) gold = rgb('#a87a24');
+    px = mixRgb(px, gold, band);
+    const edge = Math.max(smoothstep(0.9, 0.2, Math.abs(b1 - 4.1)), smoothstep(0.9, 0.2, Math.abs(b2 - 4.1)));
+    px = mixRgb(px, rgb('#f6e2a0'), edge * 0.55);
+    // The cap: a thin gold ring round each sticker.
+    const d = Math.hypot(dot3(P, F.u), dot3(P, F.v));
+    const r = STICKER_FRACTION * SIZE;
+    return mixRgb(px, rgb('#e8c25a'), smoothstep(r * 1.2, r * 1.11, d) * smoothstep(r * 1.02, r * 1.07, d) * 0.9);
   },
   slate: (x, y) => {
     // Slate splits along its bedding: flat planes, a stepped edge where

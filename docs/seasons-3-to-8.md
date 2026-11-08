@@ -15,7 +15,7 @@ the 1st (see "The season pass turns over on the 1st of the month" in
 
 | Season | Month | Name | Was called |
 | --- | --- | --- | --- |
-| 2 | Dec 2026 | Sugar & Snow | Gingerbread & Glitter |
+| 2 | Dec 2026 | Sugar & Snow (built 8 Nov 2026, v1.172.0) | Gingerbread & Glitter |
 | 3 | Jan 2027 | Rumble & Rain | Thunder & Rain |
 | 4 | Feb 2027 | Shield & Scale | Dragon & Knight |
 | 5 | Mar 2027 | Wind & Wings | (kept: it already rang) |

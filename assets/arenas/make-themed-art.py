@@ -34,6 +34,7 @@ SRC = open(f'{ROOT}/src/arena/themeData.ts').read()
 IDS = ['snow', 'desert', 'volcano', 'beach', 'candy', 'glade', 'autumn', 'cove',
        'farm', 'aurora', 'reef', 'cavern', 'city', 'sky', 'moon', 'toybox', 'dino',
        'suntemple', 'moongarden',
+       'gingerbread', 'twinklemarket',
        # New battlefields go ABOVE this comment, one line per season.
        ]
 
@@ -557,6 +558,94 @@ def g_moongarden(d, c):
         d.polygon([(x - 20, 232), (x + 20, 232), (x, 218)], fill=(138, 147, 168))
     tufts(d, ((70, 318, 20), (286, 316, 22), (170, 322, 16)), (46, 90, 70))
 
+def g_gingerbread(d, c):
+    # Gingerbread Village, Season 2 of the pass, Sugar & Snow (8 Nov 2026):
+    # a gingerbread cottage with an icing roof and a smoking chimney, candy
+    # canes either side, a meringue snowman, and the sweet train in front.
+    ginger = (154, 90, 42)
+    icing = (255, 248, 240)
+    dark = (110, 60, 20)
+    d.ellipse([-20, 290, 370, 360], fill=(238, 243, 248))
+    d.rectangle([104, 190, 244, 300], fill=ginger)
+    d.polygon([(90, 196), (174, 110), (258, 196)], fill=icing)
+    d.polygon([(100, 196), (174, 122), (248, 196)], fill=(246, 236, 222))
+    for x in range(100, 250, 24):
+        d.ellipse([x - 9, 190, x + 9, 206], fill=icing)
+    d.rectangle([150, 236, 198, 300], fill=dark)
+    d.ellipse([186, 266, 194, 274], fill=(242, 164, 198))
+    d.rectangle([116, 214, 142, 240], fill=(255, 217, 138))
+    d.rectangle([206, 214, 232, 240], fill=(255, 217, 138))
+    for x, y in ((128, 214), (219, 214)):
+        d.line([(x, y), (x, y + 26)], fill=icing, width=3)
+        d.line([(x - 13, y + 13), (x + 13, y + 13)], fill=icing, width=3)
+    d.rectangle([212, 128, 230, 170], fill=dark)
+    d.rectangle([208, 124, 234, 132], fill=icing)
+    for r, y in ((7, 110), (10, 94), (13, 74)):
+        d.ellipse([221 - r, y - r, 221 + r, y + r], fill=(236, 236, 242))
+    for x, col in ((140, (166, 227, 204)), (174, (242, 164, 198)), (208, (245, 223, 150))):
+        d.ellipse([x - 9, 104, x + 9, 118], fill=col)
+    for x in (56, 292):
+        d.line([(x, 300), (x, 170)], fill=(244, 230, 208), width=12)
+        for y in range(180, 300, 24):
+            d.line([(x - 6, y + 6), (x + 6, y - 6)], fill=(184, 74, 92), width=5)
+        d.arc([x - 18, 150, x + 18, 186], 180, 360, fill=(244, 230, 208), width=12)
+    for r, y in ((20, 284), (14, 254), (10, 232)):
+        d.ellipse([300 - r, y - r, 300 + r, y + r], fill=(252, 250, 246))
+    d.polygon([(300, 230), (300, 236), (318, 234)], fill=(252, 132, 3))
+    d.rectangle([44, 312, 92, 334], fill=ginger)
+    d.rectangle([40, 306, 96, 312], fill=icing)
+    d.ellipse([80, 296, 92, 308], fill=(236, 236, 242))
+    for x, col in ((110, (242, 164, 198)), (160, (166, 227, 204)), (210, (245, 223, 150))):
+        d.rectangle([x, 316, x + 40, 334], fill=ginger)
+        d.rectangle([x - 2, 312, x + 42, 316], fill=icing)
+        d.ellipse([x + 8, 302, x + 32, 318], fill=col)
+    for x in range(52, 250, 18):
+        d.ellipse([x - 5, 330, x + 5, 340], fill=icing)
+    sparkles(d, ((30, 60, 4), (320, 50, 4), (280, 120, 3), (40, 130, 3)), (255, 255, 255))
+
+def g_twinklemarket(d, c):
+    # Twinkle Market, Season 2 of the pass: a market stall with a striped
+    # awning under a string of lights, a decorated tree with a star, a
+    # lantern post and parcels, on snow at night.
+    d.ellipse([-20, 286, 370, 360], fill=(174, 184, 204))
+    sparkles(d, ((40, 44, 4), (300, 36, 4), (330, 110, 3), (24, 120, 3), (260, 70, 3)), (255, 255, 240))
+    tree = (47, 90, 62)
+    for w, y in ((60, 180), (78, 230), (96, 282)):
+        d.polygon([(258, y - 70), (258 - w // 2, y), (258 + w // 2, y)], fill=tree)
+    d.rectangle([250, 282, 266, 300], fill=(107, 74, 44))
+    for x, y, col in ((246, 200, (184, 74, 92)), (272, 226, (232, 194, 90)), (236, 258, (58, 138, 143)),
+                      (268, 268, (255, 226, 168)), (258, 236, (184, 74, 92))):
+        d.ellipse([x - 6, y - 6, x + 6, y + 6], fill=col)
+    d.polygon([(258, 92), (264, 108), (280, 110), (268, 120), (272, 136), (258, 128), (244, 136), (248, 120),
+               (236, 110), (252, 108)], fill=(255, 233, 176))
+    wood = (122, 90, 60)
+    for x in (70, 190):
+        d.rectangle([x - 5, 150, x + 5, 300], fill=wood)
+    d.rectangle([60, 236, 200, 300], fill=(74, 58, 46))
+    d.rectangle([56, 230, 204, 240], fill=wood)
+    for i, x in enumerate(range(50, 210, 20)):
+        d.rectangle([x, 140, x + 20, 162], fill=(58, 138, 143) if i % 2 else (240, 230, 210))
+    d.rectangle([48, 132, 212, 142], fill=(238, 243, 248))
+    for x in range(56, 210, 20):
+        d.ellipse([x - 8, 156, x + 8, 170], fill=(240, 230, 210))
+    for x, y, w, h, col in ((76, 206, 30, 26, (184, 74, 92)), (118, 200, 36, 32, (58, 138, 143)),
+                            (164, 210, 26, 22, (240, 230, 210)), (20, 266, 40, 34, (184, 74, 92)),
+                            (300, 276, 30, 26, (58, 138, 143))):
+        d.rectangle([x, y, x + w, y + h], fill=col)
+        d.rectangle([x + w // 2 - 3, y, x + w // 2 + 3, y + h], fill=(232, 194, 90))
+        d.rectangle([x, y + h // 2 - 3, x + w, y + h // 2 + 3], fill=(232, 194, 90))
+    for k in range(9):
+        x = 30 + k * 36
+        y = 60 + int(abs(k - 4) ** 2 * 1.6)
+        y2 = 60 + int(abs(k - 3) ** 2 * 1.6)
+        d.line([(x, y), (x + 36, y2)], fill=(42, 36, 32), width=2)
+        col = ((255, 210, 122), (255, 176, 136), (255, 233, 176))[k % 3]
+        d.ellipse([x - 10, y + 2, x + 10, y + 22], fill=lighten(col, 0.3))
+        d.ellipse([x - 5, y + 6, x + 5, y + 18], fill=col)
+    d.rectangle([326, 180, 334, 300], fill=(58, 47, 42))
+    d.rectangle([316, 160, 344, 186], fill=(255, 226, 168))
+    d.polygon([(310, 160), (350, 160), (330, 146)], fill=(58, 47, 42))
+
 GLYPHS = {
     'snow': g_snow, 'desert': g_desert, 'volcano': g_volcano, 'beach': g_beach,
     'candy': g_candy, 'glade': g_glade, 'autumn': g_autumn, 'cove': g_cove,
@@ -564,6 +653,7 @@ GLYPHS = {
     'city': g_city, 'sky': g_sky, 'moon': g_moon, 'toybox': g_toybox,
     'dino': g_dino,
     'suntemple': g_suntemple, 'moongarden': g_moongarden,
+    'gingerbread': g_gingerbread, 'twinklemarket': g_twinklemarket,
 }
 
 for tid in IDS:

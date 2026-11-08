@@ -117,6 +117,23 @@ export function newsIsMajor(item: unknown): boolean {
 
 export const NEWS: NewsItem[] = [
   {
+    id: 'v1-172-0-season-2-sugar-and-snow',
+    date: '8 November 2026',
+    version: 'v1.172.0',
+    title: 'Season 2: Sugar & Snow starts on 1 December',
+    icon: 'cups',
+    major: true,
+    body:
+      'The next season of the pass is ready for December. Sugar & Snow ' +
+      'brings the Gingerbread Village, a biscuit board with a little train ' +
+      'of sweets running round it; the Gingerbread dice, iced biscuits that ' +
+      'shed crumbs and land in a puff of sugar; the Bauble dice, green glass ' +
+      'with gold glitter, free to everyone at level 20; and the Twinkle ' +
+      'Market, a night square of string lights, skaters and shoppers, as the ' +
+      'big prize at level 30. Fire & Ice runs until the end of November, and ' +
+      'everything you have earned in it is yours to keep.',
+  },
+  {
     id: 'v1-170-0-board-in-picture',
     date: '5 November 2026',
     version: 'v1.170.0',

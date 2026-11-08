@@ -990,7 +990,191 @@ function moonGarden(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tr
   return c;
 }
 
+/**
+ * The Gingerbread Village's floor (Sugar & Snow, 8 Nov 2026): one big
+ * biscuit, baked brown with a floury bloom and a darker bake at the
+ * edges, white royal icing piped round the playable board in a chain
+ * of loops, with icing dots and sugar sprinkles scattered on the
+ * biscuit. The icing stands proud of the biscuit, so the bump map
+ * rakes it. Outside the tray: snow, with the footprints of whoever
+ * walked round the village and a few sprinkles blown off the board.
+ */
+function icedBiscuit(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tray: boolean): Rgb {
+  if (!tray) {
+    // Snow: soft drifts, a blue shade in the hollows, sparkle on the crests.
+    const drift = fbm(x * 0.6, y * 0.6, SIZE);
+    let c = mix(p.a, p.b, smoothstep(0.25, 0.75, 1 - drift));
+    c = mix(c, lift(p.a, 0.5), smoothstep(0.62, 0.9, drift) * 0.6);
+    if (hash(x, y) > 0.985) c = lift(c, 0.6);
+    SIDE.h = 0.5 + (drift - 0.5) * 0.3;
+    // Footprints in pairs, pressed into the snow.
+    const cell = 18;
+    const col = Math.floor(x / cell);
+    const row = Math.floor(y / cell);
+    const h = hash(col + 31, row + 7);
+    if (h > 0.7) {
+      const a = h * 6;
+      const cx = col * cell + cell / 2;
+      const cy = row * cell + cell / 2;
+      for (const side of [-1, 1]) {
+        const fx = cx + Math.cos(a + Math.PI / 2) * 2.2 * side + Math.cos(a) * side * 2.5;
+        const fy = cy + Math.sin(a + Math.PI / 2) * 2.2 * side + Math.sin(a) * side * 2.5;
+        const u = (x - fx) * Math.cos(a) + (y - fy) * Math.sin(a);
+        const v = -(x - fx) * Math.sin(a) + (y - fy) * Math.cos(a);
+        const d = Math.hypot(u / 2.6, v / 1.5);
+        const on = smoothstep(1, 0.75, d);
+        c = mix(c, shade(mix(p.a, p.b, 0.7), 0.9), on * 0.7);
+        SIDE.h = Math.min(SIDE.h, 0.5 - on * 0.3);
+      }
+    } else if (h < 0.08) {
+      // A sprinkle blown off the board.
+      const d = Math.hypot((x - col * cell - cell / 2) / 2.2, (y - row * cell - cell / 2) / 1.1);
+      const on = smoothstep(1, 0.7, d);
+      const tint: Rgb = h < 0.027 ? [242, 164, 198] : h < 0.054 ? [166, 227, 204] : [245, 223, 150];
+      c = mix(c, tint, on * 0.9);
+    }
+    return c;
+  }
+  // The biscuit: brown with a floury bloom and a fine crumb grain.
+  const bloom = fbm(x * 0.8, y * 0.8, SIZE);
+  let c = mix(p.a, p.b, smoothstep(0.25, 0.75, bloom));
+  c = mix(c, lift(p.a, 0.18), smoothstep(0.6, 0.9, bloom) * 0.35);
+  c = mix(c, shade(p.b, 0.9), smoothstep(0.55, 0.85, noise(x * 1.7, y * 1.7, SIZE)) * 0.3);
+  // Darker where the bake caught, toward the edges of the tray.
+  const inner = roundRect(x - TRAY_W / 2, y - TRAY_H / 2, TRAY_W / 2 - RIM, TRAY_H / 2 - RIM, 6);
+  c = mix(c, shade(p.b, 0.78), smoothstep(-8, 2, inner) * 0.55);
+  let h = 0.5 + (bloom - 0.5) * 0.08;
+  // The icing loops round the board: a chain of half-circles standing
+  // on a line, just inside the walls.
+  const lineD = Math.abs(inner + 6.5);
+  const loopPitch = 9;
+  // Position along the perimeter, so the loops are spaced evenly.
+  const along =
+    Math.abs(x - TRAY_W / 2) > TRAY_W / 2 - RIM - 9 ? y : x;
+  const k = Math.floor(along / loopPitch);
+  const lc = k * loopPitch + loopPitch / 2;
+  const loop = Math.abs(Math.hypot((along - lc) / 1.0, (inner + 6.5) / 1.0) - 3.4);
+  const loopOn = smoothstep(1.4, 0.5, loop) * smoothstep(-8.8, -7.5, inner) * (inner + 6.5 < 0 ? 1 : 0);
+  const icing = Math.max(smoothstep(1.4, 0.5, lineD), loopOn);
+  // Icing dots and sprinkles over the board itself.
+  const cell = 16;
+  const col = Math.floor(x / cell);
+  const row = Math.floor(y / cell);
+  const hh = hash(col + 13, row + 29);
+  let dots = 0;
+  let sprinkleTint: Rgb | null = null;
+  if (inner < -14) {
+    const cx = col * cell + cell / 2 + (hash(col + 1, row) - 0.5) * 7;
+    const cy = row * cell + cell / 2 + (hash(col, row + 3) - 0.5) * 7;
+    if (hh > 0.62) {
+      dots = smoothstep(2.0, 1.1, Math.hypot(x - cx, y - cy));
+    } else if (hh < 0.3) {
+      const a = hh * 20;
+      const u = (x - cx) * Math.cos(a) + (y - cy) * Math.sin(a);
+      const v = -(x - cx) * Math.sin(a) + (y - cy) * Math.cos(a);
+      const on = smoothstep(1, 0.7, Math.hypot(u / 2.4, v / 1.1));
+      if (on > 0) sprinkleTint = hh < 0.1 ? [242, 164, 198] : hh < 0.2 ? [166, 227, 204] : [245, 223, 150];
+      if (sprinkleTint) c = mix(c, sprinkleTint, on * 0.9);
+    }
+  }
+  const white = Math.max(icing, dots);
+  // The icing's shadow on the side away from the light, so it stands proud.
+  const shadowD = Math.abs(inner + 6.5 - 1.3);
+  c = mix(c, shade(p.b, 0.7), smoothstep(1.4, 0.6, shadowD) * (1 - icing) * 0.35 * smoothstep(-8.8, -7.5, inner));
+  c = mix(c, [255, 248, 240], white * 0.96);
+  h += white * 0.3;
+  SIDE.h = h;
+  return c;
+}
+
+/**
+ * The Twinkle Market's floor: cobbles, each stone its own grey-blue,
+ * rounded and lit on the side toward the light, with snow frosted over
+ * their tops and lying in the joints at the shady side; a few sparkles
+ * where the frost catches the lights. Outside the tray: trampled snow
+ * at night with footprints, and warm pools of lamplight (the glow map)
+ * along the strips where the lanterns and stalls stand.
+ */
+function marketCobbles(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tray: boolean): Rgb {
+  if (!tray) {
+    const drift = fbm(x * 0.6, y * 0.6, SIZE);
+    let c = mix(p.b, p.a, smoothstep(0.3, 0.75, drift));
+    c = mix(c, lift(p.a, 0.25), smoothstep(0.65, 0.9, drift) * 0.5);
+    SIDE.h = 0.5 + (drift - 0.5) * 0.25;
+    // Footprints everywhere: a market square at night is trodden.
+    const cell = 14;
+    const col = Math.floor(x / cell);
+    const row = Math.floor(y / cell);
+    const h = hash(col + 41, row + 17);
+    if (h > 0.74) {
+      const a = h * 7;
+      const cx = col * cell + cell / 2 + (hash(col + 2, row) - 0.5) * 5;
+      const cy = row * cell + cell / 2 + (hash(col, row + 5) - 0.5) * 5;
+      const u = (x - cx) * Math.cos(a) + (y - cy) * Math.sin(a);
+      const v = -(x - cx) * Math.sin(a) + (y - cy) * Math.cos(a);
+      const on = smoothstep(1, 0.7, Math.hypot(u / 2.6, v / 1.4));
+      c = mix(c, shade(p.b, 0.82), on * 0.7);
+      SIDE.h = Math.min(SIDE.h, 0.5 - on * 0.3);
+    }
+    // Lamplight: warm pools on a wide lattice, which fall roughly where
+    // the lanterns stand along the strips.
+    const lamp = 44;
+    const lx = Math.floor(x / lamp);
+    const ly = Math.floor(y / lamp);
+    const lh = hash(lx + 3, ly + 9);
+    if (lh > 0.45) {
+      const d = Math.hypot(x - lx * lamp - lamp / 2 - (lh - 0.5) * 10, y - ly * lamp - lamp / 2 - (hash(lx, ly + 1) - 0.5) * 10);
+      const pool = smoothstep(11, 1, d);
+      c = mix(c, [255, 214, 150], pool * 0.35);
+      glowAt(pool * 0.3, [255, 200, 120]);
+    }
+    return c;
+  }
+  // Cobbles: a jittered lattice of rounded stones with dark joints.
+  const cell = 9;
+  const col = Math.floor(x / cell);
+  const row = Math.floor(y / cell);
+  let best = 1e9;
+  let bx = 0;
+  let by = 0;
+  let tone = 0;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const cx = (col + ox) * cell + cell / 2 + (hash(col + ox, row + oy) - 0.5) * 3.5 + ((row + oy) % 2 ? cell / 2 : 0);
+      const cy = (row + oy) * cell + cell / 2 + (hash(col + ox + 7, row + oy + 3) - 0.5) * 3.5;
+      const d = Math.hypot((x - cx) / 1.15, y - cy);
+      if (d < best) {
+        best = d;
+        bx = cx;
+        by = cy;
+        tone = hash(col + ox + 11, row + oy + 19);
+      }
+    }
+  }
+  const radius = 3.9;
+  const inStone = smoothstep(radius + 0.3, radius - 0.4, best);
+  let c = mix(shade(p.b, 0.88), mix(p.a, p.b, tone * 0.7), inStone);
+  // Barely rounded: a touch lighter toward the light, a touch darker away from it.
+  const lit = ((x - bx) * LIGHT_X + (y - by) * LIGHT_Y) / radius;
+  c = mix(c, lift(c, 0.1), inStone * Math.max(0, -lit) * 0.3);
+  c = mix(c, shade(c, 0.93), inStone * Math.max(0, lit) * 0.25);
+  let h = 0.47 + inStone * 0.06;
+  // Snow: frost over the tops of most stones, and lying in the joints.
+  const frost = fbm(x * 0.8 + 17, y * 0.8 + 5, SIZE);
+  const cap = smoothstep(0.3, 0.62, frost) * inStone * smoothstep(radius, 0.8, best);
+  c = mix(c, [238, 243, 250], cap * 0.85);
+  const joint = (1 - inStone) * smoothstep(0.25, 0.6, frost) * 0.8;
+  c = mix(c, [222, 231, 242], joint * 0.6);
+  h += cap * 0.04;
+  if (hash(x, y) > 0.992 && cap > 0.3) c = [255, 255, 255];
+  SIDE.h = h;
+  return c;
+}
+
 const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
+  // Sugar & Snow (8 Nov 2026).
+  icedBiscuit,
+  stringLights: marketCobbles,
   fernRock: dinoEarth,
   // Season 2 of the pass (21 Oct 2026).
   sunstone: templeStone,
@@ -2128,6 +2312,9 @@ const EXTRAS: Partial<Record<ArenaStructure, { bump: boolean; glow: boolean }>> 
   // Season 2 (21 Oct 2026): the carved sun is relief; the moonflowers glow.
   sunstone: { bump: true, glow: false },
   lanternWall: { bump: true, glow: true },
+  // Sugar & Snow (8 Nov 2026): the icing stands proud; the lamplight glows.
+  icedBiscuit: { bump: true, glow: false },
+  stringLights: { bump: true, glow: true },
 };
 
 /** A picture as a texture, filtered the way every surface here is. */

@@ -172,8 +172,11 @@ suite('inventory · a season still to come is shown nowhere', () => {
     // count leaves out because nobody can get it.
     assertEqual(dice.length, obtainableDiceCount(NOV) + RETIRED_SKINS.length, 'tester mode is missing a die it unlocks');
     assertEqual(arenas.length, obtainableArenaCount(0, NOV), 'tester mode is missing a battlefield it unlocks');
-    assertEqual(obtainableDiceCount(NOV), DICE_SKINS.length - idsOf(SUN_MOON, 'dice').length - RETIRED_SKINS.length, 'the future dice');
-    assertEqual(obtainableArenaCount(0, NOV), ARENA_ORDER.length - idsOf(SUN_MOON, 'arena').length, 'the future battlefields');
+    // Every season still to come in November: Sugar & Snow (December) and Sun & Moon (June).
+    const futureDice = SEASONS.filter((season) => season.month > '2026-11').flatMap((season) => idsOf(season, 'dice'));
+    assertEqual(obtainableDiceCount(NOV), DICE_SKINS.length - futureDice.length - RETIRED_SKINS.length, 'the future dice');
+    const futureArenas = SEASONS.filter((season) => season.month > '2026-11').flatMap((season) => idsOf(season, 'arena'));
+    assertEqual(obtainableArenaCount(0, NOV), ARENA_ORDER.length - futureArenas.length, 'the future battlefields');
     assert(!dice.some((s) => s.id === 'sun' || s.id === 'moon'), 'tester mode shows June in November');
     // In June, tester mode has the lot.
     assertEqual(inventoryDice(0, JUNE).length, DICE_SKINS.length, 'tester mode in June');

@@ -6,6 +6,7 @@ import { inventoryDice, obtainableDiceCount, STARTING_DICE } from '../src/game/i
 import { getWallet, owns, resetWalletForTests } from '../src/game/currency';
 import { resetProgressForTests, setUnlockAll } from '../src/game/progress';
 import { setsOwned } from '../src/game/achievements';
+import { SEASONS } from '../src/game/seasonPass';
 
 /**
  * Marc, 4 Nov 2026, after four redesigns of the Baseball dice on a design
@@ -64,9 +65,16 @@ suite('retired dice · the seven ball dice are nobody\'s to get any more', () =>
   });
 
   test('it is not counted: not in "of N", not by the Collector achievement', () => {
+    // Dice on a season that has not started by November (Sugar & Snow in
+    // December, Sun & Moon in June) are not to be had yet either.
+    const future = new Set(
+      SEASONS.filter((season) => season.month > '2026-11').flatMap((season) =>
+        season.items.filter((i) => i.item.kind === 'dice').map((i) => i.item.id),
+      ),
+    );
     assertEqual(
       obtainableDiceCount(NOV),
-      INVENTORY_SKIN_ORDER.filter((s) => !s.retired && s.id !== 'sun' && s.id !== 'moon').length,
+      INVENTORY_SKIN_ORDER.filter((s) => !s.retired && !future.has(s.id)).length,
       'obtainable count',
     );
     resetProgressForTests();

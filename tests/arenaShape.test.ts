@@ -1352,6 +1352,13 @@ suite('arenas · the floor is not cut in half', () => {
       // with moonflowers outside.
       sunstone: [3442838687, 2785190741],
       lanternWall: [1320850189, 1400482458],
+      // Sugar & Snow (8 Nov 2026), pinned after both were looked at in
+      // the arena preview: the Gingerbread Village's biscuit with icing
+      // loops, dots and sprinkles, and snow with footprints outside; the
+      // Twinkle Market's frosted cobbles, and trodden snow with pools of
+      // lamplight outside.
+      icedBiscuit: [3335081257, 1706511981],
+      stringLights: [3417756220, 1271768654],
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];

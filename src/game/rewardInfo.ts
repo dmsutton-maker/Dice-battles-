@@ -70,7 +70,11 @@ export function rewardInfo(input: RewardInfoInput): RewardInfo {
                 ? 'Dice that shine like the sun as they roll.'
                 : effect === 'moon'
                   ? 'Dice that glow with moonlight as they roll.'
-                  : 'A new look for your dice.';
+                  : effect === 'gingerbread'
+                    ? 'Iced biscuit dice that shed crumbs as they roll.'
+                    : effect === 'bauble'
+                      ? 'Glass dice that trail gold glitter as they roll.'
+                      : 'A new look for your dice.';
     } else {
       body = 'A new battlefield to play on.';
     }

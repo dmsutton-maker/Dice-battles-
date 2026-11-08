@@ -217,6 +217,8 @@ export function shelfPictureJob(skin: DiceSkin): { step(): boolean } | null {
         if (skin.effect === 'sun') paintSun(rgb);
         if (skin.effect === 'moon') paintMoon(rgb);
         if (skin.effect === 'neon') paintNeon(rgb);
+        if (skin.effect === 'gingerbread') paintGingerbread(rgb);
+        if (skin.effect === 'bauble') paintBauble(rgb);
       }
       cache.set(skin.id, encodePng(rgb, size, size));
       for (const listener of listeners) {
@@ -506,6 +508,75 @@ export function paintNeon(rgb: number[]): void {
       const toEdge = Math.min(x, SIZE - 1 - x, y, SIZE - 1 - y) / SIZE;
       const bend = Math.max(0, 1 - toEdge / 0.05) * Math.max(pinkOn, cyanOn);
       mixInto(rgb, i, [255, 250, 255], bend * 0.5);
+    }
+  }
+}
+
+/*
+  Sugar & Snow (8 Nov 2026). The Gingerbread shell pipes an icing ring
+  round each sticker and the Bauble shell a gold cap ring, and the card
+  shows no sticker, so each was a ring round nothing, the fault the Fire
+  card had. The Gingerbread card gets an iced snowflake in the middle
+  with a dusting of sugar; the Bauble card a soft gleam on the glass and
+  gold twinkles. Deterministic, like the rest.
+*/
+const ICING = [255, 248, 240];
+const SUGAR_SPOTS: readonly (readonly [number, number])[] = [
+  [0.22, 0.18], [0.78, 0.24], [0.18, 0.76], [0.82, 0.8], [0.5, 0.12], [0.86, 0.52],
+];
+
+export function paintGingerbread(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const dx = x + 0.5 - SIZE / 2;
+      const dy = y + 0.5 - SIZE / 2;
+      const i = (y * SIZE + x) * 3;
+      // An iced snowflake: six arms with a barb each, and a dot at the heart.
+      let on = 0;
+      for (let k = 0; k < 3; k++) {
+        const t = (k * Math.PI) / 3;
+        const across = Math.abs(dx * Math.sin(t) - dy * Math.cos(t));
+        const along = Math.abs(dx * Math.cos(t) + dy * Math.sin(t));
+        if (across < 1.3 && along < 15) on = Math.max(on, 1 - across / 1.3);
+        const barb = Math.abs(along - 9);
+        if (barb < 1.2 && across > 1 && across < 4.5) on = Math.max(on, (1 - barb / 1.2) * 0.9);
+      }
+      const d = Math.hypot(dx, dy);
+      if (d < 2.6) on = Math.max(on, 1 - d / 2.6);
+      if (on > 0) mixInto(rgb, i, ICING, Math.min(1, on));
+      // A dusting of sugar.
+      for (const [sx, sy] of SUGAR_SPOTS) {
+        const sd = Math.hypot(x + 0.5 - sx * SIZE, y + 0.5 - sy * SIZE);
+        if (sd < 2) mixInto(rgb, i, ICING, (1 - sd / 2) * 0.8);
+      }
+    }
+  }
+}
+
+const GLASS_GLEAM = [220, 244, 236];
+const GLITTER_GOLD = [255, 241, 184];
+const GLITTER_SPOTS: readonly (readonly [number, number])[] = [
+  [0.2, 0.24],
+  [0.78, 0.2],
+  [0.24, 0.8],
+];
+
+export function paintBauble(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const dx = x + 0.5 - SIZE / 2;
+      const dy = y + 0.5 - SIZE / 2;
+      const i = (y * SIZE + x) * 3;
+      // The gleam: a soft oval of light high on the glass, as on an ornament.
+      const g = Math.hypot((dx + 4) / 9, (dy + 5) / 6);
+      mixInto(rgb, i, GLASS_GLEAM, Math.max(0, 1 - g) * 0.7);
+      mixInto(rgb, i, GLASS_GLEAM, Math.max(0, 1 - Math.hypot(dx, dy) / 20) * 0.18);
+      for (const [sx, sy] of GLITTER_SPOTS) {
+        const ax = Math.abs(x + 0.5 - sx * SIZE);
+        const ay = Math.abs(y + 0.5 - sy * SIZE);
+        const arm = (ax < 0.7 && ay < 4) || (ay < 0.7 && ax < 4);
+        if (arm) mixInto(rgb, i, GLITTER_GOLD, 1 - Math.max(ax, ay) / 5);
+      }
     }
   }
 }
