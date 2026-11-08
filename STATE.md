@@ -179,7 +179,8 @@ and the same day the listing was brought up to date:
   they use cinematic cameras, and guideline 2.3.4 allows only screen
   captures of the app. `preview-real-iphone-886x1920.mp4` (8 Nov 2026) is
   David's own screen recording of a battle, scaled to 886x1920 at 30 fps,
-  status bar blurred, game sound kept, 24.7 s: the one to upload.
+  status bar blurred, game sound kept, 24.7 s. Uploaded 8 Nov 2026 as
+  the iPhone 6.7" preview (set `IPHONE_67`, poster frame at 6 s), state COMPLETE.
 
 ## Ads: why none were ever requested, and the fix (5 Nov 2026)
 
