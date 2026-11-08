@@ -175,9 +175,11 @@ and the same day the listing was brought up to date:
   uploaded 6 Nov 2026 by hand through App Store Connect (the API has no
   header endpoint). It replaced the 16:9 header picture in the one header
   slot; the Search Results tab keeps the 16:9 picture (5244x2950).
-- The two app previews in `store/videos/` are NOT uploaded: they use
-  cinematic cameras, and guideline 2.3.4 allows only screen captures of
-  the app. A preview should be cut from a real screen recording.
+- The two rendered app previews in `store/videos/` are NOT for upload:
+  they use cinematic cameras, and guideline 2.3.4 allows only screen
+  captures of the app. `preview-real-iphone-886x1920.mp4` (8 Nov 2026) is
+  David's own screen recording of a battle, scaled to 886x1920 at 30 fps,
+  status bar blurred, game sound kept, 24.7 s: the one to upload.
 
 ## Ads: why none were ever requested, and the fix (5 Nov 2026)
 
