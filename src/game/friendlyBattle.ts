@@ -169,7 +169,7 @@ export function sameColours(a: readonly string[], b: readonly string[]): boolean
 }
 
 const labelOf = (id: string): string =>
-  PRISONER_COLORS.find((c) => c.id === id)?.label ?? 'a colour';
+  PRISONER_COLORS.find((c) => c.id === id)?.label ?? 'a color';
 
 /**
  * WHAT TO SAY WHEN THE FRIEND MOVES, so a person is felt as much as a bot.

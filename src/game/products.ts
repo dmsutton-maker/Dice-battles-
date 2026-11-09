@@ -289,8 +289,8 @@ export const PRODUCTS: Product[] = [
     kind: 'season',
     name: 'Gold Pass',
     details:
-      "This month's Gold row: two of the new dice and battlefields, and coins at every level. Lasts until the end of the month.",
-    blurb: "This month's extra prizes.",
+      "This season's Gold row: three of its new dice and battlefields, and coins at every level. Lasts until the season ends.",
+    blurb: "This season's extra prizes.",
     usd: 2.99,
     // Grants nothing but itself — see GOLD_PASS in seasonPass.ts.
     available: true,

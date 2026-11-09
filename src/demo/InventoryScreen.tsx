@@ -125,7 +125,7 @@ export function InventoryScreen({
         <Text style={styles.sectionTitle}>DICE</Text>
         <Text style={styles.sectionNote}>
           Every set you own. Tap one to see it on the board and use it. Only
-          the shell changes — the six face colours always stay the same, so
+          the shell changes — the six face colors always stay the same, so
           a match is always a match.
         </Text>
         <View style={styles.grid}>

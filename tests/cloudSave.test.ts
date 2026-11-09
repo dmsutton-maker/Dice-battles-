@@ -605,7 +605,7 @@ suite('cloud save · the wiring', () => {
     }
     assert(/if \(restored === 'restored'\) \{[\s\S]*?progress = getProgress\(\);[\s\S]*?purse = getWallet\(\);/.test(hydrate), 'the restored values are not read back');
     assert(/kicker: 'WELCOME BACK'/.test(hydrate), 'the player is not told');
-    assert(/Tap Restore purchases in Settings for anything you bought\./.test(hydrate), 'the banner does not say where purchases come from');
+    assert(/Anything bought with real money comes back with "Bought before\? Put it back" at the bottom of the Shop\./.test(hydrate), 'the banner does not say where purchases come from');
   });
 
   test('every change is watched, and whatever is waiting goes when the app leaves the screen', () => {

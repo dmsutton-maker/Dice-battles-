@@ -259,7 +259,7 @@ export function MoneyShelf({
               {bought ? (
                 <View style={styles.owned}>
                   <Text style={styles.ownedText}>
-                    {lent ? 'UNLOCKED' : product.kind === 'season' ? 'THIS MONTH' : 'YOURS'}
+                    {lent ? 'UNLOCKED' : product.kind === 'season' ? 'THIS SEASON' : 'YOURS'}
                   </Text>
                 </View>
               ) : (
@@ -423,7 +423,7 @@ function ProductDetail({
               ? tester && !hasEntitlement(product.id)
                 ? 'Unlocked by tester mode'
                 : product.kind === 'season'
-                  ? 'Yours for this month'
+                  ? 'Yours for this season'
                   : 'Yours already'
               : tester && product.available
                 ? 'Free in tester mode'

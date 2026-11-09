@@ -427,7 +427,7 @@ export function DiceDemoScreen() {
               kicker: 'WELCOME BACK',
               note:
                 'Your trophies, coins and items are back, just as you left them. ' +
-                'Tap Restore purchases in Settings for anything you bought.',
+                'Anything bought with real money comes back with "Bought before? Put it back" at the bottom of the Shop.',
             },
           ]);
         }
@@ -4039,7 +4039,7 @@ export function DiceDemoScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.75}
               >
-                Family tester mode — everything unlocked, test ads only
+                Family tester mode — everything unlocked, no ads
               </Text>
             ) : (
               upNext && (
@@ -4564,7 +4564,7 @@ export function DiceDemoScreen() {
                   <Text style={styles.toggleLabel}>Colorblind mode</Text>
                 </View>
                 <Text style={styles.toggleNote}>
-                  Every colour gets its own shape, on the dice and the
+                  Every color gets its own shape, on the dice and the
                   prisoners.
                 </Text>
               </View>
@@ -4783,7 +4783,7 @@ export function DiceDemoScreen() {
             <Text
               style={styles.versionLine}
               onLongPress={() => setShowAdStatus((on) => !on)}
-              accessibilityHint="Hold to show where the adverts got to"
+              accessibilityHint="Hold to show where the ads got to"
             >
               {GAME_VERSION}
             </Text>
