@@ -530,8 +530,8 @@ one is added; it does not need a new build.
   battle's winner is a player or 'tie') was applied on 4 Nov 2026,
   once the Supabase connector reached the Dice Battles org again.
   The `changes` table was caught up the same day (v1.142.0 to v1.160.0).
-- **Neon dice are $0.99 in the game since v1.154.0; the App Store
-  Connect price for `neon_dice` is David's to change to match.**
+- Neon dice are $0.99 in the game and in App Store Connect (Claude in
+  Chrome set the price on 2 Nov 2026).
 
 - **Audit of 17-18 Oct 2026 (v1.110.0).** Game, website and admin
   fixes are live. Still open from it:
