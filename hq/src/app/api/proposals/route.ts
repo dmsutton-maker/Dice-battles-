@@ -1,5 +1,5 @@
-import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
+import { hqTokenAuthorised, hqTokenDenied } from '@/lib/hqToken';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import type { Proposal, ProposalOption, Vote } from '@/lib/types';
 
@@ -18,24 +18,9 @@ import type { Proposal, ProposalOption, Vote } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-function authorised(request: NextRequest): boolean {
-  const expected = process.env.HQ_API_TOKEN;
-  if (!expected) return false;
-  const header = request.headers.get('authorization') ?? '';
-  const supplied =
-    request.headers.get('x-hq-token') ??
-    (header.startsWith('Bearer ') ? header.slice(7) : '');
-  const a = Buffer.from(supplied);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-function deny() {
-  return NextResponse.json(
-    { error: 'Send the HQ token in an x-hq-token header.' },
-    { status: 401 },
-  );
-}
+// Behind the HQ token (`x-hq-token` header): lib/hqToken.ts.
+const authorised = hqTokenAuthorised;
+const deny = hqTokenDenied;
 
 export async function GET(request: NextRequest) {
   if (!authorised(request)) return deny();
