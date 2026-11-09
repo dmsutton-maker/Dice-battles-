@@ -369,6 +369,39 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **9 Nov 2026 (v1.177.0, iOS update 01a1bdeb, group 3a534b4c): the final
+  pass before the App Store submission, on Fable**, David: "Run final test
+  ... Memory and leaks. File size and bloating. Security ... Fix everything
+  you can in the game and on App Store Connect. Then when all is done submit
+  it for launch." Five audits ran in parallel worktrees (website links,
+  pages and security; game copy and purchases; dead code; rendering, iPhone
+  Duo layouts and music; memory and leaks) and everything they fixed is in
+  v1.177.0: the Twinkle Market's string-light glow texture leaked one GPU
+  texture per battle (now cached; `tests/memory.test.ts`), Gold Pass card
+  says "This season's", restore wording and American spellings, dead code
+  (`flagstoneTexture.ts`, nine exports, `assets/icon.png`), website security
+  headers + `/hq` redirect + no database text in API errors + one
+  `hqToken.ts` + canonical/link cards/favicon/AA contrast/44 px taps + Next
+  and sharp patched + poll indexes. Checks on commit 760786e: tsc 0 errors,
+  1645 tests passed, Metro export exit 0 (6.4 MB Hermes bundle), hq tsc and
+  `next build` exit 0. **The website deploy of these changes was blocked by
+  the session's permission classifier** (production deploy): live is still
+  dpl_BTU3aFwB4yT28WuhdfnZ5a6D5g8s at 431469c; David runs
+  `cd hq && npx vercel deploy --prod` (or says "deploy" in a session).
+  Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
+  downmix in `tools/music` happens after the limiter; fix is downmix before
+  `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
+  +2.1 dBTP (inaudible under MIX.music 0.4), Pixel fanfare 2 LU louder than
+  Brass; per-mount materials in DieMesh/Jungle/Space/ThemedArena never
+  disposed (bounded, programs shared). Contact sheets of every die, board,
+  screen and Duo layout were rendered for the audit (scratchpad only). Two
+  "AUDIT TEST, ignore" rows the website audit left (`messages`
+  27f3f9f6…, `ideas` 64f6ac0f…) could not be deleted (the delete needed a
+  confirmation); harmless, David or Marc can delete them from the board.
+  Instruments on a real phone after launch: GPU memory over 30 Twinkle
+  Market battles, effect skins ×20 battles, audio after 10 lobby↔battle
+  hot fades, background/foreground ×10, Share ×10 (Caches/GLView ≤ 2).
+
 - **9 Nov 2026 (v1.176.0, update 01a1bdaa, group d8b721bc): the Snow Globe dice is Season 1's free-row die at
   level 20**, David's pick ("Do the village globe but put the houses and trees
   on the design at the corners of the dice"). `snowglobe` in diceSkins.ts /
