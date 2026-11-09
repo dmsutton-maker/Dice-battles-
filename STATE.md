@@ -649,8 +649,8 @@ one is added; it does not need a new build.
   three files `app.json` actually points at are
   `assets/icon/light.png`, `dark.png` and `tinted.png` — the "Perfect
   Match" design in the three appearances iOS 18 asks for.
-  `assets/icon.png` is a superseded orphan that nothing references any
-  more; it is safe to ignore. An icon is compiled in rather than sent
+  The old single `assets/icon.png` was a superseded orphan that nothing
+  referenced; it was deleted in the 9 Nov 2026 audit. An icon is compiled in rather than sent
   over the air, so what is on a phone today is whatever build 5 carried.
 - **Android now has a build, but has never shipped to a store.** The
   first Android APK was built 20 Aug 2026 (`eas build --platform android
