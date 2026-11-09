@@ -239,7 +239,9 @@ export async function POST(request: NextRequest) {
     .from('player_profiles')
     .update({ name: cleanName(body.name), ...fields })
     .eq('player_id', auth.playerId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // The same rule as the insert above: the database's own message names
+  // columns and constraints and helps nobody holding a phone.
+  if (error) return NextResponse.json({ error: 'could not save that' }, { status: 500 });
   return NextResponse.json({ ok: true, created: false });
 }
 
