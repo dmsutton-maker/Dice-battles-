@@ -408,8 +408,9 @@ one is added; it does not need a new build.
   1645 tests passed, Metro export exit 0 (6.4 MB Hermes bundle), hq tsc and
   `next build` exit 0. **The website deploy of these changes was blocked by
   the session's permission classifier** (production deploy): live is still
-  dpl_BTU3aFwB4yT28WuhdfnZ5a6D5g8s at 431469c; David runs
-  `cd hq && npx vercel deploy --prod` (or says "deploy" in a session).
+  dpl_BTU3aFwB4yT28WuhdfnZ5a6D5g8s at 431469c until David said "Deploy" at
+  01:46 UTC; live is now dpl_DzxpURyubKeFru7HTU6pQ9aPUPU7 at e8f7663 (security
+  headers, favicon and the /hq → /admin redirect verified on papershipstudio.com).
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
