@@ -369,7 +369,7 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
-- **8 Nov 2026 (v1.175.0): the Bauble dice is DELETED and Season 1's level 20
+- **8 Nov 2026 (v1.175.0, update 01a1bd9b, group 6e040bb9): the Bauble dice is DELETED and Season 1's level 20
   (free row) is EMPTY** until David picks its replacement. He likes the Snow
   Globe idea; three versions were painted for real and rendered for him
   (Village, Midnight, Blizzard: scratch worktree, not in the tree). The one
