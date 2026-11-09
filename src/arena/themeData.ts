@@ -1448,14 +1448,17 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     retreat: { padA: '#d9dee8', padB: '#bfc7d6', post: '#4a3a2e', canopy: '#ffe2a8', pool: '#6a8fb8' },
     sky: { sun: null, stars: true, body: null },
     props: [
-      { kind: 'lantern', x: -3.05, z: -4.6, scale: 0.9, color: '#ffe2a8' },
+      // The two props nearest the camera are the thin lantern posts: the
+      // shoppers step round every prop (marketPath.ts), and a stall at
+      // the near end would push them out of an iPhone's frame.
+      { kind: 'stall', x: -3.05, z: -4.6, scale: 0.7, color: '#b84a5c' },
       { kind: 'stall', x: -3.05, z: -2.1, scale: 0.75, color: '#3a8a8f' },
       { kind: 'parcels', x: -3.05, z: 0.4, scale: 0.9 },
-      { kind: 'stall', x: -3.05, z: 2.8, scale: 0.7, color: '#b84a5c' },
+      { kind: 'lantern', x: -3.05, z: 2.8, scale: 0.9, color: '#ffe2a8' },
       { kind: 'stall', x: 3.05, z: -4.6, scale: 0.72, color: '#b84a5c' },
-      { kind: 'lantern', x: 3.05, z: -2.1, scale: 0.9, color: '#ffe2a8' },
+      { kind: 'parcels', x: 3.05, z: -2.1, scale: 0.9 },
       { kind: 'stall', x: 3.05, z: 0.4, scale: 0.75, color: '#3a8a8f' },
-      { kind: 'parcels', x: 3.05, z: 2.8, scale: 0.9 },
+      { kind: 'lantern', x: 3.05, z: 2.8, scale: 0.9, color: '#ffe2a8' },
       { kind: 'pine', x: -2.5, z: -8.8, scale: 0.5 },
       { kind: 'yuleTree', x: 0.1, z: -9.0, scale: 1.0 },
       { kind: 'pine', x: 2.5, z: -8.8, scale: 0.46 },

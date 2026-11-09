@@ -60,7 +60,7 @@ suite('season pass · every reward has a description', () => {
   });
 
   test('already owning the item says it pays coins instead', () => {
-    const info = rewardInfo({ level: 20, track: 'free', reward: rewardFor(20), itemName: 'Ice Dice', xp: 0, gold: false, alreadyOwned: true });
+    const info = rewardInfo({ level: 20, track: 'free', reward: rewardFor(20, SEASONS.find((s) => s.name === 'Fire & Ice')!), itemName: 'Ice Dice', xp: 0, gold: false, alreadyOwned: true });
     assert(/1,000 coins instead/.test(info.body), 'owning the item already is not explained');
   });
 

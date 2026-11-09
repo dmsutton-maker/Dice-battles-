@@ -369,6 +369,15 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **8 Nov 2026 (v1.175.0): the Bauble dice is DELETED and Season 1's level 20
+  (free row) is EMPTY** until David picks its replacement. He likes the Snow
+  Globe idea; three versions were painted for real and rendered for him
+  (Village, Midnight, Blizzard: scratch worktree, not in the tree). The one
+  he picks is built as a proper pass die with its own effect, goes into
+  `SEASONS` at level 20, and the table-change rule pays it to everyone already
+  past 20. The Twinkle Market shoppers now walk round the stalls, parcels and
+  lantern posts (`src/arena/marketPath.ts`); the two props nearest the camera
+  became lantern posts so the detour fits an iPhone 15's frame.
 - **8 Nov 2026 (v1.174.0, update 01a1bc89, group 1713b033): the News tab is
   EMPTY**, at David's request, after the v1.173.0 season-swap post popped up
   on his phone. A post now disappears by itself a month after its date

@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { TUNING } from '../game/tuning';
-import { track } from './boardLife';
+import { alongRoute, MARKET_ROUTE } from './marketPath';
 import { useSceneryTick } from './sceneryClock';
 import { Snowfall } from './snowfall';
 
@@ -14,19 +14,18 @@ import { Snowfall } from './snowfall';
  *
  * The pond lies in the band of ground at the top of the frame, the one
  * place this camera has beyond the far wall (where the Moon Garden puts
- * its moon). The shoppers walk the rounded loop outside the tray that
- * the Sun Temple's priests use, narrow enough to stay inside an iPhone
- * 15's frame at the near end. Everything moves on a scenery tick that
- * allocates nothing (sceneryClock.ts), and nothing is ever over the
- * tray.
+ * its moon). The shoppers walk a route round the outside of the tray
+ * that steps round every stall, parcel pile and lantern post in their
+ * way (marketPath.ts; David, 8 Nov 2026: "make them go around them"),
+ * narrow enough to stay inside an iPhone 15's frame. Everything moves
+ * on a scenery tick that allocates nothing (sceneryClock.ts), and
+ * nothing is ever over the tray.
  */
 
 const { innerWidth, innerDepth, wallThickness, wallHeight } = TUNING.tray;
 const CX = innerWidth / 2 + wallThickness / 2;
 const CZ = innerDepth / 2 + wallThickness / 2;
 
-const LANE = { half: 3.3, far: -9.25, near: 5.55, r: 0.6 };
-const LAP = 2 * (2 * LANE.half - 2 * LANE.r) + 2 * (LANE.near - LANE.far - 2 * LANE.r) + 2 * Math.PI * LANE.r;
 
 const POND = { x: -1.3, z: -9.85, rx: 1.15, rz: 0.55 };
 
@@ -45,7 +44,7 @@ export function MarketLife() {
       <Skater i={0} coat="#b84a5c" hat="#f0e6d2" />
       <Skater i={1} coat="#3a8a8f" hat="#e8c25a" />
       <Shopper offset={0} coat="#8a6ab8" hat="#f0e6d2" />
-      <Shopper offset={-1.6 / LAP} coat="#3a8a8f" hat="#b84a5c" />
+      <Shopper offset={-1.6 / MARKET_ROUTE.total} coat="#3a8a8f" hat="#b84a5c" />
       <Shopper offset={0.42} coat="#b84a5c" hat="#e8c25a" />
       <Chase />
       <Snowfall color="#f4f7ff" speed={0.28} />
@@ -134,14 +133,14 @@ function Skater({ i, coat, hat }: { i: number; coat: string; hat: string }) {
   );
 }
 
-/** A shopper in a coat and bobble hat with a parcel under one arm, strolling the strips. */
+/** A shopper in a coat and bobble hat with a parcel under one arm, strolling round the stalls. */
 function Shopper({ offset, coat, hat }: { offset: number; coat: string; hat: string }) {
   const body = useRef<THREE.Group | null>(null);
   const tick = useMemo(
     () => (t: number) => {
       const g = body.current;
       if (!g) return;
-      const heading = track((t * 0.22) / LAP + offset, LANE.half, LANE.far, LANE.near, LANE.r, P);
+      const heading = alongRoute(MARKET_ROUTE, (t * 0.22) / MARKET_ROUTE.total + offset, P);
       const step = t * 3.0 + offset * 40;
       g.position.set(P.x, Math.abs(Math.sin(step)) * 0.02, P.z);
       g.rotation.set(0, heading, Math.sin(step) * 0.04);

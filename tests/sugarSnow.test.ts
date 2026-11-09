@@ -6,11 +6,12 @@ import { ARENA_PRICES, ARENA_UNLOCKS, PASS_ARENAS, STORE_ARENAS } from '../src/g
 import { ARENA_JAILS } from '../src/arena/jailKinds';
 import { ARENA_THEMES, THEMED_ARENA_META } from '../src/arena/themeData';
 import { DiceGingerbread } from '../src/dice/diceGingerbread';
-import { DiceBauble } from '../src/dice/diceBauble';
 import type { DieEffect, DieSample } from '../src/dice/dieEffect';
 import { Kind, ParticlePool } from '../src/dice/particles';
 import { patternPixels } from '../src/dice/patterns';
-import { paintBauble, paintGingerbread } from '../src/dice/preview';
+import { paintGingerbread } from '../src/dice/preview';
+import { fitCamera } from '../src/demo/cameraFit';
+import { alongRoute, LANE_FAR, LANE_NEAR, LANE_X, MARKET_ROUTE, obstacles, SHOPPER_RADIUS } from '../src/arena/marketPath';
 import { SEASONS } from '../src/game/seasonPass';
 import { TUNING } from '../src/game/tuning';
 
@@ -30,7 +31,7 @@ function die(x = 0, z = 0, moving = false): DieSample {
   return { x, y: HALF, z, vx: 0, vy: 0, vz: 0, quaternion: new THREE.Quaternion(), moving };
 }
 
-type Effect = DiceGingerbread | DiceBauble;
+type Effect = DiceGingerbread;
 
 function run(fx: Effect, dice: DieSample[], seconds: number, from = 0): void {
   for (let t = from; t < from + seconds; t += FRAME) fx.update(FRAME, t, dice, 1000);
@@ -80,16 +81,17 @@ suite('sugar & snow · the season', () => {
     const at = (level: number) => s!.items.find((i) => i.level === level)!;
     assertEqual(`${at(6).item.kind}:${at(6).item.id}:${at(6).track}`, 'arena:gingerbread:gold', 'level 6');
     assertEqual(`${at(12).item.kind}:${at(12).item.id}:${at(12).track}`, 'dice:gingerbread:gold', 'level 12');
-    assertEqual(`${at(20).item.kind}:${at(20).item.id}:${at(20).track}`, 'dice:bauble:free', 'level 20');
+    // Level 20 is empty since 8 Nov 2026: the Bauble dice was deleted at David's
+    // request and its replacement is his pick (docs/seasons-3-to-8.md).
+    assertEqual(s!.items.find((i) => i.level === 20), undefined, 'level 20 holds something again: is the Bauble dice back?');
     assertEqual(`${at(30).item.kind}:${at(30).item.id}:${at(30).track}`, 'arena:twinklemarket:gold', 'level 30');
   });
 });
 
-suite('sugar & snow · the Gingerbread and Bauble dice', () => {
-  test('both are pass dice, with their own effects, and nowhere else', () => {
+suite('sugar & snow · the Gingerbread dice', () => {
+  test('a pass die, with its own effect, and nowhere else', () => {
     for (const [id, effect] of [
       ['gingerbread', 'gingerbread'],
-      ['bauble', 'bauble'],
     ] as const) {
       const skin = skinById(id);
       assertEqual(skin.id, id, `the ${id} dice exist`);
@@ -100,7 +102,8 @@ suite('sugar & snow · the Gingerbread and Bauble dice', () => {
       assert(!STORE_SKINS.includes(skin), `${id} is on the Store shelf`);
       assert(!LADDER_SKINS.includes(skin), `${id} is on the trophy ladder`);
     }
-    assertEqual(DICE_SKINS.filter((s) => s.pattern === 'gingerbread' || s.pattern === 'bauble').length, 2, 'the two patterns belong to the two dice');
+    assertEqual(DICE_SKINS.filter((s) => s.pattern === 'gingerbread').length, 1, 'the pattern belongs to the one die');
+    assert(!DICE_SKINS.some((s) => s.id === 'bauble'), 'the Bauble dice is back (deleted 8 Nov 2026 at David\'s request)');
   });
 
   test('the icing runs over the edges: the same icing on both sides of every edge', () => {
@@ -157,12 +160,6 @@ suite('sugar & snow · the Gingerbread and Bauble dice', () => {
     paintGingerbread(gingerCard);
     note(`the Gingerbread card's middle: ${middle(gingerShell).toFixed(0)} before, ${middle(gingerCard).toFixed(0)} after`);
     assert(middle(gingerCard) > middle(gingerShell) + 25, 'the Gingerbread card has no icing in the middle');
-    const bauble = skinById('bauble');
-    const baubleShell = patternPixels(bauble.pattern as never, bauble.body, bauble.body);
-    const baubleCard = baubleShell.slice();
-    paintBauble(baubleCard);
-    note(`the Bauble card's middle: ${middle(baubleShell).toFixed(0)} before, ${middle(baubleCard).toFixed(0)} after`);
-    assert(middle(baubleCard) > middle(baubleShell) + 20, 'the Bauble card has no gleam in the middle');
   });
 });
 
@@ -226,54 +223,6 @@ suite('sugar & snow · the Gingerbread dice shed crumbs', () => {
   });
 });
 
-suite('sugar & snow · the Bauble dice glitter', () => {
-  test('glitter trails behind a rolling die, and the glass has a sheen', () => {
-    const fx = new DiceBauble(1);
-    const d = die(-2, 0, true);
-    fx.thrown();
-    for (let t = 0; t < 1; t += FRAME) {
-      d.x += 2 * FRAME;
-      d.vx = 2;
-      fx.update(FRAME, t, [d], 1000);
-    }
-    assert(live(fx.pool, Kind.Glitter).length > 8, 'no glitter behind a rolling Bauble die');
-    assert(live(fx.pool, Kind.Halo).length > 3, 'no sheen on a rolling Bauble die');
-  });
-
-  test('a ring of glitter where it lands, one twinkle on a top corner, nothing over the top face', () => {
-    const fx = new DiceBauble(1);
-    const dice = [die(0, 0)];
-    fx.thrown();
-    dropOnto(fx, dice, 0, 0);
-    assert(live(fx.pool, Kind.Glitter).length >= TUNING.bauble.ringDots, 'no ring of glitter where the die came down');
-    const twinkles = live(fx.pool, Kind.Flash);
-    assertEqual(twinkles.length, 1, 'there should be exactly one twinkle');
-    const [tx, ty, tz] = twinkles[0];
-    assert(ty > HALF * 0.9, 'the twinkle is not up on the die');
-    assert(Math.hypot(tx, tz) > HALF * 0.95, 'the twinkle is over the face, not on a corner');
-    dice[0].moving = false;
-    run(fx, dice, 2);
-    const dust = live(fx.pool, Kind.Glitter);
-    assert(dust.length > 3, 'a Bauble die at rest sheds no glitter');
-    assertEqual(overTheTop(dust), 0, 'glitter is sitting over the face on top, which is the roll');
-    assertEqual(overTheTop(live(fx.pool, Kind.Halo)), 0, 'a sheen is sitting over the face on top');
-    assert(live(fx.pool, Kind.Flash).length <= 1, 'the twinkle multiplied');
-  });
-
-  test('under the water it goes dark, and glitters again on the next throw', () => {
-    const fx = new DiceBauble(1);
-    fx.sank(0, 1, -1);
-    assert(fx.glasses[0].sunk, 'the bauble is still lit under water');
-    assert(live(fx.pool, Kind.Glint).length > 0, 'no glints off the water');
-    run(fx, [die(1, -1, true)], 1.5);
-    assertEqual(live(fx.pool, Kind.Halo).length, 0, 'a sunk Bauble die still has a sheen');
-    fx.thrown();
-    assert(!fx.glasses[0].sunk, 'thrown again, it stays dark');
-    assertEqual((fx as DieEffect).heldAt(0), null, 'a Bauble die is being held in the moat — only the ice does that');
-    fx.dispose();
-  });
-});
-
 suite('sugar & snow · Gingerbread Village and Twinkle Market', () => {
   test('both are pass battlefields, each with a kit of its own', () => {
     for (const [id, jail, mound, pit] of [
@@ -310,5 +259,74 @@ suite('sugar & snow · Gingerbread Village and Twinkle Market', () => {
         assert(inBand || againstWall || farCorner, `${id}: a ${p.kind} at (${p.x}, ${p.z}) is out in the lane`);
       }
     }
+  });
+});
+
+suite('twinkle market · the shoppers walk round the stalls', () => {
+  /*
+    David, 8 Nov 2026: "the people in twinkle market walk through the
+    surrounding objects so make them go around them." The route is built
+    from the theme's own props (marketPath.ts); this walks every step of
+    it and checks it against them, the tray and the camera.
+  */
+  const samples: { x: number; z: number; heading: number }[] = [];
+  for (let u = 0; u < 1; u += 0.1 / MARKET_ROUTE.total) {
+    const p = { x: 0, z: 0 };
+    const heading = alongRoute(MARKET_ROUTE, u, p);
+    samples.push({ ...p, heading });
+  }
+
+  test('the route passes clear of every stall, parcel pile and lantern', () => {
+    const props = obstacles();
+    assert(props.length >= 6, `only ${props.length} props found to walk round`);
+    for (const o of props) {
+      let nearest = Infinity;
+      for (const q of samples) {
+        // Distance outside the prop's footprint, as a box.
+        const dx = Math.max(0, Math.abs(q.x - o.x) - o.hx);
+        const dz = Math.max(0, Math.abs(q.z - o.z) - o.hz);
+        nearest = Math.min(nearest, Math.hypot(dx, dz));
+      }
+      assert(nearest >= SHOPPER_RADIUS, `the shoppers brush the prop at (${o.x}, ${o.z}): ${nearest.toFixed(2)} clear`);
+    }
+    note(`${samples.length} steps checked against ${props.length} props`);
+  });
+
+  test('the route stays off the tray and inside an iPhone frame, and faces the way it walks', () => {
+    const outX = TUNING.tray.innerWidth / 2 + TUNING.tray.wallThickness;
+    const outZ = TUNING.tray.innerDepth / 2 + TUNING.tray.wallThickness;
+    for (const q of samples) {
+      assert(Math.abs(q.x) >= outX + SHOPPER_RADIUS || Math.abs(q.z) >= outZ + SHOPPER_RADIUS, `(${q.x.toFixed(2)}, ${q.z.toFixed(2)}) is on the tray`);
+      // On a side, never inside the lane; the near and far legs cross between the sides.
+      const crossing = Math.abs(q.z - LANE_NEAR) < 0.35 || Math.abs(q.z - LANE_FAR) < 0.35;
+      assert(crossing || Math.abs(q.x) >= LANE_X - 0.01, `(${q.x.toFixed(2)}, ${q.z.toFixed(2)}) is inside the lane`);
+    }
+    for (const [label, aspect] of [['iPhone 15', 393 / 852], ['iPhone SE', 375 / 667]] as const) {
+      const camera = new THREE.PerspectiveCamera();
+      fitCamera(camera, aspect);
+      let worst = 0;
+      for (const q of samples) {
+        for (const y of [0, 0.7]) {
+          const ndc = new THREE.Vector3(q.x, y, q.z).project(camera);
+          worst = Math.max(worst, Math.abs(ndc.x), Math.abs(ndc.y));
+        }
+      }
+      note(`${label}: the route reaches ${(worst * 100).toFixed(0)}% of the way to the frame's edge`);
+      assert(worst <= 1, `${label}: the shoppers walk out of the frame`);
+    }
+    // Heading: the direction of travel between two samples, except where
+    // a step straddles a corner (the two samples then lie on two edges).
+    let straddles = 0;
+    for (let i = 1; i < samples.length; i++) {
+      const a = samples[i - 1];
+      const b = samples[i];
+      const dir = Math.atan2(b.x - a.x, b.z - a.z);
+      const diff = Math.abs(Math.atan2(Math.sin(dir - a.heading), Math.cos(dir - a.heading)));
+      if (diff >= 0.01) {
+        straddles++;
+        assert(diff < Math.PI / 2, `a shopper walks one way and faces another at (${a.x.toFixed(2)}, ${a.z.toFixed(2)})`);
+      }
+    }
+    assert(straddles <= MARKET_ROUTE.points.length, `${straddles} steps face the wrong way for ${MARKET_ROUTE.points.length} corners`);
   });
 });

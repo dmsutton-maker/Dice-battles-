@@ -443,25 +443,6 @@ export const TUNING = {
     /** Crumbs that bounce away from the landing. */
     bounceCrumbs: 3,
   },
-  /**
-   * The Bauble dice (diceBauble.ts), season 2: a trail of gold glitter
-   * behind a rolling die, a ring of glitter rising where one lands, one
-   * bright twinkle on its top corner, and a sheen of light on the glass.
-   */
-  bauble: {
-    particles: 460,
-    /** World units a die travels between two flecks of glitter. */
-    trailSpacing: 0.09,
-    /** Seconds a fleck twinkles before it is gone. */
-    trailLife: 0.8,
-    /** Flecks per second drifting off a die at rest. */
-    driftRate: 5,
-    /** Flecks in the ring where a die lands, and how fast they rise. */
-    ringDots: 24,
-    ringSpeed: 1.6,
-    /** How strong the pool of gold light on the floor is under a resting die. */
-    glowOpacity: 0.18,
-  },
 } as const;
 
 /**

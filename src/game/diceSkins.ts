@@ -62,7 +62,7 @@ export interface DiceSkin {
    * 'sun' and 'moon' (season 2, 21 Oct 2026) are in diceSun.ts and
    * diceMoon.ts; 'ocean' (4 Nov 2026) in diceOcean.ts.
    */
-  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon' | 'ocean' | 'gingerbread' | 'bauble';
+  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon' | 'ocean' | 'gingerbread';
   /**
    * Taken off the shelf and off the ladder: nobody can get it any more,
    * and only family tester (admin) mode shows it. Marc, 4 Nov 2026, on
@@ -449,22 +449,6 @@ export const DICE_SKINS: DiceSkin[] = [
     pattern: 'gingerbread',
     pass: true,
     effect: 'gingerbread',
-  },
-  /*
-    THE BAUBLE DICE: a glass tree ornament seen close up — deep
-    pine-green glass with two crossing bands of gold glitter looping
-    round the die and frosted snowflakes etched between them
-    (patterns.ts `bauble`); a trail of gold glitter as it rolls, a ring
-    of glitter where it lands and one twinkle on its top corner
-    (diceBauble.ts). Darker and bluer than the Green face by a long way.
-  */
-  {
-    id: 'bauble',
-    name: 'Bauble',
-    body: '#1f5a4a',
-    pattern: 'bauble',
-    pass: true,
-    effect: 'bauble',
   },
 
   /*

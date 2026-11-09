@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.175.0 — 2026-11-08 · requested by David
+
+David, 8 Nov 2026: "completely delete the bauble dice because i have no idea
+what that even is", and "the people in twinkle market walk through the
+surrounding objects so make them go around them". JS only, runtime 4.0.0.
+No news post.
+
+### Removed
+- **The Bauble dice**: skin, pattern (`bauble` in patterns.ts), effect
+  (`diceBauble.ts`, the `Glitter` particle kind), tuning, blurb, card paint
+  and reward text. Season 1's level 20 on the free row is EMPTY until David
+  picks its replacement (ideas rendered for him; `SEASONS` comment). It pays
+  trophies like any even level meanwhile, and the table-change rule pays the
+  new die to everyone already past 20 the day it arrives. A save that
+  already holds `bauble` in its wallet is harmless: unknown ids fall back to
+  Ivory on read and never show.
+
+### Fixed
+- **Twinkle Market shoppers walk round the stalls, parcels and lantern
+  posts** instead of through them (`src/arena/marketPath.ts`): a closed
+  route built from the theme's own prop list, stepping out round each prop,
+  and across the far band between the wall and the trees rather than
+  through them. The two props nearest the camera are now the lantern posts
+  (the stall and parcels swapped to the far end), because a stall there
+  pushed the detour out of an iPhone 15's frame. `tests/sugarSnow.test.ts`
+  walks the route against every prop, the tray and both phone frames.
+
 ## v1.174.0 — 2026-11-08 · requested by David
 
 David, 8 Nov 2026, on the v1.173.0 What's new popup: "Don't put back end
