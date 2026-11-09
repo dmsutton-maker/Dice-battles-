@@ -84,9 +84,9 @@ suite('season pass · one season a month, New York time', () => {
   test('every season has two new dice and two new battlefields, three on the Gold row', () => {
     const seen = new Set<string>();
     for (const s of SEASONS) {
-      // Season 1's free-row die (the Bauble dice) was deleted on 8 Nov 2026
-      // at David's request; level 20 waits for the die he picks to replace it.
-      const gap = s.id === 'season-1' ? 1 : 0;
+      // (8 Nov 2026: level 20 was empty for a day between the Bauble dice's
+      // deletion and the Snow Globe dice taking its place.)
+      const gap = 0;
       assertEqual(s.items.length, 4 - gap, `${s.name} does not have four things on it`);
       assertEqual(s.items.filter((i) => i.item.kind === 'dice').length, 2 - gap, `${s.name}: dice`);
       assertEqual(s.items.filter((i) => i.item.kind === 'arena').length, 2, `${s.name}: battlefields`);
@@ -186,13 +186,12 @@ suite('season pass · one season a month, New York time', () => {
     // 8 Nov 2026: a week of Season 1 had been paid under Fire & Ice's
     // table. Somebody at level 21 had been paid Snowy Hollow (6), the
     // Fire dice (12) and the Ice dice (20); under Sugar & Snow's table
-    // those levels carry the Gingerbread Village and the Gingerbread
-    // dice, which they are owed; level 20 is empty until David picks the
-    // Bauble dice's replacement. The coins and trophies at the other
-    // levels were paid once and are not paid again.
+    // those levels carry the Gingerbread Village, the Gingerbread dice
+    // and the Snow Globe dice, which they are owed. The coins and
+    // trophies at the other levels were paid once and are not paid again.
     const old = { season: 'season-1', xp: xpToReach(21), paid: 21, goldPaid: 21 };
     const free = addXp(old, 0, NOV);
-    assertEqual(free.reached.join(','), '', 'the free row owes nothing while level 20 is empty');
+    assertEqual(free.reached.join(','), '20', 'the free row owed the Snow Globe dice at 20 and nothing else');
     assertEqual(free.state.paid, 21, 'the free high-water mark moved');
     assertEqual(addXp(free.state, 0, NOV).reached.join(','), '', 'the free row was paid twice');
     const gold = claimGold(old, NOV);
@@ -226,7 +225,7 @@ suite('season pass · an item knows which season it was on', () => {
     const ginger = passInfo('dice', 'gingerbread', OCT)!;
     assertEqual(ginger.current, true, 'Gingerbread is not current in October');
     assertEqual(passTag('dice', 'gingerbread', OCT), 'Gold Pass level 12', 'October tag');
-    assertEqual(passTag('dice', 'ice', JAN), 'Pass level 20', 'the free row');
+    assertEqual(passTag('dice', 'snowglobe', OCT), 'Pass level 20', 'the free row');
     assertEqual(passInfo('dice', 'gingerbread', DEC)!.current, true, 'Gingerbread is not current in December');
     assertEqual(passTag('dice', 'gingerbread', DEC), 'Gold Pass level 12', 'December tag');
     assertEqual(passInfo('dice', 'gingerbread', JAN)!.current, false, 'Gingerbread is still current in January');

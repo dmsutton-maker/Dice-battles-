@@ -79,7 +79,9 @@ function Rig() {
     } else {
       camera.fov = 30;
       camera.aspect = W / H;
-      camera.position.set(0, 4.2, 6.4);
+      // One or two dice: a portrait, close up.
+      const zoom = SKINS.length <= 2 ? 0.56 : 1;
+      camera.position.set(0, 4.2 * zoom, 6.4 * zoom);
       camera.lookAt(0, 0.2, 0);
       camera.updateProjectionMatrix();
     }

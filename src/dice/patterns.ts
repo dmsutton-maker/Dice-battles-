@@ -85,8 +85,9 @@ export type PatternId =
   // Season 2, "Sun & Moon" (21 Oct 2026): the Sun dice and the Moon dice.
   | 'sunburst'
   | 'moonlit'
-  // Sugar & Snow (8 Nov 2026): the Gingerbread dice.
+  // Sugar & Snow (8 Nov 2026): the Gingerbread dice; the Snow Globe dice (9 Nov).
   | 'gingerbread'
+  | 'snowglobe'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -913,8 +914,9 @@ export type ColorPatternId =
   // over a starry night.
   | 'sunburst'
   | 'moonlit'
-  // Sugar & Snow (8 Nov 2026): the Gingerbread dice.
+  // Sugar & Snow (8 Nov 2026): the Gingerbread dice; the Snow Globe dice (9 Nov).
   | 'gingerbread'
+  | 'snowglobe'
   // New members go ABOVE this comment, one per line, so six seasons can
   // be built side by side and merge cleanly. The ; stays on its own line.
   ;
@@ -1734,6 +1736,29 @@ const MOON_TWINKLES = new StickerSheet(scatterStickers(41, 3, 6, 11, 2, 6));
 const GINGER_SPRINKLES = new StickerSheet(scatterStickers(47, 6, 3.2, 5.5, 2.5, 3.2, [0, 1, 2]));
 const GINGER_DOTS = new StickerSheet(scatterStickers(53, 4, 1.6, 7, 2, 2));
 const GINGER_SWIRLS = new StickerSheet(scatterStickers(59, 1, 7, 14, 1, 7));
+/**
+ * The Snow Globe dice's village: a cottage or a fir tree in each of the
+ * four corners of every face, where a face has the most room beside its
+ * colour sticker (David, 8 Nov 2026: "put the houses and trees on the
+ * design at the corners of the dice where there's the most room").
+ * Upright in the face's frame, never folded over an edge, cottages and
+ * trees alternating round each face so no two neighbours match.
+ */
+const GLOBE_SCENES = new StickerSheet(
+  [0, 1, 2, 3, 4, 5].flatMap((face) =>
+    [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([su, sv], k) => ({
+      face,
+      u: su * 22.5,
+      v: sv * 22.5,
+      rot: 0,
+      reach: 9.5,
+      h: ((face * 4 + k) * 0.37) % 1,
+      kind: (face + k) % 2,
+    })),
+  ),
+);
+/** The reflection lying across the glass. */
+const GLOBE_SHEEN = norm3([1, 2, 0.5]);
 const FISH_BUBBLES = new StickerSheet(scatterStickers(37, 3, 2.2, 7, 1));
 
 /**
@@ -3323,6 +3348,79 @@ const COLOR_PAINTERS: Record<ColorPatternId, ColorPainter> = {
     const r = STICKER_FRACTION * SIZE;
     px = mixRgb(px, rgb('#6e3c14'), smoothstep(r * 1.3, r * 1.22, d) * smoothstep(r * 1.12, r * 1.2, d) * 0.4);
     return mixRgb(px, rgb('#fff8f0'), smoothstep(r * 1.22, r * 1.14, d) * smoothstep(r * 1.0, r * 1.07, d));
+  },
+  snowglobe: (x, y) => {
+    /*
+      SNOW GLOBE — Season 1 of the pass, "Sugar & Snow", the free-row
+      die at level 20 (9 Nov 2026, David's pick over the deleted Bauble).
+
+      A GLASS GLOBE WITH A WINTER VILLAGE INSIDE. Pale blue glass, thicker
+      and bluer in places, a soft reflection lying across it, fine snow
+      swirling in it, and snow drifted into every edge. In each corner of
+      every face sits a tiny scene on a mound of snow: a cottage with a
+      berry-red roof and lit windows, or a fir tree with snow on its
+      tiers. A brass ring round each colour sticker is the globe's stand.
+
+      Every colour is far from every face: the glass is paler than the
+      Blue face by a long way; the roof is a berry red well off the Red
+      face; the greens are darker and greyer than the Green face; the
+      windows are cream, not Yellow; the brass is darker than Yellow and
+      duller than Orange. screen.test.ts reads every hex written here.
+    */
+    const P = sheetToCube(x, y);
+    const f = cubeFace(P);
+    const F = FACE_FRAMES[f];
+    const u = dot3(P, F.u);
+    const v = dot3(P, F.v);
+    let px = rgb('#cfe6f6');
+    const depth = cubeFbm([P[0] + 9, P[1] + 2, P[2] + 17], [32, 16], [1, 0.5]);
+    px = mixRgb(px, rgb('#b3d2ea'), smoothstep(-0.05, -0.6, depth) * 0.6);
+    px = mixRgb(px, rgb('#e9f5fc'), smoothstep(0.1, 0.6, depth) * 0.5);
+    // Snow drifted into the edges of the glass.
+    const edge = Math.max(Math.abs(u), Math.abs(v));
+    const drift = cubeFbm([P[0] * 2 + 1, P[1] * 2 + 5, P[2] * 2 + 3], [16, 8], [1, 0.5]);
+    px = mixRgb(px, rgb('#ffffff'), smoothstep(27 + drift * 2, 31 + drift, edge));
+    // Fine snow swirling in the glass.
+    const spk = cubeSpeck(P);
+    if (spk > 0.94) px = mixRgb(px, rgb('#ffffff'), 0.9);
+    // The scenes in the corners.
+    for (const { s, lx, ly } of GLOBE_SCENES.hits(P)) {
+      const mound = smoothstep(3.4, 2.0, Math.hypot(lx / 2.4, ly + 6.2));
+      px = mixRgb(px, rgb('#ffffff'), mound);
+      if (s.kind === 0) {
+        // A cottage: cream walls, a berry-red roof with snow on it, two lit windows, a door, a chimney.
+        const wall = Math.abs(lx) < 4.6 && ly > -5.6 && ly < 0.6 ? 1 : 0;
+        const roof = ly >= 0.4 && ly < 6 && Math.abs(lx) < 6 - (ly - 0.4) * 1.05 ? 1 : 0;
+        px = mixRgb(px, rgb('#f4e2c4'), wall);
+        px = mixRgb(px, rgb('#b84a5c'), roof);
+        const win = (Math.abs(lx + 2.3) < 1 || Math.abs(lx - 2.3) < 1) && ly > -2.6 && ly < -0.6 ? 1 : 0;
+        px = mixRgb(px, rgb('#ffd9a0'), win * wall);
+        const door = Math.abs(lx) < 0.9 && ly > -5.6 && ly < -2.4 ? 1 : 0;
+        px = mixRgb(px, rgb('#6e3c14'), door * wall);
+        const chimney = lx > 2.2 && lx < 3.4 && ly > 3.2 && ly < 6.8 ? 1 : 0;
+        px = mixRgb(px, rgb('#7a5a3c'), chimney);
+        px = mixRgb(px, rgb('#ffffff'), roof * smoothstep(4.6, 5.6, ly) * 0.9);
+      } else {
+        // A fir tree: three green tiers with snow on them, a stump.
+        const stump = Math.abs(lx) < 0.9 && ly > -6 && ly < -3.4 ? 1 : 0;
+        px = mixRgb(px, rgb('#7a5a3c'), stump);
+        for (const [base, top, w, c] of [[-4, 0.4, 5, '#2f6f4a'], [-1.6, 3.2, 4, '#3a8a5c'], [1.2, 7, 3, '#3a8a5c']] as const) {
+          const t = (ly - base) / (top - base);
+          const on = ly >= base && ly < top && Math.abs(lx) < w * (1 - t) ? 1 : 0;
+          px = mixRgb(px, rgb(c), on);
+          px = mixRgb(px, rgb('#ffffff'), on * smoothstep(0.6, 0.95, t) * 0.7);
+        }
+      }
+    }
+    // The reflection across the glass.
+    const hl = dot3(P, GLOBE_SHEEN);
+    px = mixRgb(px, rgb('#ffffff'), smoothstep(7, 0, Math.abs(hl - 14)) * 0.35);
+    // The brass stand round each sticker.
+    const d = Math.hypot(u, v);
+    const r = STICKER_FRACTION * SIZE;
+    let brass = mixRgb(rgb('#b8882e'), rgb('#e2b95a'), cubeNoise([P[0] + 5, P[1] + 13, P[2] + 1], 3));
+    if (spk > 0.9) brass = rgb('#fff1b8');
+    return mixRgb(px, brass, smoothstep(r * 1.24, r * 1.16, d) * smoothstep(r * 1.0, r * 1.06, d));
   },
   slate: (x, y) => {
     // Slate splits along its bedding: flat planes, a stepped edge where

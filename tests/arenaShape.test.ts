@@ -1358,7 +1358,7 @@ suite('arenas · the floor is not cut in half', () => {
       // Twinkle Market's frosted cobbles, and trodden snow with pools of
       // lamplight outside.
       icedBiscuit: [3335081257, 1706511981],
-      stringLights: [3417756220, 1271768654],
+      stringLights: [1437153515, 1271768654], // brick, 9 Nov 2026
     };
     const fingerprint = (id: ThemedArenaId, tray: boolean) => {
       const t = ARENA_THEMES[id];

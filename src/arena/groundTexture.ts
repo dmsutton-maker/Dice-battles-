@@ -1088,14 +1088,16 @@ function icedBiscuit(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, t
 }
 
 /**
- * The Twinkle Market's floor: cobbles, each stone its own grey-blue,
- * rounded and lit on the side toward the light, with snow frosted over
- * their tops and lying in the joints at the shady side; a few sparkles
- * where the frost catches the lights. Outside the tray: trampled snow
- * at night with footprints, and warm pools of lamplight (the glow map)
- * along the strips where the lanterns and stalls stand.
+ * The Twinkle Market's floor: warm brick paving laid in a woven pattern
+ * (David's pick of four trials on 9 Nov 2026: "I like the brick one"),
+ * snow lying in the joints and frosting some bricks, a few sparkles
+ * where the frost catches the lights, and warm lamplight falling on the
+ * paving near the long walls. Outside the tray: trampled snow at night
+ * with footprints, and warm pools of lamplight (the glow map) along the
+ * strips where the lanterns and stalls stand. Until 9 Nov the tray was
+ * grey cobbles under frost.
  */
-function marketCobbles(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tray: boolean): Rgb {
+function marketBrick(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb }, tray: boolean): Rgb {
   if (!tray) {
     const drift = fbm(x * 0.6, y * 0.6, SIZE);
     let c = mix(p.b, p.a, smoothstep(0.3, 0.75, drift));
@@ -1130,43 +1132,40 @@ function marketCobbles(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb },
     }
     return c;
   }
-  // Cobbles: a jittered lattice of rounded stones with dark joints.
-  const cell = 9;
-  const col = Math.floor(x / cell);
-  const row = Math.floor(y / cell);
-  let best = 1e9;
-  let bx = 0;
-  let by = 0;
-  let tone = 0;
-  for (let oy = -1; oy <= 1; oy++) {
-    for (let ox = -1; ox <= 1; ox++) {
-      const cx = (col + ox) * cell + cell / 2 + (hash(col + ox, row + oy) - 0.5) * 3.5 + ((row + oy) % 2 ? cell / 2 : 0);
-      const cy = (row + oy) * cell + cell / 2 + (hash(col + ox + 7, row + oy + 3) - 0.5) * 3.5;
-      const d = Math.hypot((x - cx) / 1.15, y - cy);
-      if (d < best) {
-        best = d;
-        bx = cx;
-        by = cy;
-        tone = hash(col + ox + 11, row + oy + 19);
-      }
-    }
-  }
-  const radius = 3.9;
-  const inStone = smoothstep(radius + 0.3, radius - 0.4, best);
-  let c = mix(shade(p.b, 0.88), mix(p.a, p.b, tone * 0.7), inStone);
-  // Barely rounded: a touch lighter toward the light, a touch darker away from it.
-  const lit = ((x - bx) * LIGHT_X + (y - by) * LIGHT_Y) / radius;
-  c = mix(c, lift(c, 0.1), inStone * Math.max(0, -lit) * 0.3);
-  c = mix(c, shade(c, 0.93), inStone * Math.max(0, lit) * 0.25);
-  let h = 0.47 + inStone * 0.06;
-  // Snow: frost over the tops of most stones, and lying in the joints.
+  // Bricks laid in a woven pattern, turned forty-five degrees: blocks of
+  // two bricks, the run alternating across and along from block to block.
+  const W = 4;
+  const u = (x + y) * Math.SQRT1_2;
+  const v = (x - y) * Math.SQRT1_2;
+  const block = 2 * W;
+  const bi = Math.floor(u / block);
+  const bj = Math.floor(v / block);
+  const across = (bi + bj) % 2 === 0;
+  const along = across ? u : v;
+  const cross = across ? v : u;
+  const brickIdx = Math.floor(cross / W);
+  const jointAcross = Math.min(((cross % W) + W) % W, W - (((cross % W) + W) % W));
+  const jointAlong = Math.min(((along % block) + block) % block, block - (((along % block) + block) % block));
+  const joint = Math.min(jointAcross, jointAlong);
+  const tone = hash(bi * 3 + brickIdx, bj * 7 + 1);
+  // The theme's two floor tones: the darker brick and the lighter.
+  let c: Rgb = mix(p.b, p.a, tone);
+  c = mix(c, shade(p.b, 0.85), smoothstep(0.55, 0.9, noise(x / 3, y / 3, SIZE / 3)) * 0.35);
+  const inJoint = smoothstep(0.9, 0.4, joint);
+  c = mix(c, shade(p.b, 0.68), inJoint);
+  let h = 0.52 - inJoint * 0.08;
+  // Snow lying in the joints and frosting some bricks.
   const frost = fbm(x * 0.8 + 17, y * 0.8 + 5, SIZE);
-  const cap = smoothstep(0.3, 0.62, frost) * inStone * smoothstep(radius, 0.8, best);
-  c = mix(c, [238, 243, 250], cap * 0.85);
-  const joint = (1 - inStone) * smoothstep(0.25, 0.6, frost) * 0.8;
-  c = mix(c, [222, 231, 242], joint * 0.6);
-  h += cap * 0.04;
+  c = mix(c, [232, 238, 246], inJoint * smoothstep(0.35, 0.65, frost) * 0.8);
+  const cap = smoothstep(0.55, 0.8, frost) * (1 - inJoint);
+  c = mix(c, [236, 241, 249], cap * 0.8);
+  h += cap * 0.03;
   if (hash(x, y) > 0.992 && cap > 0.3) c = [255, 255, 255];
+  // Lamplight on the paving near the long walls.
+  const edge = Math.min(x, TRAY_W - x);
+  const lamp = smoothstep(24, 0, edge) * (0.6 + 0.4 * Math.sin(y / 11));
+  c = mix(c, [255, 214, 150], lamp * 0.3);
+  glowAt(lamp * 0.2, [255, 200, 120]);
   SIDE.h = h;
   return c;
 }
@@ -1174,7 +1173,7 @@ function marketCobbles(x: number, y: number, p: { a: Rgb; b: Rgb; accent: Rgb },
 const PAINTERS: Record<ArenaStructure, SurfacePainter> = {
   // Sugar & Snow (8 Nov 2026).
   icedBiscuit,
-  stringLights: marketCobbles,
+  stringLights: marketBrick,
   fernRock: dinoEarth,
   // Season 2 of the pass (21 Oct 2026).
   sunstone: templeStone,

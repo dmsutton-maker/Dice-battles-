@@ -1441,7 +1441,7 @@ export const ARENA_THEMES: Record<ThemedArenaId, ArenaTheme> = {
     */
     structure: 'stringLights',
     meadow: '#aeb8cc', hill: '#95a0b8', mountain: '#6e7a96', cloud: null,
-    floor: { a: '#9aa2b4', b: '#7f8799' },
+    floor: { a: '#a66e54', b: '#8a4e3e' },
     wall: { color: '#3f4656', cap: '#9aa3b8' },
     tower: { body: '#7a5a3c', roof: '#d9c9a8' },
     jail: { platform: '#5a6274', bars: '#6b4a30' },

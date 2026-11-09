@@ -60,8 +60,8 @@ suite('money shop · a purchase shows what it includes, on the board', () => {
     assert(season.number === 1 && season.name === 'Sugar & Snow', 'expected Sugar & Snow in mid November 2026');
     const listed = includedItems(gold);
     const ids = listed.map((i) => i.id);
-    for (const id of ['gingerbread', 'twinklemarket']) assert(ids.includes(id), `the Gold Pass does not list ${id}`);
-    // Level 20 (the free-row die) is empty since 8 Nov 2026, until David picks the Bauble dice's replacement.
+    for (const id of ['gingerbread', 'snowglobe', 'twinklemarket']) assert(ids.includes(id), `the Gold Pass does not list ${id}`);
+    assert(listed.find((i) => i.id === 'snowglobe')?.freeRow === true, 'the Snow Globe dice are not marked as the free row');
     assert(!listed.find((i) => i.id === 'twinklemarket')?.freeRow, 'a Gold row item is marked free');
     assert(/item\.freeRow/.test(read('src/demo/MoneyShelf.tsx')) && /Free row/.test(read('src/demo/MoneyShelf.tsx')), 'the shelf does not show the free row text');
   });

@@ -62,7 +62,7 @@ export interface DiceSkin {
    * 'sun' and 'moon' (season 2, 21 Oct 2026) are in diceSun.ts and
    * diceMoon.ts; 'ocean' (4 Nov 2026) in diceOcean.ts.
    */
-  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon' | 'ocean' | 'gingerbread';
+  effect?: 'fire' | 'ice' | 'neon' | 'sun' | 'moon' | 'ocean' | 'gingerbread' | 'snowglobe';
   /**
    * Taken off the shelf and off the ladder: nobody can get it any more,
    * and only family tester (admin) mode shows it. Marc, 4 Nov 2026, on
@@ -449,6 +449,22 @@ export const DICE_SKINS: DiceSkin[] = [
     pattern: 'gingerbread',
     pass: true,
     effect: 'gingerbread',
+  },
+  /*
+    THE SNOW GLOBE DICE (9 Nov 2026): David's pick for the free row at
+    level 20, in place of the deleted Bauble. A glass globe with a
+    winter village inside: cottages and fir trees in the corners of
+    every face, snow in the edges, a brass stand round each colour
+    (patterns.ts `snowglobe`); snow swirls round the glass as it rolls
+    and settles when it lands (diceSnowGlobe.ts). Far paler than Blue.
+  */
+  {
+    id: 'snowglobe',
+    name: 'Snow Globe',
+    body: '#cfe6f6',
+    pattern: 'snowglobe',
+    pass: true,
+    effect: 'snowglobe',
   },
 
   /*

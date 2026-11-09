@@ -38,9 +38,11 @@ export const Kind = {
   // seasons built side by side cannot hand two kinds the same number:
   // Season 2 uses 20-29, Season 3 30-39, 4 40-49, 5 50-59, 6 60-69, 7 70-79.
   // Season 1, Sugar & Snow (8 Nov 2026): the Gingerbread dice's crumbs
-  // and puff of icing sugar. (22 was the Bauble dice's glitter, deleted 8 Nov 2026.)
+  // and puff of icing sugar; the Snow Globe dice's flakes (9 Nov 2026;
+  // 22 was the Bauble dice's glitter, deleted 8 Nov).
   Crumb: 20,
   Sugar: 21,
+  Flake: 22,
   // Add each season's kinds ABOVE this comment.
 } as const;
 export type Kind = (typeof Kind)[keyof typeof Kind];
@@ -232,7 +234,7 @@ export class ParticlePool {
       // column and smoke curls rather than climbing a pole.
       const wanders =
         k === Kind.Flame || k === Kind.Smoke || k === Kind.Steam || k === Kind.Mist || k === Kind.Mote || k === Kind.Stardust ||
-        k === Kind.Sugar;
+        k === Kind.Sugar || k === Kind.Flake;
       const wx = wanders ? Math.sin(time * 7 + this.seed[i]) * 0.9 * dt : 0;
       const wz = wanders ? Math.cos(time * 5 + this.seed[i]) * 0.5 * dt : 0;
       this.vel[p] = this.vel[p] * damp + wx;
@@ -334,6 +336,12 @@ export class ParticlePool {
         r = 1; g = 0.98; b = 0.95;
         a = Math.min(1, t / 0.08) * Math.pow(1 - t, 1.4) * 0.8;
         glow = 0.15;
+      } else if (k === Kind.Flake) {
+        // A flake of snow-globe snow: white with a breath of blue, soft,
+        // in quickly and gone slowly, a little shimmer as it turns.
+        r = 0.96; g = 0.98; b = 1;
+        a = Math.min(1, t / 0.1) * Math.pow(1 - t, 1.2) * (0.75 + 0.25 * Math.sin(time * 9 + this.seed[i] * 5));
+        glow = 0.12;
       } else if (k === Kind.Shard) {
         r = 0.8; g = 0.93; b = 1;
         a = 1 - t * t;
@@ -399,5 +407,6 @@ export const PARTICLE_KIND = {
   stardust: Kind.Stardust,
   crumb: Kind.Crumb,
   sugar: Kind.Sugar,
+  flake: Kind.Flake,
 } as const;
 

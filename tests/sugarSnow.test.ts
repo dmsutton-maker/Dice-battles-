@@ -6,10 +6,11 @@ import { ARENA_PRICES, ARENA_UNLOCKS, PASS_ARENAS, STORE_ARENAS } from '../src/g
 import { ARENA_JAILS } from '../src/arena/jailKinds';
 import { ARENA_THEMES, THEMED_ARENA_META } from '../src/arena/themeData';
 import { DiceGingerbread } from '../src/dice/diceGingerbread';
+import { DiceSnowGlobe } from '../src/dice/diceSnowGlobe';
 import type { DieEffect, DieSample } from '../src/dice/dieEffect';
 import { Kind, ParticlePool } from '../src/dice/particles';
 import { patternPixels } from '../src/dice/patterns';
-import { paintGingerbread } from '../src/dice/preview';
+import { paintGingerbread, paintSnowGlobe } from '../src/dice/preview';
 import { fitCamera } from '../src/demo/cameraFit';
 import { alongRoute, LANE_FAR, LANE_NEAR, LANE_X, MARKET_ROUTE, obstacles, SHOPPER_RADIUS } from '../src/arena/marketPath';
 import { SEASONS } from '../src/game/seasonPass';
@@ -31,7 +32,7 @@ function die(x = 0, z = 0, moving = false): DieSample {
   return { x, y: HALF, z, vx: 0, vy: 0, vz: 0, quaternion: new THREE.Quaternion(), moving };
 }
 
-type Effect = DiceGingerbread;
+type Effect = DiceGingerbread | DiceSnowGlobe;
 
 function run(fx: Effect, dice: DieSample[], seconds: number, from = 0): void {
   for (let t = from; t < from + seconds; t += FRAME) fx.update(FRAME, t, dice, 1000);
@@ -81,17 +82,18 @@ suite('sugar & snow · the season', () => {
     const at = (level: number) => s!.items.find((i) => i.level === level)!;
     assertEqual(`${at(6).item.kind}:${at(6).item.id}:${at(6).track}`, 'arena:gingerbread:gold', 'level 6');
     assertEqual(`${at(12).item.kind}:${at(12).item.id}:${at(12).track}`, 'dice:gingerbread:gold', 'level 12');
-    // Level 20 is empty since 8 Nov 2026: the Bauble dice was deleted at David's
-    // request and its replacement is his pick (docs/seasons-3-to-8.md).
-    assertEqual(s!.items.find((i) => i.level === 20), undefined, 'level 20 holds something again: is the Bauble dice back?');
+    // The Bauble dice held level 20 for a day; David had it deleted on 8 Nov
+    // 2026 and picked the Snow Globe dice (9 Nov) in its place.
+    assertEqual(`${at(20).item.kind}:${at(20).item.id}:${at(20).track}`, 'dice:snowglobe:free', 'level 20');
     assertEqual(`${at(30).item.kind}:${at(30).item.id}:${at(30).track}`, 'arena:twinklemarket:gold', 'level 30');
   });
 });
 
-suite('sugar & snow · the Gingerbread dice', () => {
-  test('a pass die, with its own effect, and nowhere else', () => {
+suite('sugar & snow · the Gingerbread and Snow Globe dice', () => {
+  test('both are pass dice, with their own effects, and nowhere else', () => {
     for (const [id, effect] of [
       ['gingerbread', 'gingerbread'],
+      ['snowglobe', 'snowglobe'],
     ] as const) {
       const skin = skinById(id);
       assertEqual(skin.id, id, `the ${id} dice exist`);
@@ -102,7 +104,7 @@ suite('sugar & snow · the Gingerbread dice', () => {
       assert(!STORE_SKINS.includes(skin), `${id} is on the Store shelf`);
       assert(!LADDER_SKINS.includes(skin), `${id} is on the trophy ladder`);
     }
-    assertEqual(DICE_SKINS.filter((s) => s.pattern === 'gingerbread').length, 1, 'the pattern belongs to the one die');
+    assertEqual(DICE_SKINS.filter((s) => s.pattern === 'gingerbread' || s.pattern === 'snowglobe').length, 2, 'the two patterns belong to the two dice');
     assert(!DICE_SKINS.some((s) => s.id === 'bauble'), 'the Bauble dice is back (deleted 8 Nov 2026 at David\'s request)');
   });
 
@@ -160,6 +162,58 @@ suite('sugar & snow · the Gingerbread dice', () => {
     paintGingerbread(gingerCard);
     note(`the Gingerbread card's middle: ${middle(gingerShell).toFixed(0)} before, ${middle(gingerCard).toFixed(0)} after`);
     assert(middle(gingerCard) > middle(gingerShell) + 25, 'the Gingerbread card has no icing in the middle');
+    const globe = skinById('snowglobe');
+    const globeShell = patternPixels(globe.pattern as never, globe.body, globe.body);
+    const globeCard = globeShell.slice();
+    paintSnowGlobe(globeCard);
+    // The card's middle holds a cottage: its berry-red roof is paint the bare glass never has.
+    const roofTexels = (px: number[]) => {
+      let n = 0;
+      for (let y = 16; y < 48; y++) {
+        for (let x = 16; x < 48; x++) {
+          const i = (y * 64 + x) * 3;
+          if (px[i] > 150 && px[i + 1] < 110 && px[i + 2] < 130) n++;
+        }
+      }
+      return n;
+    };
+    note(`the Snow Globe card's middle: ${roofTexels(globeShell)} red texels before, ${roofTexels(globeCard)} after`);
+    assertEqual(roofTexels(globeShell), 0, 'the bare glass already has a roof in the middle');
+    assert(roofTexels(globeCard) >= 30, 'the Snow Globe card has no cottage in the middle');
+  });
+
+  test('the village sits in the corners of every face, clear of the colour and of the edges', () => {
+    // David, 8 Nov 2026: "put the houses and trees on the design at the
+    // corners of the dice where there's the most room". A roof is berry
+    // red (#b84a5c) and a tree is fir green (#2f6f4a / #3a8a5c): both must
+    // be found in every corner quarter of every face and never within the
+    // colour sticker's ring or over an edge.
+    const globe = skinById('snowglobe');
+    const size = 64;
+    // Roof red and fir green only: the cream walls and brown trunks are too
+    // close to what the brass stand's sparkle makes over pale glass.
+    const isScene = (r: number, g: number, b: number) =>
+      (Math.abs(r - 184) < 30 && Math.abs(g - 74) < 30 && Math.abs(b - 92) < 30) || // roof
+      (r < 100 && g > 90 && g < 160 && b > 60 && b < 120); // fir
+    // The strip's four squares are the four sides; the top and bottom are
+    // painted from the same function, so their corners are the same.
+    for (let face = 0; face < 4; face++) {
+      const px = patternPixels(globe.pattern as never, globe.body, globe.body, face);
+      for (const [cu, cv] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        let found = 0;
+        for (let y = cv * 32; y < cv * 32 + 32; y++) {
+          for (let x = cu * 32; x < cu * 32 + 32; x++) {
+            const i = (y * size + x) * 3;
+            if (!isScene(px[i], px[i + 1], px[i + 2])) continue;
+            found++;
+            const d = Math.hypot(x + 0.5 - 32, y + 0.5 - 32);
+            assert(d > 21 * 1.16, `face ${face}: scene paint ${d.toFixed(1)} from the centre, inside the stand`);
+            assert(x > 0 && x < 63 && y > 0 && y < 63, `face ${face}: scene paint on the very edge at (${x}, ${y})`);
+          }
+        }
+        assert(found > 6, `face ${face}, corner (${cu}, ${cv}) has no cottage or tree (${found} texels)`);
+      }
+    }
   });
 });
 
@@ -219,6 +273,57 @@ suite('sugar & snow · the Gingerbread dice shed crumbs', () => {
     fx.thrown();
     assert(!fx.biscuits[0].sunk, 'thrown again, it stays soggy');
     assertEqual((fx as DieEffect).heldAt(0), null, 'a biscuit is being held in the moat — only the ice does that');
+    fx.dispose();
+  });
+});
+
+suite('sugar & snow · the Snow Globe dice swirl with snow', () => {
+  test('snow swirls round a rolling die and none round one at rest from a standing start', () => {
+    const fx = new DiceSnowGlobe(1);
+    const d = die(-2, 0, true);
+    fx.thrown();
+    for (let t = 0; t < 1; t += FRAME) {
+      d.x += 2 * FRAME;
+      d.vx = 2;
+      fx.update(FRAME, t, [d], 1000);
+    }
+    const flakes = live(fx.pool, Kind.Flake);
+    assert(flakes.length > 20, `only ${flakes.length} flakes round a rolling Snow Globe die`);
+    // Every flake is near the die, where the globe's snow would be.
+    // Near the die, or trailing a little behind it the way shaken snow lags.
+    for (const [x, , z] of flakes) assert(Math.hypot(x - d.x, z - d.z) < HALF * 1.45 + 2.2, 'a flake is far from the die');
+    const still = new DiceSnowGlobe(1);
+    run(still, [die(0, 0)], 0.3);
+    // A die at rest sheds a slow settle, never a swirl.
+    assert(live(still.pool, Kind.Flake).length < 4, 'a die at rest is swirling');
+    fx.dispose();
+    still.dispose();
+  });
+
+  test('a flurry where it lands, settling flakes at rest, nothing over the top face', () => {
+    const fx = new DiceSnowGlobe(1);
+    const dice = [die(0, 0)];
+    fx.thrown();
+    dropOnto(fx, dice, 0, 0);
+    assert(live(fx.pool, Kind.Flake).length >= TUNING.snowglobe.flurryCount * 0.8, 'no flurry where the die came down');
+    dice[0].moving = false;
+    run(fx, dice, 2);
+    const settling = live(fx.pool, Kind.Flake);
+    assert(settling.length > 2, 'a Snow Globe die at rest has no snow settling round it');
+    assertEqual(overTheTop(settling), 0, 'snow is sitting over the face on top, which is the roll');
+    fx.dispose();
+  });
+
+  test('under the water: bubbles, no snow, and snow again on the next throw', () => {
+    const fx = new DiceSnowGlobe(1);
+    fx.sank(0, 1, -1);
+    assert(fx.globes[0].sunk, 'the globe is not under');
+    assert(live(fx.pool, Kind.Glint).length >= TUNING.snowglobe.bubbles, 'no bubbles off the glass');
+    run(fx, [die(1, -1, true)], 1.5);
+    assertEqual(live(fx.pool, Kind.Flake).length, 0, 'a sunk Snow Globe die is still shedding snow');
+    fx.thrown();
+    assert(!fx.globes[0].sunk, 'thrown again, it stays under');
+    assertEqual((fx as DieEffect).heldAt(0), null, 'a Snow Globe die is being held in the moat; only the ice does that');
     fx.dispose();
   });
 });

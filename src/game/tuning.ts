@@ -443,6 +443,25 @@ export const TUNING = {
     /** Crumbs that bounce away from the landing. */
     bounceCrumbs: 3,
   },
+  /**
+   * The Snow Globe dice (diceSnowGlobe.ts), 9 Nov 2026: snow swirling
+   * round the glass while a die tumbles, a flurry that rises and
+   * settles where one lands, a few flakes drifting down the sides of
+   * one at rest, and bubbles off the glass in the moat. Looks only.
+   */
+  snowglobe: {
+    particles: 480,
+    /** Flakes a second swirling round a tumbling die. */
+    swirlRate: 48,
+    /** How far out from the die's centre the swirl reaches, in die halves. */
+    swirlReach: 1.45,
+    /** Flakes in the flurry where a die lands. */
+    flurryCount: 26,
+    /** Flakes a second settling down the sides of a die at rest. */
+    settleRate: 3,
+    /** Bubbles off the glass when a die goes under. */
+    bubbles: 9,
+  },
 } as const;
 
 /**

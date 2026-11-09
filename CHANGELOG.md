@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.176.0 — 2026-11-09 · requested by David
+
+David, 8 Nov 2026: "Do the village globe but put the houses and trees on
+the design at the corners of the dice where there's the most room." JS
+only, runtime 4.0.0. No news post (David or Marc to approve one first).
+
+### Added
+- **The Snow Globe dice**, Season 1's free-row die at level 20 (`snowglobe`,
+  `pass: true`): pale blue glass with a winter village inside, a cottage or
+  a fir tree in every corner of every face (patterns.ts `snowglobe`, scenes
+  placed as four fixed corner stickers per face), snow drifted into the
+  edges, a brass stand round each colour. Effect `diceSnowGlobe.ts`: snow
+  swirling round the glass while rolling (`Kind.Flake`, 22), a flurry that
+  settles where it lands, flakes drifting down the sides at rest, bubbles
+  in the moat. Tuning `snowglobe`, card paint `paintSnowGlobe`, blurb and
+  reward text. Everyone already past level 20 is paid it on their next
+  battle (table-change rule). `tests/sugarSnow.test.ts` checks the scenes
+  sit in every corner, clear of the stand and the edges, and the snow
+  never lies over the top face.
+
+### Changed
+- **The Twinkle Market's floor is warm brick** laid in a woven pattern with
+  snow in the joints and lamplight near the walls, David's pick of four
+  rendered trials (snow with sleigh tracks, brick, frozen lake, boardwalk):
+  "I like the brick one". `marketBrick` replaces `marketCobbles` in
+  groundTexture.ts; the surround (trampled snow, lamplight pools) is as it
+  was. arenaShape's `stringLights` floor fingerprint re-pinned.
+
 ## v1.175.0 — 2026-11-08 · requested by David
 
 David, 8 Nov 2026: "completely delete the bauble dice because i have no idea

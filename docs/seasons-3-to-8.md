@@ -121,15 +121,25 @@ on 1 December (New York time), when Fire & Ice ends. Build it by 15 November.
   Red in hue. The icing is white, not any face colour.
 - **Blurb:** "Iced gingerbread, with a puff of sugar." (39)
 
-### Level 20 · Free · DELETED, to be replaced
+### Snow Globe dice · Free, level 20
 
-The Bauble dice (a pine-green glass ornament with gold glitter) sat here
-from v1.172.0 until 8 Nov 2026, when David had it deleted: "completely
-delete the bauble dice because i have no idea what that even is". Four
-replacement ideas (Snow Globe, Snowman, Hot Cocoa, Mitten) are on the
-canvas https://claude.ai/artifact/9t2v8gqGZ7LYp2zvYVavmc; whichever he
-picks goes in here, with its own effect, and is paid to everyone already
-past level 20 the day it arrives.
+David's pick on 8 Nov 2026 after the Bauble dice was deleted ("completely
+delete the bauble dice because i have no idea what that even is"): "Do
+the village globe but put the houses and trees on the design at the
+corners of the dice where there's the most room." Built 9 Nov 2026.
+
+- **id** `snowglobe` · shell `#cfe6f6`, pale blue glass, far paler than
+  the Blue face.
+- **Pattern:** a glass globe with a winter village inside. A cottage
+  (cream walls, berry-red roof, lit windows) or a fir tree with snow on
+  its tiers in each corner of every face, on a mound of snow; snow
+  drifted into every edge; fine snow in the glass; a soft reflection; a
+  brass ring round each colour as the globe's stand.
+- **While rolling:** snow swirls round the glass, as if just shaken.
+- **Where it lands:** a flurry rises round the foot and settles; a few
+  flakes keep drifting down the sides while it rests.
+- **In the moat:** bubbles off the glass, no snow until fished out.
+- **Blurb:** "A snow globe village, shaken every roll." (41)
 
 ### Twinkle Market · battlefield · Gold, level 30
 
@@ -593,7 +603,7 @@ A loud, happy month: a big top and a seaside fairground. It starts on
 
 | Season | Month | Name | Lvl 6 (Gold) | Lvl 12 (Gold) | Lvl 20 (Free) | Lvl 30 (Gold) |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Oct–Dec 2026 | Sugar & Snow | Gingerbread Village | Gingerbread dice | (deleted; David's pick) | Twinkle Market |
+| 1 | Oct–Dec 2026 | Sugar & Snow | Gingerbread Village | Gingerbread dice | Snow Globe dice | Twinkle Market |
 | 2 | Jan 2027 | Fire & Ice | Snowy Hollow | Fire dice | Ice dice | Volcano Rim |
 | 3 | Jan 2027 | Rumble & Rain | Lighthouse Point | Thunder dice | Raindrop dice | Rainforest Falls |
 | 4 | Feb 2027 | Shield & Scale | Jousting Field | Knight dice | Dragon dice | Dragon's Peak |

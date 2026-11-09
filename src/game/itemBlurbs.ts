@@ -75,6 +75,7 @@ export const DIE_BLURBS: Record<string, string> = {
   sun: 'Blazing gold, with a sunburst on landing.',
   moon: 'A silver moon and stars in the night.',
   gingerbread: 'Iced gingerbread, with a puff of sugar.',
+  snowglobe: 'A snow globe village, shaken every roll.',
   amethyst: 'A deep purple gem.',
   supporter: 'A gold compass on teal.',
   neon: 'Light chases round it and it leaves a trail.',

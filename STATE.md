@@ -369,6 +369,17 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **9 Nov 2026 (v1.176.0): the Snow Globe dice is Season 1's free-row die at
+  level 20**, David's pick ("Do the village globe but put the houses and trees
+  on the design at the corners of the dice"). `snowglobe` in diceSkins.ts /
+  patterns.ts, effect `diceSnowGlobe.ts` (snow swirls while rolling, flurry on
+  landing, settles at rest, bubbles in the moat). Not seen on a phone: Marc
+  should roll it once. Four Twinkle Market FLOOR trials (snow with sleigh
+  tracks, woven brick, frozen lake, boardwalk) were rendered for David from
+  the scratch worktree (scratchpad/globes/root, groundTexture.ts `marketSnow`,
+  `marketBrick`, `marketIce`, `marketPlanks`); waiting on his pick, then the
+  chosen painter replaces `marketCobbles` and arenaShape's fingerprint for
+  `stringLights` is re-pinned.
 - **8 Nov 2026 (v1.175.0, update 01a1bd9b, group 6e040bb9): the Bauble dice is DELETED and Season 1's level 20
   (free row) is EMPTY** until David picks its replacement. He likes the Snow
   Globe idea; three versions were painted for real and rendered for him

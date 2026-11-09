@@ -218,6 +218,7 @@ export function shelfPictureJob(skin: DiceSkin): { step(): boolean } | null {
         if (skin.effect === 'moon') paintMoon(rgb);
         if (skin.effect === 'neon') paintNeon(rgb);
         if (skin.effect === 'gingerbread') paintGingerbread(rgb);
+        if (skin.effect === 'snowglobe') paintSnowGlobe(rgb);
       }
       cache.set(skin.id, encodePng(rgb, size, size));
       for (const listener of listeners) {
@@ -546,6 +547,49 @@ export function paintGingerbread(rgb: number[]): void {
       for (const [sx, sy] of SUGAR_SPOTS) {
         const sd = Math.hypot(x + 0.5 - sx * SIZE, y + 0.5 - sy * SIZE);
         if (sd < 2) mixInto(rgb, i, ICING, (1 - sd / 2) * 0.8);
+      }
+    }
+  }
+}
+
+/*
+  The Snow Globe card (9 Nov 2026): the shell's brass ring circles no
+  sticker on the card, so the middle gets what a globe shows through its
+  glass: a soft gleam across the top, a cottage with a lit window on a
+  mound of snow, and snow falling. Deterministic, like the rest.
+*/
+const GLOBE_SNOW = [255, 255, 255];
+const GLOBE_SPOTS: readonly (readonly [number, number])[] = [
+  [0.24, 0.2], [0.72, 0.16], [0.16, 0.46], [0.84, 0.42], [0.3, 0.3], [0.66, 0.3], [0.5, 0.14], [0.8, 0.66],
+];
+
+export function paintSnowGlobe(rgb: number[]): void {
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const dx = x + 0.5 - SIZE / 2;
+      const dy = y + 0.5 - SIZE / 2;
+      const i = (y * SIZE + x) * 3;
+      // The gleam: a soft pale arc high on the glass.
+      const arc = Math.hypot(dx, dy + SIZE * 0.1);
+      const gleam = Math.max(0, 1 - Math.abs(arc - SIZE * 0.36) / 4) * Math.max(0, -dy / (SIZE * 0.4));
+      if (gleam > 0) mixInto(rgb, i, GLOBE_SNOW, gleam * 0.45);
+      // The mound of snow the cottage stands on, low in the middle.
+      const mound = Math.max(0, 1 - Math.hypot(dx / 14, (dy - 8) / 5));
+      if (mound > 0) mixInto(rgb, i, GLOBE_SNOW, Math.min(1, mound * 1.6));
+      // The cottage: cream walls, berry-red roof, a lit window, a door.
+      const wall = Math.abs(dx) < 6 && dy > -3 && dy < 7;
+      if (wall) mixInto(rgb, i, [244, 226, 196], 1);
+      // The roof: a triangle from its ridge at -9 down to the eaves at -2.6, snow along the ridge.
+      const roof = dy >= -9 && dy < -2.6 && Math.abs(dx) < (dy + 9) * 1.25;
+      if (roof) mixInto(rgb, i, [184, 74, 92], 1);
+      if (roof && dy < -7) mixInto(rgb, i, GLOBE_SNOW, 0.9);
+      if (Math.abs(dx + 3) < 1.4 && dy > -1 && dy < 2) mixInto(rgb, i, [255, 217, 160], 1);
+      if (Math.abs(dx - 3) < 1.4 && dy > -1 && dy < 2) mixInto(rgb, i, [255, 217, 160], 1);
+      if (Math.abs(dx) < 1.3 && dy > 2.5 && dy < 7) mixInto(rgb, i, [110, 60, 20], 1);
+      // Snow falling.
+      for (const [sx, sy] of GLOBE_SPOTS) {
+        const sd = Math.hypot(x + 0.5 - sx * SIZE, y + 0.5 - sy * SIZE);
+        if (sd < 1.8) mixInto(rgb, i, GLOBE_SNOW, (1 - sd / 1.8) * 0.9);
       }
     }
   }

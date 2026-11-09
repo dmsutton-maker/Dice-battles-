@@ -104,7 +104,7 @@ export const SEASONS: readonly SeasonDef[] = [
     levels were paid once and stay paid.
 
     Winter treats by day and twinkling lights by night: the Gingerbread
-    Village, the Gingerbread dice, a free-row die still to be picked, and
+    Village, the Gingerbread dice, the Snow Globe dice on the free row, and
     the Twinkle Market as the big prize. Three of the four on the Gold
     row, as David asked: "most of the good rewards only in the paid
     version". The free die sits two-thirds of the way up so that
@@ -121,14 +121,14 @@ export const SEASONS: readonly SeasonDef[] = [
       { level: 6, item: { kind: 'arena', id: 'gingerbread' }, track: 'gold' },
       { level: 12, item: { kind: 'dice', id: 'gingerbread' }, track: 'gold' },
       /*
-        Level 20 on the free row is EMPTY for now. The Bauble dice sat
-        there until 8 Nov 2026, when David had it deleted ("completely
-        delete the bauble dice because i have no idea what that even
-        is"); its replacement is his pick from the ideas canvas, and goes
-        back in here when built. Until then level 20 pays trophies like
-        any other even level, and the table-change rule (`addXp`) pays
-        the new die to everyone already past 20 the day it arrives.
+        The Snow Globe dice (9 Nov 2026). The Bauble dice sat here until
+        8 Nov 2026, when David had it deleted ("completely delete the
+        bauble dice because i have no idea what that even is") and chose
+        a snow globe with the houses and trees in the corners of the
+        faces instead. The table-change rule (`addXp`) pays it to
+        everyone already past level 20 on their next battle.
       */
+      { level: 20, item: { kind: 'dice', id: 'snowglobe' }, track: 'free' },
       { level: 30, item: { kind: 'arena', id: 'twinklemarket' }, track: 'gold' },
     ],
   },
