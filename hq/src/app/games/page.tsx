@@ -20,6 +20,7 @@ import { getSiteContent, text } from '@/lib/content';
 export const generateMetadata = pageMetadata('apps', {
   title: 'Our Games — Paper Ship Studio',
   description: 'The games we make at Paper Ship Studio: apps for your phone, and games you play in your browser.',
+  path: '/games',
 });
 
 export const dynamic = 'force-dynamic';

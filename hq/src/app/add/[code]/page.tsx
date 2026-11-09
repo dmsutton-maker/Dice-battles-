@@ -210,7 +210,9 @@ export default async function AddFriendPage({
                   style={{
                     font: `700 12px ${fonts.body}`,
                     letterSpacing: '0.12em',
-                    color: colors.muted,
+                    // secondary, not muted: muted is 4.40:1 on cream, a
+                    // hair under AA for 12px text. This is 5.24:1.
+                    color: colors.secondary,
                     marginBottom: 6,
                   }}
                 >
@@ -241,7 +243,10 @@ export default async function AddFriendPage({
                 className={styles.pillButton}
                 style={{
                   display: 'inline-block',
-                  background: colors.cyan,
+                  // cyanText, not cyan: white on the brand cyan is 4.08:1,
+                  // under AA for 16px text; on cyanText it is 5.59:1.
+                  // tokens.ts: a colour you READ is the Text one.
+                  background: colors.cyanText,
                   color: colors.white,
                   font: `700 16px ${fonts.heading}`,
                   padding: '14px 30px',
@@ -262,7 +267,14 @@ export default async function AddFriendPage({
             }}
           >
             Haven&rsquo;t got the game?{' '}
-            <Link href="/apps/dice-battles-color-rush" className={styles.link}>
+            <Link
+              href="/apps/dice-battles-color-rush"
+              className={styles.link}
+              // Without a colour of its own this took globals.css's link
+              // cyan, 4.08:1 on white. Padding on an inline link draws
+              // nothing and gives a finger 44px to land on.
+              style={{ color: colors.cyanText, padding: '13px 0' }}
+            >
               Have a look at Dice Battles: Color Rush
             </Link>
             .

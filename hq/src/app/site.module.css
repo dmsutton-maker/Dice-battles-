@@ -37,8 +37,35 @@
   outline-offset: 1px;
 }
 
+/*
+  Tap area, not looks. Apple asks for 44x44 points under a finger, and the
+  9 Nov 2026 audit measured the header links at 18px tall, the footer links
+  the same, and an FAQ question at 20px. Padding grows the box a finger
+  lands on; the matching negative margin gives the space straight back, so
+  nothing on the page moves by a pixel.
+*/
+.page :global(.psg-nav) > a,
+.page :global(.psg-footer) a {
+  padding: 13px 0;
+  margin: -13px 0;
+}
+/* "Home" is 36px wide on its own; 4px each side reaches 44 without
+   touching the gap between the links or where the row sits. */
+.page :global(.psg-nav) > a {
+  padding-left: 4px;
+  padding-right: 4px;
+  margin-left: -4px;
+  margin-right: -4px;
+}
+.page header > a:first-child {
+  padding: 8px 0;
+  margin: -8px 0;
+}
+
 .details summary {
   list-style: none;
+  padding: 12px 0;
+  margin: -12px 0;
 }
 .details summary::-webkit-details-marker {
   display: none;
