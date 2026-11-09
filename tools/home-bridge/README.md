@@ -17,49 +17,57 @@ Your computer never accepts an inbound connection. The agent only dials **out** 
 
 Tools the cloud session gets: `home_run_task`, `home_get_task`, `home_list_tasks`, `home_cancel_task`, `home_status`.
 
-## Set it up (about 15 minutes)
+## Set it up (free, about 10 minutes, nothing hosted anywhere)
 
-### 1. Make two secrets
+Everything runs on your computer. A free **Cloudflare quick tunnel** gives Claude's cloud a public HTTPS
+address that leads back to it. The tunnel dials **out**, so you open no ports, and it needs no account,
+no card, and no VPN settings (it works alongside a work VPN such as Tailscale, Cisco or Zscaler).
+It is a plain program, not a network client.
+
+You need: Node 20+, Claude Code installed and logged in (`claude` works in a terminal), and for the
+browser target the Claude in Chrome extension (`claude --chrome` works).
+
+### 1. Install cloudflared (once)
 ```bash
-node bin/relay.mjs --gen-tokens
+brew install cloudflared                      # macOS
+winget install --id Cloudflare.cloudflared    # Windows
+# Linux: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
 ```
-You get `BRIDGE_CLOUD_TOKEN` (goes into the connector URL) and `BRIDGE_AGENT_TOKEN` (goes on your computer).
-They are deliberately different: a leaked connector URL cannot impersonate your computer, and vice versa.
-Keep them out of git — this repo is public.
 
-### 2. Run the relay somewhere that is always on
-It needs a public HTTPS URL, because Claude's cloud calls it. Any host that runs Node or a Dockerfile works
-(Fly.io, Render, Railway, a small VPS). Set the two tokens as environment variables on the host.
-
+### 2. Start everything
 ```bash
-# Fly.io example, from this folder
-fly launch --no-deploy          # accept the Dockerfile
-fly secrets set BRIDGE_CLOUD_TOKEN=... BRIDGE_AGENT_TOKEN=...
-fly deploy
+git clone https://github.com/dmsutton-maker/Dice-battles-.git
+cd Dice-battles-/tools/home-bridge
+node bin/home.mjs
 ```
-Check it: `curl https://YOUR-RELAY/health` → `{"ok":true}`.
-Optional: set `BRIDGE_DATA=/data/tasks.json` and mount a volume so the queue survives restarts.
-It is a Node process with state, so it will not run on Vercel's serverless functions as-is.
+It makes your two secrets the first time (saved privately in `~/.home-bridge/relay.json`), starts the
+relay, the tunnel and the agent, and prints a box containing your **connector URL**:
+`https://<random>.trycloudflare.com/mcp/<secret>`.
 
-### 3. Add the connector to Claude
-claude.ai → Settings → **Connectors** → **Add custom connector**, URL:
+### 3. Add the connector in claude.ai
+Settings -> **Connectors** -> **Add custom connector** -> paste that URL. Leave OAuth blank. The secret in
+the URL is the password, so treat it like one.
 
-```
-https://YOUR-RELAY/mcp/<BRIDGE_CLOUD_TOKEN>
-```
-Leave OAuth blank. The secret in the URL is the password, so treat the URL like one. Cloud sessions read
-connectors when they **start**, so open a new Claude Code session afterwards. (If your client lets you set
-headers instead, `https://YOUR-RELAY/mcp` with `Authorization: Bearer <token>` works too.)
+### 4. Try it
+Start a **new** Claude Code cloud session (connectors are read when a session starts) and ask it to run
+`home_status`. It should say the home computer is online. Then try a harmless task, and type `y` in the
+terminal where `bin/home.mjs` is running when it asks.
 
-### 4. Start the agent on your computer
-Needs Node 20+ and Claude Code installed and logged in (`claude` works in a terminal).
-For the Chrome target, also install the Claude in Chrome extension and check `claude --chrome` works.
+**Catch:** a quick tunnel gets a new random address each time it starts, so after restarting
+`bin/home.mjs` you paste the new URL into the connector. Your secrets don't change, only the host part.
+For a permanent address, see the options at the bottom.
 
-```bash
-node bin/agent.mjs init --url https://YOUR-RELAY --token <BRIDGE_AGENT_TOKEN>
-node bin/agent.mjs
-```
-Then in a cloud session: *"use home_status"* → it should say the home computer is online.
+### Other ways to expose it
+- **Your own host** (Fly.io, Render, a VPS): run `bin/relay.mjs` there (needs `BRIDGE_CLOUD_TOKEN` and
+  `BRIDGE_AGENT_TOKEN`; `--gen-tokens` makes a pair; the `Dockerfile` is ready; run exactly ONE instance
+  because the queue is in memory), then on your computer
+  `node bin/agent.mjs init --url https://YOUR-RELAY --token <agent token>` and `node bin/agent.mjs`.
+  Fly.io wants a card on file. The connector URL is `https://YOUR-RELAY/mcp/<cloud token>`.
+- **A permanent free address**: a Cloudflare *named* tunnel (free account, needs a domain on Cloudflare),
+  then run `node bin/home.mjs --public-url https://your-name.example.com --no-tunnel` and run the named
+  tunnel yourself. Not tested here.
+- **Do not use a work-managed Tailscale/VPN to publish this.** Your employer controls that network, and
+  this is a personal project.
 
 ## What it will and won't do (read this)
 
@@ -102,9 +110,9 @@ The agent refuses to start with `"ask"` when it has no terminal to ask in; `"aut
 - Everything coming back is labelled untrusted: a web page the home Claude read could contain text trying
   to steer the cloud Claude. Treat results as data.
 
-## Keep the agent running
+## Keep it running in the background
 
-macOS: put this in `~/Library/LaunchAgents/com.homebridge.agent.plist` (only sensible with `"approval": "auto"`),
+(For `bin/home.mjs`, or `bin/agent.mjs` with a hosted relay.) macOS: put this in `~/Library/LaunchAgents/com.homebridge.agent.plist` (only sensible with `"approval": "auto"`),
 then `launchctl load` it:
 ```xml
 <plist version="1.0"><dict>
@@ -119,6 +127,6 @@ Windows: Task Scheduler, "At log on", action `node C:\path\to\bin\agent.mjs`.
 
 ## Development
 ```bash
-npm test      # 19 tests, includes a full relay + agent run against a fake `claude`
+npm test      # 22 tests, includes full relay + agent runs against a fake `claude` and a fake tunnel
 ```
 Environment overrides: `HOME_BRIDGE_URL`, `HOME_BRIDGE_AGENT_TOKEN`, `HOME_BRIDGE_CONFIG`.

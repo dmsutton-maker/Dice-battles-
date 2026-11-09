@@ -4,9 +4,16 @@
   "description": "Lets Claude Code in the cloud hand a task to the Claude Code CLI (and Claude in Chrome) on your own computer.",
   "type": "module",
   "private": true,
-  "engines": { "node": ">=20" },
-  "bin": { "home-bridge-relay": "bin/relay.mjs", "home-bridge-agent": "bin/agent.mjs" },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "home-bridge-relay": "bin/relay.mjs",
+    "home-bridge-agent": "bin/agent.mjs",
+    "home-bridge": "bin/home.mjs"
+  },
   "scripts": {
+    "start": "node bin/home.mjs",
     "relay": "node bin/relay.mjs",
     "agent": "node bin/agent.mjs",
     "test": "node --test \"test/*.test.mjs\""
