@@ -12,6 +12,7 @@ export const generateMetadata = pageMetadata('dice_battles', {
   title: 'Dice Battles: Color Rush — Paper Ship Studio',
   description:
     'Two dice, six colors, six prisoners to set free. Roll both dice — match the colors and a prisoner runs free. First to free all six wins. Nothing to read and nothing to count, so a five-year-old and a grandparent can play the same game at the same table.',
+  path: '/apps/dice-battles-color-rush',
 });
 
 export const dynamic = 'force-dynamic';
@@ -96,7 +97,8 @@ export default async function DiceBattlesAppPage() {
           className="psg-wrap"
           style={{ padding: '20px 56px 8px', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}
         >
-          <Link href="/games" className={styles.link} style={{ font: `700 13px ${fonts.body}`, color: colors.yellowDeepText }}>
+          {/* The padding is tap area on an 18px line (Apple asks for 44); it draws nothing. */}
+          <Link href="/games" className={styles.link} style={{ font: `700 13px ${fonts.body}`, color: colors.yellowDeepText, padding: '13px 0' }}>
             &larr; All games
           </Link>
         </section>

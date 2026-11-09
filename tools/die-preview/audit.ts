@@ -19,7 +19,7 @@
  *     npx tsx tools/die-preview/audit.ts
  */
 import { DICE_SKINS } from '../../src/game/diceSkins';
-import { patternPixels, CUBE_NET_CELLS, PatternId } from '../../src/dice/patterns';
+import { dieFacePixels, PatternId } from '../../src/dice/patterns';
 
 const lum = (px: number[], i: number) =>
   0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
@@ -71,14 +71,18 @@ const SHAPELESS = ['plain', 'satin'];
 
 for (const skin of DICE_SKINS) {
   if (SHAPELESS.includes(skin.pattern)) continue;
-  const stats = CUBE_NET_CELLS.map(([cx, cy]) =>
+  // The six real sides, in three.js face order (+X, -X, top, bottom,
+  // +Z, -Z), painted exactly as DieMesh paints them. The paper cube net
+  // this tool first measured was replaced on 18 Oct 2026 by the strip
+  // with mitred caps (DIE_FACE_SLOTS in patterns.ts), so a face is now
+  // asked for by number rather than by its square on a sheet.
+  const stats = [0, 1, 2, 3, 4, 5].map((face) =>
     faceStats(
-      patternPixels(
+      dieFacePixels(
         skin.pattern as Exclude<PatternId, 'plain'>,
         skin.body,
         skin.ink ?? skin.body,
-        cx,
-        cy,
+        face,
       ),
     ),
   );

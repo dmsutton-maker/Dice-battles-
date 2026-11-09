@@ -263,7 +263,9 @@ export async function POST(request: NextRequest) {
   const results = await Promise.all(writes);
   const failed = results.find((r) => r.error);
   if (failed?.error) {
-    return NextResponse.json({ error: failed.error.message }, { status: 500 });
+    // Not the database's own message: it names columns and constraints,
+    // and the game shows this text to the player.
+    return NextResponse.json({ error: 'could not save that' }, { status: 500 });
   }
   return NextResponse.json({ ok: true, state: move.mine });
 }

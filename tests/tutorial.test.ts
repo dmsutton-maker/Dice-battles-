@@ -38,7 +38,7 @@ suite('tutorial · it says what the game does', () => {
     // sentence ever stops being in here, the tutorial has stopped
     // teaching the game.
     const all = TUTORIAL_PAGES.flatMap((p) => p.lines).join(' ').toLowerCase();
-    assert(all.includes('same colour'), 'the matching rule is never stated');
+    assert(all.includes('same color'), 'the matching rule is never stated');
     assert(
       all.includes('six'),
       'it never says how many prisoners there are',

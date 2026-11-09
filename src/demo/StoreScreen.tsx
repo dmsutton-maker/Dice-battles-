@@ -239,7 +239,7 @@ export function StoreScreen({
         <Text style={styles.sectionNote}>
           Tap any dice to see them on the battlefield before you spend a
           coin — that is where you buy them too. Only the shell changes: the
-          six colours on the faces are the same on every set, so a match is
+          six colors on the faces are the same on every set, so a match is
           always a match.
         </Text>
         {/*

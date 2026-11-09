@@ -11,6 +11,7 @@ import { faqList, getSiteContent, text } from '@/lib/content';
 export const generateMetadata = pageMetadata('support', {
   title: 'Support — Paper Ship Studio',
   description: "We're a small studio, so support is just us — reading every message ourselves.",
+  path: '/support',
 });
 
 export const dynamic = 'force-dynamic';
@@ -102,7 +103,9 @@ export default async function SupportPage() {
               <Link
                 href="/apps/dice-battles-color-rush"
                 className={styles.link}
-                style={{ font: `700 13px ${fonts.body}`, color: colors.cyanText, alignSelf: 'flex-start' }}
+                // The vertical padding is a finger's worth of tap area on an
+                // 18px line (Apple asks for 44); it draws nothing.
+                style={{ font: `700 13px ${fonts.body}`, color: colors.cyanText, alignSelf: 'flex-start', padding: '13px 0', margin: '-13px 0' }}
               >
                 Full FAQ on the app page &rarr;
               </Link>
@@ -121,14 +124,18 @@ export default async function SupportPage() {
             <Link
               href="/privacy"
               className={styles.link}
-              style={{ padding: '12px 20px', borderRadius: 999, background: colors.cyanTint, color: colors.cyanText, font: `800 13.5px ${fonts.body}` }}
+              // 13px, not 12: the pills measured 43px tall, one short of
+              // the 44 Apple asks for under a finger.
+              style={{ padding: '13px 20px', borderRadius: 999, background: colors.cyanTint, color: colors.cyanText, font: `800 13.5px ${fonts.body}` }}
             >
               Privacy Policy
             </Link>
             <Link
               href="/terms"
               className={styles.link}
-              style={{ padding: '12px 20px', borderRadius: 999, background: colors.cream, color: colors.yellowDeepText2, font: `800 13.5px ${fonts.body}` }}
+              // yellowDeepText, not yellowDeepText2: the lighter one measured
+              // 3.55:1 on cream, under AA's 4.5:1 at this size; this is 4.58:1.
+              style={{ padding: '13px 20px', borderRadius: 999, background: colors.cream, color: colors.yellowDeepText, font: `800 13.5px ${fonts.body}` }}
             >
               Terms of Use
             </Link>

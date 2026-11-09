@@ -5,20 +5,29 @@ Renders the real menu screens and the real bottom navigation through
 PNG per screen per shape.
 
 ```sh
-CHROME_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome  # container only
+CHROME_PATH=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome  # container only; `ls /opt/pw-browsers` for the build there
 npm i --no-save --legacy-peer-deps \
   react-dom@19.1.0 react-native-web@0.19.13 playwright@1.49.0
 npx esbuild tools/duo-preview/entry.tsx --bundle \
   --outfile=tools/duo-preview/bundle.js --loader:.tsx=tsx \
   --loader:.png=dataurl --loader:.jpg=dataurl --loader:.wav=dataurl \
   --loader:.mp3=dataurl --loader:.m4a=dataurl --loader:.ttf=dataurl \
+  --alias:react-native/Libraries/Components/SafeAreaView/SafeAreaView=react-native-web/dist/exports/SafeAreaView \
   --alias:react-native=./tools/duo-preview/rn.ts --jsx=automatic \
-  --define:process.env.NODE_ENV='"production"' --define:__DEV__=false
+  --define:process.env.NODE_ENV='"production"' --define:__DEV__=false \
+  "--banner:js=globalThis.global=globalThis;"
 mkdir -p /tmp/duo
 node tools/duo-preview/shoot.js inventory,store,leaderboard folded,unfolded,iphone /tmp/duo
 node tools/duo-preview/shoot.js news,settings,unlocks iphone /tmp/duo
 npm uninstall --no-save react-dom react-native-web playwright   # ← REQUIRED
 ```
+
+The second `--alias` and the `--banner` arrived with the Duo safe-area
+work (1 Nov 2026): `src/game/safeInsets.tsx` requires React Native's
+`SafeAreaView` by its deep path, which the plain `react-native` alias
+does not catch, and a dependency of the menus reads Node's `global`,
+which a browser does not have. Without them the bundle fails to build
+or the page throws "global is not defined" and comes out blank.
 
 `--jsx=automatic` matches what Metro does. Without it esbuild uses the
 classic transform, and any component file that does not itself
@@ -53,7 +62,9 @@ exactly what it said.
 
 ## The viewport IS the phone
 
-`shoot.js` sets the browser viewport to 474x696 or 640x904 and screenshots
+`shoot.js` sets the browser viewport to 466x678 or 626x890 (Apple's
+tech-specs pixels at @3x, corrected from the day-one press figures on
+23 Oct 2026; see tests/foldable.test.ts) and screenshots
 without `fullPage`. Both halves matter. The viewport size is what
 `useWindowDimensions` reports, which is what every layout rule in the game
 keys off — so the page is not scaled to look like a Duo, it is laid out as

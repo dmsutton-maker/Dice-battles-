@@ -3,6 +3,9 @@ import './globals.css';
 import { smartAppBanner } from '@/lib/appStore';
 
 export const metadata: Metadata = {
+  // What every relative canonical and card image in lib/metadata.ts is
+  // resolved against. The production domain, never the vercel.app one.
+  metadataBase: new URL('https://papershipstudio.com'),
   title: 'Paper Ship Studio',
   description:
     'Paper Ship Studio is an independent studio building simple, well-made games for players of any age — starting with Dice Battles: Color Rush.',

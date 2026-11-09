@@ -70,7 +70,7 @@ export const ROTATION_CUPS: readonly Omit<TournamentDef, 'opens' | 'closes'>[] =
   {
     id: 'standoff',
     name: 'Color War Standoff',
-    blurb: 'Six Color War wins in a row, on Medium. One colour each, six times, no slips.',
+    blurb: 'Six Color War wins in a row, on Medium. One color each, six times, no slips.',
     mode: 'colorwar',
     difficulty: 'medium',
     target: 6,

@@ -161,7 +161,9 @@ export function ContactForm() {
         {pending ? 'Sending…' : 'Send message'}
       </button>
 
-      <span style={{ font: `600 12.5px ${fonts.body}`, color: colors.muted }}>
+      {/* `secondary`, not `muted`: muted is 4.33:1 on this off-white card,
+          just under AA's 4.5:1 for small print. secondary is 5.15:1. */}
+      <span style={{ font: `600 12.5px ${fonts.body}`, color: colors.secondary }}>
         We read every message ourselves — usually pretty quickly. Your message and, if you give
         one, your email address are stored so we can read and reply. Nothing else.
       </span>

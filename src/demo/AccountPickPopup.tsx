@@ -70,7 +70,7 @@ export function AccountPickPopup({
                 </PrimaryButton>
               </View>
             ))}
-            <Text style={styles.note}>Things bought with real money come back with Restore Purchases in Settings.</Text>
+            <Text style={styles.note}>Things bought with real money come back with "Bought before? Put it back" at the bottom of the Shop.</Text>
             <SecondaryButton
               style={styles.skip}
               onPress={() => {

@@ -369,6 +369,61 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **9 Nov 2026 01:39 UTC: SUBMITTED FOR REVIEW.** Review submission
+  14d87fe4 went from READY_FOR_REVIEW to WAITING_FOR_REVIEW with nine items:
+  version 1.60.0 (build 20) d675bc4c, seven in-app purchases (coins ×3,
+  gold_pass, neon_dice, remove_ads, starter_pack; dino_valley stays out,
+  hidden in the Shop) and the Weekly Cup in-app event, which needed a
+  `deepLink` to be reviewable (`dicebattles://cups`; the game opens, the
+  link handler ignores a non-invite URL). The Season 1 event stays a draft:
+  it has no event card or details picture, so Apple will not take it; add
+  the two pictures and submit it on its own later. The final pass ran on
+  Fable on the frozen tree 663a793 (identical bundle to 760786e): tsc 0,
+  1645 tests passed, Metro export exit 0, hq tsc + build exit 0; App Store
+  Connect read back: 1.60.0 PREPARE_FOR_SUBMISSION → build 20 VALID,
+  copyright "2026 Paper Ship Studio LLC", description and keywords and
+  promo text identical to `store/`, subtitle "Match the colors, free them",
+  6 + 6 screenshots, one iPhone preview, 175 territories, price schedule
+  present, age rating "advertising" only (4+), Games / Board / Family, no
+  Kids band, review contact David with 1,378 chars of notes, release
+  AFTER_APPROVAL. App Privacy cannot be read by the API: last confirmed on
+  David's screen 1 Nov. After approval: paste the App Store link into
+  AdMob (ads are no-fill until then), flip `APP_STORE_LIVE` on the site,
+  deploy the website (see below), consider "Ages 4+" vs the "5+" framing.
+
+- **9 Nov 2026 (v1.177.0, iOS update 01a1bdeb, group 3a534b4c): the final
+  pass before the App Store submission, on Fable**, David: "Run final test
+  ... Memory and leaks. File size and bloating. Security ... Fix everything
+  you can in the game and on App Store Connect. Then when all is done submit
+  it for launch." Five audits ran in parallel worktrees (website links,
+  pages and security; game copy and purchases; dead code; rendering, iPhone
+  Duo layouts and music; memory and leaks) and everything they fixed is in
+  v1.177.0: the Twinkle Market's string-light glow texture leaked one GPU
+  texture per battle (now cached; `tests/memory.test.ts`), Gold Pass card
+  says "This season's", restore wording and American spellings, dead code
+  (`flagstoneTexture.ts`, nine exports, `assets/icon.png`), website security
+  headers + `/hq` redirect + no database text in API errors + one
+  `hqToken.ts` + canonical/link cards/favicon/AA contrast/44 px taps + Next
+  and sharp patched + poll indexes. Checks on commit 760786e: tsc 0 errors,
+  1645 tests passed, Metro export exit 0 (6.4 MB Hermes bundle), hq tsc and
+  `next build` exit 0. **The website deploy of these changes was blocked by
+  the session's permission classifier** (production deploy): live is still
+  dpl_BTU3aFwB4yT28WuhdfnZ5a6D5g8s at 431469c; David runs
+  `cd hq && npx vercel deploy --prod` (or says "deploy" in a session).
+  Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
+  downmix in `tools/music` happens after the limiter; fix is downmix before
+  `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
+  +2.1 dBTP (inaudible under MIX.music 0.4), Pixel fanfare 2 LU louder than
+  Brass; per-mount materials in DieMesh/Jungle/Space/ThemedArena never
+  disposed (bounded, programs shared). Contact sheets of every die, board,
+  screen and Duo layout were rendered for the audit (scratchpad only). Two
+  "AUDIT TEST, ignore" rows the website audit left (`messages`
+  27f3f9f6…, `ideas` 64f6ac0f…) could not be deleted (the delete needed a
+  confirmation); harmless, David or Marc can delete them from the board.
+  Instruments on a real phone after launch: GPU memory over 30 Twinkle
+  Market battles, effect skins ×20 battles, audio after 10 lobby↔battle
+  hot fades, background/foreground ×10, Share ×10 (Caches/GLView ≤ 2).
+
 - **9 Nov 2026 (v1.176.0, update 01a1bdaa, group d8b721bc): the Snow Globe dice is Season 1's free-row die at
   level 20**, David's pick ("Do the village globe but put the houses and trees
   on the design at the corners of the dice"). `snowglobe` in diceSkins.ts /
@@ -530,8 +585,8 @@ one is added; it does not need a new build.
   battle's winner is a player or 'tie') was applied on 4 Nov 2026,
   once the Supabase connector reached the Dice Battles org again.
   The `changes` table was caught up the same day (v1.142.0 to v1.160.0).
-- **Neon dice are $0.99 in the game since v1.154.0; the App Store
-  Connect price for `neon_dice` is David's to change to match.**
+- Neon dice are $0.99 in the game and in App Store Connect (Claude in
+  Chrome set the price on 2 Nov 2026).
 
 - **Audit of 17-18 Oct 2026 (v1.110.0).** Game, website and admin
   fixes are live. Still open from it:
@@ -649,8 +704,8 @@ one is added; it does not need a new build.
   three files `app.json` actually points at are
   `assets/icon/light.png`, `dark.png` and `tinted.png` — the "Perfect
   Match" design in the three appearances iOS 18 asks for.
-  `assets/icon.png` is a superseded orphan that nothing references any
-  more; it is safe to ignore. An icon is compiled in rather than sent
+  The old single `assets/icon.png` was a superseded orphan that nothing
+  referenced; it was deleted in the 9 Nov 2026 audit. An icon is compiled in rather than sent
   over the air, so what is on a phone today is whatever build 5 carried.
 - **Android now has a build, but has never shipped to a store.** The
   first Android APK was built 20 Aug 2026 (`eas build --platform android

@@ -8,6 +8,7 @@ import { legalPage, PRIVACY } from '@/lib/legalCopy';
 export const generateMetadata = pageMetadata('privacy', {
   title: 'Privacy Policy — Paper Ship Studio',
   description: PRIVACY.metaDescription,
+  path: '/privacy',
 });
 
 export const dynamic = 'force-dynamic';

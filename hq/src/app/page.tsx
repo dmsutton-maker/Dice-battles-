@@ -11,6 +11,7 @@ export const generateMetadata = pageMetadata('home', {
   title: 'Paper Ship Studio — Games your whole family will actually love',
   description:
     'Paper Ship Studio is an independent studio building simple, well-made games for players of any age — starting with Dice Battles: Color Rush.',
+  path: '/',
 });
 
 // Reads editable copy from the database on every request, so a save in
@@ -239,7 +240,9 @@ export default async function HomePage() {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  padding: '12px 22px',
+                  // 13px, not 12: with this font the pill measured 43px
+                  // tall, one short of the 44 Apple asks for under a finger.
+                  padding: '13px 22px',
                   background: colors.ink,
                   color: '#fff',
                   font: `700 13.5px ${fonts.body}`,

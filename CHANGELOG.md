@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.177.0 — 2026-11-09 · requested by David
+
+David, 9 Nov 2026, the final pass before the App Store submission: "Run
+final test ... Memory and leaks. File size and bloating. Security ...
+Check for any duplicate code or AI slop or old junk code that's no
+longer needed ... Fix everything you can in the game and on App Store
+Connect." Five audits (website, game copy, dead code, rendering and
+music, memory) ran on Fable; this is everything they fixed. JS only,
+runtime 4.0.0. No news post.
+
+### Fixed
+- **The Twinkle Market leaked one small GPU texture per battle**: the
+  string-light glow was built fresh for every battle and never freed. It
+  now comes from the app-wide texture cache like every other painted
+  picture (`marketLife.tsx`). `tests/memory.test.ts` (new) checks that
+  no component builds its own `DataTexture` outside the cache, that
+  painting every die twice adds nothing the second time, and measures
+  the cache's size.
+- **Copy, before Apple reads it**: the Gold Pass card says "This
+  season's extra prizes" (Season 1 runs three months, not one); the
+  words that point at Restore everywhere say exactly what the Shop's
+  link says, "Bought before? Put it back", and where it is (the bottom
+  of the Shop); American spellings throughout the game's own text.
+
+### Removed
+- Code nothing called any more: `flagstoneTexture.ts` and nine exports
+  left behind by earlier redraws; the old single `assets/icon.png`
+  (the light, dark and tinted icons replaced it).
+
+### Website (deployed with this release)
+- Security headers on every page (frame denial, content-type sniffing
+  off, referrer policy, permissions policy); `/hq` redirects to the
+  sign-in; no API reply ever carries the database's own error text.
+- One shared HQ-token check (`hqToken.ts`) instead of three copies.
+- Canonical and link-preview cards on every page, a `favicon.ico`,
+  AA text contrast and 44 px tap targets.
+- Next.js and sharp patched (0 advisories); indexes on the two columns
+  the game polls (`battles.b_id`, `friendships.other_id`);
+  `schema.sql` gains `player_saves` to match the live database.
+
 ## v1.176.0 — 2026-11-09 · requested by David
 
 David, 8 Nov 2026: "Do the village globe but put the houses and trees on

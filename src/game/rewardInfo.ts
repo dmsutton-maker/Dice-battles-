@@ -71,7 +71,7 @@ export function rewardInfo(input: RewardInfoInput): RewardInfo {
                 : effect === 'moon'
                   ? 'Dice that glow with moonlight as they roll.'
                   : effect === 'gingerbread'
-                    ? 'Iced biscuit dice that shed crumbs as they roll.'
+                    ? 'Iced gingerbread dice that shed crumbs as they roll.'
                     : effect === 'snowglobe'
                       ? 'Glass dice with a village inside and snow swirling round.'
                       : 'A new look for your dice.';

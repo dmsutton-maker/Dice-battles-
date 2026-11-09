@@ -8,6 +8,7 @@ import { legalPage, TERMS } from '@/lib/legalCopy';
 export const generateMetadata = pageMetadata('terms', {
   title: 'Terms of Use — Paper Ship Studio',
   description: TERMS.metaDescription,
+  path: '/terms',
 });
 
 export const dynamic = 'force-dynamic';

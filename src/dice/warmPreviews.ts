@@ -4,7 +4,7 @@ import { cachedShellPreviewUri, shelfPictureJob } from './preview';
 import { dieFaceJobs, dieFaceKey, PatternId } from './patterns';
 import { DIE_SHADE_KEY, dieShadeTexture, stickerJob, stickerKey } from './dieShading';
 import { hasCachedTexture } from '../arena/textureCache';
-import { fromList, MENU_SLICE_MS, once, PaintStep, runSliced, SlicedRun } from './slicedPaint';
+import { MENU_SLICE_MS, once, PaintStep, runSliced } from './slicedPaint';
 import { fishSchoolJobs, fishWaterJob } from './fishSwim';
 import { circuitPulseJob } from './circuitPulse';
 import { neonGlowJob } from './neonGlow';
@@ -243,21 +243,6 @@ export function warmAllDieFaces(
 }
 
 /**
- * Paint the equipped die — its shade, its stickers and its six sides —
- * in slices, and call `onDone` when it is on the table ready to draw.
- *
- * For the loading screen: the die in the player's hand is the one thing
- * here that would otherwise stutter in the middle of their first roll,
- * and it used to be painted in one block the moment the board mounted.
- */
-export function warmEquippedDie(
-  skin: DiceSkin | undefined,
-  options: Parameters<typeof runSliced>[1] = {},
-): SlicedRun {
-  return runSliced(fromList(equippedDieJobs(skin)), options);
-}
-
-/**
  * The cache keys of everything equippedDieJobs paints, for keeping them
  * between launches (keptTextures.ts).
  */
@@ -284,7 +269,11 @@ export function equippedDieKeys(skin: DiceSkin | undefined): string[] {
   return keys;
 }
 
-/** The jobs warmEquippedDie runs, for a caller that counts them. */
+/**
+ * Everything the equipped die paints — its shade, its stickers and its
+ * six sides — as jobs, for the loading screen (launchWarm.ts) to run in
+ * slices and for a caller that counts them.
+ */
 export function equippedDieJobs(skin: DiceSkin | undefined): PaintStep[] {
   return [...shadingJobs(), ...(skin ? dieJobs(skin) : [])];
 }
@@ -350,22 +339,4 @@ export function resetWarmForTest(): void {
 /** Test seam: the pictures asked for, in the order they will be painted. */
 export function shelfQueueForTests(): string[] {
   return [...firstIds];
-}
-
-/**
- * Paint the six sides of one die, all at once.
- *
- * The same jobs as the warm-up, run to the end on the spot. Kept for the
- * tests and for anything that must have the die NOW; the game itself
- * uses warmEquippedDie and warmAllDieFaces, which never block.
- */
-export function warmDieFaces(skin: DiceSkin | undefined): void {
-  const jobs = [...shadingJobs(), ...(skin ? dieJobs(skin) : [])];
-  for (const job of jobs) {
-    try {
-      while (!job.step());
-    } catch {
-      // Painted again on demand, exactly as it was before this existed.
-    }
-  }
 }

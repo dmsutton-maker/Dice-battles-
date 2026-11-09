@@ -1240,7 +1240,7 @@ function ProfileView({
         <Card style={styles.statCard}>
           <Stat label="Dice sets" value={profile.diceOwned} />
           <Stat label="Battlefields" value={profile.arenasOwned} />
-          <Stat label="Favourite battlefield" text={arena?.name ?? 'Castle Courtyard'} />
+          <Stat label="Favorite battlefield" text={arena?.name ?? 'Castle Courtyard'} />
         </Card>
 
         <View style={styles.profileActions}>

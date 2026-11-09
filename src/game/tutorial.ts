@@ -43,7 +43,7 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
   {
     title: 'Six prisoners',
     lines: [
-      'Six prisoners are locked in the castle jail — one of every colour.',
+      'Six prisoners are locked in the castle jail — one of every color.',
       'Your job is to get all six of them out.',
     ],
     art: { kind: 'palette' },
@@ -58,10 +58,10 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
     art: { kind: 'throw' },
   },
   {
-    title: 'Match two colours to free a prisoner',
+    title: 'Match two colors to free a prisoner',
     lines: [
-      'When BOTH dice land on the same colour, that prisoner runs free.',
-      'Two different colours does nothing — just roll again.',
+      'When BOTH dice land on the same color, that prisoner runs free.',
+      'Two different colors does nothing — just roll again.',
       'That is the whole game. Everything else is a twist on it.',
     ],
     art: { kind: 'match' },
@@ -78,9 +78,9 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
     title: 'Four ways to play',
     lines: [
       'Color Rush — free all six. The one to learn on.',
-      'Ultimate — rolling a colour you already freed sends them BACK to jail.',
+      'Ultimate — rolling a color you already freed sends them BACK to jail.',
       'Skirmish — one shared jail, so you are grabbing prisoners off each other.',
-      'Color War — you each get one colour, and race to free your three.',
+      'Color War — you each get one color, and race to free your three.',
     ],
     art: { kind: 'modes' },
   },

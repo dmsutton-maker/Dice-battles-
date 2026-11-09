@@ -107,11 +107,6 @@ function vault(): SecureStoreModule | null {
   return store;
 }
 
-/** True when there is a drawer at all. */
-export function vaultAvailable(): boolean {
-  return vault() !== null;
-}
-
 /** What is in the drawer, or null — including when there is no drawer. */
 export async function vaultGet(key: string): Promise<string | null> {
   const secure = vault();
@@ -145,11 +140,6 @@ export async function vaultSet(key: string, value: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/** Test seam: forget whether the module was found. */
-export function resetVaultForTest(): void {
-  store = undefined;
 }
 
 /**

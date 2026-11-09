@@ -1130,6 +1130,42 @@ revoke all on function public.claim_match(uuid, text, text, text, text, timestam
 revoke all on function public.claim_match(uuid, text, text, text, text, timestamptz) from anon, authenticated;
 grant execute on function public.claim_match(uuid, text, text, text, text, timestamptz) to service_role;
 
+-- The player's progress backup (5 Nov 2026, migrations/20261105_player_saves.sql).
+--
+-- One row per player: the snapshot the game collects of its own saved
+-- progress (src/game/cloudSave.ts), uploaded a little after anything
+-- changes and read back after a reinstall. Written and read only by
+-- hq/src/app/api/players/save/route.ts, which checks the device secret
+-- first, exactly as player_profiles and friendships are.
+create table if not exists public.player_saves (
+  player_id    text primary key references public.player_profiles (player_id) on delete cascade,
+  snapshot     jsonb not null,
+  saved_at     timestamptz not null default now(),
+  game_version text not null default ''
+);
+
+-- The route refuses anything over 64 KB of JSON before it gets here
+-- (hq/src/lib/playerSave.ts). This is a backstop at twice that, kept by
+-- the table itself so nothing else can write something enormous.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'player_saves_snapshot_size'
+      and conrelid = 'public.player_saves'::regclass
+  ) then
+    alter table public.player_saves
+      add constraint player_saves_snapshot_size
+      check (octet_length(snapshot::text) <= 131072);
+  end if;
+end $$;
+
+-- No policies: every read and write goes through the HQ API with the
+-- service key, which checks the device secret first — the same
+-- arrangement player_profiles, friendships and match_queue have. A
+-- player's row goes with their profile when that is deleted on request.
+alter table public.player_saves enable row level security;
+
 -- The game's News posts, edited at /admin/news and served by /api/news
 -- (published rows only).
 create table if not exists public.game_news (
