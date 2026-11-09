@@ -4,6 +4,7 @@ import { TUNING } from '../game/tuning';
 import { alongRoute, MARKET_ROUTE } from './marketPath';
 import { useSceneryTick } from './sceneryClock';
 import { Snowfall } from './snowfall';
+import { cachedTexture } from './textureCache';
 
 /**
  * The Twinkle Market's life, Season 1 of the pass, Sugar & Snow (8 Nov
@@ -230,22 +231,34 @@ function Chase() {
   useSceneryTick(tick);
   // In place from the first frame, not at the origin until the first tick.
   useLayoutEffect(() => tick(0), [tick]);
-  const glow = useMemo(() => {
-    const size = 16;
-    const data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const d = Math.hypot(x - 7.5, y - 7.5) / 7.5;
-        const a = Math.max(0, 1 - d);
-        const i = (y * size + x) * 4;
-        data[i] = data[i + 1] = data[i + 2] = 255;
-        data[i + 3] = Math.round(a * a * 255);
-      }
-    }
-    const tex = new THREE.DataTexture(data, size, size);
-    tex.needsUpdate = true;
-    return tex;
-  }, []);
+  /*
+    The soft spot each bulb is drawn with. Through the app-wide cache,
+    not a bare useMemo: the whole scene is remounted every round, and a
+    texture built per mount and never disposed left its GPU copy behind
+    each time (three only frees a texture's GPU memory on dispose()).
+    Cached, it is built once per run and shared, like every other
+    procedural picture (textureCache.ts).
+  */
+  const glow = useMemo(
+    () =>
+      cachedTexture('market:chase-glow', () => {
+        const size = 16;
+        const data = new Uint8Array(size * size * 4);
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const d = Math.hypot(x - 7.5, y - 7.5) / 7.5;
+            const a = Math.max(0, 1 - d);
+            const i = (y * size + x) * 4;
+            data[i] = data[i + 1] = data[i + 2] = 255;
+            data[i + 3] = Math.round(a * a * 255);
+          }
+        }
+        const tex = new THREE.DataTexture(data, size, size);
+        tex.needsUpdate = true;
+        return tex;
+      }),
+    [],
+  );
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, CHASE]} frustumCulled={false} renderOrder={3}>
       <planeGeometry args={[1, 1]} />
