@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="A tumbling die leaving a rainbow speed trail">
+  <title>Colour Rush</title>
+  <defs>
+    <linearGradient id="d-bg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#463391"/>
+      <stop offset="1" stop-color="#130e28"/>
+    </linearGradient>
+    <linearGradient id="d-fade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="1"/>
+    </linearGradient>
+    <mask id="d-trailmask">
+      <rect x="0" y="240" width="720" height="560" fill="url(#d-fade)"/>
+    </mask>
+    <linearGradient id="d-shell" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#fffdf7"/>
+      <stop offset="1" stop-color="#d9d1bf"/>
+    </linearGradient>
+    <linearGradient id="d-face" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#ffef6b"/>
+      <stop offset="1" stop-color="#ffd400"/>
+    </linearGradient>
+    <filter id="d-drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="-16" dy="24" stdDeviation="26" flood-color="#05030f" flood-opacity="0.62"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#d-bg)"/>
+
+  <!-- Six speed trails, one per game colour, running off the left edge
+       so the die reads as having just been hurled across the frame. -->
+  <g mask="url(#d-trailmask)">
+    <rect x="0" y="266" width="700" height="62" rx="31" fill="#cc2533"/>
+    <rect x="0" y="352" width="640" height="62" rx="31" fill="#fc8403"/>
+    <rect x="0" y="438" width="700" height="62" rx="31" fill="#ffe521"/>
+    <rect x="0" y="524" width="620" height="62" rx="31" fill="#33cc6b"/>
+    <rect x="0" y="610" width="680" height="62" rx="31" fill="#4b7bff"/>
+    <rect x="0" y="696" width="600" height="62" rx="31" fill="#cc79fc"/>
+  </g>
+
+  <!-- The die itself, mid-tumble, thrown clear of the trails. -->
+  <g transform="rotate(15 640 512)" filter="url(#d-drop)">
+    <rect x="440" y="312" width="400" height="400" rx="84" fill="url(#d-shell)"/>
+    <rect x="508" y="380" width="264" height="264" rx="54" fill="url(#d-face)"/>
+    <rect x="508" y="380" width="264" height="118" rx="52" fill="#ffffff" opacity="0.2"/>
+  </g>
+</svg>
