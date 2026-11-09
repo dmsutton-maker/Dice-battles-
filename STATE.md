@@ -369,6 +369,28 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **9 Nov 2026 01:39 UTC: SUBMITTED FOR REVIEW.** Review submission
+  14d87fe4 went from READY_FOR_REVIEW to WAITING_FOR_REVIEW with nine items:
+  version 1.60.0 (build 20) d675bc4c, seven in-app purchases (coins ×3,
+  gold_pass, neon_dice, remove_ads, starter_pack; dino_valley stays out,
+  hidden in the Shop) and the Weekly Cup in-app event, which needed a
+  `deepLink` to be reviewable (`dicebattles://cups`; the game opens, the
+  link handler ignores a non-invite URL). The Season 1 event stays a draft:
+  it has no event card or details picture, so Apple will not take it; add
+  the two pictures and submit it on its own later. The final pass ran on
+  Fable on the frozen tree 663a793 (identical bundle to 760786e): tsc 0,
+  1645 tests passed, Metro export exit 0, hq tsc + build exit 0; App Store
+  Connect read back: 1.60.0 PREPARE_FOR_SUBMISSION → build 20 VALID,
+  copyright "2026 Paper Ship Studio LLC", description and keywords and
+  promo text identical to `store/`, subtitle "Match the colors, free them",
+  6 + 6 screenshots, one iPhone preview, 175 territories, price schedule
+  present, age rating "advertising" only (4+), Games / Board / Family, no
+  Kids band, review contact David with 1,378 chars of notes, release
+  AFTER_APPROVAL. App Privacy cannot be read by the API: last confirmed on
+  David's screen 1 Nov. After approval: paste the App Store link into
+  AdMob (ads are no-fill until then), flip `APP_STORE_LIVE` on the site,
+  deploy the website (see below), consider "Ages 4+" vs the "5+" framing.
+
 - **9 Nov 2026 (v1.177.0, iOS update 01a1bdeb, group 3a534b4c): the final
   pass before the App Store submission, on Fable**, David: "Run final test
   ... Memory and leaks. File size and bloating. Security ... Fix everything
