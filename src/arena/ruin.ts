@@ -207,13 +207,6 @@ export function stumpBlocks(): StumpBlock[] {
   return out;
 }
 
-/** Height of the tallest stone of a stump, for the fit and the tests. */
-export function stumpTop(): number {
-  let top = 0;
-  for (const b of stumpBlocks()) top = Math.max(top, b.position[1] + COURSE / 2);
-  return top;
-}
-
 /**
  * Stones that have fallen off the walls, lying in the grass OUTSIDE the
  * tray. Never inside: anything inside is somewhere a die can roll, and a

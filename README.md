@@ -189,8 +189,8 @@ start screen). Remaining: nearby multi-device play.
    does it.
 2. **Many more dice skins — patterns, not just colours.** Stripes, spots,
    stars, wood grain, marble, glitter. The shell is a single unlit colour
-   today; patterns need a generated texture per skin (the flagstone
-   generator in `src/arena/flagstoneTexture.ts` is the model). The suite's
+   today; patterns need a generated texture per skin (the painters in
+   `src/dice/patterns.ts` are the model). The suite's
    rule still applies: whatever the shell does, the six face colours stay
    untouched and clearly readable.
 3. **Season pass / monthly content drops.** A themed arena plus a dice set

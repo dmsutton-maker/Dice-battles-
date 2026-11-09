@@ -62,11 +62,6 @@ export function setColorblindMode(on: boolean): void {
   listeners.forEach((fn) => fn(on));
 }
 
-export function subscribeColorblindMode(fn: (on: boolean) => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
-
 /** Test-only reset so suites do not leak state between cases. */
 export function resetColorblindForTests(on = false): void {
   enabled = on;

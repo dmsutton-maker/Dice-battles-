@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { cachedTexture, paintNow, RowPainting, rowJob } from '../arena/textureCache';
-import { DIE_FACE_COLORS, inkOn } from '../game/colors';
+import { inkOn } from '../game/colors';
 import { SymbolId } from '../game/colorblind';
 import { symbolCovers } from './symbols';
 import { STICKER_FRACTION } from './patterns';
@@ -269,19 +269,6 @@ function stickerPainting(hex: string, symbol: SymbolId | null): RowPainting {
     },
     done: () => dataTexture(data, STICKER_SIZE, THREE.SRGBColorSpace),
   };
-}
-
-/**
- * Build the shade map and the six plain stickers ahead of the first roll.
- *
- * Together about 20ms on a desktop and several times that on a phone —
- * small, but a stall in the frame the dice first appear in is what the
- * warm-up exists to prevent. The colourblind stickers are left to be
- * built when that setting is on.
- */
-export function warmDieShading(): void {
-  dieShadeTexture();
-  for (const c of DIE_FACE_COLORS) stickerTexture(c.hex, null);
 }
 
 function dataTexture(

@@ -40,12 +40,6 @@ export const SCHOOL: readonly FishPlace[] = [
   [48, 55, -1, -0.07],
 ];
 
-const BUBBLES: readonly (readonly [number, number, number])[] = [
-  [57, 26, 1.8],
-  [5, 36, 1.4],
-  [59, 44, 1.1],
-];
-
 /** The water under the fish, given a 0..1 ripple from the caller's noise. */
 export function waterAt(ripple: number): Rgb {
   // Faint ripple on the water, kept far quieter than the fish.
@@ -55,14 +49,6 @@ export function waterAt(ripple: number): Rgb {
     Math.round(FISH_WATER[1] + (RIPPLE[1] - FISH_WATER[1]) * t),
     Math.round(FISH_WATER[2] + (RIPPLE[2] - FISH_WATER[2]) * t),
   ];
-}
-
-/** A bubble's colour at (x, y), or null for none. */
-export function bubbleAt(x: number, y: number): Rgb | null {
-  for (const [bx, by, br] of BUBBLES) {
-    if (Math.hypot(x - bx, y - by) < br) return BUBBLE;
-  }
-  return null;
 }
 
 /** A goldfish's colour at (x, y), or null for open water. */
