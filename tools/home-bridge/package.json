@@ -1,0 +1,14 @@
+{
+  "name": "home-bridge",
+  "version": "0.1.0",
+  "description": "Lets Claude Code in the cloud hand a task to the Claude Code CLI (and Claude in Chrome) on your own computer.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "bin": { "home-bridge-relay": "bin/relay.mjs", "home-bridge-agent": "bin/agent.mjs" },
+  "scripts": {
+    "relay": "node bin/relay.mjs",
+    "agent": "node bin/agent.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  }
+}
