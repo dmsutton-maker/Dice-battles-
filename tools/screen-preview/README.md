@@ -11,11 +11,19 @@ npx esbuild tools/screen-preview/entry.tsx --bundle \
   --outfile=tools/screen-preview/bundle.js --loader:.tsx=tsx \
   --loader:.png=dataurl --loader:.jpg=dataurl --loader:.wav=dataurl \
   --loader:.mp3=dataurl --loader:.m4a=dataurl --loader:.ttf=dataurl \
-  --alias:react-native=react-native-web \
-  --define:process.env.NODE_ENV='"production"' --define:__DEV__=false
+  --alias:react-native/Libraries/Components/SafeAreaView/SafeAreaView=react-native-web/dist/exports/SafeAreaView \
+  --alias:react-native=react-native-web --jsx=automatic \
+  --define:process.env.NODE_ENV='"production"' --define:__DEV__=false \
+  "--banner:js=globalThis.global=globalThis;"
 node tools/screen-preview/shoot.js /tmp/ladder.png
 npm uninstall --no-save react-dom react-native-web playwright   # ← REQUIRED
 ```
+
+The deep `SafeAreaView` alias, `--jsx=automatic` and the `global`
+banner are needed since the Duo safe-area work of 1 Nov 2026 and the
+screens that use JSX without importing React; without them the bundle
+does not build, or the page throws "global is not defined" and the
+shot is blank. tools/duo-preview/README.md has the longer note.
 
 ## Take the three packages back out when you are done
 
@@ -71,11 +79,12 @@ npx esbuild tools/screen-preview/entry.tsx --bundle \
   --outfile=tools/screen-preview/bundle.js --loader:.tsx=tsx \
   --loader:.png=dataurl --loader:.jpg=dataurl --loader:.wav=dataurl \
   --loader:.mp3=dataurl --loader:.m4a=dataurl --loader:.ttf=dataurl \
-  --alias:react-native=react-native-web \
+  --alias:react-native/Libraries/Components/SafeAreaView/SafeAreaView=react-native-web/dist/exports/SafeAreaView \
+  --alias:react-native=react-native-web --jsx=automatic \
   --alias:expo-iap=./tools/screen-preview/stubs/expo-iap.js \
   --alias:expo-audio=./tools/screen-preview/stubs/expo-audio.js \
   --define:process.env.NODE_ENV='"production"' --define:__DEV__=false \
-  "--banner:js=globalThis.process=globalThis.process||{env:{NODE_ENV:'production'}};globalThis.expo=globalThis.expo||{EventEmitter:class{addListener(){return{remove(){}}}removeAllListeners(){}emit(){}listenerCount(){return 0}},NativeModule:class{},SharedObject:class{},SharedRef:class{},modules:{}};"
+  "--banner:js=globalThis.global=globalThis;globalThis.process=globalThis.process||{env:{NODE_ENV:'production'}};globalThis.expo=globalThis.expo||{EventEmitter:class{addListener(){return{remove(){}}}removeAllListeners(){}emit(){}listenerCount(){return 0}},NativeModule:class{},SharedObject:class{},SharedRef:class{},modules:{}};"
 ```
 
 then a Playwright page at 393 x 852 with `deviceScaleFactor: 3` on

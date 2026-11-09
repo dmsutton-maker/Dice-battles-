@@ -16,7 +16,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { DICE_SKINS } from '../../src/game/diceSkins';
-import { patternPixels, CUBE_NET_CELLS, PatternId } from '../../src/dice/patterns';
+import { dieFacePixels, PatternId } from '../../src/dice/patterns';
 
 
 const id = process.argv[3];
@@ -25,8 +25,11 @@ const SIZE = 64;
 const cols = 6;
 const W = SIZE * cols;
 const out = new Array(W * SIZE * 3).fill(0);
-CUBE_NET_CELLS.forEach(([cx, cy], i) => {
-  const px = patternPixels(skin.pattern as Exclude<PatternId, 'plain'>, skin.body, skin.ink ?? skin.body, cx, cy);
+// Six real sides in three.js face order: +X, -X, top, bottom, +Z, -Z —
+// the same squares DieMesh puts on the die (dieFacePixels), not squares
+// of a sheet; the paper net went on 18 Oct 2026.
+[0, 1, 2, 3, 4, 5].forEach((face, i) => {
+  const px = dieFacePixels(skin.pattern as Exclude<PatternId, 'plain'>, skin.body, skin.ink ?? skin.body, face);
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
       const src = (y * SIZE + x) * 3;
