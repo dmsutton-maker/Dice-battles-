@@ -114,6 +114,13 @@
   .page :global(.psg-grid-2) {
     grid-template-columns: 1fr !important;
   }
+  /* Vector Faces' watch screens: three across on a computer, two on a
+     phone. Two at 375px is about 155px each, still readable; three
+     would be under 100px. */
+  .page :global(.psg-faces) {
+    grid-template-columns: repeat(2, minmax(0, 211px)) !important;
+    gap: 16px !important;
+  }
   .page :global(.psg-footer) {
     flex-direction: column !important;
     align-items: flex-start !important;

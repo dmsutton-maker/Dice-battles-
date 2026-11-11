@@ -25,11 +25,11 @@ export interface LegalCopy {
 }
 
 export const PRIVACY: LegalCopy = {
-  written: '2026-11-05',
+  written: '2026-11-11',
   metaDescription:
     'No accounts and no tracking. Friends, online battles, notifications and bug reports send a little information. This page says exactly what, and why.',
   intro:
-    'Paper Ship Studio LLC ("we," "us," or "the studio") is a small, independent game studio, a limited liability company. This policy covers every app we publish, including Dice Battles: Color Rush.',
+    'Paper Ship Studio LLC ("we," "us," or "the studio") is a small, independent game studio, a limited liability company. This policy covers every app we publish, including Dice Battles: Color Rush and Vector Faces.',
   sections: [
     {
       heading: 'The short version',
@@ -76,12 +76,16 @@ export const PRIVACY: LegalCopy = {
       body: 'If you are signed in to Game Center on your phone, the game sends your trophy count and your achievements to Apple\'s Game Center, so that leaderboards and achievements work. That is handled by Apple under Apple\'s own privacy policy.',
     },
     {
+      heading: 'Vector Faces',
+      body: 'Vector Faces, our Apple Watch app, sends nothing to us at all: it has no account, no analytics and no ads. To show the weather, the sunrise, the moon and the stars where you are, it uses your location rounded to about half a mile, and asks Apple Weather for the conditions there; Apple handles that request under its own privacy policy. Only while the Flights face is on screen, it sends that rounded location to adsb.lol, a community network of aircraft receivers, to get the aircraft nearby. Only while the Rain Radar face is on screen, it sends it to the U.S. National Weather Service for the radar picture. If you choose steps, heart rate or your next calendar event for a spot on a face, the watch reads them from Apple Health or your calendar to show them there; they never leave the watch. You can turn off location, Health and calendar access at any time in your iPhone\'s or your watch\'s Settings.',
+    },
+    {
       heading: 'Where it is kept, and for how long',
-      body: 'The little we do hold is stored in a Supabase database and served through Vercel, both in the United States. We keep it for as long as the game is running, and we will delete anything belonging to you if you ask us at hello@papershipstudio.com.',
+      body: 'The little we do hold is stored in a Supabase database and served through Vercel, both in the United States. We keep it for as long as the app it belongs to is running, and we will delete anything belonging to you if you ask us at hello@papershipstudio.com.',
     },
     {
       heading: 'Children\'s privacy',
-      body: 'The game is made for families and is rated for ages 4 and up. It asks no one their age, their name or their email. Friends and online battles are built on Apple\'s Game Center precisely so that we do not have to: Apple already holds the account, already has a parent\'s consent where one is needed, and moderates the nickname that other players see. Purchases go through Apple too, so a parent\'s Ask to Buy and Screen Time settings apply. We collect no other personal details from anyone, at any age. If you have a question about a younger player, write to us at the address below.',
+      body: 'Dice Battles: Color Rush is made for families and is rated for ages 4 and up. None of our apps asks anyone their age, their name or their email. Friends and online battles are built on Apple\'s Game Center precisely so that we do not have to: Apple already holds the account, already has a parent\'s consent where one is needed, and moderates the nickname that other players see. Purchases go through Apple too, so a parent\'s Ask to Buy and Screen Time settings apply. We collect no other personal details from anyone, at any age. If you have a question about a younger player, write to us at the address below.',
     },
     {
       heading: 'App Store and platform data',
@@ -146,6 +150,15 @@ export const TERMS: LegalCopy = {
     },
   ],
 };
+
+/**
+ * How many section boxes the admin's Privacy and Terms editors show and
+ * save. It has to stay above the longest policy, with room to add to it.
+ * It was 16, and the Privacy Policy reached 17 sections when Vector Faces
+ * joined on 11 Nov 2026: the editor would have shown only the first 16,
+ * and its next save would have deleted "Contact us" from the live page.
+ */
+export const LEGAL_SECTION_SLOTS = 24;
 
 /** The instant a code copy was written, midnight New York time. */
 function writtenAt(copy: LegalCopy): Date {

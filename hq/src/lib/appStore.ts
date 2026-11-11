@@ -20,6 +20,23 @@ export const APP_STORE_LIVE = false;
 
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
+/**
+ * Vector Faces, our Apple Watch app, has its own listing and its own switch.
+ *
+ * LAUNCH DAY: flip `VECTOR_FACES_LIVE` to true and deploy. That turns the
+ * "Coming soon to the App Store" line on /apps/vector-faces into the same
+ * "Download on the App Store" text link the Dice Battles page has.
+ *
+ * It stays false until Apple has approved the app and it is actually for
+ * sale, for the same reason as above. It does not touch the Smart App
+ * Banner below, which belongs to Dice Battles.
+ */
+export const VECTOR_FACES_APP_STORE_ID = '6832990414';
+
+export const VECTOR_FACES_LIVE = false;
+
+export const VECTOR_FACES_APP_STORE_URL = `https://apps.apple.com/app/id${VECTOR_FACES_APP_STORE_ID}`;
+
 /** The meta tag Safari reads to show the Smart App Banner, or nothing before launch. */
 export const smartAppBanner: Record<string, string> = APP_STORE_LIVE
   ? { 'apple-itunes-app': `app-id=${APP_STORE_ID}` }
