@@ -12,6 +12,7 @@ import {
   VECTOR_FACES_PILLS,
   VECTOR_FACES_SCREENSHOTS,
 } from '@/lib/vectorFaces';
+import { VECTOR_FACES_GALLERY } from '@/lib/vectorFacesGallery';
 
 /*
   Vector Faces, our Apple Watch app (11 Nov 2026). Laid out like the Dice
@@ -176,6 +177,80 @@ export default function VectorFacesAppPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/*
+          Every face, grouped and ordered as the app shows them
+          (lib/vectorFacesGallery.ts, generated from the app's own catalog).
+          The chips jump to a group; the pictures load as they scroll in.
+          No count is written anywhere: David wants "dozens", not a number.
+        */}
+        <section className="psg-wrap" style={{ padding: '56px 56px 0', ...section }}>
+          <h2 style={{ font: `800 12px ${fonts.body}`, letterSpacing: '0.05em', textTransform: 'uppercase', color: colors.orangeText, margin: 0 }}>
+            Every face
+          </h2>
+          <p style={{ font: `600 15px/1.6 ${fonts.body}`, color: colors.secondary, margin: '12px 0 0', maxWidth: 620 }}>
+            Every face comes with the app, sorted the way the app sorts them. Each one has its own colors, and you choose what its three spots show.
+          </p>
+          <nav aria-label="Face groups" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 18 }}>
+            {VECTOR_FACES_GALLERY.map((group, i) => {
+              const tint = PILL_TINTS[i % PILL_TINTS.length];
+              return (
+                <a
+                  key={group.id}
+                  href={`#faces-${group.id}`}
+                  className={styles.link}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    minHeight: 44,
+                    padding: '0 16px',
+                    background: tint.bg,
+                    color: tint.ink,
+                    font: `700 13px ${fonts.body}`,
+                    borderRadius: 999,
+                    textDecoration: 'none',
+                  }}
+                >
+                  {group.title}
+                </a>
+              );
+            })}
+          </nav>
+          {VECTOR_FACES_GALLERY.map((group) => (
+            <div key={group.id} id={`faces-${group.id}`} style={{ marginTop: 36, scrollMarginTop: 24 }}>
+              <h3 style={{ font: `800 20px ${fonts.heading}`, color: colors.ink, margin: 0 }}>{group.title}</h3>
+              <div
+                className="psg-gallery"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 22, marginTop: 16 }}
+              >
+                {group.faces.map((face) => (
+                  <figure key={face.key} style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <Image
+                      src={`/images/vector-faces/gallery/${face.key}.webp`}
+                      alt={`The ${face.title} watch face. ${face.summary}`}
+                      width={211}
+                      height={257}
+                      unoptimized
+                      loading="lazy"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        height: 'auto',
+                        borderRadius: '22% / 18%',
+                        background: '#000',
+                        boxShadow: '0 10px 24px rgba(0,0,0,0.13)',
+                      }}
+                    />
+                    <figcaption style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ font: `800 15px ${fonts.heading}`, color: colors.ink }}>{face.title}</span>
+                      <span style={{ font: `600 13px/1.45 ${fonts.body}`, color: colors.secondary }}>{face.summary}</span>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          ))}
         </section>
 
         <section className="psg-wrap" style={{ padding: '56px 56px 0', ...section }}>

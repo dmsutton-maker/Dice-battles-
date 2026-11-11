@@ -121,6 +121,11 @@
     grid-template-columns: repeat(2, minmax(0, 211px)) !important;
     gap: 16px !important;
   }
+  /* The full gallery: two faces across on a phone, like the screenshots above. */
+  .page :global(.psg-gallery) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+  }
   .page :global(.psg-footer) {
     flex-direction: column !important;
     align-items: flex-start !important;
