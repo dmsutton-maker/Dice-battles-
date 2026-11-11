@@ -41,7 +41,7 @@ export const VECTOR_FACES_HIGHLIGHTS: Highlight[] = [
   },
   {
     title: 'Make it yours',
-    body: "Press and hold a face to change its colors and choose what each corner shows: weather, today's high and low, rain, sunrise, the moon, steps, heart rate, your next event, a second time zone or a countdown.",
+    body: "Tap a face to change its colors. Choose what each corner shows: weather, today's high and low, rain, sunrise, the moon, steps, heart rate, your next event, a second time zone or a countdown.",
   },
   {
     title: 'One purchase, every face',
