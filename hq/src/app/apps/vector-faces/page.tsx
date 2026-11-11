@@ -23,7 +23,7 @@ import {
 export const generateMetadata = pageMetadata('vector_faces', {
   title: 'Vector Faces for Apple Watch — Paper Ship Studio',
   description:
-    'Retro, glowing vector watch faces for Apple Watch: 37 animated faces drawn in lines of light, like old radar screens, cockpit displays and arcade cabinets.',
+    'Retro, glowing vector watch faces for Apple Watch: dozens of animated faces drawn in lines of light, like old radar screens, cockpit displays and arcade cabinets.',
   path: '/apps/vector-faces',
   card: { url: '/images/vector-faces/icon.png', width: 256, height: 256, alt: 'Vector Faces' },
 });

@@ -15,13 +15,13 @@ import type { Highlight, QA } from './content';
 
 /** The one-sentence version, for the Games page card. */
 export const VECTOR_FACES_SUMMARY =
-  'Retro, glowing vector watch faces: 37 animated faces, live flights, rain radar, the sky above you and two little characters. One purchase, every face.';
+  'Retro, glowing vector watch faces: dozens of animated faces, live flights, rain radar, the sky above you and two little characters. One purchase, every face.';
 
 /** Shorter again, for the card on the home page. */
 export const VECTOR_FACES_TAGLINE = 'Retro, glowing watch faces for Apple Watch';
 
 export const VECTOR_FACES_DESCRIPTION =
-  'Retro, glowing vector watch faces for Apple Watch: 37 animated faces drawn in lines of light, like old radar screens, cockpit displays and arcade cabinets. Every face shows the date, the weather, your battery and the time to the second.';
+  'Retro, glowing vector watch faces for Apple Watch: dozens of animated faces drawn in lines of light, like old radar screens, cockpit displays and arcade cabinets. Every face shows the date, the weather, your battery and the time to the second.';
 
 /** The claim badges under the title. Promises about the app: keep them true. */
 export const VECTOR_FACES_PILLS = ['One purchase', 'No subscriptions', 'No tracking'];
