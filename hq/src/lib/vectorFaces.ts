@@ -15,7 +15,7 @@ import type { Highlight, QA } from './content';
 
 /** The one-sentence version, for the Games page card. */
 export const VECTOR_FACES_SUMMARY =
-  'Retro, glowing vector watch faces: dozens of animated faces, live flights, rain radar, the sky above you and two little characters. One purchase, every face.';
+  'Retro, glowing vector watch faces: dozens of animated faces, live flights, rain radar, the sky above you, classic dials and two little characters. One purchase, every face.';
 
 /** Shorter again, for the card on the home page. */
 export const VECTOR_FACES_TAGLINE = 'Retro, glowing watch faces for Apple Watch';
@@ -34,6 +34,10 @@ export const VECTOR_FACES_HIGHLIGHTS: Highlight[] = [
   {
     title: 'The sky above you',
     body: "Sunrise and sunset, the moon's phase, the planets and the stars, all worked out on the watch for where you are.",
+  },
+  {
+    title: 'Your day, and classic dials',
+    body: "Your heart rate on a moving trace, blood oxygen, today's activity and how loud it is round you, from Health and the watch's microphone. Analog dials with or without numbers, Roman numerals and an elegant dress dial. A garden that grows every minute, and a flag of your choice.",
   },
   {
     title: 'Make it yours',
@@ -67,10 +71,14 @@ export const VECTOR_FACES_FAQ: QA[] = [
     q: 'What does it do with my location?',
     a: 'It rounds it to about half a mile and uses it for the weather, the sky faces, and the two live faces while they are on screen. Nothing is ever sent to us. The Privacy Policy spells out exactly where it goes.',
   },
+  {
+    q: 'Why does it ask for Health or the microphone?',
+    a: 'Only for the faces that show them. Pulse, Oxygen and Rings read your latest heart rate, blood oxygen and activity from Health, and Decibels uses the microphone to measure how loud it is while that face is on screen. All of it stays on your watch, no sound is kept, and the readings are for interest only, not medical advice.',
+  },
 ];
 
 /**
- * Six of the faces, as the watch draws them. Each file is 422x514, twice
+ * Nine of the faces, as the watch draws them. Each file is 422x514, twice
  * the 211x257 the page shows it at, so it is sharp on a 2x screen.
  */
 export const VECTOR_FACES_SCREENSHOTS = [
@@ -91,11 +99,23 @@ export const VECTOR_FACES_SCREENSHOTS = [
     alt: 'A star chart face showing the constellations overhead, with north, south, east and west marked',
   },
   {
-    src: '/images/vector-faces/face-globe.png',
-    alt: 'A wireframe globe face with the continents drawn in blue lines and the time in UTC',
+    src: '/images/vector-faces/face-garden.png',
+    alt: 'A garden face: tulips, daisies and a sunflower drawn in glowing pink and green lines under the sun',
   },
   {
-    src: '/images/vector-faces/face-movement.png',
-    alt: "A watch face drawn as a clock's gears and hands in lines of gold",
+    src: '/images/vector-faces/face-pulse.png',
+    alt: 'The Pulse face: a green heart monitor trace above a red heart and a heart rate of 68 beats a minute',
+  },
+  {
+    src: '/images/vector-faces/face-regent.png',
+    alt: 'An elegant gold dress dial with baton markers, a date window and a small seconds dial',
+  },
+  {
+    src: '/images/vector-faces/face-buddy.png',
+    alt: 'Buddy, a smiling round character drawn in yellow lines, looking about with big eyes',
+  },
+  {
+    src: '/images/vector-faces/face-flags.png',
+    alt: 'The Flags face: the United States flag waving on its pole, drawn in glowing red, white and blue lines',
   },
 ];
