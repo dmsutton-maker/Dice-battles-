@@ -411,6 +411,12 @@ one is added; it does not need a new build.
   dpl_BTU3aFwB4yT28WuhdfnZ5a6D5g8s at 431469c until David said "Deploy" at
   01:46 UTC; live is now dpl_DzxpURyubKeFru7HTU6pQ9aPUPU7 at e8f7663 (security
   headers, favicon and the /hq → /admin redirect verified on papershipstudio.com).
+  **11 Nov 2026:** live is dpl_2jMuBe48QfssQ9NEEUcM9U3c58zq at 7088969
+  (branch `claude/pensive-bell-squkg9`, which contains everything above): adds
+  `/apps/vector-faces` for David's Apple Watch app (shown as coming soon while
+  `VECTOR_FACES_LIVE` is false in `lib/appStore.ts`), its card on Games and the home
+  page, its FAQ on Support, and Vector Faces sections in the Privacy Policy and Terms.
+  Security headers re-checked on papershipstudio.com after the deploy.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
