@@ -103,10 +103,10 @@ export const PRIVACY: LegalCopy = {
 };
 
 export const TERMS: LegalCopy = {
-  written: '2026-11-05',
+  written: '2026-11-11',
   metaDescription: 'The terms that cover your use of any app published by Paper Ship Studio, including purchases and the Gold Pass.',
   intro:
-    'These terms cover your use of any app published by Paper Ship Studio LLC, including Dice Battles: Color Rush. By downloading or using our apps, you agree to these terms.',
+    'These terms cover your use of any app published by Paper Ship Studio LLC, including Dice Battles: Color Rush and Vector Faces. By downloading or using our apps, you agree to these terms.',
   sections: [
     {
       heading: 'Using our apps',
@@ -131,6 +131,10 @@ export const TERMS: LegalCopy = {
     {
       heading: 'Being a good neighbour in Friends and online',
       body: 'Friends works by sharing a code with someone you already know. Please do not use it, or friend battles, to bother anyone. You can remove a friend at any time, and blocking someone is silent: they are not told, and they cannot ask again. Online battles pair you with players you may not know, so play fair: no tampering with the game to win. We may remove a player from Friends or from online battles if they cheat or use either to harass others.',
+    },
+    {
+      heading: 'Vector Faces',
+      body: 'Vector Faces is bought once from the App Store, and that one purchase includes every face in the app. We add new faces in free updates, and we may also change or retire faces over time. The live and health faces show information for interest only: aircraft from a community receiver network, weather radar from the U.S. National Weather Service, sound levels estimated from the watch\'s microphone, and readings your watch has saved in Apple Health. That information can be late, incomplete or wrong, so please do not use Vector Faces for navigation, flying, weather safety or medical decisions.',
     },
     {
       heading: 'Intellectual property',
