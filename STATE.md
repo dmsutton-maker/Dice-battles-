@@ -729,6 +729,15 @@ one is added; it does not need a new build.
 - **Paper Ship Studio LLC** since 5 Nov 2026 (Marc). The game's
   copyright line, the site footer and the legal pages name the LLC; the
   Apple developer account is still Individual until David converts it.
+  NJ entity ID 0451555924 (filed 4 Nov 2026). **D-U-N-S number
+  150077227**, created by Dun & Bradstreet on 12 Nov 2026 (case
+  11240519, after a phone call; the record says "available in 24-48
+  hours", so Google's and Apple's lookups may fail until 14 Nov). The
+  D&B record spells the name PAPER SHIP STUDIO LLC, Oakhurst NJ, legal
+  form "Corporation"; Google Play and Apple match the name and address
+  against it exactly. papershipstudio.com is verified in Google Search
+  Console (DNS TXT at Cloudflare, 12 Nov; keep the record) for the Play
+  Console organization change, which is in progress.
 
 ## Conventions worth not rediscovering
 
