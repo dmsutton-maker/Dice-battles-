@@ -79,43 +79,54 @@ export const VECTOR_FACES_FAQ: QA[] = [
 
 /**
  * Nine of the faces, as the watch draws them. Each file is 422x514, twice
- * the 211x257 the page shows it at, so it is sharp on a 2x screen.
+ * the 211x257 the page shows it at, so it is sharp on a 2x screen. `loop`
+ * is the same face moving: the gallery's loop of it, which starts from
+ * this very picture (the same face, colours and moment).
  */
 export const VECTOR_FACES_SCREENSHOTS = [
   {
     src: '/images/vector-faces/face-corridor.png',
+    loop: '/images/vector-faces/gallery/corridor.loop.webp',
     alt: 'A Vector Faces watch face drawn as a blue wireframe corridor, with the time to the second in glowing orange',
   },
   {
     src: '/images/vector-faces/face-flights.png',
+    loop: '/images/vector-faces/gallery/flights.loop.webp',
     alt: 'The Flights face: a green radar scope showing the aircraft nearby, each labelled with its flight and altitude',
   },
   {
     src: '/images/vector-faces/face-radar.png',
+    loop: '/images/vector-faces/gallery/rainRadar.loop.webp',
     alt: 'The Rain Radar face: rain showers drawn in red on a blue radar scope, with the time the rain is due',
   },
   {
     src: '/images/vector-faces/face-nightsky.png',
+    loop: '/images/vector-faces/gallery/nightSky.loop.webp',
     alt: 'A star chart face showing the constellations overhead, with north, south, east and west marked',
   },
   {
     src: '/images/vector-faces/face-garden.png',
+    loop: '/images/vector-faces/gallery/garden.loop.webp',
     alt: 'A garden face: tulips, daisies and a sunflower drawn in glowing pink and green lines under the sun',
   },
   {
     src: '/images/vector-faces/face-pulse.png',
+    loop: '/images/vector-faces/gallery/pulse.loop.webp',
     alt: 'The Pulse face: a green heart monitor trace above a red heart and a heart rate of 68 beats a minute',
   },
   {
     src: '/images/vector-faces/face-regent.png',
+    loop: '/images/vector-faces/gallery/regent.loop.webp',
     alt: 'An elegant gold dress dial with baton markers, a date window and a small seconds dial',
   },
   {
     src: '/images/vector-faces/face-buddy.png',
+    loop: '/images/vector-faces/gallery/buddy.loop.webp',
     alt: 'Buddy, a smiling round character drawn in yellow lines, looking about with big eyes',
   },
   {
     src: '/images/vector-faces/face-flags.png',
+    loop: '/images/vector-faces/gallery/flags.loop.webp',
     alt: 'The Flags face: the United States flag waving on its pole, drawn in glowing red, white and blue lines',
   },
 ];

@@ -442,6 +442,15 @@ one is added; it does not need a new build.
   (`lib/legalCopy.ts`, `written` 2026-11-13) say those faces download public orbits from
   CelesTrak and the last day's earthquakes from the USGS, without the user's location, and that
   the information is for interest only. Checked live on papershipstudio.com.
+  Then (13 Nov, about 17:00 UTC) the faces MOVE: every gallery face and the nine highlights play a
+  3-second loop, `public/images/vector-faces/gallery/<key>.loop.webp` (animated WebP, 316x385,
+  10 fps, about 92 KB each, 11 MB for 121) beside each still `<key>.webp`, made by the watch app's
+  `Tools/Store/make_gallery.sh --animate` (`gallery_ts.py` marks `loop: true` only where the loop
+  file exists). Each is a `<picture>` whose loop source applies only under
+  `prefers-reduced-motion: no-preference`, so reduced-motion visitors get stills. A "Pause motion"
+  button (`apps/vector-faces/FaceMotion.tsx`, remembered in localStorage `vectorFaces.motion`)
+  freezes them for WCAG 2.2.2; it appears only with JavaScript and is hidden under reduced motion.
+  Checked locally with site-check and in Chromium, then live.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`

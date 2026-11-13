@@ -84,6 +84,15 @@
   background: #f2c53d;
 }
 
+/* Vector Faces' "Pause motion" switch (apps/vector-faces/FaceMotion.tsx).
+   Nothing on that page moves for anybody whose device asks for reduced
+   motion, so the switch, and the space kept for it, go. */
+@media (prefers-reduced-motion: reduce) {
+  .page :global(.psg-motion-slot) {
+    display: none !important;
+  }
+}
+
 /* --- responsive: the reference is fixed at 1200px, this is ours --- */
 @media (max-width: 760px) {
   .page :global(.psg-wrap) {
