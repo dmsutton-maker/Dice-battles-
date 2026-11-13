@@ -1,11 +1,12 @@
 /**
  * Every Vector Faces face, in the groups and order the app shows them, for the
  * gallery on /apps/vector-faces. Generated from the watch app's own catalog by
- * Tools/Store/make_gallery.sh in the Vector Faces source, which also draws the
- * pictures in public/images/vector-faces/gallery/. Regenerate both when faces change
- * rather than editing by hand, so the site never shows a face the app does not have.
+ * Tools/Store/make_gallery.sh and Tools/Store/gallery_ts.py in the Vector Faces source,
+ * which also draw the pictures in public/images/vector-faces/gallery/. Regenerate both
+ * when faces change rather than editing by hand, so the site never shows a face the app
+ * does not have. `soon` marks a face that is built but not yet in the App Store version.
  */
-export type GalleryFace = { key: string; title: string; summary: string };
+export type GalleryFace = { key: string; title: string; summary: string; soon?: boolean };
 export type GalleryGroup = { id: string; title: string; faces: GalleryFace[] };
 
 export const VECTOR_FACES_GALLERY: GalleryGroup[] = [
@@ -35,6 +36,29 @@ export const VECTOR_FACES_GALLERY: GalleryGroup[] = [
     faces: [
       { key: 'buddy', title: 'Buddy', summary: 'A round little friend who looks about, blinks and says the time.' },
       { key: 'bot', title: 'Bot', summary: 'A small robot with light-panel eyes and a dancing mouth.' },
+    ],
+  },
+  {
+    id: 'animals',
+    title: 'Animals',
+    faces: [
+      { key: 'pawPrints', title: 'Paw Prints', summary: 'Tracks cross the screen a step a second, a new animal each hour.', soon: true },
+      { key: 'chase', title: 'Chase', summary: 'A dog chases a cat round the screen once a minute.', soon: true },
+      { key: 'hamster', title: 'Hamster Wheel', summary: 'A hamster runs its wheel with the seconds.', soon: true },
+      { key: 'fishTank', title: 'Fish Tank', summary: 'Fish swim and bubbles rise in a little tank.', soon: true },
+      { key: 'laserCat', title: 'Laser Cat', summary: 'A cat chases a laser dot that keeps the seconds.', soon: true },
+      { key: 'goodDog', title: 'Good Dog', summary: 'A dog wags its tail with the seconds and perks up on the hour.', soon: true },
+      { key: 'yarn', title: 'Yarn', summary: 'A ball of yarn unrolls over the hour.', soon: true },
+      { key: 'foodBowl', title: 'Food Bowl', summary: 'A pet\'s bowl empties through the day and fills at mealtimes.', soon: true },
+      { key: 'fireflies', title: 'Fireflies', summary: 'Fireflies glow and drift over the grass.', soon: true },
+      { key: 'beehive', title: 'Beehive', summary: 'Honeycomb fills a cell each second as bees come and go.', soon: true },
+      { key: 'spiderWeb', title: 'Web', summary: 'A spider spins its web through the minute.', soon: true },
+      { key: 'nest', title: 'Nest', summary: 'Eggs hatch in the nest on the hour.', soon: true },
+      { key: 'antFarm', title: 'Ant Farm', summary: 'Ants dig their tunnels through the day.', soon: true },
+      { key: 'tortoiseHare', title: 'Tortoise and Hare', summary: 'The tortoise keeps the hours and the hare the seconds.', soon: true },
+      { key: 'owl', title: 'Owl', summary: 'An owl watches the second hand and blinks.', soon: true },
+      { key: 'frog', title: 'Frog', summary: 'A frog catches a fly every minute.', soon: true },
+      { key: 'flock', title: 'Flock', summary: 'Birds fly over in a V, one more each minute.', soon: true },
     ],
   },
   {
@@ -101,6 +125,75 @@ export const VECTOR_FACES_GALLERY: GalleryGroup[] = [
       { key: 'bridge', title: 'Bridge', summary: 'Control panel bars fill for hour, minute and second.' },
       { key: 'reactor', title: 'Reactor', summary: 'Three rings light up: seconds, minutes, hours.' },
       { key: 'tesseract', title: 'Tesseract', summary: 'A 4-D cube turns once a minute; lit edges count the hour.' },
+      { key: 'saucer', title: 'Flying Saucer', summary: 'A saucer crosses the sky each minute, its beam sweeping below.', soon: true },
+      { key: 'alien', title: 'Alien', summary: 'A friendly alien who looks about and blinks.', soon: true },
+      { key: 'dish', title: 'Satellite Dish', summary: 'A dish tracks a satellite as signals pulse home.', soon: true },
+      { key: 'asteroids', title: 'Asteroid Run', summary: 'A ship weaves through an asteroid field.', soon: true },
+      { key: 'ringedPlanet', title: 'Ringed Planet', summary: 'A ringed planet turns as its moons go round.', soon: true },
+      { key: 'station', title: 'Space Station', summary: 'The station\'s ring turns and a ship docks on the hour.', soon: true },
+    ],
+  },
+  {
+    id: 'vehicles',
+    title: 'Vehicles',
+    faces: [
+      { key: 'highway', title: 'Highway', summary: 'Cars and trucks roll by on the highway.', soon: true },
+      { key: 'harbor', title: 'Harbor', summary: 'Boats come and go in the harbor.', soon: true },
+      { key: 'runway', title: 'Runway', summary: 'Planes take off and land on the runway.', soon: true },
+      { key: 'cityRide', title: 'City Ride', summary: 'Bikes, scooters and motorcycles ride through town.', soon: true },
+      { key: 'skyway', title: 'Skyway', summary: 'Flying cars and drones zip between the towers.', soon: true },
+      { key: 'nightDrive', title: 'Night Drive', summary: 'The road rushes toward you through the night.', soon: true },
+      { key: 'trafficLight', title: 'Traffic Light', summary: 'Red, yellow, green, with a crosswalk countdown.', soon: true },
+      { key: 'dragStart', title: 'Drag Start', summary: 'The start lights count down to green every minute.', soon: true },
+      { key: 'pitBoard', title: 'Pit Board', summary: 'The pit board shows the time, with a checkered flag on the hour.', soon: true },
+      { key: 'tire', title: 'Tire', summary: 'A tire\'s tread turns with the seconds.', soon: true },
+      { key: 'dashboard', title: 'Dashboard', summary: 'The speedometer sweeps the seconds and redlines on the minute.', soon: true },
+      { key: 'odometer', title: 'Odometer', summary: 'Rolling digits turn over with the time.', soon: true },
+      { key: 'fuelGauge', title: 'Fuel Gauge', summary: 'The tank empties over the hour and fills up on the hour.', soon: true },
+      { key: 'shifter', title: 'Shifter', summary: 'The gear lever steps through the gears.', soon: true },
+      { key: 'wipers', title: 'Wipers', summary: 'Windshield wipers sweep once a second in the rain.', soon: true },
+      { key: 'satNav', title: 'Sat Nav', summary: 'Turn signal blinking and the next turn counting down.', soon: true },
+      { key: 'engine', title: 'Engine', summary: 'Pistons pump and the crankshaft turns.', soon: true },
+      { key: 'bicycle', title: 'Bicycle', summary: 'The pedals and chain go round with the seconds.', soon: true },
+    ],
+  },
+  {
+    id: 'responders',
+    title: 'First Responders',
+    faces: [
+      { key: 'ladderTruck', title: 'Ladder Truck', summary: 'A fire truck raises its ladder through the minute.', soon: true },
+      { key: 'fireHose', title: 'Fire Hose', summary: 'The hose puts the fire out by the top of the minute.', soon: true },
+      { key: 'ambulance', title: 'Ambulance', summary: 'Lights flashing and the siren sounding each second.', soon: true },
+      { key: 'patrol', title: 'Patrol', summary: 'A patrol car\'s light bar flashes red and blue.', soon: true },
+      { key: 'dispatch', title: 'Dispatch', summary: 'Units move round a city map as calls come in.', soon: true },
+      { key: 'fireBell', title: 'Fire Bell', summary: 'The station bell rings on the hour.', soon: true },
+      { key: 'rescueHeli', title: 'Rescue Helicopter', summary: 'A helicopter hovers, its searchlight sweeping.', soon: true },
+      { key: 'lighthouse', title: 'Lighthouse', summary: 'The beam sweeps round once a minute over the waves.', soon: true },
+      { key: 'k9', title: 'K9', summary: 'A police dog on patrol with its handler.', soon: true },
+      { key: 'fireHelmet', title: 'Fire Helmet', summary: 'A firefighter\'s helmet with the time on its shield.', soon: true },
+      { key: 'flyover', title: 'Flyover', summary: 'Jets pass over in formation once a minute.', soon: true },
+      { key: 'carrier', title: 'Carrier', summary: 'A plane launches from the carrier deck each minute.', soon: true },
+      { key: 'parachutes', title: 'Parachutes', summary: 'Parachutes open one a second.', soon: true },
+      { key: 'periscope', title: 'Periscope', summary: 'The view through a submarine\'s periscope.', soon: true },
+      { key: 'signals', title: 'Signals', summary: 'Signal flags and Morse code spell out the time.', soon: true },
+    ],
+  },
+  {
+    id: 'holidays',
+    title: 'Holidays',
+    faces: [
+      { key: 'jackOLantern', title: 'Jack-o\'-Lantern', summary: 'A carved pumpkin flickers in the dark.', soon: true },
+      { key: 'hauntedHouse', title: 'Haunted House', summary: 'Windows light up, bats fly and a ghost drifts by.', soon: true },
+      { key: 'turkey', title: 'Turkey', summary: 'A turkey fans its tail feathers with the seconds.', soon: true },
+      { key: 'harvest', title: 'Harvest', summary: 'Leaves fall and a pie disappears slice by slice.', soon: true },
+      { key: 'newYear', title: 'New Year', summary: 'A countdown to midnight and the ball drop.', soon: true },
+      { key: 'fireworks', title: 'Fireworks', summary: 'Fireworks burst over the city every minute.', soon: true },
+      { key: 'christmasTree', title: 'Christmas Tree', summary: 'Lights twinkle each second and the star shines on the hour.', soon: true },
+      { key: 'sleigh', title: 'Sleigh', summary: 'A sleigh crosses the moon each minute, counting down to Christmas.', soon: true },
+      { key: 'snowGlobe', title: 'Snow Globe', summary: 'Snow swirls and settles round a little cabin.', soon: true },
+      { key: 'menorah', title: 'Menorah', summary: 'The candles lit for the night of Hanukkah.', soon: true },
+      { key: 'dreidel', title: 'Dreidel', summary: 'A dreidel spins and lands each minute.', soon: true },
+      { key: 'kinara', title: 'Kinara', summary: 'The candles lit for the day of Kwanzaa, with its principle.', soon: true },
     ],
   },
   {

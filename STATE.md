@@ -430,6 +430,13 @@ one is added; it does not need a new build.
   checked on papershipstudio.com and dice-battles-hq.vercel.app. The page still says "Tap a
   face to change its colors"; the press-and-hold wording comes back with the December 1.1
   update by reverting f0fb586. `changes` row cfcd124e added.
+  Then (13 Nov, about 04:00 UTC) the gallery shows all 118 faces, the 68 from the December 1.1
+  update tagged "Coming soon" (`soon: true` in `lib/vectorFacesGallery.ts`, written by the watch
+  app's `Tools/Store/gallery_ts.py --soon-from 50`; whole new groups get the tag on their heading
+  and "· Soon" on their chip, and the intro says they arrive in a free update in December).
+  Checked locally with the site-check skill at phone, tablet and desktop (no new findings; the
+  4px `nav.psg-nav` overflow is the same on the live site) and on papershipstudio.com after the
+  deploy. When 1.1 is out, regenerate without `--soon-from` so the tags go.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`

@@ -42,6 +42,19 @@ const PILL_TINTS = [
   { bg: colors.orangeTint, ink: colors.orangeText },
 ];
 
+/** The tag on a face (or a whole group) that is built but not yet in the App Store version. */
+const SOON_TAG = {
+  alignSelf: 'flex-start' as const,
+  display: 'inline-block',
+  padding: '3px 10px',
+  borderRadius: 999,
+  background: colors.orangeTint,
+  color: colors.orangeText,
+  font: `800 11px ${fonts.body}`,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase' as const,
+};
+
 const section = {
   maxWidth: 1200,
   margin: '0 auto',
@@ -191,6 +204,8 @@ export default function VectorFacesAppPage() {
           </h2>
           <p style={{ font: `600 15px/1.6 ${fonts.body}`, color: colors.secondary, margin: '12px 0 0', maxWidth: 620 }}>
             Every face comes with the app, sorted the way the app sorts them. Each one has its own colors, and you choose what its three spots show.
+            {VECTOR_FACES_GALLERY.some((g) => g.faces.some((f) => f.soon)) &&
+              ' Faces marked Coming soon arrive in a free update in December, for everyone who has the app.'}
           </p>
           <nav aria-label="Face groups" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 18 }}>
             {VECTOR_FACES_GALLERY.map((group, i) => {
@@ -213,13 +228,17 @@ export default function VectorFacesAppPage() {
                   }}
                 >
                   {group.title}
+                  {group.faces.every((f) => f.soon) && <span style={{ marginLeft: 6, opacity: 0.75 }}>· Soon</span>}
                 </a>
               );
             })}
           </nav>
           {VECTOR_FACES_GALLERY.map((group) => (
             <div key={group.id} id={`faces-${group.id}`} style={{ marginTop: 36, scrollMarginTop: 24 }}>
-              <h3 style={{ font: `800 20px ${fonts.heading}`, color: colors.ink, margin: 0 }}>{group.title}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <h3 style={{ font: `800 20px ${fonts.heading}`, color: colors.ink, margin: 0 }}>{group.title}</h3>
+                {group.faces.every((f) => f.soon) && <span style={SOON_TAG}>Coming soon</span>}
+              </div>
               <div
                 className="psg-gallery"
                 style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 22, marginTop: 16 }}
@@ -228,7 +247,7 @@ export default function VectorFacesAppPage() {
                   <figure key={face.key} style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <Image
                       src={`/images/vector-faces/gallery/${face.key}.webp`}
-                      alt={`The ${face.title} watch face. ${face.summary}`}
+                      alt={`The ${face.title} watch face${face.soon ? ', coming soon' : ''}. ${face.summary}`}
                       width={211}
                       height={257}
                       unoptimized
@@ -243,6 +262,7 @@ export default function VectorFacesAppPage() {
                       }}
                     />
                     <figcaption style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {face.soon && <span style={SOON_TAG}>Coming soon</span>}
                       <span style={{ font: `800 15px ${fonts.heading}`, color: colors.ink }}>{face.title}</span>
                       <span style={{ font: `600 13px/1.45 ${fonts.body}`, color: colors.secondary }}>{face.summary}</span>
                     </figcaption>
