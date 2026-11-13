@@ -451,6 +451,12 @@ one is added; it does not need a new build.
   button (`apps/vector-faces/FaceMotion.tsx`, remembered in localStorage `vectorFaces.motion`)
   freezes them for WCAG 2.2.2; it appears only with JavaScript and is hidden under reduced motion.
   Checked locally with site-check and in Chromium, then live.
+  Then (13 Nov, about 17:45 UTC) the gallery has 123 faces: GPS (Live) and My Photo (Art and Fun)
+  joined, still "Coming soon", and the descriptions of Buddy, Bot, Alien, Good Dog, Laser Cat,
+  Cockpit, Reels and Tuner mention what a tap or the wrist now does. The Privacy Policy adds the
+  GPS face (precise GPS, on the watch only), the Cockpit's motion sensors and altimeter (on the
+  watch only) and the iPhone's Photo to Vector tool (traced on the phone; only the drawing goes,
+  to your own watch). Checked live.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
