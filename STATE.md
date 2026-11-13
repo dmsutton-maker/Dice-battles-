@@ -423,6 +423,13 @@ one is added; it does not need a new build.
   the watch app's `Tools/Store/make_gallery.sh`; regenerate rather than edit by hand).
   Then dpl_BKbYAn6xxzmtaMC8SFGvU6pRX6e6 at 4e29899 (19:24 UTC): the same pictures redrawn in
   the app's new colors (no face offers two look-alike color schemes any more).
+  **13 Nov 2026, 01:3x UTC: Vector Faces 1.0 is on sale** (App Store Connect said
+  READY_FOR_SALE at 01:34 UTC; https://apps.apple.com/us/app/vector-faces/id6832990414).
+  `VECTOR_FACES_LIVE` is now true and live is dpl_5FTSgPjqHECU7NShPRnMS4DWAJbW (branch
+  `claude/pensive-bell-squkg9`): the Vector Faces page shows "Download on the App Store",
+  checked on papershipstudio.com and dice-battles-hq.vercel.app. The page still says "Tap a
+  face to change its colors"; the press-and-hold wording comes back with the December 1.1
+  update by reverting f0fb586. `changes` row cfcd124e added.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`

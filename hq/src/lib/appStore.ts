@@ -33,7 +33,7 @@ export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
  */
 export const VECTOR_FACES_APP_STORE_ID = '6832990414';
 
-export const VECTOR_FACES_LIVE = false;
+export const VECTOR_FACES_LIVE = true;
 
 export const VECTOR_FACES_APP_STORE_URL = `https://apps.apple.com/app/id${VECTOR_FACES_APP_STORE_ID}`;
 
