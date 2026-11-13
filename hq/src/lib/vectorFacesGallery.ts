@@ -19,6 +19,9 @@ export const VECTOR_FACES_GALLERY: GalleryGroup[] = [
       { key: 'rainRadar', title: 'Rain Radar', summary: 'The real weather radar round you.' },
       { key: 'decibels', title: 'Decibels', summary: 'How loud it is round you, from the microphone. An estimate.' },
       { key: 'compass', title: 'Compass', summary: 'A compass card that turns as you do.' },
+      { key: 'issTracker', title: 'ISS Tracker', summary: 'Where the International Space Station is now, and when it next passes over you.', soon: true },
+      { key: 'satellites', title: 'Satellites', summary: 'The real satellites crossing your sky right now.', soon: true },
+      { key: 'earthquakes', title: 'Earthquakes', summary: 'Earthquakes round the world in the last day, and the nearest to you.', soon: true },
     ],
   },
   {

@@ -437,6 +437,11 @@ one is added; it does not need a new build.
   Checked locally with the site-check skill at phone, tablet and desktop (no new findings; the
   4px `nav.psg-nav` overflow is the same on the live site) and on papershipstudio.com after the
   deploy. When 1.1 is out, regenerate without `--soon-from` so the tags go.
+  Then (13 Nov, about 13:00 UTC) the gallery has 121 faces: David added three Live faces to 1.1
+  (ISS Tracker, Satellites, Earthquakes, also "Coming soon"), and the Privacy Policy and Terms
+  (`lib/legalCopy.ts`, `written` 2026-11-13) say those faces download public orbits from
+  CelesTrak and the last day's earthquakes from the USGS, without the user's location, and that
+  the information is for interest only. Checked live on papershipstudio.com.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
