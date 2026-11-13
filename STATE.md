@@ -457,6 +457,15 @@ one is added; it does not need a new build.
   GPS face (precise GPS, on the watch only), the Cockpit's motion sensors and altimeter (on the
   watch only) and the iPhone's Photo to Vector tool (traced on the phone; only the drawing goes,
   to your own watch). Checked live.
+  Then (13 Nov, about 19:00 UTC, dpl_HMK82Q8NBW2hBmvXTUhxuJ3A9vRB) David's changes after watching
+  the loops: nineteen 1.1 faces redrawn (taps that stay on the Menorah, Dreidel, Shifter and LCD;
+  tap reactions on Good Dog, Frog, Rescue Helicopter, Snow Globe; the Dashboard's GPS speed; the
+  Fuel Gauge as the battery; and faces moving every second), their gallery loops starting at the
+  moment that shows the change and running 5 to 8 seconds where it needs it (`extra` and
+  `loop_seconds` in the watch app's `Tools/Store/make_gallery.sh`). LCD and Console are 1.0 faces,
+  so the site keeps their 1.0 pictures and wording (restored by hand from the previous deploy)
+  until 1.1 is out and the gallery is regenerated without `--soon-from`. The Privacy Policy says
+  the GPS and Dashboard faces use the watch's GPS. Checked live.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
