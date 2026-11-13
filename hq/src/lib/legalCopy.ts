@@ -25,7 +25,7 @@ export interface LegalCopy {
 }
 
 export const PRIVACY: LegalCopy = {
-  written: '2026-11-11',
+  written: '2026-11-13',
   metaDescription:
     'No accounts and no tracking. Friends, online battles, notifications and bug reports send a little information. This page says exactly what, and why.',
   intro:
@@ -77,7 +77,7 @@ export const PRIVACY: LegalCopy = {
     },
     {
       heading: 'Vector Faces',
-      body: 'Vector Faces, our Apple Watch app, sends nothing to us at all: it has no account, no analytics and no ads. To show the weather, the sunrise, the moon and the stars where you are, it uses your location rounded to about half a mile, and asks Apple Weather for the conditions there; Apple handles that request under its own privacy policy. Only while the Flights face is on screen, it sends that rounded location to adsb.lol, a community network of aircraft receivers, to get the aircraft nearby. Only while the Rain Radar face is on screen, it sends it to the U.S. National Weather Service for the radar picture. If you choose steps, heart rate or your next calendar event for a spot on a face, or use the Pulse, Oxygen or Rings faces, the watch reads your heart rate, blood oxygen, activity or calendar from Apple Health or your calendar to show them there; they never leave the watch. The Decibels face uses the microphone, only while it is on screen, to measure how loud it is: the sound is measured on the watch and thrown away, and nothing is kept or sent anywhere. You can turn off location, Health, calendar and microphone access at any time in your iPhone\'s or your watch\'s Settings.',
+      body: 'Vector Faces, our Apple Watch app, sends nothing to us at all: it has no account, no analytics and no ads. To show the weather, the sunrise, the moon and the stars where you are, it uses your location rounded to about half a mile, and asks Apple Weather for the conditions there; Apple handles that request under its own privacy policy. Only while the Flights face is on screen, it sends that rounded location to adsb.lol, a community network of aircraft receivers, to get the aircraft nearby. Only while the Rain Radar face is on screen, it sends it to the U.S. National Weather Service for the radar picture. Only while the ISS Tracker or Satellites face is on screen, it downloads the latest public satellite orbits from CelesTrak, and only while the Earthquakes face is on screen, the latest earthquake list from the U.S. Geological Survey; neither request includes your location, and where the satellites and earthquakes are in relation to you is worked out on the watch. If you choose steps, heart rate or your next calendar event for a spot on a face, or use the Pulse, Oxygen or Rings faces, the watch reads your heart rate, blood oxygen, activity or calendar from Apple Health or your calendar to show them there; they never leave the watch. The Decibels face uses the microphone, only while it is on screen, to measure how loud it is: the sound is measured on the watch and thrown away, and nothing is kept or sent anywhere. You can turn off location, Health, calendar and microphone access at any time in your iPhone\'s or your watch\'s Settings.',
     },
     {
       heading: 'Where it is kept, and for how long',
@@ -103,7 +103,7 @@ export const PRIVACY: LegalCopy = {
 };
 
 export const TERMS: LegalCopy = {
-  written: '2026-11-11',
+  written: '2026-11-13',
   metaDescription: 'The terms that cover your use of any app published by Paper Ship Studio, including purchases and the Gold Pass.',
   intro:
     'These terms cover your use of any app published by Paper Ship Studio LLC, including Dice Battles: Color Rush and Vector Faces. By downloading or using our apps, you agree to these terms.',
@@ -134,7 +134,7 @@ export const TERMS: LegalCopy = {
     },
     {
       heading: 'Vector Faces',
-      body: 'Vector Faces is bought once from the App Store, and that one purchase includes every face in the app. We add new faces in free updates, and we may also change or retire faces over time. The live and health faces show information for interest only: aircraft from a community receiver network, weather radar from the U.S. National Weather Service, sound levels estimated from the watch\'s microphone, and readings your watch has saved in Apple Health. That information can be late, incomplete or wrong, so please do not use Vector Faces for navigation, flying, weather safety or medical decisions.',
+      body: 'Vector Faces is bought once from the App Store, and that one purchase includes every face in the app. We add new faces in free updates, and we may also change or retire faces over time. The live and health faces show information for interest only: aircraft from a community receiver network, weather radar from the U.S. National Weather Service, satellite positions worked out from public orbit data, earthquakes reported by the U.S. Geological Survey, sound levels estimated from the watch\'s microphone, and readings your watch has saved in Apple Health. That information can be late, incomplete or wrong, so please do not use Vector Faces for navigation, flying, weather or earthquake safety, or medical decisions.',
     },
     {
       heading: 'Intellectual property',
