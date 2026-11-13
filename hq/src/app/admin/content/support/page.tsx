@@ -10,9 +10,11 @@ export default async function SupportContentPage() {
       <Link href="/admin/content" className="faint">← all pages</Link>
       <h2 style={{ marginTop: 10 }}>✉️ Support</h2>
       <div className="notice">
-        The questions shown on this page come from the{' '}
+        The Dice Battles questions shown on this page come from the{' '}
         <Link href="/admin/content/dice-battles">Dice Battles page&apos;s FAQ</Link> —
-        edit them there and both pages change together.
+        edit them there and both pages change together. The Vector Faces
+        questions come from that app&apos;s page, which is written in the
+        site&apos;s code and has no editor here yet.
       </div>
       <ContentForm action={updateSupportContent}>
         <label htmlFor="intro">THE LINE UNDER &quot;SUPPORT&quot;</label>

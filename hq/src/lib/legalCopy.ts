@@ -25,11 +25,11 @@ export interface LegalCopy {
 }
 
 export const PRIVACY: LegalCopy = {
-  written: '2026-11-05',
+  written: '2026-11-13',
   metaDescription:
     'No accounts and no tracking. Friends, online battles, notifications and bug reports send a little information. This page says exactly what, and why.',
   intro:
-    'Paper Ship Studio LLC ("we," "us," or "the studio") is a small, independent game studio, a limited liability company. This policy covers every app we publish, including Dice Battles: Color Rush.',
+    'Paper Ship Studio LLC ("we," "us," or "the studio") is a small, independent game studio, a limited liability company. This policy covers every app we publish, including Dice Battles: Color Rush and Vector Faces.',
   sections: [
     {
       heading: 'The short version',
@@ -76,12 +76,16 @@ export const PRIVACY: LegalCopy = {
       body: 'If you are signed in to Game Center on your phone, the game sends your trophy count and your achievements to Apple\'s Game Center, so that leaderboards and achievements work. That is handled by Apple under Apple\'s own privacy policy.',
     },
     {
+      heading: 'Vector Faces',
+      body: 'Vector Faces, our Apple Watch app, sends nothing to us at all: it has no account, no analytics and no ads. To show the weather, the sunrise, the moon and the stars where you are, it uses your location rounded to about half a mile, and asks Apple Weather for the conditions there; Apple handles that request under its own privacy policy. Only while the Flights face is on screen, it sends that rounded location to adsb.lol, a community network of aircraft receivers, to get the aircraft nearby. Only while the Rain Radar face is on screen, it sends it to the U.S. National Weather Service for the radar picture. Only while the ISS Tracker or Satellites face is on screen, it downloads the latest public satellite orbits from CelesTrak, and only while the Earthquakes face is on screen, the latest earthquake list from the U.S. Geological Survey; neither request includes your location, and where the satellites and earthquakes are in relation to you is worked out on the watch. The GPS face uses the watch\'s own precise GPS, only while it is on screen, to show your speed, heading and trail; those positions never leave the watch. The Cockpit face reads the watch\'s motion sensors and altimeter, on the watch only. The iPhone app\'s Photo to Vector tool traces a photo you take or choose into line art on the iPhone itself; the photo is never sent anywhere, and the only thing that leaves the phone is the line drawing, sent to your own watch when you ask. If you choose steps, heart rate or your next calendar event for a spot on a face, or use the Pulse, Oxygen or Rings faces, the watch reads your heart rate, blood oxygen, activity or calendar from Apple Health or your calendar to show them there; they never leave the watch. The Decibels face uses the microphone, only while it is on screen, to measure how loud it is: the sound is measured on the watch and thrown away, and nothing is kept or sent anywhere. You can turn off location, Health, calendar and microphone access at any time in your iPhone\'s or your watch\'s Settings.',
+    },
+    {
       heading: 'Where it is kept, and for how long',
-      body: 'The little we do hold is stored in a Supabase database and served through Vercel, both in the United States. We keep it for as long as the game is running, and we will delete anything belonging to you if you ask us at hello@papershipstudio.com.',
+      body: 'The little we do hold is stored in a Supabase database and served through Vercel, both in the United States. We keep it for as long as the app it belongs to is running, and we will delete anything belonging to you if you ask us at hello@papershipstudio.com.',
     },
     {
       heading: 'Children\'s privacy',
-      body: 'The game is made for families and is rated for ages 4 and up. It asks no one their age, their name or their email. Friends and online battles are built on Apple\'s Game Center precisely so that we do not have to: Apple already holds the account, already has a parent\'s consent where one is needed, and moderates the nickname that other players see. Purchases go through Apple too, so a parent\'s Ask to Buy and Screen Time settings apply. We collect no other personal details from anyone, at any age. If you have a question about a younger player, write to us at the address below.',
+      body: 'Dice Battles: Color Rush is made for families and is rated for ages 4 and up. None of our apps asks anyone their age, their name or their email. Friends and online battles are built on Apple\'s Game Center precisely so that we do not have to: Apple already holds the account, already has a parent\'s consent where one is needed, and moderates the nickname that other players see. Purchases go through Apple too, so a parent\'s Ask to Buy and Screen Time settings apply. We collect no other personal details from anyone, at any age. If you have a question about a younger player, write to us at the address below.',
     },
     {
       heading: 'App Store and platform data',
@@ -99,10 +103,10 @@ export const PRIVACY: LegalCopy = {
 };
 
 export const TERMS: LegalCopy = {
-  written: '2026-11-05',
+  written: '2026-11-13',
   metaDescription: 'The terms that cover your use of any app published by Paper Ship Studio, including purchases and the Gold Pass.',
   intro:
-    'These terms cover your use of any app published by Paper Ship Studio LLC, including Dice Battles: Color Rush. By downloading or using our apps, you agree to these terms.',
+    'These terms cover your use of any app published by Paper Ship Studio LLC, including Dice Battles: Color Rush and Vector Faces. By downloading or using our apps, you agree to these terms.',
   sections: [
     {
       heading: 'Using our apps',
@@ -129,6 +133,10 @@ export const TERMS: LegalCopy = {
       body: 'Friends works by sharing a code with someone you already know. Please do not use it, or friend battles, to bother anyone. You can remove a friend at any time, and blocking someone is silent: they are not told, and they cannot ask again. Online battles pair you with players you may not know, so play fair: no tampering with the game to win. We may remove a player from Friends or from online battles if they cheat or use either to harass others.',
     },
     {
+      heading: 'Vector Faces',
+      body: 'Vector Faces is bought once from the App Store, and that one purchase includes every face in the app. We add new faces in free updates, and we may also change or retire faces over time. The live and health faces show information for interest only: aircraft from a community receiver network, weather radar from the U.S. National Weather Service, satellite positions worked out from public orbit data, earthquakes reported by the U.S. Geological Survey, sound levels estimated from the watch\'s microphone, and readings your watch has saved in Apple Health. That information can be late, incomplete or wrong, so please do not use Vector Faces for navigation, flying, weather or earthquake safety, or medical decisions.',
+    },
+    {
       heading: 'Intellectual property',
       body: 'The Paper Ship Studio name and logo, the name Dice Battles: Color Rush, and the design, artwork, and code of our apps belong to Paper Ship Studio LLC. Paper Ship Studio and Dice Battles: Color Rush are trademarks of Paper Ship Studio LLC. You may not copy, redistribute, or resell any part of our apps without our permission.',
     },
@@ -146,6 +154,15 @@ export const TERMS: LegalCopy = {
     },
   ],
 };
+
+/**
+ * How many section boxes the admin's Privacy and Terms editors show and
+ * save. It has to stay above the longest policy, with room to add to it.
+ * It was 16, and the Privacy Policy reached 17 sections when Vector Faces
+ * joined on 11 Nov 2026: the editor would have shown only the first 16,
+ * and its next save would have deleted "Contact us" from the live page.
+ */
+export const LEGAL_SECTION_SLOTS = 24;
 
 /** The instant a code copy was written, midnight New York time. */
 function writtenAt(copy: LegalCopy): Date {

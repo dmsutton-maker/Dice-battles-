@@ -3,8 +3,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { SitePage } from '@/components/site/SitePage';
 import styles from './site.module.css';
-import { colors, fonts, heroGradient } from '@/components/site/tokens';
+import { colors, fonts, heroGradient, vectorFacesGradient } from '@/components/site/tokens';
 import { getSiteContent, text } from '@/lib/content';
+import { VECTOR_FACES_TAGLINE } from '@/lib/vectorFaces';
 
 // Editable in the admin, with the copy below as the default.
 export const generateMetadata = pageMetadata('home', {
@@ -249,6 +250,65 @@ export default async function HomePage() {
                   borderRadius: 999,
                   flexShrink: 0,
                   textDecoration: 'none',
+                }}
+              >
+                View app &rarr;
+              </Link>
+            </div>
+
+            {/*
+              Vector Faces, the Apple Watch app (11 Nov 2026). The same card
+              as Dice Battles above, but dark: its glowing icon goes flat on
+              cream. The words come from lib/vectorFaces.ts, not the admin.
+            */}
+            <div
+              className="psg-row-wrap"
+              style={{
+                borderRadius: 20,
+                background: vectorFacesGradient,
+                border: '2px solid rgba(242,197,61,0.35)',
+                padding: 32,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 32,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Image
+                src="/images/vector-faces/icon.png"
+                alt="Vector Faces icon"
+                width={120}
+                height={120}
+                style={{
+                  borderRadius: 24,
+                  objectFit: 'cover',
+                  flexShrink: 0,
+                  // The icon is black to its edges; the hairline keeps its
+                  // rounded square from dissolving into the card.
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.14), 0 10px 26px rgba(0,0,0,0.35)',
+                }}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 220 }}>
+                <span style={{ font: `800 24px ${fonts.heading}`, color: '#fff' }}>Vector Faces</span>
+                {/* The plain brand yellow: 10.28:1 at the card's lightest point. */}
+                <span style={{ font: `700 14.5px ${fonts.body}`, color: colors.yellow }}>{VECTOR_FACES_TAGLINE}</span>
+              </div>
+              <Link
+                href="/apps/vector-faces"
+                className={styles.pillButton}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  // 13px, as above: 44px tall under a finger.
+                  padding: '13px 22px',
+                  background: '#fff',
+                  color: '#0b0f14',
+                  font: `700 13.5px ${fonts.body}`,
+                  borderRadius: 999,
+                  flexShrink: 0,
+                  textDecoration: 'none',
+                  // The keyboard focus ring is ink, which vanishes on this card.
+                  outlineColor: '#fff',
                 }}
               >
                 View app &rarr;
