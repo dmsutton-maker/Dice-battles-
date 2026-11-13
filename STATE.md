@@ -466,6 +466,18 @@ one is added; it does not need a new build.
   so the site keeps their 1.0 pictures and wording (restored by hand from the previous deploy)
   until 1.1 is out and the gallery is regenerated without `--soon-from`. The Privacy Policy says
   the GPS and Dashboard faces use the watch's GPS. Checked live.
+  Then (13 Nov, about 21:00 UTC) App Store sales are tracked on the back end, for every studio
+  app: `app_sales` (one row per line of Apple's daily Sales and Trends summary report, Vector Faces
+  and Dice Battles only; LeaseDash, on the same Apple account, is left out) and `app_sales_syncs`
+  (each copy, whether it worked), migration `20261113_app_sales.sql`, RLS on with no policies.
+  `/api/cron/app-sales` (vercel.json, daily at 14:17 UTC, `Authorization: Bearer $CRON_SECRET`,
+  `?days=` to read further back) re-reads the last week from Apple and replaces each day whole
+  (`replace_app_sales_day`). Vercel holds ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY_B64 (David chose
+  the existing App Store Connect key over a new Sales-only one), ASC_VENDOR_NUMBER and CRON_SECRET.
+  `/admin/sales` shows it, owner only (the 💵 Sales button shows only to the owner), and the
+  Automation page lists the job. Filled in from 1 Nov 2026; a run by hand on the live site read 14
+  days. David's live sales dashboard (a Claude Data artifact) reads the same tables through his
+  Supabase connector.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`

@@ -70,6 +70,11 @@ export default async function AdminLayout({
         <Link className="button button-quiet button-small" href="/admin/support">
           🎫 Support
         </Link>
+        {member.role === 'owner' && (
+          <Link className="button button-quiet button-small" href="/admin/sales">
+            💵 Sales
+          </Link>
+        )}
         <Link className="button button-quiet button-small" href="/admin/automation">
           🤖 Automation
         </Link>
