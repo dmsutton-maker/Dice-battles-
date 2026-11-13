@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.178.0 — 2026-11-13 · requested by David
+
+David, 13 Nov 2026, in the Vector Faces chat and then here: "build the
+Vector Faces link". JS only, runtime 4.0.0. No news post.
+
+### Added
+- **"More from Paper Ship Studio" in Settings**, under "Rate Dice Battles":
+  one quiet row naming Vector Faces, the family's Apple Watch app ("glowing
+  clock faces that move"). Tapping it asks a grown-up first, a times-table
+  sum from 6 × 6 to 9 × 9 typed on the number pad; a wrong answer gets a
+  fresh sum. Only the right answer opens Vector Faces on the App Store
+  (`Linking`, https URL, no native module). Not an advert: the ad after
+  every third finished game is unchanged, and the row never appears during
+  or between games, as a pop-up, badge or News post. No price is shown.
+  `src/game/moreFromStudio.ts` (rules), `src/demo/MoreFromStudio.tsx`
+  (row), `tests/moreFromStudio.test.ts`. The answer box scrolls clear of
+  the keyboard the same way the secret-code box does.
+
 ## v1.177.0 — 2026-11-09 · requested by David
 
 David, 9 Nov 2026, the final pass before the App Store submission: "Run
