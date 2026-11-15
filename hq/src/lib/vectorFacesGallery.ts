@@ -44,6 +44,24 @@ export const VECTOR_FACES_GALLERY: GalleryGroup[] = [
     ],
   },
   {
+    id: 'companions',
+    title: 'Companions',
+    faces: [
+      { key: 'orb', title: 'Orb', summary: 'A ball of light with two rings. Tap it: its rings glow as it listens, then it says the time.', soon: true, loop: true },
+      { key: 'pip', title: 'Pip', summary: 'A little cloud who drifts about, with a rainbow on the hour. Tap it and it tells you the time.', soon: true, loop: true },
+      { key: 'comet', title: 'Comet', summary: 'A small star whose sparkly tail swings each second. Tap it and it tells you the time.', soon: true, loop: true },
+      { key: 'cubby', title: 'Cubby', summary: 'A little cube in 3-D lines who flips over once a minute. Tap it and it tells you the time.', soon: true, loop: true },
+      { key: 'bloop', title: 'Bloop', summary: 'A jelly blob that bounces every minute. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+      { key: 'axel', title: 'Axel', summary: 'An axolotl whose gills wave with the seconds. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+      { key: 'octo', title: 'Octo', summary: 'An octopus who waves an arm every second. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+      { key: 'puff', title: 'Puff', summary: 'A pufferfish who puffs up every minute. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+      { key: 'sprout', title: 'Sprout', summary: 'A seedling in a flowerpot with leaf ears. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+      { key: 'smidge', title: 'Smidge', summary: 'A pocket-sized friendly dragon. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+      { key: 'kit', title: 'Kit', summary: 'A fox with a glowing tail. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+      { key: 'bun', title: 'Bun', summary: 'A bunny whose long ears end in little lights. Tap it: it listens, thinks, then tells you the time.', soon: true, loop: true },
+    ],
+  },
+  {
     id: 'animals',
     title: 'Animals',
     faces: [
