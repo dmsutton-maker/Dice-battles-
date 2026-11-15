@@ -466,6 +466,15 @@ one is added; it does not need a new build.
   so the site keeps their 1.0 pictures and wording (restored by hand from the previous deploy)
   until 1.1 is out and the gallery is regenerated without `--soon-from`. The Privacy Policy says
   the GPS and Dashboard faces use the watch's GPS. Checked live.
+  Then (15 Nov 2026, about 22:40 UTC) the gallery has 188 faces: 65 new 1.1 faces in three new
+  groups, Sports, Score and Timers, and Tools (David: "make them all and update paper ship website
+  so I can see them all"), all "Coming soon" and moving, the tool faces shown at work
+  (`--sample-tool`) and the games at their goal. Hourglass is a 1.0 face that becomes a tap timer
+  in 1.1, so like LCD and Console it keeps its 1.0 picture and wording here until 1.1 is out. The
+  twelve Companions (creatures you tap to talk to) are left off until they are drawn. The Privacy
+  Policy (`written` 2026-11-15) adds the Tides face (NOAA's station list with no location, then the
+  nearest station's tide times by its number), the new GPS tool faces, Climb's altimeter and Heart
+  Zones. `changes` row 7d776308 added. Checked live.
   Then (13 Nov, about 21:00 UTC) App Store sales are tracked on the back end, for every studio
   app: `app_sales` (one row per line of Apple's daily Sales and Trends summary report, Vector Faces
   and Dice Battles only; LeaseDash, on the same Apple account, is left out) and `app_sales_syncs`
