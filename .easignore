@@ -10,3 +10,7 @@ tests/
 store/
 tools/
 .claude/
+# A local `expo prebuild` writes these; uploaded, EAS would treat the project
+# as bare and skip its own prebuild (and the config plugins in app.json).
+/android/
+/ios/

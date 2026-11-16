@@ -14,9 +14,12 @@ unchanged. No news post.
   non-personalised, G-rated. The Android AdMob App ID
   (`ca-app-pub-5310885665976703~1904280939`) replaces Google's test id in
   `app.json`. Both are public ids, compiled into every copy of the app.
-- The Android build itself sets Kotlin 2.2.20 (`expo-build-properties`) so
-  Gradle can read Google's ads SDK 25.4, and blocks the advertising-ID and
-  microphone permissions (Google Play's Families policy).
+- The Android build lets Kotlin read Google's ads SDK 25.4, which was built
+  with a newer Kotlin (`plugins/withKotlinSkipMetadataCheck.js`, the
+  compiler's `-Xskip-metadata-version-check`; raising Kotlin through
+  expo-build-properties did not reach the compiler and was taken back out),
+  and blocks the advertising-ID and microphone permissions (Google Play's
+  Families policy).
 
 ## v1.179.0 — 2026-11-16 · requested by David
 

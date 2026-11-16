@@ -360,14 +360,11 @@ suite('share your win · the screens', () => {
       download for a card. Both lists are pinned as they stood before.
     */
     const pkg = JSON.parse(src('package.json'));
-    // expo-build-properties (16 Nov 2026) is build configuration only, with no
-    // code in the app: it sets Kotlin 2.2.20 so the Android build can read
-    // Google's ads SDK 25.4. It has nothing to do with sharing.
     assertEqual(
       Object.keys(pkg.dependencies).sort().join(' '),
       [
         '@react-native-async-storage/async-storage', '@react-three/fiber', 'cannon-es', 'expo', 'expo-asset',
-        'expo-audio', 'expo-build-properties', 'expo-constants', 'expo-file-system', 'expo-game-center', 'expo-gl', 'expo-haptics',
+        'expo-audio', 'expo-constants', 'expo-file-system', 'expo-game-center', 'expo-gl', 'expo-haptics',
         'expo-iap', 'expo-notifications', 'expo-secure-store', 'expo-splash-screen', 'expo-status-bar',
         'expo-store-review', 'expo-updates', 'react', 'react-native', 'react-native-google-mobile-ads', 'three',
       ].join(' '),
