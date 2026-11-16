@@ -50,6 +50,14 @@ suite('android · adverts', () => {
         'the Android unit is not an ad unit id (… / …)',
       );
       assert((ads.ANDROID_INTERSTITIAL_AD_UNIT_ID as string) !== ads.INTERSTITIAL_AD_UNIT_ID, 'the iOS unit pasted into the Android slot');
+      // The unit and the app it belongs to come from the same AdMob account.
+      const app = JSON.parse(read('app.json'));
+      const admob = (app.expo.plugins as unknown[]).find(
+        (p) => Array.isArray(p) && p[0] === 'react-native-google-mobile-ads',
+      ) as [string, { androidAppId: string }];
+      const publisher = (id: string) => id.split(/[~/]/)[0];
+      assertEqual(publisher(admob[1].androidAppId), publisher(ads.ANDROID_INTERSTITIAL_AD_UNIT_ID), 'app and unit from different AdMob accounts');
+      assert(admob[1].androidAppId !== 'ca-app-pub-3940256099942544~3347511713', 'the Android app id is still Google\'s test id');
     } else {
       note('no Android ad unit yet: Android shows no adverts');
     }

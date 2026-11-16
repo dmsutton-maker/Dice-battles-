@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.180.0 — 2026-11-16 · requested by David
+
+David created the Android app in AdMob for the Google Play release ("lets
+get the android app going"). JS: Android's own interstitial unit; native:
+the Android AdMob App ID (needs the Android build, which follows). iPhone
+unchanged. No news post.
+
+### Changed (Android only)
+- **Android adverts are switched on** with the Android app's own
+  interstitial unit (`ca-app-pub-5310885665976703/5651954259`), the same
+  rule as iPhone: one after every third finished game, child-directed,
+  non-personalised, G-rated. The Android AdMob App ID
+  (`ca-app-pub-5310885665976703~1904280939`) replaces Google's test id in
+  `app.json`. Both are public ids, compiled into every copy of the app.
+- The Android build itself sets Kotlin 2.2.20 (`expo-build-properties`) so
+  Gradle can read Google's ads SDK 25.4, and blocks the advertising-ID and
+  microphone permissions (Google Play's Families policy).
+
 ## v1.179.0 — 2026-11-16 · requested by David
 
 David, 16 Nov 2026, once Google Play was verified: "lets get the android

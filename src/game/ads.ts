@@ -123,11 +123,13 @@ export const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-5310885665976703/5594525845';
  * The Android interstitial, from the Android app in the same AdMob account.
  *
  * AdMob issues ad units per app, and an iOS unit asked for from an Android
- * app is refused, so Android needs its own. Empty until David creates the
- * Android app in AdMob: until then Android shows NO adverts at all, never
- * Google's test ones in front of real players (see preload).
+ * app is refused, so Android needs its own: "Interstitial (Android)" in the
+ * Android app David created in AdMob on 16 Nov 2026 (App ID
+ * ca-app-pub-5310885665976703~1904280939, in app.json). If this is ever
+ * emptied, Android shows NO adverts at all, never Google's test ones in
+ * front of real players (see preload).
  */
-export const ANDROID_INTERSTITIAL_AD_UNIT_ID = '';
+export const ANDROID_INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-5310885665976703/5651954259';
 
 /** This phone's unit: Android's own on Android, the iOS one everywhere else. */
 function unitForThisPhone(): string {
