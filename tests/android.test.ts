@@ -88,3 +88,33 @@ suite('android · what is iPhone-only stays hidden', () => {
     }
   });
 });
+
+suite('android · the Google Play listing', () => {
+  const png = (path: string) => {
+    const buf = readFileSync(path);
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), colorType: buf[25] };
+  };
+
+  test('the words fit Play\'s limits', () => {
+    const short = read('store', 'google-play', 'short-description.txt');
+    assert(short.length > 0 && [...short].length <= 80, `short description is ${[...short].length} characters, over 80`);
+    const full = read('store', 'description.txt');
+    assert([...full].length <= 4000, 'full description over 4,000 characters');
+    assert(!/iPhone|iPad|Apple|Game Center|iCloud|App Store/.test(full + short), 'the Play text names an Apple feature');
+  });
+
+  test('the pictures are sizes Play accepts', () => {
+    const icon = png('store/google-play/icon-512.png');
+    assertEqual(`${icon.width}x${icon.height}`, '512x512', 'icon size');
+    const feature = png('store/google-play/feature-1024x500.png');
+    assertEqual(`${feature.width}x${feature.height}`, '1024x500', 'feature graphic size');
+    assert(feature.colorType !== 6 && feature.colorType !== 4, 'the feature graphic has transparency, which Play refuses');
+    for (let i = 1; i <= 6; i += 1) {
+      const shot = png(`store/google-play/phone/0${i}.png`);
+      const long = Math.max(shot.width, shot.height);
+      const shortSide = Math.min(shot.width, shot.height);
+      assert(shortSide >= 320 && long <= 3840, `phone/0${i}.png is ${shot.width}x${shot.height}, outside 320–3,840`);
+      assert(long <= shortSide * 2, `phone/0${i}.png has a long side more than twice the short one`);
+    }
+  });
+});
