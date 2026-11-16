@@ -4,3 +4,9 @@
 hq/
 docs/
 tests/
+# Not part of the app: App Store and Google Play pictures and videos, the
+# preview tools, and Claude's own working copies. Left in, the upload to
+# EAS was 1.1 GB (16 Nov 2026).
+store/
+tools/
+.claude/

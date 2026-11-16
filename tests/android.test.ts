@@ -118,3 +118,19 @@ suite('android · the Google Play listing', () => {
     }
   });
 });
+
+suite('android · permissions', () => {
+  test('no advertising ID and no microphone in the Android build', () => {
+    /*
+      The ad SDK adds com.google.android.gms.permission.AD_ID. Google Play's
+      Families policy forbids sending the advertising ID from apps whose
+      audience includes children, and Play Console refuses a bundle that
+      declares it once the target audience includes under-13s. The game is
+      5+, and its ads are already child-directed and non-personalised.
+    */
+    const app = JSON.parse(read('app.json'));
+    const blocked: string[] = app.expo.android.blockedPermissions ?? [];
+    assert(blocked.includes('com.google.android.gms.permission.AD_ID'), 'the advertising ID permission is not blocked');
+    assert(blocked.includes('android.permission.RECORD_AUDIO'), 'the microphone permission is not blocked');
+  });
+});
