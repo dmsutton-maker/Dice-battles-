@@ -140,6 +140,17 @@ suite('android · permissions', () => {
     const blocked: string[] = app.expo.android.blockedPermissions ?? [];
     assert(blocked.includes('com.google.android.gms.permission.AD_ID'), 'the advertising ID permission is not blocked');
     assert(blocked.includes('android.permission.RECORD_AUDIO'), 'the microphone permission is not blocked');
+    // Android's Privacy Sandbox ad permissions, which the ads SDK 25 brings:
+    // the newer advertising ID, ad attribution and interest topics. None is
+    // for a children's game, and the ads are non-personalised anyway.
+    for (const sandbox of ['AD_ID', 'ATTRIBUTION', 'TOPICS']) {
+      assert(blocked.includes(`android.permission.ACCESS_ADSERVICES_${sandbox}`), `ACCESS_ADSERVICES_${sandbox} is not blocked`);
+    }
+    // Unused, and each one a question on Google's forms: drawing over other
+    // apps, shared storage, fingerprint.
+    for (const unused of ['SYSTEM_ALERT_WINDOW', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'USE_BIOMETRIC', 'USE_FINGERPRINT']) {
+      assert(blocked.includes(`android.permission.${unused}`), `${unused} is not blocked`);
+    }
   });
 });
 
