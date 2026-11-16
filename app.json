@@ -134,7 +134,15 @@
       ],
       "expo-secure-store",
       "expo-iap",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.2.20"
+          }
+        }
+      ]
     ]
   }
 }

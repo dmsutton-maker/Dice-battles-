@@ -134,3 +134,22 @@ suite('android · permissions', () => {
     assert(blocked.includes('android.permission.RECORD_AUDIO'), 'the microphone permission is not blocked');
   });
 });
+
+suite('android · the build', () => {
+  test('Kotlin 2.2.20, so Gradle can read Google\'s ads SDK', () => {
+    /*
+      The first Play build failed on 16 Nov 2026: react-native-google-mobile-ads
+      16.5 pulls play-services-ads 25.4, compiled with Kotlin 2.3, and Expo
+      SDK 54 builds with Kotlin 2.1, which reads metadata only one version
+      ahead. 2.2.20 reads 2.3 and is the newest Kotlin in Expo 54's KSP table.
+      Android only; iOS is untouched.
+    */
+    const app = JSON.parse(read('app.json'));
+    const entry = (app.expo.plugins as unknown[]).find(
+      (p) => Array.isArray(p) && p[0] === 'expo-build-properties',
+    ) as [string, { android?: { kotlinVersion?: string }; ios?: unknown }] | undefined;
+    assert(entry !== undefined, 'expo-build-properties is not configured');
+    assertEqual(entry![1].android?.kotlinVersion, '2.2.20', 'the Android Kotlin version');
+    assertEqual(entry![1].ios, undefined, 'the iOS build settings were changed too');
+  });
+});
