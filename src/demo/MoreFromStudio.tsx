@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { playClick } from '../audio/sounds';
+import { isAndroid } from '../game/platform';
 import {
   grownUpQuestion,
   isGrownUpAnswer,
@@ -29,6 +30,9 @@ export function MoreFromStudio({
   const [question, setQuestion] = useState<GrownUpQuestion | null>(null);
   const [typed, setTyped] = useState('');
   const [wrong, setWrong] = useState(false);
+
+  // Vector Faces is an Apple Watch app: nothing to offer an Android phone.
+  if (isAndroid()) return null;
 
   const close = () => {
     setQuestion(null);

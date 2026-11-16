@@ -219,7 +219,7 @@ import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
 import { askToBeTold, pushState, refreshToken, type PushState } from '../game/push';
-import { REVIEW_URL } from '../game/review';
+import { reviewUrlFor } from '../game/review';
 import { maybeAskForReview } from '../game/askForReview';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
@@ -4673,7 +4673,7 @@ export function DiceDemoScreen() {
               accessibilityRole="link"
               onPress={() => {
                 playClick();
-                void Linking.openURL(REVIEW_URL).catch(() => {});
+                void Linking.openURL(reviewUrlFor(Platform.OS)).catch(() => {});
               }}
             >
               <View style={styles.toggleText}>

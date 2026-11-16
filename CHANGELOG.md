@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.179.0 — 2026-11-16 · requested by David
+
+David, 16 Nov 2026, once Google Play was verified: "lets get the android
+app going". The game had only ever been played on iPhone; this makes the
+JavaScript ready for the first Google Play build. JS only, runtime 4.0.0,
+and nothing changes on iPhone. No news post.
+
+### Changed (Android only)
+- **Adverts**: Android gets its own interstitial unit
+  (`ANDROID_INTERSTITIAL_AD_UNIT_ID`, empty until the Android app exists in
+  AdMob). Until then Android shows no adverts at all, never Google's test
+  ones in front of real players. The child-directed, non-personalised,
+  G-rated request flags are unchanged.
+- **Rate Dice Battles** opens the game's Google Play page on Android
+  (`reviewUrlFor`).
+- **The Gold Pass is consumed on Android** after it is granted. Google will
+  not sell a one-time product again while it is still owned, and the pass
+  is bought afresh each season. On iPhone it stays a non-renewing
+  subscription, as before.
+- The Shop's "Nothing to put back" says "This Google account" on Android.
+- **Hidden on Android**: "Tell me about updates" (needs Firebase, not yet
+  set up) and "More from Paper Ship Studio" (Vector Faces is an Apple Watch
+  app). Game Center, iCloud and the keychain were already iPhone-only.
+- `src/game/platform.ts` (which phone this is, with a test seam);
+  `tests/android.test.ts`.
+
 ## v1.178.0 — 2026-11-13 · requested by David
 
 David, 13 Nov 2026, in the Vector Faces chat and then here: "build the

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isAndroid } from './platform';
 import { adsRemoved } from './purchases';
 import { loadAdSdk } from './adSdk';
 import { gamesUntilAd, shouldShowAd } from './adRules';
@@ -119,6 +120,21 @@ interface LoadedInterstitial {
 export const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-5310885665976703/5594525845';
 
 /**
+ * The Android interstitial, from the Android app in the same AdMob account.
+ *
+ * AdMob issues ad units per app, and an iOS unit asked for from an Android
+ * app is refused, so Android needs its own. Empty until David creates the
+ * Android app in AdMob: until then Android shows NO adverts at all, never
+ * Google's test ones in front of real players (see preload).
+ */
+export const ANDROID_INTERSTITIAL_AD_UNIT_ID = '';
+
+/** This phone's unit: Android's own on Android, the iOS one everywhere else. */
+function unitForThisPhone(): string {
+  return isAndroid() ? ANDROID_INTERSTITIAL_AD_UNIT_ID : INTERSTITIAL_AD_UNIT_ID;
+}
+
+/**
  * How long the game will wait for an ad's CLOSED event before carrying
  * on regardless. Long enough for any real interstitial, short enough
  * that a dropped event is a pause rather than a hang.
@@ -127,8 +143,8 @@ const AD_CLOSE_TIMEOUT_MS = 90_000;
 
 /** True once a real unit is configured — the launch checklist reads this. */
 export function hasRealAdUnit(): boolean {
-  return INTERSTITIAL_AD_UNIT_ID.startsWith('ca-app-pub-')
-    && INTERSTITIAL_AD_UNIT_ID.includes('/');
+  const id = unitForThisPhone();
+  return id.startsWith('ca-app-pub-') && id.includes('/');
 }
 
 /**
@@ -383,9 +399,12 @@ function preload(): void {
   if (adsRemoved()) return;
   const mod = moduleOrNull();
   if (!mod || !ready || interstitial) return;
+  // Android before its own unit exists: no adverts at all. A test ad in
+  // front of a real player earns nothing and looks broken.
+  if (isAndroid() && !hasRealAdUnit() && !usingTestAds()) return;
   try {
     const unitId = hasRealAdUnit() && !usingTestAds()
-      ? INTERSTITIAL_AD_UNIT_ID
+      ? unitForThisPhone()
       : mod.TestIds.INTERSTITIAL;
     const ad = mod.InterstitialAd.createForAdRequest(unitId, {
       // Belt and braces with tagForChildDirectedTreatment above: this

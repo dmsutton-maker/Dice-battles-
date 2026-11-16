@@ -251,7 +251,7 @@ suite('submission · the ad configuration is per-platform', () => {
     assertEqual(APP_STORE_ID, '6802287913', 'the App Store id is not this app\'s (App Store Connect app 6802287913)');
     assertEqual(REVIEW_URL, 'https://apps.apple.com/app/id6802287913?action=write-review', 'the review link is wrong');
     const screen = readFileSync(join(root, 'src', 'demo', 'DiceDemoScreen.tsx'), 'utf8');
-    assert(/Linking\.openURL\(REVIEW_URL\)/.test(screen), 'the Settings row does not open REVIEW_URL');
+    assert(/Linking\.openURL\(reviewUrlFor\(Platform\.OS\)\)/.test(screen), 'the Settings row does not open this phone\'s store');
     // Guideline 5.6.1: no home-made review prompt. The only allowed in-app
     // prompt is Apple's own, which needs expo-store-review and a new build.
     assert(!/Rate us!|Enjoying the game\?/.test(screen), 'a home-made review pop-up has appeared');
