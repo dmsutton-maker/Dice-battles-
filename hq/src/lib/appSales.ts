@@ -14,16 +14,22 @@ import { gunzipSync } from 'node:zlib';
  * A key with only the "Sales" role is enough: this file only ever reads sales reports.
  */
 
-/** The studio's apps, by App Store id. Other apps on the same Apple account are left out. */
+/**
+ * The apps whose sales are copied, by App Store id. Other apps on the same Apple account are left
+ * out. LeaseDash CRM is not a Paper Ship Studio app, but it is on the same Apple account and David
+ * asked (17 Nov 2026) to see its downloads on the same dashboard.
+ */
 export const STUDIO_APPS: Record<string, string> = {
   '6832990414': 'Vector Faces',
   '6802287913': 'Dice Battles: Color Rush',
+  '6829804688': 'LeaseDash CRM',
 };
 
 /** Each app's SKU, which is how Apple's report names the app an in-app purchase belongs to. */
 const APP_BY_SKU: Record<string, string> = {
   vectorfaces: '6832990414',
   DICEBATTLES001: '6802287913',
+  'leasedash-ios': '6829804688',
 };
 
 export type SaleKind =

@@ -28,6 +28,7 @@ export const SEARCH_WORDS: Record<string, string[]> = {
     'retro watch face',
   ],
   '6802287913': ['dice battles', 'dice game', 'family dice game'],
+  '6829804688': ['leasedash', 'lease crm'],
 };
 
 /** The store whose charts and searches are read. */

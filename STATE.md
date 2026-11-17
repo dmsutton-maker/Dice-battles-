@@ -505,6 +505,25 @@ one is added; it does not need a new build.
   searches, not in either top 100. CRON_SECRET is a Sensitive variable in Vercel (`env pull` gives
   a placeholder), so a run by hand is `npx vercel crons run /api/cron/app-sales --scope suttonsteam`
   from `hq/`. `changes` row ae62c118 added.
+  Then (17 Nov, about 19:30 UTC, David: "can the paper ship studio artifact also track google play
+  and also track downloads for lease dash ... and for dice battles i want to see income from in app
+  purchases as well"): LeaseDash CRM (App Store id 6829804688, SKU leasedash-ios, same Apple
+  account) is in `STUDIO_APPS`, so its App Store downloads are copied too (4 since 7 Nov), and
+  `/api/cron/app-sales` now reads 14 days by default (was 7) so a newly added app fills in without
+  a run by hand. Google Play is read by a new daily job, `/api/cron/play-reports` (vercel.json,
+  14:43 UTC), into `play_installs` (one row per app per day, Google's "Daily User Installs" as
+  downloads), `play_sales` (one row per order line of the monthly estimated sales report, buyer's
+  currency, `est_proceeds` = price before tax less Google's 15%) and `play_report_syncs`; migration
+  `20261117_play_reports.sql`, RLS on with no policies. It signs in with NO key: Vercel's OIDC
+  token (`x-vercel-oidc-token`; iss https://oidc.vercel.com/suttonsteam, aud
+  https://vercel.com/suttonsteam, sub owner:suttonsteam:project:dice-battles-hq:environment:production)
+  is exchanged at Google STS through a Workload Identity provider for the read-only service account
+  that Play Console lets read the account's reports bucket. Vercel holds PLAY_REPORTS_BUCKET,
+  PLAY_REPORTS_WIF_PROVIDER and PLAY_REPORTS_ACCOUNT once David's Google Cloud and Play Console
+  steps are done; until then each run records "not set up" (with the identity above) and the
+  dashboard says Google Play is not connected yet. David's sales dashboard has an app picker with
+  LeaseDash, a store picker, Downloads and In-app purchase income tiles, and a Downloads/Paid
+  sales switch on the daily chart. Tests: `tests/playReports.test.ts`.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`

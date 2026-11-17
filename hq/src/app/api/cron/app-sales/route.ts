@@ -7,8 +7,9 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 /**
  * Once a day (vercel.json), copies the studio's App Store sales from Apple into `app_sales`.
  *
- * It re-reads the last week every time, because Apple sometimes corrects a day after first
- * publishing it, and each day is replaced whole (`replace_app_sales_day`), so nothing is ever
+ * It re-reads the last two weeks every time, because Apple sometimes corrects a day after first
+ * publishing it (a week would do for that; two weeks also fills in an app newly added to
+ * STUDIO_APPS without a run by hand), and each day is replaced whole (`replace_app_sales_day`), so nothing is ever
  * counted twice. A day Apple has not published yet is left alone. Every run is written to
  * `app_sales_syncs`, which /admin/sales reads to say how fresh the numbers are.
  *
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not allowed.' }, { status: 401 });
   }
   const supabase = supabaseAdmin();
-  const asked = Number(request.nextUrl.searchParams.get('days') ?? '7');
+  const asked = Number(request.nextUrl.searchParams.get('days') ?? '14');
   const count = Math.min(90, Math.max(1, Number.isFinite(asked) ? Math.trunc(asked) : 7));
   const source = request.headers.get('user-agent')?.includes('vercel-cron') ? 'cron' : 'manual';
 
