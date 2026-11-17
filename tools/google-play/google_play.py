@@ -1,0 +1,243 @@
+"""
+Google Play for Dice Battles: Color Rush, from GitHub Actions.
+
+David, 17 Nov 2026: "you have already done all this for the other lease dash
+app". LeaseDash keeps its Play key as a GitHub secret and runs a script like
+this one on GitHub, so Dice Battles does the same. The key lives ONLY in the
+repository secret PLAY_SERVICE_ACCOUNT_JSON (this repo is public: never in a
+file, a log or a commit). It belongs to
+claude-play-publisher@paper-ship-studio-play.iam.gserviceaccount.com.
+
+Run by .github/workflows/google-play.yml. Actions:
+
+  check     the listing files are all there and the right sizes; asks Google
+            nothing, needs no key.
+  preview   opens an edit, uploads everything, asks Google to validate, then
+            THROWS THE EDIT AWAY. Nothing is saved.
+  listing   the same, and saves it (title, descriptions, contact, icon,
+            feature graphic, phone and tablet screenshots).
+  products  creates or updates the in-app purchases (PRODUCTS below), active,
+            US price with Google converting the rest.
+  release   puts --version-code on --track (internal / production) with the
+            release notes, and saves. A production release goes to Google's
+            review; with managed publishing off it goes live when approved.
+
+Google keeps some things to its website, so this never touches them: content
+rating, target audience, Data safety, the other App content declarations,
+countries, and the very first upload of a build.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import struct
+import sys
+from pathlib import Path
+
+PACKAGE = "com.dmsutton.dicebattles"
+ROOT = Path(__file__).resolve().parents[2]
+STORE = ROOT / "store"
+PLAY = STORE / "google-play"
+LANG = "en-US"
+API = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PACKAGE}"
+UPLOAD = f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/{PACKAGE}"
+
+TITLE = "Dice Battles: Color Rush"
+CONTACT_EMAIL = "david@papershipstudio.com"
+CONTACT_WEBSITE = "https://papershipstudio.com"
+
+# The same ids and US prices as the App Store (src/game/products.ts).
+# dino_valley is hidden from the Shop and is not sold on Google Play.
+PRODUCTS = [
+    ("remove_ads", "No more ads", "No more ads, ever.", "3.99"),
+    ("coins_pouch", "Pouch of coins", "500 coins to spend in the Shop.", "0.99"),
+    ("coins_chest", "Chest of coins", "3,000 coins to spend in the Shop.", "4.99"),
+    ("coins_vault", "Vault of coins", "7,000 coins to spend in the Shop.", "9.99"),
+    ("starter_pack", "Starter pack", "1,500 coins and the Supporter dice.", "4.99"),
+    ("neon_dice", "Neon dice", "Glowing dice with a light trail.", "0.99"),
+    ("gold_pass", "Gold Pass", "This season's Gold row of prizes on the season track.", "2.99"),
+]
+
+
+def png_size(path: Path) -> tuple[int, int]:
+    with path.open("rb") as f:
+        head = f.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SystemExit(f"{path} is not a PNG")
+    return struct.unpack(">II", head[16:24])
+
+
+def images() -> dict[str, list[Path]]:
+    return {
+        "icon": [PLAY / "icon-512.png"],
+        "featureGraphic": [PLAY / "feature-1024x500.png"],
+        "phoneScreenshots": sorted((PLAY / "phone").glob("0*.png")),
+        "sevenInchScreenshots": sorted((STORE / "screenshots" / "ipad").glob("0*.png")),
+        "tenInchScreenshots": sorted((STORE / "screenshots" / "ipad").glob("0*.png")),
+    }
+
+
+def texts() -> dict[str, str]:
+    return {
+        "title": TITLE,
+        "shortDescription": (PLAY / "short-description.txt").read_text(encoding="utf-8").strip(),
+        "fullDescription": (STORE / "description.txt").read_text(encoding="utf-8").strip(),
+    }
+
+
+def check() -> None:
+    t = texts()
+    problems = []
+    if len(t["title"]) > 30:
+        problems.append("title over 30 characters")
+    if len(t["shortDescription"]) > 80:
+        problems.append("short description over 80 characters")
+    if len(t["fullDescription"]) > 4000:
+        problems.append("full description over 4,000 characters")
+    for kind, paths in images().items():
+        if not paths:
+            problems.append(f"{kind}: no pictures")
+        for p in paths:
+            w, h = png_size(p)
+            if kind == "icon" and (w, h) != (512, 512):
+                problems.append(f"{p.name}: icon must be 512x512")
+            elif kind == "featureGraphic" and (w, h) != (1024, 500):
+                problems.append(f"{p.name}: feature graphic must be 1024x500")
+            elif kind.endswith("Screenshots") and (min(w, h) < 320 or max(w, h) > 3840 or max(w, h) > 2 * min(w, h)):
+                problems.append(f"{p.name}: {w}x{h} is not a size Play accepts")
+        print(f"{kind}: {len(paths)} picture(s)")
+    print(f"title: {len(t['title'])} chars, short: {len(t['shortDescription'])}, full: {len(t['fullDescription'])}")
+    if problems:
+        raise SystemExit("PROBLEMS:\n  " + "\n  ".join(problems))
+    print("Listing files are complete.")
+
+
+def session():
+    from google.auth.transport.requests import AuthorizedSession
+    from google.oauth2 import service_account
+
+    raw = os.environ.get("PLAY_SERVICE_ACCOUNT_JSON", "").strip()
+    if not raw:
+        raise SystemExit("PLAY_SERVICE_ACCOUNT_JSON is not set (the GitHub secret is missing).")
+    creds = service_account.Credentials.from_service_account_info(
+        json.loads(raw), scopes=["https://www.googleapis.com/auth/androidpublisher"]
+    )
+    return AuthorizedSession(creds)
+
+
+def ok(r, what: str):
+    if r.status_code >= 300:
+        # Google's own error text, never the request (which carries no key anyway).
+        raise SystemExit(f"{what} failed: HTTP {r.status_code}: {r.text[:1500]}")
+    return r.json() if r.content else {}
+
+
+def push_listing(s, save: bool) -> None:
+    edit = ok(s.post(f"{API}/edits"), "open edit")["id"]
+    try:
+        t = texts()
+        ok(s.put(f"{API}/edits/{edit}/listings/{LANG}", json={"language": LANG, **t}), "listing text")
+        print("listing text: set")
+        ok(
+            s.patch(
+                f"{API}/edits/{edit}/details",
+                json={"defaultLanguage": LANG, "contactEmail": CONTACT_EMAIL, "contactWebsite": CONTACT_WEBSITE},
+            ),
+            "contact details",
+        )
+        print(f"contact: {CONTACT_EMAIL}, {CONTACT_WEBSITE}")
+        for kind, paths in images().items():
+            ok(s.delete(f"{API}/edits/{edit}/listings/{LANG}/{kind}"), f"clear {kind}")
+            for p in paths:
+                ok(
+                    s.post(
+                        f"{UPLOAD}/edits/{edit}/listings/{LANG}/{kind}?uploadType=media",
+                        data=p.read_bytes(),
+                        headers={"Content-Type": "image/png"},
+                    ),
+                    f"upload {kind} {p.name}",
+                )
+            print(f"{kind}: {len(paths)} picture(s) uploaded")
+        ok(s.post(f"{API}/edits/{edit}:validate"), "validate")
+        print("Google validated the edit.")
+        if save:
+            ok(s.post(f"{API}/edits/{edit}:commit"), "save")
+            print("SAVED.")
+            edit = None
+        else:
+            print("Preview only: the edit is thrown away; nothing was saved.")
+    finally:
+        if edit:
+            s.delete(f"{API}/edits/{edit}")
+
+
+def push_products(s) -> None:
+    for sku, title, description, usd in PRODUCTS:
+        body = {
+            "packageName": PACKAGE,
+            "sku": sku,
+            "status": "active",
+            "purchaseType": "managedUser",
+            "defaultLanguage": LANG,
+            "defaultPrice": {"priceMicros": str(int(round(float(usd) * 1_000_000))), "currency": "USD"},
+            "listings": {LANG: {"title": title, "description": description}},
+        }
+        exists = s.get(f"{API}/inappproducts/{sku}").status_code == 200
+        if exists:
+            ok(s.put(f"{API}/inappproducts/{sku}?autoConvertMissingPrices=true", json=body), f"update {sku}")
+            print(f"{sku}: updated (${usd})")
+        else:
+            ok(s.post(f"{API}/inappproducts?autoConvertMissingPrices=true", json=body), f"create {sku}")
+            print(f"{sku}: created (${usd})")
+
+
+def push_release(s, track: str, version_code: int, notes: str) -> None:
+    if track not in ("internal", "alpha", "beta", "production"):
+        raise SystemExit(f"unknown track {track}")
+    edit = ok(s.post(f"{API}/edits"), "open edit")["id"]
+    try:
+        body = {
+            "track": track,
+            "releases": [
+                {
+                    "versionCodes": [str(version_code)],
+                    "status": "completed",
+                    "releaseNotes": [{"language": LANG, "text": notes}],
+                }
+            ],
+        }
+        ok(s.put(f"{API}/edits/{edit}/tracks/{track}", json=body), f"set {track}")
+        ok(s.post(f"{API}/edits/{edit}:validate"), "validate")
+        ok(s.post(f"{API}/edits/{edit}:commit"), "save")
+        print(f"SAVED: build {version_code} on {track}.")
+        edit = None
+    finally:
+        if edit:
+            s.delete(f"{API}/edits/{edit}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("action", choices=["check", "preview", "listing", "products", "release"])
+    ap.add_argument("--track", default="internal")
+    ap.add_argument("--version-code", type=int, default=0)
+    ap.add_argument("--notes", default="")
+    a = ap.parse_args()
+    check()
+    if a.action == "check":
+        return
+    s = session()
+    if a.action in ("preview", "listing"):
+        push_listing(s, save=a.action == "listing")
+    elif a.action == "products":
+        push_products(s)
+    elif a.action == "release":
+        if not a.version_code or not a.notes.strip():
+            raise SystemExit("release needs --version-code and --notes")
+        push_release(s, a.track, a.version_code, a.notes.strip())
+
+
+if __name__ == "__main__":
+    sys.exit(main())
