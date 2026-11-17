@@ -1,0 +1,62 @@
+# Google Play for Dice Battles: Color Rush (tools/google-play/google_play.py).
+#
+# Run by hand only (Actions > Google Play > Run workflow), or by Claude with
+# the GitHub API. The Play key is the repository secret
+# PLAY_SERVICE_ACCOUNT_JSON; this repo is public, so it is never printed,
+# written to a file or committed. Pull requests from forks never see it.
+name: Google Play
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'check, preview (nothing saved), listing, products, or release'
+        required: true
+        default: preview
+        type: choice
+        options: [check, preview, listing, products, release]
+      track:
+        description: 'For release: internal or production'
+        required: false
+        default: internal
+        type: choice
+        options: [internal, production]
+      version_code:
+        description: 'For release: the build number (versionCode), e.g. 9'
+        required: false
+        default: ''
+      notes:
+        description: 'For release: what is new, in plain words'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: google-play
+  cancel-in-progress: false
+
+jobs:
+  google:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the libraries
+        run: pip install --quiet google-auth==2.38.0 requests==2.32.3
+      - name: Talk to Google Play
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          ACTION: ${{ inputs.action }}
+          TRACK: ${{ inputs.track }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          if [ "$ACTION" = "release" ]; then
+            python tools/google-play/google_play.py release --track "$TRACK" --version-code "$VERSION_CODE" --notes "$NOTES"
+          else
+            python tools/google-play/google_play.py "$ACTION"
+          fi
