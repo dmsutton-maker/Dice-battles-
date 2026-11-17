@@ -8,6 +8,7 @@ import { cardLines, ShareResult } from '../share/shareCard';
 import { shareCardFile } from '../share/shareWin';
 import { discardShareFiles } from '../share/tempFiles';
 import { ShareSheetState, ShareWinSheet } from './ShareWinSheet';
+import { MoreFromStudio } from './MoreFromStudio';
 import { StatusBar } from 'expo-status-bar';
 import { paidSkinWhere } from '../game/products';
 import { withRotation } from '../game/cupRotation';
@@ -218,7 +219,7 @@ import { ItemPreviewBar } from './ItemPreviewBar';
 import { TutorialScreen } from './TutorialScreen';
 import { MODE_ICONS } from '../ui/modeIcons';
 import { askToBeTold, pushState, refreshToken, type PushState } from '../game/push';
-import { REVIEW_URL } from '../game/review';
+import { reviewUrlFor } from '../game/review';
 import { maybeAskForReview } from '../game/askForReview';
 import { ShapesIcon } from '../ui/Icon';
 import { OpponentDots } from './OpponentDots';
@@ -1248,8 +1249,19 @@ export function DiceDemoScreen() {
   const settingsScrollRef = useRef<ScrollView | null>(null);
   const codeRowY = useRef(0);
   const codeFocused = useRef(false);
+  // The grown-up check under "More from Paper Ship Studio" has an answer
+  // box too, higher up the page; it gets the same treatment.
+  const studioRowY = useRef(0);
+  const studioFocused = useRef(false);
 
   const revealCodeBox = useCallback(() => {
+    if (studioFocused.current) {
+      settingsScrollRef.current?.scrollTo({
+        y: Math.max(0, studioRowY.current - 24),
+        animated: true,
+      });
+      return;
+    }
     if (!codeFocused.current) return;
     // A little above the box, so it does not sit flush against the
     // keyboard with its label cut off.
@@ -4661,7 +4673,7 @@ export function DiceDemoScreen() {
               accessibilityRole="link"
               onPress={() => {
                 playClick();
-                void Linking.openURL(REVIEW_URL).catch(() => {});
+                void Linking.openURL(reviewUrlFor(Platform.OS)).catch(() => {});
               }}
             >
               <View style={styles.toggleText}>
@@ -4673,6 +4685,28 @@ export function DiceDemoScreen() {
                 </Text>
               </View>
             </Pressable>
+            {/*
+              MORE FROM PAPER SHIP STUDIO (David, 13 Nov 2026: "build the
+              Vector Faces link"). One quiet row, never an advert: a
+              grown-up check comes before the App Store opens. The rules
+              are in src/game/moreFromStudio.ts.
+            */}
+            <View style={styles.settingsDividerLine} />
+            <View
+              onLayout={(e) => {
+                studioRowY.current = e.nativeEvent.layout.y;
+              }}
+            >
+              <MoreFromStudio
+                onInputFocus={() => {
+                  studioFocused.current = true;
+                  revealCodeBox();
+                }}
+                onInputBlur={() => {
+                  studioFocused.current = false;
+                }}
+              />
+            </View>
             <View style={styles.settingsDividerLine} />
             <Text style={styles.settingsStats}>
               {trophies} trophies{'\n'}Easy ×{wins.easy}   Medium ×

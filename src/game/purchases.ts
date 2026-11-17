@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isAndroid } from './platform';
 import { grantCoins } from './currency';
 import { hasUnlockAll, markCheated } from './progress';
 import { loadStoreKit } from './storeKit';
@@ -585,7 +586,12 @@ async function settle(mod: Record<string, unknown>, purchase: StorePurchase): Pr
       | ((args: { purchase: StorePurchase; isConsumable: boolean }) => Promise<unknown>)
       | undefined;
     if (finish) {
-      await withTimeout(finish({ purchase, isConsumable: product.kind === 'consumable' }), null);
+      // On Android the Gold Pass is CONSUMED too: Google will not sell a
+      // one-time product again while it is still owned, and the pass is
+      // bought afresh each season. Apple sells it as a non-renewing
+      // subscription, which is bought again without consuming.
+      const consume = product.kind === 'consumable' || (product.kind === 'season' && isAndroid());
+      await withTimeout(finish({ purchase, isConsumable: consume }), null);
     }
 
     if (waiting?.productId === product.id) answer({ ok: true, product });

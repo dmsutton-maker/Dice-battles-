@@ -25,6 +25,17 @@ export const APP_STORE_ID = '6802287913';
 
 export const REVIEW_URL = `https://apps.apple.com/app/id${APP_STORE_ID}?action=write-review`;
 
+/** The Android package, the same id as the iOS bundle. */
+export const PLAY_PACKAGE = 'com.dmsutton.dicebattles';
+
+/** Google Play's page for the game: on Android, "Rate" opens this. */
+export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${PLAY_PACKAGE}`;
+
+/** Where "Rate Dice Battles" goes on this phone. */
+export function reviewUrlFor(os: string | null): string {
+  return os === 'android' ? PLAY_STORE_URL : REVIEW_URL;
+}
+
 /** Not before somebody has won a few games: a first-game prompt is a nag. */
 export const WINS_BEFORE_FIRST_ASK = 3;
 
