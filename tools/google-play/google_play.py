@@ -16,8 +16,9 @@ Run by .github/workflows/google-play.yml. Actions:
             Nothing is saved; it proves the key and the pictures work.
   listing   the same, and saves it (title, descriptions, contact, icon,
             feature graphic, phone and tablet screenshots).
-  products  creates or updates the in-app purchases (PRODUCTS below), active,
-            US price with Google converting the rest.
+  products  creates or updates the in-app purchases (PRODUCTS below) with
+            Google's one-time products API, active, US price with Google
+            converting the rest.
   release   puts --version-code on --track (internal / production) with the
             release notes, and saves. A production release goes to Google's
             review; with managed publishing off it goes live when approved.
@@ -199,24 +200,81 @@ def push_listing(s, save: bool) -> None:
             s.delete(f"{API}/edits/{edit}")
 
 
+def money(usd: str) -> dict:
+    units, _, cents = usd.partition(".")
+    return {"currencyCode": "USD", "units": units, "nanos": int((cents + "00")[:2]) * 10_000_000}
+
+
+REGIONS_VERSION = "2022/02"
+
+
 def push_products(s) -> None:
+    """Create or update the one-time products with Google's current API.
+
+    17 Nov 2026: the old inappproducts API answered "Please migrate to the
+    new publishing API", so this uses monetization.onetimeproducts. Each
+    product gets one purchase option, "buy", legacy-compatible so the
+    billing library in the game sees it as an ordinary product; its price
+    in every country is Google's own conversion of the US price, the same
+    as "let Google set other countries" in Play Console.
+    """
     for sku, title, description, usd in PRODUCTS:
+        converted = ok(
+            s.post(f"{API}/pricing:convertRegionPrices", json={"price": money(usd)}),
+            f"convert {sku} prices",
+        )
+        regional = [
+            {"regionCode": code, "price": entry["price"], "availability": "AVAILABLE"}
+            for code, entry in sorted((converted.get("convertedRegionPrices") or {}).items())
+        ]
+        other = converted.get("convertedOtherRegionsPrice") or {}
+        option = {
+            "purchaseOptionId": "buy",
+            "buyOption": {"legacyCompatible": True, "multiQuantityEnabled": False},
+            "regionalPricingAndAvailabilityConfigs": regional,
+        }
+        if other.get("usdPrice") and other.get("eurPrice"):
+            option["newRegionsConfig"] = {
+                "usdPrice": other["usdPrice"],
+                "eurPrice": other["eurPrice"],
+                "availability": "AVAILABLE",
+            }
         body = {
             "packageName": PACKAGE,
-            "sku": sku,
-            "status": "active",
-            "purchaseType": "managedUser",
-            "defaultLanguage": LANG,
-            "defaultPrice": {"priceMicros": str(int(round(float(usd) * 1_000_000))), "currency": "USD"},
-            "listings": {LANG: {"title": title, "description": description}},
+            "productId": sku,
+            "listings": [{"languageCode": LANG, "title": title, "description": description}],
+            "purchaseOptions": [option],
         }
-        exists = s.get(f"{API}/inappproducts/{sku}").status_code == 200
-        if exists:
-            ok(s.put(f"{API}/inappproducts/{sku}?autoConvertMissingPrices=true", json=body), f"update {sku}")
-            print(f"{sku}: updated (${usd})")
-        else:
-            ok(s.post(f"{API}/inappproducts?autoConvertMissingPrices=true", json=body), f"create {sku}")
-            print(f"{sku}: created (${usd})")
+        ok(
+            s.patch(
+                f"{API}/onetimeproducts/{sku}",
+                params={
+                    "updateMask": "listings,purchaseOptions",
+                    "allowMissing": "true",
+                    "regionsVersion.version": REGIONS_VERSION,
+                },
+                json=body,
+            ),
+            f"save {sku}",
+        )
+        ok(
+            s.post(
+                f"{API}/onetimeproducts/{sku}/purchaseOptions:batchUpdateStates",
+                json={
+                    "requests": [
+                        {
+                            "activatePurchaseOptionRequest": {
+                                "packageName": PACKAGE,
+                                "productId": sku,
+                                "purchaseOptionId": "buy",
+                            }
+                        }
+                    ]
+                },
+            ),
+            f"activate {sku}",
+        )
+        print(f"{sku}: saved and active, ${usd} in the US, {len(regional)} countries priced")
 
 
 def push_release(s, track: str, version_code: int, notes: str) -> None:
