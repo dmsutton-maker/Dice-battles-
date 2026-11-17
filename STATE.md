@@ -369,6 +369,34 @@ one is added; it does not need a new build.
 
 ## Known-open, as of the last update
 
+- **17 Nov 2026: Dice Battles is in Google Play review** (package
+  com.dmsutton.dicebattles, Play app id 4974007261362660244, Paper Ship
+  Studio LLC organization account, D-U-N-S 150077227). Production release
+  versionCode 11 (1.60.0, runtime 4.0.0), full rollout, 178 countries plus
+  rest of world; listing, Families target audience (all ages), content
+  rating (Everyone / PEGI 3; Brazil 14+ for purchases), Data safety, trader
+  status with papershipstudio.com/terms. Managed publishing could not be
+  switched on before the first submission (Google blocks it on a draft app);
+  with it off, the app goes live when Google approves. Payments profile
+  linked (PAPER SHIP STUDIO LLC, 4852-5225-8597); David still has to add the
+  street address, bank account and W-9 in Google Payments before payouts.
+  **The seven one-time products are created and active by API**
+  (remove_ads 3.99, coins_pouch 0.99, coins_chest 4.99, coins_vault 9.99,
+  starter_pack 4.99, neon_dice 0.99, gold_pass 2.99; 174 countries priced by
+  Google's conversion; regions version 2026/01). How the Play API works here:
+  service account claude-play-publisher@paper-ship-studio-play (account-level
+  permissions, no Admin); its key is (a) on Expo for `eas submit -p android`
+  (eas.json submit profile, Internal testing) and (b) the GitHub secret
+  PLAY_SERVICE_ACCOUNT_JSON for `.github/workflows/google-play.yml`
+  (tools/google-play/google_play.py: check, preview, listing, products,
+  release), the same arrangement as LeaseDash. Saving listing changes by API
+  was refused (403) while the app had never been submitted, so the first
+  listing went in through Play Console; later listing updates go through the
+  script. Builds 9 and 11 were uploaded to Internal testing; build 11 blocks
+  AD_ID, the Privacy Sandbox ad permissions, the microphone,
+  FOREGROUND_SERVICE_MEDIA_PLAYBACK, overlay, storage and biometrics (checked
+  in the .aab manifest).
+
 - **9 Nov 2026 01:39 UTC: SUBMITTED FOR REVIEW.** Review submission
   14d87fe4 went from READY_FOR_REVIEW to WAITING_FOR_REVIEW with nine items:
   version 1.60.0 (build 20) d675bc4c, seven in-app purchases (coins ×3,
