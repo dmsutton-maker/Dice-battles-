@@ -490,6 +490,21 @@ one is added; it does not need a new build.
   Automation page lists the job. Filled in from 1 Nov 2026; a run by hand on the live site read 14
   days. David's live sales dashboard (a Claude Data artifact) reads the same tables through his
   Supabase connector.
+  Then (17 Nov, about 12:20 UTC) App Store rankings are kept too, by the same daily job (no new
+  cron): `app_rankings` (migration `20261117_app_rankings.sql`, RLS on with no policies; key
+  `day, app_apple_id, kind, name, country`; `kind` 'chart' or 'search', `name` 'Top Paid' /
+  'Top Free' / the search words, `rank` null when not in the list, `list_length` how long Apple's
+  list was), filled by `hq/src/lib/appRankings.ts` before the sales copy. Only apps Apple's
+  Lookup API finds on the US store are recorded (Dice Battles starts on its own at launch). Charts
+  are Apple's overall top 100 (rss.marketingtools.apple.com; the old per-category feed now
+  answers 403, so there is no Utilities chart); searches are the iTunes Search API, the search
+  words per app in `SEARCH_WORDS`. The chart feed sometimes answers 502 or hangs, so charts get
+  three tries and the lookup two. A failed read skips its row and is named at the end of the
+  `app_sales_syncs` message ("Rankings: 8 read ..."); it never makes a sales run fail. First
+  live run, 17 Nov: Vector Faces #1 for "vector faces", not in the top ~175 for the five watch-face
+  searches, not in either top 100. CRON_SECRET is a Sensitive variable in Vercel (`env pull` gives
+  a placeholder), so a run by hand is `npx vercel crons run /api/cron/app-sales --scope suttonsteam`
+  from `hq/`. `changes` row ae62c118 added.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
