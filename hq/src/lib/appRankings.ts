@@ -70,7 +70,7 @@ export interface RankingsResult {
 }
 
 /** Fetches JSON from Apple with a timeout. Throws a short plain reason on any failure. */
-async function getJson(url: string): Promise<unknown> {
+async function getJsonOnce(url: string): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(url, {
@@ -91,6 +91,26 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
+/**
+ * Like getJsonOnce, but a request that timed out, got no answer or met a server error is tried
+ * again, up to `tries` times in all: Apple's chart feed now and then answers 502 or hangs for 20
+ * seconds, and then answers at once when asked again. Only the lookup (2 tries) and the two charts
+ * (3) get more than one, and the charts run alongside the lookup and searches, so the worst case
+ * is about 25 seconds, well inside the route's minute. Each search gets one try.
+ */
+async function getJson(url: string, tries = 1): Promise<unknown> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await getJsonOnce(url);
+    } catch (err) {
+      const why = reason(err);
+      const worthAgain = why === 'timed out' || why === 'no answer' || /^HTTP 5/.test(why);
+      if (attempt >= tries || !worthAgain) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+}
+
 function reason(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -99,7 +119,7 @@ function reason(err: unknown): string {
 async function appsOnStore(): Promise<string[]> {
   const ids = Object.keys(STUDIO_APPS);
   const params = new URLSearchParams({ id: ids.join(','), country: RANKING_COUNTRY });
-  const body = (await getJson(`https://itunes.apple.com/lookup?${params}`)) as {
+  const body = (await getJson(`https://itunes.apple.com/lookup?${params}`, 2)) as {
     results?: { trackId?: number | string }[];
   };
   if (!Array.isArray(body?.results)) throw new Error('unexpected answer');
@@ -111,6 +131,7 @@ async function appsOnStore(): Promise<string[]> {
 async function chart(slug: string): Promise<string[]> {
   const body = (await getJson(
     `https://rss.marketingtools.apple.com/api/v2/${RANKING_COUNTRY}/apps/${slug}/100/apps.json`,
+    3,
   )) as { feed?: { results?: { id?: string | number }[] } };
   const results = body?.feed?.results;
   if (!Array.isArray(results)) throw new Error('unexpected answer');
@@ -159,12 +180,11 @@ export async function recordRankings(supabase: SupabaseClient, now = new Date())
   });
 
   try {
-    // The charts do not depend on the lookup, so ask for all three at once.
+    // The charts do not depend on the lookup, so they start now and are waited for after the
+    // searches: the slowest of the two paths, not their sum, is how long this takes.
     const chartNames = Object.keys(CHARTS);
-    const [lookup, ...charts] = await Promise.all([
-      settle(appsOnStore()),
-      ...chartNames.map((name) => settle(chart(CHARTS[name]))),
-    ]);
+    const chartsPending = Promise.all(chartNames.map((name) => settle(chart(CHARTS[name]))));
+    const lookup = await settle(appsOnStore());
     if (!lookup.ok) {
       problems.push(`the store lookup: ${lookup.why}`);
       return done([], [], `Rankings: could not ask Apple which apps are on the store (${lookup.why}).`);
@@ -183,6 +203,8 @@ export async function recordRankings(supabase: SupabaseClient, now = new Date())
     const searches = new Map(
       await Promise.all(allWords.map(async (w) => [w, await settle(search(w))] as const)),
     );
+
+    const charts = await chartsPending;
 
     const rows: RankingRow[] = [];
     const row = (id: string, kind: RankingRow['kind'], name: string, list: string[]): RankingRow => {
