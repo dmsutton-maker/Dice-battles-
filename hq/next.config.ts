@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
     The Apps page became the Games page on 23 Oct 2026 (David: "change
     the apps tab to say Games"). Old links to /apps land on it. Only the
     page itself: Dice Battles keeps /apps/dice-battles-color-rush, which
-    the game and the App Store listing link to.
+    the game and the App Store listing link to, and Vector Faces lives at
+    /apps/vector-faces beside it.
 
     The board lived at /hq until 18 Aug 2026 and old bookmarks still say
     so; they were landing on the 404 page. They go to /admin now, which

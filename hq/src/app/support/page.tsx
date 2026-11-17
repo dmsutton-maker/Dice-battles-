@@ -5,7 +5,8 @@ import { SitePage } from '@/components/site/SitePage';
 import { colors, fonts } from '@/components/site/tokens';
 import styles from '../site.module.css';
 import { ContactForm } from './ContactForm';
-import { faqList, getSiteContent, text } from '@/lib/content';
+import { faqList, getSiteContent, text, type QA } from '@/lib/content';
+import { VECTOR_FACES_FAQ } from '@/lib/vectorFaces';
 
 // Editable in the admin, with the copy below as the default.
 export const generateMetadata = pageMetadata('support', {
@@ -28,6 +29,41 @@ const DEFAULT_GAME_FAQS = [
     a: 'No. Every dice face is a color rather than a number, so nothing on the board needs reading.',
   },
 ];
+
+/** One app's corner of "FAQ by game": its icon and name, a few questions, and the way to the rest. */
+function AppFaq({ icon, name, faqs, href }: { icon: string; name: string; faqs: QA[]; href: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Image src={icon} alt={`${name} icon`} width={36} height={36} style={{ borderRadius: 9, objectFit: 'cover' }} />
+        <span style={{ font: `800 17px ${fonts.heading}`, color: colors.ink }}>{name}</span>
+      </div>
+      {faqs.map((item) => (
+        <details
+          key={item.q}
+          className={styles.details}
+          style={{ padding: '16px 20px', borderRadius: 14, background: colors.offWhite }}
+        >
+          <summary style={{ font: `700 14.5px ${fonts.body}`, color: colors.ink, cursor: 'pointer' }}>
+            {item.q}
+          </summary>
+          <p style={{ font: `600 13.5px/1.6 ${fonts.body}`, color: colors.secondary, margin: '10px 0 0' }}>
+            {item.a}
+          </p>
+        </details>
+      ))}
+      <Link
+        href={href}
+        className={styles.link}
+        // The vertical padding is a finger's worth of tap area on an
+        // 18px line (Apple asks for 44); it draws nothing.
+        style={{ font: `700 13px ${fonts.body}`, color: colors.cyanText, alignSelf: 'flex-start', padding: '13px 0', margin: '-13px 0' }}
+      >
+        Full FAQ on the app page &rarr;
+      </Link>
+    </div>
+  );
+}
 
 export default async function SupportPage() {
   const content = await getSiteContent();
@@ -75,41 +111,19 @@ export default async function SupportPage() {
             FAQ by game
           </h2>
           <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Image
-                  src="/images/dice-battles-icon.png"
-                  alt="Dice Battles: Color Rush icon"
-                  width={36}
-                  height={36}
-                  style={{ borderRadius: 9, objectFit: 'cover' }}
-                />
-                <span style={{ font: `800 17px ${fonts.heading}`, color: colors.ink }}>Dice Battles: Color Rush</span>
-              </div>
-              {gameFaqs.map((item) => (
-                <details
-                  key={item.q}
-                  className={styles.details}
-                  style={{ padding: '16px 20px', borderRadius: 14, background: colors.offWhite }}
-                >
-                  <summary style={{ font: `700 14.5px ${fonts.body}`, color: colors.ink, cursor: 'pointer' }}>
-                    {item.q}
-                  </summary>
-                  <p style={{ font: `600 13.5px/1.6 ${fonts.body}`, color: colors.secondary, margin: '10px 0 0' }}>
-                    {item.a}
-                  </p>
-                </details>
-              ))}
-              <Link
-                href="/apps/dice-battles-color-rush"
-                className={styles.link}
-                // The vertical padding is a finger's worth of tap area on an
-                // 18px line (Apple asks for 44); it draws nothing.
-                style={{ font: `700 13px ${fonts.body}`, color: colors.cyanText, alignSelf: 'flex-start', padding: '13px 0', margin: '-13px 0' }}
-              >
-                Full FAQ on the app page &rarr;
-              </Link>
-            </div>
+            <AppFaq
+              icon="/images/dice-battles-icon.png"
+              name="Dice Battles: Color Rush"
+              faqs={gameFaqs}
+              href="/apps/dice-battles-color-rush"
+            />
+            {/* Written in code with the rest of its page (lib/vectorFaces.ts), so the same list here too. */}
+            <AppFaq
+              icon="/images/vector-faces/icon.png"
+              name="Vector Faces"
+              faqs={VECTOR_FACES_FAQ.slice(0, 3)}
+              href="/apps/vector-faces"
+            />
           </div>
         </section>
 

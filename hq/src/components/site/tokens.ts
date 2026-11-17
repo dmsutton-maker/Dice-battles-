@@ -55,6 +55,15 @@ export const colors = {
 
 export const heroGradient = `linear-gradient(120deg, ${colors.cyan} 0%, ${colors.cyanGradientEnd} 100%)`;
 
+/*
+  Vector Faces' cards. The app is lines of amber light on black, and its
+  glowing icon goes flat on a light card, so its cards are this near-black
+  to dark amber. Text on it is white, or `yellow`: the plain brand yellow
+  is readable here, 10.28:1 at the lightest end of the gradient (#2a1a05),
+  where on white it would not be.
+*/
+export const vectorFacesGradient = 'linear-gradient(135deg, #0b0f14 0%, #2a1a05 100%)';
+
 export const fonts = {
   heading: 'var(--font-baloo), system-ui, sans-serif',
   body: 'var(--font-nunito), system-ui, sans-serif',

@@ -28,6 +28,12 @@ export default function ContentIndex() {
         Support page shows the first few of those same questions, so an
         answer is written once and cannot disagree with itself.
       </div>
+      <div className="notice">
+        <strong>Vector Faces</strong> (the Apple Watch app) has no editor here
+        yet: its page, its cards on Home and Games, and its questions on
+        Support are written in the site&apos;s code, in one file
+        (hq/src/lib/vectorFaces.ts).
+      </div>
     </>
   );
 }

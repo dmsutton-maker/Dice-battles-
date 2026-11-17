@@ -1,5 +1,5 @@
 import { supabaseServer } from '@/lib/supabase/server';
-import { storedIsNewer, type LegalCopy } from '@/lib/legalCopy';
+import { LEGAL_SECTION_SLOTS, storedIsNewer, type LegalCopy } from '@/lib/legalCopy';
 
 /** Reading the stored copy, shaped for the editor forms. */
 
@@ -63,9 +63,17 @@ export function legalFormCopy(
   copy: LegalCopy,
 ): { intro: string; sections: Section[]; fromCode: boolean } {
   if (storedIsNewer(copy, c.savedAt(`${prefix}.`))) {
-    return { intro: c.text(`${prefix}.intro`), sections: c.sections(`${prefix}.sections`, 16), fromCode: false };
+    return {
+      intro: c.text(`${prefix}.intro`),
+      sections: c.sections(`${prefix}.sections`, LEGAL_SECTION_SLOTS),
+      fromCode: false,
+    };
   }
-  return { intro: copy.intro, sections: padded(copy.sections, 16, { heading: '', body: '' }), fromCode: true };
+  return {
+    intro: copy.intro,
+    sections: padded(copy.sections, LEGAL_SECTION_SLOTS, { heading: '', body: '' }),
+    fromCode: true,
+  };
 }
 
 /** The note every list carries, so the add/remove rule is never a guess. */
