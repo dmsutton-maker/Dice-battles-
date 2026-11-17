@@ -165,7 +165,10 @@ def push_listing(s, save: bool) -> None:
         # same edit succeeded. Saving validates anyway, and a failed save
         # changes nothing.
         if save:
-            ok(s.post(f"{API}/edits/{edit}:commit"), "save")
+            # changesNotSentForReview: the listing waits in Publishing overview
+            # until it is sent for review together with the first release,
+            # the way Play Console itself does it for an app not yet live.
+            ok(s.post(f"{API}/edits/{edit}:commit?changesNotSentForReview=true"), "save")
             print("SAVED.")
             edit = None
         else:
