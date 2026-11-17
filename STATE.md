@@ -380,6 +380,9 @@ one is added; it does not need a new build.
   with it off, the app goes live when Google approves. Payments profile
   linked (PAPER SHIP STUDIO LLC, 4852-5225-8597); David still has to add the
   street address, bank account and W-9 in Google Payments before payouts.
+  **Enrolled in Google Play's 15% service fee on 17 Nov 2026** (account
+  group Paper Ship Studio); the Paper Ship Studio Sales dashboard already
+  estimates Google Play earnings at 15% and now says so in its sources.
   **The seven one-time products are created and active by API**
   (remove_ads 3.99, coins_pouch 0.99, coins_chest 4.99, coins_vault 9.99,
   starter_pack 4.99, neon_dice 0.99, gold_pass 2.99; 174 countries priced by
