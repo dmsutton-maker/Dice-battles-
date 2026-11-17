@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
+import { recordRankings, type RankingsResult } from '@/lib/appRankings';
 import { ascConfigured, daysBefore, fetchDay, pacificToday } from '@/lib/appSales';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
@@ -10,6 +11,10 @@ import { supabaseAdmin } from '@/lib/supabase/server';
  * publishing it, and each day is replaced whole (`replace_app_sales_day`), so nothing is ever
  * counted twice. A day Apple has not published yet is left alone. Every run is written to
  * `app_sales_syncs`, which /admin/sales reads to say how fresh the numbers are.
+ *
+ * First, and separately, it notes where the apps sit in the App Store's charts and searches today
+ * (`recordRankings`, into `app_rankings`). That takes a second or two, and how it went is one
+ * sentence on the end of the message; it never decides whether the sales copy counts as ok.
  *
  * Called by Vercel's scheduler with `Authorization: Bearer $CRON_SECRET`. `?days=30` (at most
  * 90) reads further back, for filling in.
@@ -36,10 +41,12 @@ export async function GET(request: NextRequest) {
   const count = Math.min(90, Math.max(1, Number.isFinite(asked) ? Math.trunc(asked) : 7));
   const source = request.headers.get('user-agent')?.includes('vercel-cron') ? 'cron' : 'manual';
 
+  const rankings = await recordRankings(supabase);
+
   if (!ascConfigured()) {
-    const message = 'The App Store Connect key is not set up in Vercel yet (ASC_* variables).';
+    const message = `The App Store Connect key is not set up in Vercel yet (ASC_* variables). ${rankings.message}`;
     await supabase.from('app_sales_syncs').insert({ source, ok: false, message });
-    return NextResponse.json({ ok: false, message }, { status: 503 });
+    return NextResponse.json({ ok: false, message, rankings: summary(rankings) }, { status: 503 });
   }
 
   const days = daysBefore(pacificToday(), count);
@@ -78,14 +85,36 @@ export async function GET(request: NextRequest) {
   ]
     .filter(Boolean)
     .join(' ')
-    .slice(0, 2000);
+    .slice(0, 1600);
   await supabase.from('app_sales_syncs').insert({
     source,
     days_checked: days.length,
     rows_written: written,
     latest_report_date: latest,
     ok,
-    message,
+    message: `${message} ${rankings.message}`.slice(0, 2000),
   });
-  return NextResponse.json({ ok, days: days.length, rows: written, latest, message }, { status: ok ? 200 : 502 });
+  return NextResponse.json(
+    { ok, days: days.length, rows: written, latest, message, rankings: summary(rankings) },
+    { status: ok ? 200 : 502 },
+  );
+}
+
+/** The rankings, shortened for the JSON answer. */
+function summary(r: RankingsResult) {
+  return {
+    ok: r.ok,
+    day: r.day,
+    apps: r.apps,
+    read: r.rows.length,
+    problems: r.problems,
+    message: r.message,
+    rows: r.rows.map(({ app_name, kind, name, rank, list_length }) => ({
+      app: app_name,
+      kind,
+      name,
+      rank,
+      of: list_length,
+    })),
+  };
 }
