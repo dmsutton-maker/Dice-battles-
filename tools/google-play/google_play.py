@@ -134,6 +134,30 @@ def ok(r, what: str):
     return r.json() if r.content else {}
 
 
+def commit(s, edit: str) -> None:
+    """Save an edit.
+
+    17 Nov 2026: with Managed publishing OFF, Google sends every saved change
+    for review at once, and for this not-yet-live app it refused that with
+    403 PERMISSION_DENIED (builds to Internal testing, which need no review,
+    saved fine). With Managed publishing ON, changes wait in Publishing
+    overview for David to send, and Google wants changesNotSentForReview.
+    So: ask for "not sent" first, and if Google says changes are sent
+    automatically here, save the ordinary way.
+    """
+    r = s.post(f"{API}/edits/{edit}:commit?changesNotSentForReview=true")
+    if r.status_code == 400 and "sent for review automatically" in r.text:
+        r = s.post(f"{API}/edits/{edit}:commit")
+    if r.status_code == 403:
+        raise SystemExit(
+            "save refused (403). If Managed publishing is OFF in Play Console "
+            "(Publishing overview), Google will not let this app's changes be "
+            "sent for review from here: turn Managed publishing ON and run again. "
+            f"Google said: {r.text[:600]}"
+        )
+    ok(r, "save")
+
+
 def push_listing(s, save: bool) -> None:
     edit = ok(s.post(f"{API}/edits"), "open edit")["id"]
     try:
@@ -165,10 +189,7 @@ def push_listing(s, save: bool) -> None:
         # same edit succeeded. Saving validates anyway, and a failed save
         # changes nothing.
         if save:
-            # changesNotSentForReview: the listing waits in Publishing overview
-            # until it is sent for review together with the first release,
-            # the way Play Console itself does it for an app not yet live.
-            ok(s.post(f"{API}/edits/{edit}:commit?changesNotSentForReview=true"), "save")
+            commit(s, edit)
             print("SAVED.")
             edit = None
         else:
@@ -214,7 +235,7 @@ def push_release(s, track: str, version_code: int, notes: str) -> None:
             ],
         }
         ok(s.put(f"{API}/edits/{edit}/tracks/{track}", json=body), f"set {track}")
-        ok(s.post(f"{API}/edits/{edit}:commit"), "save")
+        commit(s, edit)
         print(f"SAVED: build {version_code} on {track}.")
         edit = None
     finally:
