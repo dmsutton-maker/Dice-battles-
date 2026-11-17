@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     return finish(false, "This deployment has no Vercel OIDC token, so it cannot sign in to Google. Turn on \"Secure backend access with OIDC federation\" in the Vercel project's Security settings.", {}, 503);
   }
   if (!settings) {
-    return finish(false, 'Google Play reports are not set up in Vercel yet (PLAY_REPORTS_BUCKET, PLAY_REPORTS_WIF_PROVIDER, PLAY_REPORTS_ACCOUNT).', {}, 503);
+    return finish(false, 'Google Play reports are not set up in Vercel yet (PLAY_REPORTS_WIF_PROVIDER, PLAY_REPORTS_ACCOUNT).', {}, 503);
   }
 
   let token: string;
@@ -84,6 +84,29 @@ export async function GET(request: NextRequest) {
     token = await googleToken(oidc, settings);
   } catch (err) {
     return finish(false, err instanceof Error ? err.message : String(err), {}, 502);
+  }
+
+  // The first bucket that can be read. Until Google has made the account's first report there may
+  // be none, which is not a fault of this site: the run says so and tries again tomorrow.
+  let bucket = '';
+  const tried: string[] = [];
+  for (const name of settings.buckets) {
+    try {
+      await listObjects(token, name, 'stats/');
+      bucket = name;
+      break;
+    } catch (err) {
+      tried.push(`${name}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  if (!bucket) {
+    const unset = settings.buckets.length ? '' : ' (PLAY_REPORTS_BUCKET is not set)';
+    return finish(
+      false,
+      `Signed in to Google as ${settings.account}, but no Google Play reports bucket can be read yet${unset}. Play Console makes it with the account's first monthly report. ${tried.join(' ')}`.trim(),
+      {},
+      503,
+    );
   }
 
   const months = new Set(recentMonths(new Date(), back));
@@ -96,11 +119,11 @@ export async function GET(request: NextRequest) {
 
   // Downloads: one file per app per month.
   try {
-    const names = (await listObjects(token, settings.bucket, 'stats/installs/')).map((o) => o.name);
+    const names = (await listObjects(token, bucket, 'stats/installs/')).map((o) => o.name);
     const chosen = pickInstallFiles(names, months);
     for (const { pkg, month, name } of chosen.values()) {
       try {
-        const installs = parseInstalls(decodeText(await readObject(token, settings.bucket, name)), pkg);
+        const installs = parseInstalls(decodeText(await readObject(token, bucket, name)), pkg);
         files += 1;
         apps.add(pkg);
         const { data, error } = await supabase.rpc('replace_play_installs', { pkg, month, rows: installs });
@@ -117,13 +140,13 @@ export async function GET(request: NextRequest) {
 
   // Sales: one .zip per month for the whole account.
   try {
-    const reports = (await listObjects(token, settings.bucket, 'sales/salesreport_'))
+    const reports = (await listObjects(token, bucket, 'sales/salesreport_'))
       .map((o) => o.name)
       .filter((name) => name.endsWith('.zip') && months.has(fileMonth(name) ?? ''));
     for (const name of reports) {
       const month = fileMonth(name) as string;
       try {
-        const inside = unzip(await readObject(token, settings.bucket, name)).filter((f) => f.name.endsWith('.csv'));
+        const inside = unzip(await readObject(token, bucket, name)).filter((f) => f.name.endsWith('.csv'));
         const sales = inside.flatMap((f) => parseSales(decodeText(f.data)));
         files += 1;
         const { data, error } = await supabase.rpc('replace_play_sales', { month, rows: sales });
@@ -140,7 +163,7 @@ export async function GET(request: NextRequest) {
 
   const ok = problems.length === 0;
   const message = [
-    `Read ${files} Google Play report files (${[...months].join(', ')}).`,
+    `Read ${files} Google Play report files from ${bucket} (${[...months].join(', ')}).`,
     apps.size ? `Apps with downloads: ${[...apps].sort().join(', ')}.` : 'No downloads files yet for these months.',
     ...problems,
   ].join(' ');

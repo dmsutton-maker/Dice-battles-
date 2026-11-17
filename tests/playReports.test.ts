@@ -100,6 +100,12 @@ suite('Google Play reports · downloads', () => {
     assert(chosen.get('com.papershipstudio.vectorfaces|202611')?.name.endsWith('_country.csv') === true, 'else the country file');
   });
 
+  test('the bucket setting takes one name, a gs:// address, or several to try', () => {
+    assertEqual(play.bucketNames('gs://pubsite_prod_rev_123/stats/installs/').join('|'), 'pubsite_prod_rev_123', 'a copied address');
+    assertEqual(play.bucketNames('pubsite_prod_rev_1, pubsite_prod_1').join('|'), 'pubsite_prod_rev_1|pubsite_prod_1', 'two to try');
+    assertEqual(play.bucketNames('  ').length, 0, 'none yet');
+  });
+
   test('recent months count back across a new year', () => {
     assertEqual(play.recentMonths(new Date('2027-01-10T00:00:00Z'), 2).join(','), '202611,202612,202701', 'three months');
   });

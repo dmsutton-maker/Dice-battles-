@@ -521,7 +521,15 @@ one is added; it does not need a new build.
   that Play Console lets read the account's reports bucket. Vercel holds PLAY_REPORTS_BUCKET,
   PLAY_REPORTS_WIF_PROVIDER and PLAY_REPORTS_ACCOUNT once David's Google Cloud and Play Console
   steps are done; until then each run records "not set up" (with the identity above) and the
-  dashboard says Google Play is not connected yet. David's sales dashboard has an app picker with
+  dashboard says Google Play is not connected yet. David did those steps the same evening:
+  service account play-reports@paper-ship-play (no roles), pool `vercel` / OIDC provider
+  `papershipstudio` (condition: that sub only), impersonation granted to that subject only, and
+  play-reports invited in Play Console with account-level "View app information and download
+  bulk reports" and "View financial data". The first run signed in to Google fine. Play Console
+  had no monthly report yet, so no "Copy Cloud Storage URI"; PLAY_REPORTS_BUCKET holds three
+  guesses tried in turn, and `pubsite_prod_4972982494017535131` (no `_rev_`; the developer
+  account id) is the one that exists: it answered "permission denied" while the new Play
+  Console access switched on (Google says up to a day), the `_rev_` names "does not exist". David's sales dashboard has an app picker with
   LeaseDash, a store picker, Downloads and In-app purchase income tiles, and a Downloads/Paid
   sales switch on the daily chart. Tests: `tests/playReports.test.ts`.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono

@@ -15,7 +15,11 @@ import { inflateRawSync } from 'node:zlib';
  * Settings, in Vercel's environment variables. None is a secret, but this repository is public and
  * they describe David's accounts, so they live there rather than here:
  *   PLAY_REPORTS_BUCKET       the bucket, from Play Console's "Copy Cloud Storage URI"
- *                             (pubsite_prod_rev_...; a whole gs:// URI is fine too)
+ *                             (pubsite_prod_rev_...; a whole gs:// URI is fine too). Play
+ *                             Console only shows that button once Google has made the account's
+ *                             first monthly report, so this may also be several names separated
+ *                             by commas, tried in turn: the first one that can be read is used,
+ *                             and the run says which.
  *   PLAY_REPORTS_WIF_PROVIDER the Workload Identity provider: projects/<number>/locations/global/
  *                             workloadIdentityPools/<pool>/providers/<provider>
  *   PLAY_REPORTS_ACCOUNT      the service account's email
@@ -37,20 +41,27 @@ export function playAppName(pkg: string): string {
 export const PLAY_FEE = 0.15;
 
 export interface PlaySettings {
-  bucket: string;
+  /** The bucket names to try, in order (usually one). */
+  buckets: string[];
   provider: string;
   account: string;
 }
 
+/** Bucket names from PLAY_REPORTS_BUCKET: one, or several separated by commas or spaces. */
+export function bucketNames(value: string): string[] {
+  return value
+    .split(/[\s,]+/)
+    .map((v) => v.trim().replace(/^gs:\/\//, '').split('/')[0])
+    .filter(Boolean);
+}
+
+/** The sign-in settings; null until both are set. The bucket list may still be empty. */
 export function playSettings(): PlaySettings | null {
-  const bucket = (process.env.PLAY_REPORTS_BUCKET ?? '')
-    .trim()
-    .replace(/^gs:\/\//, '')
-    .split('/')[0];
+  const buckets = bucketNames(process.env.PLAY_REPORTS_BUCKET ?? '');
   const provider = (process.env.PLAY_REPORTS_WIF_PROVIDER ?? '').trim().replace(/^\/\/iam\.googleapis\.com\//, '');
   const account = (process.env.PLAY_REPORTS_ACCOUNT ?? '').trim();
-  if (!bucket || !provider || !account) return null;
-  return { bucket, provider, account };
+  if (!provider || !account) return null;
+  return { buckets, provider, account };
 }
 
 /** The claims in a JWT, without checking it (only to say what the token is, never to trust it). */
