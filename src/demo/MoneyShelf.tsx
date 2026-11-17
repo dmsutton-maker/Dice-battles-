@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { isAndroid } from '../game/platform';
 import { ActivityIndicator, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../ui/Card';
 import { Confirm, Tell } from '../ui/Confirm';
@@ -133,7 +134,7 @@ export function MoneyShelf({
         : {
             title: 'Nothing to put back',
             body: result.ok
-              ? 'This Apple account has not bought anything here yet.'
+              ? `This ${isAndroid() ? 'Google' : 'Apple'} account has not bought anything here yet.`
               : 'We could not reach the shop. Try again in a moment.',
           },
     );

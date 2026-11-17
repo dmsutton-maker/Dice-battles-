@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.180.0 — 2026-11-16 · requested by David
+
+David created the Android app in AdMob for the Google Play release ("lets
+get the android app going"). JS: Android's own interstitial unit; native:
+the Android AdMob App ID (needs the Android build, which follows). iPhone
+unchanged. No news post.
+
+### Changed (Android only)
+- **Android adverts are switched on** with the Android app's own
+  interstitial unit (`ca-app-pub-5310885665976703/5651954259`), the same
+  rule as iPhone: one after every third finished game, child-directed,
+  non-personalised, G-rated. The Android AdMob App ID
+  (`ca-app-pub-5310885665976703~1904280939`) replaces Google's test id in
+  `app.json`. Both are public ids, compiled into every copy of the app.
+- The Android build lets Kotlin read Google's ads SDK 25.4, which was built
+  with a newer Kotlin (`plugins/withKotlinSkipMetadataCheck.js`, the
+  compiler's `-Xskip-metadata-version-check`; raising Kotlin through
+  expo-build-properties did not reach the compiler and was taken back out),
+  and blocks the advertising-ID and microphone permissions (Google Play's
+  Families policy).
+
+## v1.179.0 — 2026-11-16 · requested by David
+
+David, 16 Nov 2026, once Google Play was verified: "lets get the android
+app going". The game had only ever been played on iPhone; this makes the
+JavaScript ready for the first Google Play build. JS only, runtime 4.0.0,
+and nothing changes on iPhone. No news post.
+
+### Changed (Android only)
+- **Adverts**: Android gets its own interstitial unit
+  (`ANDROID_INTERSTITIAL_AD_UNIT_ID`, empty until the Android app exists in
+  AdMob). Until then Android shows no adverts at all, never Google's test
+  ones in front of real players. The child-directed, non-personalised,
+  G-rated request flags are unchanged.
+- **Rate Dice Battles** opens the game's Google Play page on Android
+  (`reviewUrlFor`).
+- **The Gold Pass is consumed on Android** after it is granted. Google will
+  not sell a one-time product again while it is still owned, and the pass
+  is bought afresh each season. On iPhone it stays a non-renewing
+  subscription, as before.
+- The Shop's "Nothing to put back" says "This Google account" on Android.
+- **Hidden on Android**: "Tell me about updates" (needs Firebase, not yet
+  set up) and "More from Paper Ship Studio" (Vector Faces is an Apple Watch
+  app). Game Center, iCloud and the keychain were already iPhone-only.
+- `src/game/platform.ts` (which phone this is, with a test seam);
+  `tests/android.test.ts`.
+
 ## v1.178.0 — 2026-11-13 · requested by David
 
 David, 13 Nov 2026, in the Vector Faces chat and then here: "build the

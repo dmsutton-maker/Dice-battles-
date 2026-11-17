@@ -106,6 +106,7 @@ async function main(): Promise<void> {
   await import('./music.test');
   await import('./memory.test');
   await import('./moreFromStudio.test');
+  await import('./android.test');
   process.exit(await runAll());
 }
 

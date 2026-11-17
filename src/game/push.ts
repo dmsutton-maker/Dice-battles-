@@ -1,4 +1,5 @@
 import { loadPushSdk } from './pushSdk';
+import { isAndroid } from './platform';
 import { GAME_VERSION } from './version';
 import type { Identity } from './playerIdentity';
 
@@ -68,6 +69,10 @@ function sdk(): PushSdk | null {
  * module at all — which is every binary in existence today.
  */
 export async function pushState(): Promise<PushState> {
+  // Android needs Firebase (FCM) set up before Expo can hand out a push
+  // token, and it is not yet: without it the row would ask permission and
+  // then vanish. Hidden on Android until it is (16 Nov 2026).
+  if (isAndroid()) return 'unavailable';
   const push = sdk();
   if (!push) return 'unavailable';
   try {
