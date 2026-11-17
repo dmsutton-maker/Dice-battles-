@@ -254,6 +254,29 @@ def save_product(s, sku: str, body: dict) -> None:
     ok(last, f"save {sku}")
 
 
+def activate(s, sku: str) -> None:
+    """Make the product's "buy" option active (buyable).
+
+    The REST path is spelled oneTimeProducts (camel case) in Google's API
+    description; the all-lowercase spelling answered 404 for this custom
+    method on 17 Nov 2026, so both are tried, camel case first.
+    """
+    body = {
+        "requests": [
+            {"activatePurchaseOptionRequest": {"packageName": PACKAGE, "productId": sku, "purchaseOptionId": "buy"}}
+        ]
+    }
+    last = None
+    for collection in ("oneTimeProducts", "onetimeproducts"):
+        r = s.post(f"{API}/{collection}/{sku}/purchaseOptions:batchUpdateStates", json=body)
+        if r.status_code < 300:
+            return
+        last = r
+        if r.status_code != 404:
+            break
+    ok(last, f"activate {sku}")
+
+
 def push_products(s) -> None:
     """Create or update the one-time products with Google's current API.
 
@@ -292,23 +315,7 @@ def push_products(s) -> None:
             "purchaseOptions": [option],
         }
         save_product(s, sku, body)
-        ok(
-            s.post(
-                f"{API}/onetimeproducts/{sku}/purchaseOptions:batchUpdateStates",
-                json={
-                    "requests": [
-                        {
-                            "activatePurchaseOptionRequest": {
-                                "packageName": PACKAGE,
-                                "productId": sku,
-                                "purchaseOptionId": "buy",
-                            }
-                        }
-                    ]
-                },
-            ),
-            f"activate {sku}",
-        )
+        activate(s, sku)
         print(f"{sku}: saved and active, ${usd} in the US, {len(regional)} countries priced")
 
 
