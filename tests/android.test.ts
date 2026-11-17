@@ -128,7 +128,11 @@ suite('android · the Google Play listing', () => {
 });
 
 suite('android · permissions', () => {
-  test('no advertising ID and no microphone in the Android build', () => {
+  test('no advertising ID, microphone or background-media service in the Android build', () => {
+    const src = (f: string) => read('src', ...f.split('/'));
+    for (const f of ['audio/sounds.ts']) {
+      assert(!/shouldPlayInBackground|setActiveForLockScreen/.test(src(f)), `${f} now plays in the background: put FOREGROUND_SERVICE_MEDIA_PLAYBACK back`);
+    }
     /*
       The ad SDK adds com.google.android.gms.permission.AD_ID. Google Play's
       Families policy forbids sending the advertising ID from apps whose
@@ -148,7 +152,11 @@ suite('android · permissions', () => {
     }
     // Unused, and each one a question on Google's forms: drawing over other
     // apps, shared storage, fingerprint.
-    for (const unused of ['SYSTEM_ALERT_WINDOW', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'USE_BIOMETRIC', 'USE_FINGERPRINT']) {
+    // FOREGROUND_SERVICE_MEDIA_PLAYBACK comes with expo-audio for lock-screen
+    // and background playback. The game uses neither (no shouldPlayInBackground,
+    // no setActiveForLockScreen), and Google asks for a declaration and a
+    // video for it (17 Nov 2026).
+    for (const unused of ['SYSTEM_ALERT_WINDOW', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'USE_BIOMETRIC', 'USE_FINGERPRINT', 'FOREGROUND_SERVICE_MEDIA_PLAYBACK']) {
       assert(blocked.includes(`android.permission.${unused}`), `${unused} is not blocked`);
     }
   });
