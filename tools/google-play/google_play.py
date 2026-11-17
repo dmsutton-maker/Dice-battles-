@@ -12,8 +12,8 @@ Run by .github/workflows/google-play.yml. Actions:
 
   check     the listing files are all there and the right sizes; asks Google
             nothing, needs no key.
-  preview   opens an edit, uploads everything, asks Google to validate, then
-            THROWS THE EDIT AWAY. Nothing is saved.
+  preview   opens an edit, uploads everything, then THROWS THE EDIT AWAY.
+            Nothing is saved; it proves the key and the pictures work.
   listing   the same, and saves it (title, descriptions, contact, icon,
             feature graphic, phone and tablet screenshots).
   products  creates or updates the in-app purchases (PRODUCTS below), active,
@@ -160,8 +160,10 @@ def push_listing(s, save: bool) -> None:
                     f"upload {kind} {p.name}",
                 )
             print(f"{kind}: {len(paths)} picture(s) uploaded")
-        ok(s.post(f"{API}/edits/{edit}:validate"), "validate")
-        print("Google validated the edit.")
+        # No separate :validate call: on 17 Nov 2026 Google answered it with
+        # 403 PERMISSION_DENIED for this account while every upload in the
+        # same edit succeeded. Saving validates anyway, and a failed save
+        # changes nothing.
         if save:
             ok(s.post(f"{API}/edits/{edit}:commit"), "save")
             print("SAVED.")
@@ -209,7 +211,6 @@ def push_release(s, track: str, version_code: int, notes: str) -> None:
             ],
         }
         ok(s.put(f"{API}/edits/{edit}/tracks/{track}", json=body), f"set {track}")
-        ok(s.post(f"{API}/edits/{edit}:validate"), "validate")
         ok(s.post(f"{API}/edits/{edit}:commit"), "save")
         print(f"SAVED: build {version_code} on {track}.")
         edit = None
