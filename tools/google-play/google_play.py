@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import struct
 import sys
 from pathlib import Path
@@ -205,7 +206,52 @@ def money(usd: str) -> dict:
     return {"currencyCode": "USD", "units": units, "nanos": int((cents + "00")[:2]) * 10_000_000}
 
 
-REGIONS_VERSION = "2022/02"
+# Newest first. Google's region list changes (Bulgaria moved from BGN to EUR
+# on 1 Jan 2026, and "2022/02" still expects BGN), and the price conversion
+# answers in today's currencies, so the newest version Google accepts wins.
+REGIONS_VERSIONS = ["2026/01", "2025/03", "2025/01", "2022/02"]
+
+
+def save_product(s, sku: str, body: dict) -> None:
+    """PATCH the product, trying regions versions newest first. If none fits
+    every country, the countries whose currency the version disagrees with
+    are left out (named in the log) rather than given a wrong price."""
+    last = None
+    for version in REGIONS_VERSIONS:
+        r = s.patch(
+            f"{API}/onetimeproducts/{sku}",
+            params={"updateMask": "listings,purchaseOptions", "allowMissing": "true", "regionsVersion.version": version},
+            json=body,
+        )
+        if r.status_code < 300:
+            print(f"{sku}: saved with regions version {version}")
+            return
+        last = r
+        if r.status_code == 400 and ("regions version" in r.text.lower() or "regionsversion" in r.text.lower() or "invalid currency" in r.text.lower()):
+            continue
+        ok(r, f"save {sku}")
+    # Every version disagreed about some currency: drop those countries.
+    version = REGIONS_VERSIONS[-1]
+    option = body["purchaseOptions"][0]
+    dropped = []
+    for _ in range(20):
+        r = s.patch(
+            f"{API}/onetimeproducts/{sku}",
+            params={"updateMask": "listings,purchaseOptions", "allowMissing": "true", "regionsVersion.version": version},
+            json=body,
+        )
+        if r.status_code < 300:
+            print(f"{sku}: saved with regions version {version}; left out (currency changed): {', '.join(dropped) or 'none'}")
+            return
+        m = re.search(r"region code ([A-Z]{2})", r.text)
+        if r.status_code != 400 or not m:
+            ok(r, f"save {sku}")
+        code = m.group(1)
+        dropped.append(code)
+        option["regionalPricingAndAvailabilityConfigs"] = [
+            c for c in option["regionalPricingAndAvailabilityConfigs"] if c["regionCode"] != code
+        ]
+    ok(last, f"save {sku}")
 
 
 def push_products(s) -> None:
@@ -245,18 +291,7 @@ def push_products(s) -> None:
             "listings": [{"languageCode": LANG, "title": title, "description": description}],
             "purchaseOptions": [option],
         }
-        ok(
-            s.patch(
-                f"{API}/onetimeproducts/{sku}",
-                params={
-                    "updateMask": "listings,purchaseOptions",
-                    "allowMissing": "true",
-                    "regionsVersion.version": REGIONS_VERSION,
-                },
-                json=body,
-            ),
-            f"save {sku}",
-        )
+        save_product(s, sku, body)
         ok(
             s.post(
                 f"{API}/onetimeproducts/{sku}/purchaseOptions:batchUpdateStates",
