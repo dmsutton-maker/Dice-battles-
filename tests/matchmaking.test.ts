@@ -159,12 +159,23 @@ suite('matchmaking · the switch is honest and never latches', () => {
   test('off is remembered for a minute, not the session', async () => {
     assertEqual(SERVICE_OFF_REMEMBER_MS, 60_000, 'the window is not a minute');
     const { result } = await withFetch(reply(200, { state: 'off' }), async () => {
+      /*
+        The off is stamped at some moment inside findWaitingPlayer, so read
+        the clock on either side of it. Reading Date.now() afresh for
+        "later" (as this used to) failed whenever a millisecond passed
+        between the stamp and the check, on a busy machine: the window then
+        looked one millisecond short when it was not.
+      */
+      const before = Date.now();
       const first = await findWaitingPlayer(ME, REQUEST, STATS);
+      const after = Date.now();
       return {
         first,
-        now: hasMatchmakingService(),
-        later: hasMatchmakingService(Date.now() + SERVICE_OFF_REMEMBER_MS - 1),
-        expired: hasMatchmakingService(Date.now() + SERVICE_OFF_REMEMBER_MS + 1),
+        now: hasMatchmakingService(after),
+        // Still inside the minute, however late in the call it was stamped.
+        later: hasMatchmakingService(before + SERVICE_OFF_REMEMBER_MS - 1),
+        // Past the minute, however early in the call it was stamped.
+        expired: hasMatchmakingService(after + SERVICE_OFF_REMEMBER_MS),
       };
     });
     assertEqual(result.first?.kind, 'bot', 'off did not settle a bot');
