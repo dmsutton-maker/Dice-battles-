@@ -378,8 +378,9 @@ one is added; it does not need a new build.
   status with papershipstudio.com/terms. Managed publishing could not be
   switched on before the first submission (Google blocks it on a draft app);
   with it off, the app goes live when Google approves. Payments profile
-  linked (PAPER SHIP STUDIO LLC, 4852-5225-8597); David still has to add the
-  street address, bank account and W-9 in Google Payments before payouts.
+  linked (PAPER SHIP STUDIO LLC, 4852-5225-8597). The payout bank account
+  was verified on 18 Nov 2026; the W-9 and the street address
+  (7 Shadowlawn Dr) in Google Payments are the remaining checks before payouts.
   **Enrolled in Google Play's 15% service fee on 17 Nov 2026** (account
   group Paper Ship Studio); the Paper Ship Studio Sales dashboard already
   estimates Google Play earnings at 15% and now says so in its sources.
