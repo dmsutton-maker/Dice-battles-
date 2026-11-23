@@ -22,7 +22,12 @@
       "Bash(npx --yes eas-cli@latest submit *)",
       "Bash(eas update *)",
       "Bash(eas build *)",
-      "Bash(eas submit *)"
+      "Bash(eas submit *)",
+      "mcp__Supabase__execute_sql",
+      "mcp__Supabase__apply_migration",
+      "mcp__Supabase__list_tables",
+      "mcp__Supabase__list_migrations",
+      "mcp__Supabase__get_advisors"
     ]
   },
   "enabledPlugins": {
