@@ -21,8 +21,8 @@ nothing is cropped. Rebuild them from the iPhone set if those change.
 **Real screens only, since 23 Nov 2026.** Apple rejected 1.60.0 under
 Guideline 2.3.3 because the first screenshots were marketing art and did
 not show the app in use. Google's metadata policy asks the same of a
-Families app, so both stores now use pictures taken on David's iPhone
+Families app, so both stores now use pictures taken on David's iPhone and iPad
 during real games: no added captions, frames or art. Keep it that way:
 the store pictures are screens from the game, fitted to size and nothing
-more. The tablet sets still use the old iPad art until real iPad
-screenshots replace them.
+more. The iPad set (also Play's tablet set) is six screens from a real
+iPad, 2048 × 2732, unchanged.
