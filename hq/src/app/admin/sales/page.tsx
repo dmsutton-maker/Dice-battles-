@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { currentMember, supabaseAdmin } from '@/lib/supabase/server';
 import { admobSettings } from '@/lib/admob';
 import { STUDIO_APPS } from '@/lib/appSales';
+import { ensureRates } from '@/lib/fxRates';
 
 /**
  * What the studio's apps have sold, from Apple's own daily sales reports.
@@ -103,6 +104,9 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
   }
 
   const supabase = supabaseAdmin();
+  // Any sale in a new currency gets its dollar rate now rather than at the next morning's job
+  // (quick when there is nothing to fetch). The sales dashboard converts with these.
+  await ensureRates(supabase);
   const [{ data: saleData, error }, { data: syncData }] = await Promise.all([
     supabase
       .from('app_sales')
