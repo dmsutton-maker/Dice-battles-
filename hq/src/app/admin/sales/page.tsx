@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { currentMember, supabaseAdmin } from '@/lib/supabase/server';
+import { admobSettings } from '@/lib/admob';
 import { STUDIO_APPS } from '@/lib/appSales';
 
 /**
@@ -78,7 +79,18 @@ function dayText(day: string): string {
 const cell: React.CSSProperties = { padding: '6px 10px 6px 0', borderTop: '1px solid var(--line)' };
 const num: React.CSSProperties = { ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
 
-export default async function SalesPage() {
+const ADMOB_NOTES: Record<string, string> = {
+  connected: 'AdMob is connected. Its earnings were read just now and are copied every morning.',
+  'connected-but-failed': 'AdMob is connected, but the first read failed. The reason is below; the morning job tries again.',
+  declined: 'Google was not given permission, so AdMob is not connected.',
+  expired: 'That sign-in took too long or came from another tab. Press Connect AdMob again.',
+  failed: 'Google did not finish the sign-in. Press Connect AdMob again.',
+  'not-set-up': 'AdMob needs its Google sign-in client in Vercel first (ADMOB_CLIENT_ID, ADMOB_CLIENT_SECRET).',
+  'owner-only': 'Only the owner can connect AdMob.',
+};
+
+export default async function SalesPage({ searchParams }: { searchParams: Promise<{ admob?: string }> }) {
+  const { admob: admobNote } = await searchParams;
   const member = await currentMember();
   if (!member) redirect('/login?next=/admin/sales');
   if (member.role !== 'owner') {
@@ -103,6 +115,12 @@ export default async function SalesPage() {
       .order('ran_at', { ascending: false })
       .limit(5),
   ]);
+  const [{ data: admobSecret }, { data: admobRuns }] = await Promise.all([
+    supabase.from('studio_secrets').select('updated_at').eq('key', 'admob_refresh_token').maybeSingle(),
+    supabase.from('admob_syncs').select('ran_at, ok, message, latest_day').order('ran_at', { ascending: false }).limit(1),
+  ]);
+  const admobRun = (admobRuns ?? [])[0] as { ran_at: string; ok: boolean; message: string; latest_day: string | null } | undefined;
+  const admobReady = !!admobSettings();
   const sales = (saleData ?? []) as Sale[];
   const syncs = (syncData ?? []) as Sync[];
 
@@ -144,6 +162,28 @@ export default async function SalesPage() {
           <p className="faint" style={{ margin: 0 }}>Nothing copied from Apple yet.</p>
         )}
         {error && <p className="faint">Could not read the sales: {error.message}</p>}
+      </div>
+
+      <div className="card">
+        <h3>Ad money (AdMob)</h3>
+        {admobNote && ADMOB_NOTES[admobNote] && <p>{ADMOB_NOTES[admobNote]}</p>}
+        <p className="faint" style={{ marginTop: 0 }}>
+          {admobSecret
+            ? `Connected ${new Date(admobSecret.updated_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}. Earnings are copied every morning with the sales and shown on the sales dashboard.`
+            : 'Not connected. Connecting lets this site read AdMob\'s earnings reports (read-only) for the sales dashboard.'}
+        </p>
+        {admobRun && (
+          <p className="faint" style={admobRun.ok ? undefined : { color: 'var(--red)' }}>
+            Last read {new Date(admobRun.ran_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}: {admobRun.message}
+          </p>
+        )}
+        {admobReady ? (
+          <a className="button button-small" href="/api/admob/connect">{admobSecret ? 'Connect AdMob again' : 'Connect AdMob'}</a>
+        ) : (
+          <p className="faint" style={{ marginBottom: 0 }}>
+            Waiting for the Google sign-in client in Vercel (ADMOB_CLIENT_ID, ADMOB_CLIENT_SECRET).
+          </p>
+        )}
       </div>
 
       <div className="card">
