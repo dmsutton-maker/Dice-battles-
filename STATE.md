@@ -182,6 +182,39 @@ and the same day the listing was brought up to date:
   status bar blurred, game sound kept, 24.7 s. Uploaded 8 Nov 2026 as
   the iPhone 6.7" preview (set `IPHONE_67`, poster frame at 6 s), state COMPLETE.
 
+## The 2.3.3 rejection and the resubmission (23-24 Nov 2026)
+
+- Apple rejected 1.60.0 (20) on 23 Nov, Guideline 2.3.3: the marketing-art
+  screenshots "do not show the app in use" (reviewed on an iPad). Fixed the
+  same night: all 12 store screenshots are now real screens David captured
+  on his iPhone (fitted to 1290x2796) and iPad (2048x2732, untouched), in
+  `store/screenshots/`, and the Google Play phone/tablet sets were rebuilt
+  from the same captures and saved to Play (PR #18). The rendered preview
+  video was deleted and David's real screen recording re-uploaded.
+- The old review submission 14d87fe4 could not be revived (409 on every
+  path), so it was CANCELED and replaced by ba03a86f-5239-4f03-9225-d3a65c144a03.
+- Apple then blocked ALL new submissions over the two China-mainland
+  compliance forms (codes SECURITYASF395E security assessment and
+  AIGENERATEFD1DE AIGC declaration, "PENDING_COLLECT.NEW_APP_SUBMISSION_BLOCK").
+  David: "Remove the China. I want fastest path to launch" - China mainland
+  removed on 24 Nov, 174 territories now. The API cannot write availability
+  (POST /v2/appAvailabilities 409s "already exists"); David did it in the
+  ASC UI, which is now App Availability -> Manage, not Pricing and
+  Availability -> Edit.
+- The Weekly Cup event's dates had passed; moved via API to publish
+  26 Nov, run 30 Nov - 21 Dec 2026 (still Mondays, 05:00Z = midnight EST).
+- IAPs cannot be attached to a review submission by the API at all
+  (reviewSubmissionItems knows no IAP relationship). Claude in Chrome
+  added each from its own page: "Add for Review" -> Draft iOS Submission.
+  Gold Pass (non-renewing subscription) hides under Monetization ->
+  Subscriptions -> Non-Renewing Subscriptions -> Manage.
+- Final pass re-ran on Fable before the submission (24 Nov): tsc 0,
+  1663 tests 0 failed, Metro export exit 0, ASC read-back clean.
+- **Submitted 24 Nov 02:57Z, WAITING_FOR_REVIEW, 9 items**: version
+  1.60.0 (20), the event, 7 IAPs (no dino_valley). Expedite re-request
+  text handed to David (the old grant was on the canceled submission).
+  The App Review reply text is `store/app-review-reply-2.3.3.txt`.
+
 ## Ads: why none were ever requested, and the fix (5 Nov 2026)
 
 - AdMob's reports showed ZERO ad requests in 30 days. v1.167.0's status
