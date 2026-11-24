@@ -532,6 +532,24 @@ one is added; it does not need a new build.
   Console access switched on (Google says up to a day), the `_rev_` names "does not exist". David's sales dashboard has an app picker with
   LeaseDash, a store picker, Downloads and In-app purchase income tiles, and a Downloads/Paid
   sales switch on the daily chart. Tests: `tests/playReports.test.ts`.
+  **24 Nov 2026 (David: "the total dollars should be global money ... if money came in from other
+  country just convert to usd ... can the dice battles also check revenue that comes from ads"):**
+  migration `20261124_fx_and_admob.sql` (applied live) adds `fx_rates` + `to_usd(amount, currency,
+  day)` (ECB rate of that day or the last working day before), `admob_earnings`, `admob_syncs` and
+  `studio_secrets` (server only). The `http` extension was enabled and used once to backfill ECB
+  rates (ILS, 23 Oct - 23 Nov); after that `lib/fxRates.ts` keeps them current from both daily
+  jobs and whenever the owner opens /admin/sales. `lib/admob.ts` reads AdMob's network report
+  (USD, per app/platform/day, 35 days back) in `/api/cron/app-sales`; AdMob only accepts a
+  person's OAuth sign-in, so it is connected once from /admin/sales ("Connect AdMob",
+  `/api/admob/connect` -> `/api/admob/callback`). NOT DEPLOYED YET from the session (no Vercel
+  token there): run `npx vercel deploy --prod` from hq/. Before Connect works David needs a
+  Google Cloud OAuth client (Web application) with redirect URI
+  https://papershipstudio.com/api/admob/callback, the AdMob API enabled, the consent screen
+  published "In production" (Testing tokens expire in 7 days), and ADMOB_CLIENT_ID /
+  ADMOB_CLIENT_SECRET in Vercel. The Paper Ship Studio Sales dashboard (artifact
+  5ba9e5bc-ef57-49c2-803e-1921f8b71ab2) was rebuilt the same day: every figure in USD, Sales
+  (what buyers paid) vs Your income (store payout + ads), Day/Week/Month/Year/All time picker
+  with a stepper, a chart bucketed the same way, AdMob freshness line.
   Reported, not fixed: `fanfare-brass.m4a` true peak +3.3 dBTP (the mono
   downmix in `tools/music` happens after the limiter; fix is downmix before
   `loudnorm`, re-render — a new take for Marc to hear), `music-brass-hot`
