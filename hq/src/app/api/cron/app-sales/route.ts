@@ -1,7 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
+import { syncAdmob } from '@/lib/admob';
 import { recordRankings, type RankingsResult } from '@/lib/appRankings';
 import { ascConfigured, daysBefore, fetchDay, pacificToday } from '@/lib/appSales';
+import { ensureRates } from '@/lib/fxRates';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 /**
@@ -16,6 +18,11 @@ import { supabaseAdmin } from '@/lib/supabase/server';
  * First, and separately, it notes where the apps sit in the App Store's charts and searches today
  * (`recordRankings`, into `app_rankings`). That takes a second or two, and how it went is one
  * sentence on the end of the message; it never decides whether the sales copy counts as ok.
+ *
+ * After the sales, and also separately, it stores the exchange rates the new sales need
+ * (`ensureRates`, into `fx_rates`) so the dashboard can count every currency in US dollars, and
+ * copies AdMob's ad earnings (`syncAdmob`, into `admob_earnings`, with its own `admob_syncs` log).
+ * Neither decides whether the sales copy counts as ok.
  *
  * Called by Vercel's scheduler with `Authorization: Bearer $CRON_SECRET`. `?days=30` (at most
  * 90) reads further back, for filling in.
@@ -78,6 +85,9 @@ export async function GET(request: NextRequest) {
     if (!latest || day > latest) latest = day;
   }
 
+  const fx = await ensureRates(supabase);
+  const admob = await syncAdmob(supabase, source);
+
   const ok = problems.length === 0;
   const message = [
     ok ? `Read ${days.length - notYet.length} days from Apple.` : `Trouble with ${problems.length} days.`,
@@ -93,10 +103,10 @@ export async function GET(request: NextRequest) {
     rows_written: written,
     latest_report_date: latest,
     ok,
-    message: `${message} ${rankings.message}`.slice(0, 2000),
+    message: `${message} ${rankings.message} ${fx.message}`.slice(0, 2000),
   });
   return NextResponse.json(
-    { ok, days: days.length, rows: written, latest, message, rankings: summary(rankings) },
+    { ok, days: days.length, rows: written, latest, message, rankings: summary(rankings), fx, admob },
     { status: ok ? 200 : 502 },
   );
 }

@@ -14,6 +14,7 @@ import {
   unzip,
   fileMonth,
 } from '@/lib/playReports';
+import { ensureRates } from '@/lib/fxRates';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 /**
@@ -161,11 +162,15 @@ export async function GET(request: NextRequest) {
     problems.push(`sales: ${err instanceof Error ? err.message : String(err)}`);
   }
 
+  // The buyers' currencies Google just reported, as US dollar rates (see lib/fxRates.ts).
+  const fx = await ensureRates(supabase);
+
   const ok = problems.length === 0;
   const message = [
     `Read ${files} Google Play report files from ${bucket} (${[...months].join(', ')}).`,
     apps.size ? `Apps with downloads: ${[...apps].sort().join(', ')}.` : 'No downloads files yet for these months.',
     ...problems,
+    fx.message,
   ].join(' ');
   return finish(ok, message, { files, rows, latestInstall, latestSale }, ok ? 200 : 502);
 }

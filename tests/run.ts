@@ -78,6 +78,7 @@ async function main(): Promise<void> {
   await import('./purchasesRuntime.test');
   await import('./website.test');
   await import('./playReports.test');
+  await import('./salesMoney.test');
   await import('./power.test');
   await import('./reinstall.test');
   await import('./cloudSave.test');
