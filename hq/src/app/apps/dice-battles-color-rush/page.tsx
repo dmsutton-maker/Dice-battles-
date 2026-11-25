@@ -1,5 +1,5 @@
 import { pageMetadata } from '@/lib/metadata';
-import { APP_STORE_LIVE, APP_STORE_URL } from '@/lib/appStore';
+import { APP_STORE_LIVE, APP_STORE_URL, PLAY_STORE_LIVE, PLAY_STORE_URL } from '@/lib/appStore';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
@@ -169,6 +169,24 @@ export default async function DiceBattlesAppPage() {
                   }}
                 >
                   Download on the App Store
+                </a>
+              )}
+              {PLAY_STORE_LIVE && (
+                <a
+                  href={PLAY_STORE_URL}
+                  className={styles.link}
+                  style={{
+                    alignSelf: 'flex-start',
+                    marginTop: 10,
+                    padding: '12px 22px',
+                    background: colors.ink,
+                    color: '#fff',
+                    borderRadius: 12,
+                    font: `800 16px ${fonts.heading}`,
+                    textDecoration: 'none',
+                  }}
+                >
+                  Get it on Google Play
                 </a>
               )}
             </div>

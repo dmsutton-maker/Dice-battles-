@@ -20,6 +20,16 @@ export const APP_STORE_LIVE = false;
 
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
+/**
+ * Google Play went live first, on 24 Nov 2026 (build 11, approved while
+ * Apple's re-review was still waiting). Its button has its own switch so
+ * each store appears the day it is actually live.
+ */
+export const PLAY_STORE_LIVE = true;
+
+export const PLAY_STORE_URL =
+  'https://play.google.com/store/apps/details?id=com.dmsutton.dicebattles';
+
 /** The meta tag Safari reads to show the Smart App Banner, or nothing before launch. */
 export const smartAppBanner: Record<string, string> = APP_STORE_LIVE
   ? { 'apple-itunes-app': `app-id=${APP_STORE_ID}` }
