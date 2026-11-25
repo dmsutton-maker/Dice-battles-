@@ -1,0 +1,13 @@
+Reply to App Review, Guideline 2.3.3 (rejection of 1.60.0 (20), 23 Nov 2026)
+Paste into App Store Connect > App Review > the message thread, then press Resubmit.
+
+---
+
+Hello, and thank you for the review.
+
+We have replaced every screenshot. The iPhone 6.9-inch and iPad 13-inch sets are now screenshots taken on an iPhone and an iPad while playing the app: a battle in progress, two-player mode, a victory, the home screen, the Shop, Cups, and the Inventory. They have no added captions, frames or artwork.
+
+No new build was needed, as the change is only to the screenshots. The in-app purchases and the Weekly Cup in-app event are submitted together with this version, as before.
+
+Thank you,
+Paper Ship Studio

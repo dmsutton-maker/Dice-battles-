@@ -12,12 +12,13 @@ Run by .github/workflows/google-play.yml. Actions:
 
   check     the listing files are all there and the right sizes; asks Google
             nothing, needs no key.
-  preview   opens an edit, uploads everything, asks Google to validate, then
-            THROWS THE EDIT AWAY. Nothing is saved.
+  preview   opens an edit, uploads everything, then THROWS THE EDIT AWAY.
+            Nothing is saved; it proves the key and the pictures work.
   listing   the same, and saves it (title, descriptions, contact, icon,
             feature graphic, phone and tablet screenshots).
-  products  creates or updates the in-app purchases (PRODUCTS below), active,
-            US price with Google converting the rest.
+  products  creates or updates the in-app purchases (PRODUCTS below) with
+            Google's one-time products API, active, US price with Google
+            converting the rest.
   release   puts --version-code on --track (internal / production) with the
             release notes, and saves. A production release goes to Google's
             review; with managed publishing off it goes live when approved.
@@ -32,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import struct
 import sys
 from pathlib import Path
@@ -134,6 +136,30 @@ def ok(r, what: str):
     return r.json() if r.content else {}
 
 
+def commit(s, edit: str) -> None:
+    """Save an edit.
+
+    17 Nov 2026: with Managed publishing OFF, Google sends every saved change
+    for review at once, and for this not-yet-live app it refused that with
+    403 PERMISSION_DENIED (builds to Internal testing, which need no review,
+    saved fine). With Managed publishing ON, changes wait in Publishing
+    overview for David to send, and Google wants changesNotSentForReview.
+    So: ask for "not sent" first, and if Google says changes are sent
+    automatically here, save the ordinary way.
+    """
+    r = s.post(f"{API}/edits/{edit}:commit?changesNotSentForReview=true")
+    if r.status_code == 400 and "sent for review automatically" in r.text:
+        r = s.post(f"{API}/edits/{edit}:commit")
+    if r.status_code == 403:
+        raise SystemExit(
+            "save refused (403). If Managed publishing is OFF in Play Console "
+            "(Publishing overview), Google will not let this app's changes be "
+            "sent for review from here: turn Managed publishing ON and run again. "
+            f"Google said: {r.text[:600]}"
+        )
+    ok(r, "save")
+
+
 def push_listing(s, save: bool) -> None:
     edit = ok(s.post(f"{API}/edits"), "open edit")["id"]
     try:
@@ -160,10 +186,12 @@ def push_listing(s, save: bool) -> None:
                     f"upload {kind} {p.name}",
                 )
             print(f"{kind}: {len(paths)} picture(s) uploaded")
-        ok(s.post(f"{API}/edits/{edit}:validate"), "validate")
-        print("Google validated the edit.")
+        # No separate :validate call: on 17 Nov 2026 Google answered it with
+        # 403 PERMISSION_DENIED for this account while every upload in the
+        # same edit succeeded. Saving validates anyway, and a failed save
+        # changes nothing.
         if save:
-            ok(s.post(f"{API}/edits/{edit}:commit"), "save")
+            commit(s, edit)
             print("SAVED.")
             edit = None
         else:
@@ -173,24 +201,122 @@ def push_listing(s, save: bool) -> None:
             s.delete(f"{API}/edits/{edit}")
 
 
+def money(usd: str) -> dict:
+    units, _, cents = usd.partition(".")
+    return {"currencyCode": "USD", "units": units, "nanos": int((cents + "00")[:2]) * 10_000_000}
+
+
+# Newest first. Google's region list changes (Bulgaria moved from BGN to EUR
+# on 1 Jan 2026, and "2022/02" still expects BGN), and the price conversion
+# answers in today's currencies, so the newest version Google accepts wins.
+REGIONS_VERSIONS = ["2026/01", "2025/03", "2025/01", "2022/02"]
+
+
+def save_product(s, sku: str, body: dict) -> None:
+    """PATCH the product, trying regions versions newest first. If none fits
+    every country, the countries whose currency the version disagrees with
+    are left out (named in the log) rather than given a wrong price."""
+    last = None
+    for version in REGIONS_VERSIONS:
+        r = s.patch(
+            f"{API}/onetimeproducts/{sku}",
+            params={"updateMask": "listings,purchaseOptions", "allowMissing": "true", "regionsVersion.version": version},
+            json=body,
+        )
+        if r.status_code < 300:
+            print(f"{sku}: saved with regions version {version}")
+            return
+        last = r
+        if r.status_code == 400 and ("regions version" in r.text.lower() or "regionsversion" in r.text.lower() or "invalid currency" in r.text.lower()):
+            continue
+        ok(r, f"save {sku}")
+    # Every version disagreed about some currency: drop those countries.
+    version = REGIONS_VERSIONS[-1]
+    option = body["purchaseOptions"][0]
+    dropped = []
+    for _ in range(20):
+        r = s.patch(
+            f"{API}/onetimeproducts/{sku}",
+            params={"updateMask": "listings,purchaseOptions", "allowMissing": "true", "regionsVersion.version": version},
+            json=body,
+        )
+        if r.status_code < 300:
+            print(f"{sku}: saved with regions version {version}; left out (currency changed): {', '.join(dropped) or 'none'}")
+            return
+        m = re.search(r"region code ([A-Z]{2})", r.text)
+        if r.status_code != 400 or not m:
+            ok(r, f"save {sku}")
+        code = m.group(1)
+        dropped.append(code)
+        option["regionalPricingAndAvailabilityConfigs"] = [
+            c for c in option["regionalPricingAndAvailabilityConfigs"] if c["regionCode"] != code
+        ]
+    ok(last, f"save {sku}")
+
+
+def activate(s, sku: str) -> None:
+    """Make the product's "buy" option active (buyable).
+
+    The REST path is spelled oneTimeProducts (camel case) in Google's API
+    description; the all-lowercase spelling answered 404 for this custom
+    method on 17 Nov 2026, so both are tried, camel case first.
+    """
+    body = {
+        "requests": [
+            {"activatePurchaseOptionRequest": {"packageName": PACKAGE, "productId": sku, "purchaseOptionId": "buy"}}
+        ]
+    }
+    last = None
+    for collection in ("oneTimeProducts", "onetimeproducts"):
+        r = s.post(f"{API}/{collection}/{sku}/purchaseOptions:batchUpdateStates", json=body)
+        if r.status_code < 300:
+            return
+        last = r
+        if r.status_code != 404:
+            break
+    ok(last, f"activate {sku}")
+
+
 def push_products(s) -> None:
+    """Create or update the one-time products with Google's current API.
+
+    17 Nov 2026: the old inappproducts API answered "Please migrate to the
+    new publishing API", so this uses monetization.onetimeproducts. Each
+    product gets one purchase option, "buy", legacy-compatible so the
+    billing library in the game sees it as an ordinary product; its price
+    in every country is Google's own conversion of the US price, the same
+    as "let Google set other countries" in Play Console.
+    """
     for sku, title, description, usd in PRODUCTS:
+        converted = ok(
+            s.post(f"{API}/pricing:convertRegionPrices", json={"price": money(usd)}),
+            f"convert {sku} prices",
+        )
+        regional = [
+            {"regionCode": code, "price": entry["price"], "availability": "AVAILABLE"}
+            for code, entry in sorted((converted.get("convertedRegionPrices") or {}).items())
+        ]
+        other = converted.get("convertedOtherRegionsPrice") or {}
+        option = {
+            "purchaseOptionId": "buy",
+            "buyOption": {"legacyCompatible": True, "multiQuantityEnabled": False},
+            "regionalPricingAndAvailabilityConfigs": regional,
+        }
+        if other.get("usdPrice") and other.get("eurPrice"):
+            option["newRegionsConfig"] = {
+                "usdPrice": other["usdPrice"],
+                "eurPrice": other["eurPrice"],
+                "availability": "AVAILABLE",
+            }
         body = {
             "packageName": PACKAGE,
-            "sku": sku,
-            "status": "active",
-            "purchaseType": "managedUser",
-            "defaultLanguage": LANG,
-            "defaultPrice": {"priceMicros": str(int(round(float(usd) * 1_000_000))), "currency": "USD"},
-            "listings": {LANG: {"title": title, "description": description}},
+            "productId": sku,
+            "listings": [{"languageCode": LANG, "title": title, "description": description}],
+            "purchaseOptions": [option],
         }
-        exists = s.get(f"{API}/inappproducts/{sku}").status_code == 200
-        if exists:
-            ok(s.put(f"{API}/inappproducts/{sku}?autoConvertMissingPrices=true", json=body), f"update {sku}")
-            print(f"{sku}: updated (${usd})")
-        else:
-            ok(s.post(f"{API}/inappproducts?autoConvertMissingPrices=true", json=body), f"create {sku}")
-            print(f"{sku}: created (${usd})")
+        save_product(s, sku, body)
+        activate(s, sku)
+        print(f"{sku}: saved and active, ${usd} in the US, {len(regional)} countries priced")
 
 
 def push_release(s, track: str, version_code: int, notes: str) -> None:
@@ -209,8 +335,7 @@ def push_release(s, track: str, version_code: int, notes: str) -> None:
             ],
         }
         ok(s.put(f"{API}/edits/{edit}/tracks/{track}", json=body), f"set {track}")
-        ok(s.post(f"{API}/edits/{edit}:validate"), "validate")
-        ok(s.post(f"{API}/edits/{edit}:commit"), "save")
+        commit(s, edit)
         print(f"SAVED: build {version_code} on {track}.")
         edit = None
     finally:

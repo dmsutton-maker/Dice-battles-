@@ -182,6 +182,39 @@ and the same day the listing was brought up to date:
   status bar blurred, game sound kept, 24.7 s. Uploaded 8 Nov 2026 as
   the iPhone 6.7" preview (set `IPHONE_67`, poster frame at 6 s), state COMPLETE.
 
+## The 2.3.3 rejection and the resubmission (23-24 Nov 2026)
+
+- Apple rejected 1.60.0 (20) on 23 Nov, Guideline 2.3.3: the marketing-art
+  screenshots "do not show the app in use" (reviewed on an iPad). Fixed the
+  same night: all 12 store screenshots are now real screens David captured
+  on his iPhone (fitted to 1290x2796) and iPad (2048x2732, untouched), in
+  `store/screenshots/`, and the Google Play phone/tablet sets were rebuilt
+  from the same captures and saved to Play (PR #18). The rendered preview
+  video was deleted and David's real screen recording re-uploaded.
+- The old review submission 14d87fe4 could not be revived (409 on every
+  path), so it was CANCELED and replaced by ba03a86f-5239-4f03-9225-d3a65c144a03.
+- Apple then blocked ALL new submissions over the two China-mainland
+  compliance forms (codes SECURITYASF395E security assessment and
+  AIGENERATEFD1DE AIGC declaration, "PENDING_COLLECT.NEW_APP_SUBMISSION_BLOCK").
+  David: "Remove the China. I want fastest path to launch" - China mainland
+  removed on 24 Nov, 174 territories now. The API cannot write availability
+  (POST /v2/appAvailabilities 409s "already exists"); David did it in the
+  ASC UI, which is now App Availability -> Manage, not Pricing and
+  Availability -> Edit.
+- The Weekly Cup event's dates had passed; moved via API to publish
+  26 Nov, run 30 Nov - 21 Dec 2026 (still Mondays, 05:00Z = midnight EST).
+- IAPs cannot be attached to a review submission by the API at all
+  (reviewSubmissionItems knows no IAP relationship). Claude in Chrome
+  added each from its own page: "Add for Review" -> Draft iOS Submission.
+  Gold Pass (non-renewing subscription) hides under Monetization ->
+  Subscriptions -> Non-Renewing Subscriptions -> Manage.
+- Final pass re-ran on Fable before the submission (24 Nov): tsc 0,
+  1663 tests 0 failed, Metro export exit 0, ASC read-back clean.
+- **Submitted 24 Nov 02:57Z, WAITING_FOR_REVIEW, 9 items**: version
+  1.60.0 (20), the event, 7 IAPs (no dino_valley). Expedite re-request
+  text handed to David (the old grant was on the canceled submission).
+  The App Review reply text is `store/app-review-reply-2.3.3.txt`.
+
 ## Ads: why none were ever requested, and the fix (5 Nov 2026)
 
 - AdMob's reports showed ZERO ad requests in 30 days. v1.167.0's status
@@ -368,6 +401,38 @@ Still missing: an APNs push key on EAS. Pushes cannot be delivered until
 one is added; it does not need a new build.
 
 ## Known-open, as of the last update
+
+- **17 Nov 2026: Dice Battles is in Google Play review** (package
+  com.dmsutton.dicebattles, Play app id 4974007261362660244, Paper Ship
+  Studio LLC organization account, D-U-N-S 150077227). Production release
+  versionCode 11 (1.60.0, runtime 4.0.0), full rollout, 178 countries plus
+  rest of world; listing, Families target audience (all ages), content
+  rating (Everyone / PEGI 3; Brazil 14+ for purchases), Data safety, trader
+  status with papershipstudio.com/terms. Managed publishing could not be
+  switched on before the first submission (Google blocks it on a draft app);
+  with it off, the app goes live when Google approves. Payments profile
+  linked (PAPER SHIP STUDIO LLC, 4852-5225-8597). The payout bank account
+  was verified on 18 Nov 2026; the W-9 and the street address
+  (7 Shadowlawn Dr) in Google Payments are the remaining checks before payouts.
+  **Enrolled in Google Play's 15% service fee on 17 Nov 2026** (account
+  group Paper Ship Studio); the Paper Ship Studio Sales dashboard already
+  estimates Google Play earnings at 15% and now says so in its sources.
+  **The seven one-time products are created and active by API**
+  (remove_ads 3.99, coins_pouch 0.99, coins_chest 4.99, coins_vault 9.99,
+  starter_pack 4.99, neon_dice 0.99, gold_pass 2.99; 174 countries priced by
+  Google's conversion; regions version 2026/01). How the Play API works here:
+  service account claude-play-publisher@paper-ship-studio-play (account-level
+  permissions, no Admin); its key is (a) on Expo for `eas submit -p android`
+  (eas.json submit profile, Internal testing) and (b) the GitHub secret
+  PLAY_SERVICE_ACCOUNT_JSON for `.github/workflows/google-play.yml`
+  (tools/google-play/google_play.py: check, preview, listing, products,
+  release), the same arrangement as LeaseDash. Saving listing changes by API
+  was refused (403) while the app had never been submitted, so the first
+  listing went in through Play Console; later listing updates go through the
+  script. Builds 9 and 11 were uploaded to Internal testing; build 11 blocks
+  AD_ID, the Privacy Sandbox ad permissions, the microphone,
+  FOREGROUND_SERVICE_MEDIA_PLAYBACK, overlay, storage and biometrics (checked
+  in the .aab manifest).
 
 - **9 Nov 2026 01:39 UTC: SUBMITTED FOR REVIEW.** Review submission
   14d87fe4 went from READY_FOR_REVIEW to WAITING_FOR_REVIEW with nine items:
