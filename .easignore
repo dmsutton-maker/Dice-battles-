@@ -1,0 +1,16 @@
+# The website/HQ is deployed from Vercel, not built into the app. Keeping
+# it out of the EAS upload saves shipping a whole second dependency tree
+# to the build servers.
+hq/
+docs/
+tests/
+# Not part of the app: App Store and Google Play pictures and videos, the
+# preview tools, and Claude's own working copies. Left in, the upload to
+# EAS was 1.1 GB (16 Nov 2026).
+store/
+tools/
+.claude/
+# A local `expo prebuild` writes these; uploaded, EAS would treat the project
+# as bare and skip its own prebuild (and the config plugins in app.json).
+/android/
+/ios/
