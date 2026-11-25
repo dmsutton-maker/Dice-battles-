@@ -182,6 +182,19 @@ and the same day the listing was brought up to date:
   status bar blurred, game sound kept, 24.7 s. Uploaded 8 Nov 2026 as
   the iPhone 6.7" preview (set `IPHONE_67`, poster frame at 6 s), state COMPLETE.
 
+## LIVE ON GOOGLE PLAY (24 Nov 2026)
+
+Google approved build 11 while Apple's re-review was still waiting - the
+game's FIRST store launch. The page is public:
+https://play.google.com/store/apps/details?id=com.dmsutton.dicebattles
+(production track, full rollout, real screenshots). Launch-day steps:
+the site's "Get it on Google Play" button is `PLAY_STORE_LIVE` in
+`hq/src/lib/appStore.ts` (true; its own switch, APP_STORE_LIVE stays
+false until Apple approves) - deploy the site to show it. Still needing
+David in Chrome: paste the Play Store link into the ANDROID app in
+AdMob (ads are no-fill until the store link is reviewed there). A News
+post about the launch would need David/Marc approval and an OTA update.
+
 ## The 2.3.3 rejection and the resubmission (23-24 Nov 2026)
 
 - Apple rejected 1.60.0 (20) on 23 Nov, Guideline 2.3.3: the marketing-art
