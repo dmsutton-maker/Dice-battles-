@@ -1,5 +1,10 @@
 import { pageMetadata } from '@/lib/metadata';
-import { VECTOR_FACES_APP_STORE_URL, VECTOR_FACES_LIVE } from '@/lib/appStore';
+import {
+  VECTOR_FACES_APP_STORE_URL,
+  VECTOR_FACES_GOOGLE_PLAY_LIVE,
+  VECTOR_FACES_GOOGLE_PLAY_URL,
+  VECTOR_FACES_LIVE,
+} from '@/lib/appStore';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
@@ -143,6 +148,30 @@ export default function VectorFacesAppPage() {
                   <span style={{ marginTop: 10, font: `800 16px ${fonts.heading}`, color: colors.ink }}>
                     Coming soon to the App Store
                   </span>
+                )}
+                {VECTOR_FACES_GOOGLE_PLAY_LIVE && (
+                  /*
+                    The Wear OS app: the six simple designs, free, with one
+                    purchase for the rest. Its own words say so, because the
+                    Apple Watch app above has many more faces.
+                  */
+                  <a
+                    href={VECTOR_FACES_GOOGLE_PLAY_URL}
+                    className={styles.link}
+                    style={{
+                      alignSelf: 'flex-start',
+                      marginTop: 4,
+                      padding: '11px 21px',
+                      background: '#fff',
+                      color: colors.ink,
+                      border: `1.5px solid ${colors.ink}`,
+                      borderRadius: 12,
+                      font: `800 16px ${fonts.heading}`,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Wear OS watch? Get it on Google Play
+                  </a>
                 )}
               </div>
             </div>

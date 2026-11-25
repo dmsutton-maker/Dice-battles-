@@ -943,6 +943,14 @@ one is added; it does not need a new build.
   Console (DNS TXT at Cloudflare, 12 Nov; keep the record) for the Play
   Console organization change, which is in progress.
 
+- **Google Play, live since late November 2026:** Dice Battles: Color Rush
+  (com.dmsutton.dicebattles, phones and tablets) and Vector Faces for Wear OS
+  (com.papershipstudio.vectorfaces). Both store pages answer publicly. The
+  website shows "Get it on Google Play" on /apps/dice-battles-color-rush and
+  "Wear OS watch? Get it on Google Play" on /apps/vector-faces, switched by
+  `DICE_BATTLES_GOOGLE_PLAY_LIVE` and `VECTOR_FACES_GOOGLE_PLAY_LIVE` in
+  `hq/src/lib/appStore.ts` (plain text in the site's style, not Google's badge).
+
 ## Conventions worth not rediscovering
 
 - Every OTA update gets a `CHANGELOG.md` version recording **who asked
