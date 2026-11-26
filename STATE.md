@@ -182,6 +182,19 @@ and the same day the listing was brought up to date:
   status bar blurred, game sound kept, 24.7 s. Uploaded 8 Nov 2026 as
   the iPhone 6.7" preview (set `IPHONE_67`, poster frame at 6 s), state COMPLETE.
 
+## LIVE ON GOOGLE PLAY (24 Nov 2026)
+
+Google approved build 11 while Apple's re-review was still waiting - the
+game's FIRST store launch. The page is public:
+https://play.google.com/store/apps/details?id=com.dmsutton.dicebattles
+(production track, full rollout, real screenshots). Launch-day steps:
+the site's "Get it on Google Play" button is `PLAY_STORE_LIVE` in
+`hq/src/lib/appStore.ts` (true; its own switch, APP_STORE_LIVE stays
+false until Apple approves) - deploy the site to show it. Still needing
+David in Chrome: paste the Play Store link into the ANDROID app in
+AdMob (ads are no-fill until the store link is reviewed there). A News
+post about the launch would need David/Marc approval and an OTA update.
+
 ## The 2.3.3 rejection and the resubmission (23-24 Nov 2026)
 
 - Apple rejected 1.60.0 (20) on 23 Nov, Guideline 2.3.3: the marketing-art
@@ -948,8 +961,14 @@ one is added; it does not need a new build.
   (com.papershipstudio.vectorfaces). Both store pages answer publicly. The
   website shows "Get it on Google Play" on /apps/dice-battles-color-rush and
   "Wear OS watch? Get it on Google Play" on /apps/vector-faces, switched by
-  `DICE_BATTLES_GOOGLE_PLAY_LIVE` and `VECTOR_FACES_GOOGLE_PLAY_LIVE` in
+  `PLAY_STORE_LIVE` and `VECTOR_FACES_GOOGLE_PLAY_LIVE` in
   `hq/src/lib/appStore.ts` (plain text in the site's style, not Google's badge).
+  **Deploy the website only from a branch that has the Vector Faces pages**
+  (PR #14, `claude/pensive-bell-squkg9`) until that PR is merged into the
+  default branch. On 25 Nov a deploy from `claude/app-store-launch-backend-pxkfnb`
+  (which lacked them) took /apps/vector-faces, the sales and Google Play cron
+  jobs and the newer privacy policy off the live site until it was redeployed
+  from the merged branch on 26 Nov.
 
 ## Conventions worth not rediscovering
 

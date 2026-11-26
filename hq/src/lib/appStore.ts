@@ -38,19 +38,21 @@ export const VECTOR_FACES_LIVE = true;
 export const VECTOR_FACES_APP_STORE_URL = `https://apps.apple.com/app/id${VECTOR_FACES_APP_STORE_ID}`;
 
 /**
- * Google Play. Both apps went live there in November 2026: Dice Battles for
- * Android phones and tablets, and Vector Faces for Wear OS watches (the Wear
- * OS app has the six simple designs, not the Apple Watch app's whole set).
- *
- * Like the App Store link, the button is plain text in the site's own style,
- * not Google's badge artwork, and each has its own switch: false shows no
- * button at all.
+ * Google Play went live first, on 24 Nov 2026 (build 11, approved while
+ * Apple's re-review was still waiting). Its button has its own switch so
+ * each store appears the day it is actually live.
  */
-export const DICE_BATTLES_GOOGLE_PLAY_LIVE = true;
+export const PLAY_STORE_LIVE = true;
 
-export const DICE_BATTLES_GOOGLE_PLAY_URL =
+export const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.dmsutton.dicebattles';
 
+/**
+ * Vector Faces for Wear OS went live on Google Play in November 2026 too. It
+ * has the six simple designs, not the Apple Watch app's whole set, so its
+ * button on /apps/vector-faces says it is for Wear OS watches. Plain text in
+ * the site's own style, with its own switch, like the others.
+ */
 export const VECTOR_FACES_GOOGLE_PLAY_LIVE = true;
 
 export const VECTOR_FACES_GOOGLE_PLAY_URL =
