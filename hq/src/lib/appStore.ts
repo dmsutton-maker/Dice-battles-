@@ -20,6 +20,44 @@ export const APP_STORE_LIVE = false;
 
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
+/**
+ * Vector Faces, our Apple Watch app, has its own listing and its own switch.
+ *
+ * LAUNCH DAY: flip `VECTOR_FACES_LIVE` to true and deploy. That turns the
+ * "Coming soon to the App Store" line on /apps/vector-faces into the same
+ * "Download on the App Store" text link the Dice Battles page has.
+ *
+ * It stays false until Apple has approved the app and it is actually for
+ * sale, for the same reason as above. It does not touch the Smart App
+ * Banner below, which belongs to Dice Battles.
+ */
+export const VECTOR_FACES_APP_STORE_ID = '6832990414';
+
+export const VECTOR_FACES_LIVE = true;
+
+export const VECTOR_FACES_APP_STORE_URL = `https://apps.apple.com/app/id${VECTOR_FACES_APP_STORE_ID}`;
+
+/**
+ * Google Play went live first, on 24 Nov 2026 (build 11, approved while
+ * Apple's re-review was still waiting). Its button has its own switch so
+ * each store appears the day it is actually live.
+ */
+export const PLAY_STORE_LIVE = true;
+
+export const PLAY_STORE_URL =
+  'https://play.google.com/store/apps/details?id=com.dmsutton.dicebattles';
+
+/**
+ * Vector Faces for Wear OS went live on Google Play in November 2026 too. It
+ * has the six simple designs, not the Apple Watch app's whole set, so its
+ * button on /apps/vector-faces says it is for Wear OS watches. Plain text in
+ * the site's own style, with its own switch, like the others.
+ */
+export const VECTOR_FACES_GOOGLE_PLAY_LIVE = true;
+
+export const VECTOR_FACES_GOOGLE_PLAY_URL =
+  'https://play.google.com/store/apps/details?id=com.papershipstudio.vectorfaces';
+
 /** The meta tag Safari reads to show the Smart App Banner, or nothing before launch. */
 export const smartAppBanner: Record<string, string> = APP_STORE_LIVE
   ? { 'apple-itunes-app': `app-id=${APP_STORE_ID}` }

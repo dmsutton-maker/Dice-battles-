@@ -9,7 +9,7 @@ android app going").
 | Short description | `short-description.txt` | 80 characters |
 | Full description | `../description.txt` (the App Store text; it names no Apple feature) | 4,000 characters |
 | App icon | `icon-512.png` (512 × 512, from `assets/icon/light.png`) | 512 × 512 PNG |
-| Feature graphic | `feature-1024x500.png` (from the App Store header art) | 1024 × 500, no transparency |
+| Feature graphic | `feature-1024x500.png` (25 Nov 2026: DICE BATTLES in the six dice colours over the volcano battlefield - David: search results looked plain next to apps with big lettering; Play allows branding here, Apple does not) | 1024 × 500, no transparency |
 | Phone screenshots | `phone/01–06.png`, 1080 × 1920 | 2–8, 9:16, each side 320–3,840 px |
 | Tablet screenshots (7" and 10") | `../screenshots/ipad/01–06.png`, 2048 × 2732 | each side 320–3,840 px, no side more than twice the other |
 

@@ -25,11 +25,31 @@ import { getSiteContent, text } from './content';
  *   out as a bare blue line. The card is the same 1200x630 picture the
  *   invite page already uses, and `metadataBase` in layout.tsx turns
  *   these relative paths into the absolute URLs those apps insist on.
+ *
+ * `card` swaps that picture for a page's own. Vector Faces brings its icon:
+ * a link to the watch app should not preview as the dice game. A square
+ * card gets Twitter's small `summary` layout, which is made for one; a
+ * wide one keeps the large layout.
  */
+export interface LinkCard {
+  url: string;
+  width: number;
+  height: number;
+  alt: string;
+}
+
+const STUDIO_CARD: LinkCard = {
+  url: '/images/dice-battles-card.png',
+  width: 1200,
+  height: 630,
+  alt: 'Dice Battles: Color Rush',
+};
+
 export function pageMetadata(
   page: string,
-  defaults: { title: string; description: string; path: string },
+  defaults: { title: string; description: string; path: string; card?: LinkCard },
 ): () => Promise<Metadata> {
+  const card = defaults.card ?? STUDIO_CARD;
   return async () => {
     const content = await getSiteContent();
     const title = text(content, `${page}.metaTitle`, defaults.title);
@@ -44,13 +64,13 @@ export function pageMetadata(
         url: defaults.path,
         type: 'website',
         siteName: 'Paper Ship Studio',
-        images: [{ url: '/images/dice-battles-card.png', width: 1200, height: 630, alt: 'Dice Battles: Color Rush' }],
+        images: [card],
       },
       twitter: {
-        card: 'summary_large_image',
+        card: card.width > card.height ? 'summary_large_image' : 'summary',
         title,
         description,
-        images: ['/images/dice-battles-card.png'],
+        images: [card.url],
       },
     };
   };

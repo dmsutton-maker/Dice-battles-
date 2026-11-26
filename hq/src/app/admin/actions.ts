@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { currentMember, supabaseAdmin, supabaseServer } from '@/lib/supabase/server';
 import type { IdeaCategory, IdeaStatus } from '@/lib/types';
+import { LEGAL_SECTION_SLOTS } from '@/lib/legalCopy';
 
 /**
  * Everything the HQ can change, in one place.
@@ -903,7 +904,7 @@ export async function updatePrivacyContent(
     setContent('privacy.intro', field(formData, 'intro'), member.display_name),
     setContent(
       'privacy.sections',
-      collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading'),
+      collectRows(formData, LEGAL_SECTION_SLOTS, { heading: 'section_heading', body: 'section_body' }, 'heading'),
       member.display_name,
     ),
     setContent('privacy.metaTitle', field(formData, 'metaTitle'), member.display_name),
@@ -923,7 +924,7 @@ export async function updateTermsContent(
     setContent('terms.intro', field(formData, 'intro'), member.display_name),
     setContent(
       'terms.sections',
-      collectRows(formData, 16, { heading: 'section_heading', body: 'section_body' }, 'heading'),
+      collectRows(formData, LEGAL_SECTION_SLOTS, { heading: 'section_heading', body: 'section_body' }, 'heading'),
       member.display_name,
     ),
     setContent('terms.metaTitle', field(formData, 'metaTitle'), member.display_name),

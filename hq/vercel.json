@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/app-sales",
+      "schedule": "17 14 * * *"
+    },
+    {
+      "path": "/api/cron/play-reports",
+      "schedule": "43 14 * * *"
+    }
+  ]
+}

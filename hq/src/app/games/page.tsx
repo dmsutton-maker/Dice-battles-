@@ -2,9 +2,10 @@ import { pageMetadata } from '@/lib/metadata';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SitePage } from '@/components/site/SitePage';
-import { colors, fonts, heroGradient } from '@/components/site/tokens';
+import { colors, fonts, heroGradient, vectorFacesGradient } from '@/components/site/tokens';
 import styles from '../site.module.css';
 import { getSiteContent, text } from '@/lib/content';
+import { VECTOR_FACES_SUMMARY } from '@/lib/vectorFaces';
 
 /*
   The Games page. It was "Apps" at /apps until 23 Oct 2026, when David
@@ -16,6 +17,9 @@ import { getSiteContent, text } from '@/lib/content';
 
   The content keys are still `apps.*`, so what the family already edited
   in the admin carries over unchanged.
+
+  Vector Faces, the Apple Watch app, joined the Apps section on 11 Nov
+  2026. Its card's words come from lib/vectorFaces.ts, not the admin.
 */
 export const generateMetadata = pageMetadata('apps', {
   title: 'Our Games — Paper Ship Studio',
@@ -83,56 +87,109 @@ export default async function GamesPage() {
         </section>
 
         <section className="psg-wrap" style={{ padding: '28px 56px 12px', ...wrap }} aria-labelledby="apps">
-          <SectionHeading note="For your phone, from the App Store.">
+          <SectionHeading note="For your phone and your watch, from the App Store.">
             <span id="apps">Apps</span>
           </SectionHeading>
-          <Link
-            href="/apps/dice-battles-color-rush"
-            className={styles.pillButton}
-            style={{
-              display: 'block',
-              borderRadius: 24,
-              background: heroGradient,
-              padding: '44px 48px',
-              position: 'relative',
-              overflow: 'hidden',
-              textDecoration: 'none',
-            }}
-          >
-            <div
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <Link
+              href="/apps/dice-battles-color-rush"
+              className={styles.pillButton}
               style={{
-                position: 'absolute',
-                top: -30,
-                right: -30,
-                width: 140,
-                height: 140,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.12)',
+                display: 'block',
+                borderRadius: 24,
+                background: heroGradient,
+                padding: '44px 48px',
+                position: 'relative',
+                overflow: 'hidden',
+                textDecoration: 'none',
               }}
-            />
-            <div
-              className="psg-row-wrap"
-              style={{ display: 'flex', alignItems: 'center', gap: 36, flexWrap: 'wrap', position: 'relative', zIndex: 1 }}
             >
-              <Image
-                src="/images/dice-battles-icon.png"
-                alt="Dice Battles: Color Rush icon"
-                width={110}
-                height={110}
-                style={{ borderRadius: 22, objectFit: 'cover', flexShrink: 0, boxShadow: '0 10px 26px rgba(0,0,0,0.25)' }}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -30,
+                  right: -30,
+                  width: 140,
+                  height: 140,
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.12)',
+                }}
               />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 220 }}>
-                <span style={kickerStyle}>{cardKicker}</span>
-                <span style={{ font: `800 26px ${fonts.heading}`, color: '#fff' }}>
-                  Dice Battles: Color Rush<sup style={{ fontSize: '0.45em', marginLeft: 2 }}>™</sup>
-                </span>
-                <span style={{ font: `600 14.5px/1.5 ${fonts.body}`, color: 'rgba(255,255,255,0.9)' }}>
-                  {cardDescription}
-                </span>
+              <div
+                className="psg-row-wrap"
+                style={{ display: 'flex', alignItems: 'center', gap: 36, flexWrap: 'wrap', position: 'relative', zIndex: 1 }}
+              >
+                <Image
+                  src="/images/dice-battles-icon.png"
+                  alt="Dice Battles: Color Rush icon"
+                  width={110}
+                  height={110}
+                  style={{ borderRadius: 22, objectFit: 'cover', flexShrink: 0, boxShadow: '0 10px 26px rgba(0,0,0,0.25)' }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 220 }}>
+                  <span style={kickerStyle}>{cardKicker}</span>
+                  <span style={{ font: `800 26px ${fonts.heading}`, color: '#fff' }}>
+                    Dice Battles: Color Rush<sup style={{ fontSize: '0.45em', marginLeft: 2 }}>™</sup>
+                  </span>
+                  <span style={{ font: `600 14.5px/1.5 ${fonts.body}`, color: 'rgba(255,255,255,0.9)' }}>
+                    {cardDescription}
+                  </span>
+                </div>
+                <span style={{ ...buttonStyle, color: colors.cyanText }}>View app &rarr;</span>
               </div>
-              <span style={{ ...buttonStyle, color: colors.cyanText }}>View app &rarr;</span>
-            </div>
-          </Link>
+            </Link>
+
+            <Link
+              href="/apps/vector-faces"
+              className={styles.pillButton}
+              style={{
+                display: 'block',
+                borderRadius: 24,
+                background: vectorFacesGradient,
+                padding: '44px 48px',
+                position: 'relative',
+                overflow: 'hidden',
+                textDecoration: 'none',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -30,
+                  right: -30,
+                  width: 140,
+                  height: 140,
+                  borderRadius: '50%',
+                  // An amber glow rather than the white circle the other
+                  // cards have, which would read as grey on near-black.
+                  background: 'rgba(242,197,61,0.12)',
+                }}
+              />
+              <div
+                className="psg-row-wrap"
+                style={{ display: 'flex', alignItems: 'center', gap: 36, flexWrap: 'wrap', position: 'relative', zIndex: 1 }}
+              >
+                <Image
+                  src="/images/vector-faces/icon.png"
+                  alt="Vector Faces icon"
+                  width={110}
+                  height={110}
+                  // The icon is black to its edges; the hairline ring keeps its
+                  // rounded square from dissolving into the card.
+                  style={{ borderRadius: 22, objectFit: 'cover', flexShrink: 0, boxShadow: '0 0 0 1px rgba(255,255,255,0.14), 0 10px 26px rgba(0,0,0,0.35)' }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 220 }}>
+                  <span style={kickerStyle}>Apple Watch</span>
+                  <span style={{ font: `800 26px ${fonts.heading}`, color: '#fff' }}>Vector Faces</span>
+                  <span style={{ font: `600 14.5px/1.5 ${fonts.body}`, color: 'rgba(255,255,255,0.9)' }}>
+                    {VECTOR_FACES_SUMMARY}
+                  </span>
+                </div>
+                {/* #0b0f14 on the white pill is 19.2:1. */}
+                <span style={{ ...buttonStyle, color: '#0b0f14' }}>View app &rarr;</span>
+              </div>
+            </Link>
+          </div>
         </section>
 
         <section className="psg-wrap" style={{ padding: '36px 56px 90px', ...wrap }} aria-labelledby="web-games">

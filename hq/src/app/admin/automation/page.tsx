@@ -64,6 +64,15 @@ const STANDING: Standing[] = [
     does: 'Typecheck, the full test suite, and a bundle check for the game; build and a real page-load check for the website.',
     asks: 'Nothing ships if these fail.',
   },
+  {
+    emoji: '💵',
+    name: 'App Store sales',
+    when: 'Every morning, after Apple publishes the day before',
+    does: 'Copies the last week of Apple’s daily sales reports for Vector Faces and Dice Battles into the studio’s database, for the Sales page. A Monday summary of the week is sent to David’s phone.',
+    asks: 'Only reads from Apple. Changes nothing in App Store Connect.',
+    caveat:
+      'Set up on 13 November 2026. The Sales page shows when it last copied, and says so if a run failed.',
+  },
 ];
 
 export default async function AutomationPage() {
